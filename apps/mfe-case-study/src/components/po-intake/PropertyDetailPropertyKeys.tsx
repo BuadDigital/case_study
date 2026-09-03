@@ -8,18 +8,24 @@ import {
   SectionHeader,
   DetailBadge,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton, type BadgeTone } from "@platform/ui-kit";
+import {
+  Badge,
+  InlineLoadingSkeleton,
+  cn,
+  opsBtnGhost,
+  type BadgeTone,
+} from "@platform/ui-kit";
 import { PropertyKeyGateSources, PropertyKeysStatuses } from "@platform/api-client";
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   courtVisitResultKindLabel,
-} from "../../lib/prototype/operations-task-property-scope";
+} from "../../lib/app-data/operations-task-property-scope";
 import {
   operationsTaskStatusLabel,
-} from "../../lib/prototype/operations-task-display";
+} from "../../lib/app-data/operations-task-display";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import {
   keyGateSourceLabelAr,
@@ -28,8 +34,8 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import Link from "next/link";
 
 function keysBadgeTone(status: string): BadgeTone {
@@ -41,7 +47,7 @@ function keysBadgeTone(status: string): BadgeTone {
 }
 
 /**
- * مفاتيح العقار — listens to key-envelope gate + court_visit ops (linked envelope).
+ * Property keys — listens to key-envelope gate + court_visit ops (linked envelope).
  */
 export function PropertyDetailPropertyKeys({
   poNumber,
@@ -50,7 +56,7 @@ export function PropertyDetailPropertyKeys({
   poNumber: string;
   property: PoPropertyIntake;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
@@ -129,7 +135,7 @@ export function PropertyDetailPropertyKeys({
           ) : null}
           <Link
             href="/keys"
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11 max-lg:w-full"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11 max-lg:w-full")}
           >
             إدارة المفاتيح
           </Link>
@@ -267,7 +273,7 @@ export function PropertyDetailPropertyKeys({
         {canCreateOps && courtVisits.length === 0 ? (
           <Link
             href={createCourtHref}
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11")}
           >
             إنشاء زيارة محكمة
           </Link>

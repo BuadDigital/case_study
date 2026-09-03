@@ -46,7 +46,7 @@ public sealed class PasswordLoginRequestValidator : AbstractValidator<PasswordLo
 public sealed class UsernameLoginRequestValidator : AbstractValidator<UsernameLoginRequest>
 {
     public UsernameLoginRequestValidator() =>
-        RuleFor(x => x.Username).NotEmpty().MinimumLength(2).MaximumLength(64)
+        RuleFor(x => x.Username).NotEmpty().MinimumLength(2).MaximumLength(120)
             .OverridePropertyName("username");
 }
 

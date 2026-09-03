@@ -1,22 +1,24 @@
 using RealEstateEval.Domain;
 using Xunit;
+using RealEstateEval.Attachments.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
 public class AttachmentPrintRulesTests
 {
     [Theory]
-    [InlineData("deed", true, true)]
-    [InlineData("deed", false, false)]
-    [InlineData("", true, false)]
-    [InlineData(null, true, false)]
-    [InlineData("  ", true, false)]
-    public void IsPrintable_requires_type_and_flag(
-        string? typeKey,
-        bool printInReport,
-        bool expected)
+    [InlineData("property-decree", "deed")]
+    [InlineData("property-deed-ownership", "deed")]
+    [InlineData("property-registry", "deed")]
+    [InlineData("engineering-survey-report", "survey")]
+    [InlineData("field-inspection-photo", "photo")]
+    [InlineData("engineering-site-letter", "site-map")]
+    [InlineData("property-other", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void TypeKeyFromScope_routes_known_upload_scopes(string? scope, string? expected)
     {
-        Assert.Equal(expected, AttachmentPrintRules.IsPrintable(typeKey, printInReport));
+        Assert.Equal(expected, AttachmentPrintRules.TypeKeyFromScope(scope));
     }
 
     [Theory]
@@ -30,7 +32,7 @@ public class AttachmentPrintRulesTests
     [InlineData("unknown", null)]
     [InlineData("", null)]
     [InlineData(null, null)]
-    public void ReportSectionNumber_routes_known_dictionary_keys(string? key, int? expected)
+    public void ReportSectionNumber_routes_known_type_keys(string? key, int? expected)
     {
         Assert.Equal(expected, AttachmentPrintRules.ReportSectionNumber(key));
     }

@@ -2,7 +2,7 @@ import {
   INCOMPLETE_CONTACT_MARKER_PHONE,
   type PoContact,
   type PoPropertyIntake,
-} from "../../prototype/po-intake-data";
+} from "../../app-data/po-intake-data";
 import type { FieldErrors } from "@platform/app-shared/domain/form/field-errors";
 
 export const PHONE_MIN_DIGITS = 10;

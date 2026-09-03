@@ -10,8 +10,10 @@ export async function openValuationReportPreview(
     await openApprovedValuationReportPreview(doc, extras);
   } catch (err) {
     const message = err instanceof Error ? err.message : "تعذّر فتح القالب المعتمد";
-    const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
+    // "noopener" in features makes window.open return null — open with a handle then clear opener.
+    const w = window.open("", "_blank", "width=900,height=1000");
     if (!w) throw err;
+    w.opener = null;
     w.document.open();
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>استعراض تقرير التقييم</title></head>
 <body style="font-family:Tahoma,sans-serif;padding:24px">

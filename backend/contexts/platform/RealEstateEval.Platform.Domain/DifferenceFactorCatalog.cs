@@ -1,16 +1,17 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
 /// <summary>
-/// Difference-factor definitions and their «ما لا يشمله» limits are
+/// Difference-factor definitions and their limits are
 /// admin-managed reference data with a version log — not code constants.
 /// </summary>
 public class DifferenceFactorCatalogConfig
 {
     public Guid Id { get; set; }
     public string CatalogJson { get; set; } = "{}";
- /// <summary>Monotonic version — bumped on every admin save (سجل نسخ + audit rows).</summary>
+ /// <summary>Monotonic version — bumped on every admin save (copy log + audit rows).</summary>
     public int Version { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }
@@ -26,7 +27,7 @@ public sealed record DifferenceFactorDefinition(
 
 public static class DifferenceFactorCatalog
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
     public static IReadOnlyList<DifferenceFactorDefinition> Parse(string? json)
     {

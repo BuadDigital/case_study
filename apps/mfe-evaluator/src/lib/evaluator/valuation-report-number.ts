@@ -1,28 +1,23 @@
-const SEQ_STORAGE_PREFIX = "ejadah.valuation-report.daily-seq.";
+// Numbering workshop (decision item 3): unified pattern TQ-{year}-{5-digit sequence}. Frozen numbers
+// in Q-6 snapshots issued before rollout do not change — this format is for issues after only.
+// Must stay aligned with ValuationReportNumberRules on the server.
 
-export function formatValuationReportYmd(issuedAt: Date): string {
-  const year = issuedAt.getFullYear();
-  const month = String(issuedAt.getMonth() + 1).padStart(2, "0");
-  const day = String(issuedAt.getDate()).padStart(2, "0");
-  return `${year}${month}${day}`;
-}
+/** In-process fallback only — never persist yearly sequences in localStorage. */
+const sessionYearlySeq = new Map<string, number>();
 
-/** Preliminary issued number: TQ + yyyyMMdd + 4-digit daily ordinal. */
 export function formatValuationReportNumber(
   issuedAt: Date,
-  dailyOrdinal: number,
+  ordinal: number,
 ): string {
-  const ordinal = Number.isFinite(dailyOrdinal) && dailyOrdinal >= 1
-    ? Math.floor(dailyOrdinal)
-    : 1;
-  return `TQ${formatValuationReportYmd(issuedAt)}${String(ordinal).padStart(4, "0")}`;
+  const n = Number.isFinite(ordinal) && ordinal >= 1 ? Math.floor(ordinal) : 1;
+  return `TQ-${issuedAt.getFullYear()}-${String(n).padStart(5, "0")}`;
 }
 
 export function formatValuationReportIssueDateIso(issuedAt: Date = new Date()): string {
   return issuedAt.toISOString().slice(0, 10);
 }
 
-/** Number reserved at distribution: TQ + request date + digits from VR-####. */
+/** Number reserved at distribution: TQ + request year + digits from VR-####. */
 export function reservedValuationReportNumber(
   displayId: string,
   requestDate: string,
@@ -38,17 +33,13 @@ export function reservedValuationReportNumber(
   return formatValuationReportNumber(issuedAt, ordinal);
 }
 
-/** Allocates the next TQ number for the local calendar day (prototype sequence). */
+/**
+ * Last-resort session ordinal when the valuation API is unreachable.
+ * Prefer `reservedValuationReportNumber` / server-reserved VR ids in production paths.
+ */
 export function allocateValuationReportNumber(issuedAt: Date = new Date()): string {
-  const ymd = formatValuationReportYmd(issuedAt);
-  let next = 1;
-  try {
-    const raw = globalThis.localStorage?.getItem(SEQ_STORAGE_PREFIX + ymd);
-    const parsed = Number.parseInt(raw ?? "0", 10);
-    if (Number.isFinite(parsed) && parsed >= 0) next = parsed + 1;
-    globalThis.localStorage?.setItem(SEQ_STORAGE_PREFIX + ymd, String(next));
-  } catch {
-    next = 1;
-  }
+  const year = String(issuedAt.getFullYear());
+  const next = (sessionYearlySeq.get(year) ?? 0) + 1;
+  sessionYearlySeq.set(year, next);
   return formatValuationReportNumber(issuedAt, next);
 }

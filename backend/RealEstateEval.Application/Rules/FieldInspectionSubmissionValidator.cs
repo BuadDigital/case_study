@@ -1,11 +1,15 @@
 using System.Globalization;
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
 /// Server-side validation for field-inspection party task payloads —
 /// mirrors <c>validateInspectorWorkspace</c> / <c>listInspectorPhotoValidationIssues</c> in the MFE.
+/// Proof photos (feature table, showroom/well, services/amenities) are required
+/// when the corresponding value or slot is selected.
+/// Building-only rows and component counts are skipped for vacant land.
 /// </summary>
 public static class FieldInspectionSubmissionValidator
 {
@@ -20,31 +24,18 @@ public static class FieldInspectionSubmissionValidator
         "21.543300,39.172800",
     };
 
- /// <summary>
- /// Desktop table «صورة» + mobile proof: closed-list fields always when valued;
- /// yes/no fields only when «نعم» (Case Study.html PHOTO_ON_YES + desktop table).
- /// </summary>
-    private static readonly (string Key, string Label)[] FeaturePhotoFields =
-    [
-        ("assetSubject", "الأصل محل التقييم"),
-        ("facade", "الواجهة"),
-        ("propertyUsage", "استخدام العقار"),
-        ("buildState", "حالة البناء"),
-        ("movables", "يوجد منقولات"),
-        ("carEntrance", "مدخل السيارة"),
-        ("hasBasement", "يوجد قبو"),
-        ("hasElevator", "يوجد مصعد"),
-        ("hasPool", "يوجد مسبح"),
-        ("kitchen", "مطبخ"),
-    ];
-
-    private static readonly HashSet<string> FeaturePhotoYesNoOnlyKeys = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> LandHiddenFeatureKeys = new(StringComparer.Ordinal)
     {
-        "movables",
+        "facade",
+        "buildState",
+        "occupancyState",
         "carEntrance",
         "hasBasement",
         "hasElevator",
         "hasPool",
+        "hasCentralAc",
+        "hasTanks",
+        "hasLandscaping",
         "kitchen",
     };
 
@@ -61,27 +52,105 @@ public static class FieldInspectionSubmissionValidator
         if (!ValidateGps(root))
             errors["mapLatitude"] = "يجب تحديد موقع العقار (GPS)";
 
+        if (!HasNonEmptyString(root, "accessContactName"))
+            errors["accessContactName"] = "الاسم مطلوب";
+        if (!HasNonEmptyString(root, "accessContactPhone"))
+            errors["accessContactPhone"] = "رقم الجوال مطلوب";
+        if (!HasNonEmptyString(root, "accessContactRole"))
+            errors["accessContactRole"] = "الصلة مطلوبة";
+        if (errors.ContainsKey("accessContactName")
+            || errors.ContainsKey("accessContactPhone")
+            || errors.ContainsKey("accessContactRole"))
+        {
+            errors["accessRouteDescription"] = "أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)";
+        }
+
         if (!GetBool(root, "inspectionConfirmed"))
             errors["inspectionConfirmed"] = "يجب التأشير على إقرار المعاينة";
 
         if (HasIncompleteObservations(root))
-            errors["observations"] = "كل ملاحظة موثّقة يجب أن تتضمن شرحاً وصورة توثيقية";
+            errors["observations"] = "كل ملاحظة يجب أن تتضمن شرحاً";
+
+        if (RequiresMovablesDescription(root))
+            errors["movablesDescription"] = "وصف المنقولات مطلوب عند اختيار «نعم»";
+
+        if (RequiresOccupancyDescription(root))
+            errors["occupancyDescription"] = "سبب الإشغال مطلوب عند اختيار «مشغول»";
 
         var photoIssues = ListPhotoValidationIssues(root);
-        if (photoIssues.Count > 0)
+        foreach (var issue in photoIssues)
         {
-            errors["definedPhotos"] = photoIssues[0];
-            var featureIssue = photoIssues.Find(i => i.Contains("توثيقية", StringComparison.Ordinal));
-            if (featureIssue is not null)
-                errors["featurePhotos"] = featureIssue;
-            var componentIssue = photoIssues.Find(i =>
-                i.Contains("المعرض", StringComparison.Ordinal) ||
-                i.Contains("البئر", StringComparison.Ordinal));
-            if (componentIssue is not null)
-                errors["componentPhotos"] = componentIssue;
+            if (issue.Contains("توثيقية", StringComparison.Ordinal))
+                errors["featurePhotos"] = issue;
+            else if (issue.Contains("المعرض", StringComparison.Ordinal)
+                     || issue.Contains("البئر", StringComparison.Ordinal))
+                errors["componentPhotos"] = issue;
+            else
+                errors["definedPhotos"] = issue;
         }
 
         return errors;
+    }
+
+    private static bool IsLandInspection(JsonElement root)
+    {
+        if (GetBool(root, "vacantLand"))
+            return true;
+
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var subject = ReadFeatureValue(features, "assetSubject");
+        return LooksLikeVacantLand(subject);
+    }
+
+    private static bool LooksLikeVacantLand(string value)
+    {
+        var normalized = value
+            .Replace("أ", "ا")
+            .Replace("إ", "ا")
+            .Replace("آ", "ا")
+            .Replace("ٱ", "ا")
+            .Trim();
+        if (normalized.Length == 0 || normalized.Contains("ملحق", StringComparison.Ordinal))
+            return false;
+        return normalized.Contains("ارض", StringComparison.Ordinal)
+            || normalized.Contains("أرض", StringComparison.Ordinal)
+            || normalized.Contains("land", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ReadFeatureValue(JsonElement features, string key)
+    {
+        if (features.ValueKind != JsonValueKind.Object)
+            return "";
+        foreach (var prop in features.EnumerateObject())
+        {
+            if (!string.Equals(prop.Name, key, StringComparison.OrdinalIgnoreCase))
+                continue;
+            return prop.Value.ValueKind == JsonValueKind.String
+                ? prop.Value.GetString()?.Trim() ?? ""
+                : prop.Value.ToString()?.Trim() ?? "";
+        }
+        return "";
+    }
+
+    private static bool IsCommercialShopInspection(JsonElement root)
+    {
+        if (IsLandInspection(root))
+            return false;
+
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var subject = ReadFeatureValue(features, "assetSubject");
+        return subject.Contains("محل", StringComparison.Ordinal)
+            && subject.Contains("تجار", StringComparison.Ordinal);
     }
 
     private static bool ValidateGps(JsonElement root)
@@ -101,6 +170,32 @@ public static class FieldInspectionSubmissionValidator
                lng >= SaudiLngMin && lng <= SaudiLngMax;
     }
 
+    private static bool RequiresMovablesDescription(JsonElement root)
+    {
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var movables = ReadString(features, "movables");
+        if (movables != "نعم") return false;
+        return string.IsNullOrWhiteSpace(ReadString(features, "movablesDescription"));
+    }
+
+    private static bool RequiresOccupancyDescription(JsonElement root)
+    {
+        if (!root.TryGetProperty("featureValues", out var features) ||
+            features.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var occupancy = ReadString(features, "occupancyState");
+        if (occupancy != "مشغول") return false;
+        return string.IsNullOrWhiteSpace(ReadString(features, "occupancyDescription"));
+    }
+
     private static bool HasIncompleteObservations(JsonElement root)
     {
         if (!root.TryGetProperty("observations", out var observations) ||
@@ -114,8 +209,6 @@ public static class FieldInspectionSubmissionValidator
             var text = ReadString(obs, "text");
             if (string.IsNullOrWhiteSpace(text))
                 return true;
-            if (!HasPhotoFileName(obs, "photo"))
-                return true;
         }
 
         return false;
@@ -124,39 +217,42 @@ public static class FieldInspectionSubmissionValidator
     private static List<string> ListPhotoValidationIssues(JsonElement root)
     {
         var issues = new List<string>();
+        var isLand = IsLandInspection(root);
+        var isShop = IsCommercialShopInspection(root);
 
-        if (root.TryGetProperty("featureValues", out var featureValues) &&
-            featureValues.ValueKind == JsonValueKind.Object)
+        root.TryGetProperty("featureValues", out var featureValues);
+        root.TryGetProperty("featurePhotoAttachments", out var featurePhotos);
+        foreach (var (key, label, photoOnYes, yesNo) in FeaturePhotoFields)
         {
-            foreach (var (key, label) in FeaturePhotoFields)
-            {
-                if (!TryReadFeatureValue(featureValues, key, out var value) ||
-                    !FeatureValueRequiresPhoto(key, value))
-                {
-                    continue;
-                }
-
-                if (!HasFeaturePhotoAttachment(root, key))
-                    issues.Add($"يجب إرفاق صورة توثيقية: {label}");
-            }
+            if (isLand && LandHiddenFeatureKeys.Contains(key))
+                continue;
+            var value = featureValues.ValueKind == JsonValueKind.Object
+                ? ReadFeatureValue(featureValues, key)
+                : "";
+            if (!FeatureRequiresPhoto(photoOnYes, yesNo, value))
+                continue;
+            if (!HasBoundAttachment(featurePhotos, key))
+                issues.Add($"يجب إرفاق صورة توثيقية: {label}");
         }
 
-        var showroomCount = ParsePositiveCount(ReadString(root, "showroomCount"));
-        if (showroomCount > 0 && !HasComponentPhotoAttachment(root, "showroom"))
+        if (!isLand
+            && ParsePositiveCount(root, "showroomCount") > 0
+            && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "showroom"))
+        {
             issues.Add("يجب إرفاق صورة المعرض");
+        }
 
-        var wellCount = ParsePositiveCount(ReadString(root, "wellCount"));
-        if (wellCount > 0 && !HasComponentPhotoAttachment(root, "well"))
+        if (!isLand
+            && !isShop
+            && ParsePositiveCount(root, "wellCount") > 0
+            && !HasBoundAttachment(GetObject(root, "componentPhotoAttachments"), "well"))
+        {
             issues.Add("يجب إرفاق صورة البئر");
+        }
 
         var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root);
-
-        if (requiredTotal > 0 && requiredDone < requiredTotal)
-        {
-            issues.Add(
-                "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
-        }
-
+        if (requiredDone < requiredTotal)
+            issues.Add("وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
         if (pendingApproval > 0)
             issues.Add($"{pendingApproval} صورة بانتظار الاعتماد");
 
@@ -168,6 +264,57 @@ public static class FieldInspectionSubmissionValidator
             issues.Add("يجب رفع الصور إلى الخادم قبل الإرسال");
 
         return issues;
+    }
+
+    private static readonly (string Key, string Label, bool PhotoOnYes, bool YesNo)[] FeaturePhotoFields =
+    [
+        ("assetSubject", "الأصل محل التقييم", false, false),
+        ("facade", "الواجهة", true, false),
+        ("propertyUsage", "استخدام العقار", false, false),
+        ("zoneStatus", "حالة منطقة العقار", false, false),
+        ("buildState", "حالة البناء", true, false),
+        ("occupancyState", "حالة الإشغال", false, false),
+        ("districtState", "حالة الحي", false, false),
+        ("movables", "يوجد منقولات", true, true),
+        ("carEntrance", "مدخل السيارة", true, true),
+        ("hasBasement", "يوجد قبو", true, true),
+        ("hasElevator", "يوجد مصعد", true, true),
+        ("hasPool", "يوجد مسبح", true, true),
+        ("hasFence", "يوجد سور", true, true),
+        ("hasCentralAc", "تكييف مركزي", true, true),
+        ("hasTanks", "خزانات", true, true),
+        ("hasLandscaping", "تشجير", true, true),
+        ("kitchen", "مطبخ", true, true),
+    ];
+
+    private static bool FeatureRequiresPhoto(bool photoOnYes, bool yesNo, string value)
+    {
+        if (!photoOnYes) return false;
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0) return false;
+        if (yesNo) return trimmed == "نعم";
+        return true;
+    }
+
+    private static JsonElement GetObject(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Object
+            ? el
+            : default;
+
+    private static int ParsePositiveCount(JsonElement root, string name)
+    {
+        var raw = ReadString(root, name);
+        return int.TryParse(raw, out var n) && n > 0 ? n : 0;
+    }
+
+    private static bool HasBoundAttachment(JsonElement map, string key)
+    {
+        if (map.ValueKind != JsonValueKind.Object || !map.TryGetProperty(key, out var el))
+            return false;
+        if (el.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return false;
+        return (HasNonEmptyString(el, "fileName") || HasNonEmptyString(el, "fileName"))
+            && (HasNonEmptyString(el, "attachmentId") || HasNonEmptyString(el, "attachmentId"));
     }
 
     private static bool HasPhotosWithoutServerAttachment(JsonElement root) =>
@@ -285,75 +432,8 @@ public static class FieldInspectionSubmissionValidator
         return count;
     }
 
-    private static bool FeatureValueRequiresPhoto(string key, string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return false;
-        if (FeaturePhotoYesNoOnlyKeys.Contains(key))
-            return value == "نعم";
-        return true;
-    }
-
-    private static bool TryReadFeatureValue(JsonElement featureValues, string key, out string value)
-    {
-        value = "";
-        if (!featureValues.TryGetProperty(key, out var prop))
-            return false;
-        if (prop.ValueKind != JsonValueKind.String)
-            return false;
-        value = prop.GetString()?.Trim() ?? "";
-        return true;
-    }
-
-    private static bool HasFeaturePhotoAttachment(JsonElement root, string key)
-    {
-        if (!root.TryGetProperty("featurePhotoAttachments", out var attachments) ||
-            attachments.ValueKind != JsonValueKind.Object ||
-            !attachments.TryGetProperty(key, out var attachment))
-        {
-            return false;
-        }
-
-        return HasPhotoFileName(attachment);
-    }
-
-    private static bool HasComponentPhotoAttachment(JsonElement root, string key)
-    {
-        if (!root.TryGetProperty("componentPhotoAttachments", out var attachments) ||
-            attachments.ValueKind != JsonValueKind.Object ||
-            !attachments.TryGetProperty(key, out var attachment))
-        {
-            return false;
-        }
-
-        if (attachment.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-            return false;
-
-        return HasPhotoFileName(attachment);
-    }
-
-    private static bool HasPhotoFileName(JsonElement element, string? propertyName = null)
-    {
-        if (propertyName is not null)
-        {
-            if (!element.TryGetProperty(propertyName, out var nested))
-                return false;
-            if (nested.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-                return false;
-            return HasPhotoFileName(nested);
-        }
-
-        return HasNonEmptyString(element, "fileName");
-    }
-
-    private static int ParsePositiveCount(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return 0;
-        return int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0
-            ? n
-            : 0;
-    }
+    private static bool HasPhotoFileName(JsonElement element) =>
+        HasNonEmptyString(element, "fileName");
 
     private static bool TryParseCoord(string raw, out double value)
     {
@@ -364,20 +444,12 @@ public static class FieldInspectionSubmissionValidator
             out value);
     }
 
-    private static string ReadString(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return "";
-        return prop.ValueKind == JsonValueKind.String ? prop.GetString()?.Trim() ?? "" : "";
-    }
+    private static string ReadString(JsonElement element, string name) =>
+        JsonElementReader.ReadString(element, name);
 
     private static bool HasNonEmptyString(JsonElement element, string name) =>
-        !string.IsNullOrWhiteSpace(ReadString(element, name));
+        JsonElementReader.HasNonEmptyString(element, name);
 
-    private static bool GetBool(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return false;
-        return prop.ValueKind == JsonValueKind.True;
-    }
+    private static bool GetBool(JsonElement element, string name) =>
+        JsonElementReader.GetBool(element, name);
 }

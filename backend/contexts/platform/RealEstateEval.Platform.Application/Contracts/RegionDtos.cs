@@ -1,4 +1,6 @@
-namespace RealEstateEval.Application.Contracts;
+using RealEstateEval.Platform.Domain;
+
+namespace RealEstateEval.Platform.Application.Contracts;
 
 public sealed class SelectableRegionDto
 {
@@ -18,8 +20,8 @@ public sealed class SelectableCityDto
     public string? NameEn { get; set; }
     public bool IsCapital { get; set; }
     public bool IsGovernorate { get; set; }
-    public string Status { get; set; } = "approved";
- /// <summary>اسم المنطقة — مفيد عند اختيار المدينة أولاً.</summary>
+    public string Status { get; set; } = LocationCatalogStatuses.Approved;
+ /// <summary>Region name — useful when city is chosen first.</summary>
     public string RegionNameAr { get; set; } = "";
 }
 
@@ -28,16 +30,7 @@ public sealed class SelectableDistrictDto
     public Guid Id { get; set; }
     public Guid CityId { get; set; }
     public string NameAr { get; set; } = "";
-    public string Status { get; set; } = "pending";
-}
-
-public sealed class LocationSearchRequest
-{
-    public Guid? RegionId { get; set; }
-    public Guid? CityId { get; set; }
-    public string? Query { get; set; }
- /// <summary>cities | districts</summary>
-    public string Scope { get; set; } = "cities";
+    public string Status { get; set; } = LocationCatalogStatuses.Pending;
 }
 
 public sealed class SuggestLocationRequest

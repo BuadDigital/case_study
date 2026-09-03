@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Failures.Domain;
 
 public static class PropertyFailureStatus
 {
@@ -16,4 +16,16 @@ public static class PropertyFailureStatus
 
     public static bool IsActive(string status) =>
         status is not (Resolved or Suspended);
+
+ /// <summary>Arabic label for the status — previously duplicated in failures and case-study contexts.</summary>
+    public static string LabelAr(string status) => status switch
+    {
+        Internal => "داخلي",
+        Review => "قيد المراجعة",
+        Approved => "معتمد",
+        Returned => "مُعاد",
+        Resolved => "محلول",
+        Suspended => "معلق",
+        _ => status,
+    };
 }

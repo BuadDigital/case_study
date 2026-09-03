@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Button, Input, Note, useToast } from "@platform/ui-kit";
 import {
   confirmPropertyGroupLink,
@@ -13,7 +13,7 @@ import {
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 /**
- * Decision 20 — العقار المجمع: the system suggests links (same owner / same plan /
+ * Decision 20 — grouped property: the system suggests links (same owner / same plan /
  * adjacent plots / coordinate proximity), a human confirms (audited), and the link
  * is reversible with a reason. Work orders stay administratively independent.
  */
@@ -22,7 +22,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
   const [group, setGroup] = useState<PropertyGroupDto | null>(null);
   const [suggestions, setSuggestions] = useState<PropertyGroupSuggestionDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [unlinkReason, setUnlinkReason] = useState("");
 
   const reload = useCallback(async () => {
@@ -45,37 +45,38 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
     void reload();
   }, [reload]);
 
-  async function confirm(targetPropertyId: string) {
+  function confirm(targetPropertyId: string) {
     const config = workOrdersApiConfig();
     if (!config) return;
-    setBusy(true);
-    const res = await confirmPropertyGroupLink(config, propertyId, targetPropertyId);
-    setBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر تأكيد الربط", "error");
-      return;
-    }
-    showToast("تم تأكيد الربط — مسجَّل في سجل التدقيق", "success");
-    await reload();
+    startTransition(async () => {
+      const res = await confirmPropertyGroupLink(config, propertyId, targetPropertyId);
+      if (!res.ok) {
+        showToast(res.message ?? "تعذّر تأكيد الربط", "error");
+        return;
+      }
+      showToast("تم تأكيد الربط — مسجَّل في سجل التدقيق", "success");
+      await reload();
+    });
   }
 
-  async function unlink() {
+  function unlink() {
     const config = workOrdersApiConfig();
     if (!config) return;
-    if (!unlinkReason.trim()) {
+    const reason = unlinkReason.trim();
+    if (!reason) {
       showToast("مبرر فك الربط إلزامي", "error");
       return;
     }
-    setBusy(true);
-    const res = await unlinkPropertyGroup(config, propertyId, unlinkReason.trim());
-    setBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر فك الربط", "error");
-      return;
-    }
-    showToast("تم فك الربط بمبرر — مسجَّل في التدقيق", "success");
-    setUnlinkReason("");
-    await reload();
+    startTransition(async () => {
+      const res = await unlinkPropertyGroup(config, propertyId, reason);
+      if (!res.ok) {
+        showToast(res.message ?? "تعذّر فك الربط", "error");
+        return;
+      }
+      showToast("تم فك الربط بمبرر — مسجَّل في التدقيق", "success");
+      setUnlinkReason("");
+      await reload();
+    });
   }
 
   if (!propertyId || loading) return null;
@@ -96,7 +97,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
           <ul className="mt-2 flex flex-col gap-1 text-[12px] text-text-2">
             {group.members.map((m) => (
               <li key={m.propertyId}>
-                صك {m.deedNumber} · أمر {m.poNumber} · {m.deedKind ?? "—"}
+                صك {m.deedNumber} · أمر {m.poNumber}
                 {m.signalLabelsAr.length > 0
                   ? ` · إشارات: ${m.signalLabelsAr.join("، ")}`
                   : ""}
@@ -107,11 +108,11 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
             <Input
               placeholder="مبرر فك الربط (إلزامي)"
               value={unlinkReason}
-              disabled={busy}
+              disabled={isPending}
               onChange={(e) => setUnlinkReason(e.target.value)}
               className="text-xs"
             />
-            <Button type="button" size="sm" disabled={busy} onClick={() => void unlink()}>
+            <Button type="button" size="sm" disabled={isPending} onClick={() => unlink()}>
               فك ربط هذا الصك
             </Button>
           </div>
@@ -140,8 +141,8 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
                   type="button"
                   size="sm"
                   variant="primary"
-                  disabled={busy}
-                  onClick={() => void confirm(s.propertyId)}
+                  disabled={isPending}
+                  onClick={() => confirm(s.propertyId)}
                 >
                   تأكيد الربط
                 </Button>

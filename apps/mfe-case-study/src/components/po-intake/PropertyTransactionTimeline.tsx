@@ -1,20 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { cn } from "@platform/ui-kit";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import {
+  cn,
+  opsPanelCard,
+} from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PropertyTimelineTones } from "@platform/api-client";
 import {
   buildPropertyDetailTimeline,
   formatTimelineDate,
   type PropertyTimelineTone,
-} from "../../lib/prototype/property-detail-timeline";
-import { buildPropertyDetailTimelinePartyRows } from "../../lib/prototype/property-detail-parties";
-import { formatDateAr } from "../../lib/prototype/po-intake-data";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import { caseStudyTaskForProperty } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/property-detail-timeline";
+import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
+import { formatDateAr } from "../../lib/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -40,7 +44,7 @@ function badgeToneFromClass(
 
 /**
  * Ring fill = completion only.
- * «قيد التنفيذ» is status, not 50% work done — empty ring until مكتمل.
+ * "In progress" is status, not 50% work done — empty ring until completed.
  */
 function partyRingProgress(badgeClass: string): number {
   if (badgeClass.includes("teal")) return 1;
@@ -80,7 +84,7 @@ function SideCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+    <div className={cn(opsPanelCard, "px-4 py-3.5")}>
       <div className="mb-3 flex items-center gap-1.5 text-[12.5px] font-bold text-heading">
         {icon}
         {title}
@@ -139,21 +143,16 @@ export function PropertyTransactionTimeline({
   const timelineQuery = usePropertyTimelineQuery(poNumber, property.id);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyTimeline(poNumber, property.id),
-      });
-    };
-    window.addEventListener(TASKS_CHANGED_EVENT, invalidate);
-    window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
-    window.addEventListener(FAILURES_CHANGED_EVENT, invalidate);
-    return () => {
-      window.removeEventListener(TASKS_CHANGED_EVENT, invalidate);
-      window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidate);
-      window.removeEventListener(FAILURES_CHANGED_EVENT, invalidate);
-    };
-  }, [queryClient, poNumber, property.id]);
+  const invalidateTimeline = () => {
+    void queryClient.invalidateQueries({
+      queryKey: appDataKeys.propertyTimeline(poNumber, property.id),
+    });
+  };
+  useWindowEvents({
+    [TASKS_CHANGED_EVENT]: invalidateTimeline,
+    [WORK_ORDERS_CHANGED_EVENT]: invalidateTimeline,
+    [FAILURES_CHANGED_EVENT]: invalidateTimeline,
+  });
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),
@@ -229,12 +228,15 @@ export function PropertyTransactionTimeline({
       <SideCard title="حالة الأطراف">
         <div className="grid gap-[9px]">
           {partyRows.map((row) => (
-            <div key={row.label} className="flex min-w-0 items-center gap-2">
+            <div key={row.key} className="flex min-w-0 items-center gap-2">
               <PartyRing
                 progress={partyRingProgress(row.badgeClass)}
                 color={partyRingColor(row.badgeClass)}
               />
-              <span className="min-w-0 flex-1 truncate text-[11.5px] text-text-2">
+              <span
+                className="min-w-0 flex-1 truncate text-[11.5px] text-text-2"
+                title={row.role}
+              >
                 {row.label}
               </span>
               <DetailBadge

@@ -37,29 +37,34 @@ export { PoHeaderEditRoute } from "./views/po-routes/PoHeaderEditRoute";
 export { PoPropertyEditRoute } from "./views/po-routes/PoPropertyEditRoute";
 export { PoPropertyFailureRoute } from "./views/po-routes/PoPropertyFailureRoute";
 
-export * from "./lib/po-routes";
+export * from "@platform/app-shared/domain/po-routes";
 export * from "./lib/my-task-routes";
 export * from "./lib/work-orders-api-config";
-export * from "./lib/prototype/po-intake-data";
-export * from "./lib/prototype/po-intake-storage";
-export * from "./lib/prototype/po-roles";
-export * from "./lib/prototype/tasks-storage";
-export * from "./lib/prototype/transaction-filters";
-export * from "./lib/prototype/favorite-properties";
-export * from "./lib/prototype/distribution-parties";
-export * from "./lib/prototype/my-task-row";
-export * from "./lib/prototype/active-transaction-page-situation";
-export * from "./lib/prototype/active-transactions-situation";
-export * from "./lib/prototype/case-study-form-data";
-export * from "./lib/prototype/case-study-question-catalog";
+export * from "./lib/app-data/po-intake-data";
+export * from "./lib/app-data/po-intake-model";
+export * from "./lib/app-data/po-intake-reads";
+export * from "./lib/app-data/po-intake-commands";
+export * from "./lib/app-data/po-roles";
+export * from "./lib/app-data/tasks-storage";
+export * from "./lib/app-data/transaction-filters";
+export * from "./lib/app-data/favorite-properties";
+export * from "./lib/app-data/distribution-parties";
+export * from "./lib/app-data/my-task-row";
+export * from "./lib/app-data/active-transaction-page-situation";
+export * from "./lib/app-data/active-transactions-situation";
+export * from "./lib/app-data/case-study-form-data";
+export * from "@platform/app-shared/domain/case-study/question-catalog";
 export * from "./query/case-study-question-catalog-queries";
-export * from "./lib/prototype/case-study-form-storage";
-export * from "./lib/prototype/case-study-tracks";
-export * from "./lib/prototype/case-study-party-answers";
-export * from "./lib/prototype/viewer-task-access";
-export * from "./lib/prototype/case-study-report-model";
-export * from "./lib/prototype/suspended-transactions-storage";
-export { suspendPropertyTransaction } from "./lib/prototype/suspend-property-transaction";
+export * from "./lib/app-data/case-study-form-model";
+export * from "./lib/app-data/case-study-form-reads";
+export * from "./lib/app-data/case-study-form-commands";
+export * from "./lib/app-data/case-study-tracks";
+export * from "./lib/app-data/case-study-party-answers";
+export * from "./lib/app-data/viewer-task-access";
+export * from "./lib/app-data/case-study-report-model";
+export * from "./lib/app-data/suspended-transactions-model";
+export * from "./lib/app-data/suspended-transactions-reads";
+export { suspendPropertyTransaction } from "./lib/app-data/suspend-property-transaction";
 
 export { PoPropertyDetailTopbarActions } from "./components/po-intake/PoPropertyDetailTopbarActions";
 export { ActiveTransactionsSituationBar } from "./components/active-transactions/ActiveTransactionsSituationBar";
@@ -70,9 +75,9 @@ export {
   RowMoreMenu,
   RowMoreMenuIcons,
   type RowMoreMenuItem,
-} from "./components/ui/RowMoreMenu";
+} from "@platform/ui-kit";
 export { RemainingTimeCell } from "./components/ui/RemainingTimeCell";
 export { useActiveTransactionPageSituation } from "./query/use-active-transaction-page-situation";
 export * from "./query/case-study-queries";
 export * from "./query/property-detail-party-submissions-queries";
-export * from "./lib/prototype/property-detail-party-submissions";
+export * from "./lib/app-data/property-detail-party-submissions";

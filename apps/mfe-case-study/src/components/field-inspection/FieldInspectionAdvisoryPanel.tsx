@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   Button,
@@ -10,22 +11,17 @@ import {
   formControlClassName,
 } from "@platform/ui-kit";
 import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { findInspectionChildForParent } from "../../lib/field-inspection-task";
-import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-  loadInspectorWorkspaceSnapshot,
-  reopenInspectorWorkspace,
-} from "../../lib/prototype/inspector-workspace-storage";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
+import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import { reopenInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import {
   inspectorPhotoCoverageLabel,
   inspectorWorkspaceStatusLabel,
   type InspectorWorkspaceDraft,
-} from "../../lib/prototype/inspector-workspace-data";
-
-const noteWarnClass =
-  "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
+} from "../../lib/app-data/inspector-workspace-data";
 
 export function FieldInspectionAdvisoryPanel({
   parentTask,
@@ -179,11 +175,7 @@ export function FieldInspectionAdvisoryPanel({
       />
 
       {submission.status === "reopened" && submission.returnNote?.trim() ? (
-        <div className={noteWarnClass}>
-          <p className="m-0">
-            <strong>معادة للتصحيح</strong> — {submission.returnNote.trim()}
-          </p>
-        </div>
+        <ReturnedForCorrectionNote note={submission.returnNote} />
       ) : null}
 
       <div className="space-y-2 text-xs">

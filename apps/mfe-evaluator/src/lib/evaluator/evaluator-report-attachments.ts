@@ -4,14 +4,14 @@ import {
   openTaskAttachmentPreview,
   prefetchTaskAttachment,
   uploadTaskScopedAttachment,
-} from "@platform/app-shared/prototype/task-attachments-api";
-import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/task-attachments-api";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import {
   loadEvaluatorSubmission,
-  saveEvaluatorSubmission,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
-} from "./evaluator-submission-storage";
+} from "./evaluator-submission-model";
+import { saveEvaluatorSubmission } from "./evaluator-submission-commands";
 
 const EVALUATOR_REPORT_SCOPE = "evaluator-report";
 

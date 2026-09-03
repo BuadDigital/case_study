@@ -2,35 +2,40 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { PriorDeedRegistrationDto } from "@platform/api-client";
+import {
+  getPropertyGroup,
+  type PriorDeedRegistrationDto,
+  type PropertyGroupMemberDto,
+} from "@platform/api-client";
 import {
   DetailBadge,
   EmptyState,
   InfoBox,
   SectionHeader,
 } from "./PropertyDetailFields";
-import { poPropertiesPath, poPropertyPath } from "../../lib/po-routes";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   formatPropertyDeedDisplay,
   formatPropertyLocation,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   findPriorDeedFull,
   listPriorDeedsFull,
-} from "../../lib/prototype/po-intake-storage";
-import { loadCaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "../../lib/app-data/po-intake-reads";
+import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
-} from "../../lib/prototype/operations-task-display";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
-import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
-import { deedsMatch, normalizeDeedNumber } from "../../lib/prototype/deed-number";
+} from "../../lib/app-data/operations-task-display";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
+import { deedsMatch, normalizeDeedNumber } from "../../lib/app-data/deed-number";
+import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 type LinkedSamePo = {
   kind: "same-po";
@@ -84,7 +89,7 @@ export function PropertyDetailLinkedTab({
   property: PoPropertyIntake;
   caseStudyTask: WorkflowTask | null;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
   const { data: opsTasks = [] } = useOperationsTasksQuery({ live: true });
   const poNumber = record.poNumber.trim();
@@ -128,6 +133,7 @@ export function PropertyDetailLinkedTab({
   );
 
   const [priors, setPriors] = useState<LinkedPrior[]>([]);
+  const [groupMembers, setGroupMembers] = useState<PropertyGroupMemberDto[]>([]);
   const [declared, setDeclared] = useState<LinkedDeclared[]>([]);
   const [loading, setLoading] = useState(true);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -233,10 +239,33 @@ export function PropertyDetailLinkedTab({
     };
   }, [deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
 
+  // Decision 20 — grouped property: human-confirmed links show here too, not only on
+  // the bourse screen. Fetched independently so a failure there does not drop the other links.
+  useEffect(() => {
+    let cancelled = false;
+    const config = workOrdersApiConfig();
+    if (!config || !property.id) {
+      setGroupMembers([]);
+      return;
+    }
+    void getPropertyGroup(config, property.id).then((res) => {
+      if (cancelled) return;
+      setGroupMembers(
+        res.ok && res.data
+          ? res.data.members.filter((m) => m.propertyId !== property.id)
+          : [],
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [property.id]);
+
   const linkCount =
     samePoLinks.length +
     priors.length +
     declared.length +
+    groupMembers.length +
     propertyOpsTasks.length;
 
   const hasAny = linkCount > 0;
@@ -260,7 +289,7 @@ export function PropertyDetailLinkedTab({
           <EmptyState
             icon="🔗"
             title="لا توجد عقارات مرتبطة"
-            sub="يظهر هنا: عقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
+            sub="يظهر هنا: أعضاء العقار المجمع، وعقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
           />
         )}
         {record.expectedPropertyCount > record.properties.filter((p) => !p.isRemoved).length ? (
@@ -283,9 +312,9 @@ export function PropertyDetailLinkedTab({
       </SectionHeader>
       {lookupError ? <InfoBox icon="⚠">{lookupError}</InfoBox> : null}
       <InfoBox icon="ℹ">
-        الارتباطات تشمل عقارات نفس أمر العمل، وتسجيلات سابقة لنفس الصك (كل
-        الدراسات)، والأصول المرتبطة المصرّح بها في دراسة الحالة، والمهام
-        التشغيلية المرتبطة.
+        الارتباطات تشمل أعضاء العقار المجمع المؤكَّدين، وعقارات نفس أمر العمل،
+        وتسجيلات سابقة لنفس الصك (كل الدراسات)، والأصول المرتبطة المصرّح بها في
+        دراسة الحالة، والمهام التشغيلية المرتبطة.
       </InfoBox>
 
       <div className="mt-3">
@@ -333,6 +362,40 @@ export function PropertyDetailLinkedTab({
           </ul>
         )}
       </div>
+
+      {groupMembers.length > 0 ? (
+        <div className="mt-3">
+          <h4 className="mb-2 text-[12px] font-semibold text-text">
+            العقار المجمع ({groupMembers.length})
+          </h4>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {groupMembers.map((member) => (
+              <li key={member.propertyId} className="m-0">
+                <Link
+                  href={poPropertyPath(member.poNumber, member.propertyId)}
+                  className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold text-primary-light">
+                      {member.deedNumber || member.poNumber}
+                    </span>
+                    <DetailBadge tone="blue">عقار مجمع</DetailBadge>
+                    {member.deedKind ? (
+                      <DetailBadge tone="gray">{member.deedKind}</DetailBadge>
+                    ) : null}
+                  </span>
+                  <span className="text-[11px] text-text-3">
+                    {member.poNumber}
+                    {member.signalLabelsAr.length > 0
+                      ? ` · ${member.signalLabelsAr.join(" · ")}`
+                      : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {samePoLinks.length > 0 ? (
         <div className="mt-3">

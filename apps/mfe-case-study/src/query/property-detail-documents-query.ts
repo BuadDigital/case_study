@@ -3,28 +3,26 @@
 import {
   fetchEngineeringSurveySubmission,
   prefetchEngineeringSurveyDocuments,
-  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
-} from "@engineering-office/mfe";
+} from "../lib/engineering-survey-bridge";
+import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,
-} from "@evaluator/mfe";
-import { useEffect, useState } from "react";
+} from "../lib/evaluator-bridge";
+import { useEffect, useRef, useState } from "react";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
   prefetchPropertyDocAttachments,
   subscribeAssignmentDocCache,
-} from "../lib/prototype/assignment-doc-attachments";
-import { prefetchInspectorWorkspacePhotos } from "../lib/prototype/inspector-photo-upload";
-import {
-  fetchInspectorWorkspace,
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-} from "../lib/prototype/inspector-workspace-storage";
+} from "../lib/app-data/assignment-doc-attachments";
+import { prefetchInspectorWorkspacePhotos } from "../lib/app-data/inspector-photo-upload";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
+import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-reads";
 import {
   collectPropertyDetailDocumentSections,
   type PropertyDetailDocumentSection,
-} from "../lib/prototype/property-detail-documents";
-import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/property-detail-documents";
+import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 
 export function usePropertyDetailDocuments(input: {
   property: PoPropertyIntake;
@@ -59,6 +57,11 @@ export function usePropertyDetailDocuments(input: {
     () => (enabled ? collect() : []),
   );
 
+  // Latest assemble fn via a live ref — lets deps use primary keys
+  // instead of property-object identity that re-triggered a full fetch every paint.
+  const collectRef = useRef(collect);
+  collectRef.current = collect;
+
   useEffect(() => {
     if (!enabled) {
       setSections([]);
@@ -67,7 +70,7 @@ export function usePropertyDetailDocuments(input: {
 
     let cancelled = false;
     const refresh = () => {
-      if (!cancelled) setSections(collect());
+      if (!cancelled) setSections(collectRef.current());
     };
     refresh();
 
@@ -114,7 +117,9 @@ export function usePropertyDetailDocuments(input: {
     };
   }, [
     enabled,
-    property,
+    // Property key, not identity — an unstabilized caller object re-ran every fetch every paint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    property.id,
     showDecree,
     poNumber,
     surveyTaskId,

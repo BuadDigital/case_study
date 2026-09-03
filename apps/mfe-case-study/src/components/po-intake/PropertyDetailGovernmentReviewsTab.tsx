@@ -9,27 +9,32 @@ import {
   InfoBox,
   SectionHeader,
 } from "./PropertyDetailFields";
-import { Badge, InlineLoadingSkeleton } from "@platform/ui-kit";
+import {
+  Badge,
+  InlineLoadingSkeleton,
+  cn,
+  opsBtnGhost,
+} from "@platform/ui-kit";
 import {
   formatDateAr,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   courtVisitResultKindLabel,
   letterRowForProperty,
-} from "../../lib/prototype/operations-task-property-scope";
+} from "../../lib/app-data/operations-task-property-scope";
 import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
-} from "../../lib/prototype/operations-task-display";
-import { isActiveOperationsTask } from "../../lib/prototype/operations-tasks-storage";
+} from "../../lib/app-data/operations-task-display";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { canManageOperationsTasks } from "../../lib/prototype/operations-task-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 
 /**
- * المراجعات الحكومية — projection of court_visit ops tasks for this deed.
+ * Government reviews — projection of court_visit ops tasks for this deed.
  */
 export function PropertyDetailGovernmentReviewsTab({
   poNumber,
@@ -38,7 +43,7 @@ export function PropertyDetailGovernmentReviewsTab({
   poNumber: string;
   property: PoPropertyIntake;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canCreate = canManageOperationsTasks(role);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
@@ -73,7 +78,7 @@ export function PropertyDetailGovernmentReviewsTab({
           ) : null}
           <Link
             href={listHref}
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-border-md bg-surface px-[18px] py-2 text-[12.5px] font-bold text-text-2 no-underline max-lg:min-h-11 max-lg:w-full"
+            className={cn(opsBtnGhost, "min-h-9 rounded-lg py-2 text-[12.5px] font-bold no-underline max-lg:min-h-11 max-lg:w-full")}
           >
             فتح المهام
           </Link>

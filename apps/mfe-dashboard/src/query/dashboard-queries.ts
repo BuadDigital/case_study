@@ -10,12 +10,12 @@ import { useQuery } from "@tanstack/react-query";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/work-orders-api-config";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+} from "@platform/app-shared/app-data/work-orders-api-config";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPoListRows,
   loadPropertyListItems,
-} from "@platform/app-shared/prototype/work-orders-read";
+} from "@platform/app-shared/app-data/work-orders-read";
 import { loadReportingDashboard } from "../lib/dashboard-reporting-api";
 
 const STALE_MS = 60_000;
@@ -25,7 +25,7 @@ const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 /** PO list rows for dashboard stats — shared prototype query keys. */
 export function usePoListRowsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.poListRows(),
+    queryKey: appDataKeys.poListRows(),
     queryFn: loadPoListRows,
     ...queryDefaults,
   });
@@ -34,7 +34,7 @@ export function usePoListRowsQuery() {
 /** Property list items — slim property-rows API. */
 export function usePropertyListItemsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.propertyListItems(),
+    queryKey: appDataKeys.propertyListItems(),
     queryFn: loadPropertyListItems,
     ...queryDefaults,
   });

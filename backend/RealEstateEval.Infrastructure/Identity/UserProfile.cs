@@ -6,7 +6,6 @@ public class UserProfile
 {
     public string UserId { get; set; } = string.Empty;
     public ApplicationUser User { get; set; } = null!;
-
     public RegistrationSource RegistrationSource { get; set; }
     public ContractType ContractType { get; set; }
  /// <summary>Canonical product role id (for example case-specialist).</summary>
@@ -28,6 +27,8 @@ public class UserProfile
     public string? ReviewerCityCoverageJson { get; set; }
     public string? PermissionLevel { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+ /// <summary>Numbering workshop: internal reference US-{year}-{5-digit seq}.</summary>
+    public string? ReferenceNumber { get; set; }
  /// <summary>Last successful session issue.</summary>
     public DateTime? LastLoginAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }

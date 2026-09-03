@@ -11,6 +11,7 @@ namespace RealEstateEval.Platform.Api.Controllers;
 [ApiController]
 [Route("api/audit-log")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class AuditLogAppendController(IAuditLogAppend audit,
     TimeProvider? time = null) : ControllerBase
 {
@@ -21,19 +22,23 @@ public sealed class AuditLogAppendController(IAuditLogAppend audit,
         [FromBody] AppendAuditLogRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.ActorId)
-            || string.IsNullOrWhiteSpace(request.Action)
+        var actorId = ActorClaims.TryId(User);
+        if (string.IsNullOrWhiteSpace(actorId))
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.Action)
             || string.IsNullOrWhiteSpace(request.EntityType)
             || string.IsNullOrWhiteSpace(request.EntityId))
         {
-            return this.BadRequestProblem("actorId, action, entityType, and entityId are required");
+            return this.BadRequestProblem("action, entityType, and entityId are required");
         }
 
+        // Actor is always bound from the JWT — never trust client-supplied ActorId.
         await audit.AppendAsync(
             new AuditLog
             {
                 Id = Guid.NewGuid(),
-                ActorId = request.ActorId.Trim(),
+                ActorId = actorId.Trim(),
                 Action = request.Action.Trim(),
                 EntityType = request.EntityType.Trim(),
                 EntityId = request.EntityId.Trim(),

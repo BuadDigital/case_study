@@ -144,3 +144,81 @@ that script (or `down -v`) runs.
 | Capture production metrics baseline | operations | Comparison baseline |
 | Measure pooled-connection counts with multiple contexts | operations | Connection-growth risk |
 | Replace remaining Identity *reads* on ApplicationDbContext (fees, notifications, labels) | Phase 3 | Still cross-boundary LINQ |
+
+## A8 retirement wave (2026-08-28)
+
+Shrunk the global assemblies to the legacy-context compile surface plus genuinely
+multi-context plumbing:
+
+- **Shared.Contracts** now carries the reporting/work-order wire DTOs
+  (`WorkOrderDtos`, `ReportingDtos`, `WorkflowTaskDtos`, `FieldInspectionWorkspaceDtos`,
+  `PrototypeModulesDtos`, `PagedResultDto`) and the shared wire enums/status classes
+  (`WorkOrderEnums`, `WorkflowTaskEnums`, `Enums`, `ValuationRequestStatus(es)`,
+  `DomainWireStatuses`) with declared namespaces unchanged. It still has zero project
+  references; `RealEstateEval.Domain` now references only this leaf
+  (`WorkOrderListStatus.Resolve` became scalar-shaped to drop its entity parameter).
+- **shared/RealEstateEval.Shared.RemoteClients** (new) carries all 24 owner-to-owner HTTP
+  clients, `UpstreamServicesOptions`, `PersonLabelResolver`, and the `AddRemote*`
+  registrations (`RemoteClientRegistration`, namespace `RealEstateEval.Infrastructure`).
+  Global Infrastructure references it transitionally so hosts need no using churn.
+- **CaseStudy.Infrastructure** gained `CaseStudyLookup`, `CaseStudyCommands`,
+  `CaseStudyPropertyPoNumberLookup`, `WorkflowTaskMapper`;
+  **Identity.Infrastructure** gained `PlatformPermissionCatalog`, `PrototypeRoleResolver`.
+- Deliberately still global: `PropertyAccessHoldService`, `DbContextTransaction`,
+  `ICaseStudyRepository`, `NotificationRecipientResolver`, `ServiceHealthEndpoints`,
+  messaging/outbox plumbing, and the legacy-context compile surface (entities,
+  `*Model.cs`, migrations, seed, `ApplicationUser`) — these move only at A10 archival.
+
+Verified: Architecture 56, Application 920, Integration 214, Container 39, and
+`DbMigrate -- list` zero-pending on all nine context streams.
+
+## A10 legacy-context archival (2026-08-28, late)
+
+The frozen legacy god context is gone from the codebase:
+
+- **Deleted:** `ApplicationDbContext`, its 166-file migration stream
+  (`backend/RealEstateEval.Infrastructure/Data/Migrations`), and the legacy design-time
+  factory. The last commit carrying them is tagged **`a10-legacy-stream-final`**; a
+  restored pre-split database is migrated by checking out that tag and running DbMigrate
+  with the unsuffixed `REAL_ESTATE_EVAL_PG_CONNECTION_STRING`.
+- **Provisioning:** DbMigrate and the container suite provision fresh databases from the
+  nine context streams alone (`Ensure*TablesForStandalone` baselines). Proven by
+  `Context_streams_provision_an_empty_database_and_leave_nothing_pending` and the full
+  39-test container run including seed and dev-reset cycles.
+- **Tests:** the application suite (920) runs entirely on owner contexts; the test
+  fixtures (`TestDatabases`, `TestBoundedContexts`, `TestInspectorFeeServiceFactory`)
+  expose all nine owner contexts over one shared in-memory store.
+- **Models:** each context's `*Model.cs` mapping moved into its context library
+  (`AuditModel`, shared by Platform/Identity/Financial, and the Messaging context stay
+  global). `DomainEnumConverters` is public for the moved mappings.
+- **Guardrails:** the union of the nine owner models replaced the legacy model as the
+  schema/ownership authority, with hard-failing consistency checks for shared mappings
+  (same table must map identically everywhere). The legacy-token ban is now total
+  (`LegacyContextIsNotUsedAnywhere`). Legacy-only tests (snapshot drift, cutover freeze)
+  are retired: Architecture suite is 54.
+- **Unblocked next (cosmetic/structural, no production coupling):** namespace alignment,
+  entity moves into ctx Domain libraries, retirement of the near-empty global assemblies.
+- **Still production-gated:** the metrics window and the `realestate_eval_dev` leftover
+  decision (do not drop — the tag + leftover are the restore pair).
+
+## Cosmetic cleanup — entity distribution, Domain retirement, namespace alignment (2026-08-28, late)
+
+- **Global Domain retired.** Every entity/rule moved to its owner context's Domain library
+  (case-study 18 files, financial 5, valuation 5, identity 2); messaging entities live
+  beside `MessagingModel`; pure cross-context statics (AuditLog, SupervisingDepartments,
+  WorkflowStatuses, DeedKindRules, InspectionScopeKeys, MarketAdjustmentFactorKeys,
+  ComparableProximityRules, BuildingStructureKinds) moved into `Shared.Contracts`. The
+  `RealEstateEval.Domain` project is deleted; guardrails keep it gone and pin ctx Domain
+  libraries to reference only the contracts leaf.
+- **Namespace alignment.** All 464 context-library files now declare
+  `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}`; RootNamespaces aligned;
+  consumers were fixed by a compiler-error-driven codemod (~650 using insertions /
+  qualified-name rewrites across services, tests, tools, shared libs).
+- **EF safety.** All eight context snapshots regenerated via the temp-migration recipe;
+  every temp migration was empty — the rename changed zero relational schema. Ctx
+  Infrastructure projects now carry the EF Design package (PrivateAssets) so
+  `dotnet ef migrations add --project <ctx> --startup-project <ctx>` works in place.
+- **Deliberate end state.** `RealEstateEval.Application` and `RealEstateEval.Infrastructure`
+  remain as the two explicitly-shared assemblies (cross-service abstractions/contracts/rules;
+  persistence/messaging/audit plumbing, `ApplicationUser`, shared services) plus the three
+  `shared/` libraries. Dissolving them is an ownership-design task, not cosmetics.

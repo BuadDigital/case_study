@@ -5,6 +5,10 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -19,7 +23,7 @@ public class PartyFeePricingAuditTests
     public async Task Creating_a_table_records_the_actor_and_complete_after_snapshot()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         var created = await service.CreateAsync(
             new CreatePartyFeePricingTableRequest
@@ -46,7 +50,7 @@ public class PartyFeePricingAuditTests
     public async Task Replacing_tiers_records_the_old_and_new_schedules()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         await service.SaveAsync(
             PartyFeePricingService.DefaultEngineeringTableId,
@@ -80,7 +84,7 @@ public class PartyFeePricingAuditTests
     public async Task Reassigning_parties_records_the_category_before_and_after()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         var first = PartyFeePricingService.DefaultCourtVisitTableId;
         var second = await service.CreateAsync(

@@ -3,17 +3,26 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  cn,
   EmptyState,
+  KpiAlertIcon,
   KpiBand,
   KpiCell,
+  KpiCheckIcon,
+  KpiClipboardIcon,
+  KpiClockIcon,
   MobileKpiStatCards,
   Note,
   OperationalPanel,
   PageShell,
   PageToolbar,
   QueueTableHint,
+  queueTableRowClassName,
+  RowMoreMenu,
+  type RowMoreMenuItem,
   SkeletonTableRows,
   Table,
+  TableFrame,
   TBody,
   Td,
   TdAction,
@@ -21,77 +30,37 @@ import {
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowClassName,
-  queueTableWrapClassName,
 } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { PARTY_TASK_PAGES } from "@platform/app-shared/prototype/party-task-pages";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { PARTY_TASK_PAGES } from "@platform/app-shared/app-data/party-task-pages";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import { PoNumber } from "../components/ui/PoNumber";
-import { RemainingTimeCell } from "../components/ui/RemainingTimeCell";
-import { RowMoreMenu } from "../components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "../components/ui/RowMoreMenu";
+import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   formatPoDisplay,
   formatPropertyDeedDisplay,
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoIntakeRecord,
-} from "../lib/prototype/po-intake-data";
-import { resolveRemainingTime, formatRemainingDuration } from "../lib/prototype/my-task-row";
-import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+} from "../lib/app-data/po-intake-data";
+import { remainingTimerTick, resolveRemainingTime, formatRemainingDuration } from "../lib/app-data/my-task-row";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   propertySuspensionKey,
   type SuspendedTransaction,
-} from "../lib/prototype/suspended-transactions-storage";
-import { tasksForPartyAssignee } from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/suspended-transactions-model";
+import { tasksForPartyAssignee } from "../lib/app-data/tasks-storage";
 import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { useSuspendedTransactionsQuery } from "../query/suspended-transactions-queries";
-
-function KpiAlertIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
-
-function KpiClockIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function KpiCheckIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </svg>
-  );
-}
-
-function KpiClipboardIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
-}
 
 const PARTY_ASSIGNMENT_ROLE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.roleId),
@@ -143,13 +112,18 @@ function buildSuspendedRowMoreItems(
 
 export function SuspendedTransactionsView() {
   const router = useRouter();
-  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
   const { data: items = [], isFetched } = useSuspendedTransactionsQuery();
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
-  const [now, setNow] = useState(() => new Date());
+  // Minute precision is enough for indicators and sort — the per-second timer lives in the timer cell
+  // itself, so rows are not rebuilt every second (rerender-defer-reads).
+  const nowMinuteMs = useTickingMinute();
+  const now = useMemo(() => new Date(nowMinuteMs), [nowMinuteMs]);
+  // After hydration mount only one tree (cards or table) — both used to be built together.
+  const isDesktopViewport = useViewportDesktop();
   const [isOpening, startOpen] = useTransition();
   const [openingId, setOpeningId] = useState<string | null>(null);
 
@@ -165,11 +139,6 @@ export function SuspendedTransactionsView() {
     const t = window.setTimeout(() => setOpeningId(null), 400);
     return () => window.clearTimeout(t);
   }, [isOpening, openingId]);
-
-  useEffect(() => {
-    const tick = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const poByNumber = useMemo(() => {
     const map = new Map<string, PoIntakeRecord>();
@@ -228,6 +197,7 @@ export function SuspendedTransactionsView() {
   const queuePending = !isFetched;
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isDesktopViewport === true) return [];
     return sortedItems.map((item) => {
       const record = poByNumber.get(item.poNumber.trim());
       const remaining = resolveRemainingTime(record?.dueDateAt ?? "", now);
@@ -252,13 +222,17 @@ export function SuspendedTransactionsView() {
               ? "متأخرة"
               : `متبقي ${timer.remainingDuration}`
             : undefined,
+        timerTick:
+          timer.remainingDuration !== "—"
+            ? remainingTimerTick(record?.dueDateAt ?? "")
+            : undefined,
         timerOverdue: overdue,
         moreItems: buildSuspendedRowMoreItems(item, router),
         onOpen: () => openItem(item),
         loading: openingId === item.id,
       };
     });
-  }, [sortedItems, poByNumber, now, router, openingId]);
+  }, [isDesktopViewport, sortedItems, poByNumber, now, router, openingId]);
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
@@ -382,14 +356,17 @@ export function SuspendedTransactionsView() {
             />
           ) : (
             <>
-              <div className="pb-3 lg:hidden">
-                <ActiveQueueMobileCards
-                  items={mobileCardItems}
-                  pending={queuePending}
-                  emptyMessage="لا توجد معاملات معلقة."
-                />
-              </div>
-              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+              {isDesktopViewport === true ? null : (
+                <div className="pb-3 lg:hidden">
+                  <ActiveQueueMobileCards
+                    items={mobileCardItems}
+                    pending={queuePending}
+                    emptyMessage="لا توجد معاملات معلقة."
+                  />
+                </div>
+              )}
+              {isDesktopViewport === false ? null : (
+              <TableFrame className="hidden lg:block">
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -407,10 +384,6 @@ export function SuspendedTransactionsView() {
                     ) : (
                       sortedItems.map((item) => {
                         const record = poByNumber.get(item.poNumber.trim());
-                        const remaining = resolveRemainingTime(
-                          record?.dueDateAt ?? "",
-                          now,
-                        );
                         const assignmentType =
                           record?.assignmentType?.trim() || "—";
                         const assignmentSpecialist =
@@ -450,7 +423,9 @@ export function SuspendedTransactionsView() {
                               {assignmentSpecialist}
                             </Td>
                             <Td>
-                              <RemainingTimeCell state={remaining} />
+                              <TickingRemainingTimeCell
+                                dueIso={record?.dueDateAt ?? ""}
+                              />
                             </Td>
                             <TdAction>
                               <RowMoreMenu items={moreItems} />
@@ -461,11 +436,12 @@ export function SuspendedTransactionsView() {
                     )}
                   </TBody>
                 </Table>
-              </div>
-              <QueueTableHint className="hidden lg:block">
-                اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
-                العقار.
-              </QueueTableHint>
+                <QueueTableHint>
+                  اضغط الصف لعرض تفاصيل العقار — ⋮ عقارات أمر العمل · تفاصيل
+                  العقار.
+                </QueueTableHint>
+              </TableFrame>
+              )}
             </>
           )}
         </OperationalPanel>

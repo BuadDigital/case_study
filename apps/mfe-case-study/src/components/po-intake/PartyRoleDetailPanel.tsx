@@ -7,8 +7,8 @@ import {
   SectionDivider,
   SectionHeader,
 } from "./PropertyDetailFields";
-import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
+import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
+import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import { cn, InlineLoadingSkeleton } from "@platform/ui-kit";
 
 export function PartyRoleDetailPanel({

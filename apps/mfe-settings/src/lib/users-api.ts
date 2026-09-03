@@ -2,7 +2,6 @@ import {
   createStaffUser,
   deleteStaffUser,
   fetchMyProfile,
-  getApiBase,
   issueActivationTicket,
   listDistributionAssignees,
   listUsers,
@@ -17,16 +16,10 @@ import {
   type UpdateStaffUserResult,
   type UsersApiConfig,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
-import { hasRuntimeCapability } from "@platform/app-shared/prototype/runtime-access";
-
-function apiConfig(): UsersApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
-}
+import { hasRuntimeCapability } from "@platform/app-shared/app-data/runtime-access";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 type FetchStaffUsersResult = {
   users: StaffUser[];

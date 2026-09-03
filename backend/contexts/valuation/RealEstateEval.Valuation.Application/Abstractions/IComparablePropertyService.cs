@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Valuation.Application.Abstractions;
 
 public interface IComparablePropertyService
 {
@@ -24,12 +25,16 @@ public interface IComparablePropertyService
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task<(bool Ok, string? Error)> ReactivateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
  /// <summary>Rank active bank comps by distance to subject (field inspection or query coords).</summary>
     Task<ComparableProximitySuggestionListDto> SuggestByProximityAsync(
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>ق-3: وضع/تحديث وسوم الجودة البشرية (موثوقية/مكرر) بمبرر — السجل يبقى.</summary>
+ /// <summary>Q-3: set/update human quality tags (reliability/duplicate) with rationale — record remains.</summary>
     Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
         Guid id,
         SaveComparableQualityTagsRequest request,

@@ -4,8 +4,12 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class SurveyOfficesService : ISurveyOfficesService
 {

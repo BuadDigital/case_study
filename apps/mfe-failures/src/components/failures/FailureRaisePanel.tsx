@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, cn, useToast } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { useCommandMutation } from "@platform/app-shared";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   activeFailureForProperty,
   failuresForProperty,
@@ -18,7 +19,7 @@ import {
   groupSimilarFailureRecords,
   isPanelBlockingFailure,
 } from "../../lib/failures-labels";
-import { formatDateAr } from "@case-study/mfe";
+import { formatDateAr } from "@platform/app-shared/format/date";
 import { useFailuresQuery } from "../../query/failures-queries";
 import {
   FailureRaiseFields,
@@ -45,7 +46,7 @@ const sectionClassName =
   "mb-2.5 mt-0 border-b border-border pb-[7px] text-[13px] font-bold text-heading";
 
 /**
- * System-wide failure raise surface — نوع التعذر from catalog + سجل.
+ * System-wide failure raise surface — failure type from catalog + log.
  */
 export function FailureRaisePanel({
   poNumber,
@@ -66,9 +67,9 @@ export function FailureRaisePanel({
   raisedByRole: string;
   onSubmitted?: () => void;
   autoOpenRaise?: boolean;
-  /** Pre-select a catalog type (e.g. مفتاح العقار لا يفتح). */
+  /** Pre-select a catalog type (e.g. property key does not open). */
   initialProblemTypeId?: string;
-  /** Hide the raise form (view / locked) but keep السجل. */
+  /** Hide the raise form (view / locked) but keep the log. */
   raiseDisabled?: boolean;
   raiseDisabledReason?: string;
 }) {
@@ -77,8 +78,17 @@ export function FailureRaisePanel({
   const { data: failures = [] } = useFailuresQuery();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
-  const [saving, setSaving] = useState(false);
   const [invalid, setInvalid] = useState(false);
+
+  const { run: runCreateFailure, loading: saving } = useCommandMutation(
+    useCallback(
+      async (
+        input: Parameters<typeof createFailure>[0],
+        idempotencyKey: string,
+      ) => createFailure(input, idempotencyKey),
+      [],
+    ),
+  );
 
   const propertyRef = useMemo(
     () => ({ poNumber, propertyId, deedNumber }),
@@ -143,10 +153,9 @@ export function FailureRaisePanel({
     }
     if (openFailureForCreate || saving) return;
 
-    setSaving(true);
     setInvalid(false);
     try {
-      await createFailure({
+      const outcome = await runCreateFailure({
         poNumber,
         propertyId,
         deedNumber,
@@ -154,19 +163,20 @@ export function FailureRaisePanel({
         raisedByRole,
         specialist,
       });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failures(),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyKeys(),
-      });
+      if (outcome.status === "skipped") return;
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: appDataKeys.failures(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: appDataKeys.propertyKeys(),
+        }),
+      ]);
       setProblemTypeId("");
       showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
     } catch {
       showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
-    } finally {
-      setSaving(false);
     }
   }
 

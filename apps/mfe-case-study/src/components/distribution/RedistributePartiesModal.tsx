@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useCommandMutation } from "@platform/app-shared";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import {
@@ -21,17 +22,17 @@ import {
   getFieldInspectors,
   getValuators,
   type DistributionAssignee,
-} from "../../lib/prototype/distribution-parties";
+} from "../../lib/app-data/distribution-parties";
 import {
   buildAssigneeOpenLoadMap,
   openLoadForAssignee,
   withOpenLoadLabel,
-} from "../../lib/prototype/distribution-load";
+} from "../../lib/app-data/distribution-load";
 import {
   migrateDistribution,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 type RedistributeRoleKey =
@@ -78,6 +79,7 @@ export function RedistributePartiesModal({
   onConfirm: (
     distribution: TaskDistributionDraft,
     reason: string,
+    idempotencyKey: string,
   ) => void | Promise<void>;
 }) {
   const { data: staffResult } = useDistributionAssigneesQuery();
@@ -97,7 +99,15 @@ export function RedistributePartiesModal({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState(false);
   const [personError, setPersonError] = useState(false);
-  const [busy, setBusy] = useState(false);
+
+  const { run: runRedistribute, loading: busy } = useCommandMutation(
+    async (
+      args: { distribution: TaskDistributionDraft; reason: string },
+      idempotencyKey: string,
+    ) => {
+      await onConfirm(args.distribution, args.reason, idempotencyKey);
+    },
+  );
 
   useEffect(() => {
     if (!open || !task) return;
@@ -107,7 +117,6 @@ export function RedistributePartiesModal({
     setReason("");
     setReasonError(false);
     setPersonError(false);
-    setBusy(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task?.id]);
 
@@ -175,12 +184,15 @@ export function RedistributePartiesModal({
       setPersonError(true);
       return;
     }
-    setBusy(true);
     try {
-      await onConfirm(distribution, trimmed);
+      const outcome = await runRedistribute({
+        distribution,
+        reason: trimmed,
+      });
+      if (outcome.status === "skipped") return;
       onClose();
-    } finally {
-      setBusy(false);
+    } catch {
+      // Parent already toasted; keep key for retry.
     }
   };
 

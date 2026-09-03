@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadKeyEnvelopeFeeReport,
   loadKeyEnvelopes,
@@ -12,7 +12,7 @@ const GC_MS = 10 * 60_000;
 
 export function useKeyEnvelopesQuery() {
   return useQuery({
-    queryKey: prototypeKeys.keyEnvelopes(),
+    queryKey: appDataKeys.keyEnvelopes(),
     queryFn: loadKeyEnvelopes,
     staleTime: STALE_MS,
     gcTime: GC_MS,
@@ -23,17 +23,17 @@ export function useInvalidateKeyEnvelopes() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.keyEnvelopes(),
+      queryKey: appDataKeys.keyEnvelopes(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.keyEnvelopeFees(),
+      queryKey: appDataKeys.keyEnvelopeFees(),
     });
   };
 }
 
 export function useKeyEnvelopeFeesQuery() {
   return useQuery({
-    queryKey: prototypeKeys.keyEnvelopeFees(),
+    queryKey: appDataKeys.keyEnvelopeFees(),
     queryFn: loadKeyEnvelopeFeeReport,
     staleTime: STALE_MS,
     gcTime: GC_MS,

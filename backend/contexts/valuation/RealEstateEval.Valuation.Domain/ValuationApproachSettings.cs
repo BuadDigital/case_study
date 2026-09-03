@@ -1,8 +1,10 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// شاشة 1 — إعدادات التقييم الحاكمة (حصر v2 §ب-2): الأساليب المطبَّقة تتحكم بتبويبات
-/// العمل وصفوف الترجيح (ق-2)، والأرض لا تُقيَّم بالتكلفة (ق-3).
+/// Screen 1 — governing valuation settings (v2 scoping §B-2): applied approaches control work tabs
+/// and weighting rows (Q-2); land is not valued by the cost approach (Q-3).
 /// One row per valuation request; absent row = defaults derived from the property type.
 /// </summary>
 public class ValuationApproachSettings
@@ -10,47 +12,53 @@ public class ValuationApproachSettings
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
 
- /// <summary>أسلوب السوق (طريقة المقارنة).</summary>
+ /// <summary>Market approach (comparison method).</summary>
     public bool MarketApproachEnabled { get; set; } = true;
 
- /// <summary>أسلوب التكلفة (طريقة المقاول) — ق-3: لا يُفعَّل لنوع «أرض».</summary>
+ /// <summary>Cost approach (contractor method) — Q-3: not enabled for "land" type.</summary>
     public bool CostApproachEnabled { get; set; } = true;
 
- /// <summary>أسلوب الدخل — مؤجَّل رسمياً (⏸️)؛ يُخزَّن ليصمد القرار عند فتحه.</summary>
+ /// <summary>Income approach — formally deferred (⏸️); stored so the choice survives when opened.</summary>
     public bool IncomeApproachEnabled { get; set; }
 
- /// <summary>أساس التكلفة — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
+ /// <summary>Cost basis — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
     public string CostBasisKey { get; set; } = CostBasisKeys.Replacement;
 
- /// <summary>وحدة قياس التكلفة — see <see cref="CostMeasurementUnitKeys"/>.</summary>
+ /// <summary>Cost valuation scope — see <see cref="CostScopeKeys"/>: land and building (default) or building only.</summary>
+    public string CostScopeKey { get; set; } = CostScopeKeys.LandAndBuilding;
+
+ /// <summary>Cost measurement unit — see <see cref="CostMeasurementUnitKeys"/>.</summary>
     public string CostMeasurementUnitKey { get; set; } = CostMeasurementUnitKeys.ComparisonUnit;
 
- /// <summary>صلاحية تحرير التسويات — معطّلة تمنع حفظ بنود التسوية والأوزان.</summary>
+ /// <summary>Adjustments edit unlock — when disabled, blocks saving adjustment lines and weights.</summary>
     public bool AdjustmentsEditUnlocked { get; set; } = true;
 
- /// <summary>الغرض من التقييم (§4ج-5) — يُختار تلقائياً من نوع الإسناد ويمكن للمقيّم تعديله. See <see cref="ValuationPurposeKeys"/>.</summary>
+ /// <summary>Valuation purpose (§4j-5) — auto-selected from assignment type; valuer may change. See <see cref="ValuationPurposeKeys"/>.</summary>
     public string ValuationPurposeKey { get; set; } = "";
- /// <summary>توضيح اختياري للغرض (إلزامي عند «أخرى»).</summary>
+ /// <summary>Optional purpose note (required when "other").</summary>
     public string? ValuationPurposeNote { get; set; }
 
  /// <summary>
- /// بند الأخصائي (IVS 101 1-20/ل): الاستعانة بأخصائي **خارجي** في مهمة التقييم —
- /// لا يُقصد به أخصائي الإسناد ولا أخصائي دراسة الحالة (أدوار داخلية في سير المعاملة).
- /// «لا» (الافتراضي) ⟵ بند النفي القياسي في الافتراضات؛ «نعم» ⟵ التوضيح الإلزامي يحل محله.
+ /// Specialist clause (IVS 101 1-20/l): engaging an **external** specialist on the valuation —
+ /// not the assignment specialist nor the case-study specialist (internal transaction roles).
+ /// "No" (default) ⟵ standard denial line in assumptions; "Yes" ⟵ required details replace it.
  /// </summary>
     public bool ExternalSpecialistUsed { get; set; }
- /// <summary>الأخصائي ودوره ونتيجته — إلزامي عند «نعم».</summary>
+ /// <summary>Specialist, role, and outcome — required when "Yes".</summary>
     public string? ExternalSpecialistDetails { get; set; }
 
  /// <summary>
- /// تاريخ التقييم — نوعان (قرار عمر 2026-08-17): «إصدار القيمة» (آلي — غالباً تاريخ
- /// إصدار التقرير) أو «أثر رجعي» يحدده المقيّم يدوياً بتاريخ ومبرر إلزاميين.
+ /// Valuation date — two kinds (Omar decision 2026-08-17): "value issuance" (automatic — usually report
+ /// issue date) or "retrospective" set manually by the valuer with required date and rationale.
  /// </summary>
     public string ValuationDateMode { get; set; } = ValuationDateModes.Issue;
+    /// <summary>Retrospective date (or period start).</summary>
     public DateOnly? RetrospectiveDate { get; set; }
+    /// <summary>Retrospective period end — empty = single date.</summary>
+    public DateOnly? RetrospectiveDateEnd { get; set; }
     public string? RetrospectiveRationale { get; set; }
 
- /// <summary>JSON — بنود الافتراضات الخاصة المنتقاة/المضافة (نصوص مجمّدة لا معرفات).</summary>
+ /// <summary>JSON — selected/added special-assumption items (frozen texts, not ids).</summary>
     public string? SelectedAssumptionsJson { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
@@ -58,7 +66,7 @@ public class ValuationApproachSettings
     public ValuationRequest? ValuationRequest { get; set; }
 }
 
-/// <summary>أساس التكلفة: الإحلال أو إعادة الإنتاج (حقل ب-2 §9).</summary>
+/// <summary>Cost basis: replacement or reproduction (B-2 §9 field).</summary>
 public static class CostBasisKeys
 {
     public const string Replacement = "replacement";
@@ -74,7 +82,28 @@ public static class CostBasisKeys
         Normalize(value) == Reproduction ? "إعادة الإنتاج" : "الإحلال";
 }
 
-/// <summary>وحدة قياس التكلفة (حقل ب-2 §10).</summary>
+/// <summary>
+/// Cost valuation scope (interactive model spec): "land and building" requires land via comparables;
+/// "building only" hides the land section; approach indicator = replacement cost less depreciation.
+/// </summary>
+public static class CostScopeKeys
+{
+    public const string LandAndBuilding = "land_and_building";
+    public const string BuildingOnly = "building_only";
+
+    public static bool IsKnown(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() is LandAndBuilding or BuildingOnly;
+
+    public static string Normalize(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant() == BuildingOnly ? BuildingOnly : LandAndBuilding;
+
+    public static string LabelAr(string? value) =>
+        Normalize(value) == BuildingOnly ? "مبنى فقط" : "أرض ومبنى";
+
+    public static bool IsBuildingOnly(string? value) => Normalize(value) == BuildingOnly;
+}
+
+/// <summary>Cost measurement unit (B-2 §10 field).</summary>
 public static class CostMeasurementUnitKeys
 {
     public const string ComparisonUnit = "comparison_unit";
@@ -103,8 +132,8 @@ public static class CostMeasurementUnitKeys
 }
 
 /// <summary>
-/// الغرض من التقييم (§4ج-5) — قائمة كاملة؛ القيمة الافتراضية تُشتق من نوع الإسناد.
-/// القائمة قابلة للتوسعة عند اعتماد قائمة رسمية.
+/// Valuation purpose (§4j-5) — full list; default is derived from assignment type.
+/// List is extensible once an official list is adopted.
 /// </summary>
 public static class ValuationPurposeKeys
 {
@@ -114,15 +143,18 @@ public static class ValuationPurposeKeys
     public const string FinancialReporting = "financial_reporting";
     public const string Litigation = "litigation";
     public const string Other = "other";
-    /// <summary>تنفيذ / تركات — البيع بالمزاد العلني لغرض التصفية.</summary>
+    /// <summary>Execution / estates — public auction for liquidation.</summary>
     public const string AuctionLiquidation = "auction_liquidation";
-    /// <summary>قطاع خاص — البيع.</summary>
+    /// <summary>Private sector — sale.</summary>
     public const string Sale = "sale";
+    public const string EstateLiquidation = "estate_liquidation";
+    public const string Purchase = "purchase";
+    public const string Expropriation = "expropriation";
 
     public static readonly string[] All =
     [
         JudicialExecution, SalePurchase, Financing, FinancialReporting, Litigation, Other,
-        AuctionLiquidation, Sale,
+        AuctionLiquidation, Sale, EstateLiquidation, Purchase, Expropriation,
     ];
 
     public static bool IsKnown(string? value) =>
@@ -138,11 +170,14 @@ public static class ValuationPurposeKeys
         Other => "أخرى",
         AuctionLiquidation => "البيع بالمزاد العلني لغرض التصفية",
         Sale => "البيع",
+        EstateLiquidation => "تصفية التركات",
+        Purchase => "الشراء",
+        Expropriation => "نزع الملكية للمنفعة العامة",
         _ => "",
     };
 }
 
-/// <summary>نوعا تاريخ التقييم — إصدار القيمة (آلي) أو أثر رجعي (يدوي بمبرر).</summary>
+/// <summary>Valuation-date kinds — value issuance (automatic) or retrospective (manual with rationale).</summary>
 public static class ValuationDateModes
 {
     public const string Issue = "issue";
@@ -163,7 +198,7 @@ public static class ValuationDateModes
 public static class ValuationApproachSettingsRules
 {
  /// <summary>
- /// «أرض» (بأي تصنيف — سكنية/تجارية/فضاء). Property types are free-ish Arabic strings
+ /// "Land" (any classification — residential/commercial/vacant). Property types are free-ish Arabic strings
  /// from the work order, so containment is the reliable probe.
  /// </summary>
     public static bool IsLandPropertyType(string? propertyType)
@@ -174,8 +209,8 @@ public static class ValuationApproachSettingsRules
     }
 
  /// <summary>
- /// ق-3 المعدَّل (مواصفة v2 §3): أرض **بلا إنشاءات** وحدها لا تُقيَّم بالتكلفة —
- /// أرض بإنشاءات (كسور أو ملاحق) تفتح التكلفة لبنود الإنشاءات فقط.
+ /// Q-3 amended (v2 spec §3): land **without structures** alone is not valued by cost —
+ /// land with structures (fences or annexes) opens cost for structure lines only.
  /// </summary>
     public static bool CanEnableCostApproach(string? propertyType, bool hasStructuresToValue) =>
         !IsLandPropertyType(propertyType) || hasStructuresToValue;
@@ -192,6 +227,7 @@ public static class ValuationApproachSettingsRules
         CostApproachEnabled = CanEnableCostApproach(propertyType, hasStructuresToValue),
         IncomeApproachEnabled = false,
         CostBasisKey = CostBasisKeys.Replacement,
+        CostScopeKey = CostScopeKeys.LandAndBuilding,
         CostMeasurementUnitKey = CostMeasurementUnitKeys.ComparisonUnit,
         AdjustmentsEditUnlocked = true,
     };
@@ -210,15 +246,18 @@ public static class ValuationApproachSettingsRules
         string? externalSpecialistDetails = null,
         string? valuationDateMode = null,
         DateOnly? retrospectiveDate = null,
-        string? retrospectiveRationale = null)
+        string? retrospectiveRationale = null,
+        IReadOnlySet<string>? allowedPurposeKeys = null,
+        string? costScopeKey = null,
+        DateOnly? retrospectiveDateEnd = null)
     {
         var errors = new Dictionary<string, string>();
 
- // §4ج-5: الغرض قائمة يختارها المقيّم — إلزامي عند حفظ إعدادات التقرير.
+ // §4j-5: purpose is a list chosen by the valuer — required when saving report settings.
         var purpose = (valuationPurposeKey ?? "").Trim().ToLowerInvariant();
         if (purpose.Length == 0)
             errors["valuationPurposeKey"] = "الغرض من التقييم إلزامي";
-        else if (!ValuationPurposeKeys.IsKnown(purpose))
+        else if (!(allowedPurposeKeys?.Contains(purpose) ?? ValuationPurposeKeys.IsKnown(purpose)))
             errors["valuationPurposeKey"] = "الغرض من التقييم غير معروف";
         else if (purpose == ValuationPurposeKeys.Other
             && string.IsNullOrWhiteSpace(valuationPurposeNote))
@@ -226,17 +265,21 @@ public static class ValuationApproachSettingsRules
             errors["valuationPurposeNote"] = "توضيح الغرض إلزامي عند اختيار «أخرى»";
         }
 
- // بند الأخصائي: «نعم» تستلزم التوضيح (الأخصائي، دوره، نتيجته) — IVS 101.
+ // Specialist clause: "Yes" requires details (specialist, role, outcome) — IVS 101.
         if (externalSpecialistUsed && string.IsNullOrWhiteSpace(externalSpecialistDetails))
             errors["externalSpecialistDetails"] = "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»";
 
- // تاريخ التقييم: الأثر الرجعي = تاريخ يدوي + مبرر إلزامي (+ سجل تدقيق).
+ // Valuation date: retrospective = a date (or a period between two dates).
         if (ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective)
         {
             if (retrospectiveDate is null)
                 errors["retrospectiveDate"] = "تاريخ التقييم بالأثر الرجعي إلزامي";
-            if (string.IsNullOrWhiteSpace(retrospectiveRationale))
-                errors["retrospectiveRationale"] = "مبرر الأثر الرجعي إلزامي";
+            if (retrospectiveDateEnd is { } end)
+            {
+                if (retrospectiveDate is { } start && end < start)
+                    errors["retrospectiveDateEnd"] =
+                        "تاريخ نهاية الفترة يجب ألا يسبق تاريخ البداية";
+            }
         }
 
         if (!marketEnabled && !costEnabled && !incomeEnabled)
@@ -251,6 +294,9 @@ public static class ValuationApproachSettingsRules
         if (costEnabled && costBasisKey is not null && !CostBasisKeys.IsKnown(costBasisKey))
             errors["costBasisKey"] = "أساس التكلفة غير معروف";
 
+        if (costEnabled && costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
+            errors["costScopeKey"] = "نطاق التقييم بالتكلفة غير معروف (أرض ومبنى / مبنى فقط)";
+
         if (costEnabled
             && costMeasurementUnitKey is not null
             && !CostMeasurementUnitKeys.IsKnown(costMeasurementUnitKey))
@@ -261,14 +307,26 @@ public static class ValuationApproachSettingsRules
         return errors;
     }
 
- // ─── الافتراضات الخاصة (مكتبة الانتقاء تُدار في إعدادات تبويب تقرير التقييم) ───
+ // ─── Special assumptions (selection library managed in valuation-report tab settings) ───
 
-    private static readonly System.Text.Json.JsonSerializerOptions AssumptionsJsonOptions = new()
+    private static readonly System.Text.Json.JsonSerializerOptions AssumptionsJsonOptions = JsonDefaults.RelaxedEscaping;
+
+ /// <summary>
+ /// Specialist-denial line in the assumptions library — dropped when "external specialist engaged" is selected.
+ /// </summary>
+    public static bool IsNoExternalSpecialistAssumption(string? text)
     {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
+        var t = (text ?? "").Trim();
+        return t.Contains("لم يستعن المقيّم بأي أخصائي", StringComparison.Ordinal);
+    }
 
- /// <summary>النصوص تُجمَّد مع التقييم (لا معرفات) — تعديل المكتبة لاحقاً لا يغيّر المنتقى.</summary>
+    public static IReadOnlyList<string> WithoutNoExternalSpecialistAssumptions(
+        IEnumerable<string>? items) =>
+        (items ?? [])
+            .Where(x => !IsNoExternalSpecialistAssumption(x))
+            .ToList();
+
+ /// <summary>Texts are frozen with the valuation (no ids) — later library edits do not change the selection.</summary>
     public static string? SerializeAssumptions(IReadOnlyList<string> items)
     {
         var clean = items
@@ -294,7 +352,7 @@ public static class ValuationApproachSettingsRules
         }
     }
 
- /// <summary>ق-2: صفوف الترجيح تُبنى من الأساليب المفعَّلة فقط (الدخل مؤجَّل فلا يدخل).</summary>
+ /// <summary>Q-2: weighting rows are built from enabled approaches only (income is deferred, so excluded).</summary>
     public static IReadOnlyList<string> EnabledReconciliationKinds(
         bool marketEnabled,
         bool costEnabled)

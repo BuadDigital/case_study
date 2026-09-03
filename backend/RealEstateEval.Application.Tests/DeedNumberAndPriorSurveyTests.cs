@@ -1,6 +1,9 @@
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -102,6 +105,28 @@ public class PropertyListRowBuilderPriorSurveyTests
                     Id = Guid.NewGuid(),
                     DeedNumber = "DEED-UNIT",
                     Classification = "وحدة داخل مبنى",
+                    BourseDataCompleted = true,
+                },
+            ],
+        };
+        var rows = PropertyListRowBuilder.Build([order], new HashSet<string>());
+        Assert.Equal("done", rows[0].Row.Survey);
+    }
+
+    [Fact]
+    public void Registered_title_survey_is_done_without_prior()
+    {
+        var order = new WorkOrder
+        {
+            PoNumber = "PO-REG",
+            Properties =
+            [
+                new WorkOrderProperty
+                {
+                    Id = Guid.NewGuid(),
+                    DeedNumber = "310112006650",
+                    Classification = "أرض",
+                    IdentifierType = PropertyIdentifierType.RealEstateRegistration,
                     BourseDataCompleted = true,
                 },
             ],

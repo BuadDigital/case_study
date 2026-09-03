@@ -7,6 +7,9 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Platform.Api.Integration;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Platform.Infrastructure;
+using RealEstateEval.Platform.Application.Validation;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Platform.Api;
 

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getPropertyTimeline } from "@platform/api-client";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
@@ -10,7 +10,7 @@ import {
 import {
   mapPropertyTimelineDtos,
   type PropertyTimelineEvent,
-} from "../lib/prototype/property-detail-timeline";
+} from "../lib/app-data/property-detail-timeline";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -23,7 +23,7 @@ export function usePropertyTimelineQuery(
   const property = propertyId?.trim() ?? "";
 
   return useQuery<PropertyTimelineEvent[]>({
-    queryKey: prototypeKeys.propertyTimeline(po, property),
+    queryKey: appDataKeys.propertyTimeline(po, property),
     queryFn: async () => {
       const config = requireWorkOrdersApiConfig();
       if (!po || !property) return [];

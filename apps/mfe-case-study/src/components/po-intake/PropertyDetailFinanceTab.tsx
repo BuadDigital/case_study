@@ -12,16 +12,16 @@ import {
   inspectorFeeStatusLabel,
   inspectorFeeWorkStatusTone,
 } from "@platform/api-client";
-import { loadPropertyEnfazRevenue } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { loadPropertyEnfazRevenue } from "@platform/app-shared/app-data/enfaz-billing-api";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { EmptyState, InfoBox, SectionHeader } from "./PropertyDetailFields";
 import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 const FEE_KINDS = new Set([
   "field-inspection",
@@ -38,7 +38,7 @@ export function PropertyDetailFinanceTab({
   property: PoPropertyIntake;
   tasks: WorkflowTask[];
 }) {
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const isSupervisor = hasCapability("manage-operations");
   const isFinance = hasCapability("manage-financial");
   const [sub, setSub] = useState<"out" | "in">("out");
@@ -71,7 +71,7 @@ export function PropertyDetailFinanceTab({
   );
 
   const { data: enfazRevenue } = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", poNumber, property.id],
+    queryKey: [...appDataKeys.all, "enfaz-billing", poNumber, property.id],
     queryFn: () => loadPropertyEnfazRevenue(poNumber, property.id),
     enabled: Boolean(property.id),
   });

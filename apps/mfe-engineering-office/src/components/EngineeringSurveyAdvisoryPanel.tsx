@@ -3,18 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "@platform/ui-kit";
-import type { WorkflowTask } from "@case-study/mfe";
-import { findSurveyChildForParent } from "../lib/engineering-survey-task";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   engineeringSurveyStatusLabel,
-  loadEngineeringSurveySubmissionAsync,
+} from "../lib/engineering-survey-submission-model";
+import { loadEngineeringSurveySubmissionAsync } from "../lib/engineering-survey-submission-reads";
+import {
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-commands";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 
 function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();

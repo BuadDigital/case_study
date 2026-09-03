@@ -3,7 +3,7 @@ namespace RealEstateEval.Application;
 public static class PartyFeePricingCategories
 {
     public const string EngineeringSurvey = "engineering-survey";
- /// <summary>أتعاب زيارة المحكمة — priced when specialist/supervisor creates court_visit.</summary>
+ /// <summary>Court-visit fees — priced when specialist/supervisor creates court_visit.</summary>
     public const string CourtVisit = "court-visit";
     public const string FieldInspector = "field-inspector";
 

@@ -1,4 +1,6 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { repositoryFetch as fetch } from "./write-repository";
+import { parseJson } from "./parse-json";
 
 export type ComparableSourceCardDto = {
   intakeChannel: string;
@@ -13,7 +15,7 @@ export type ComparablePropertyDto = {
   id: string;
   referenceCode: string;
   comparablePropertyType: string;
-  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  /** Comparable use — closed list (Q-3/5). */
   usage: string;
   transactionKind: string;
   transactionKindLabelAr: string;
@@ -21,7 +23,7 @@ export type ComparablePropertyDto = {
   priceDescriptionLabelAr: string;
   source: string;
   listingNumber?: string | null;
-  /** ق-3/3: مرجع صفقة البورصة للمنفّذ. */
+  /** Q-3/3: bourse deal reference for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -35,6 +37,8 @@ export type ComparablePropertyDto = {
   pricePerSqmAnomalyNoteAr?: string | null;
   city?: string | null;
   district: string;
+  planNumber?: string | null;
+  plotNumber?: string | null;
   description?: string | null;
   intakeChannel: string;
   enteredByUserId?: string | null;
@@ -42,23 +46,23 @@ export type ComparablePropertyDto = {
   sourceWorkOrderNumber?: string | null;
   sourcePropertyId?: string | null;
   isActive: boolean;
-  /** ق-3: وسوم الجودة البشرية — normal | anomalous | unreliable. */
+  /** Q-3: human quality tags — normal | anomalous | unreliable. */
   reliabilityTag: string;
   reliabilityTagLabelAr: string;
   isDuplicateTagged: boolean;
   tagRationale?: string | null;
   taggedByUserId?: string | null;
   taggedAtUtc?: string | null;
-  /** موسوم فيُستبعد من الاقتراحات ويُميَّز بصرياً. */
+  /** Tagged so it is excluded from suggestions and highlighted visually. */
   isExcludedFromSuggestions: boolean;
-  /** اشتباه تكرار آلي (سجل آخر بنفس الموقع) — اقتراح فقط. */
+  /** Suspected automatic duplicate (another record at same location) — suggestion only. */
   duplicateSuspect: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
   sourceCard: ComparableSourceCardDto;
 };
 
-/** ق-3: وضع/تحديث وسوم الجودة بمبرر — السجل يبقى. */
+/** Q-3: set/update quality tags with reason — record remains. */
 export type SaveComparableQualityTagsRequest = {
   reliabilityTag: string;
   isDuplicateTagged: boolean;
@@ -67,13 +71,13 @@ export type SaveComparableQualityTagsRequest = {
 
 export type UpsertComparablePropertyRequest = {
   comparablePropertyType: string;
-  /** استخدام المقارن — قائمة مغلقة (ق-3/5). */
+  /** Comparable use — closed list (Q-3/5). */
   usage?: string | null;
   transactionKind: string;
   priceDescription?: string | null;
   source: string;
   listingNumber?: string | null;
-  /** ق-3/3: مرجع الصفقة — للمنفّذ. */
+  /** Q-3/3: deal reference — for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -84,6 +88,8 @@ export type UpsertComparablePropertyRequest = {
   price: number;
   city?: string | null;
   district: string;
+  planNumber?: string | null;
+  plotNumber?: string | null;
   description?: string | null;
   intakeChannel: string;
   sourceWorkOrderNumber?: string | null;
@@ -103,6 +109,8 @@ export type ComparablePropertyListQuery = {
   toDate?: string;
   includeInactive?: boolean;
   take?: number;
+  /** Comparison-method spec: field priority for this property. */
+  forPropertyId?: string;
 };
 
 export type ComparableProximityQuery = {
@@ -151,9 +159,6 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 export async function listComparableProperties(
   config: ComparablePropertiesApiConfig,
@@ -172,6 +177,7 @@ export async function listComparableProperties(
   if (query.toDate) qs.set("toDate", query.toDate);
   if (query.includeInactive) qs.set("includeInactive", "true");
   if (query.take) qs.set("take", String(query.take));
+  if (query.forPropertyId) qs.set("forPropertyId", query.forPropertyId);
   try {
     const res = await fetch(
       `${base}/api/comparable-properties?${qs}`,
@@ -243,6 +249,58 @@ export async function createComparableProperty(
         errors: payload?.errors,
       };
     }
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        title?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "server",
+        message:
+          payload?.detail ??
+          payload?.title ??
+          payload?.error ??
+          payload?.message ??
+          "تعذّر حفظ المقارن",
+      };
+    }
+    return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function updateComparableProperty(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+  body: UpsertComparablePropertyRequest,
+): Promise<Result<ComparablePropertyDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/comparable-properties/${id}`, {
+      method: "PUT",
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        error?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message:
+          payload?.errors
+            ? Object.values(payload.errors)[0]
+            : payload?.error ?? "بيانات غير صالحة",
+        errors: payload?.errors,
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
   } catch {
@@ -250,7 +308,7 @@ export async function createComparableProperty(
   }
 }
 
-/** ق-3: وسوم الجودة البشرية — يضعها ذو صفة بمبرر، والسجل يبقى موسوماً. */
+/** Q-3: human quality tags — set by an authorized user with reason; record stays tagged. */
 export async function setComparableQualityTags(
   config: ComparablePropertiesApiConfig,
   id: string,
@@ -292,6 +350,24 @@ export async function deactivateComparableProperty(
   try {
     const res = await fetch(
       `${base}/api/comparable-properties/${id}/deactivate`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export async function reactivateComparableProperty(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+): Promise<Result<null>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/comparable-properties/${id}/reactivate`,
       { method: "POST", headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };

@@ -5,8 +5,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class PropertyKeysService : IPropertyKeysService
 {
@@ -29,8 +33,8 @@ public sealed class PropertyKeysService : IPropertyKeysService
         bool? hasKey,
         CancellationToken cancellationToken = default)
     {
-        await SyncFromEnvelopesAndLegacyAsync(cancellationToken);
-
+ // Projection moved to PropertyKeysProjectionHostedService — a list read must
+ // not re-project every envelope and possibly write on each screen poll.
         var query = _ops.PropertyKeyRecords.AsNoTracking().AsQueryable();
         if (hasKey is true)
             query = query.Where(x => x.HasKey);
@@ -114,6 +118,9 @@ public sealed class PropertyKeysService : IPropertyKeysService
             .OrderByDescending(e => e.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public Task SyncProjectionAsync(CancellationToken cancellationToken = default) =>
+        SyncFromEnvelopesAndLegacyAsync(cancellationToken);
 
     private async Task SyncFromEnvelopesAndLegacyAsync(CancellationToken cancellationToken)
     {

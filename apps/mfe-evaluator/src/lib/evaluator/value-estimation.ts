@@ -26,7 +26,7 @@ export function computeForcedSaleValue(
   return Math.round(total * (1 - clamped / 100) * 100) / 100;
 }
 
-/** تفقيط بأسلوب إنفاذ: الصفر يظهر «صفر» فقط، وغير الصفر بالريال. */
+/** Enfaz-style amount in words: zero shows "zero" only; non-zero includes riyals. */
 export function amountWordsOrZero(value: number | string): string {
   const n =
     typeof value === "number" ? value : parseEvaluatorAmount(value);

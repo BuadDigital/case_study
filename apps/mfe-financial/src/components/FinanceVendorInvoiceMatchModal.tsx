@@ -1,17 +1,19 @@
 "use client";
 
 /**
- * HTML-aligned modal: مطابقة فاتورة المورّد (مهامي → فتح الإجراء).
- * Stays on مهامي; match + return-for-correction only.
+ * HTML-aligned modal: vendor invoice match (My Tasks → open action).
+ * Stays on My Tasks; match + return-for-correction only.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PartyBillingStatementDto } from "@platform/api-client";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import {
   openPartyBillingAttachment,
   runMatchVendorInvoice,
   runRejectVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   ModalBody,
   ModalCard,
@@ -21,10 +23,14 @@ import {
   ModalOverlay,
   ModalTitle,
   cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsFldTextarea,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
-import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
 
 function formatInvoiceDate(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
@@ -34,13 +40,6 @@ function formatInvoiceDate(raw: string | null | undefined): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function formatSar(n: number): string {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
 }
 
 function attachmentLabel(s: PartyBillingStatementDto): string {
@@ -60,7 +59,30 @@ export function FinanceVendorInvoiceMatchModal({
   open: boolean;
   onClose: () => void;
   onDone: () => void | Promise<void>;
-  /** After successful match — e.g. leave مهامي to التكاليف */
+  /** After successful match — e.g. leave My Tasks for Costs */
+  onMatched?: (statement: PartyBillingStatementDto) => void;
+}) {
+  if (!open || !statement) return null;
+  return (
+    <FinanceVendorInvoiceMatchForm
+      key={statement.id}
+      statement={statement}
+      onClose={onClose}
+      onDone={onDone}
+      onMatched={onMatched}
+    />
+  );
+}
+
+function FinanceVendorInvoiceMatchForm({
+  statement,
+  onClose,
+  onDone,
+  onMatched,
+}: {
+  statement: PartyBillingStatementDto;
+  onClose: () => void;
+  onDone: () => void | Promise<void>;
   onMatched?: (statement: PartyBillingStatementDto) => void;
 }) {
   const { showToast } = useToast();
@@ -68,29 +90,12 @@ export function FinanceVendorInvoiceMatchModal({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setReason("");
-    setErr("");
-    setBusy(false);
-  }, [open, statement?.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onClose]);
-
-  if (!open || !statement) return null;
+  useEscapeKey(!busy, onClose);
 
   const lockedTotal = statementDisplayTotal(statement);
   const hasAttachment = Boolean(statement.vendorInvoiceAttachmentId?.trim());
 
   async function handleMatch() {
-    if (!statement) return;
     setBusy(true);
     setErr("");
     try {
@@ -105,7 +110,7 @@ export function FinanceVendorInvoiceMatchModal({
         "success",
       );
       onClose();
-      // بعد المطابقة: الخروج من مهامي إلى التكاليف (المستند يخرج من قائمة مهامي).
+      // After match: leave My Tasks for Costs (document leaves the My Tasks list).
       onMatched?.(result.statement);
       void onDone();
     } finally {
@@ -114,7 +119,6 @@ export function FinanceVendorInvoiceMatchModal({
   }
 
   async function handleReturn() {
-    if (!statement) return;
     const trimmed = reason.trim();
     if (trimmed.length < 3) {
       setErr("سبب الإعادة للتصحيح إلزامي");
@@ -140,7 +144,7 @@ export function FinanceVendorInvoiceMatchModal({
   }
 
   async function openAttachment() {
-    if (!statement?.vendorInvoiceAttachmentId) return;
+    if (!statement.vendorInvoiceAttachmentId) return;
     const r = await openPartyBillingAttachment(
       statement.vendorInvoiceAttachmentId,
     );
@@ -152,7 +156,7 @@ export function FinanceVendorInvoiceMatchModal({
   return (
     <ModalOverlay
       role="presentation"
-      className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] !z-[200] max-lg:!items-center"
+      className="!items-center !justify-center bg-[rgba(16,43,78,0.42)] backdrop-blur-[2px] !z-[var(--z-modal)] max-lg:!items-center"
       onClick={() => {
         if (!busy) onClose();
       }}
@@ -194,7 +198,7 @@ export function FinanceVendorInvoiceMatchModal({
             </div>
           ) : null}
 
-          <p className={cn(finNote, "mb-4 text-center")}>
+          <p className={cn(opsTfNote, "mb-4 text-center")}>
             الفاتورة للقراءة فقط وقيمتها مقفلة على المسير. الإعادة للتصحيح
             تؤرشف الفاتورة ويظهر سببها للمكتب.
           </p>
@@ -215,7 +219,7 @@ export function FinanceVendorInvoiceMatchModal({
                   ],
                   [
                     "قيمتها (مقفلة على المسير)",
-                    formatSar(lockedTotal),
+                    fmtMax(lockedTotal),
                     true,
                   ],
                 ] as const
@@ -272,7 +276,7 @@ export function FinanceVendorInvoiceMatchModal({
                 setErr("");
               }}
               placeholder="خلل في المستند أو بياناته"
-              className="w-full resize-y rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] leading-[1.55] text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+              className={cn(opsFldTextarea, "leading-[1.55] placeholder:text-text-3 disabled:opacity-60")}
             />
           </div>
         </ModalBody>
@@ -280,7 +284,7 @@ export function FinanceVendorInvoiceMatchModal({
         <ModalFooter className="flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
           <button
             type="button"
-            className={finGhost}
+            className={opsBtnGhost}
             disabled={busy}
             onClick={onClose}
           >
@@ -289,7 +293,7 @@ export function FinanceVendorInvoiceMatchModal({
           <button
             type="button"
             className={cn(
-              finGhost,
+              opsBtnGhost,
               "border-[#c0553d] text-[#a5432e] enabled:hover:border-[#a5432e] enabled:hover:bg-[color-mix(in_srgb,#c0553d_6%,transparent)] enabled:hover:text-[#a5432e]",
             )}
             disabled={busy}
@@ -299,7 +303,7 @@ export function FinanceVendorInvoiceMatchModal({
           </button>
           <button
             type="button"
-            className={cn(finPrimary, busy && "opacity-75")}
+            className={cn(opsBtnPrimary, busy && "opacity-75")}
             disabled={busy}
             onClick={() => void handleMatch()}
           >

@@ -1,6 +1,7 @@
-/** @evaluator/mfe — مقيم عقاري (property appraisal upload, advisory, recall). */
+/** @evaluator/mfe — real-estate appraiser (property appraisal upload, advisory, recall). */
 
 export { partyAppraisalExtensions } from "./extensions/party-appraisal-extensions";
+export { ensureEvaluatorRuntimeBridgeRegistered } from "./extensions/register-evaluator-runtime-bridge";
 
 export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";
 export { EvaluatorValuationReportTab } from "./components/evaluator/EvaluatorValuationReportTab";
@@ -11,27 +12,32 @@ export { buildAppraiserRecallMenuItems } from "./lib/evaluator/appraiser-recall-
 export { buildAppraiserQueueRowMoreItems } from "./lib/evaluator/appraiser-queue-row-menu";
 
 export * from "./lib/evaluator/evaluator-window-data";
-export * from "./lib/evaluator/evaluator-submission-storage";
+export * from "./lib/evaluator/evaluator-submission-model";
+export * from "./lib/evaluator/evaluator-submission-reads";
+export * from "./lib/evaluator/evaluator-submission-commands";
 export {
-  approvePartyTaskRecall as approveEvaluatorRecall,
   clearPartyTaskRecall as clearEvaluatorRecall,
   getPartyTaskRecall as getEvaluatorRecall,
-  hydratePartyTaskRecalls as hydrateEvaluatorRecalls,
-  hydratePartyTaskRecallForTask as hydrateEvaluatorRecallForTask,
   notifyPartyTaskRecallChanged as notifyEvaluatorRecallChanged,
   PARTY_TASK_RECALL_CHANGED_EVENT,
   PARTY_TASK_RECALL_HYDRATED_EVENT,
   partyTaskRecallStatusLabel as recallStatusLabel,
-  rejectPartyTaskRecall as rejectEvaluatorRecall,
-  requestPartyTaskRecall as requestEvaluatorRecall,
   type PartyTaskRecallRequest as EvaluatorRecallRequest,
   type PartyTaskRecallStatus as EvaluatorRecallStatus,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
+} from "@platform/app-shared/app-data/party-task-recall-model";
+export {
+  hydratePartyTaskRecalls as hydrateEvaluatorRecalls,
+  hydratePartyTaskRecallForTask as hydrateEvaluatorRecallForTask,
+} from "@platform/app-shared/app-data/party-task-recall-reads";
+export {
+  approvePartyTaskRecall as approveEvaluatorRecall,
+  rejectPartyTaskRecall as rejectEvaluatorRecall,
+  requestPartyTaskRecall as requestEvaluatorRecall,
+} from "@platform/app-shared/app-data/party-task-recall-commands";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
 export * from "./lib/evaluator/evaluator-deposit-attachments";
 export * from "./lib/evaluator/valuation-report-number";
-export * from "./lib/evaluator/valuation-report-tab-sections";
 export * from "./lib/evaluator/valuation-report-org-overlay";
 export * from "./lib/evaluator/evaluator-inspection-gate";
 export * from "./lib/evaluator/evaluator-queue";
@@ -45,6 +51,6 @@ export {
   InfathTextField,
   InfathTextAreaField,
   InfathSection,
-} from "./components/evaluator/InfathFormFields";
+} from "@platform/ui-kit";
 
 export * from "./query/evaluator-queries";

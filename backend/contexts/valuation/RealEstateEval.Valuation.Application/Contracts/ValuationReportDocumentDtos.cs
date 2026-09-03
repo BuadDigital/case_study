@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Valuation.Application.Contracts;
 
 public class ValuationReportSectionDto
 {
@@ -53,7 +53,7 @@ public class ValuationReportPrintedAttachmentDto
     public string FileName { get; init; } = "";
     public int ReportSectionNumber { get; init; }
     public bool IsImage { get; init; }
- /// <summary>Inspector capture date (11س — photos auto-dated), YYYY/MM/DD.</summary>
+ /// <summary>Inspector capture date (11s — photos auto-dated), YYYY/MM/DD.</summary>
     public string? CapturedAtDisplay { get; init; }
 }
 
@@ -80,10 +80,18 @@ public class ValuationReportDocumentDto
     public string? MethodsRationale { get; init; }
     public bool AllowsIssuance { get; init; }
     public string TextLayerNoteAr { get; init; } = "النصوص المعيارية/القانونية تُجمَّد برقم نسخة عند الإصدار — القالب البصري النهائي يعتمد report-template-approved.html عند توفره.";
+ /// <summary>Decision 23: text-package number — one version for the whole package, frozen at issuance.</summary>
+    public int TextPackageVersion { get; init; } = 1;
  /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";
  /// <summary>Org-settings letterhead (3-slice render); null keeps the template's baked one.</summary>
     public string? LetterheadImageUrl { get; init; }
+    public decimal? LetterheadHeadMm { get; init; }
+    public decimal? LetterheadFootTopMm { get; init; }
+    public decimal? LetterheadPadMm { get; init; }
+    public decimal? LetterheadPadStartMm { get; init; }
+    public decimal? StampWidthCm { get; init; }
+    public decimal? StampHeightCm { get; init; }
     public string ReportDateHijriDisplay { get; init; } = "";
     public string MarketMethodLabelAr { get; init; } = "غير مستخدم";
     public string CostMethodLabelAr { get; init; } = "غير مستخدم";

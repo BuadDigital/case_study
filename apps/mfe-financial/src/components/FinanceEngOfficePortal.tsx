@@ -1,20 +1,22 @@
 "use client";
 
 /**
- * بوابة المكتب الهندسي — full stack (api/party-billing-statements)
- * Tailwind فقط (finance-tw) — بلا CSS/style objects.
+ * Engineering-office portal — full stack (api/party-billing-statements)
+ * Tailwind only (finance-tw) — no CSS/style objects.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import {
   loadPartyBillingStatements,
   runSubmitVendorInvoice,
   uploadPartyBillingVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { getEngineeringOffices } from "@case-study/mfe/lib/distribution-assignees";
@@ -27,30 +29,24 @@ import {
   ModalOverlay,
   ModalTitle,
   cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsInsetPanel,
+  opsLetterCard,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
 import { buildFinanceHref } from "../lib/finance-nav";
-import {
-  finCard,
-  finEmptyS,
-  finGhost,
-  finNote,
-  finPrimary,
-  finSel,
-  finSelCtrl,
-  finCaret,
-} from "../lib/finance-tw";
+import { finCaret, finSel, finSelCtrl } from "../lib/finance-tw";
+import { todayIso } from "@platform/app-shared/format/date";
 
+// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
-  return Number(n || 0).toLocaleString("en-US");
+  return fmtMax(Number(n || 0), 3);
 }
 
-function todayIso() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 function periodFromIso(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";
@@ -70,9 +66,10 @@ function isPortalAwaitingInvoice(s: PartyBillingStatementDto): boolean {
   return s.status === "issued" && isEngVendor(s);
 }
 
+const EMPTY_STAFF_USERS: Parameters<typeof getEngineeringOffices>[0] = [];
+
 const fieldLbl = "text-[12px] font-semibold text-text-2";
-const fieldInp =
-  "w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]";
+const fieldInp = opsFldControl;
 
 export function FinanceEngOfficePortal({
   focusPartyId,
@@ -82,7 +79,7 @@ export function FinanceEngOfficePortal({
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const offices = useMemo(
     () => getEngineeringOffices(staffUsers),
@@ -95,7 +92,7 @@ export function FinanceEngOfficePortal({
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "eng-portal",
@@ -153,14 +150,7 @@ export function FinanceEngOfficePortal({
   const ready = !statementsQuery.isPending && !statementsQuery.isError;
   const portalEmpty = ready && portalRuns.length === 0;
 
-  useEffect(() => {
-    if (!modalRunId) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !busy) closeModal();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [modalRunId, busy]);
+  useEscapeKey(Boolean(modalRunId) && !busy, () => closeModal());
 
   function openUpload(run: PartyBillingStatementDto) {
     setModalRunId(run.id);
@@ -212,7 +202,7 @@ export function FinanceEngOfficePortal({
       }
       showToast("رُفعت الفاتورة على المسير — بانتظار مطابقة المالية");
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       });
       setModalRunId(null);
       setFile(null);
@@ -238,7 +228,7 @@ export function FinanceEngOfficePortal({
       data-screen-label="بوابة المكتب الهندسي"
       className="flex min-h-[min(62vh,560px)] flex-col"
     >
-      <p className={finNote}>
+      <p className={cn(opsTfNote, "mb-3.5")}>
         هذه الشاشة بعين المكتب الهندسي: يرفع فاتورة مطابقة للمسير المحوّل إليه.
         قيمة الفاتورة مقفلة على المسير ولا تُدخل يدوياً.
       </p>
@@ -281,19 +271,19 @@ export function FinanceEngOfficePortal({
       {statementsQuery.isError ? (
         <div
           className={cn(
-            finCard,
+            opsLetterCard,
             "flex flex-1 flex-col items-center justify-center px-6 py-12 text-center",
           )}
         >
           <div className="text-[14px] font-bold text-[#a32d2d]">
             تعذّر تحميل المسيرات
           </div>
-          <p className={cn(finEmptyS, "mt-2 max-w-sm text-text-2")}>
+          <p className="mt-2 max-w-sm text-[13px] text-text-2">
             تحقق من اتصال خادم المالية ثم أعد المحاولة.
           </p>
           <button
             type="button"
-            className={cn(finGhost, "mt-4")}
+            className={cn(opsBtnGhost, "mt-4")}
             onClick={() => void statementsQuery.refetch()}
           >
             إعادة المحاولة
@@ -304,7 +294,7 @@ export function FinanceEngOfficePortal({
       {statementsQuery.isPending ? (
         <div
           className={cn(
-            finCard,
+            opsLetterCard,
             "flex flex-1 items-center justify-center py-[54px] text-[13px] text-text-3",
           )}
         >
@@ -323,7 +313,7 @@ export function FinanceEngOfficePortal({
             return (
               <div
                 key={s.id}
-                className="overflow-hidden rounded-[14px] border border-border bg-surface shadow-[0_1px_2px_rgba(18,40,76,0.03)]"
+                className={opsLetterCard}
               >
                 <div className="flex flex-wrap items-center gap-[18px] border-b border-border bg-surface-2 px-[18px] py-[15px]">
                   <Meta label="مسير الصرف">
@@ -388,7 +378,7 @@ export function FinanceEngOfficePortal({
                 <div className="flex flex-wrap items-center gap-3 px-[18px] py-4">
                   <button
                     type="button"
-                    className={finPrimary}
+                    className={opsBtnPrimary}
                     onClick={() => openUpload(s)}
                   >
                     رفع الفاتورة على المسير
@@ -406,11 +396,11 @@ export function FinanceEngOfficePortal({
       {portalEmpty ? (
         <div
           className={cn(
-            finCard,
+            opsLetterCard,
             "flex flex-1 flex-col items-center justify-center px-7 py-14 text-center",
           )}
         >
-          <div className="mb-4 grid h-[52px] w-[52px] place-items-center rounded-[14px] border border-border bg-surface-2 text-text-3">
+          <div className={cn(opsInsetPanel, "mb-4 grid h-[52px] w-[52px] place-items-center text-text-3")}>
             <svg
               width="26"
               height="26"
@@ -452,10 +442,10 @@ export function FinanceEngOfficePortal({
           )}
 
           <div className="flex flex-wrap justify-center gap-2.5">
-            <Link href={costsStatementsHref} className={finPrimary}>
+            <Link href={costsStatementsHref} className={opsBtnPrimary}>
               فتح مسيرات التكاليف
             </Link>
-            <Link href={costsDuesHref} className={finGhost}>
+            <Link href={costsDuesHref} className={opsBtnGhost}>
               المستحقات الجاهزة
             </Link>
           </div>
@@ -465,7 +455,7 @@ export function FinanceEngOfficePortal({
       {modalRun ? (
         <ModalOverlay
           role="presentation"
-          className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] !z-[200]"
+          className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] !z-[var(--z-modal)]"
           onClick={closeModal}
         >
           <ModalCard
@@ -493,7 +483,7 @@ export function FinanceEngOfficePortal({
                 </div>
               ) : null}
 
-              <p className={cn(finNote, "mb-4")}>
+              <p className={cn(opsTfNote, "mb-4")}>
                 القيمة مقفلة على المسير — أصدر فاتورة مطابقة له وارفع نسخة PDF.
               </p>
 
@@ -559,7 +549,7 @@ export function FinanceEngOfficePortal({
                     <button
                       type="button"
                       disabled={busy}
-                      className={finGhost}
+                      className={opsBtnGhost}
                       onClick={() => fileRef.current?.click()}
                     >
                       إرفاق PDF
@@ -575,7 +565,7 @@ export function FinanceEngOfficePortal({
             <ModalFooter className="justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
               <button
                 type="button"
-                className={finGhost}
+                className={opsBtnGhost}
                 disabled={busy}
                 onClick={closeModal}
               >
@@ -583,7 +573,7 @@ export function FinanceEngOfficePortal({
               </button>
               <button
                 type="button"
-                className={cn(finPrimary, busy && "opacity-75")}
+                className={cn(opsBtnPrimary, busy && "opacity-75")}
                 disabled={busy}
                 onClick={() => void submit()}
               >

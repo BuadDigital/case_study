@@ -7,15 +7,17 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Permissions;
+using RealEstateEval.Identity.Infrastructure.Permissions;
 using System.Text.RegularExpressions;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
-public class UserRegistrationService : IUserRegistrationService
+public partial class UserRegistrationService : IUserRegistrationService
 {
     private readonly IdentityDbContext _db;
-    private readonly PlatformDbContext? _platform;
     private readonly IAuditLogAppend? _auditAppend;
     private readonly List<AuditLog> _pendingRemoteAudit = [];
     private readonly UserManager<ApplicationUser> _userManager;
@@ -32,228 +34,18 @@ public class UserRegistrationService : IUserRegistrationService
         IAuditLogWriter audit,
         IAuthSessionService sessions,
         IOptions<DatabaseOptions>? dbOptions = null,
-        PlatformDbContext? platform = null,
         IAuditLogAppend? auditAppend = null,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
-        _platform = platform;
         _auditAppend = auditAppend;
         _userManager = userManager;
         _activationTokenOptions = activationTokenOptions;
         _audit = audit;
         _sessions = sessions;
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
-    }
-
-    public async Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return await (
-            from user in _db.Users.AsNoTracking()
-            join profile in _db.UserProfiles.AsNoTracking() on user.Id equals profile.UserId
-            where profile.Status == UserStatus.Active && user.UserName != null
-            orderby user.UserName == "sliman" ? 0 : 1, user.DisplayName
-            select new DevLoginUserDto
-            {
-                Username = user.UserName!,
-                Label = string.IsNullOrWhiteSpace(profile.JobTitle)
-                    ? user.DisplayName
-                    : $"{user.DisplayName} — {profile.JobTitle}",
-            }).ToListAsync(cancellationToken);
-    }
-
-    public async Task<UserInfoDto?> GetIdentityUserAsync(
-        string userId,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(userId))
-            return null;
-
-        return await _db.Users
-            .AsNoTracking()
-            .Where(user => user.Id == userId)
-            .Select(user => new UserInfoDto
-            {
-                Id = user.Id,
-                Email = user.Email ?? string.Empty,
-                DisplayName = user.DisplayName,
-            })
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<UserListItemDto>> ListAsync(
-        RegistrationSource? sourceScope = null,
-        CancellationToken cancellationToken = default)
-    {
-        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var rows = await _db.UserProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .OrderByDescending(p => p.CreatedAtUtc)
-            .Take(take)
-            .ToListAsync(cancellationToken);
-
-        var userIds = rows.Select(p => p.UserId).ToList();
-        var roleRows = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where userIds.Contains(ur.UserId)
-            select new { ur.UserId, RoleName = r.Name }
-        ).ToListAsync(cancellationToken);
-
-        var rolesByUser = roleRows
-            .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.RoleName).ToList());
-
-        return rows
-            .Where(p => sourceScope is null || p.RegistrationSource == sourceScope.Value)
-            .Select(p => RegistrationMapper.ToListItem(
-                p.User,
-                p,
-                rolesByUser.GetValueOrDefault(p.UserId, [])))
-            .ToList();
-    }
-
-    public async Task<UserListItemDto?> GetByUserIdAsync(
-        string userId,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(userId))
-            return null;
-
-        var profile = await _db.UserProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .Include(p => p.HrEmployee)
-            .Include(p => p.ProcProvider)
-            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
-
-        var roles = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where ur.UserId == userId && r.Name != null
-            select r.Name!
-        ).ToListAsync(cancellationToken);
-
-        if (profile is null)
-        {
-            var user = await _db.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
-            if (user is null)
-                return null;
-
-            return new UserListItemDto
-            {
-                Id = user.Id,
-                DisplayName = user.DisplayName,
-                JobTitle = string.Empty,
-                Email = user.Email ?? string.Empty,
-                UserName = user.UserName ?? string.Empty,
-                ContractType = ContractType.Internal,
-                Status = UserStatus.Active,
-                RegistrationSource = RegistrationSource.Hr,
-                PhoneNumber = user.PhoneNumber,
-                CreatedAtUtc = _time.UtcNow(),
-                SystemRoles = roles,
-                Details = [],
-            };
-        }
-
-        return RegistrationMapper.ToListItem(profile.User, profile, roles);
-    }
-
-    public async Task<IReadOnlyList<UserListItemDto>> ListDistributionAssigneesAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var all = await ListAsync(null, cancellationToken);
-        return all
-            .Where(u =>
-                u.Status == UserStatus.Active
-                && !string.IsNullOrWhiteSpace(u.DistributionAssigneeId))
-            .ToList();
-    }
-
-    public async Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await _db.UserProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .ToListAsync(cancellationToken);
-
-        var userIds = rows.Select(p => p.UserId).ToList();
-        var roleRows = await (
-            from ur in _db.UserRoles.AsNoTracking()
-            join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-            where userIds.Contains(ur.UserId)
-            select new { ur.UserId, RoleName = r.Name }
-        ).ToListAsync(cancellationToken);
-
-        var rolesByUser = roleRows
-            .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.RoleName).ToList());
-
-        OrgPersonDto? ToPerson(UserProfile p)
-        {
-            var roles = rolesByUser.GetValueOrDefault(p.UserId, []);
-            var orgRole = roles.FirstOrDefault(r =>
-                OrgRoles.IsOrgRole(r)
-                || OrgRoles.RetiredDepartmentAdmins.Contains(r));
-            if (orgRole is null)
-                return null;
-
-            return new OrgPersonDto
-            {
-                Id = p.UserId,
-                DisplayName = p.User.DisplayName,
-                Email = p.User.Email ?? string.Empty,
-                JobTitle = p.JobTitle,
-                SystemRole = orgRole,
-            };
-        }
-
-        var byRole = rows
-            .Select(p => (Profile: p, Person: ToPerson(p)))
-            .Where(x => x.Person is not null)
-            .ToDictionary(x => x.Person!.SystemRole, x => x.Person!);
-
-        return new OrganizationOverviewDto
-        {
-            Cdo = byRole.GetValueOrDefault(OrgRoles.Cdo),
-            Departments =
-            [
-                new OrgDepartmentDto
-                {
-                    Code = "HR",
-                    Title = "الموارد البشرية",
-                    Description = "موظفون — كل أنواع التوظيف",
-                    IsActive = true,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.HrAdmin),
-                },
-                new OrgDepartmentDto
-                {
-                    Code = "PROCUREMENT",
-                    Title = "المالية والعقود",
-                    Description = "مقدمو خدمة — أفراد ومؤسسات",
-                    IsActive = true,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.ProcAdmin),
-                },
-                new OrgDepartmentDto
-                {
-                    Code = "CRM",
-                    Title = "علاقات العملاء",
-                    Description = "عملاء محتملون وفعليون",
-                    IsActive = false,
-                    Admin = byRole.GetValueOrDefault(OrgRoles.CrmAdmin),
-                },
-            ],
-        };
     }
 
     public async Task<int> DeleteAllRegisteredAsync(
@@ -299,7 +91,7 @@ public class UserRegistrationService : IUserRegistrationService
         string actorId,
         CancellationToken cancellationToken = default)
     {
-        var errors = ValidateCreateStaffRequest(request);
+        var errors = StaffUserRules.ValidateCreateStaffRequest(request);
         if (errors.Count > 0)
             return (null, errors);
 
@@ -307,7 +99,8 @@ public class UserRegistrationService : IUserRegistrationService
         var jobTitle = PrototypeRoleResolver.JobTitleForRoleId(roleId)!;
         var defaults = StaffRoleDefaults.For(roleId);
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var normalizedMobile = NormalizeMobile(request.Mobile);
+        // The above verification within ValidateCreateStaffRequest ensures a valid Saudi mobile.
+        var normalizedMobile = StaffUserRules.NormalizeMobile(request.Mobile)!;
         var displayName = request.DisplayName.Trim();
         var nationalId = request.NationalId.Trim();
 
@@ -406,13 +199,27 @@ public class UserRegistrationService : IUserRegistrationService
             TaxNumber = Clean(request.TaxNumber),
             CommercialRegistration = Clean(request.CommercialRegistration),
             JoinedAt = request.JoinedAt,
-            DistributionAssigneeId = BuildDistributionAssigneeId(roleId, userName),
+            DistributionAssigneeId = StaffUserRules.BuildDistributionAssigneeId(roleId, userName),
             PermissionLevel = defaults.PermissionLevel,
             Status = UserStatus.PendingActivation,
             CreatedAtUtc = _time.UtcNow(),
         };
         if (roleId == "engineering-office")
             profile.RegistrationSource = RegistrationSource.Proc;
+
+ // Numbering session (bit lines 2 and 5): The user reference number is assigned upon registration.
+        var (userReference, userReferenceError) =
+            await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                _db,
+                DatabaseSchemas.Identity,
+                ReferenceNumbering.User,
+                _time.UtcNow(),
+                cancellationToken);
+        if (userReferenceError is not null)
+        {
+            return (null, new Dictionary<string, string> { ["_form"] = userReferenceError });
+        }
+        profile.ReferenceNumber = userReference;
 
         _db.UserProfiles.Add(profile);
         AddAudit(_audit.Create(
@@ -452,16 +259,16 @@ public class UserRegistrationService : IUserRegistrationService
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
-            return (null, FormError("معرّف المستخدم غير صالح."));
+            return (null, StaffUserRules.FormError("معرّف المستخدم غير صالح."));
 
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
-            return (null, FormError("المستخدم غير موجود."));
+            return (null, StaffUserRules.FormError("المستخدم غير موجود."));
 
         var profile = await _db.UserProfiles
             .FirstOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
         if (profile is null)
-            return (null, FormError("ملف المستخدم غير موجود."));
+            return (null, StaffUserRules.FormError("ملف المستخدم غير موجود."));
 
  // Resolve the target state first: an absent member keeps the stored value, and an
  // empty string clears an optional one.
@@ -474,17 +281,21 @@ public class UserRegistrationService : IUserRegistrationService
             : request.Email.Trim().ToLowerInvariant();
         var mobile = request.Mobile is null
             ? user.PhoneNumber
-            : NormalizeMobile(request.Mobile);
+            : StaffUserRules.NormalizeMobile(request.Mobile);
+        // Q-3: A mobile phone entered in a format other than Saudi Arabia is rejected - a number that cannot be entered is not stored.
+        if (request.Mobile is not null && mobile is null)
+            return (null, StaffUserRules.FormError(
+                "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).", "mobile"));
         var city = request.City is null ? profile.City : request.City.Trim();
         var nationalId = request.NationalId is null
             ? profile.NationalId
             : request.NationalId.Trim();
         var inspectorType = roleId == "field-inspector"
-            ? ResolveOptional(request.InspectorType, profile.InspectorType)?.ToLowerInvariant()
+            ? StaffUserRules.ResolveOptional(request.InspectorType, profile.InspectorType)?.ToLowerInvariant()
             : null;
         var hasCompensation = request.HasCompensation ?? profile.HasCompensation;
         var feeValueSar = hasCompensation ? request.FeeValueSar ?? profile.FeeValueSar : null;
-        var iban = ResolveOptional(request.Iban, profile.Iban)?.Replace(" ", "").ToUpperInvariant();
+        var iban = StaffUserRules.ResolveOptional(request.Iban, profile.Iban)?.Replace(" ", "").ToUpperInvariant();
         var status = request.Status ?? profile.Status;
 
         var errors = await ValidateUpdateStaffAsync(
@@ -505,9 +316,9 @@ public class UserRegistrationService : IUserRegistrationService
 
         if (status != profile.Status && status == UserStatus.Disabled)
         {
-            var refusal = DisableRefusalReason(user, userId, actorId);
+            var refusal = StaffUserRules.DisableRefusalReason(user, userId, actorId);
             if (refusal is not null)
-                return (null, FormError(refusal));
+                return (null, StaffUserRules.FormError(refusal));
         }
 
         await using var transaction = _db.Database.IsRelational()
@@ -552,16 +363,16 @@ public class UserRegistrationService : IUserRegistrationService
         profile.FeeValueSar = feeValueSar;
         profile.Iban = iban;
 
-        var avatarUrl = ResolveOptional(request.AvatarUrl, profile.AvatarUrl);
+        var avatarUrl = StaffUserRules.ResolveOptional(request.AvatarUrl, profile.AvatarUrl);
         Track("avatarUrl", profile.AvatarUrl, avatarUrl);
         profile.AvatarUrl = avatarUrl;
 
-        var taxNumber = ResolveOptional(request.TaxNumber, profile.TaxNumber);
+        var taxNumber = StaffUserRules.ResolveOptional(request.TaxNumber, profile.TaxNumber);
         Track("taxNumber", profile.TaxNumber, taxNumber);
         profile.TaxNumber = taxNumber;
 
         var commercialRegistration =
-            ResolveOptional(request.CommercialRegistration, profile.CommercialRegistration);
+            StaffUserRules.ResolveOptional(request.CommercialRegistration, profile.CommercialRegistration);
         Track("commercialRegistration", profile.CommercialRegistration, commercialRegistration);
         profile.CommercialRegistration = commercialRegistration;
 
@@ -607,7 +418,7 @@ public class UserRegistrationService : IUserRegistrationService
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
-                return (null, FormError(
+                return (null, StaffUserRules.FormError(
                     string.Join(" ", updateResult.Errors.Select(e => e.Description))));
             }
         }
@@ -693,11 +504,14 @@ public class UserRegistrationService : IUserRegistrationService
             profile.Department = SupervisingDepartments.DeriveForRole(roleId);
         }
         if (profile.DistributionAssigneeId is null)
-            profile.DistributionAssigneeId = BuildDistributionAssigneeId(roleId, user.UserName ?? "");
+            profile.DistributionAssigneeId = StaffUserRules.BuildDistributionAssigneeId(roleId, user.UserName ?? "");
 
         var currentRoles = await _userManager.GetRolesAsync(user);
         var target = defaults.IdentityRoles.Distinct().ToList();
-        var stale = (previous?.IdentityRoles ?? [])
+        var removable = (previous?.IdentityRoles ?? [])
+            .Concat(DepartmentRoles.RetiredIdentityRoles)
+            .Distinct();
+        var stale = removable
             .Where(role => !target.Contains(role) && currentRoles.Contains(role));
         foreach (var role in stale)
             await _userManager.RemoveFromRoleAsync(user, role);
@@ -807,34 +621,6 @@ public class UserRegistrationService : IUserRegistrationService
         return errors;
     }
 
- /// <summary>Guards shared by disabling through PATCH and through the delete endpoint.</summary>
-    private static string? DisableRefusalReason(
-        ApplicationUser user,
-        string userId,
-        string? requestingUserId)
-    {
-        if (!string.IsNullOrWhiteSpace(requestingUserId)
-            && string.Equals(userId, requestingUserId, StringComparison.Ordinal))
-        {
-            return "لا يمكنك تعطيل حسابك الحالي.";
-        }
-
-        var email = (user.Email ?? "").Trim().ToLowerInvariant();
-        var userName = (user.UserName ?? "").Trim().ToLowerInvariant();
-        return email is "admin@local.dev" or "s.salhy@gmail.com"
-               || userName is "sliman" or "admin"
-            ? "لا يمكن تعطيل حساب المسؤول الأساسي."
-            : null;
-    }
-
-    private static Dictionary<string, string> FormError(string message) =>
-        new(StringComparer.Ordinal) { ["_form"] = message };
-
-    private static string? ResolveOptional(string? requested, string? current) =>
-        requested is null
-            ? current
-            : requested.Trim().Length == 0 ? null : requested.Trim();
-
     public async Task<(ActivationTicketDto? Ticket, string? Error)> IssueActivationTicketAsync(
         string userId,
         string actorId,
@@ -935,7 +721,7 @@ public class UserRegistrationService : IUserRegistrationService
         if (user is null)
             return (false, "المستخدم غير موجود.");
 
-        var refusal = DisableRefusalReason(user, userId, requestingUserId);
+        var refusal = StaffUserRules.DisableRefusalReason(user, userId, requestingUserId);
         if (refusal is not null)
             return (false, refusal);
 
@@ -969,70 +755,13 @@ public class UserRegistrationService : IUserRegistrationService
         return (true, null);
     }
 
-    private static Dictionary<string, string> ValidateCreateStaffRequest(CreateStaffUserRequest request)
-    {
-        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
-
-        if (string.IsNullOrWhiteSpace(request.DisplayName))
-            errors["displayName"] = "الاسم مطلوب.";
-        if (string.IsNullOrWhiteSpace(request.Email))
-            errors["email"] = "البريد الإلكتروني مطلوب.";
-        else if (!IsValidEmail(request.Email.Trim()))
-            errors["email"] = "صيغة البريد الإلكتروني غير صحيحة.";
-        if (string.IsNullOrWhiteSpace(request.Mobile))
-            errors["mobile"] = "رقم الجوال مطلوب.";
-        else if (!Regex.IsMatch(NormalizeMobile(request.Mobile), @"^\+[1-9]\d{8,14}$"))
-            errors["mobile"] = "صيغة رقم الجوال غير صحيحة.";
-        if (string.IsNullOrWhiteSpace(request.City))
-            errors["city"] = "المدينة مطلوبة.";
-        if (string.IsNullOrWhiteSpace(request.NationalId))
-            errors["nationalId"] = "رقم الهوية مطلوب.";
-        else if (!Regex.IsMatch(request.NationalId.Trim(), @"^[12]\d{9}$"))
-            errors["nationalId"] = "رقم الهوية يجب أن يتكون من 10 أرقام.";
-        if (string.IsNullOrWhiteSpace(request.RoleId))
-            errors["roleId"] = "الدور مطلوب.";
-        else if (!PrototypeRoleResolver.IsCreatableStaffRoleId(request.RoleId))
-            errors["roleId"] = "الدور المحدد غير مدعوم.";
-        else if (request.RoleId.Trim() == "field-inspector"
-                 && request.InspectorType?.Trim().ToLowerInvariant()
-                     is not ("employee" or "contractor"))
-            errors["inspectorType"] = "نوع المعاين مطلوب.";
-        if (request.FeeValueSar is < 0)
-            errors["feeValueSar"] = "قيمة الأتعاب لا يمكن أن تكون سالبة.";
-        if (request.HasCompensation == true && request.FeeValueSar is null)
-            errors["feeValueSar"] = "قيمة الأتعاب مطلوبة عند تفعيل التعويض.";
-        if (!string.IsNullOrWhiteSpace(request.Iban)
-            && !Regex.IsMatch(request.Iban.Trim().Replace(" ", ""), @"^SA\d{22}$",
-                RegexOptions.IgnoreCase))
-            errors["iban"] = "صيغة الآيبان السعودي غير صحيحة.";
-
-        return errors;
-    }
-
-    private static bool IsValidEmail(string email) => Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-
-    private static string NormalizeMobile(string mobile)
-    {
-        var digits = Regex.Replace(mobile, @"\D", "");
-        if (digits.StartsWith("00966", StringComparison.Ordinal))
-            digits = digits[2..];
-        if (digits.StartsWith("966", StringComparison.Ordinal))
-            return $"+{digits}";
-        if (digits.StartsWith("05", StringComparison.Ordinal) && digits.Length == 10)
-            return $"+966{digits[1..]}";
-        if (digits.StartsWith('5') && digits.Length == 9)
-            return $"+966{digits}";
-        return $"+{digits}";
-    }
-
-    private static string? Clean(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Clean(string? value) => Texts.NullIfBlank(value);
 
     private async Task<string> AllocateUniqueUserNameAsync(
         string normalizedEmail,
         CancellationToken cancellationToken)
     {
-        var baseName = DeriveUserNameFromEmail(normalizedEmail);
+        var baseName = StaffUserRules.DeriveUserNameFromEmail(normalizedEmail);
         var candidate = baseName;
         var suffix = 2;
 
@@ -1045,124 +774,9 @@ public class UserRegistrationService : IUserRegistrationService
         return candidate;
     }
 
-    private static string DeriveUserNameFromEmail(string normalizedEmail)
-    {
-        var local = normalizedEmail.Split('@')[0].Trim().ToLowerInvariant();
-        var sanitized = Regex.Replace(local, @"[^a-z0-9._-]", "_");
-        sanitized = sanitized.Trim('_', '.', '-');
-        if (string.IsNullOrWhiteSpace(sanitized))
-            sanitized = "user";
-        return sanitized.Length > 50 ? sanitized[..50] : sanitized;
-    }
-
-    private static string BuildDistributionAssigneeId(string roleId, string userName)
-    {
-        var prefix = roleId switch
-        {
-            "cdo" => "cdo",
-            "general-manager" => "gm",
-            "section-supervisor" => "ss",
-            "case-specialist" => "cs",
-            "government-reviewer" => "gov",
-            "real-estate-appraiser" => "val",
-            "field-inspector" => "fi",
-            "financial-officer" => "fo",
-            _ => "usr",
-        };
-
-        var slug = Regex.Replace(userName.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
-        if (string.IsNullOrWhiteSpace(slug))
-            slug = "user";
-
-        return $"{prefix}-{slug}";
-    }
-
-    private sealed record StaffRoleDefaults(
-        string PermissionLevel,
-        string EmploymentType,
-        string Department,
-        string? Section,
-        ContractType ContractType,
-        IReadOnlyList<string> IdentityRoles)
-    {
-        public static StaffRoleDefaults? TryFor(string roleId) =>
-            PrototypeRoleResolver.IsCreatableStaffRoleId(roleId) ? For(roleId) : null;
-
-        public static StaffRoleDefaults For(string roleId) =>
-            roleId switch
-            {
-                "cdo" => new(
-                    "cdo",
-                    "دوام كامل",
-                    "الإدارة التنفيذية",
-                    null,
-                    ContractType.Internal,
-                    [OrgRoles.Cdo, DepartmentRoles.Hr]),
-                "general-manager" => new(
-                    "مدير",
-                    "دوام كامل",
-                    "إدارة التقييم العقاري",
-                    null,
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "section-supervisor" => new(
-                    "مشرف",
-                    "دوام كامل",
-                    SupervisingDepartments.CaseStudy,
-                    "قسم دراسة الحالة",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Supervisor"]),
-                "case-specialist" => new(
-                    "محرر",
-                    "دوام كامل",
-                    SupervisingDepartments.CaseStudy,
-                    "قسم دراسة الحالة",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "government-reviewer" => new(
-                    "محرر",
-                    "دوام كامل",
-                    SupervisingDepartments.CaseStudy,
-                    "قسم دراسة الحالة",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "real-estate-appraiser" => new(
-                    "محرر",
-                    "دوام كامل",
-                    SupervisingDepartments.Valuation,
-                    "قسم تقييم الأفراد",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "field-inspector" => new(
-                    "محرر",
-                    "دوام كامل",
-                    SupervisingDepartments.Valuation,
-                    "قسم تقييم الأفراد",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "financial-officer" => new(
-                    "محرر",
-                    "دوام كامل",
-                    SupervisingDepartments.Finance,
-                    "قسم المحاسبة",
-                    ContractType.Internal,
-                    [DepartmentRoles.Hr, "Editor"]),
-                "engineering-office" => new(
-                    "مقدم خدمة",
-                    "متعاقد",
-                    SupervisingDepartments.External,
-                    null,
-                    ContractType.ServiceProvider,
-                    [DepartmentRoles.Proc]),
-                _ => throw new ArgumentOutOfRangeException(nameof(roleId), roleId, null),
-            };
-    }
-
     private void AddAudit(AuditLog entry)
     {
-        if (_platform is not null)
-            _platform.AuditLogs.Add(entry);
-        else if (_auditAppend is not null)
+        if (_auditAppend is not null)
             _pendingRemoteAudit.Add(entry);
         else
             _db.AuditLogs.Add(entry);
@@ -1171,8 +785,6 @@ public class UserRegistrationService : IUserRegistrationService
     private async Task SaveIdentityAsync(CancellationToken cancellationToken)
     {
         await _db.SaveChangesAsync(cancellationToken);
-        if (_platform is not null)
-            await _platform.SaveChangesAsync(cancellationToken);
         if (_auditAppend is not null && _pendingRemoteAudit.Count > 0)
         {
             foreach (var entry in _pendingRemoteAudit)

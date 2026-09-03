@@ -1,0 +1,51 @@
+﻿# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js / build outputs
+.next/
+**/.next/
+out/
+**/out/
+dist/
+**/dist/
+build/
+**/build/
+.turbo/
+**/.turbo/
+*.tsbuildinfo
+
+# Test / coverage / reports
+coverage/
+**/coverage/
+playwright-report/
+test-results/
+blob-report/
+artifacts/
+**/TestResults/
+
+# .NET build
+backend/**/bin/
+backend/**/obj/
+backend/_build_check/
+
+# Local data / blobs / datasets
+data/blobs/
+datasets/osoul-croquis/
+
+# Env / secrets / Vercel
+.env*
+.vercel/
+*.pem
+
+# Yarn / pnpm noise
+.yarn/*
+.pnp.*
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor junk
+.DS_Store
+.cursor/

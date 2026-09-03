@@ -1,27 +1,30 @@
 "use client";
 
 /**
- * مستحقات المعاين داخل البروفايل — ready-lines + statements (فرد).
+ * Inspector dues inside profile — ready-lines + statements (individual).
  */
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { dmy } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   Badge,
   Spinner,
   Table,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
@@ -38,16 +41,9 @@ type DueLine = {
   st: DueSt;
 };
 
+// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
 function money(n: number) {
-  return Number(n || 0).toLocaleString("en-US");
-}
-
-function dmy(iso: string | null | undefined): string {
-  if (!iso?.trim()) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+  return fmtMax(Number(n || 0), 3);
 }
 
 function isFieldInspectionLine(taskKind: string | null | undefined) {
@@ -153,7 +149,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
 
   const readyQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "ready-lines",
       "profile-inspector",
@@ -166,7 +162,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "profile-inspector",
@@ -234,38 +230,39 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table className="min-w-[560px]">
-        <THead>
-          <Tr hoverable={false}>
-            <Th>المرجع</Th>
-            <Th>تاريخ الاستحقاق</Th>
-            <Th>المبلغ</Th>
-            <Th>الحالة</Th>
+    <Table framed className="min-w-[560px]">
+      <THead>
+        <Tr hoverable={false}>
+          <Th>المرجع</Th>
+          <Th>تاريخ الاستحقاق</Th>
+          <Th>المبلغ</Th>
+          <Th>الحالة</Th>
+        </Tr>
+      </THead>
+      <TBody>
+        {rows.map((row) => (
+          <Tr key={row.id}>
+            <Td>
+              <div className="flex flex-col gap-0.5">
+                <span
+                  dir="ltr"
+                  className="inline-block text-start font-bold text-gold-d tabular-nums [unicode-bidi:isolate]"
+                >
+                  {row.ref}
+                </span>
+                <span className="text-[11px] text-text-3">{row.detail}</span>
+              </div>
+            </Td>
+            <TdLtr bare>{dmy(row.atIso)}</TdLtr>
+            <TdLtr bare valueClassName="font-extrabold tabular-nums">
+              {money(row.amount)} ر.س
+            </TdLtr>
+            <Td>
+              <Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>
+            </Td>
           </Tr>
-        </THead>
-        <TBody>
-          {rows.map((row) => (
-            <Tr key={row.id}>
-              <Td>
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-bold text-gold-d" dir="ltr">
-                    {row.ref}
-                  </span>
-                  <span className="text-[11px] text-text-3">{row.detail}</span>
-                </div>
-              </Td>
-              <Td dir="ltr">{dmy(row.atIso)}</Td>
-              <Td dir="ltr" className="font-extrabold tabular-nums">
-                {money(row.amount)} ر.س
-              </Td>
-              <Td>
-                <Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>
-              </Td>
-            </Tr>
-          ))}
-        </TBody>
-      </Table>
-    </div>
+        ))}
+      </TBody>
+    </Table>
   );
 }

@@ -2,11 +2,9 @@
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import {
-  SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
-  loadSuspendedTransactions,
-} from "../lib/prototype/suspended-transactions-storage";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "../lib/app-data/suspended-transactions-model";
+import { loadSuspendedTransactions } from "../lib/app-data/suspended-transactions-reads";
 
 const STALE_MS = 30_000;
 const GC_MS = 10 * 60_000;
@@ -17,7 +15,7 @@ export function useSuspendedTransactionsQuery() {
   useEffect(() => {
     const onChange = () => {
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.suspendedTransactions(),
+        queryKey: appDataKeys.suspendedTransactions(),
       });
     };
     window.addEventListener(SUSPENDED_TRANSACTIONS_CHANGED_EVENT, onChange);
@@ -26,7 +24,7 @@ export function useSuspendedTransactionsQuery() {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: prototypeKeys.suspendedTransactions(),
+    queryKey: appDataKeys.suspendedTransactions(),
     queryFn: loadSuspendedTransactions,
     staleTime: STALE_MS,
     gcTime: GC_MS,

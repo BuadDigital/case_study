@@ -13,7 +13,7 @@ const toolDir = path.join(root, "backend", "scripts", "reseed-ahmed-tool");
 const result = spawnSync(
   "dotnet",
   ["run", "--project", path.join(toolDir, "ReseedAhmed.csproj"), "--", "all"],
-  { cwd: root, stdio: "inherit", shell: true },
+  { cwd: root, stdio: "inherit" },
 );
 
 process.exit(result.status ?? 1);

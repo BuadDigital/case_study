@@ -10,8 +10,8 @@ import {
   distributionTaskPath,
 } from "../lib/my-task-routes";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
-import { TASKS_CHANGED_EVENT } from "@case-study/mfe/lib/prototype/tasks-storage";
-import { filterTasksForDistribution } from "@case-study/mfe/lib/prototype/transaction-filters";
+import { TASKS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { filterTasksForDistribution } from "@case-study/mfe/lib/app-data/transaction-filters";
 
 const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   pageId: "active-distribution",
@@ -21,8 +21,7 @@ const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {
   emptyLine: "لا توجد معاملات بانتظار التوزيع.",
   emptyHint:
     "تظهر هنا بعد إكمال البيانات الأولية واستعلام البورصة عند الحاجة.",
-  tableHint:
-    "اضغط الصف لفتح توزيع المعاملة على الأطراف — اضغط نفس الصف مرة أخرى للإغلاق.",
+  tableHint: "اضغط الصف للفتح أو الإغلاق.",
   panelId: "distribution-panel",
   getBasePath: activeDistributionPath,
   getTaskPath: distributionTaskPath,

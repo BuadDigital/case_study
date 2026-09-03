@@ -1,6 +1,8 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Application.Rules;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Financial.Application.Rules;
 
 /// <summary>
 /// Role / assignee gates for inspector-fee billing actions (not status-machine edges).

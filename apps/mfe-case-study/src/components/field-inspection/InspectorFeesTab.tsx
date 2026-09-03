@@ -10,10 +10,10 @@ import {
   StatLabel,
   StatValue,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { InspectorFeesBillingTable } from "./InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 
@@ -106,7 +106,7 @@ export function InspectorFeesTab({
   standalone?: boolean;
   supervisorMode?: boolean;
 }) {
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const isSupervisor =
     supervisorMode || hasCapability("manage-operations");
   const copy = isSupervisor ? SUPERVISOR_COPY : COPY[variant];

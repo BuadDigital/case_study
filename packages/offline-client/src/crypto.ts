@@ -18,7 +18,7 @@ export function isWebCryptoAvailable(): boolean {
   );
 }
 
-export class OfflineCryptoUnavailableError extends Error {
+class OfflineCryptoUnavailableError extends Error {
   constructor(
     message = "التشفير غير متاح في هذا السياق — استخدم localhost أو HTTPS للعمل دون اتصال.",
   ) {

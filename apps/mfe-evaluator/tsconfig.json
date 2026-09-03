@@ -1,7 +1,6 @@
 {
   "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@evaluator/mfe": ["./src/index.ts"],
       "@evaluator/mfe/*": ["./src/*"],

@@ -1,17 +1,20 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
-import { StatusPill, cn, type StatusPillStyle } from "@platform/ui-kit";
+import type { ReactNode } from "react";
+import {
+  EmptyIconBuilding,
+  EmptyState,
+  StatusPill,
+  cn,
+  opsPpHeadCard,
+  type StatusPillStyle,
+} from "@platform/ui-kit";
 import { PropertyListRowStatuses } from "@platform/api-client";
 
 /**
  * Case Study.html `renderProperties` primitives
- * (`_تصميم واجهة احترافية - تفاصيل العقار2/Case Study.html`).
+ * (`_professional-ui-design - property-details2/Case Study.html`).
  */
-
-/** HTML `PPCOLS` */
-export const PP_COLS =
-  "minmax(120px,1.3fr) minmax(90px,1fr) minmax(110px,1.1fr) minmax(84px,.8fr) minmax(92px,.9fr) 44px";
 
 export const PP_FOOTER_HINT = "اضغط الصف لمعاينة تفاصيل العقار.";
 
@@ -72,7 +75,7 @@ export function deedStatusStyle(deedStatus: string): StatusPillStyle {
 
 export function PpHead({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-[18px] rounded-[14px] border border-border bg-surface px-[22px] py-[18px] shadow-card">
+    <div className={cn(opsPpHeadCard, "relative mb-[18px]")}>
       {children}
     </div>
   );
@@ -163,111 +166,6 @@ export function PpCell({
   );
 }
 
-export function PpCard({ children }: { children: ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-      {children}
-    </div>
-  );
-}
-
-export function PpGrid({ children }: { children: ReactNode }) {
-  return (
-    <div className="w-full min-w-[720px]">
-      {children}
-    </div>
-  );
-}
-
-export function PpThead({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="grid border-b-2 border-[var(--gold,#a4906f)] bg-surface-2"
-      style={{ gridTemplateColumns: PP_COLS }}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function PpTh({
-  children,
-  center,
-}: {
-  children?: ReactNode;
-  center?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3 text-[12px] font-bold text-heading",
-        center ? "justify-center text-center" : "justify-start text-start",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function PpRow({
-  children,
-  onClick,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      className={cn(
-        "grid min-h-[52px] items-center border-b border-border transition-colors duration-100 last:border-b-0",
-        onClick &&
-          "cursor-pointer hover:bg-row-hover hover:relative hover:z-[6]",
-      )}
-      style={{ gridTemplateColumns: PP_COLS }}
-      onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick();
-              }
-            }
-          : undefined
-      }
-    >
-      {children}
-    </div>
-  );
-}
-
-export function PpTd({
-  children,
-  muted,
-  className,
-  onClick,
-}: {
-  children?: ReactNode;
-  muted?: boolean;
-  className?: string;
-  onClick?: (e: MouseEvent<HTMLDivElement>) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[13px] text-text",
-        muted && "text-text-2",
-        className,
-      )}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function PpDeedCell({
   index,
   deed,
@@ -317,23 +215,9 @@ export function PpEmpty({
   subtitle?: string;
 }) {
   return (
-    <div className="px-5 py-[54px] text-center text-text-3">
-      <svg
-        width="40"
-        height="40"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        className="mx-auto mb-3 opacity-60"
-        aria-hidden
-      >
-        <rect x="4" y="2" width="16" height="20" rx="2" />
-        <path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01" />
-      </svg>
-      <div className="text-[14px] font-bold text-text-2">{title}</div>
-      {subtitle ? <div className="mt-1 text-[13px]">{subtitle}</div> : null}
-    </div>
+    <EmptyState panel line={title} hint={subtitle}>
+      <EmptyIconBuilding />
+    </EmptyState>
   );
 }
 

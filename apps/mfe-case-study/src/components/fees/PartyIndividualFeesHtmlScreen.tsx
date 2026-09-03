@@ -3,43 +3,59 @@
 /**
  * Party fees shell (same module shape as EngFeesHtmlScreen: KPI → tabs → table | docs)
  * with a per-role slot. Each party only sees its lane:
- *   - field-inspection  → معاين: submit-to-supervisor, individual voucher, no invoice
- *   - court-visit → مراجع: أتعاب الزيارة (CourtVisitFeeCharges) + أوامر الصرف + مفاتيح
- *     (لا مسار ledger/رفع مشرف — المنتج ألغى government-review workflow)
+ *   - field-inspection  → inspector: submit-to-supervisor, individual voucher, no invoice
+ *   - court-visit → reviewer: visit fees (CourtVisitFeeCharges) + payment orders + keys
+ *     (no ledger/supervisor-submit path — product dropped government-review workflow)
  * Never share eng (vendor) actions or statements across variants.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  cn,
   KpiBand,
   KpiCell,
   QueueTableHint,
   StatusPill,
-  cn,
+  type StatusPillStyle,
+  Table,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
   useToast,
 } from "@platform/ui-kit";
-import type { StatusPillStyle } from "@platform/ui-kit";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
   type PartyBillingStatementDto,
 } from "@platform/api-client";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { KeyEnvelopeFeesPanel } from "@keys/mfe/components/KeyEnvelopeFeesPanel";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { CourtVisitFeesPanel } from "./CourtVisitFeesPanel";
-
+import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
+import {
+  opsFldControl,
+  opsFilters,
+  opsListCount,
+  opsToolbar,
+} from "../../lib/app-data/ops-tasks-tw";
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
@@ -58,19 +74,10 @@ type UiStatus =
   | "suspended"
   | "other";
 
-const FEE_COLS =
-  "minmax(125px,1.1fr) minmax(95px,.85fr) minmax(85px,.8fr) minmax(120px,1.1fr) minmax(90px,.8fr) minmax(150px,1.2fr) 130px";
-
 function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
+  return `${fmtMax(n || 0, 3)} ر.س`;
 }
 
-function formatYmd(raw: string | null | undefined): string {
-  if (!raw?.trim()) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return "—";
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
   const label = (row.propertyLabel || "").trim();
@@ -355,7 +362,7 @@ export function PartyIndividualFeesHtmlScreen({
 }) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const copy = COPY[variant];
   const isCourtVisit = variant === "court-visit";
   const showVisitKey = isCourtVisit;
@@ -364,12 +371,13 @@ export function PartyIndividualFeesHtmlScreen({
     isCourtVisit ? "visit-fees" : "action",
   );
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // المعاين: مسار ledger. المراجع: CourtVisitFeeCharges فقط (لا taskKind court-visit على الـ ledger).
+  // Inspector: ledger path. Reviewer: CourtVisitFeeCharges only (no court-visit taskKind on the ledger).
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
     {
       assigneeId,
@@ -396,7 +404,7 @@ export function PartyIndividualFeesHtmlScreen({
 
   const { data: statementsRaw = [] } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "none",
@@ -514,7 +522,7 @@ export function PartyIndividualFeesHtmlScreen({
           : [];
 
   const filteredFees = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return feeBucketRows.filter((row) => {
       const st = individualFeeUiStatus(row);
       if (stFilter && st !== stFilter) return false;
@@ -522,7 +530,7 @@ export function PartyIndividualFeesHtmlScreen({
       const { deed, region } = deedParts(row);
       return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
     });
-  }, [feeBucketRows, search, stFilter]);
+  }, [feeBucketRows, deferredSearch, stFilter]);
 
   const filteredFns = useMemo(() => {
     const q = fnSearch.trim().toLowerCase();
@@ -537,12 +545,15 @@ export function PartyIndividualFeesHtmlScreen({
   }, [statements, fnSearch]);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
-    });
-    await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "party-billing"],
-    });
+    // Two independent keys — in parallel (async-parallel).
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: [...appDataKeys.all, "inspector-fees"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...appDataKeys.all, "party-billing"],
+      }),
+    ]);
   }, [queryClient]);
 
   const act = async (
@@ -624,8 +635,8 @@ export function PartyIndividualFeesHtmlScreen({
       ];
 
   return (
-    <div className="px-[30px] pb-11 pt-[26px]">
-      <KpiBand className="mb-6">
+    <div className="flex flex-col gap-3.5">
+      <KpiBand className="mb-1">
         <KpiCell
           first
           icon={<CurrencyIcon />}
@@ -676,7 +687,7 @@ export function PartyIndividualFeesHtmlScreen({
       </KpiBand>
 
       <EngFeesHtmlTabs
-        className="!mb-4 !mt-0"
+        className="!mb-0"
         active={tab}
         onChange={onTabChange}
         tabs={tabs}
@@ -702,8 +713,8 @@ export function PartyIndividualFeesHtmlScreen({
             }
           />
 
-          <div className="mb-3.5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+          <div className={opsToolbar}>
+            <div className={opsFilters}>
               <div className="relative flex items-center">
                 <svg
                   width="15"
@@ -726,7 +737,7 @@ export function PartyIndividualFeesHtmlScreen({
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="رقم الصك أو المدينة أو الحي…"
                   aria-label="بحث الأتعاب"
-                  className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
                 />
               </div>
               <div className="relative flex items-center">
@@ -734,7 +745,7 @@ export function PartyIndividualFeesHtmlScreen({
                   value={stFilter}
                   onChange={(e) => setStFilter(e.target.value)}
                   aria-label="تصفية الحالة"
-                  className="cursor-pointer appearance-none rounded-lg border border-border-md bg-surface py-2 pe-[34px] ps-3.5 text-[13px] text-text outline-none"
+                  className={cn(opsFldControl, "cursor-pointer")}
                 >
                   <option value="">جميع الحالات</option>
                   {tab === "action" ? (
@@ -758,45 +769,28 @@ export function PartyIndividualFeesHtmlScreen({
                   ) : null}
                 </select>
               </div>
-              <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-                {filteredFees.length} بند
-              </span>
+              <span className={opsListCount}>{filteredFees.length} بند</span>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-            <div className="overflow-x-auto">
-              <div className="min-w-[920px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{ gridTemplateColumns: FEE_COLS }}
-                >
-                  {[
-                    "الصك",
-                    copy.dateCol,
-                    "سعر الجدول",
-                    "تعديل / مبرر",
-                    "الصافي",
-                    "الحالة",
-                    copy.actionCol,
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3.5 text-center text-[12px] font-bold text-heading"
-                    >
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[920px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>الصك</Th>
+                  <Th>{copy.dateCol}</Th>
+                  <Th>سعر الجدول</Th>
+                  <Th>تعديل / مبرر</Th>
+                  <Th>الصافي</Th>
+                  <Th>الحالة</Th>
+                  <Th>{copy.actionCol}</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {feesPending && filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    جاري التحميل…
-                  </div>
+                  <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
                 ) : filteredFees.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
-                    لا توجد بنود مطابقة.
-                  </div>
+                  <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
                 ) : (
                   filteredFees.map((row) => {
                     const st = individualFeeUiStatus(row);
@@ -805,19 +799,17 @@ export function PartyIndividualFeesHtmlScreen({
                     const ded = row.supervisorDiscountSar > 0;
                     const busy = busyId === row.workflowTaskId;
                     return (
-                      <div
+                      <Tr
                         key={
                           row.id ||
                           `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
                         }
-                        className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
-                        style={{ gridTemplateColumns: FEE_COLS }}
                       >
-                        <div className="flex min-w-0 items-center overflow-hidden px-3.5 py-1.5">
+                        <Td>
                           <div className="flex min-w-0 flex-col gap-0.5">
                             <span
                               dir="ltr"
-                              className="text-end text-[13px] font-bold text-gold-d"
+                              className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
                             >
                               {deed}
                             </span>
@@ -825,32 +817,26 @@ export function PartyIndividualFeesHtmlScreen({
                               {region}
                             </span>
                           </div>
-                        </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12px] tabular-nums text-text-2"
-                        >
+                        </Td>
+                        <TdLtr valueClassName="text-[12px] text-text-2">
                           {formatYmd(
                             row.workSubmittedAtUtc ??
                               row.accruedAtUtc ??
                               row.updatedAtUtc,
                           )}
-                        </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[12.5px] tabular-nums text-text-2"
-                        >
+                        </TdLtr>
+                        <TdLtr valueClassName="text-[12.5px] text-text-2">
                           {fmtSar(row.agreedFeeSar)}
-                        </div>
-                        <div className="flex min-w-0 items-center justify-center overflow-hidden px-3.5 py-1.5 text-center">
+                        </TdLtr>
+                        <Td>
                           {ded ? (
                             <span
-                              className="inline-flex min-w-0 max-w-full items-center justify-center gap-1.5"
+                              className="inline-flex min-w-0 max-w-full items-center gap-1.5"
                               title={row.discountReason ?? undefined}
                             >
                               <span
                                 dir="ltr"
-                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e]"
+                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
                               >
                                 − {fmtSar(row.supervisorDiscountSar)}
                               </span>
@@ -863,17 +849,14 @@ export function PartyIndividualFeesHtmlScreen({
                               بسعر الجدول
                             </span>
                           )}
-                        </div>
-                        <div
-                          dir="ltr"
-                          className="flex min-w-0 items-center justify-center px-3.5 py-1.5 text-center text-[13px] font-bold tabular-nums text-heading"
-                        >
+                        </Td>
+                        <TdLtr valueClassName="text-[13px] font-bold text-heading">
                           {fmtSar(row.netFeeSar)}
-                        </div>
-                        <div className="flex min-w-0 items-center justify-center px-3.5 py-1.5">
+                        </TdLtr>
+                        <Td>
                           <StatusPill label={meta.label} style={meta.style} />
-                        </div>
-                        <div className="flex min-w-0 items-center justify-center overflow-visible px-3.5 py-1.5">
+                        </Td>
+                        <Td className="overflow-visible">
                           {st === "needs_submit" ? (
                             <button
                               type="button"
@@ -889,7 +872,8 @@ export function PartyIndividualFeesHtmlScreen({
                             <span className="text-[11px] text-text-3">
                               بانتظار الاعتماد
                             </span>
-                          ) : st === "returned_to_party" || st === "inquiry_to_party" ? (
+                          ) : st === "returned_to_party" ||
+                            st === "inquiry_to_party" ? (
                             <span className="text-[11px] text-text-3">
                               راجع الملاحظات وأعِد الرفع
                             </span>
@@ -908,195 +892,163 @@ export function PartyIndividualFeesHtmlScreen({
                           ) : (
                             <span className="text-[11px] text-text-3">—</span>
                           )}
-                        </div>
-                      </div>
+                        </Td>
+                      </Tr>
                     );
                   })
                 )}
-              </div>
-            </div>
+              </TBody>
+            </Table>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
               {copy.roleLabel}: {copy.statementsFooter}
             </div>
-          </div>
+          </TableFrame>
         </>
       ) : null}
 
       {tab === "statements" ? (
         <>
-          <EngFeesSectionTitle
-            title={copy.statementsLabel}
-            sub="متابعة أوامر الصرف بعد اعتماد المشرف — بلا رفع فاتورة منكم."
-          />
-          <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-            <div className="relative flex items-center">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="pointer-events-none absolute start-3 text-text-3"
-                aria-hidden
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                type="search"
-                value={fnSearch}
-                onChange={(e) => setFnSearch(e.target.value)}
-                placeholder="رقم أمر الصرف…"
-                className="w-[248px] max-w-full rounded-lg border border-border-md bg-surface py-2 pe-3.5 ps-[38px] text-[13px] outline-none focus:border-gold"
-              />
+          <div className={opsToolbar}>
+            <div className={opsFilters}>
+              <div className="relative flex items-center">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="pointer-events-none absolute start-3 text-text-3"
+                  aria-hidden
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="search"
+                  value={fnSearch}
+                  onChange={(e) => setFnSearch(e.target.value)}
+                  placeholder="رقم أمر الصرف…"
+                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
+                />
+              </div>
+              <span className={opsListCount}>{filteredFns.length} مستند</span>
             </div>
-            <span className="ms-auto rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-              {filteredFns.length} مستند
-            </span>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-            <div className="overflow-x-auto">
-              <div className="min-w-[820px]">
-                <div
-                  className="grid border-b-2 border-gold bg-surface-2"
-                  style={{
-                    gridTemplateColumns:
-                      "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
-                  }}
-                >
-                  {[
-                    "رقم الأمر",
-                    "تاريخ الإصدار",
-                    "المعاملات",
-                    "الإجمالي",
-                    "الحالة",
-                    "الصرف",
-                  ].map((h) => (
-                    <div
-                      key={h}
-                      className="flex items-center justify-center px-4 py-3.5 text-center text-[12px] font-bold text-heading"
-                    >
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
+          <TableFrame>
+            <Table className="min-w-[820px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>رقم الأمر</Th>
+                  <Th>تاريخ الإصدار</Th>
+                  <Th>المعاملات</Th>
+                  <Th>الإجمالي</Th>
+                  <Th>الحالة</Th>
+                  <Th>الصرف</Th>
+                </Tr>
+              </THead>
+              <TBody>
                 {filteredFns.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-[13px] text-text-3">
+                  <TableEmptyRow colSpan={6}>
                     لا توجد مستندات مطابقة.
-                  </div>
+                  </TableEmptyRow>
                 ) : (
                   filteredFns.map((s) => {
                     const open = openFn === s.referenceNumber;
                     const meta = statementMeta(s);
                     return (
-                      <div key={s.id}>
-                        <div
-                          role="button"
-                          tabIndex={0}
+                      <Fragment key={s.id}>
+                        <Tr
+                          hoverable={false}
+                          className={cn(
+                            "cursor-pointer [&:hover_td]:bg-row-hover",
+                            open && "[&_td]:bg-row-hover",
+                          )}
                           onClick={() =>
                             setOpenFn(open ? null : s.referenceNumber)
                           }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setOpenFn(open ? null : s.referenceNumber);
-                            }
-                          }}
-                          className={cn(
-                            "grid min-h-11 cursor-pointer items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]",
-                            open && "bg-[var(--row-hover,#faf6ee)]",
-                          )}
-                          style={{
-                            gridTemplateColumns:
-                              "minmax(150px,1.2fr) minmax(90px,.8fr) minmax(70px,.6fr) minmax(90px,.8fr) minmax(110px,1fr) minmax(170px,1.4fr)",
-                          }}
                         >
-                          <div className="flex items-center px-4 py-3.5">
-                            <span
-                              dir="ltr"
-                              className="text-[12.5px] font-bold text-gold-d"
-                            >
-                              {s.referenceNumber}
-                            </span>
-                          </div>
-                          <div
-                            dir="ltr"
-                            className="flex items-center px-4 py-3.5 text-[12px] text-text-2"
-                          >
+                          <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
+                            {s.referenceNumber}
+                          </TdLtr>
+                          <TdLtr valueClassName="text-[12px] text-text-2">
                             {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[12.5px]">
+                          </TdLtr>
+                          <Td className="text-[12.5px]">
                             {s.lines.length} معاملات
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[13px] font-bold text-heading">
+                          </Td>
+                          <TdLtr valueClassName="text-[13px] font-bold text-heading">
                             {fmtSar(s.totalNetSar)}
-                          </div>
-                          <div className="flex items-center px-4 py-3.5">
+                          </TdLtr>
+                          <Td>
                             <StatusPill
                               label={meta.label}
                               style={meta.style}
                             />
-                          </div>
-                          <div className="flex items-center px-4 py-3.5 text-[11px] text-text-2">
+                          </Td>
+                          <Td className="text-[11px] text-text-2">
                             {s.status === "closed" && s.paidAtUtc
                               ? `صُرف ${formatYmd(s.paidAtUtc)}`
                               : "بانتظار الصرف"}
-                          </div>
-                        </div>
+                          </Td>
+                        </Tr>
                         {open ? (
-                          <div className="border-b border-border bg-surface-2 px-[18px] py-3">
-                            <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                              بنود {s.referenceNumber}
-                            </div>
-                            <div className="grid gap-1.5">
-                              {s.lines.map((line) => (
-                                <div
-                                  key={line.id}
-                                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                >
-                                  <span
-                                    dir="ltr"
-                                    className="font-bold text-gold-d"
+                          <Tr hoverable={false}>
+                            <Td
+                              colSpan={6}
+                              className="bg-surface-2 !py-3"
+                            >
+                              <div className="mb-2 text-[11.5px] font-bold text-text-2">
+                                بنود {s.referenceNumber}
+                              </div>
+                              <div className="grid gap-1.5">
+                                {s.lines.map((line) => (
+                                  <div
+                                    key={line.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
                                   >
-                                    {line.propertyLabel}
-                                  </span>
-                                  <span className="font-bold text-heading">
-                                    {fmtSar(line.netFeeSar)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            {s.transferReceiptAttachmentId ? (
-                              <button
-                                type="button"
-                                className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void openPartyBillingAttachment(
-                                    s.transferReceiptAttachmentId!,
-                                  ).then((r) => {
-                                    if (!r.ok) showToast(r.error, "error");
-                                  });
-                                }}
-                              >
-                                عرض إيصال التحويل
-                              </button>
-                            ) : null}
-                          </div>
+                                    <span
+                                      dir="ltr"
+                                      className="font-bold text-gold-d"
+                                    >
+                                      {line.propertyLabel}
+                                    </span>
+                                    <span className="font-bold text-heading">
+                                      {fmtSar(line.netFeeSar)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              {s.transferReceiptAttachmentId ? (
+                                <button
+                                  type="button"
+                                  className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void openPartyBillingAttachment(
+                                      s.transferReceiptAttachmentId!,
+                                    ).then((r) => {
+                                      if (!r.ok) showToast(r.error, "error");
+                                    });
+                                  }}
+                                >
+                                  عرض إيصال التحويل
+                                </button>
+                              ) : null}
+                            </Td>
+                          </Tr>
                         ) : null}
-                      </div>
+                      </Fragment>
                     );
                   })
                 )}
-              </div>
-            </div>
+              </TBody>
+            </Table>
             <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
               {copy.statementsFooter}
             </div>
-          </div>
+          </TableFrame>
         </>
       ) : null}
 

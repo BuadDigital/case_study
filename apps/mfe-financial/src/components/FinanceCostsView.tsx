@@ -1,34 +1,39 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  StatusPill,
+  cn,
+  finStatusStyle,
+  opsPanelCard,
+  opsTfNote,
+} from "@platform/ui-kit";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   applyCostTax,
   buildFinanceCostParties,
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
 import { COSTS_ACCOUNT_TABS, type CostsSection } from "../lib/finance-nav";
-import {
-  finNote,
-  finStatus,
-  finStatusTeal,
-} from "../lib/finance-tw";
 import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
 
+const EMPTY_STAFF_USERS: StaffUser[] = [];
+
+// SAR suffix without forced fractional zeros — keep local to preserve the same display.
 function fmtSar(n: number) {
-  return `${n.toLocaleString("en-US", {
-    maximumFractionDigits: 2,
-  })} ر.س`;
+  return `${fmtMax(n)} ر.س`;
 }
 
 function AccountHeader({ party }: { party: FinanceCostParty }) {
@@ -38,15 +43,16 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
   const paidScaled = applyCostTax(party.paidSar, party.payeeType);
 
   return (
-    <div className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-surface px-3.5 py-2.5 shadow-card">
+    <div className={cn(opsPanelCard, "mb-2.5 flex flex-wrap items-center gap-3.5 px-3.5 py-2.5")}>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="text-[14.5px] font-extrabold text-heading">
           {party.name}
         </span>
-        <span className={finStatus}>{party.taskKindLabel}</span>
-        <span className={isVendor ? finStatus : finStatusTeal}>
-          {party.payeeTypeLabel}
-        </span>
+        <StatusPill label={party.taskKindLabel} style={finStatusStyle("default")} />
+        <StatusPill
+          label={party.payeeTypeLabel}
+          style={finStatusStyle(isVendor ? "default" : "individual")}
+        />
         <span className="text-[10px] text-text-3" dir="ltr">
           {party.assigneeId.slice(0, 12)}
         </span>
@@ -114,20 +120,20 @@ export function FinanceCostsView({
     id: string | null,
     preferredSection?: "dues" | "statements" | CostsSection,
   ) => void;
-  /** يثبت party في الرابط عند فتح statement بدون party أو بقيمة خاطئة */
+  /** Pins party in the URL when opening statement without party or with a wrong value */
   onEnsureParty?: (partyId: string) => void;
   excludedCount?: number;
 }) {
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "account"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "account"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "account"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "account"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });
@@ -142,11 +148,13 @@ export function FinanceCostsView({
     [readyQuery.data, statementsQuery.data, staffUsers],
   );
 
-  /** تبويب الحساب الفوري — لا يعتمد على تأخّر searchParams */
+  /** Immediate account tab — does not wait on delayed searchParams */
   const [viewSection, setViewSection] = useState(section);
-  useEffect(() => {
+  const [prevSection, setPrevSection] = useState(section);
+  if (section !== prevSection) {
+    setPrevSection(section);
     setViewSection(section);
-  }, [section]);
+  }
 
   const statementResolvedParty = useMemo(() => {
     if (!focusStatementId) return null;
@@ -156,14 +164,14 @@ export function FinanceCostsView({
     return s?.assigneeId?.trim() || null;
   }, [focusStatementId, statementsQuery.data]);
 
-  /** ثبّت party في URL عند فتح statement بدون party أو بقيمة غير متطابقة */
+  /** Pin party in the URL when opening statement without party or a mismatched value */
   useEffect(() => {
     if (!statementResolvedParty || !onEnsureParty) return;
     if ((focusPartyIdProp ?? "").trim() === statementResolvedParty) return;
     onEnsureParty(statementResolvedParty);
   }, [statementResolvedParty, focusPartyIdProp, onEnsureParty]);
 
-  /** deep-link: افتح مسيرات عند وجود statement */
+  /** deep-link: open payrolls when statement is present */
   useEffect(() => {
     if (!focusStatementId) return;
     if (viewSection === "statements" || viewSection === "paid") return;
@@ -184,7 +192,7 @@ export function FinanceCostsView({
     ? (parties.find((p) => p.assigneeId === focusPartyId) ?? null)
     : null;
 
-  /** وجود party = شاشة حساب */
+  /** Presence of party = account screen */
   const inPartyAccount = Boolean(focusPartyId);
   const accountSection: CostsSection = wantsAccountTab
     ? viewSection
@@ -205,16 +213,13 @@ export function FinanceCostsView({
     const due = (readyQuery.data ?? []).filter(
       (l) => (l.assigneeId?.trim() || "—") === partyKey && l.netFeeSar > 0,
     ).length;
-    const stmts = (statementsQuery.data ?? []).filter(
-      (s) =>
-        (s.assigneeId?.trim() || "") === partyKey &&
-        s.status !== "closed" &&
-        s.status !== "cancelled",
-    ).length;
-    const paid = (statementsQuery.data ?? []).filter(
-      (s) =>
-        (s.assigneeId?.trim() || "") === partyKey && s.status === "closed",
-    ).length;
+    let stmts = 0;
+    let paid = 0;
+    for (const s of statementsQuery.data ?? []) {
+      if ((s.assigneeId?.trim() || "") !== partyKey) continue;
+      if (s.status === "closed") paid += 1;
+      else if (s.status !== "cancelled") stmts += 1;
+    }
     return {
       dues: due,
       statements: stmts,
@@ -276,7 +281,7 @@ export function FinanceCostsView({
       accountSection === "paid" ? (
         <>
           {accountSection === "statements" || accountSection === "paid" ? (
-            <p className={finNote}>
+            <p className={cn(opsTfNote, "mb-3.5")}>
               {accountSection === "paid"
                 ? headerParty.payeeType === "individual"
                   ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."

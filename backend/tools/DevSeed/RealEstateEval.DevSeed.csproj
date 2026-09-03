@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>RealEstateEval.Infrastructure.Data</RootNamespace>
+    <AssemblyName>RealEstateEval.DevSeed</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Leaf project (A8): may reference the global Infrastructure and, as contexts move
+         physically, each context Infrastructure — nothing references this project except
+         the Case Study dev host and the container tests. -->
+    <ProjectReference Include="..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\operations\RealEstateEval.Operations.Infrastructure\RealEstateEval.Operations.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\financial\RealEstateEval.Financial.Infrastructure\RealEstateEval.Financial.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\valuation\RealEstateEval.Valuation.Infrastructure\RealEstateEval.Valuation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\platform\RealEstateEval.Platform.Infrastructure\RealEstateEval.Platform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\identity\RealEstateEval.Identity.Infrastructure\RealEstateEval.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\case-study\RealEstateEval.CaseStudy.Infrastructure\RealEstateEval.CaseStudy.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\contexts\attachments\RealEstateEval.Attachments.Infrastructure\RealEstateEval.Attachments.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

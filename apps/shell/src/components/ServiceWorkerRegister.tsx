@@ -56,29 +56,43 @@ export function ServiceWorkerRegister() {
       });
     };
 
-    void navigator.serviceWorker
-      .register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .then((reg) => {
-        if (cancelled) return;
-        registration = reg;
-        reg.addEventListener("updatefound", onUpdateFound);
-        if (reg.waiting) {
-          waitingRef.current = reg.waiting;
-          setUpdateReady(true);
-        }
-        reg.update().catch(() => {});
-      })
-      .catch(() => {
-        /* SW optional — app still works without installability */
-      });
+    const run = () => {
+      if (cancelled) return;
+      void navigator.serviceWorker
+        .register("/sw.js", { scope: "/", updateViaCache: "none" })
+        .then((reg) => {
+          if (cancelled) return;
+          registration = reg;
+          reg.addEventListener("updatefound", onUpdateFound);
+          if (reg.waiting) {
+            waitingRef.current = reg.waiting;
+            setUpdateReady(true);
+          }
+          reg.update().catch(() => {});
+        })
+        .catch(() => {
+          /* SW optional — app still works without installability */
+        });
 
-    navigator.serviceWorker.addEventListener(
-      "controllerchange",
-      onControllerChange,
-    );
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        onControllerChange,
+      );
+    };
+
+    // Registration competes with hydration — defer it off the critical path.
+    let cancelSchedule: () => void;
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(run, { timeout: 2_000 });
+      cancelSchedule = () => cancelIdleCallback(id);
+    } else {
+      const timer = setTimeout(run, 250);
+      cancelSchedule = () => clearTimeout(timer);
+    }
 
     return () => {
       cancelled = true;
+      cancelSchedule();
       registration?.removeEventListener("updatefound", onUpdateFound);
       navigator.serviceWorker.removeEventListener(
         "controllerchange",

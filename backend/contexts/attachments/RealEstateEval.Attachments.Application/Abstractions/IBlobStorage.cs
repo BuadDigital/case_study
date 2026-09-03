@@ -1,7 +1,7 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Attachments.Application.Abstractions;
 
 public interface IBlobStorage
 {

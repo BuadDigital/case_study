@@ -1,7 +1,7 @@
 "use client";
 
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { EvaluatorWindow } from "./EvaluatorWindow";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import type { EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
@@ -14,6 +14,7 @@ export function AppraiserUploadTab({
   propertySummary,
   deedLabel,
   onBack,
+  embeddedInPropertyChrome,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
@@ -21,6 +22,7 @@ export function AppraiserUploadTab({
   propertySummary?: EvaluatorPropertySummary;
   deedLabel?: string;
   onBack?: () => void;
+  embeddedInPropertyChrome?: boolean;
 }) {
   const { data: tasks } = useWorkflowTasksQuery();
   const liveTask =
@@ -34,6 +36,7 @@ export function AppraiserUploadTab({
       propertySummary={propertySummary}
       deedLabel={deedLabel}
       onBack={onBack}
+      embeddedInPropertyChrome={embeddedInPropertyChrome}
     />
   );
 }

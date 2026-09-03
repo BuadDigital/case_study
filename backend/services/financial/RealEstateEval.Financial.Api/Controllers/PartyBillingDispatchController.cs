@@ -9,6 +9,7 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [ApiController]
 [Route("api/financial-dispatch/party-billing-statements")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class PartyBillingDispatchController(IPartyBillingStatementService statements) : ControllerBase
 {
     [HttpGet("ready-lines")]

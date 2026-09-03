@@ -2,10 +2,10 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { KpiBand, KpiCell, cn } from "@platform/ui-kit";
+import { KpiBand, KpiCell, cn, opsMobileCard } from "@platform/ui-kit";
 import type { PageId } from "@platform/types";
 import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-active-transaction-page-situation";
-import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/prototype/active-transaction-page-situation";
+import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/app-data/active-transaction-page-situation";
 
 const toneIconClass: Record<SituationTone, string> = {
   blue: "bg-navy-soft text-ink",
@@ -190,7 +190,7 @@ function formatSituationValue(
   return value;
 }
 
-/** Mobile HTML-style stat card — `docs/المعاين/inspector_screen 1.html` `.stat-card`. */
+/** Mobile HTML-style stat card — `docs/inspector/inspector_screen 1.html` `.stat-card`. */
 function MobileSituationStatCard({
   card,
   value,
@@ -205,8 +205,8 @@ function MobileSituationStatCard({
   const inner = (
     <div
       className={cn(
-        "relative flex min-h-[88px] min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5",
-        "shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+        opsMobileCard,
+        "relative flex min-h-[88px] min-w-0 max-w-full items-center gap-3 overflow-hidden border-s-[3px]",
         "transition-[box-shadow,border-color,transform] duration-150",
         "active:scale-[0.985]",
         mobileToneRail[card.tone],
@@ -277,9 +277,16 @@ export function ActiveTransactionsSituationBar({
 
   const { cards, values } = situation;
 
-  const desktopCells: ReactNode[] = cards.map((card, index) => {
+  /* Zero overdue is good news, not an alert — neutralize red when the value is zero. */
+  const effectiveCards = cards.map((card) =>
+    card.tone === "red" && (values[card.key] ?? 0) === 0
+      ? { ...card, tone: "blue" as SituationTone }
+      : card,
+  );
+
+  const desktopCells: ReactNode[] = effectiveCards.map((card, index) => {
     const isFirst = index === 0;
-    const isLast = index === cards.length - 1;
+    const isLast = index === effectiveCards.length - 1;
     const displayValue = formatSituationValue(card, values[card.key]);
     const iconClass = resolveIconClass(card, isFirst);
     const cell = (
@@ -329,7 +336,7 @@ export function ActiveTransactionsSituationBar({
 
       {/* Mobile: HTML inspector separate stat cards (2×2). */}
       <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden">
-        {cards.map((card, index) => (
+        {effectiveCards.map((card, index) => (
           <MobileSituationStatCard
             key={card.key}
             card={card}

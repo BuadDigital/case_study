@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
@@ -46,7 +48,7 @@ public class ValuationRequestsController : ControllerBase
         CancellationToken ct)
     {
         var dto = await _service.GetOpenByPropertyAsync(propertyId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost("ensure-open")]
@@ -97,7 +99,7 @@ public class ValuationRequestsController : ControllerBase
         var (result, error) = await _service.SubmitReportAsync(id, ct);
         if (error is null)
         {
- // the completed valuation feeds the shared bank («تقييم سابق»).
+ // the completed valuation feeds the shared bank ("prior valuation").
  // Best-effort: harvest failure must never fail the submit itself.
             try
             {

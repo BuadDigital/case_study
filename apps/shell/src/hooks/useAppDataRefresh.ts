@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useOptionalToast } from "@platform/ui-kit";
 
 /** Invalidate prototype data + soft-refresh the Next.js RSC tree (PWA-friendly). */
@@ -21,9 +21,9 @@ export function useAppDataRefresh() {
       setBusy(true);
       try {
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: prototypeKeys.all }),
+          queryClient.invalidateQueries({ queryKey: appDataKeys.all }),
           queryClient.refetchQueries({
-            queryKey: prototypeKeys.all,
+            queryKey: appDataKeys.all,
             type: "active",
           }),
         ]);

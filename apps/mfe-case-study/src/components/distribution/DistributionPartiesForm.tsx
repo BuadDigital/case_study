@@ -10,13 +10,13 @@ import {
   getFieldInspectors,
   getValuators,
   type DistributionAssignee,
-} from "../../lib/prototype/distribution-parties";
+} from "../../lib/app-data/distribution-parties";
 import {
   buildAssigneeOpenLoadMap,
   openLoadForAssignee,
   withOpenLoadLabel,
-} from "../../lib/prototype/distribution-load";
-import type { TaskDistributionDraft } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/distribution-load";
+import type { TaskDistributionDraft } from "../../lib/app-data/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 function toOptions(
@@ -123,7 +123,7 @@ export function DistributionPartiesForm({
     () => getEngineeringOffices(staffUsers),
     [staffUsers],
   );
-  /** أخصائي عادي فقط — المشرف غير مدرج في قائمة التوزيع */
+  /** Regular specialist only — supervisor is excluded from the distribution list */
   const caseSpecialists = useMemo(
     () => getCaseSpecialists(staffUsers),
     [staffUsers],

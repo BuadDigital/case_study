@@ -1,17 +1,34 @@
 "use client";
 
-import { useMemo } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { countOpenFailuresForPartyRole } from "@failures/mfe";
-import { useFailuresQuery } from "@/lib/query/prototype-queries";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { countOpenFailuresForPartyRole } from "@failures/mfe/lib/failures-party-raiser-scope";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
+import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 
-/** Live red badge count for إدارة التعذرات in the sidebar. */
+const STALE_MS = 60_000;
+const GC_MS = 10 * 60_000;
+
+/** Live red badge count for Failures management in the sidebar. */
 export function useFailuresNavBadge(): number {
-  const { role, rolePages } = usePrototype();
-  const { data: failures = [] } = useFailuresQuery();
+  const { role, rolePages } = useAppAccess();
+  const scoped = rolePages.includes("failures");
 
-  return useMemo(() => {
-    if (!rolePages.includes("failures")) return 0;
-    return countOpenFailuresForPartyRole(role, failures);
-  }, [role, rolePages, failures]);
+  const selectCount = useCallback(
+    (failures: FailureRecord[]) =>
+      scoped ? countOpenFailuresForPartyRole(role, failures) : 0,
+    [role, scoped],
+  );
+
+  const { data } = useQuery({
+    queryKey: appDataKeys.failures(),
+    queryFn: loadFailuresQuery,
+    staleTime: STALE_MS,
+    gcTime: GC_MS,
+    select: selectCount,
+  });
+
+  return data ?? 0;
 }

@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -12,18 +13,23 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import type { PoRow } from "@platform/app-shared/prototype/constants";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   isPoListStatusTerminal,
   PO_LIST_STATUS_OPTIONS,
   poListStatusMeta,
   poProgressPct,
   type PoListStatus,
-} from "@platform/app-shared/prototype/po-list-status";
+} from "@platform/app-shared/app-data/po-list-status";
 import {
   Button,
+  cn,
+  KpiAlertIcon,
   KpiBand,
   KpiCell,
+  KpiCheckIcon,
+  KpiClipboardIcon,
+  KpiClockIcon,
   MobileKpiStatCards,
   OperationalPanel,
   OperationalToolbarPrimaryButton,
@@ -32,48 +38,48 @@ import {
   PageGutter,
   PageShell,
   PageToolbar,
+  queueTableRowClassName,
+  RowMoreMenu,
   SkeletonTableRows,
   StatusPill,
   Table,
+  TableEmptyRow,
   TBody,
   Td,
   TdAction,
+  TdLtr,
   Th,
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { buildPoListRowMoreItems } from "../lib/prototype/po-list-row-menu";
+import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "../components/queue/ActiveQueueMobileCards";
-import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   formatDateAr,
   formatPoDisplay,
   isPastDue,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   cancelPoRecord,
   deletePoRecord,
   stopPoRecord,
-} from "../lib/prototype/po-intake-storage";
-import { poPropertiesPath, poPropertyPath } from "../lib/po-routes";
+} from "../lib/app-data/po-intake-commands";
+import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   buildPoDeedIndex,
   buildPoListDisplay,
   classifyPoListSearch,
   poListSearchModeLabel,
-} from "../lib/prototype/po-list-search";
+} from "../lib/app-data/po-list-search";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   usePoListRowsQuery,
   usePropertyListItemsQuery,
@@ -84,8 +90,8 @@ import {
   canEditPoHeader,
   canReceivePo,
   isPoViewOnly,
-} from "../lib/prototype/po-roles";
-import { canManageOperationsTasks } from "../lib/prototype/operations-task-roles";
+} from "../lib/app-data/po-roles";
+import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
 
 type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
@@ -163,11 +169,12 @@ function HoverPortalCard({
     placeCard();
     raf = requestAnimationFrame(placeCard);
     window.addEventListener("resize", placeCard);
-    window.addEventListener("scroll", placeCard, true);
+    // passive: listener does not block scroll — lets the browser skip waiting on it (client-passive-event-listeners).
+    window.addEventListener("scroll", placeCard, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", placeCard);
-      window.removeEventListener("scroll", placeCard, true);
+      window.removeEventListener("scroll", placeCard, { capture: true });
     };
   }, [align, content, open]);
 
@@ -281,7 +288,7 @@ function isDueWithin48(iso: string): boolean {
   return due >= now && due <= now + 2 * 24 * 60 * 60 * 1000;
 }
 
-/** خلفية شريط التقدم — أخضر عند ≥60٪، ذهبي عند وجود تقدم، شفاف عند الصفر. */
+/** Progress-bar fill — green at ≥60%, gold when any progress, transparent at zero. */
 function progFill(pct: number): string {
   if (pct >= 60) return "linear-gradient(90deg, var(--ink), var(--navy-3))";
   if (pct > 0) return "linear-gradient(90deg, var(--gold-d), var(--gold))";
@@ -314,44 +321,6 @@ function PoStatusPill({ status }: { status: PoRow["status"] }) {
   const { label } = poListStatusMeta(status);
   return <StatusPill label={label} style={poStatusStyle(status)} />;
 }
-
-function KpiClipboardIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
-}
-
-function KpiAlertIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
-
-function KpiClockIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function KpiCheckIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </svg>
-  );
-}
-
 
 function PlusIcon() {
   return (
@@ -406,7 +375,7 @@ export function PoListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const viewOnly = isPoViewOnly(role);
   const showIntake = canReceivePo(role);
   const showEdit = canEditPoHeader(role);
@@ -458,33 +427,43 @@ export function PoListView() {
     }
     return counts;
   }, [deedIndex]);
+  // Input is immediate; filtering is deferred one frame — local only (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
   const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
+  const deferredSearchMode = useMemo(
+    () => classifyPoListSearch(deferredSearch),
+    [deferredSearch],
+  );
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = rows !== undefined && !rowsPending;
 
   const kpi = useMemo(() => {
     if (!statsReady) return undefined;
-    const active = list.filter((p) => !isPoListStatusTerminal(p.status));
-    const overdue = active.filter(
-      (p) => p.dueDate && isPastDue(p.dueDate),
-    ).length;
-    const dueSoon = active.filter(
-      (p) => p.dueDate && isDueWithin48(p.dueDate),
-    ).length;
-    const doneProps = list.reduce((n, p) => n + (p.done ?? 0), 0);
-    return { active: active.length, overdue, dueSoon, doneProps };
+    // One pass over the list computes the four counters (js-combine-iterations).
+    let active = 0;
+    let overdue = 0;
+    let dueSoon = 0;
+    let doneProps = 0;
+    for (const p of list) {
+      doneProps += p.done ?? 0;
+      if (isPoListStatusTerminal(p.status)) continue;
+      active += 1;
+      if (p.dueDate && isPastDue(p.dueDate)) overdue += 1;
+      if (p.dueDate && isDueWithin48(p.dueDate)) dueSoon += 1;
+    }
+    return { active, overdue, dueSoon, doneProps };
   }, [list, statsReady]);
 
-  const assignmentTypes = useMemo(
-    () =>
-      [...new Set(list.map((p) => p.type).filter((t) => t && t !== "—"))].sort(
-        (a, b) => a.localeCompare(b, "ar"),
-      ),
-    [list],
-  );
+  const assignmentTypes = useMemo(() => {
+    const types = new Set<string>();
+    for (const p of list) {
+      if (p.type && p.type !== "—") types.add(p.type);
+    }
+    return [...types].sort((a, b) => a.localeCompare(b, "ar"));
+  }, [list]);
 
   const filtered = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
     let result = buildPoListDisplay(list, q, deedIndex).filter((entry) => {
       const row = entry.view === "po" ? entry.item.row : entry.item.row;
       const matchStatus = !statusFilter || row.status === statusFilter;
@@ -492,6 +471,8 @@ export function PoListView() {
       return matchStatus && matchType;
     });
 
+    // One order index instead of findIndex inside the comparator — was O(n²·log n) (js-index-maps).
+    const orderById = new Map(list.map((r, i) => [r.id, i]));
     result = [...result].sort((a, b) => {
       const rowA = a.view === "po" ? a.item.row : a.item.row;
       const rowB = b.view === "po" ? b.item.row : b.item.row;
@@ -502,9 +483,7 @@ export function PoListView() {
         if (createdA && createdB) {
           cmp = createdA.localeCompare(createdB);
         } else {
-          cmp =
-            list.findIndex((r) => r.id === rowA.id) -
-            list.findIndex((r) => r.id === rowB.id);
+          cmp = (orderById.get(rowA.id) ?? -1) - (orderById.get(rowB.id) ?? -1);
         }
         if (cmp === 0) {
           cmp = rowA.id.localeCompare(rowB.id);
@@ -526,9 +505,10 @@ export function PoListView() {
     });
 
     return result;
-  }, [list, search, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
+  }, [list, deferredSearch, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
 
-  const propertyDeedView = searchMode === "deed" && search.trim().length > 0;
+  const propertyDeedView =
+    deferredSearchMode === "deed" && deferredSearch.trim().length > 0;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -661,7 +641,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم إلغاء أمر العمل «${poNumber}».`, "success");
   }
 
@@ -680,7 +660,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم إيقاف أمر العمل «${poNumber}».`, "success");
   }
 
@@ -699,7 +679,7 @@ export function PoListView() {
       showToast(result.error, "error");
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
+    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     showToast(`تم حذف أمر العمل «${poNumber}» وعقاراته.`, "success");
   }
 
@@ -860,8 +840,7 @@ export function PoListView() {
         </PageToolbar>
 
         <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
-          <div className="hidden lg:block">
-          <Table pending={!statsReady}>
+          <Table framed pending={!statsReady} wrapClassName="hidden lg:block">
                 <THead>
                   <Tr hoverable={false}>
                     <Th>
@@ -908,21 +887,16 @@ export function PoListView() {
                   {!statsReady ? (
                     <SkeletonTableRows rows={10} cols={11} />
                   ) : filtered.length === 0 ? (
-                    <Tr hoverable={false}>
-                      <Td
-                        colSpan={11}
-                        className="cursor-default py-10 text-center text-[13px] text-text-3"
-                      >
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <InboxIcon />
-                          <span>
-                            {list.length === 0
-                              ? "لا توجد أوامر عمل."
-                              : "لا توجد نتائج مطابقة"}
-                          </span>
-                        </div>
-                      </Td>
-                    </Tr>
+                    <TableEmptyRow colSpan={11}>
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <InboxIcon />
+                        <span>
+                          {list.length === 0
+                            ? "لا توجد أوامر عمل."
+                            : "لا توجد نتائج مطابقة"}
+                        </span>
+                      </div>
+                    </TableEmptyRow>
                   ) : (
                     pageRows.map((entry) => {
                       const p = entry.view === "po" ? entry.item.row : entry.item.row;
@@ -1027,29 +1001,17 @@ export function PoListView() {
                           <Td className="whitespace-nowrap">
                             <PoStatusPill status={p.status} />
                           </Td>
-                          <Td className="whitespace-nowrap text-[13px] text-text-2">
-                            {p.date ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(p.date)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
-                          <Td
+                          <TdLtr className="whitespace-nowrap text-[13px] text-text-2">
+                            {p.date ? formatDateAr(p.date) : "—"}
+                          </TdLtr>
+                          <TdLtr
                             className={cn(
                               "whitespace-nowrap text-[13px] font-semibold",
                               urgent ? "text-red" : "text-heading",
                             )}
                           >
-                            {p.dueDate ? (
-                              <bdi dir="ltr" className={ltrValueClass}>
-                                {formatDateAr(p.dueDate)}
-                              </bdi>
-                            ) : (
-                              "—"
-                            )}
-                          </Td>
+                            {p.dueDate ? formatDateAr(p.dueDate) : "—"}
+                          </TdLtr>
                           <Td className="whitespace-nowrap text-[13px] font-semibold text-heading">
                             {p.specialist && p.specialist !== "—" ? (
                               p.specialist
@@ -1086,7 +1048,6 @@ export function PoListView() {
                   )}
                 </TBody>
               </Table>
-          </div>
 
           <div className="px-0 pb-1 lg:hidden">
             <ActiveQueueMobileCards

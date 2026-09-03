@@ -3,8 +3,15 @@ using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Valuation.Infrastructure.Integration;
+using RealEstateEval.Valuation.Infrastructure.Services;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Valuation.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Valuation bounded context (A8). Everything the
@@ -32,14 +39,37 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
+        services.AddScoped<PropertyComparableLinkService>();
+        services.AddScoped<IPropertyComparableLinkService>(sp =>
+            sp.GetRequiredService<PropertyComparableLinkService>());
+        services.AddScoped<IPropertyComparableLinkLookup>(sp =>
+            sp.GetRequiredService<PropertyComparableLinkService>());
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
         services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
+        // Q-6: two-phase issuance + deposit certificate.
+        services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
         services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
         services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;
     }
+ /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated
+ /// Valuation connection string. A8 physical move: lives beside <see cref="ValuationDbContext"/>.</summary>
+    public static IServiceCollection AddValuationPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var valuationConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Valuation,
+            connectionString);
+        return services.AddBoundedContextPersistence<ValuationDbContext>(
+            configuration,
+            valuationConnection);
+    }
+
 }

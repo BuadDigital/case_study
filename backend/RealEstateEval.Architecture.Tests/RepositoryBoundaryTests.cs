@@ -12,6 +12,9 @@ public class RepositoryBoundaryTests
     {
         { "Client", "IClientRepository" },
         { "PoIntakeDraft", "IPoIntakeDraftRepository" },
+        { "PartyTaskSubmission", "IPartyTaskSubmissionRepository" },
+        { "InspectionLimits", "IInspectionLimitsRepository" },
+        { "BuildingInventory", "IBuildingInventoryRepository" },
     };
 
     [Theory]
@@ -84,21 +87,9 @@ public class RepositoryBoundaryTests
                 "operations",
                 "RealEstateEval.Operations.Infrastructure",
                 "Services")))
-            .Concat(new[]
-            {
-                RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services", "CaseStudyLookup.cs"),
-                RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services", "CaseStudyCommands.cs"),
-                RepoPaths.Combine(
-                    "backend",
-                    "RealEstateEval.Infrastructure",
-                    "Services",
-                    "CaseStudyPropertyPoNumberLookup.cs"),
-                RepoPaths.Combine(
-                    "backend",
-                    "RealEstateEval.Infrastructure",
-                    "Services",
-                    "WorkflowAssigneeLookup.cs"),
-            });
+            ;
+        // A8: the case-study lookup/commands/mapper services moved into the context's
+        // Services directory above, so no stray global-Infrastructure paths remain to scan.
 
         var violations = files
             .Where(File.Exists)
@@ -110,19 +101,6 @@ public class RepositoryBoundaryTests
             violations.Count == 0,
             "Case Study, Financial, and Operations use-cases must not take CaseStudyDbContext:\n  "
             + string.Join("\n  ", violations));
-    }
-
-    [Fact]
-    public void CaseStudyDbContext_implements_the_session()
-    {
-        var file = RepoPaths.Combine(
-            "backend",
-            "RealEstateEval.Infrastructure",
-            "Data",
-            "Contexts",
-            "CaseStudy",
-            "CaseStudyDbContext.cs");
-        Assert.Contains("ICaseStudyRepository", File.ReadAllText(file), StringComparison.Ordinal);
     }
 
     private static string CaseStudyApplication(params string[] parts) =>

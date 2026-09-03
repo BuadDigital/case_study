@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Attachments.Domain;
 
 /// <summary>
 /// EXIF captured before compression. Distance/flag stamped at upload.

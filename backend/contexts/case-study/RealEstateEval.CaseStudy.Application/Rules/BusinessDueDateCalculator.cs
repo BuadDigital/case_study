@@ -1,8 +1,8 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// أيام عمل (أحد–خميس). يوم الاستلام يوم 1 إن كان ضمن الدوام؛ بعد 17:00 أو عطلة → يبدأ من يوم العمل التالي.
-/// عدد الأيام يُمرَّر حسب نوع الإسناد (4 تنفيذ/تركات، 10 خاص).
+/// Business days (Sun–Thu). Receipt day counts as day 1 if within hours; after 17:00 or a holiday → starts next business day.
+/// Day count is passed by assignment type (4 for execution/estates, 10 for private).
 /// </summary>
 public static class BusinessDueDateCalculator
 {

@@ -13,6 +13,7 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 [ApiController]
 [Route("api/valuation-request-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class ValuationRequestDispatchController(IValuationRequestService service) : ControllerBase
 {
     [HttpGet("open-by-property/{propertyId}")]
@@ -21,7 +22,7 @@ public sealed class ValuationRequestDispatchController(IValuationRequestService 
         CancellationToken cancellationToken)
     {
         var dto = await service.GetOpenByPropertyAsync(propertyId, cancellationToken);
-        return dto is null ? NotFound() : Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost]

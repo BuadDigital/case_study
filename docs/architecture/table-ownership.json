@@ -30,14 +30,6 @@
   ],
   "contexts": [
     {
-      "name": "ApplicationDbContext",
-      "state": "legacy",
-      "owner": null,
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Migrations",
-      "migrationsHistorySchema": null,
-      "note": "Frozen legacy stream. Holds every slice that has not been extracted yet, plus read-only mappings of extracted tables that non-owner slices still query (removed in Phase 3). No migration added after legacyMigrationCutover may touch a schema owned by an extracted context."
-    },
-    {
       "name": "AttachmentsDbContext",
       "state": "extracted",
       "extractedOn": "2026-07-30",
@@ -45,9 +37,9 @@
       "schemas": [
         "attachments"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Attachments/Migrations",
+      "migrations": "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "attachments",
-      "note": "Phase 1 extraction order, step 1."
+      "note": "Phase 1 extraction order, step 1. A8 physical move (2026-08-27): the DbContext, migrations, design-time factory, and persistence registration live in the Attachments context library; the shared model mapping stays global beside the frozen legacy context until it is archived."
     },
     {
       "name": "PlatformDbContext",
@@ -58,7 +50,7 @@
         "platform",
         "audit"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Platform/Migrations",
+      "migrations": "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "platform",
       "note": "Platform catalogs and configuration, plus the shared audit schema (D7). Notification tables moved to MessagingDbContext (extraction step 5 / D3)."
     },
@@ -71,7 +63,7 @@
         "valuation",
         "messaging"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Valuation/Migrations",
+      "migrations": "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "valuation",
       "note": "Maps messaging.OutboxMessages so a valuation write and the event it publishes stay in one SaveChanges (D5, per-producer outbox). It owns only the rows it writes."
     },
@@ -83,7 +75,7 @@
       "schemas": [
         "identity"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Identity/Migrations",
+      "migrations": "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "identity",
       "note": "Phase 1 extraction order, step 2. ASP.NET Identity stores and session/profile tables. Non-Identity APIs resolve permissions from JWT claims and no longer register Identity stores."
     },
@@ -95,7 +87,7 @@
       "schemas": [
         "failures"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Failures/Migrations",
+      "migrations": "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "failures",
       "note": "Phase 1 extraction order, step 3. Write path is FailuresDbContext. After the Phase 4 cutover the failures schema lives on a dedicated database. Case Study and Operations call the Failures HTTP API instead of a second connection."
     },
@@ -107,7 +99,7 @@
       "schemas": [
         "operations"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Operations/Migrations",
+      "migrations": "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "operations",
       "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically named in case_study. After the Phase 4 cutover those D2 tables live on the dedicated operations database, still in the case_study schema until a later relocate."
     },
@@ -119,7 +111,7 @@
       "schemas": [
         "financial"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Financial/Migrations",
+      "migrations": "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "financial",
       "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically named in case_study. After the Phase 4 cutover those D1 tables live on the dedicated financial database, still in the case_study schema until a later relocate."
     },
@@ -131,7 +123,7 @@
       "schemas": [
         "case_study"
       ],
-      "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/CaseStudy/Migrations",
+      "migrations": "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "case_study",
       "note": "Phase 1 extraction order, step 4. Case Study–owned case_study tables only (not D1 inspector fees, not D2 operations tasks)."
     },
@@ -892,6 +884,21 @@
       "note": "Singleton org settings written by OrganizationSettingsService on PlatformDbContext."
     },
     {
+      "table": "ValuationReportTextPackages",
+      "schema": "platform",
+      "dbSet": "ValuationReportTextPackages",
+      "entity": "ValuationReportTextPackage",
+      "owner": "platform",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "PlatformDbContext"
+      ],
+      "transactionGroup": "platform.config",
+      "decision": null,
+      "note": "قرار 23: immutable version registry of the standard/legal text package — one version for the whole block; any edit issues a new package."
+    },
+    {
       "table": "FieldSyncStatuses",
       "schema": "platform",
       "dbSet": "FieldSyncStatuses",
@@ -1102,6 +1109,21 @@
       "note": "Comparable-sale records referenced by market approach selections."
     },
     {
+      "table": "PropertyComparableLinks",
+      "schema": "valuation",
+      "dbSet": "PropertyComparableLinks",
+      "entity": "PropertyComparableLink",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Property-to-comparable pin links captured during field work (2026-08-23 valuation stream migration); catalogued 2026-08-27 after the guardrail flagged the missing row."
+    },
+    {
       "table": "ValuationComparableSelections",
       "schema": "valuation",
       "dbSet": "ValuationComparableSelections",
@@ -1130,6 +1152,36 @@
       "transactionGroup": "valuation.requests",
       "decision": null,
       "note": "Per-comparable adjustment lines for the market approach."
+    },
+    {
+      "table": "ValuationAdjustmentFactorRationales",
+      "schema": "valuation",
+      "dbSet": "ValuationAdjustmentFactorRationales",
+      "entity": "ValuationAdjustmentFactorRationale",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "ق-8-1: factor-level adjustment rationales (one per factor covering all comparables; lines hold overrides only)."
+    },
+    {
+      "table": "ValuationReportIssuances",
+      "schema": "valuation",
+      "dbSet": "ValuationReportIssuances",
+      "entity": "ValuationReportIssuance",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "ق-6: two-phase issuance — frozen report snapshot, deposit PDF, deposit certificate + code, final PDF."
     },
     {
       "table": "ValuationMarketApproaches",
@@ -1470,7 +1522,6 @@
       "status": "approved",
       "ownershipModel": "per-producer",
       "contexts": [
-        "ApplicationDbContext",
         "ValuationDbContext",
         "MessagingDbContext"
       ],
@@ -1487,7 +1538,6 @@
       "status": "approved",
       "ownershipModel": "per-consumer",
       "contexts": [
-        "ApplicationDbContext",
         "MessagingDbContext"
       ],
       "transactionGroup": "messaging.inbox",
@@ -1548,7 +1598,6 @@
       "status": "approved",
       "ownershipModel": "per-producer",
       "contexts": [
-        "ApplicationDbContext",
         "PlatformDbContext",
         "IdentityDbContext",
         "FinancialDbContext"
@@ -1556,6 +1605,81 @@
       "transactionGroup": "audit.log",
       "decision": "D7",
       "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, every other context maps it excluded from migrations."
+    },
+    {
+      "table": "CaseStudyReferenceSequences",
+      "schema": "case_study",
+      "dbSet": "ReferenceSequences",
+      "entity": "ReferenceSequence",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.documents",
+      "decision": null,
+      "note": "ورشة الترقيم: عدّادات TX/LT/CS السنوية — تخصيص محلي في سياق المالك."
+    },
+    {
+      "table": "NumberedDocuments",
+      "schema": "case_study",
+      "dbSet": "NumberedDocuments",
+      "entity": "NumberedDocument",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.documents",
+      "decision": null,
+      "note": "قرار 25: سجل الخطابات وتقارير دراسة الحالة المرقّمة (LT/CS)."
+    },
+    {
+      "table": "OperationsReferenceSequences",
+      "schema": "operations",
+      "dbSet": "",
+      "entity": "ReferenceSequence",
+      "owner": "operations",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "OperationsDbContext"
+      ],
+      "transactionGroup": "operations.keys",
+      "decision": null,
+      "note": "ورشة الترقيم: عدّادات KE السنوية."
+    },
+    {
+      "table": "IdentityReferenceSequences",
+      "schema": "identity",
+      "dbSet": "",
+      "entity": "ReferenceSequence",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.users",
+      "decision": null,
+      "note": "ورشة الترقيم: عدّادات US السنوية."
+    },
+    {
+      "table": "FinancialReferenceSequences",
+      "schema": "financial",
+      "dbSet": "",
+      "entity": "ReferenceSequence",
+      "owner": "financial",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "FinancialDbContext"
+      ],
+      "transactionGroup": "financial.billing",
+      "decision": null,
+      "note": "ورشة الترقيم: عدّادات DS السنوية."
     }
   ]
 }

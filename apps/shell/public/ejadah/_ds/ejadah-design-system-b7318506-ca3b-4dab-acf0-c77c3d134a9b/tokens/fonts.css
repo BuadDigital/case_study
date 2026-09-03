@@ -1,0 +1,6 @@
+/* Ejadah webfonts.
+   The shipped app loads Tajawal via next/font (weights 400/500/700/800).
+   The approved typography spec (docs/الخطوط/ejadah-typography-spec.md) mandates
+   IBM Plex Sans Arabic + IBM Plex Sans (400/500) for all interfaces.
+   No font binaries exist in the repo — both families are pulled from Google Fonts (flagged substitution). */
+@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap");

@@ -1,5 +1,6 @@
 using RealEstateEval.Domain;
 using Xunit;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -22,7 +23,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Cost_approach_allowed_for_land_with_structures_only()
     {
- // ق-3 المعدَّل (مواصفة v2 §3): أرض مسوّرة = إنشاءات ⟵ التكلفة تفتح لبنودها.
+ // Q-3 amended (v2 spec §3): fenced land = structures ⟵ cost opens for those lines.
         Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", false));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("فيلا", false));
@@ -41,7 +42,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Purpose_is_mandatory_and_other_needs_a_note()
     {
- // §4ج-5: الغرض يختاره المقيّم — لا يُشتق من نوع الإسناد.
+ // §4j-5: purpose is chosen by the valuer — not derived from assignment type.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا");
         Assert.Contains("valuationPurposeKey", missing.Keys);
@@ -63,25 +64,40 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Retrospective_valuation_date_needs_date_and_rationale()
+    public void Retrospective_valuation_date_needs_date()
     {
- // قرار عمر 2026-08-17: نوعان — إصدار القيمة (آلي) أو أثر رجعي يدوي بمبرر.
+ // Omar decision 2026-08-17: two kinds — value issuance (automatic) or manual retrospective.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective);
         Assert.Contains("retrospectiveDate", missing.Keys);
-        Assert.Contains("retrospectiveRationale", missing.Keys);
+        Assert.DoesNotContain("retrospectiveRationale", missing.Keys);
 
         var ok = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective,
-            retrospectiveDate: new DateOnly(2026, 6, 1),
-            retrospectiveRationale: "طلب المحكمة قيمة بتاريخ الحجز");
+            retrospectiveDate: new DateOnly(2026, 6, 1));
         Assert.Empty(ok);
 
- // وضع «إصدار القيمة» لا يطلب شيئاً.
+        var badRange = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective,
+            retrospectiveDate: new DateOnly(2026, 6, 10),
+            retrospectiveDateEnd: new DateOnly(2026, 6, 1));
+        Assert.Contains("retrospectiveDateEnd", badRange.Keys);
+
+        var okRange = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            valuationDateMode: ValuationDateModes.Retrospective,
+            retrospectiveDate: new DateOnly(2026, 6, 1),
+            retrospectiveDateEnd: new DateOnly(2026, 6, 10));
+        Assert.Empty(okRange);
+
+ // "Value issuance" mode requires nothing.
         var issue = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
@@ -102,7 +118,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void External_specialist_yes_requires_details()
     {
- // بند الأخصائي الخارجي (IVS 101) — لا أخصائي الإسناد ولا أخصائي دراسة الحالة.
+ // External specialist clause (IVS 101) — not the assignment specialist nor the case-study specialist.
         var noDetails = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.Financing,
@@ -115,6 +131,25 @@ public class ValuationApproachSettingsRulesTests
             externalSpecialistUsed: true,
             externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي");
         Assert.Empty(ok);
+    }
+
+    [Fact]
+    public void No_specialist_library_clause_is_detected()
+    {
+        Assert.True(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم."));
+        Assert.True(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "لم يستعن المقيّم بأي أخصائي خارجي"));
+        Assert.False(ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(
+            "تم افتراض بأن قطعة الأرض ليست زائدة تنظيمية."));
+
+        var kept = ValuationApproachSettingsRules.WithoutNoExternalSpecialistAssumptions(
+        [
+            "بند ESG",
+            "لم يستعن المقيّم بأي أخصائي خارجي في أداء مهمة التقييم هذه.",
+            "تم افتراض عدم وجود نزع على قطعة الأرض في تاريخ التقييم.",
+        ]);
+        Assert.Equal(new[] { "بند ESG", "تم افتراض عدم وجود نزع على قطعة الأرض في تاريخ التقييم." }, kept);
     }
 
     [Fact]

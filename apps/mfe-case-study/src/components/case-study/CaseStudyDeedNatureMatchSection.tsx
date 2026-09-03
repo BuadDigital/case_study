@@ -7,7 +7,7 @@ import {
   Textarea,
   cn,
 } from "@platform/ui-kit";
-import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
+import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 
 const MATCH_OPTIONS = [
   { value: "matched" as const, label: "مطابق" },

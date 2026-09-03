@@ -5,8 +5,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionApplier
 {
@@ -232,6 +237,22 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         ledger.BillingStatus = nextStatus;
         ledger.ReturnTo = nextReturnTo;
         ledger.UpdatedAtUtc = _time.UtcNow();
+
+ // E6 (decision items 9 and 12): deadline is stamped only on entering "disputed", and cleared with
+ // its stage log on any exit (either direction) — clearing cancels pending reminders.
+        if (nextStatus == InspectorFeeBillingStatus.Disputed
+            && fromStatus != InspectorFeeBillingStatus.Disputed)
+        {
+            ledger.DisputeDeadlineUtc =
+                BillingNegotiationDeadlines.DeadlineFromUtc(_time.UtcNow());
+            ledger.DisputeNotifiedStages = null;
+        }
+        else if (nextStatus != InspectorFeeBillingStatus.Disputed
+            && ledger.DisputeDeadlineUtc is not null)
+        {
+            ledger.DisputeDeadlineUtc = null;
+            ledger.DisputeNotifiedStages = null;
+        }
 
         _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
         {

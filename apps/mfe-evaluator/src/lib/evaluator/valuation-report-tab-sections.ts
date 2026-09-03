@@ -1,4 +1,4 @@
-/** Report field sheet for the appraiser — order matches `docs/نموذج تقرير التقييم/تقرير التقييم v3.dc.html`. */
+/** Report field sheet for the appraiser — order matches `docs/valuation-report-form/valuation-report-v3.dc.html`. */
 
 export type ReportTabField = {
   id: string;
@@ -264,6 +264,9 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
             cells: [{ text: "الملحق العلوي" }, { keys: ["cost_line.7240"] }],
           },
           {
+            cells: [{ text: "الملحق الأرضي" }, { keys: ["cost_line.7210"] }],
+          },
+          {
             cells: [
               { text: "القبو" },
               { keys: ["cost_line.7060"] },
@@ -290,6 +293,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
           { cells: [{ text: "الدور الأرضي" }, { text: "" }] },
           { cells: [{ text: "الدور الأول" }, { text: "" }] },
           { cells: [{ text: "الملحق العلوي" }, { text: "" }] },
+          { cells: [{ text: "الملحق الأرضي" }, { text: "" }] },
         ],
       },
     ],
@@ -298,14 +302,17 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
     n: "11",
     title: "مكونات العقار",
     fields: [
-      { id: "fence", label: "سور", keys: ["cost_line.7320"] },
+      { id: "fence", label: "سور" },
       { id: "parking", label: "مواقف", keys: ["inventory.6490"] },
-      { id: "pool", label: "مسبح", keys: ["cost_line.7350"] },
+      { id: "pool", label: "مسبح" },
       { id: "elevator", label: "مصعد", keys: ["inventory.5280"] },
       { id: "jacuzzi", label: "جاكوزي", keys: ["inventory.5330"] },
       { id: "annexes", label: "ملاحق", keys: ["inventory.5350"] },
+      { id: "annex-upper", label: "ملحق علوي (عدد)" },
+      { id: "annex-ground", label: "ملحق أرضي (عدد)" },
       { id: "bedrooms", label: "غرف النوم", keys: ["inventory.6040"] },
       { id: "halls", label: "الصالات", keys: ["pending.6090"] },
+      { id: "units", label: "عدد الشقق" },
       { id: "dining", label: "غرف الطعام", keys: ["inventory.6140"] },
       { id: "majlis", label: "المجالس", keys: ["inventory.6190"] },
       { id: "maid", label: "غرف الخدم", keys: ["inventory.6240"] },
@@ -313,6 +320,10 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
       { id: "guard", label: "غرفة حارس", keys: ["inventory.6390"] },
       { id: "store", label: "مستودع", keys: ["inventory.6440"] },
       { id: "baths", label: "دورات المياه", keys: ["inventory.6540"] },
+      { id: "playground", label: "ملاعب أطفال", keys: ["pending.5360"] },
+      { id: "showrooms", label: "عدد المعارض" },
+      { id: "wells", label: "عدد الآبار" },
+      { id: "towers", label: "عدد الأبراج" },
       { id: "other-comp", label: "أخرى", keys: ["inventory.6590"] },
     ],
   },
@@ -344,15 +355,21 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
     pairs: [
       {
         term: "تشطيب فاخر",
-        text: "واجهات حجر طبيعي أو دهان عالي الجودة، أرضيات مداخل ومجالس من رخام فاخر، عزل ونوافذ عالية، تكييف مركزي ومصعد.",
+        text:
+          "تشطيبات خارجية: الواجهات من حجر طبيعي أو دهان ذو جودة عالية، نوعية الأبواب الخارجية، نوعية أرضيات الساحات الخارجية.\n" +
+          "تشطيبات داخلية: نوعية أرضيات المداخل والمجالس وصالات الطعام تتكون من رخام فاخر، نوعية الأبواب الداخلية، نوعية العزل، نوعية الشبابيك، مكونات الجدران الخارجية تكون مزدوجة، نوعية التسليك والسباكة، نوعية الدهان الداخلي، أعمال الجبس بأشكال هندسية وجودتها، تكييف مركزي، مصعد، جودة عمال التشطيب.",
       },
       {
         term: "تشطيب متوسط",
-        text: "واجهات حجر أو دهان، أرضيات سيراميك، تكييف منفصل (سبليت)، مكونات جدران مزدوجة.",
+        text:
+          "تشطيبات خارجية: الواجهات من حجر أو دهان، نوعية الأبواب الخارجية، نوعية أرضيات الساحات الخارجية غالبًا من السيراميك، مكونات الجدران الخارجية تكون مزدوجة.\n" +
+          "تشطيبات داخلية: نوعية أرضيات المداخل والمجالس وصالات الطعام تتكون من السيراميك، نوعية الأبواب الداخلية، نوعية العزل، نوعية الشبابيك، نوعية التسليك والسباكة، نوعية الدهان الداخلي، أعمال الجبس وجودتها، التكييف منفصل (سبليت).",
       },
       {
         term: "تشطيب عادي",
-        text: "واجهات دهان، أرضيات سيراميك عادي أو بلاط بلدي، شبابيك عادية، تكييف شباك، بدون جبس أسقف.",
+        text:
+          "تشطيبات خارجية: الواجهات دهان، نوعية الأبواب الخارجية، نوعية أرضيات الساحات الخارجية غالبًا من بلاط بلدي.\n" +
+          "تشطيبات داخلية: نوعية أرضيات المداخل والمجالس وصالات الطعام تتكون من السيراميك العادي أو بلاط بلدي لفرش الموكيت، نوعية الأبواب الداخلية، لا يوجد عوازل، الشبابيك عادية جدًا، نوعية التسليك والسباكة، نوعية الدهان الداخلي، لا يوجد جبس بالأسقف، نوعية التكييف شباك.",
       },
       { term: "بدون تشطيب", text: "عقار دون تشطيبات داخلية أو خارجية مكتملة." },
     ],
@@ -620,14 +637,19 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "20",
     title: "قيمة الأرض (أسلوب التكلفة)",
-    hint: "تُحرَّر في تبويب المقارنات.",
+    hint: "تُقدَّر بمقارنات أراضٍ فضاء مستقلة — تفصيل التسويات في الملحق (أ).",
     fields: [
       {
         id: "land-sqm-price",
-        label: "سعر المتر المستورد من طريقة المقارنة",
-        keys: ["comp1.price_per_sqm"],
+        label: "سعر متر الأرض من مقارنات الأراضي الفضاء",
+        keys: ["cost.land_unit_rate"],
       },
       { id: "land-value", label: "قيمة الأرض", keys: ["cost.land_value_from_market"] },
+      {
+        id: "land-appendix-note",
+        label: "إشارة الملحق",
+        keys: ["cost.land_appendix_note"],
+      },
     ],
   },
   {
@@ -817,11 +839,12 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "26",
     title: "المشاركون في إعداد التقرير",
-    hint: "تُحرَّر أسماء العاملين في بيانات الرفع لإنفاذ.",
+    hint: "ثلاثة ثابتون من سجل المقيّمين + الرابع من توزيع المعاملات (المقيم المسند).",
     fields: [
-      { id: "worker-1", label: "المعد / المشارك 1", span: 2 },
-      { id: "worker-2", label: "المراجع / المشارك 2", span: 2 },
-      { id: "worker-3", label: "المشارك 3", span: 2 },
+      { id: "worker-1", label: "المشارك الثابت 1", span: 2 },
+      { id: "worker-2", label: "المشارك الثابت 2", span: 2 },
+      { id: "worker-3", label: "المشارك الثابت 3", span: 2 },
+      { id: "worker-4", label: "المقيم المسند", span: 2 },
     ],
   },
   {

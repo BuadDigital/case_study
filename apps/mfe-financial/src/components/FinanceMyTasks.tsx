@@ -1,33 +1,62 @@
 "use client";
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import type { PartyBillingStatementDto } from "@platform/api-client";
-import { cn } from "@platform/ui-kit";
+import {
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  opsLetterCard,
+  opsPanelCard,
+} from "@platform/ui-kit";
 import {
   buildFinanceMyTasks,
   buildFinanceMyTasksKpis,
   type FinanceMyTask,
 } from "../lib/finance-my-tasks";
 import { buildFinanceHref } from "../lib/finance-nav";
-import { FinanceDisbursementCloseModal } from "./FinanceDisbursementCloseModal";
-import { FinanceVendorInvoiceMatchModal } from "./FinanceVendorInvoiceMatchModal";
 
-function fmtSar(n: number) {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
+const FinanceDisbursementCloseModal = dynamic(
+  () =>
+    import("./FinanceDisbursementCloseModal").then(
+      (m) => m.FinanceDisbursementCloseModal,
+    ),
+  { ssr: false },
+);
+const FinanceVendorInvoiceMatchModal = dynamic(
+  () =>
+    import("./FinanceVendorInvoiceMatchModal").then(
+      (m) => m.FinanceVendorInvoiceMatchModal,
+    ),
+  { ssr: false },
+);
 
-/** أيقونة KPI مربّعة — توكنات finance-tw */
+// Bundle is fetched on hover/focus of the open button instead of waiting for click
+// (bundle-preload).
+const preloadDisbursementCloseModal = () =>
+  void import("./FinanceDisbursementCloseModal");
+const preloadVendorInvoiceMatchModal = () =>
+  void import("./FinanceVendorInvoiceMatchModal");
+
+const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
+
+/** Square KPI icon — finance-tw tokens */
 function KpiIco({
   children,
   gold,
@@ -99,8 +128,6 @@ function AgeBlock({
   );
 }
 
-const gridCols =
-  "min-w-[980px] grid-cols-[minmax(200px,1.7fr)_minmax(118px,1fr)_minmax(100px,0.85fr)_minmax(160px,1.25fr)_minmax(120px,1fr)_88px_minmax(110px,0.9fr)]";
 
 function TaskRow({
   task,
@@ -111,60 +138,63 @@ function TaskRow({
 }) {
   const opensModal =
     task.kind === "cost_match_invoice" || task.kind === "cost_close_statement";
+  const preloadModal =
+    task.kind === "cost_match_invoice"
+      ? preloadVendorInvoiceMatchModal
+      : preloadDisbursementCloseModal;
 
   return (
-    <div
-      className={cn(
-        "grid min-h-[58px] items-center border-b border-[#ece8df] transition-colors duration-120 last:border-b-0 hover:bg-[#faf6ee]",
-        gridCols,
-      )}
-    >
-      <div className="flex min-w-0 flex-col items-start justify-center gap-1.5 px-4 py-3.5 text-start">
-        <DomainChip domain={task.domain} />
-        <span className="text-[12.5px] font-bold leading-snug text-[#102B4E]">
-          {task.title}
-        </span>
-      </div>
-      <div className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-3 py-3.5 text-center">
-        <span className="text-[13px] font-bold text-[#8c7857]" dir="ltr">
-          {task.reference}
-        </span>
-        {task.subject && task.subject !== task.reference ? (
-          <span
-            className="max-w-full truncate text-[11px] text-[#a4a6ad]"
-            title={task.subject}
-          >
-            {task.subject}
+    <Tr hoverable={false}>
+      <Td>
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
+          <DomainChip domain={task.domain} />
+          <span className="text-[12.5px] font-bold leading-snug text-[#102B4E]">
+            {task.title}
           </span>
-        ) : null}
-      </div>
-      <div className="flex items-center justify-center px-3 py-3.5">
-        <span
-          className="text-[14px] font-extrabold tabular-nums text-[#102B4E]"
-          dir="ltr"
-        >
-          {fmtSar(task.amountSar)}
-        </span>
-      </div>
-      <div className="flex items-center justify-center px-3 py-3.5 text-center">
+        </div>
+      </Td>
+      <Td className="text-center">
+        <div className="flex min-w-0 flex-col items-center gap-0.5">
+          <span className="text-[13px] font-bold text-[#8c7857]" dir="ltr">
+            {task.reference}
+          </span>
+          {task.subject && task.subject !== task.reference ? (
+            <span
+              className="max-w-full truncate text-[11px] text-[#a4a6ad]"
+              title={task.subject}
+            >
+              {task.subject}
+            </span>
+          ) : null}
+        </div>
+      </Td>
+      <TdLtr
+        className="text-center"
+        valueClassName="text-[14px] font-extrabold text-[#102B4E]"
+      >
+        {fmtMax(task.amountSar)}
+      </TdLtr>
+      <Td className="text-center">
         <span className="text-[11.5px] leading-[1.45] text-[#73767f]">
           {task.requirement}
         </span>
-      </div>
-      <div className="flex items-center justify-center px-3 py-3.5 text-center">
+      </Td>
+      <Td className="text-center">
         <span className="text-[12px] font-semibold text-[#3a3f4d]">
           {task.movesTo}
         </span>
-      </div>
-      <div className="flex items-center justify-center px-2 py-3.5">
+      </Td>
+      <Td className="text-center">
         <AgeBlock days={task.ageDays} note={task.ageNote} />
-      </div>
-      <div className="flex items-center justify-center px-3 py-3.5">
+      </Td>
+      <Td className="text-center">
         {opensModal ? (
           <button
             type="button"
             className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-[#3a3f4d] transition-colors hover:text-[#102B4E]"
             onClick={() => onOpen(task)}
+            onMouseEnter={preloadModal}
+            onFocus={preloadModal}
           >
             {task.openLabel}
             <span className="text-[14px] leading-none" aria-hidden>
@@ -182,8 +212,8 @@ function TaskRow({
             </span>
           </Link>
         )}
-      </div>
-    </div>
+      </Td>
+    </Tr>
   );
 }
 
@@ -197,17 +227,17 @@ export function FinanceMyTasks() {
   );
 
   const trackingQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking", "my-tasks"],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "tracking", "my-tasks"],
     queryFn: loadEnfazTracking,
     staleTime: 20_000,
   });
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "my-tasks"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "my-tasks"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "my-tasks"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "my-tasks"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });
@@ -217,7 +247,7 @@ export function FinanceMyTasks() {
     readyQuery.isPending ||
     statementsQuery.isPending;
 
-  const statements = statementsQuery.data ?? [];
+  const statements = statementsQuery.data ?? EMPTY_STATEMENTS;
 
   const tasks = useMemo(
     () =>
@@ -260,10 +290,10 @@ export function FinanceMyTasks() {
   const invalidateBilling = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "enfaz-billing"],
+        queryKey: [...appDataKeys.all, "enfaz-billing"],
       }),
     ]);
   }, [queryClient]);
@@ -274,7 +304,7 @@ export function FinanceMyTasks() {
       s.assigneeId?.trim() ||
       statements.find((x) => x.id === s.id)?.assigneeId?.trim() ||
       null;
-    // Full navigation — soft router.push كان يبقي الشاشة على مهامي أحياناً.
+    // Full navigation — soft router.push sometimes left the screen on My Tasks.
     window.location.assign(
       buildFinanceHref({
         area: "costs",
@@ -285,9 +315,12 @@ export function FinanceMyTasks() {
     );
   }, [statements]);
 
+  const closeMatchModal = useCallback(() => setMatchStatementId(null), []);
+  const closeCloseModal = useCallback(() => setCloseStatementId(null), []);
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+      <div className={cn(opsLetterCard, "mb-6 flex flex-wrap rounded-xl border-[#ece8df] bg-white")}>
         <div className="relative min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-[#a4906f] before:content-['']">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco>
@@ -332,7 +365,7 @@ export function FinanceMyTasks() {
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
-            <span dir="ltr">{fmtSar(kpi.collectAmountSar)}</span>
+            <span dir="ltr">{fmtMax(kpi.collectAmountSar)}</span>
             <span>ر.س</span>
           </div>
         </div>
@@ -392,13 +425,13 @@ export function FinanceMyTasks() {
       </p>
 
       {pending ? (
-        <div className="overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03)]">
+        <div className={cn(opsLetterCard, "rounded-xl border-[#ece8df] bg-white")}>
           <div className="px-5 py-[54px] text-center text-[14px] font-bold text-[#73767f]">
             جاري التحميل…
           </div>
         </div>
       ) : tasks.length === 0 ? (
-        <div className="overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03)]">
+        <div className={cn(opsLetterCard, "rounded-xl border-[#ece8df] bg-white")}>
           <div className="px-5 py-[54px] text-center">
             <div className="text-sm font-bold text-[#73767f]">
               لا إجراءات معلّقة — كل شيء مُحدَّث
@@ -409,56 +442,59 @@ export function FinanceMyTasks() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#ece8df] bg-white shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
-          <div className="max-h-[calc(100vh-280px)] overflow-auto">
-            <div
-              className={cn(
-                "grid sticky top-0 z-[3] border-b-2 border-[#a4906f] bg-[#faf8f3]",
-                gridCols,
-              )}
-            >
-              {[
-                "الإجراء المطلوب",
-                "المرجع",
-                "المبلغ ر.س",
-                "ما يلزم لإتمامه",
-                "ينتقل إلى",
-                "العمر يوم",
-                "انتقال",
-              ].map((h, i) => (
-                <div
-                  key={h}
-                  className={cn(
-                    "flex min-w-0 items-center overflow-hidden px-3.5 py-[13px] text-[12px] font-bold whitespace-nowrap text-[#102B4E]",
-                    i === 0
-                      ? "justify-start text-start"
-                      : "justify-center text-center",
-                  )}
-                >
-                  {h}
-                </div>
+        <TableFrame>
+          <Table wrapClassName="max-h-[calc(100vh-280px)] overflow-auto">
+            <THead>
+              <Tr hoverable={false}>
+                {[
+                  "الإجراء المطلوب",
+                  "المرجع",
+                  "المبلغ ر.س",
+                  "ما يلزم لإتمامه",
+                  "ينتقل إلى",
+                  "العمر يوم",
+                  "انتقال",
+                ].map((h, i) => (
+                  <Th
+                    key={h}
+                    className={cn(
+                      "sticky top-0 z-[3] bg-surface-2",
+                      i > 0 && "text-center",
+                    )}
+                  >
+                    {h}
+                  </Th>
+                ))}
+              </Tr>
+            </THead>
+            <TBody>
+              {tasks.map((task) => (
+                <TaskRow key={task.id} task={task} onOpen={handleOpen} />
               ))}
-            </div>
-            {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} onOpen={handleOpen} />
-            ))}
-          </div>
-        </div>
+            </TBody>
+          </Table>
+        </TableFrame>
       )}
 
-      <FinanceVendorInvoiceMatchModal
-        open={Boolean(matchStatementId)}
-        statement={matchStatement}
-        onClose={() => setMatchStatementId(null)}
-        onDone={invalidateBilling}
-        onMatched={goToCostsAfterMatch}
-      />
-      <FinanceDisbursementCloseModal
-        open={Boolean(closeStatementId)}
-        statement={closeStatement}
-        onClose={() => setCloseStatementId(null)}
-        onDone={invalidateBilling}
-      />
+      {/* Conditional mount — always mounting fetched both modal chunks on screen open
+          despite code-splitting (bundle-conditional). */}
+      {matchStatementId ? (
+        <FinanceVendorInvoiceMatchModal
+          open={Boolean(matchStatementId)}
+          statement={matchStatement}
+          onClose={closeMatchModal}
+          onDone={invalidateBilling}
+          onMatched={goToCostsAfterMatch}
+        />
+      ) : null}
+      {closeStatementId ? (
+        <FinanceDisbursementCloseModal
+          open={Boolean(closeStatementId)}
+          statement={closeStatement}
+          onClose={closeCloseModal}
+          onDone={invalidateBilling}
+        />
+      ) : null}
     </div>
   );
 }

@@ -10,13 +10,13 @@
   <Project Path="services/platform/RealEstateEval.Platform.Api/RealEstateEval.Platform.Api.csproj" />
   <Project Path="services/attachments/RealEstateEval.Attachments.Api/RealEstateEval.Attachments.Api.csproj" />
   <Project Path="shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj" />
+  <Project Path="shared/RealEstateEval.Shared.RemoteClients/RealEstateEval.Shared.RemoteClients.csproj" />
   <Project Path="shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj" />
   <Project Path="RealEstateEval.Application.Tests/RealEstateEval.Application.Tests.csproj" />
   <Project Path="RealEstateEval.Architecture.Tests/RealEstateEval.Architecture.Tests.csproj" />
   <Project Path="RealEstateEval.Api.IntegrationTests/RealEstateEval.Api.IntegrationTests.csproj" />
   <Project Path="RealEstateEval.Api.ContainerTests/RealEstateEval.Api.ContainerTests.csproj" />
   <Project Path="RealEstateEval.Application/RealEstateEval.Application.csproj" />
-  <Project Path="RealEstateEval.Domain/RealEstateEval.Domain.csproj" />
   <Project Path="RealEstateEval.Infrastructure/RealEstateEval.Infrastructure.csproj" />
   <Project Path="contexts/attachments/RealEstateEval.Attachments.Domain/RealEstateEval.Attachments.Domain.csproj" />
   <Project Path="contexts/attachments/RealEstateEval.Attachments.Application/RealEstateEval.Attachments.Application.csproj" />
@@ -43,4 +43,5 @@
   <Project Path="contexts/valuation/RealEstateEval.Valuation.Infrastructure/RealEstateEval.Valuation.Infrastructure.csproj" />
   <Project Path="scripts/reseed-ahmed-tool/ReseedAhmed.csproj" />
   <Project Path="tools/DbMigrate/DbMigrate.csproj" />
+  <Project Path="tools/DevSeed/RealEstateEval.DevSeed.csproj" />
 </Solution>

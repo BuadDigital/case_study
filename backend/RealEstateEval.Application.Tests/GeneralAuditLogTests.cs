@@ -2,6 +2,8 @@ using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Application.Contracts;
 
 namespace RealEstateEval.Application.Tests;
 

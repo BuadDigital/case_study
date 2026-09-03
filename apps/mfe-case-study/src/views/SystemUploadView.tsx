@@ -1,17 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
-import { filterTasksForSystemUpload } from "@platform/app-shared/prototype/active-transactions";
+import { filterTasksForSystemUpload } from "@platform/app-shared/app-data/active-transactions";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
+import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
 import {
   caseStudyWorkspacePath,
   systemUploadPath,
 } from "../lib/my-task-routes";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 
 export function SystemUploadView() {
   const config = useMemo(

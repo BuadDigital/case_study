@@ -1,8 +1,8 @@
 "use client";
 
-import type { PartyEngineeringSurveyExtensions } from "@case-study/mfe";
-import type { PoIntakeRecord } from "@case-study/mfe";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { PartyEngineeringSurveyExtensions } from "@case-study/mfe/lib/party-engineering-survey-extensions";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
 import { activeSurveyWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import { EngineeringSurveyWorkPanel } from "../components/EngineeringSurveyWorkPanel";
 import { isEngineeringSurveyFormLocked } from "../lib/engineering-survey-data";
@@ -13,11 +13,11 @@ import {
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   loadEngineeringSurveySubmission,
-  prefetchEngineeringSurveySubmissions,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-model";
+import { prefetchEngineeringSurveySubmissions } from "../lib/engineering-survey-submission-reads";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 
-/** Footer from Case Study.html `renderEngOrders` — اشتراطات البدء بالرفع. */
+/** Footer from Case Study.html `renderEngOrders` — prerequisites to start the survey. */
 const ENG_SURVEY_TABLE_HINT =
   "اشتراطات البدء بالرفع: رقم ضابط اتصال إلزامي · الأرض المنظمة تُرفع مباشرة · الأرض الشعبية تتطلب تحديد موقع العقار (وإلا يُشعَر الأخصائي وتوقف مؤقتاً) · المباني تتطلب إخطار المعاين أو إتمام المعاينة.";
 

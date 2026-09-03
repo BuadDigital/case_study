@@ -13,7 +13,7 @@ type ValueEstimationSectionProps = {
   landValue: string;
   buildingValue: string;
   /**
-   * Case Study.html `price` — إجمالي قيمة العقار.
+   * Case Study.html `price` — total property value.
    * Auto-filled as land + buildings; still editable for overrides.
    */
   propertyTotal: string;
@@ -29,7 +29,7 @@ type ValueEstimationSectionProps = {
   onDiscountChange: (value: string) => void;
 };
 
-/** Case Study.html تقدير القيمة — 3 أعمدة + خصم وبيع قسري. */
+/** Case Study.html value estimation — 3 columns + discount and forced sale. */
 export function ValueEstimationSection({
   landValue,
   buildingValue,

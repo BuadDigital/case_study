@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -74,7 +76,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal(4, rows.Count);
     }
 
-    private static void Seed(ApplicationDbContext db)
+    private static void Seed(CaseStudyDbContext db)
     {
         var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         var propertyId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
@@ -187,6 +189,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("engineering-survey", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -246,6 +249,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.False(rows[0].FieldInspectionAccepted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -319,6 +323,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.True(rows[0].FieldInspectionAccepted);
+        Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
     }
 
     [Fact]
@@ -375,13 +380,14 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.False(rows[0].FieldInspectionCompleted);
+        Assert.Null(rows[0].FieldInspectionTaskId);
     }
 
-    private static ApplicationDbContext CreateDb()
+    private static CaseStudyDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<CaseStudyDbContext>()
             .UseInMemoryDatabase($"workflow-read-auth-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new CaseStudyDbContext(options);
     }
 }

@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>Property-level mutations and Enfath mapping for work orders.</summary>
 public interface IWorkOrderPropertyCommands
@@ -21,6 +22,12 @@ public interface IWorkOrderPropertyCommands
         string poNumber,
         Guid propertyId,
         string? locationMapUrl,
+        CancellationToken cancellationToken);
+
+    Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
+        string poNumber,
+        Guid propertyId,
+        string? specialistReportExtrasJson,
         CancellationToken cancellationToken);
 
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(

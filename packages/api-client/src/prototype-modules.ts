@@ -1,6 +1,8 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
+import { parseJson } from "./parse-json";
 
 export type PrototypeModulesApiConfig = {
   baseUrl?: string;
@@ -16,16 +18,14 @@ export type PrototypeModulesResult<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 // --- Field dictionary ---
 
@@ -64,25 +64,6 @@ export async function getFieldDictionary(
   try {
     const res = await fetch(`${base}/api/field-dictionary`, {
       headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<FieldDictionaryStateDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function saveFieldDictionary(
-  config: PrototypeModulesApiConfig,
-  body: Pick<FieldDictionaryStateDto, "fields" | "tags">,
-): Promise<PrototypeModulesResult<FieldDictionaryStateDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/field-dictionary`, {
-      method: "PUT",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -297,6 +278,8 @@ export type KeyEnvelopeTimelineEntryDto = {
 export type KeyEnvelopeDto = {
   id: string;
   requestNumber: string;
+  /** Numbering workshop: internal ref KE-{year}-{5-digit seq}. */
+  referenceNumber?: string | null;
   court: string;
   circuit: string;
   keysCountLabeled: number;
@@ -448,12 +431,16 @@ async function keyEnvelopeMutation(
   config: PrototypeModulesApiConfig,
   path: string,
   init?: RequestInit,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: { ...headers(config.token), ...init?.headers },
+      headers: {
+        ...headers(config.token, idempotencyKey),
+        ...init?.headers,
+      },
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -655,11 +642,17 @@ export async function listPropertyCourtAccess(
 export async function createKeyEnvelope(
   config: PrototypeModulesApiConfig,
   body: CreateKeyEnvelopeRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
-  return keyEnvelopeMutation(config, "/api/key-envelopes", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  return keyEnvelopeMutation(
+    config,
+    "/api/key-envelopes",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+    idempotencyKey,
+  );
 }
 
 export async function addKeyEnvelopeAssignment(
@@ -679,11 +672,13 @@ export async function confirmKeyEnvelopeAssignment(
   envelopeId: string,
   assignmentId: string,
   body: ConfirmKeyAssignmentRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/assignments/${assignmentId}/confirm`,
     { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
   );
 }
 
@@ -691,11 +686,13 @@ export async function createKeyEnvelopeHandoff(
   config: PrototypeModulesApiConfig,
   envelopeId: string,
   body: CreateKeyEnvelopeHandoffRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/handoffs`,
     { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
   );
 }
 
@@ -703,11 +700,13 @@ export async function confirmKeyEnvelopeHandoff(
   config: PrototypeModulesApiConfig,
   envelopeId: string,
   handoffId: string,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/handoffs/${handoffId}/confirm`,
     { method: "POST" },
+    idempotencyKey,
   );
 }
 
@@ -756,15 +755,6 @@ export type FileAttachmentMetaDto = {
   sizeBytes: number;
   createdAtUtc: string;
   photoMetadata?: PhotoMetadataDto | null;
-  /** Attachment print dictionary type key; empty = library only. */
-  dictionaryTypeKey?: string;
- /** When true with a type key, eligible for report –25. */
-  printInReport?: boolean;
-};
-
-export type ClassifyAttachmentRequest = {
-  dictionaryTypeKey?: string | null;
-  printInReport?: boolean | null;
 };
 
 type PhotoMetadataDto = {
@@ -802,6 +792,28 @@ export async function listAttachments(
   const qs = new URLSearchParams({ scope, scopeKey });
   try {
     const res = await fetch(`${base}/api/attachments?${qs}`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const data = await parseJson<FileAttachmentMetaDto[]>(res);
+    return { ok: true, data: Array.isArray(data) ? data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Property library uploads routed onto valuation-report print sections. */
+export async function listAttachmentsForProperty(
+  config: PrototypeModulesApiConfig,
+  propertyId: string,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto[]>> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = propertyId.trim();
+  if (!id) return { ok: true, data: [] };
+  const qs = new URLSearchParams({ propertyId: id });
+  try {
+    const res = await fetch(`${base}/api/attachments/for-property?${qs}`, {
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -856,37 +868,6 @@ export async function getAttachmentMeta(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "server" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function classifyAttachment(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body: ClassifyAttachmentRequest,
-): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/attachments/${id}/classify`, {
-      method: "PATCH",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "server" };
-    if (res.status === 400) {
-      const problem = (await res.json().catch(() => null)) as
-        | { detail?: string; error?: string }
-        | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message: problem?.detail ?? problem?.error,
-      };
-    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
   } catch {
@@ -1015,16 +996,17 @@ export async function listEvaluatorRecallsApi(
 export async function getEvaluatorRecallApi(
   config: PrototypeModulesApiConfig,
   taskId: string,
-): Promise<PrototypeModulesResult<EvaluatorRecallDto>> {
+): Promise<PrototypeModulesResult<EvaluatorRecallDto | null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/evaluator-recalls/${taskId}`, {
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
+    const data = await parseJson<EvaluatorRecallDto | null>(res);
+    return { ok: true, data: data?.taskId ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }

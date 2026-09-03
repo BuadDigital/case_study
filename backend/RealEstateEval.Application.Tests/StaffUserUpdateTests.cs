@@ -8,8 +8,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
+using RealEstateEval.Identity.Infrastructure;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -525,8 +528,6 @@ public class StaffUserUpdateTests
         services.AddDataProtection();
         services.AddSingleton<IConfiguration>(configuration);
         var databaseName = $"staff-update-{Guid.NewGuid()}";
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase(databaseName));
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();
@@ -537,7 +538,6 @@ public class StaffUserUpdateTests
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
         foreach (var role in new[]
                  {
-                     DepartmentRoles.Hr,
                      DepartmentRoles.Proc,
                      OrgRoles.Cdo,
                      "Editor",

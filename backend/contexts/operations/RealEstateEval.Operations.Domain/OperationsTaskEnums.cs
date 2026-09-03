@@ -1,7 +1,7 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Operations.Domain;
 
 /// <summary>
-/// Operations task kind (طبقة المهام). Persisted as the wire string — see
+/// Operations task kind. Persisted as the wire string — see
 /// <see cref="OperationsTaskTypeValues"/>.
 /// </summary>
 public enum OperationsTaskType
@@ -38,7 +38,7 @@ public enum OperationsTaskPriority
     Low = 2,
 }
 
-/// <summary>Court-visit close outcome (موقف المفاتيح لدى المحكمة).</summary>
+/// <summary>Court-visit close outcome.</summary>
 public enum CourtVisitOutcomeKind
 {
     Received = 0,
@@ -88,9 +88,6 @@ public static class OperationsTaskScopeValues
     public const string WorkOrder = "work_order";
     public const string Multi = "multi";
     public const string General = "general";
-
- /// <summary>Contact-level scope inside a court-visit result, distinct from the task scope.</summary>
-    public const string ContactPropertyScope = "property";
 
     public static string ToDbValue(this OperationsTaskScope scope) => scope switch
     {

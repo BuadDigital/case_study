@@ -7,7 +7,7 @@ namespace RealEstateEval.Infrastructure.Services;
 
 public sealed class AuditLogWriter : IAuditLogWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
     private readonly TimeProvider _time;
 
     public AuditLogWriter(TimeProvider? time = null)

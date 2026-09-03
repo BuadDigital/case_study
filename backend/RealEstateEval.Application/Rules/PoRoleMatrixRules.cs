@@ -36,16 +36,6 @@ public static class PoRoleMatrixRules
 
     public static bool CanDeleteProperty(string? prototypeRole) => CanDeletePo(prototypeRole);
 
-    public static bool CanRaisePropertyFailure(string? prototypeRole) =>
-        CanEditProperty(prototypeRole) || CanEditPoHeader(prototypeRole);
-
-    public static bool CanRedistributeParties(string? prototypeRole)
-    {
-        var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role)
-            || role is "section-supervisor" or "general-manager";
-    }
-
  /// <summary>Specialist accept / reopen of party submissions.</summary>
     public static bool CanManagePartySubmissions(string? prototypeRole)
     {
@@ -88,6 +78,13 @@ public static class PoRoleMatrixRules
         return userId.Length > 0
             && string.Equals(userId, assignee, StringComparison.Ordinal);
     }
+
+ /// <summary>
+ /// Case-study staff may correct a submitted field-inspection package
+ /// (e.g. map pin) without being the inspector assignee.
+ /// </summary>
+    public static bool CanCorrectFieldInspectionSubmission(string? prototypeRole) =>
+        CanManagePartySubmissions(prototypeRole);
 
  /// <summary>
  /// Party read access: case staff read every task, parties read only their own.

@@ -4,7 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
-
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Application.Abstractions;
 namespace RealEstateEval.Failures.Api.Controllers;
 
 [ApiController]
@@ -39,8 +40,7 @@ public class FailuresController : ControllerBase
             propertyId,
             await ActorAsync(cancellationToken),
             cancellationToken);
-        if (dto is null) return NotFound();
-        return Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost]

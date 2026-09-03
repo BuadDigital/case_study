@@ -1,5 +1,5 @@
 import type { RoleId } from "@platform/types";
-import { ROLES } from "../prototype/constants";
+import { ROLES } from "../app-data/constants";
 
 /** Operational roles the CDO can assign — mirrors backend CreatableStaffRoleIds. */
 export const ADMIN_CREATABLE_STAFF_ROLE_IDS: RoleId[] = [

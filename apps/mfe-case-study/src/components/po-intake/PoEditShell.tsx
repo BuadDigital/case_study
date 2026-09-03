@@ -34,9 +34,9 @@ export function PoEditShell({
   variant?: "edit" | "detail";
   showHeader?: boolean;
   showFooter?: boolean;
-  /** يملأ ارتفاع منطقة المحتوى — تمرير واحد داخل النموذج. */
+  /** Fills the content-area height — single scroll inside the form. */
   fillViewport?: boolean;
-  /** document = تمرير الصفحة بالكامل (مناسب لـ /property-inspection/[taskId]). */
+  /** document = scroll the full page (suited to /property-inspection/[taskId]). */
   scrollMode?: "viewport" | "document";
   children: ReactNode;
 }) {

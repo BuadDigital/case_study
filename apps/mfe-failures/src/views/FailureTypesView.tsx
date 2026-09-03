@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { cn, InlineLoadingSkeleton, PageShell, Spinner, useToast } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
-import type { RoleId } from "@platform/types";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
+  cn,
+  EmptyState,
+  InlineLoadingSkeleton,
+  PageShell,
+  Spinner,
+  useToast,
   opsBtnGhost,
   opsBtnPrimary,
-  opsEmptyHint,
   opsFld,
   opsFldControl,
   opsFldFull,
@@ -24,12 +25,15 @@ import {
   opsTfActions,
   opsTfLbl,
   opsTfNote,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+} from "@platform/ui-kit";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import type { RoleId } from "@platform/types";
 import {
   addFailureProblemType,
   removeFailureProblemType,
   resetFailureTypesCatalog,
-} from "../lib/failure-types-storage";
+} from "../lib/failure-types-commands";
 import { useFailureTypesQuery } from "../query/failure-types-queries";
 
 function canManageFailureTypes(role: RoleId): boolean {
@@ -60,7 +64,7 @@ function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
 
 export function FailureTypesView() {
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const canEdit = canManageFailureTypes(role);
   const { data: catalog, isFetched } = useFailureTypesQuery();
   const [categoryId, setCategoryId] = useState("");
@@ -71,21 +75,18 @@ export function FailureTypesView() {
 
   const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: prototypeKeys.failureTypes(),
+      queryKey: appDataKeys.failureTypes(),
     });
   }, [queryClient]);
 
-  useEffect(() => {
-    if (!catalog?.categories.length) return;
-    if (!categoryId) setCategoryId(catalog.categories[0].id);
-  }, [catalog, categoryId]);
+  const effectiveCategoryId = categoryId || catalog?.categories[0]?.id || "";
 
   async function handleAdd() {
-    if (!canEdit || !categoryId || !label.trim() || busy) return;
+    if (!canEdit || !effectiveCategoryId || !label.trim() || busy) return;
     setBusy(true);
     try {
       await addFailureProblemType({
-        categoryId,
+        categoryId: effectiveCategoryId,
         label,
         description,
       });
@@ -187,7 +188,7 @@ export function FailureTypesView() {
                 <select
                   id="failure_type_category"
                   className={opsFldControl}
-                  value={categoryId}
+                  value={effectiveCategoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                 >
                   {sortedCategories.map((c) => (
@@ -224,7 +225,7 @@ export function FailureTypesView() {
               <button
                 type="button"
                 className={opsBtnPrimary}
-                disabled={busy || !categoryId || !label.trim()}
+                disabled={busy || !effectiveCategoryId || !label.trim()}
                 aria-busy={busy || undefined}
                 onClick={() => void handleAdd()}
               >
@@ -269,7 +270,7 @@ export function FailureTypesView() {
               </div>
               <div className="px-4 pb-2 sm:px-[18px]">
                 {types.length === 0 ? (
-                  <p className={opsEmptyHint}>لا أنواع.</p>
+                  <EmptyState line="لا أنواع." />
                 ) : (
                   types.map((type) => (
                     <div

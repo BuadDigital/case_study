@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>
 /// Immutable-per-change attribution for a case-study answer or section remark.

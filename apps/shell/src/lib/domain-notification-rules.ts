@@ -1,14 +1,11 @@
-import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
-import {
-  SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
-} from "@case-study/mfe";
+import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/suspended-transactions-model";
 import { FAILURE_TYPES_CHANGED_EVENT } from "@failures/mfe/lib/failure-types-events";
 import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
-  FIELD_INSPECTION_SUBMITTED_EVENT,
-} from "@platform/app-shared/prototype/party-workflow-events";
+} from "@platform/app-shared/app-data/party-workflow-events";
 import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 
 type DomainNotificationRule = {
@@ -20,7 +17,7 @@ type DomainNotificationRule = {
 export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
   // FAILURES_CHANGED_EVENT is intentionally omitted: it only fires in the
   // same browser that mutated failures, and raise/resolve UIs already show a
-  // specific success toast. The generic "تحديث في التعذرات" toast was a
+  // specific success toast. The generic "update in failures" toast was a
   // duplicate (same pattern as ENGINEERING_SURVEY_SUBMITTED). Queries still
   // listen for the event directly for invalidate/refresh.
   {
@@ -34,21 +31,14 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
       sourceEvent: FAILURE_TYPES_CHANGED_EVENT,
     },
   },
-  {
-    event: FIELD_INSPECTION_SUBMITTED_EVENT,
-    notification: {
-      title: "إرسال معاينة",
-      body: "تم إرسال المعاينة الميدانية.",
-      tone: "success",
-      href: "/active-inspection",
-      category: "workflow",
-      entityType: "task",
-      sourceEvent: FIELD_INSPECTION_SUBMITTED_EVENT,
-    },
-  },
+  // Field inspection submit toasts are intentionally omitted here: they only
+  // fire in the submitter's browser, and PropertyDetailInspectionTab /
+  // FieldInspectionWorkBody already show the single success toast
+  // ("تم حفظ بيانات المعاينة وإرسالها."). Domain toasts here duplicated
+  // that message (same pattern as ENGINEERING_SURVEY_SUBMITTED).
   // ENGINEERING_SURVEY_SUBMITTED_EVENT is intentionally omitted: it only fires
   // in the submitter's browser, and PartyActiveTaskWork already shows the
-  // single success toast ("اكتمل الرفع المساحي لهذا العقار."). Domain toasts
+  // single success toast ("survey completed for this property."). Domain toasts
   // here duplicated that message (option A only). Returned/accepted stay —
   // those are still useful inbox signals for the engineering office.
   {

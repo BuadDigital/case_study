@@ -7,6 +7,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Platform.Infrastructure.Services;
 
 namespace RealEstateEval.Platform.Api.Integration;
 

@@ -1,6 +1,6 @@
 export const AUTH_STORAGE_KEY = "auth";
 export const AUTH_COOKIE_NAME = "ree-auth";
-export const AUTH_EXPIRED_EVENT = "auth-expired";
+const AUTH_EXPIRED_EVENT = "auth-expired";
 /** Fired whenever the stored session is written, cleared, or changed in another tab. */
 export const AUTH_CHANGED_EVENT = "auth-changed";
 
@@ -20,7 +20,7 @@ export type AuthSession = {
 };
 
 /** Renew this long before the access token expires, so requests never race it. */
-export const SESSION_REFRESH_LEAD_MS = 4 * 60 * 1000;
+const SESSION_REFRESH_LEAD_MS = 4 * 60 * 1000;
 
 /** Keep JSON.parse results referentially stable for useSyncExternalStore snapshots. */
 let sessionCache: { raw: string | null; session: AuthSession | null } = {

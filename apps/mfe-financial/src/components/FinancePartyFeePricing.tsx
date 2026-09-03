@@ -15,22 +15,6 @@ import {
   Note,
   Spinner,
   cn,
-  useToast,
-} from "@platform/ui-kit";
-import { useCapability } from "@platform/app-shared/components/Can";
-import type {
-  PartyFeePricingCategory,
-  PartyFeePricingDto,
-  PartyFeePricingTableSummaryDto,
-  PartyFeePricingTierDto,
-} from "@platform/api-client";
-import {
-  getEngineeringOffices,
-  getFieldInspectors,
-  getGovernmentAuditors,
-  type DistributionAssignee,
-} from "@case-study/mfe/lib/distribution-assignees";
-import {
   opsBtnGhost,
   opsBtnPrimary,
   opsFldControl,
@@ -46,7 +30,21 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+  useToast,
+} from "@platform/ui-kit";
+import { useCapability } from "@platform/app-shared/components/Can";
+import type {
+  PartyFeePricingCategory,
+  PartyFeePricingDto,
+  PartyFeePricingTableSummaryDto,
+  PartyFeePricingTierDto,
+} from "@platform/api-client";
+import {
+  getEngineeringOffices,
+  getFieldInspectors,
+  getGovernmentAuditors,
+  type DistributionAssignee,
+} from "@case-study/mfe/lib/distribution-assignees";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   activatePartyFeePricingTable,
@@ -64,6 +62,9 @@ import {
 const PRICING_STALE_MS = 60_000;
 
 const PRICING_ICON = "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6";
+
+const EMPTY_STAFF_USERS: Parameters<typeof getEngineeringOffices>[0] = [];
+const EMPTY_TABLES: PartyFeePricingTableSummaryDto[] = [];
 
 function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
@@ -215,10 +216,10 @@ export function FinancePartyFeePricing() {
   const isSystemAdmin = useCapability("manage-system-config");
   const canEditOps = useCapability("manage-operations");
   const canEditSpecialist = useCapability("manage-work-orders");
-  /** مسؤول النظام · مشرف · أخصائي دراسة حالة */
+  /** System admin · supervisor · case-study specialist */
   const canEdit = isSystemAdmin || canEditOps || canEditSpecialist;
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
   const [selectedCategory, setSelectedCategory] =
     useState<PartyFeePricingCategory>("engineering-survey");
   const [selectedId, setSelectedId] = useState("");
@@ -240,7 +241,7 @@ export function FinancePartyFeePricing() {
     queryFn: () => loadPartyFeePricingTables(selectedCategory),
     staleTime: PRICING_STALE_MS,
   });
-  const tables = tablesQuery.data ?? [];
+  const tables = tablesQuery.data ?? EMPTY_TABLES;
 
   // Resolve which table to open (prefer ref after mutations, else active/first).
   useEffect(() => {
@@ -293,6 +294,9 @@ export function FinancePartyFeePricing() {
     const ids = new Set(draft.assignedAssigneeIds ?? []);
     return categoryParties.filter((p) => ids.has(p.id));
   }, [categoryParties, draft.assignedAssigneeIds]);
+
+  /** Draft assignment membership — Set instead of includes in the render loop */
+  const assignSet = useMemo(() => new Set(assignDraft), [assignDraft]);
 
   const draftMatchesCategory =
     Boolean(draft.id) &&
@@ -578,7 +582,7 @@ export function FinancePartyFeePricing() {
         </p>
       ) : null}
 
-      {/* الفئة — أزرار مقسّمة بنمط المهام */}
+      {/* Category — segmented buttons in task style */}
       <div
         className={cn(opsTfSegRow, "mb-3.5")}
         role="tablist"
@@ -602,7 +606,7 @@ export function FinancePartyFeePricing() {
         })}
       </div>
 
-      {/* بطاقة القسم — رأس فيه اختيار الجدول وأزرار الإنشاء */}
+      {/* Section card — header with table pick and create buttons */}
       <section className={opsLetterCard} aria-busy={loading || busy}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
@@ -622,7 +626,7 @@ export function FinancePartyFeePricing() {
             </label>
             <select
               id="pricing-table-select"
-              className="min-h-11 w-full min-w-[210px] flex-1 rounded-[9px] border border-border-md bg-surface px-3 py-[9px] font-[inherit] text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] sm:w-auto"
+              className={cn(opsFldControl, "min-h-11 min-w-[210px] flex-1 bg-surface font-medium sm:w-auto")}
               value={selectValue}
               disabled={
                 loading || busy || tables.length === 0 || !draftMatchesCategory
@@ -711,7 +715,7 @@ export function FinancePartyFeePricing() {
                 : "animate-[pricing-panel-in_0.28s_ease-out] opacity-100",
             )}
           >
-            {/* هوية الجدول */}
+            {/* Table identity */}
             <div className="space-y-5">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <label htmlFor="pricing-name" className={opsTfLbl}>
@@ -790,7 +794,7 @@ export function FinancePartyFeePricing() {
               )}
             </div>
 
-            {/* الأسعار */}
+            {/* Prices */}
             <div className="mt-6 space-y-5 border-t border-border pt-6">
               {hasAssignments ? (
                 <p className={cn(opsTfNote, "m-0")}>
@@ -991,7 +995,7 @@ export function FinancePartyFeePricing() {
               ) : null}
             </div>
 
-            {/* حفظ واضح */}
+            {/* Explicit save */}
             {canEdit ? (
               <div className={opsTfActions}>
                 <button
@@ -1045,7 +1049,7 @@ export function FinancePartyFeePricing() {
                 </Note>
               ) : (
                 categoryParties.map((party) => {
-                  const checked = assignDraft.includes(party.id);
+                  const checked = assignSet.has(party.id);
                   return (
                     <label
                       key={party.id}
@@ -1101,4 +1105,3 @@ export function FinancePartyFeePricing() {
     </div>
   );
 }
-

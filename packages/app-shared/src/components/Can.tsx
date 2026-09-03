@@ -7,8 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import type { PageId, RoleId } from "@platform/types";
-import { usePrototype } from "../contexts/PrototypeContext";
-import { canAccessPage } from "../prototype/page-access";
+import { useAppAccess } from "../contexts/AppAccessContext";
+import { canAccessPage } from "../app-data/page-access";
 
 type CanProps = {
   children: ReactNode;
@@ -30,7 +30,7 @@ export function Can({
   fallback = null,
   deniedTitle = "غير مصرح",
 }: CanProps) {
-  const { hasCapability, role: userRole, rolePages } = usePrototype();
+  const { hasCapability, role: userRole, rolePages } = useAppAccess();
 
   let allowed = true;
   if (capability) allowed = hasCapability(capability);
@@ -50,6 +50,6 @@ export function Can({
 }
 
 export function useCapability(capability: string): boolean {
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   return hasCapability(capability);
 }

@@ -9,25 +9,29 @@ import {
   PageToolbar,
   SkeletonTableRows,
   StatusPill,
-  Table,
   TBody,
-  Td,
-  Th,
   THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
   Tr,
   cn,
-  queueTableWrapClassName,
-  useToast,
+  opsMobileCard,
+  opsSkeletonCard,
   type StatusPillStyle,
+  useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 /** Case Study.html `FEE_ST` mapping for engineering office billing. */
 type EngFeeUiStatus =
@@ -40,7 +44,7 @@ type EngFeeUiStatus =
   | "other";
 
 function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
+  return `${fmtMax(n || 0, 3)} ر.س`;
 }
 
 function formatAcceptDate(row: InspectorFeeRowDto): string {
@@ -169,7 +173,7 @@ export function EngOfficeFeesBillingTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);
@@ -259,12 +263,7 @@ export function EngOfficeFeesBillingTable({
         </div>
       </PageToolbar>
 
-      <div
-        className={cn(
-          queueTableWrapClassName,
-          "hidden rounded-b-[var(--radius-lg)] border border-t-0 border-border bg-surface lg:block",
-        )}
-      >
+      <TableFrame className="hidden lg:block">
         <Table className="w-full min-w-[920px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -310,9 +309,9 @@ export function EngOfficeFeesBillingTable({
                         </span>
                       </span>
                     </Td>
-                    <Td dir="ltr" className="text-[12px] text-text-2">
+                    <TdLtr valueClassName="text-[12px] text-text-2">
                       {formatAcceptDate(row)}
-                    </Td>
+                    </TdLtr>
                     <Td className="text-[12.5px] text-text-2">
                       {fmtSar(row.agreedFeeSar)}
                     </Td>
@@ -388,7 +387,7 @@ export function EngOfficeFeesBillingTable({
             )}
           </TBody>
         </Table>
-      </div>
+      </TableFrame>
 
       <div className="lg:hidden">
         {pending && filtered.length === 0 ? (
@@ -396,7 +395,7 @@ export function EngOfficeFeesBillingTable({
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
+                className={cn(opsSkeletonCard, "h-[100px]")}
               />
             ))}
           </div>
@@ -414,7 +413,7 @@ export function EngOfficeFeesBillingTable({
               return (
                 <li
                   key={`m-eng-${row.workflowTaskId}`}
-                  className="rounded-[14px] border border-border border-s-[3px] border-s-gold bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                  className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">

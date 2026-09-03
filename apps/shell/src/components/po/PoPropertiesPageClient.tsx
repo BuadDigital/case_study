@@ -1,16 +1,20 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { PoPropertiesPage } from "@case-study/mfe";
-import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/prototype/po-properties-row-menu";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { useToast } from "@platform/ui-kit";
-import { buildAppraiserRecallMenuItems, EVALUATOR_SUBMISSION_CHANGED_EVENT, PARTY_TASK_RECALL_CHANGED_EVENT } from "@evaluator/mfe";
-import { useWorkflowTasksQuery } from "@/lib/query/prototype-queries";
+import { PoPropertiesPage } from "@case-study/mfe/views/PoPropertiesPage";
+import type { PoPropertyRowMoreContext } from "@case-study/mfe/lib/app-data/po-properties-row-menu";
+import {
+  type RowMoreMenuItem,
+  useToast,
+} from "@platform/ui-kit";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { buildAppraiserRecallMenuItems } from "@evaluator/mfe/lib/evaluator/appraiser-recall-menu-items";
+import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe/lib/evaluator/evaluator-submission-model";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const { data: tasks, refetch } = useWorkflowTasksQuery();
 

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- A8 retirement: the owner-to-owner HTTP clients moved out of the global
+         Infrastructure assembly. Declared namespaces are unchanged
+         (RealEstateEval.Infrastructure[.Services]) so call sites need no using churn. -->
+    <RootNamespace>RealEstateEval.Infrastructure.Services</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\attachments\RealEstateEval.Attachments.Application\RealEstateEval.Attachments.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\case-study\RealEstateEval.CaseStudy.Application\RealEstateEval.CaseStudy.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\failures\RealEstateEval.Failures.Application\RealEstateEval.Failures.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\financial\RealEstateEval.Financial.Application\RealEstateEval.Financial.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\operations\RealEstateEval.Operations.Application\RealEstateEval.Operations.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\platform\RealEstateEval.Platform.Application\RealEstateEval.Platform.Application.csproj" />
+    <ProjectReference Include="..\..\contexts\valuation\RealEstateEval.Valuation.Application\RealEstateEval.Valuation.Application.csproj" />
+  </ItemGroup>
+
+</Project>

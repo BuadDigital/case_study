@@ -4,13 +4,15 @@ import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
   VALUATION_PURPOSE_OPTIONS,
   VALUE_BASIS_OPTIONS,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+  VALUE_PREMISE_OPTIONS,
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
   basisOfValueForAssignment,
   defaultSubClientId,
   valuationPurposeForAssignment,
+  valuePremiseForAssignment,
   type AssignmentType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 export function AssignmentValuationFields({
   assignmentType,
@@ -26,6 +28,7 @@ export function AssignmentValuationFields({
   const nabrId = subClientId || defaultSubClientId();
   const purpose = valuationPurposeForAssignment(assignmentType, nabrId);
   const basis = basisOfValueForAssignment(assignmentType, nabrId);
+  const premise = valuePremiseForAssignment(assignmentType, nabrId);
 
   return (
     <>
@@ -44,6 +47,15 @@ export function AssignmentValuationFields({
         required
         value={basis.key}
         options={VALUE_BASIS_OPTIONS}
+        hint="افتراضي"
+        onChange={() => undefined}
+      />
+      <RegSelect
+        id={`${idPrefix}_value_premise`}
+        label="فرضية القيمة"
+        required
+        value={premise.key}
+        options={VALUE_PREMISE_OPTIONS}
         hint="افتراضي"
         onChange={() => undefined}
       />

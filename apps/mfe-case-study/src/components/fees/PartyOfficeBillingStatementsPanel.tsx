@@ -2,13 +2,13 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingStatements,
   openPartyBillingAttachment,
   runSubmitVendorInvoice,
   uploadPartyBillingVendorInvoice,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   Button,
   Input,
@@ -17,33 +17,27 @@ import {
   SkeletonTableRows,
   StatusPill,
   Table,
+  TableFrame,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
   cn,
-  queueTableWrapClassName,
   useToast,
   type StatusPillStyle,
 } from "@platform/ui-kit";
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
+import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
 function fmtSar(n: number): string {
   return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
 }
 
-function formatYmd(raw: string | null | undefined): string {
-  if (!raw?.trim()) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return "—";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}/${m}/${day}`;
-}
 
 function statementStatusMeta(s: PartyBillingStatementDto): {
   label: string;
@@ -80,7 +74,7 @@ function statementStatusMeta(s: PartyBillingStatementDto): {
 }
 
 /**
- * Case Study.html `renderEngFees` statements tab — expandable كشف rows,
+ * Case Study.html `renderEngFees` statements tab — expandable statement rows,
  * search toolbar, cycle footer. Office read-only.
  */
 export function PartyOfficeBillingStatementsPanel({
@@ -104,7 +98,7 @@ export function PartyOfficeBillingStatementsPanel({
 
   const { data: statements = [], isPending, isFetched } = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       assigneeId ?? "all",
@@ -151,7 +145,7 @@ export function PartyOfficeBillingStatementsPanel({
       setInvoiceNo("");
       setInvoiceFile(null);
       await queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "party-billing"],
+        queryKey: [...appDataKeys.all, "party-billing"],
       });
     } finally {
       setBusyId(null);
@@ -182,33 +176,30 @@ export function PartyOfficeBillingStatementsPanel({
   const pending = isPending && !isFetched;
 
   return (
-    <div className="flex flex-col gap-0">
-      <EngFeesSectionTitle
-        title="كشوف الفوترة الصادرة"
-        sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
-      />
+    <section className={opsLetterCard}>
+      <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+        <EngFeesSectionTitle
+          className="mb-3 mt-3"
+          title="كشوف الفوترة الصادرة"
+          sub="يُصدرها المحاسب نهاية الشهر من البنود الجاهزة فقط — مستند داخلي لتحديد نطاق الصرف؛ الفاتورة من البرنامج المحاسبي. للاطلاع ومتابعة الصرف فقط."
+        />
 
-      <PageToolbar className="mt-0 shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
-          <OperationalToolbarSearch
-            type="search"
-            placeholder="رقم الكشف أو رقم صك ضمنه…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="بحث كشوف الفوترة"
-          />
-          <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
-            {filtered.length} كشف
-          </span>
-        </div>
-      </PageToolbar>
+        <PageToolbar className="mt-0 shrink-0 flex-wrap items-center justify-between gap-2.5 border-b border-border bg-surface-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+            <OperationalToolbarSearch
+              type="search"
+              placeholder="رقم الكشف أو رقم صك ضمنه…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="بحث كشوف الفوترة"
+            />
+            <span className="ms-auto shrink-0 rounded-full bg-gold-soft px-3 py-[5px] text-[12px] font-bold text-gold-d">
+              {filtered.length} كشف
+            </span>
+          </div>
+        </PageToolbar>
 
-      <div
-        className={cn(
-          queueTableWrapClassName,
-          "rounded-b-[var(--radius-lg)] border border-t-0 border-border bg-surface",
-        )}
-      >
+        <TableFrame>
         <Table className="w-full min-w-[820px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -276,15 +267,15 @@ export function PartyOfficeBillingStatementsPanel({
                           </span>
                         </span>
                       </Td>
-                      <Td dir="ltr" className="text-[12px] text-text-2">
+                      <TdLtr valueClassName="text-[12px] text-text-2">
                         {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                      </Td>
+                      </TdLtr>
                       <Td className="text-[12.5px] text-text">
                         {s.lines.length} معاملات
                       </Td>
-                      <Td className="text-[13px] font-bold text-heading">
+                      <TdLtr valueClassName="text-[13px] font-bold text-heading">
                         {fmtSar(s.totalNetSar)}
-                      </Td>
+                      </TdLtr>
                       <Td>
                         <StatusPill label={meta.label} style={meta.style} />
                       </Td>
@@ -463,14 +454,14 @@ export function PartyOfficeBillingStatementsPanel({
             )}
           </TBody>
         </Table>
+        <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+          دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
+          المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
+          والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
+          للمالية.
+        </div>
+      </TableFrame>
       </div>
-
-      <div className="border border-t-0 border-border px-4 py-[11px] text-[12px] text-text-3">
-        دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
-        المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
-        والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
-        للمالية.
-      </div>
-    </div>
+    </section>
   );
 }

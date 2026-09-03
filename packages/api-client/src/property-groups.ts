@@ -1,6 +1,7 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { repositoryFetch as fetch } from "./write-repository";
 
-/** Decision 20 — grouped-property linking (العقار المجمع). */
+/** Decision 20 — grouped-property linking (compound property). */
 export type PropertyGroupMemberDto = {
   propertyId: string;
   poNumber: string;

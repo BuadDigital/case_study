@@ -1,6 +1,6 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
-/// <summary>دائرة تابعة لمحكمة — لا حذف نهائي؛ يُعطَّل عبر IsActive.</summary>
+/// <summary>Circuit under a court — no hard delete; deactivate via IsActive.</summary>
 public class CourtCircuit
 {
     public Guid Id { get; set; }

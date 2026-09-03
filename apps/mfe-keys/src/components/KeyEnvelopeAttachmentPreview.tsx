@@ -2,8 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { downloadAttachmentBlob } from "@platform/api-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/prototype/task-attachments-api";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/app-data/task-attachments-api";
+import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 import { cn } from "@platform/ui-kit";
 
 type PreviewState =
@@ -19,15 +20,6 @@ function isImageMime(mime: string): boolean {
 function isPdfMime(mime: string, fileName?: string): boolean {
   if (mime === "application/pdf") return true;
   return (fileName ?? "").toLowerCase().endsWith(".pdf");
-}
-
-async function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 function FileIcon() {
@@ -158,7 +150,7 @@ export function KeyEnvelopeAttachmentPreview({
   const lightbox =
     lightboxOpen && state.status === "ready" && state.preview.dataUrl ? (
       <div
-        className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
+        className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
         role="dialog"
         aria-modal="true"
         aria-label={label}

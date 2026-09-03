@@ -3,35 +3,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DistributionPartiesForm } from "./DistributionPartiesForm";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
+import { useIdempotentAction } from "@platform/app-shared";
 import { TaskWorkChrome } from "../primary-data/TaskWorkChrome";
 import { FailureRaiseModal } from "../failures/FailureRaiseModal";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
-  isBlockingFailureStatus,
-  useFailuresQuery,
-} from "@failures/mfe";
+} from "@failures/mfe/lib/failure-party-roles";
+import { isBlockingFailureStatus } from "@platform/app-shared/failures/failures-types";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
-  classificationRequiresSurvey,
   emptyProperty,
   formatPoDisplay,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
-import { findPriorDeedFull } from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-data";
+import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import {
   confirmTaskDistribution,
   defaultDistribution,
   distributionValidationError,
   engineeringOfficeAvailable,
+  engineeringOfficeUnavailableReason,
   migrateDistribution,
   patchTaskDistribution,
   taskDisplayPropertyLabel,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/tasks-storage";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
@@ -47,7 +48,7 @@ export function DistributionTaskWork({
   onRefresh: () => void;
   onClose: () => void;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { runWithActionToast, showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
@@ -107,7 +108,6 @@ export function DistributionTaskWork({
     priorSurveyLookup.exists;
 
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
-  const requiresSurvey = classificationRequiresSurvey(property.classification);
   const activeFailure = useMemo(() => {
     const propertyId = task.propertyId?.trim();
     if (!propertyId) return null;
@@ -133,6 +133,23 @@ export function DistributionTaskWork({
     [distribution, showEngineering],
   );
 
+  const { execute: executeConfirmDistribution, loading: confirmingDistribution } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) =>
+          confirmTaskDistribution(
+            task.id,
+            effectiveDistribution,
+            formatPropertyDeedDisplay(property),
+            staffUsers,
+            idempotencyKey,
+          ),
+        [task.id, effectiveDistribution, property, staffUsers],
+      ),
+    );
+
+  const submitBusy = saving || confirmingDistribution;
+
   useEffect(() => {
     if (loading || showEngineering) return;
     if (distribution.engineeringOffice) {
@@ -150,17 +167,11 @@ export function DistributionTaskWork({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.id, showEngineering, property.classification]);
+  }, [loading, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
 
   const engineeringUnavailableHint = useCallback((): string | null => {
-    if (!requiresSurvey) {
-      return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
-    }
-    if (hasPriorSurvey) {
-      return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
-    }
-    return null;
-  }, [hasPriorSurvey, requiresSurvey]);
+    return engineeringOfficeUnavailableReason(property, hasPriorSurvey);
+  }, [hasPriorSurvey, property]);
 
   async function patchDistribution(patch: Partial<TaskDistributionDraft>) {
     const next = migrateDistribution({ ...effectiveDistribution, ...patch });
@@ -203,12 +214,10 @@ export function DistributionTaskWork({
     await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
       setSaving(true);
       try {
-        const result = await confirmTaskDistribution(
-          task.id,
-          effectiveDistribution,
-          formatPropertyDeedDisplay(property),
-          staffUsers,
-        );
+        const outcome = await executeConfirmDistribution();
+        if (outcome.status === "skipped") return;
+
+        const result = outcome.value;
         if (!result.parent) {
           const message =
             result.error ??
@@ -305,7 +314,7 @@ export function DistributionTaskWork({
     <TaskWorkChrome
       layout="panel"
       title={`توزيع المعاملة — ${deedTitle}`}
-      saving={saving}
+      saving={submitBusy}
       onClose={onClose}
       onSave={() => void confirmDistribution()}
       saveLabel="تأكيد التوزيع وإرسال المهام"

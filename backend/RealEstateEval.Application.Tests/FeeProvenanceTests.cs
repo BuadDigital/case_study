@@ -3,8 +3,11 @@ using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -22,8 +25,8 @@ public class FeeProvenanceTests
     public async Task A_ledger_priced_from_the_table_records_which_table_it_was()
     {
         await using var db = CreateDb();
-        var tableId = await SetGovernmentRateAsync(db, GovernmentRate);
-        db.UserProfiles.Add(new UserProfile
+        var tableId = await SetGovernmentRateAsync(db.Financial, GovernmentRate);
+        db.Identity.UserProfiles.Add(new UserProfile
         {
             UserId = Guid.NewGuid().ToString("N"),
             DistributionAssigneeId = "gr-1",
@@ -33,12 +36,13 @@ public class FeeProvenanceTests
             CreatedAtUtc = DateTime.UtcNow,
         });
         var task = GovernmentReviewTask("PO-PROV-1", "gr-1");
-        db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        db.CaseStudy.WorkflowTasks.Add(task);
+        await db.Identity.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await db.InspectorFeeLedgers.SingleAsync();
+        var ledger = await db.Financial.InspectorFeeLedgers.SingleAsync();
         Assert.Equal(GovernmentRate, ledger.AgreedFeeSar);
         Assert.Equal(tableId, ledger.PricingTableId);
         Assert.Equal(SupervisingDepartments.CaseStudy, ledger.SupervisingDepartment);
@@ -54,7 +58,7 @@ public class FeeProvenanceTests
     public async Task An_employee_without_a_flat_table_does_not_open_a_ledger()
     {
         await using var db = CreateDb();
-        await SetGovernmentRateAsync(db, GovernmentRate);
+        await SetGovernmentRateAsync(db.Financial, GovernmentRate);
         var task = WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-PROV-2",
@@ -62,12 +66,12 @@ public class FeeProvenanceTests
             assigneeRole: "field-inspector",
             assigneeName: "موظف",
             id: Guid.NewGuid());
-        db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        db.CaseStudy.WorkflowTasks.Add(task);
+        await db.CaseStudy.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task]);
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).EnsureLedgersForTasksAsync([task]);
 
-        Assert.Empty(await db.InspectorFeeLedgers.ToListAsync());
+        Assert.Empty(await db.Financial.InspectorFeeLedgers.ToListAsync());
     }
 
  /// <summary>
@@ -78,17 +82,17 @@ public class FeeProvenanceTests
     public async Task A_flat_priced_employee_fee_rejects_hand_override()
     {
         await using var db = CreateDb();
-        var tableId = await SetGovernmentRateAsync(db, GovernmentRate);
+        var tableId = await SetGovernmentRateAsync(db.Financial, GovernmentRate);
         var now = DateTime.UtcNow;
         var taskId = Guid.NewGuid();
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-PROV-4",
             now,
             assigneeRole: "field-inspector",
             assigneeName: "موظف",
             id: taskId));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-PROV-4",
@@ -99,15 +103,16 @@ public class FeeProvenanceTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var patched = await TestInspectorFeeServiceFactory.Create(db).PatchAsync(
+        var patched = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).PatchAsync(
             taskId,
             new PatchInspectorFeeRequest { AgreedFeeSar = 275m },
             canManageAllDepartments: true);
 
         Assert.Null(patched);
-        var ledger = await db.InspectorFeeLedgers.SingleAsync();
+        var ledger = await db.Financial.InspectorFeeLedgers.SingleAsync();
         Assert.Equal(GovernmentRate, ledger.AgreedFeeSar);
         Assert.Equal(tableId, ledger.PricingTableId);
     }
@@ -117,14 +122,14 @@ public class FeeProvenanceTests
     {
         await using var db = CreateDb();
         var propertyId = Guid.NewGuid();
-        db.WorkOrderProperties.Add(new WorkOrderProperty
+        db.CaseStudy.WorkOrderProperties.Add(new WorkOrderProperty
         {
             Id = propertyId,
             WorkOrderId = Guid.NewGuid(),
             Area = "300",
         });
  // Placeholder survey table with no tiers — ResolveDefaultFeeAsync must fail closed.
-        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        db.Financial.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
             Category = PartyFeePricingCategories.EngineeringSurvey,
@@ -142,8 +147,8 @@ public class FeeProvenanceTests
             id: Guid.NewGuid(),
             assigneeId: "eng-office-empty",
             propertyId: propertyId);
-        db.WorkflowTasks.Add(task);
-        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        db.CaseStudy.WorkflowTasks.Add(task);
+        db.CaseStudy.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),
             WorkflowTaskId = task.Id,
@@ -153,14 +158,15 @@ public class FeeProvenanceTests
             PoNumber = "PO-PROV-EMPTY",
             SubmittedAtUtc = DateTime.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db)
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy)
             .AccrueEngineeringSurveyFeeAsync(task.Id, "user-1");
 
         Assert.Null(row);
         Assert.Equal(PricingErrors.FeeUnresolved, error);
-        Assert.Empty(db.InspectorFeeLedgers);
+        Assert.Empty(db.Financial.InspectorFeeLedgers);
     }
 
  /// <summary>
@@ -171,9 +177,9 @@ public class FeeProvenanceTests
     public async Task An_engineering_accrual_records_the_table_behind_the_tier()
     {
         await using var db = CreateDb();
-        var tableId = await SetSurveyTierAsync(db, "eng-office-1", SurveyRate);
+        var tableId = await SetSurveyTierAsync(db.Financial, "eng-office-1", SurveyRate);
         var propertyId = Guid.NewGuid();
-        db.WorkOrderProperties.Add(new WorkOrderProperty
+        db.CaseStudy.WorkOrderProperties.Add(new WorkOrderProperty
         {
             Id = propertyId,
             WorkOrderId = Guid.NewGuid(),
@@ -189,8 +195,8 @@ public class FeeProvenanceTests
             id: Guid.NewGuid(),
             assigneeId: "eng-office-1",
             propertyId: propertyId);
-        db.WorkflowTasks.Add(task);
-        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        db.CaseStudy.WorkflowTasks.Add(task);
+        db.CaseStudy.PartyTaskSubmissions.Add(new PartyTaskSubmission
         {
             Id = Guid.NewGuid(),
             WorkflowTaskId = task.Id,
@@ -200,14 +206,14 @@ public class FeeProvenanceTests
             PoNumber = "PO-PROV-3",
             SubmittedAtUtc = DateTime.UtcNow,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db)
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy)
             .AccrueEngineeringSurveyFeeAsync(task.Id, "user-1");
 
         Assert.Null(error);
         Assert.NotNull(row);
-        var ledger = await db.InspectorFeeLedgers.SingleAsync();
+        var ledger = await db.Financial.InspectorFeeLedgers.SingleAsync();
         Assert.Equal(SurveyRate, ledger.AgreedFeeSar);
         Assert.Equal(tableId, ledger.PricingTableId);
     }
@@ -222,7 +228,7 @@ public class FeeProvenanceTests
             id: Guid.NewGuid(),
             assigneeId: assigneeId);
 
-    private static async Task<Guid> SetGovernmentRateAsync(ApplicationDbContext db, decimal rate)
+    private static async Task<Guid> SetGovernmentRateAsync(FinancialDbContext db, decimal rate)
     {
         var tableId = Guid.NewGuid();
         db.PartyFeePricingTables.Add(new PartyFeePricingTable
@@ -243,7 +249,7 @@ public class FeeProvenanceTests
  /// fixture rather than an afterthought.
  /// </summary>
     private static async Task<Guid> SetSurveyTierAsync(
-        ApplicationDbContext db,
+        FinancialDbContext db,
         string assigneeId,
         decimal feeSar)
     {
@@ -276,8 +282,6 @@ public class FeeProvenanceTests
         return tableId;
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"fee-provenance-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("fee-provenance");
 }

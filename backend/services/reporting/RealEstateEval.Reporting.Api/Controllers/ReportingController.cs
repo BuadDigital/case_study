@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Reporting.Api.Services;
 using RealEstateEval.Shared.Web.Authorization;
@@ -54,12 +55,13 @@ public class ReportingController : ControllerBase
 
         var valuationRows = BuildRecentValuationRequests(allTasks);
 
+        // "property-inspection" literally did not match any wire value — Inspector tasks were missing from the report.
         var openPartyTasks = allTasks
             .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .Where(t =>
-                t.Kind == "property-inspection"
-                || t.Kind == "property-appraisal"
-                || t.Kind == "engineering-survey")
+                t.Kind == WorkflowTaskKindValues.FieldInspection
+                || t.Kind == WorkflowTaskKindValues.PropertyAppraisal
+                || t.Kind == WorkflowTaskKindValues.EngineeringSurvey)
             .ToList();
 
         var teamField = openPartyTasks
@@ -69,8 +71,8 @@ public class ReportingController : ControllerBase
                 var sample = g.First();
                 var kind = sample.Kind switch
                 {
-                    "property-inspection" => "internal",
-                    "property-appraisal" => "internal",
+                    WorkflowTaskKindValues.FieldInspection => "internal",
+                    WorkflowTaskKindValues.PropertyAppraisal => "internal",
                     _ => "freelance",
                 };
                 return new ReportingTeamMemberDto
@@ -154,7 +156,7 @@ public class ReportingController : ControllerBase
         IReadOnlyList<WorkflowTaskDto> allTasks)
     {
         var appraisalRows = allTasks
-            .Where(t => t.Kind == "property-appraisal")
+            .Where(t => t.Kind == WorkflowTaskKindValues.PropertyAppraisal)
             .Where(t => !WorkflowTaskStatusValues.IsTerminalValue(t.Status))
             .OrderByDescending(t => t.UpdatedAt)
             .Take(6)
@@ -215,7 +217,7 @@ public class ReportingController : ControllerBase
     }
 
  /// <summary>
- /// Drop placeholder assignee rows where the name is just the role title (e.g. «معاين ميداني»)
+ /// Drop placeholder assignee rows where the name is just the role title (e.g. “Field Inspector”)
  /// or the legacy default demo persona superseded by named staff in HR seed.
  /// </summary>
     private static bool IsTeamLoadPlaceholderRow(string name, string roleLabel)
@@ -249,11 +251,12 @@ public class ReportingController : ControllerBase
         task.AssigneeRole == roleId && roleId switch
         {
             "case-specialist" =>
-                task.Kind == "case-study-property" && task.Phase == "case-study",
+                task.Kind == WorkflowTaskKindValues.CaseStudyProperty
+                && task.Phase == WorkflowTaskPhaseValues.CaseStudy,
  // Legacy only: government-review children are no longer spawned.
-            "government-reviewer" => task.Kind == "government-review",
-            "field-inspector" => task.Kind == "field-inspection",
-            "engineering-office" => task.Kind == "engineering-survey",
+            "government-reviewer" => task.Kind == WorkflowTaskKindValues.GovernmentReview,
+            "field-inspector" => task.Kind == WorkflowTaskKindValues.FieldInspection,
+            "engineering-office" => task.Kind == WorkflowTaskKindValues.EngineeringSurvey,
             _ => false,
         };
 
@@ -268,17 +271,17 @@ public class ReportingController : ControllerBase
     private static string RoleLine(string kind, string title) =>
         kind switch
         {
-            "property-inspection" => "معاين — ميداني",
-            "property-appraisal" => "مقيم — ميداني",
-            "engineering-survey" => "مكتب هندسي — رفع مساحي",
+            WorkflowTaskKindValues.FieldInspection => "معاين — ميداني",
+            WorkflowTaskKindValues.PropertyAppraisal => "مقيم — ميداني",
+            WorkflowTaskKindValues.EngineeringSurvey => "مكتب هندسي — رفع مساحي",
             _ => title,
         };
 
     private static string PartyKindLabel(string taskKind) =>
         taskKind switch
         {
-            "field-inspection" => "معاينة ميدانية",
-            "engineering-survey" => "رفع مساحي",
+            WorkflowTaskKindValues.FieldInspection => "معاينة ميدانية",
+            WorkflowTaskKindValues.EngineeringSurvey => "رفع مساحي",
             _ => taskKind,
         };
 }

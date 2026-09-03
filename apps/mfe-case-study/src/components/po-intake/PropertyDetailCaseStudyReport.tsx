@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
+import { allocateNumberedDocument } from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   Button,
   cn,
@@ -14,23 +17,23 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { CaseStudyReportDocument } from "../case-study/CaseStudyReportDocument";
-import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
-import type { CaseStudyReportSection } from "../../lib/prototype/case-study-report-model";
+import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-model";
 import {
   CASE_STUDY_SECTION_REMARKS_HINT,
   type CaseStudyQuestionSection,
-} from "../../lib/prototype/case-study-form-data";
+} from "../../lib/app-data/case-study-form-data";
 import {
-  loadCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "../../lib/prototype/case-study-form-storage";
-import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
+} from "../../lib/app-data/case-study-form-model";
+import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
-import { canOpenCaseStudyWorkspace } from "../../lib/prototype/viewer-task-access";
+import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
 const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
@@ -63,21 +66,24 @@ const CheckMark = () => (
 );
 
 const ChevronIcon = ({ open }: { open: boolean }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="var(--text-3)"
-    strokeWidth="2"
+  <span
     className={cn(
-      "shrink-0 transition-transform duration-200",
+      "inline-flex shrink-0 transition-transform duration-200",
       open ? "rotate-0" : "-rotate-90",
     )}
     aria-hidden="true"
   >
-    <path d="m6 9 6 6 6-6" />
-  </svg>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--text-3)"
+      strokeWidth="2"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  </span>
 );
 
 const EyeIcon = () => (
@@ -279,7 +285,7 @@ export function PropertyDetailCaseStudyReport({
   property: PoPropertyIntake;
   task: WorkflowTask | null;
 }) {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
   const [loading, setLoading] = useState(false);
@@ -294,8 +300,35 @@ export function PropertyDetailCaseStudyReport({
     extra: false,
   });
   const [previewOpen, setPreviewOpen] = useState(false);
+ // Decision 25 (entity 6): report number CS-{year}-{5-digit seq} is allocated on first print
+ // and fixed for the session — no new number on every click.
+  const [reportReference, setReportReference] = useState<string | null>(null);
 
   const { data: tasks = [] } = useWorkflowTasksQuery();
+
+  const printReport = useCallback(async () => {
+    let reference = reportReference;
+    if (!reference) {
+      const config = apiConfig();
+      const propertyId = /^[0-9a-fA-F-]{36}$/.test(property.id)
+        ? property.id
+        : undefined;
+      if (config) {
+        const allocated = await allocateNumberedDocument(config, {
+          kind: "case-study-report",
+          poNumber: record.poNumber,
+          propertyId,
+          title: `تقرير دراسة الحالة — صك ${property.deedNumber}`.trim(),
+        });
+        if (allocated.ok) {
+          reference = allocated.data.referenceNumber;
+          setReportReference(reference);
+        }
+      }
+    }
+    // One frame so the number paints in the header before the print dialog.
+    requestAnimationFrame(() => window.print());
+  }, [reportReference, record.poNumber, property.id, property.deedNumber]);
 
   const refreshDraft = useCallback(async () => {
     if (!task) {
@@ -319,14 +352,7 @@ export function PropertyDetailCaseStudyReport({
       window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, bump);
   }, []);
 
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPreviewOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [previewOpen]);
+  useEscapeKey(previewOpen, () => setPreviewOpen(false));
 
   const reportModel = useMemo(() => {
     if (!task || !draft) return null;
@@ -467,7 +493,7 @@ export function PropertyDetailCaseStudyReport({
 
       {previewOpen ? (
         <ModalOverlay
-          className="z-[1200] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
+          className="z-[var(--z-lightbox)] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
           onClick={() => setPreviewOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -485,7 +511,7 @@ export function PropertyDetailCaseStudyReport({
                 <Button
                   size="sm"
                   variant="primary"
-                  onClick={() => window.print()}
+                  onClick={() => void printReport()}
                 >
                   طباعة / PDF
                 </Button>
@@ -499,6 +525,7 @@ export function PropertyDetailCaseStudyReport({
                 <CaseStudyReportDocument
                   model={reportModel}
                   id="cs-report-print-root"
+                  referenceNumber={reportReference}
                 />
               </div>
             </ModalBody>

@@ -1,0 +1,72 @@
+import { saveFailureTypesCatalog } from "@platform/api-client";
+import {
+  apiErrorMessage,
+  prototypeModulesApiConfig,
+  resolveApiError,
+} from "@platform/app-shared/app-data/modules-api-config";
+import { notifyFailureTypesChanged } from "./failure-types-events";
+import { seedCatalog, type FailureTypesCatalog } from "./failure-types-model";
+import { loadFailureTypesCatalog } from "./failure-types-reads";
+
+function notifyAndReturn(catalog: FailureTypesCatalog): FailureTypesCatalog {
+  notifyFailureTypesChanged();
+  return catalog;
+}
+
+async function persistCatalog(catalog: FailureTypesCatalog): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+
+  const result = await saveFailureTypesCatalog(config, catalog);
+  if (!result.ok) {
+    throw new Error(
+      resolveApiError(result.kind, undefined, "تعذّر حفظ أنواع التعذر"),
+    );
+  }
+}
+
+export async function resetFailureTypesCatalog(): Promise<FailureTypesCatalog> {
+  const seeded = seedCatalog();
+  await persistCatalog(seeded);
+  return notifyAndReturn(seeded);
+}
+
+export async function addFailureProblemType(input: {
+  categoryId: string;
+  label: string;
+  description?: string;
+}): Promise<FailureTypesCatalog> {
+  const catalog = await loadFailureTypesCatalog();
+  const maxOrder = catalog.problemTypes.reduce(
+    (n, t) => Math.max(n, t.order),
+    0,
+  );
+  const id = `custom-${Date.now()}`;
+  const next: FailureTypesCatalog = {
+    ...catalog,
+    problemTypes: [
+      ...catalog.problemTypes,
+      {
+        id,
+        categoryId: input.categoryId,
+        label: input.label.trim(),
+        description: input.description?.trim() || undefined,
+        order: maxOrder + 1,
+      },
+    ],
+  };
+  await persistCatalog(next);
+  return notifyAndReturn(next);
+}
+
+export async function removeFailureProblemType(
+  id: string,
+): Promise<FailureTypesCatalog> {
+  const catalog = await loadFailureTypesCatalog();
+  const next: FailureTypesCatalog = {
+    ...catalog,
+    problemTypes: catalog.problemTypes.filter((t) => t.id !== id),
+  };
+  await persistCatalog(next);
+  return notifyAndReturn(next);
+}

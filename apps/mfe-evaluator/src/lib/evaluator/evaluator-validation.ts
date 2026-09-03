@@ -39,10 +39,13 @@ export function validateEvaluatorSubmission(input: {
   landValue?: string;
   buildingValue?: string;
   forcedSaleDiscountPct?: string;
+  valueBasisKey?: string;
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
   independenceDeclared?: boolean;
   reportWorkers?: EvaluatorReportWorker[];
+  /** When approaches panel is source of truth — skip manual land/building. */
+  skipManualLandBuilding?: boolean;
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -50,27 +53,33 @@ export function validateEvaluatorSubmission(input: {
     landValue = "",
     buildingValue = "",
     forcedSaleDiscountPct = "",
+    valueBasisKey = "",
+    skipManualLandBuilding = false,
   } = input;
 
-  const land = parseEvaluatorAmount(landValue);
-  if (!landValue.trim()) {
-    errors.land_value = "مطلوب إدخال قيمة الأرض.";
-  } else if (land == null || land < 0) {
-    errors.land_value = "يجب أن تكون قيمة الأرض رقماً صحيحاً (≥ 0).";
+  if (!skipManualLandBuilding) {
+    const land = parseEvaluatorAmount(landValue);
+    if (!landValue.trim()) {
+      errors.land_value = "مطلوب إدخال قيمة الأرض.";
+    } else if (land == null || land < 0) {
+      errors.land_value = "يجب أن تكون قيمة الأرض رقماً صحيحاً (≥ 0).";
+    }
+
+    const building = parseEvaluatorAmount(buildingValue);
+    if (!buildingValue.trim()) {
+      errors.building_value = "مطلوب إدخال قيمة المباني (صفر للأراضي).";
+    } else if (building == null || building < 0) {
+      errors.building_value = "يجب أن تكون قيمة المباني رقماً صحيحاً (≥ 0).";
+    }
   }
 
-  const building = parseEvaluatorAmount(buildingValue);
-  if (!buildingValue.trim()) {
-    errors.building_value = "مطلوب إدخال قيمة المباني (صفر للأراضي).";
-  } else if (building == null || building < 0) {
-    errors.building_value = "يجب أن تكون قيمة المباني رقماً صحيحاً (≥ 0).";
-  }
-
-  const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
-  if (!forcedSaleDiscountPct.trim()) {
-    errors.forced_sale_discount = "مطلوب إدخال نسبة خصم البيع القسري.";
-  } else if (discount == null || discount < 0 || discount > 100) {
-    errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
+  if (valueBasisKey === "liquidation") {
+    const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
+    if (!forcedSaleDiscountPct.trim()) {
+      errors.forced_sale_discount = "مطلوب إدخال نسبة خصم التصفية.";
+    } else if (discount == null || discount < 0 || discount > 100) {
+      errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
+    }
   }
 
   const priceRaw = evaluatorPrice.trim()
@@ -87,21 +96,6 @@ export function validateEvaluatorSubmission(input: {
   if (!assetConfirmed && !varianceNotes) {
     errors.asset_data_confirmed =
       "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
-  }
-
-  if (!input.independenceDeclared) {
-    errors.independence_declared =
-      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
-  }
-
-  const namedWorkers = (input.reportWorkers ?? []).filter((worker) =>
-    worker.name.trim(),
-  );
-  if (namedWorkers.length === 0) {
-    errors.report_workers =
-      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).";
-  } else if (namedWorkers.some((worker) => !worker.role)) {
-    errors.report_workers = "حدد دور كل عامل على التقرير (معد / مراجع / معتمد).";
   }
 
   return errors;

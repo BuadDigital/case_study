@@ -5,8 +5,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
 {
@@ -14,11 +17,7 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
     private readonly IIdentityDirectory _identity;
     private readonly TimeProvider _time;
 
-    public IncentiveSuspensionService(FinancialDbContext db, IdentityDbContext identity,
-        TimeProvider? time = null)
-        : this(db, new IdentityDirectory(identity), time)
-    {
-    }
+    // A8: the IdentityDbContext convenience ctor is gone — pass IIdentityDirectory.
 
     [ActivatorUtilitiesConstructor]
     public IncentiveSuspensionService(FinancialDbContext db, IIdentityDirectory identity,
@@ -49,24 +48,6 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
             .Take(200)
             .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
-    }
-
-    public async Task<IncentiveSuspensionDto?> FindActiveAsync(
-        string assigneeId,
-        string transactionKey,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(assigneeId) || string.IsNullOrWhiteSpace(transactionKey))
-            return null;
-
-        var row = await _db.IncentiveSuspensions.AsNoTracking()
-            .Where(x =>
-                x.AssigneeId == assigneeId.Trim()
-                && x.TransactionKey == transactionKey.Trim()
-                && x.LiftedAtUtc == null)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : ToDto(row);
     }
 
     public async Task<(IncentiveSuspensionDto? Row, string? Error)> CreateAsync(

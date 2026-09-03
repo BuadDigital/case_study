@@ -2,7 +2,7 @@
  * Inspector fees API — per-property fee ledger persisted in PostgreSQL.
  */
 import { normalizeFieldErrors } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 

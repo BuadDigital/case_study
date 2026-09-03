@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -22,8 +23,7 @@ public class PoIntakeDraftController : ControllerBase
         var userId = CurrentUserId();
         if (userId is null) return Unauthorized();
 
-        var dto = await _drafts.GetForUserAsync(userId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        return Ok(await _drafts.GetForUserAsync(userId, ct));
     }
 
     [HttpPut]

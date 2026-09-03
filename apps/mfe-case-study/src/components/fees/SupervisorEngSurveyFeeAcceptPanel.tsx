@@ -10,21 +10,28 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   SkeletonTableRows,
   Table,
+  TableEmptyRow,
+  TableFrame,
   TBody,
+  THead,
+  Th,
+  Tr,
+  Td,
+  TdLtr,
   formControlClassName,
   cn,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
   prefetchEngineeringSurveySubmissions,
   loadEngineeringSurveySubmission,
   isEngineeringSurveyOutputsAccepted,
-} from "@engineering-office/mfe/lib/engineering-survey-submission-storage";
+} from "../../lib/engineering-survey-bridge";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { PoNumber } from "../ui/PoNumber";
 
 function deedFromTitle(title: string | undefined): string {
@@ -56,14 +63,11 @@ export type EngSurveyPendingAcceptRow = {
 };
 
 const PENDING_ACCEPT_KEY = [
-  ...prototypeKeys.all,
+  ...appDataKeys.all,
   "eng-survey-fee-accept-pending",
 ] as const;
 
 export const SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY = PENDING_ACCEPT_KEY;
-
-const COLS =
-  "minmax(100px,.85fr) minmax(120px,1fr) minmax(130px,1.1fr) minmax(110px,.9fr) minmax(220px,1.35fr)";
 
 export async function loadSupervisorEngSurveyPendingAcceptRows(
   tasks: WorkflowTask[],
@@ -116,9 +120,9 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: PENDING_ACCEPT_KEY }),
       queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "inspector-fees"],
+        queryKey: [...appDataKeys.all, "inspector-fees"],
       }),
-      queryClient.invalidateQueries({ queryKey: prototypeKeys.workflowTasks() }),
+      queryClient.invalidateQueries({ queryKey: appDataKeys.workflowTasks() }),
     ]);
   }, [queryClient]);
 
@@ -167,23 +171,27 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-        <Table pending>
+      <TableFrame>
+        <Table pending className="min-w-[760px]">
           <TBody>
             <SkeletonTableRows rows={3} cols={5} />
           </TBody>
         </Table>
-      </div>
+      </TableFrame>
     );
   }
 
   if (pending.length === 0) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-        <div className="px-4 py-10 text-center text-[13px] text-text-3">
-          لا رفوعات مساحية بانتظار القبول.
-        </div>
-      </div>
+      <TableFrame>
+        <Table className="min-w-[760px]">
+          <TBody>
+            <TableEmptyRow colSpan={5}>
+              لا رفوعات مساحية بانتظار القبول.
+            </TableEmptyRow>
+          </TBody>
+        </Table>
+      </TableFrame>
     );
   }
 
@@ -194,58 +202,39 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
           {rowError}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-        <div className="overflow-x-auto">
-          <div className="min-w-[760px]">
-            <div
-              className="grid border-b-2 border-gold bg-surface-2"
-              style={{ gridTemplateColumns: COLS }}
-            >
-              {[
-                "أمر العمل",
-                "الصك / العقار",
-                "المكتب",
-                "تاريخ الإرسال",
-                "إجراء",
-              ].map((h) => (
-                <div
-                  key={h}
-                  className={cn(
-                    "flex min-w-0 items-center overflow-hidden px-4 py-3.5 text-[12px] font-bold text-heading",
-                    h === "الصك / العقار"
-                      ? "justify-center text-center"
-                      : "justify-start text-start",
-                  )}
-                >
-                  {h}
-                </div>
-              ))}
-            </div>
+      <TableFrame>
+        <Table className="min-w-[760px]">
+          <THead>
+            <Tr hoverable={false}>
+              <Th>أمر العمل</Th>
+              <Th className="text-center">الصك / العقار</Th>
+              <Th>المكتب</Th>
+              <Th>تاريخ الإرسال</Th>
+              <Th>إجراء</Th>
+            </Tr>
+          </THead>
+          <TBody>
             {pending.map((row) => {
               const busy = busyId === row.taskId;
               const returning = returnForId === row.taskId;
               return (
-                <div
-                  key={row.taskId}
-                  className="grid min-h-[38px] items-center border-b border-border transition-colors hover:bg-[var(--row-hover,#faf6ee)]"
-                  style={{ gridTemplateColumns: COLS }}
-                >
-                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3">
+                <Tr key={row.taskId}>
+                  <Td>
                     <PoNumber value={row.poNumber} link />
-                  </div>
-                  <div
-                    dir="ltr"
-                    className="flex min-w-0 items-center justify-center overflow-hidden px-4 py-3 text-center text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
+                  </Td>
+                  <TdLtr
+                    className="text-center"
+                    valueClassName="font-bold text-gold-d"
                   >
                     {row.deedLabel}
-                  </div>
-                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[12.5px] text-text-2">
+                  </TdLtr>
+                  <Td className="text-[12.5px] text-text-2">
                     {row.assigneeName}
-                  </div>
-                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3 text-start text-[12px] tabular-nums text-text-2">
+                  </Td>
+                  <TdLtr valueClassName="text-[12px] text-text-2">
                     {formatWhen(row.submittedAtUtc)}
-                  </div>
-                  <div className="flex min-w-0 items-center justify-start overflow-hidden px-4 py-3">
+                  </TdLtr>
+                  <Td>
                     {returning ? (
                       <div className="flex min-w-[200px] flex-col gap-2">
                         <textarea
@@ -305,13 +294,13 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
                         </button>
                       </div>
                     )}
-                  </div>
-                </div>
+                  </Td>
+                </Tr>
               );
             })}
-          </div>
-        </div>
-      </div>
+          </TBody>
+        </Table>
+      </TableFrame>
     </div>
   );
 }

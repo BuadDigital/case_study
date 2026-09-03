@@ -2,7 +2,7 @@ import { listSurveyOffices } from "@platform/api-client";
 import {
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/prototype-modules-api-config";
+} from "@platform/app-shared/app-data/modules-api-config";
 import type { SurveyOfficeListRow } from "./survey-types";
 
 export async function loadSurveyOffices(): Promise<SurveyOfficeListRow[]> {

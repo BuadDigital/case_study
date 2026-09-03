@@ -27,7 +27,7 @@ function stopStaleProcesses() {
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: root, stdio: "inherit", shell: true });
+    const child = spawn(command, args, { cwd: root, stdio: "inherit" });
     child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`))));
   });
 }
@@ -84,7 +84,7 @@ function startService({ name, project }) {
   const runArgs = useWatch
     ? ["watch", "run", "--project", fullProject, "--launch-profile", "http", "--non-interactive"]
     : ["run", "--project", fullProject, "--launch-profile", "http", "--no-build"];
-  const child = spawn("dotnet", runArgs, { cwd: root, stdio: "inherit", shell: true });
+  const child = spawn("dotnet", runArgs, { cwd: root, stdio: "inherit" });
   child.on("exit", (code) => {
     console.error(`[${name}] exited with code ${code ?? "?"}`);
     shutdown(code ?? 1);

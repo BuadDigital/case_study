@@ -1,6 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -35,9 +39,9 @@ public class FailureSuspendAttributionTests
     public async Task Suspended_list_resolves_suspender_display_name_not_raiser()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
         var suspendedAt = DateTime.UtcNow.AddHours(-2);
-        db.Users.Add(new ApplicationUser
+        identity.Users.Add(new ApplicationUser
         {
             Id = SupervisorUserId,
             UserName = "supervisor",
@@ -60,12 +64,12 @@ public class FailureSuspendAttributionTests
             suspendedAt,
             suspendedAt,
             SupervisorUserId));
-        await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
         var list = await new SuspendedTransactionsService(
             new FailureLookup(bundle.Failures),
-            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(db))).ListAsync();
+            new UserLabelLookup(identity)).ListAsync();
 
         var row = Assert.Single(list);
         Assert.Equal(suspendedAt, row.SuspendedAt);
@@ -78,7 +82,6 @@ public class FailureSuspendAttributionTests
     public async Task Suspended_list_leaves_SuspendedBy_blank_when_actor_unknown()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
         var suspendedAt = DateTime.UtcNow.AddHours(-1);
         bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
             FailureId,
@@ -97,12 +100,12 @@ public class FailureSuspendAttributionTests
             suspendedAt,
             suspendedAt,
             null));
-        await db.SaveChangesAsync();
         await bundle.Failures.SaveChangesAsync();
 
         var list = await new SuspendedTransactionsService(
             new FailureLookup(bundle.Failures),
-            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(db))).ListAsync();
+            new UserLabelLookup(
+                TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy))).ListAsync();
 
         var row = Assert.Single(list);
         Assert.Equal("", row.SuspendedBy);

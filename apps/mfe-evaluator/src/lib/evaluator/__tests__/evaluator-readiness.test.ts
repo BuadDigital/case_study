@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { inspectionGateForAppraisal } from "../evaluator-inspection-gate";
 import {
-  appraiserInspectionAccepted,
   appraiserInspectionDone,
   appraiserReadiness,
 } from "../evaluator-readiness";
@@ -47,21 +46,8 @@ const baseInspection = (
     ...overrides,
   }) as WorkflowTask;
 
-describe("appraiser readiness — specialist-accepted inspection", () => {
-  it("unlocks only when specialist accepted the inspection package", () => {
-    const appraisal = baseAppraisal({
-      fieldInspectionCompleted: true,
-      fieldInspectionAccepted: true,
-    });
-    const tasks = [appraisal];
-
-    expect(appraiserInspectionDone(appraisal, tasks)).toBe(true);
-    expect(appraiserInspectionAccepted(appraisal, tasks)).toBe(true);
-    expect(appraiserReadiness(appraisal, tasks)).toBe("ready");
-    expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(true);
-  });
-
-  it("stays gated when inspection completed but not accepted", () => {
+describe("appraiser readiness — inspection completed unlocks valuation", () => {
+  it("unlocks when field inspection is completed (no specialist accept required)", () => {
     const appraisal = baseAppraisal({
       fieldInspectionCompleted: true,
       fieldInspectionAccepted: false,
@@ -69,27 +55,30 @@ describe("appraiser readiness — specialist-accepted inspection", () => {
     const tasks = [appraisal];
 
     expect(appraiserInspectionDone(appraisal, tasks)).toBe(true);
-    expect(appraiserReadiness(appraisal, tasks)).toBe("wait_specialist");
-    expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(false);
+    expect(appraiserReadiness(appraisal, tasks)).toBe("ready");
+    expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(true);
   });
 
-  it("stays gated when server accepted flag is false without sibling row", () => {
-    const appraisal = baseAppraisal({ fieldInspectionAccepted: false });
+  it("stays gated when inspection is not completed", () => {
+    const appraisal = baseAppraisal({
+      fieldInspectionCompleted: false,
+      fieldInspectionAccepted: false,
+    });
     const tasks = [appraisal];
 
-    expect(appraiserInspectionAccepted(appraisal, tasks)).toBe(false);
+    expect(appraiserInspectionDone(appraisal, tasks)).toBe(false);
     expect(appraiserReadiness(appraisal, tasks)).toBe("wait_inspection");
     expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(false);
   });
 
-  it("completed sibling without accept stamp is monitor-only", () => {
+  it("completed sibling unlocks without accept stamp", () => {
     const appraisal = baseAppraisal();
     const inspection = baseInspection({ status: "completed" });
     const tasks = [appraisal, inspection];
 
     expect(appraiserInspectionDone(appraisal, tasks)).toBe(true);
-    expect(appraiserReadiness(appraisal, tasks)).toBe("wait_specialist");
-    expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(false);
+    expect(appraiserReadiness(appraisal, tasks)).toBe("ready");
+    expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(true);
   });
 
   it("falls back to locked when no flag and no sibling", () => {
@@ -101,10 +90,9 @@ describe("appraiser readiness — specialist-accepted inspection", () => {
     expect(inspectionGateForAppraisal(appraisal, tasks).ready).toBe(false);
   });
 
-  it("survey pending does not block start once inspection is accepted", () => {
+  it("survey pending does not block start once inspection is completed", () => {
     const appraisal = baseAppraisal({
       fieldInspectionCompleted: true,
-      fieldInspectionAccepted: true,
     });
     const survey = {
       ...baseInspection({

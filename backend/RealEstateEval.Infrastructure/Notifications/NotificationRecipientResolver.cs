@@ -15,11 +15,8 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
     private readonly IWorkflowAssigneeLookup _assignees;
     private readonly IIdentityDirectory _identity;
 
-    /// <summary>Test helper wiring EF-backed lookups; DI uses the interface constructor.</summary>
-    public static NotificationRecipientResolver ForContexts(
-        CaseStudyDbContext caseStudy,
-        IdentityDbContext identity) =>
-        new(new WorkflowAssigneeLookup(caseStudy), new IdentityDirectory(identity));
+    // A8 hard-stay unwind: the EF-backed test wiring (ForContexts) moved to the test
+    // project (TestNotificationRecipients) — production code holds no context types here.
 
     public NotificationRecipientResolver(
         IWorkflowAssigneeLookup assignees,

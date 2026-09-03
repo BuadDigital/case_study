@@ -5,18 +5,18 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Failures.Infrastructure.Services;
 
 public sealed class FailureTypesCatalogService : IFailureTypesCatalogService
 {
     private static readonly Guid SingletonId = Guid.Parse("c2d3e4f5-a6b7-8901-cdef-123456789012");
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.CamelCaseInsensitive;
 
     private readonly FailuresDbContext _db;
     private readonly TimeProvider _time;

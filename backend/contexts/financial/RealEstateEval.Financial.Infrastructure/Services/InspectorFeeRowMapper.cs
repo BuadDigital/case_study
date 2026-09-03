@@ -1,8 +1,10 @@
 ﻿using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public static class InspectorFeeRowMapper
 {

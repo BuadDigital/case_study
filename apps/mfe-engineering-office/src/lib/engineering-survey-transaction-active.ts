@@ -1,8 +1,8 @@
 import type { EngineeringSurveySubmissionStatus } from "./engineering-survey-data";
 
 /**
- * المعاملة «نشطة» عند المكتب الهندسي = ما زالت ضمن دوره (لم يُرسَل الرفع بعد).
- * بعد الإرسال تخرج من الدور النشط ويُتاح طلب الاسترجاع فقط.
+ * Transaction is «active» for the engineering office = still in its turn (survey not yet sent).
+ * After send it leaves the active turn and only recall is available.
  */
 export function isEngineeringSurveyTransactionActive(
   taskStatus: string,

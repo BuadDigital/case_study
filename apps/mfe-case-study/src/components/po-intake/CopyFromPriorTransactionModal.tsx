@@ -1,22 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AppModal } from "@case-study/mfe/components/ui/AppModal";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
+import { useMemo, useState } from "react";
 import {
+  AppModal,
   Button,
-  Note,
   cn,
+  Note,
   useToast,
 } from "@platform/ui-kit";
+import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
-  copyPropertyFromPriorTransaction,
-  findPriorDeedFull,
   type CopyPriorScope,
   type CopyPriorTargetOption,
-} from "../../lib/prototype/po-intake-storage";
+} from "../../lib/app-data/po-intake-model";
+import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
+import { copyPropertyFromPriorTransaction } from "../../lib/app-data/po-intake-commands";
 
 type Props = {
   open: boolean;
@@ -47,8 +47,43 @@ export function CopyFromPriorTransactionModal({
   onClose,
   onCopied,
 }: Props) {
+  if (!open) return null;
+  const preferredTargetKey =
+    (initialTargetKey &&
+      targets.some((t) => t.key === initialTargetKey) &&
+      initialTargetKey) ||
+    (targets.length === 1 ? targets[0].key : "") ||
+    "";
+  return (
+    <CopyFromPriorTransactionForm
+      key={preferredTargetKey}
+      poNumber={poNumber}
+      targets={targets}
+      preferredTargetKey={preferredTargetKey}
+      lockTarget={lockTarget}
+      onClose={onClose}
+      onCopied={onCopied}
+    />
+  );
+}
+
+function CopyFromPriorTransactionForm({
+  poNumber,
+  targets,
+  preferredTargetKey,
+  lockTarget,
+  onClose,
+  onCopied,
+}: {
+  poNumber: string;
+  targets: CopyPriorTargetOption[];
+  preferredTargetKey: string;
+  lockTarget: boolean;
+  onClose: () => void;
+  onCopied: () => void;
+}) {
   const { showToast } = useToast();
-  const [targetKey, setTargetKey] = useState("");
+  const [targetKey, setTargetKey] = useState(preferredTargetKey);
   const [deedQuery, setDeedQuery] = useState("");
   const [scope, setScope] = useState<CopyPriorScope>("enfath");
   const [searching, setSearching] = useState(false);
@@ -66,23 +101,6 @@ export function CopyFromPriorTransactionModal({
     () => targets.map((t) => ({ value: t.key, label: t.label })),
     [targets],
   );
-
-  useEffect(() => {
-    if (!open) return;
-    const preferred =
-      (initialTargetKey &&
-        targets.some((t) => t.key === initialTargetKey) &&
-        initialTargetKey) ||
-      (targets.length === 1 ? targets[0].key : "");
-    setTargetKey(preferred || "");
-    setDeedQuery("");
-    setScope("enfath");
-    setSearching(false);
-    setCopying(false);
-    setError(null);
-    setHit(null);
-    setSearched(false);
-  }, [open, initialTargetKey, targets]);
 
   function handleClose() {
     if (copying) return;
@@ -199,7 +217,7 @@ export function CopyFromPriorTransactionModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title="نسخ من معاملة سابقة"
       onClose={handleClose}
       footer={

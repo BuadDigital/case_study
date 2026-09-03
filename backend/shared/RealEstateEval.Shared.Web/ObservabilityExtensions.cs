@@ -76,6 +76,7 @@ public static class ObservabilityExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
+                .AddEntityFrameworkCoreInstrumentation()
                 .AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint)))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
@@ -117,6 +118,7 @@ public static class ServicePipelineExtensions
         app.UseRealEstateEvalRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseCommandIdempotency();
         return app;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input, Label, cn } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "../../lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 type OwnerRow = { name: string; sharePct: string };
 
@@ -30,19 +30,23 @@ function parseRows(ownersJson: string): OwnerRow[] {
   }
 }
 
+/** Keep empty draft rows in UI state — API submit filters via parseOwnersDraft. */
 function serializeRows(rows: OwnerRow[]): string {
-  const cleaned = rows
-    .filter((r) => r.name.trim() !== "")
-    .map((r) => ({
-      name: r.name.trim(),
-      sharePct: r.sharePct.trim() === "" ? null : Number(r.sharePct.replace(",", ".")) || 0,
-    }));
-  return cleaned.length === 0 ? "" : JSON.stringify(cleaned);
+  if (rows.length === 0) return "";
+  return JSON.stringify(
+    rows.map((r) => ({
+      name: r.name,
+      sharePct:
+        r.sharePct.trim() === ""
+          ? null
+          : Number(r.sharePct.replace(",", ".")) || 0,
+    })),
+  );
 }
 
 /**
- * الملاك وحصصهم + نوع الملكية (مشتق قابل للتحرير).
- * Derivation: رهن ⟵ مرهون · حصص ⟵ مشاع · مالك واحد بلا قيود ⟵ مطلقة · استثمار يدويًا.
+ * Owners and their shares + ownership type (derived, editable).
+ * Derivation: mortgage ← mortgaged · shares ← undivided · single owner no restrictions ← absolute · investment manually.
  */
 export function PoPropertyOwnersSection({
   property,

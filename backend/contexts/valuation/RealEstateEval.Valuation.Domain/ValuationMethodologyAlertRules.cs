@@ -1,9 +1,11 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Methodology alerts — 21 per package v2 (القرار 16 + 24 + ق-4 + ق-7):
+/// Methodology alerts — 21 per package v2 (decisions 16 + 24 + Q-4 + Q-7):
 /// 7 hard / 8 require text rationale / 6 require acknowledgement.
-/// m18/m21 evaluate only once inspection-scope data is captured (حدود المعاينة).
+/// m18/m21 evaluate only once inspection-scope data is captured (inspection boundaries).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
 {
@@ -24,13 +26,13 @@ public static class ValuationMethodologyAlertCodes
     public const string NoAdoptedComparables = "m15_no_adopted_comparables";
     public const string WeightsNot100 = "m16_weights_not_100";
     public const string LargeAdjustments = "m17_large_adjustments";
- /// <summary>القرار 24 — معاينة محدودة (خارجية/مكتبية/وحدات غير معاينة) تشرح قيودها.</summary>
+ /// <summary>Decision 24 — limited inspection (external/desktop/uninspected units) must explain its limits.</summary>
     public const string LimitedInspection = "m18_limited_inspection";
- /// <summary>ق-4 — أقل من 3 مقارنات معتمدة (الحاجب «صفر» باقٍ في m15).</summary>
+ /// <summary>Q-4 — fewer than 3 adopted comparables (hard "zero" gate remains in m15).</summary>
     public const string FewAdoptedComparables = "m19_few_adopted_comparables";
- /// <summary>ق-4 — فارق زمني كبير بلا تسوية ظروف سوق (العتبة إعداد إداري).</summary>
+ /// <summary>Q-4 — large time gap without a market-conditions adjustment (threshold is an admin setting).</summary>
     public const string StaleComparableNoTimeAdjustment = "m20_stale_comparable_no_time_adjustment";
- /// <summary>ق-7 — نطاق «مكتبية عن بُعد» يحتاج اعتماد المقيّم المعتمد (حاجب).</summary>
+ /// <summary>Q-7 — "remote desktop" scope requires certified-valuer approval (hard gate).</summary>
     public const string RemoteInspectionUnapproved = "m21_remote_inspection_unapproved";
 }
 
@@ -66,14 +68,14 @@ public sealed record ValuationMethodologyAlertResolution(
 /// <summary>Alert numbers that block issuance under .</summary>
 public static class ValuationMethodologyAlertSeverity
 {
- /// <summary>حاجبة (7): 3, 4, 5, 11, 15, 16 + 21 (ق-7)</summary>
+ /// <summary>Hard gates (7): 3, 4, 5, 11, 15, 16 + 21 (Q-7)</summary>
     public static bool IsHard(int number) => number is 3 or 4 or 5 or 11 or 15 or 16 or 21;
 
- /// <summary>تحذيري بمبرر نصي (8): 6, 8, 9, 10, 12, 17 + 18 (القرار 24) + 19 (ق-4)</summary>
+ /// <summary>Warning with text rationale (8): 6, 8, 9, 10, 12, 17 + 18 (decision 24) + 19 (Q-4)</summary>
     public static bool RequiresRationale(int number) =>
         number is 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19;
 
- /// <summary>تحذيري بإقرار (6): 1, 2, 7, 13, 14 + 20 (ق-4)</summary>
+ /// <summary>Warning with acknowledgement (6): 1, 2, 7, 13, 14 + 20 (Q-4)</summary>
     public static bool RequiresAcknowledgement(int number) =>
         number is 1 or 2 or 7 or 13 or 14 or 20;
 
@@ -82,8 +84,6 @@ public static class ValuationMethodologyAlertSeverity
         : RequiresRationale(number) ? ValuationMethodologyAlertSeverityKinds.RequireRationale
         : ValuationMethodologyAlertSeverityKinds.RequireAck;
 
- /// <summary>Backward-compatible alias — hard blockers only.</summary>
-    public static bool IsHardByDefault(int number) => IsHard(number);
 }
 
 public sealed record ValuationMethodologyAlertCostLineInput(
@@ -99,9 +99,9 @@ public sealed record ValuationMethodologyAlertComparableInput(
     string ComparablePropertyType,
     bool ExceedsLargeAdjustmentThreshold,
     decimal SumIncludedPct,
- /// <summary>عمر الصفقة بالأشهر عند تاريخ التقييم (m20).</summary>
+ /// <summary>Deal age in months at the valuation date (m20).</summary>
     int DealAgeMonths = 0,
- /// <summary>هل أُدخلت تسوية ظروف سوق غير صفرية مفعَّلة؟ (m20)</summary>
+ /// <summary>Was a non-zero enabled market-conditions adjustment entered? (m20)</summary>
     bool HasMarketConditionsAdjustment = false);
 
 public sealed record ValuationMethodologyAlertInput(
@@ -142,13 +142,13 @@ public sealed record ValuationMethodologyAlertInput(
     string? ExternalObsolescenceRationale = null,
  /// <summary>Soft-alert resolutions (rationale / ack) keyed by alert code.</summary>
     IReadOnlyList<ValuationMethodologyAlertResolution>? Resolutions = null,
- /// <summary>نطاق المعاينة (القرار 24) — null = لم يُلتقط بعد فلا تُقيَّم m18/m21.</summary>
+ /// <summary>Inspection scope (decision 24) — null = not captured yet, so m18/m21 are not evaluated.</summary>
     string? InspectionScopeKey = null,
- /// <summary>عدد الوحدات غير المعاينة (القرار 24).</summary>
+ /// <summary>Count of uninspected units (decision 24).</summary>
     int UninspectedUnitCount = 0,
- /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».</summary>
+ /// <summary>Q-7 — certified-valuer approval for "remote desktop" scope.</summary>
     bool RemoteInspectionApprovedByAccredited = false,
- /// <summary>ق-4 — عتبة الفارق الزمني بالأشهر (إعداد إداري، الافتراضي 6).</summary>
+ /// <summary>Q-4 — time-gap threshold in months (admin setting, default 6).</summary>
     int TimeGapMonthsThreshold = ValuationMethodologyAlertRules.DefaultTimeGapMonths);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
@@ -157,9 +157,9 @@ public static class ValuationMethodologyAlertRules
     public const decimal DeveloperProfitMinPct = 10m;
     public const decimal DeveloperProfitMaxPct = 20m;
     public const decimal IndirectRatesWarnPct = 45m;
- /// <summary>ق-4: اقتراح الحزمة ~6 أشهر — قابل للضبط من إعدادات المنشأة.</summary>
+ /// <summary>Q-4: package suggestion ~6 months — adjustable from organization settings.</summary>
     public const int DefaultTimeGapMonths = 6;
- /// <summary>ق-4: أقل من 3 مقارنات معتمدة تنبيه بمبرر.</summary>
+ /// <summary>Q-4: fewer than 3 adopted comparables is a rationale warning.</summary>
     public const int MinComparablesWithoutRationale = 3;
 
     public static IReadOnlyList<ValuationMethodologyAlertCheck> Evaluate(
@@ -297,12 +297,11 @@ public static class ValuationMethodologyAlertRules
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
                 "مجموع التسويات > ٣٥٪",
                 comps.Count > 0,
-                () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold
-                                     || MarketApproachRules.ExceedsLargeAdjustmentThreshold(c.SumIncludedPct)),
-                "تجاوز عتبة التسوية الكبيرة — التبرير إلزامي",
+                () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
+                "تجاوز عتبة ±٣٥٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
                 resolutions),
 
- // القرار 24 — تُقيَّم فقط بعد التقاط نطاق المعاينة (ميزة حدود المعاينة).
+ // Decision 24 — evaluated only after inspection scope is captured (inspection-boundaries feature).
             Eval(18, ValuationMethodologyAlertCodes.LimitedInspection,
                 "معاينة محدودة تشرح قيودها",
                 InspectionScopeKeys.IsKnown(input.InspectionScopeKey),
@@ -331,7 +330,7 @@ public static class ValuationMethodologyAlertRules
                 "مقارن أقدم من العتبة بلا تسوية ظروف سوق — أقرّ بالوعي (لا عمر صلاحية للمقارنات)",
                 resolutions),
 
- // ق-7 — حاجب اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».
+ // Q-7 — hard gate: certified-valuer approval for "remote desktop" scope.
             Eval(21, ValuationMethodologyAlertCodes.RemoteInspectionUnapproved,
                 "معاينة مكتبية بلا اعتماد المقيّم المعتمد",
                 InspectionScopeKeys.IsKnown(input.InspectionScopeKey),
@@ -348,9 +347,6 @@ public static class ValuationMethodologyAlertRules
     public static int TriggeredCount(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Count(c => c.Triggered);
 
-    public static bool HasHardBlockers(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
-        checks.Any(c => c.Triggered && c.IsHard);
-
     public static bool HasBlockingAlerts(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Any(c => c.BlocksIssuance);
 
@@ -362,8 +358,9 @@ public static class ValuationMethodologyAlertRules
         if (!resolutions.TryGetValue(code, out var r))
             return false;
 
+        // Q-8-2: a token rationale (shorter than the minimum) does not clear a "with rationale" alert.
         if (ValuationMethodologyAlertSeverity.RequiresRationale(number))
-            return !string.IsNullOrWhiteSpace(r.OverrideRationale);
+            return JustificationRules.IsAcceptable(r.OverrideRationale);
 
         if (ValuationMethodologyAlertSeverity.RequiresAcknowledgement(number))
             return r.Acknowledged;

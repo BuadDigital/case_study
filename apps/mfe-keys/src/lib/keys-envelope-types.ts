@@ -69,6 +69,8 @@ export type KeyEnvelopeTimelineEntry = {
 export type KeyEnvelopeRow = {
   id: string;
   requestNumber: string;
+  /** Numbering workshop: internal reference KE-{year}-{5-digit sequence}. */
+  referenceNumber?: string | null;
   court: string;
   circuit: string;
   keysCountLabeled: number;
@@ -100,7 +102,7 @@ export type KeyEnvelopeFeeReportRow = {
   circuit: string;
   photoAttachmentId?: string | null;
   receiptAttachmentId?: string | null;
-  /** بلا مبلغ = مؤشر استحقاق تُسعّره المالية عند فوترة إنفاذ. */
+  /** No amount = entitlement marker priced by finance when billing Enfaz. */
   feeAmountSar?: number | null;
   collectionStatus?: string;
   invoiceReference?: string | null;
@@ -187,9 +189,19 @@ export function scenarioColor(scenario: string): string {
   }
 }
 
+const NON_DIGIT_PATTERN = /\D/g;
+
 /** Display ref like HTML `keyRef` → ENV-2026-NNN */
-export function envelopeDisplayRef(id: string, createdAtUtc?: string): string {
-  const digits = id.replace(/\D/g, "");
+export function envelopeDisplayRef(
+  id: string,
+  createdAtUtc?: string,
+  referenceNumber?: string | null,
+): string {
+ // Numbering workshop: real KE-{year}-{5-digit seq} from server takes precedence; the old
+ // GUID composition remains a fallback for records not yet numbered.
+  const real = referenceNumber?.trim();
+  if (real) return real;
+  const digits = id.replace(NON_DIGIT_PATTERN, "");
   const n = (digits.slice(-3) || "1").padStart(3, "0");
   const year = createdAtUtc
     ? new Date(createdAtUtc).getFullYear() || 2026

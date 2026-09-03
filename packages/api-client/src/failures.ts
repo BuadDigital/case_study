@@ -1,8 +1,9 @@
 /**
- * Failures API — property failures (تعذرات) persisted in PostgreSQL.
+ * Failures API — property failures (obstructions) persisted in PostgreSQL.
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -56,11 +57,12 @@ export type FailureNoteRequest = {
   note: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 export async function listFailures(
@@ -83,7 +85,7 @@ export async function getPropertyFailure(
   config: FailuresApiConfig,
   poNumber: string,
   propertyId: string,
-): Promise<ApiOk<FailureRecordDto> | ApiErr> {
+): Promise<ApiOk<FailureRecordDto | null> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const params = new URLSearchParams({
     poNumber: poNumber.trim(),
@@ -94,9 +96,10 @@ export async function getPropertyFailure(
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as FailureRecordDto };
+    const data = (await res.json()) as FailureRecordDto | null;
+    return { ok: true, data: data?.id ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -106,6 +109,7 @@ async function postFailureAction(
   config: FailuresApiConfig,
   path: string,
   body?: unknown,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<FailureRecordDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -114,7 +118,7 @@ async function postFailureAction(
   try {
     const res = await fetch(`${base}${path}`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -132,11 +136,12 @@ async function postFailureAction(
 export async function createFailure(
   config: FailuresApiConfig,
   request: CreateFailureRequest,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<FailureRecordDto>
   | (ApiErr & { errors?: Record<string, string> })
 > {
-  return postFailureAction(config, "/api/failures", request);
+  return postFailureAction(config, "/api/failures", request, idempotencyKey);
 }
 
 export async function reportBourseObstruction(

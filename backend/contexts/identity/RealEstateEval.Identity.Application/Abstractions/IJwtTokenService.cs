@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Identity.Application.Abstractions;
 
 public sealed record TokenSubject(string Id, string Email, string DisplayName);
 

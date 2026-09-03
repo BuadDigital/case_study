@@ -15,6 +15,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 [ApiController]
 [Route("api/case-study-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : ControllerBase
 {
     [HttpGet("completed-case-study-property-ids")]

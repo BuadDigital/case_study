@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Note, Spinner, cn } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
+import { useState } from "react";
+import {
+  AppModal,
+  cn,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsFldTextarea,
   opsTfLbl,
-} from "../../lib/prototype/ops-tasks-tw";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/ops-tasks-tw";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 function LockOpenIcon({ size = 20 }: { size?: number }) {
   return (
@@ -48,7 +52,7 @@ function WarnTriangleIcon() {
   );
 }
 
-/** إعادة فتح معاملة مكتملة — مطابقة Case Study.html `openReopenModal`. */
+/** Reopen a completed transaction — matches Case Study.html `openReopenModal`. */
 export function ReopenCompletedTransactionModal({
   open,
   task,
@@ -58,7 +62,29 @@ export function ReopenCompletedTransactionModal({
 }: {
   open: boolean;
   task: WorkflowTask | null;
-  /** رقم الصك المعروض في وصف المودال (من صف جميع المعاملات). */
+  /** Deed number shown in the modal description (from the all-transactions row). */
+  deedLabel?: string;
+  onClose: () => void;
+  onConfirm: (reason: string) => void | Promise<void>;
+}) {
+  if (!open || !task) return null;
+  return (
+    <ReopenCompletedTransactionForm
+      task={task}
+      deedLabel={deedLabel}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+function ReopenCompletedTransactionForm({
+  task,
+  deedLabel,
+  onClose,
+  onConfirm,
+}: {
+  task: WorkflowTask;
   deedLabel?: string;
   onClose: () => void;
   onConfirm: (reason: string) => void | Promise<void>;
@@ -66,15 +92,6 @@ export function ReopenCompletedTransactionModal({
   const [reason, setReason] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setReason("");
-    setError(false);
-    setBusy(false);
-  }, [open]);
-
-  if (!open || !task) return null;
 
   const deed = (deedLabel ?? "").trim();
   const subtitleNode = (
@@ -111,7 +128,7 @@ export function ReopenCompletedTransactionModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title="فتح المعاملة"
       subtitle={subtitleNode}
       headerIcon={

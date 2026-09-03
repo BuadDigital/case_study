@@ -1,4 +1,4 @@
-/** @failures/mfe — إدارة التعذرات (failure queue + property failure reports). */
+/** @failures/mfe — failures management (failure queue + property failure reports). */
 
 export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";
@@ -16,7 +16,7 @@ export {
   FAILURE_RAISER_LABEL_BY_KIND,
 } from "./lib/failure-party-roles";
 
-export * from "./lib/failures-types";
+export * from "@platform/app-shared/failures/failures-types";
 export * from "./lib/failures-events";
 export * from "./lib/failures-repository";
 export {
@@ -32,7 +32,9 @@ export * from "./lib/failure-types-data";
 export * from "./lib/failure-category-role-visibility";
 export * from "./lib/failure-property-match";
 export * from "./lib/failures-party-raiser-scope";
-export * from "./lib/failure-types-storage";
+export * from "./lib/failure-types-model";
+export * from "./lib/failure-types-reads";
+export * from "./lib/failure-types-commands";
 export * from "./lib/failures-api";
 export { getCachedFailuresList } from "./lib/failures-cache";
 export { useFailuresQuery } from "./query/failures-queries";

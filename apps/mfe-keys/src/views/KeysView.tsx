@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import {
   Button,
+  cn,
+  KpiAlertIcon,
   KpiBand,
   KpiCell,
+  KpiClockIcon,
   MobileKpiStatCards,
   ModalBody,
   ModalCard,
@@ -19,30 +23,31 @@ import {
   OperationalToolbarPrimaryButton,
   OperationalToolbarSearch,
   OperationalToolbarSelect,
+  opsBtnGhost,
+  opsChip,
   PageShell,
-  cn,
+  PanelSkeleton,
+  type RowMoreMenuItem,
+  ShowAllEye,
+  SkeletonTableRows,
+  Table,
+  TableFrame,
+  TBody,
+  Td,
+  TdAction,
+  TdLtr,
+  Th,
+  ThAction,
+  THead,
+  Tr,
+  useShowAllEyeBlink,
   useToast,
 } from "@platform/ui-kit";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import { KeyEnvelopeDetailPage } from "../components/KeyEnvelopeDetailModal";
-import { KeyEnvelopeFeesPanel } from "../components/KeyEnvelopeFeesPanel";
-import {
-  KEYS_LIST_COLS,
-  KeysEmpty,
-  KeysGridHead,
-  KeysGridRow,
-  KeysStatusPill,
-  KeysTd,
-  KeysTh,
-  keysCardClassName,
-  keysChipClassName,
-  keysGhostBtnClassName,
-} from "../components/KeysHtmlPrimitives";
-import { RegisterKeyEnvelopeModal } from "../components/RegisterKeyEnvelopeModal";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
+import { KeysEmpty, KeysStatusPill } from "../components/KeysHtmlPrimitives";
 import { removeKeyEnvelope } from "../lib/keys-envelope-api";
 import {
   envelopeDisplayRef,
@@ -53,7 +58,6 @@ import {
   scenarioLabel,
   type KeyEnvelopeRow,
 } from "../lib/keys-envelope-types";
-import "./keys-look.css";
 import {
   useInvalidateKeyEnvelopes,
   useKeyEnvelopesQuery,
@@ -61,6 +65,38 @@ import {
 
 type StatusFilter = "all" | "reviewer" | "assessor" | "external" | "returned";
 type ListTab = "envelopes" | "fees";
+
+const KeyEnvelopeDetailPage = dynamic(
+  () =>
+    import("../components/KeyEnvelopeDetailModal").then(
+      (m) => m.KeyEnvelopeDetailPage,
+    ),
+  {
+    ssr: false,
+    loading: () => <PanelSkeleton className="min-h-[40vh] p-4" />,
+  },
+);
+const KeyEnvelopeFeesPanel = dynamic(
+  () =>
+    import("../components/KeyEnvelopeFeesPanel").then(
+      (m) => m.KeyEnvelopeFeesPanel,
+    ),
+  {
+    loading: () => <PanelSkeleton className="min-h-[40vh] p-4" />,
+  },
+);
+const RegisterKeyEnvelopeModal = dynamic(
+  () =>
+    import("../components/RegisterKeyEnvelopeModal").then(
+      (m) => m.RegisterKeyEnvelopeModal,
+    ),
+  { ssr: false },
+);
+
+// Used to always mount so the chunk loaded on screen open despite splitting — now mounts on
+// open only, with prefetch on button hover (bundle-preload).
+const preloadRegisterKeyEnvelopeModal = () =>
+  void import("../components/RegisterKeyEnvelopeModal");
 
 function PlusIcon() {
   return (
@@ -98,29 +134,6 @@ function ChevronIcon() {
   );
 }
 
-function EyeIcon({ open, blink }: { open: boolean; blink?: boolean }) {
-  return (
-    <svg
-      className={cn("show-all-eye", open && "is-open", blink && "is-blink")}
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <g className="show-all-eye-ball">
-        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-        <circle className="show-all-eye-pupil" cx="12" cy="12" r="3" />
-      </g>
-      <path className="show-all-eye-lid" d="M3 12h18" />
-    </svg>
-  );
-}
-
 function KpiEnvIcon() {
   return (
     <svg
@@ -136,44 +149,6 @@ function KpiEnvIcon() {
     >
       <path d="M22 7 12 13 2 7" />
       <rect x="2" y="4" width="20" height="16" rx="2" />
-    </svg>
-  );
-}
-
-function KpiClockIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function KpiAlertIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
     </svg>
   );
 }
@@ -245,7 +220,7 @@ export function KeysView() {
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role, hasCapability } = usePrototype();
+  const { role, hasCapability } = useAppAccess();
   const viewOnly = !isSuperAdmin(role) && role === "general-manager";
   const canEditEnvelope =
     !viewOnly &&
@@ -271,7 +246,7 @@ export function KeysView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showOut, setShowOut] = useState(false);
-  const [eyeBlink, setEyeBlink] = useState(false);
+  const { blink: eyeBlink, toggleOpen: toggleShowOut } = useShowAllEyeBlink();
   const [listTab, setListTab] = useState<ListTab>("envelopes");
   const [registerOpen, setRegisterOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -323,41 +298,47 @@ export function KeysView() {
   /** KPI metrics — labels from `renderKeys`; live API approximates order-state with custody + assignments. */
   const kpis = useMemo(() => {
     const total = envelopes.length;
-    const delivered = envelopes.filter((e) =>
-      isEnvelopeOutOfCustody(e.status),
-    ).length;
+    let delivered = 0;
+    let pendingMatch = 0;
+    let readyToDeliver = 0;
+    for (const e of envelopes) {
+      if (isEnvelopeOutOfCustody(e.status)) delivered += 1;
+      let pendingInEnvelope = 0;
+      for (const a of e.assignments) {
+        if (a.status === "pending") pendingInEnvelope += 1;
+      }
+      pendingMatch += pendingInEnvelope;
+      if (
+        e.status !== "returned" &&
+        e.assignments.length > 0 &&
+        pendingInEnvelope === 0
+      ) {
+        readyToDeliver += 1;
+      }
+    }
     const inCustody = total - delivered;
-    const active = envelopes.filter(
-      (e) => !isEnvelopeOutOfCustody(e.status),
-    ).length;
-    const pendingMatch = envelopes.reduce(
-      (n, e) => n + e.assignments.filter((a) => a.status === "pending").length,
-      0,
-    );
-    const readyToDeliver = envelopes.filter((e) => {
-      if (e.status === "returned") return false;
-      if (e.assignments.length === 0) return false;
-      return e.assignments.every((a) => a.status !== "pending");
-    }).length;
+    const active = inCustody;
     return { total, delivered, inCustody, active, pendingMatch, readyToDeliver };
   }, [envelopes]);
 
+  const deferredSearch = useDeferredValue(search);
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return envelopes.filter((e) => {
+      if (statusFilter !== "all") {
+        if (e.status !== statusFilter) return false;
+      } else if (!showOut && isEnvelopeOutOfCustody(e.status)) {
+        return false;
+      }
+      if (!q) return true;
       const deeds = e.assignments.map((a) => a.deedNumber).join(" ");
-      const ref = envelopeDisplayRef(e.id, e.createdAtUtc).toLowerCase();
-      const hay =
-        `${ref} ${e.requestNumber} ${e.court} ${e.circuit} ${deeds}`.toLowerCase();
-      const okQ = !q || hay.includes(q);
-      const okSt = statusFilter === "all" || e.status === statusFilter;
-      const okOut =
-        showOut ||
-        statusFilter !== "all" ||
-        !isEnvelopeOutOfCustody(e.status);
-      return okQ && okSt && okOut;
+      const ref = envelopeDisplayRef(e.id, e.createdAtUtc, e.referenceNumber);
+      return `${ref} ${e.requestNumber} ${e.court} ${e.circuit} ${deeds}`
+        .toLowerCase()
+        .includes(q);
     });
-  }, [envelopes, search, statusFilter, showOut]);
+  }, [envelopes, deferredSearch, statusFilter, showOut]);
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
     return filtered.map((env) => {
@@ -381,7 +362,7 @@ export function KeysView() {
         : [];
       return {
         id: env.id,
-        title: envelopeDisplayRef(env.id, env.createdAtUtc),
+        title: envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber),
         meta: [
           {
             text: env.court?.trim() || "بدون محكمة",
@@ -448,17 +429,19 @@ export function KeysView() {
           onOpenEnvelope={(id) => openEnvelope(id)}
           onBack={backToList}
         />
-        <RegisterKeyEnvelopeModal
-          open={registerOpen}
-          busy={false}
-          onClose={closeRegisterModal}
-          initialRequestNumber={registerRequestPrefill}
-          operationsTaskId={registerTaskId}
-          onRegistered={(id) => {
-            invalidateEnvelopes();
-            openEnvelope(id);
-          }}
-        />
+        {registerOpen ? (
+          <RegisterKeyEnvelopeModal
+            open={registerOpen}
+            busy={false}
+            onClose={closeRegisterModal}
+            initialRequestNumber={registerRequestPrefill}
+            operationsTaskId={registerTaskId}
+            onRegistered={(id) => {
+              invalidateEnvelopes();
+              openEnvelope(id);
+            }}
+          />
+        ) : null}
       </PageShell>
     );
   }
@@ -563,7 +546,7 @@ export function KeysView() {
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             ظروف المفاتيح
           </h2>
-          <span className={keysChipClassName}>
+          <span className={opsChip}>
             {ready ? `${filtered.length} نتيجة` : "…"}
           </span>
         </div>
@@ -579,21 +562,12 @@ export function KeysView() {
           <button
             type="button"
             className={cn(
-              keysGhostBtnClassName,
+              opsBtnGhost,
               "show-all-btn-motion h-[38px] px-3.5 text-[12.5px] max-lg:flex-1",
             )}
-            onClick={() => {
-              setShowOut((v) => {
-                const next = !v;
-                if (next) {
-                  setEyeBlink(true);
-                  window.setTimeout(() => setEyeBlink(false), 420);
-                }
-                return next;
-              });
-            }}
+            onClick={() => setShowOut(toggleShowOut)}
           >
-            <EyeIcon open={showOut} blink={eyeBlink} />
+            <ShowAllEye open={showOut} blink={eyeBlink} />
             <span className="max-sm:hidden">
               {showOut
                 ? "إخفاء المسلَّمة (خارج العهدة)"
@@ -619,6 +593,8 @@ export function KeysView() {
             <OperationalToolbarPrimaryButton
               className="h-[38px] max-lg:w-full"
               onClick={() => setRegisterOpen(true)}
+              onMouseEnter={preloadRegisterKeyEnvelopeModal}
+              onFocus={preloadRegisterKeyEnvelopeModal}
             >
               <PlusIcon />
               تسجيل ظرف مفاتيح
@@ -627,114 +603,122 @@ export function KeysView() {
         </div>
       </div>
 
-      {/* .card > .scroll > .grid — keyDrawList */}
-      <div
-        className={cn(
-          keysCardClassName,
-          "max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none",
-        )}
-      >
-        <div className="overflow-x-auto rounded-xl">
-          <div className="hidden min-w-[960px] lg:block">
-            <KeysGridHead cols={KEYS_LIST_COLS}>
-              <KeysTh align="start">الرقم المرجعي</KeysTh>
-              <KeysTh align="start">المحكمة / الدائرة</KeysTh>
-              <KeysTh>عدد المفاتيح</KeysTh>
-              <KeysTh align="start">رقم الطلب</KeysTh>
-              <KeysTh>الصكوك</KeysTh>
-              <KeysTh align="start">سيناريو الاستلام</KeysTh>
-              <KeysTh align="start">العهدة</KeysTh>
-              <KeysTh>{null}</KeysTh>
-            </KeysGridHead>
-
+      {/* Desktop table — keyDrawList */}
+      <TableFrame className="hidden lg:block">
+        <Table className="min-w-[960px]" pending={!ready}>
+          <THead>
+            <Tr hoverable={false}>
+              <Th>الرقم المرجعي</Th>
+              <Th>المحكمة / الدائرة</Th>
+              <Th className="text-center">عدد المفاتيح</Th>
+              <Th>رقم الطلب</Th>
+              <Th className="text-center">الصكوك</Th>
+              <Th>سيناريو الاستلام</Th>
+              <Th>العهدة</Th>
+              <ThAction aria-hidden />
+            </Tr>
+          </THead>
+          <TBody>
             {!ready ? (
-              <div className="space-y-0">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[58px] animate-pulse border-b border-border bg-surface-2/60"
-                  />
-                ))}
-              </div>
+              <SkeletonTableRows rows={6} cols={8} />
             ) : filtered.length === 0 ? (
-              <KeysEmpty
-                title="لا توجد ظروف مطابقة"
-                sub="جرّب تعديل البحث أو الفلاتر"
-              />
+              <Tr hoverable={false}>
+                <Td colSpan={8} className="!border-b-0 !p-0">
+                  <KeysEmpty
+                    title="لا توجد ظروف مطابقة"
+                    sub="جرّب تعديل البحث أو الفلاتر"
+                  />
+                </Td>
+              </Tr>
             ) : (
               filtered.map((env) => {
                 const out = isEnvelopeOutOfCustody(env.status);
                 return (
-                  <KeysGridRow
+                  <Tr
                     key={env.id}
-                    cols={KEYS_LIST_COLS}
-                    muted={out}
+                    className={cn(
+                      "[content-visibility:auto] [contain-intrinsic-size:auto_120px]",
+                      out && "opacity-55 saturate-[0.6]",
+                    )}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openEnvelope(env.id)}
                     onContextMenu={(e) => {
                       if (!canRegisterEnvelope) return;
                       e.preventDefault();
                       setPendingDelete(env);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openEnvelope(env.id);
+                      }
+                    }}
                   >
-                    <KeysTd>
-                      <span className="text-[13.5px] font-bold text-gold-d">
-                        {envelopeDisplayRef(env.id, env.createdAtUtc)}
-                      </span>
-                    </KeysTd>
-                    <KeysTd col>
-                      <span className="text-[13px] font-semibold text-heading">
-                        {env.court || "—"}
-                      </span>
-                      <span className="text-[11px] text-text-3">
-                        {env.circuit || "—"}
-                      </span>
-                    </KeysTd>
-                    <KeysTd align="center">
+                    <TdLtr
+                      bare
+                      className="text-[13.5px] font-bold text-gold-d"
+                    >
+                      {envelopeDisplayRef(
+                        env.id,
+                        env.createdAtUtc,
+                        env.referenceNumber,
+                      )}
+                    </TdLtr>
+                    <Td>
+                      <div className="flex min-w-0 flex-col items-start gap-0.5">
+                        <span className="text-[13px] font-semibold text-heading">
+                          {env.court || "—"}
+                        </span>
+                        <span className="text-[11px] text-text-3">
+                          {env.circuit || "—"}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td className="text-center">
                       <span className="inline-flex items-center text-[14px] font-extrabold tabular-nums text-heading">
                         {env.keysCountActual}
                         {env.countMismatch ? <MismatchIcon /> : null}
                       </span>
-                    </KeysTd>
-                    <KeysTd>
-                      <span className="font-semibold text-text-2">
-                        {env.requestNumber || "—"}
-                      </span>
-                    </KeysTd>
-                    <KeysTd align="center">
+                    </Td>
+                    <TdLtr bare className="font-semibold text-text-2">
+                      {env.requestNumber || "—"}
+                    </TdLtr>
+                    <Td className="text-center">
                       <span className="text-[13.5px] font-bold tabular-nums text-text-2">
                         {env.assignments.length}
                       </span>
-                    </KeysTd>
-                    <KeysTd>
+                    </Td>
+                    <Td>
                       <KeysStatusPill
                         label={scenarioLabel(env.receiveScenario)}
                         color={scenarioColor(env.receiveScenario)}
                       />
-                    </KeysTd>
-                    <KeysTd>
+                    </Td>
+                    <Td>
                       <KeysStatusPill
                         label={envelopeStatusLabel(env.status)}
                         color={envelopeStatusColor(env.status)}
                       />
-                    </KeysTd>
-                    <KeysTd align="center" className="text-text-3">
+                    </Td>
+                    <TdAction className="text-text-3">
                       <ChevronIcon />
-                    </KeysTd>
-                  </KeysGridRow>
+                    </TdAction>
+                  </Tr>
                 );
               })
             )}
-          </div>
+          </TBody>
+        </Table>
+      </TableFrame>
 
-          {/* Mobile cards — لغة المعاين */}
-          <div className="lg:hidden">
-            <ActiveQueueMobileCards
-              items={mobileCardItems}
-              pending={!ready}
-              emptyMessage="لا توجد ظروف مطابقة"
-            />
-          </div>
-        </div>
+      {/* Mobile cards — inspector wording */}
+      <div className="lg:hidden">
+        <ActiveQueueMobileCards
+          items={mobileCardItems}
+          pending={!ready}
+          emptyMessage="لا توجد ظروف مطابقة"
+        />
       </div>
 
       {canRegisterEnvelope && filtered.length > 0 ? (
@@ -743,17 +727,19 @@ export function KeysView() {
         </p>
       ) : null}
 
-      <RegisterKeyEnvelopeModal
-        open={registerOpen}
-        busy={false}
-        onClose={closeRegisterModal}
-        initialRequestNumber={registerRequestPrefill}
-        operationsTaskId={registerTaskId}
-        onRegistered={(id) => {
-          invalidateEnvelopes();
-          openEnvelope(id);
-        }}
-      />
+      {registerOpen ? (
+        <RegisterKeyEnvelopeModal
+          open={registerOpen}
+          busy={false}
+          onClose={closeRegisterModal}
+          initialRequestNumber={registerRequestPrefill}
+          operationsTaskId={registerTaskId}
+          onRegistered={(id) => {
+            invalidateEnvelopes();
+            openEnvelope(id);
+          }}
+        />
+      ) : null}
       {pendingDelete ? (
         <ModalOverlay onClick={() => setPendingDelete(null)}>
           <ModalCard
@@ -771,6 +757,7 @@ export function KeysView() {
                   {envelopeDisplayRef(
                     pendingDelete.id,
                     pendingDelete.createdAtUtc,
+                    pendingDelete.referenceNumber,
                   )}
                 </span>
                 ؟

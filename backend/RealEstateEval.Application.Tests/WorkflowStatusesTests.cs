@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Failures.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

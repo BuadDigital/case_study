@@ -54,7 +54,7 @@ export function OperationalPanel({
 }
 
 /** Scrollable page body with standard padding (replaces `.page-body`). */
-export function PageBody({
+function PageBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
@@ -121,17 +121,44 @@ export function EmptyState({
   hint,
   className,
   children,
+  panel = false,
+  ...props
 }: HTMLAttributes<HTMLDivElement> & {
   line: ReactNode;
   hint?: ReactNode;
+  /** Denser panel empty (keys / finance / properties). */
+  panel?: boolean;
 }) {
   return (
-    <div className={cn(emptyStateClassName, className)}>
-      <p className="m-0 text-[13px] text-text-3">{line}</p>
-      {hint ? (
-        <p className="mt-2 text-[11px] text-text-3">{hint}</p>
-      ) : null}
+    <div
+      className={cn(
+        emptyStateClassName,
+        panel && "px-5 py-[54px]",
+        className,
+      )}
+      {...props}
+    >
       {children}
+      <p
+        className={cn(
+          "m-0",
+          panel
+            ? "text-[14px] font-bold text-text-2"
+            : "text-[13px] text-text-3",
+        )}
+      >
+        {line}
+      </p>
+      {hint ? (
+        <p
+          className={cn(
+            "text-text-3",
+            panel ? "mt-1 text-[13px]" : "mt-2 text-[11px]",
+          )}
+        >
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

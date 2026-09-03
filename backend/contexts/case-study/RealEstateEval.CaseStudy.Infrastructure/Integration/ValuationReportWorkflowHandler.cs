@@ -1,31 +1,27 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.CaseStudy.Infrastructure.Integration;
 
 public sealed class ValuationReportWorkflowHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
-    private readonly ICaseStudyRepository _db;
+    private readonly IValuationReportWorkflowTaskLookup _tasksLookup;
     private readonly IWorkflowTaskService _tasks;
     private readonly ILogger<ValuationReportWorkflowHandler> _logger;
 
     public ValuationReportWorkflowHandler(
-        ICaseStudyRepository db,
+        IValuationReportWorkflowTaskLookup tasksLookup,
         IWorkflowTaskService tasks,
         ILogger<ValuationReportWorkflowHandler> logger)
     {
-        _db = db;
+        _tasksLookup = tasksLookup;
         _tasks = tasks;
         _logger = logger;
     }
@@ -64,14 +60,9 @@ public sealed class ValuationReportWorkflowHandler
             return;
         }
 
-        var task = await _db.WorkflowTasks
-            .Where(t => t.Kind == WorkflowTaskKind.PropertyAppraisal)
-            .Where(t => t.PropertyId == propertyId)
-            .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
-            .OrderByDescending(t => t.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+        var taskId = await _tasksLookup.FindOpenAppraisalTaskIdAsync(propertyId, cancellationToken);
 
-        if (task is null)
+        if (taskId is null)
         {
             _logger.LogInformation(
                 "ValuationReportSubmitted: no open property-appraisal task for property {PropertyId}",
@@ -80,7 +71,7 @@ public sealed class ValuationReportWorkflowHandler
         }
 
         await _tasks.PatchAsync(
-            task.Id,
+            taskId.Value,
             new PatchWorkflowTaskRequest
             {
                 Status = WorkflowTaskStatusValues.Completed,
@@ -90,7 +81,7 @@ public sealed class ValuationReportWorkflowHandler
 
         _logger.LogInformation(
             "ValuationReportSubmitted: completed workflow task {TaskId} for VR {DisplayId}",
-            task.Id,
+            taskId.Value,
             payload.DisplayId);
     }
 }

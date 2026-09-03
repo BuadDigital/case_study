@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReportingStageDwellDto } from "@platform/api-client";
-import { dashCard } from "../../lib/dashboard-tw";
+import { opsDashCard } from "@platform/ui-kit";
+
 
 function fmtDays(v: number): string {
   return `${v % 1 === 0 ? v : v.toFixed(1)} ي`;
@@ -30,7 +31,7 @@ export function DashDwellSlaCard({
   const hasSamples = stages.some((r) => r.sampleCount > 0);
 
   return (
-    <div className={dashCard}>
+    <div className={opsDashCard}>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="m-0 text-[14px] font-bold text-heading">
           متوسط زمن المكوث لكل مرحلة

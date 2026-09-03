@@ -8,7 +8,7 @@ import {
   type PropertyKeyGateDto,
 } from "@platform/api-client";
 import { Button, Note, cn } from "@platform/ui-kit";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
   FieldBox,
   FieldsGrid,
@@ -18,12 +18,12 @@ import {
   keyHandedLabelAr,
   keysStatusLabelAr,
 } from "../../query/use-property-key-gate-query";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 export type InspectorKeyAvailability = {
   keyHandedToInspector: string;
   keysStatus: string;
-  /** جاهز لإتمام المعاينة من ناحية المفتاح */
+  /** Ready to complete inspection from a key-status perspective */
   keyAvailable: boolean;
   source?: string;
   envelopeId?: string | null;
@@ -47,7 +47,7 @@ function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   };
 }
 
-/** حالة المفتاح من ظرف المفاتيح فقط */
+/** Key status derived from the key envelope only */
 export function useInspectorKeyAvailability(
   task: WorkflowTask,
 ): InspectorKeyAvailability {

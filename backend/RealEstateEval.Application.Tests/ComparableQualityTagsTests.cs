@@ -1,5 +1,6 @@
 using RealEstateEval.Domain;
 using Xunit;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 

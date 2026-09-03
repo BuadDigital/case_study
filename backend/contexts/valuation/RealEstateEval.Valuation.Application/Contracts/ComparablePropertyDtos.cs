@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Valuation.Application.Contracts;
 
 public class ComparableSourceCardDto
 {
@@ -18,7 +18,7 @@ public class ComparablePropertyDto
     public Guid Id { get; init; }
     public required string ReferenceCode { get; init; }
     public required string ComparablePropertyType { get; init; }
- /// <summary>استخدام المقارن — قائمة مغلقة (ق-3/5).</summary>
+ /// <summary>Comparable use — closed list (Q-3/5).</summary>
     public string Usage { get; init; } = "";
     public required string TransactionKind { get; init; }
     public string TransactionKindLabelAr { get; init; } = "";
@@ -26,7 +26,7 @@ public class ComparablePropertyDto
     public string PriceDescriptionLabelAr { get; init; } = "";
     public required string Source { get; init; }
     public string? ListingNumber { get; init; }
- /// <summary>ق-3/3: مرجع صفقة البورصة للمنفّذ.</summary>
+ /// <summary>Q-3/3: bourse deal reference for closed deals.</summary>
     public string? TransactionReference { get; init; }
     public string? AdvertiserPhone { get; init; }
     public string? ListingImageFileName { get; init; }
@@ -41,6 +41,8 @@ public class ComparablePropertyDto
     public string? PricePerSqmAnomalyNoteAr { get; init; }
     public string? City { get; init; }
     public required string District { get; init; }
+    public string? PlanNumber { get; init; }
+    public string? PlotNumber { get; init; }
     public string? Description { get; init; }
     public required string IntakeChannel { get; init; }
     public string? EnteredByUserId { get; init; }
@@ -49,7 +51,7 @@ public class ComparablePropertyDto
     public Guid? SourcePropertyId { get; init; }
     public bool IsActive { get; init; }
 
- // ق-3: وسوم الجودة البشرية.
+ // Q-3: human quality tags.
  /// <summary>normal | anomalous | unreliable.</summary>
     public string ReliabilityTag { get; init; } = "normal";
     public string ReliabilityTagLabelAr { get; init; } = "";
@@ -57,9 +59,9 @@ public class ComparablePropertyDto
     public string? TagRationale { get; init; }
     public string? TaggedByUserId { get; init; }
     public string? TaggedAtUtc { get; init; }
- /// <summary>موسوم فيُستبعد من الاقتراحات ويُميَّز بصرياً.</summary>
+ /// <summary>Tagged so it is excluded from suggestions and visually marked.</summary>
     public bool IsExcludedFromSuggestions { get; init; }
- /// <summary>اشتباه تكرار آلي (سجل آخر بنفس الموقع) — اقتراح فقط، الوسم بشري.</summary>
+ /// <summary>Automatic duplicate suspicion (another record at the same location) — suggestion only; tagging is human.</summary>
     public bool DuplicateSuspect { get; init; }
 
     public string CreatedAtUtc { get; init; } = "";
@@ -67,7 +69,7 @@ public class ComparablePropertyDto
     public ComparableSourceCardDto SourceCard { get; init; } = null!;
 }
 
-/// <summary>ق-3: وضع/تحديث وسوم الجودة — يضعها أي ذي صفة بمبرر، والسجل يبقى.</summary>
+/// <summary>Q-3: set/update quality tags — any authorized actor with a rationale; the record remains.</summary>
 public class SaveComparableQualityTagsRequest
 {
  /// <summary>normal | anomalous | unreliable.</summary>
@@ -76,7 +78,7 @@ public class SaveComparableQualityTagsRequest
 
     public bool IsDuplicateTagged { get; init; }
 
- /// <summary>إلزامي عند أي وسم مفعَّل.</summary>
+ /// <summary>Required when any tag is enabled.</summary>
     [MaxLength(2000)]
     public string? TagRationale { get; init; }
 }
@@ -86,7 +88,7 @@ public class UpsertComparablePropertyRequest
     [Required, MaxLength(128)]
     public string ComparablePropertyType { get; init; } = "";
 
- /// <summary>استخدام المقارن — قائمة مغلقة (ق-3/5).</summary>
+ /// <summary>Comparable use — closed list (Q-3/5).</summary>
     [MaxLength(64)]
     public string? Usage { get; init; }
 
@@ -104,7 +106,7 @@ public class UpsertComparablePropertyRequest
     [MaxLength(64)]
     public string? ListingNumber { get; init; }
 
- /// <summary>ق-3/3: مرجع صفقة البورصة — للمنفّذ، اختياري.</summary>
+ /// <summary>Q-3/3: bourse deal reference — for closed deals, optional.</summary>
     [MaxLength(64)]
     public string? TransactionReference { get; init; }
 
@@ -130,6 +132,12 @@ public class UpsertComparablePropertyRequest
 
     [Required, MaxLength(128)]
     public string District { get; init; } = "";
+
+    [MaxLength(64)]
+    public string? PlanNumber { get; init; }
+
+    [MaxLength(64)]
+    public string? PlotNumber { get; init; }
 
     [MaxLength(2000)]
     public string? Description { get; init; }
@@ -159,6 +167,8 @@ public class ComparablePropertyListQuery
     public string? ToDate { get; init; }
     public bool IncludeInactive { get; init; }
     public int Take { get; init; } = 100;
+    /// <summary>Comparison-method spec §2: prioritize field comparables for this property, then banked ones.</summary>
+    public string? ForPropertyId { get; init; }
 }
 
 public class ComparableProximityQuery

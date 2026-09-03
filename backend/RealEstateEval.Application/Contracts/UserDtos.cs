@@ -13,6 +13,8 @@ public class UserDetailFieldDto
 public class UserListItemDto
 {
     public required string Id { get; init; }
+ /// <summary>Numbering workshop: internal reference US-{year}-{5-digit seq}.</summary>
+    public string? ReferenceNumber { get; init; }
     public required string DisplayName { get; init; }
     public required string JobTitle { get; init; }
     public required string Email { get; init; }
@@ -34,7 +36,6 @@ public class UserListItemDto
     public IReadOnlyList<string> ReviewerCityCoverage { get; init; } = [];
     public required ContractType ContractType { get; init; }
     public required UserStatus Status { get; init; }
-    public required RegistrationSource RegistrationSource { get; init; }
     public string? PhoneNumber { get; init; }
     public DateTime? LastLoginAtUtc { get; init; }
     public DateTime CreatedAtUtc { get; init; }

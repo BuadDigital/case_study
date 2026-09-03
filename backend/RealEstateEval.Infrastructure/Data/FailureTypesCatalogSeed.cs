@@ -1,12 +1,13 @@
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>Default failure types catalog — mirrors apps/mfe-failures failure-types-data.ts.</summary>
-internal static class FailureTypesCatalogSeed
+// A8: public — DataSeeder moved to the DevSeed leaf project.
+public static class FailureTypesCatalogSeed
 {
-    internal static readonly Guid SingletonId =
+    public static readonly Guid SingletonId =
         Guid.Parse("c2d3e4f5-a6b7-8901-cdef-123456789012");
 
-    internal const string CatalogJson = """
+    public const string CatalogJson = """
         {
           "categories": [
             { "id": "deed-documents", "label": "مشاكل الصك والوثائق", "order": 1 },

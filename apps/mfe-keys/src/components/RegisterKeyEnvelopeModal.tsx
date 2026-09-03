@@ -1,14 +1,22 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import { Button, Spinner, cn, useToast } from "@platform/ui-kit";
-import { loadWorkOrderDtos } from "@platform/app-shared/prototype/work-orders-read";
+import {
+  Button,
+  Spinner,
+  cn,
+  opsFldControl,
+  useToast,
+} from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
+import { loadWorkOrderDtos } from "@platform/app-shared/app-data/work-orders-read";
 import {
   fetchLinkedPropertiesByRequestNumber,
   registerKeyEnvelope,
@@ -29,9 +37,13 @@ type RequestSuggestion = {
 
 type FilePick = { file: File; attachmentId?: string };
 
-/** Exact HTML `.fld input/textarea` tokens — avoid ui-kit formControlClassName conflicts. */
-const fldControlClassName =
-  "box-border w-full rounded-[9px] border border-border-md bg-surface-2 px-3 py-[9px] font-[inherit] text-[13px] text-text outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--gold)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)]";
+const SOURCE_OPTIONS = [
+  { id: "court" as const, label: "المحكمة" },
+  { id: "third_party" as const, label: "طرف آخر" },
+  { id: "missing" as const, label: "مفقودة" },
+] as const;
+
+const fldControlClassName = opsFldControl;
 
 function Fld({
   full,
@@ -142,14 +154,42 @@ export function RegisterKeyEnvelopeModal({
   busy: boolean;
   onClose: () => void;
   onRegistered: (envelopeId: string) => void;
-  /** Prefill رقم الطلب when opening from a court-visit task. */
+  /** Prefill request number when opening from a court-visit task. */
   initialRequestNumber?: string;
   /** Link envelope to the court_visit operations task (from ?task=). */
   operationsTaskId?: string;
 }) {
+  if (!open) return null;
+  return (
+    <RegisterKeyEnvelopeForm
+      key={initialRequestNumber}
+      busy={busy}
+      onClose={onClose}
+      onRegistered={onRegistered}
+      initialRequestNumber={initialRequestNumber}
+      operationsTaskId={operationsTaskId}
+    />
+  );
+}
+
+function RegisterKeyEnvelopeForm({
+  busy,
+  onClose,
+  onRegistered,
+  initialRequestNumber,
+  operationsTaskId,
+}: {
+  busy: boolean;
+  onClose: () => void;
+  onRegistered: (envelopeId: string) => void;
+  initialRequestNumber: string;
+  operationsTaskId?: string;
+}) {
   const { showToast } = useToast();
   const [source, setSource] = useState<SourceKind>("court");
-  const [requestNumber, setRequestNumber] = useState("");
+  const [requestNumber, setRequestNumber] = useState(() =>
+    initialRequestNumber.trim(),
+  );
   const [court, setCourt] = useState("");
   const [circuit, setCircuit] = useState("");
   const [keysCountLabeled, setKeysCountLabeled] = useState("1");
@@ -169,39 +209,25 @@ export function RegisterKeyEnvelopeModal({
   const [suggestions, setSuggestions] = useState<RequestSuggestion[]>([]);
   const [listOpen, setListOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const photoRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
   const letterRef = useRef<HTMLInputElement>(null);
   const blurTimer = useRef<number | null>(null);
+  const pendingRegister = useRef<Parameters<typeof registerKeyEnvelope>[0] | null>(
+    null,
+  );
+
+  const { execute: executeRegister, loading: saving } = useIdempotentAction(
+    useCallback(async (idempotencyKey: string) => {
+      const input = pendingRegister.current;
+      if (!input) throw new Error("لا توجد بيانات ظرف للإرسال");
+      return registerKeyEnvelope(input, idempotencyKey);
+    }, []),
+  );
 
   useEffect(() => {
-    if (!open) return;
-    setSource("court");
-    setRequestNumber(initialRequestNumber.trim());
-    setCourt("");
-    setCircuit("");
-    setKeysCountLabeled("1");
-    setKeysCountActual("1");
-    setNotes("");
-    setPartyName("");
-    setPartyOrg("");
-    setPartyRole("");
-    setPartyPhone("");
-    setMissingPhones("");
-    setPhoto(null);
-    setReceipt(null);
-    setThirdPartyLetter(null);
-    setLinked([]);
-    setListOpen(false);
-    setDragOver(false);
-    setFormError("");
-  }, [open, initialRequestNumber]);
-
-  useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -241,10 +267,9 @@ export function RegisterKeyEnvelopeModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
     const trimmed = requestNumber.trim();
     if (trimmed.length < 2) {
       setLinked([]);
@@ -271,7 +296,7 @@ export function RegisterKeyEnvelopeModal({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, requestNumber]);
+  }, [requestNumber]);
 
   const filteredSuggestions = useMemo(() => {
     const q = requestNumber.trim();
@@ -280,8 +305,6 @@ export function RegisterKeyEnvelopeModal({
       : suggestions.filter((s) => s.requestNumber.includes(q));
     return list.slice(0, 12);
   }, [suggestions, requestNumber]);
-
-  if (!open) return null;
 
   const labeled = Number.parseInt(keysCountLabeled, 10);
   const actual = Number.parseInt(keysCountActual, 10);
@@ -367,7 +390,6 @@ export function RegisterKeyEnvelopeModal({
       return;
     }
 
-    setSaving(true);
     setFormError("");
     const contact =
       source === "third_party"
@@ -382,7 +404,7 @@ export function RegisterKeyEnvelopeModal({
         : source === "missing"
           ? missingPhones.trim()
           : "";
-    const result = await registerKeyEnvelope({
+    pendingRegister.current = {
       requestNumber: request,
       court: court.trim() || "—",
       circuit: circuit.trim() || "—",
@@ -399,8 +421,10 @@ export function RegisterKeyEnvelopeModal({
         deedNumber: p.deedNumber,
         propertyId: p.propertyId,
       })),
-    });
-    setSaving(false);
+    };
+    const outcome = await executeRegister();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
     if (!result.ok) {
       setFormError(result.error);
       showToast(result.error, "error");
@@ -419,7 +443,7 @@ export function RegisterKeyEnvelopeModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px] max-lg:items-stretch max-lg:px-0 max-lg:py-0"
       role="presentation"
       onClick={onClose}
     >
@@ -483,7 +507,7 @@ export function RegisterKeyEnvelopeModal({
                   }}
                 />
                 {listOpen && filteredSuggestions.length > 0 ? (
-                  <div className="absolute inset-x-0 top-[calc(100%+4px)] z-30 max-h-[220px] overflow-y-auto rounded-[10px] border border-border-md bg-surface p-1 shadow-[0_12px_30px_-8px_rgba(18,40,76,0.3)]">
+                  <div className="absolute inset-x-0 top-[calc(100%+4px)] z-[var(--z-dropdown)] max-h-[220px] overflow-y-auto rounded-[10px] border border-border-md bg-surface p-1 shadow-[0_12px_30px_-8px_rgba(18,40,76,0.3)]">
                     {filteredSuggestions.map((s) => (
                       <button
                         key={s.requestNumber}
@@ -514,13 +538,7 @@ export function RegisterKeyEnvelopeModal({
                 مصدر استلام الظرف *
               </FldLabel>
               <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    { id: "court" as const, label: "المحكمة" },
-                    { id: "third_party" as const, label: "طرف آخر" },
-                    { id: "missing" as const, label: "مفقودة" },
-                  ] as const
-                ).map((opt) => {
+                {SOURCE_OPTIONS.map((opt) => {
                   const on = source === opt.id;
                   return (
                     <button

@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 public sealed class ComparablePropertyService(
     ValuationDbContext db,
@@ -70,13 +74,44 @@ public sealed class ComparablePropertyService(
         if (DateOnly.TryParse(query.ToDate, out var to))
             q = q.Where(x => x.TransactionDate <= to);
 
+        Guid? forPropertyId = null;
+        if (Guid.TryParse(query.ForPropertyId, out var parsedPropertyId)
+            && parsedPropertyId != Guid.Empty)
+        {
+            forPropertyId = parsedPropertyId;
+        }
+
+        var fetchTake = forPropertyId is not null
+            ? Math.Min(MaxTake, Math.Max(take * 2, take + 20))
+            : take;
+
         var rows = await q
             .OrderByDescending(x => x.TransactionDate)
             .ThenByDescending(x => x.CreatedAtUtc)
-            .Take(take)
+            .Take(fetchTake)
             .ToListAsync(cancellationToken);
 
- // ق-3/2: النظام يقترح الاشتباه (سجلان بنفس الموقع) ولا يحجب ولا يدمج آلياً.
+        // Comparison-method spec §2 display priority:
+        // 1) field for this property 2) rest of the bank
+        if (forPropertyId is Guid subjectId)
+        {
+            rows = rows
+                .OrderByDescending(x =>
+                    x.SourcePropertyId == subjectId
+                    && (x.Source == ComparableSources.Field
+                        || x.IntakeChannel == ComparableIntakeChannels.Field)
+                        ? 2
+                    : x.Source == ComparableSources.Field
+                      || x.IntakeChannel == ComparableIntakeChannels.Field
+                        ? 1
+                    : 0)
+                .ThenByDescending(x => x.TransactionDate)
+                .ThenByDescending(x => x.CreatedAtUtc)
+                .Take(take)
+                .ToList();
+        }
+
+ // Q-3/2: system suggests suspicion (two records at same location) and neither blocks nor merges automatically.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 
         var today = DateOnly.FromDateTime(_time.UtcNow());
@@ -86,7 +121,7 @@ public sealed class ComparablePropertyService(
             .ToList();
     }
 
- /// <summary>Coordinate pairs shared by more than one active record — «الموقع هو المميِّز».</summary>
+ /// <summary>Coordinate pairs shared by more than one active record — "location is the discriminator".</summary>
     private async Task<HashSet<(decimal, decimal)>> DuplicateSuspectCoordsAsync(
         CancellationToken cancellationToken)
     {
@@ -130,6 +165,18 @@ public sealed class ComparablePropertyService(
         entity.UpdatedAtUtc = now;
 
         db.ComparableProperties.Add(entity);
+        if (entity.SourcePropertyId is Guid sourcePropertyId && sourcePropertyId != Guid.Empty)
+        {
+            db.PropertyComparableLinks.Add(new PropertyComparableLink
+            {
+                Id = Guid.NewGuid(),
+                PropertyId = sourcePropertyId,
+                ComparablePropertyId = entity.Id,
+                Description = entity.Description,
+                LinkedByUserId = entity.EnteredByUserId,
+                LinkedAtUtc = now,
+            });
+        }
         await db.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
         return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(now), anomaly), null);
@@ -161,33 +208,20 @@ public sealed class ComparablePropertyService(
         string taggedByUserId,
         CancellationToken cancellationToken = default)
     {
-        var errors = new Dictionary<string, string>();
-        if (!ComparableReliabilityTags.IsKnown(request.ReliabilityTag))
-            errors["reliabilityTag"] = "وسم الموثوقية غير معروف (عادي/شاذ/غير موثوق)";
-
-        var tag = ComparableReliabilityTags.Normalize(request.ReliabilityTag);
-        var anyTag = request.IsDuplicateTagged
-            || !string.Equals(tag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
- // ق-3: المبرر إلزامي عند أي وسم مفعَّل.
-        if (anyTag && string.IsNullOrWhiteSpace(request.TagRationale))
-            errors["tagRationale"] = "مبرر الوسم إلزامي عند وسم شاذ/غير موثوق/مكرر";
-
-        if (errors.Count > 0) return (null, errors);
-
         var entity = await db.ComparableProperties
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
 
-        entity.ReliabilityTag = tag;
-        entity.IsDuplicateTagged = request.IsDuplicateTagged;
-        entity.TagRationale = anyTag ? request.TagRationale!.Trim() : null;
- // الوسم مؤرَّخ باسم واضعه (بطاقة مصدر) — يُمسح عند إزالة كل الوسوم.
-        entity.TaggedByUserId = anyTag
-            ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
-            : null;
-        entity.TaggedAtUtc = anyTag ? _time.UtcNow() : null;
-        entity.UpdatedAtUtc = _time.UtcNow();
+        // B2/Q-3: tagging rules on the aggregate — service coordinates only.
+        var tagError = entity.ApplyQualityTags(
+            request.ReliabilityTag,
+            request.IsDuplicateTagged,
+            request.TagRationale,
+            taggedByUserId,
+            _time.UtcNow());
+        if (tagError is not null)
+            return (null, new Dictionary<string, string> { [tagError.Value.Field] = tagError.Value.MessageAr });
 
         await db.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
@@ -205,6 +239,19 @@ public sealed class ComparablePropertyService(
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null) return (false, "المقارن غير موجود");
         entity.IsActive = false;
+        entity.UpdatedAtUtc = _time.UtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ReactivateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await db.ComparableProperties
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null) return (false, "المقارن غير موجود");
+        entity.IsActive = true;
         entity.UpdatedAtUtc = _time.UtcNow();
         await db.SaveChangesAsync(cancellationToken);
         return (true, null);
@@ -228,7 +275,7 @@ public sealed class ComparablePropertyService(
         }
 
         var exclude = ParseExcludeIds(query.ExcludeIds);
- // ق-3: الموسوم شاذاً/غير موثوق/مكرراً يُستبعد من الاقتراحات (يبقى ظاهراً في البنك مميزاً).
+ // Q-3: anomalous/unreliable/duplicate tagged items are excluded from suggestions (remain visible in the bank, marked).
         var q = db.ComparableProperties.AsNoTracking()
             .Where(x => x.IsActive
                 && !x.IsDuplicateTagged
@@ -336,7 +383,7 @@ public sealed class ComparablePropertyService(
         entity.PriceDescription = priceDesc;
         entity.Source = request.Source.Trim().ToLowerInvariant();
         entity.ListingNumber = Normalize(request.ListingNumber);
- // ق-3/3: مرجع الصفقة للمنفّذ — نظير رقم الإعلان للعروض.
+ // Q-3/3: deal reference for closed deals — counterpart to listing number for offers.
         entity.TransactionReference = kind == ComparableTransactionKinds.Executed
             ? Normalize(request.TransactionReference)
             : null;
@@ -352,6 +399,8 @@ public sealed class ComparablePropertyService(
             request.AreaSqm);
         entity.City = Normalize(request.City);
         entity.District = request.District.Trim();
+        entity.PlanNumber = Normalize(request.PlanNumber);
+        entity.PlotNumber = Normalize(request.PlotNumber);
         entity.Description = Normalize(request.Description);
         entity.IntakeChannel = request.IntakeChannel.Trim().ToLowerInvariant();
         entity.SourceWorkOrderNumber = Normalize(request.SourceWorkOrderNumber);
@@ -426,8 +475,7 @@ public sealed class ComparablePropertyService(
     private static string BuildReferenceCode(Guid id) =>
         $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}";
 
-    private static string? Normalize(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Normalize(string? value) => Texts.NullIfBlank(value);
 
     private static ComparablePropertyDto ToDto(ComparableProperty row, DateOnly today) =>
         ComparablePropertyMapping.ToDto(row, today);

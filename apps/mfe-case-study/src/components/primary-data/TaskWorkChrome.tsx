@@ -42,15 +42,38 @@ export function TaskWorkChrome({
     return (
       <Card className="m-0 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden border-0 shadow-none">
         <CardBody className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface p-0">
+          {showHeader ? (
+            <div className="flex shrink-0 items-start gap-2.5 border-b border-border bg-surface-2 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <h2 className="m-0 truncate text-[13.5px] font-bold text-heading">
+                  {title}
+                </h2>
+                {subtitle ? (
+                  <p className="m-0 mt-0.5 truncate text-[11.5px] text-text-3">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
+              {deedBadge ? (
+                <span
+                  dir="ltr"
+                  className="mt-0.5 shrink-0 rounded-md bg-gold-soft px-2 py-0.5 text-[11.5px] font-bold tabular-nums text-gold-d"
+                >
+                  {deedBadge}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
             {children}
           </div>
           {footerVisible ? (
-            <div className="flex shrink-0 flex-wrap gap-2 border-t border-border bg-surface px-4 py-3 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
+            <div className="flex shrink-0 items-center gap-2 border-t border-border bg-surface-2 px-4 py-2.5">
               {footerExtra}
               <Button
                 type="button"
                 variant="primary"
+                className="min-w-0 flex-1"
                 loading={saving}
                 disabled={saving}
                 showActionToast={saveShowActionToast}
@@ -58,6 +81,14 @@ export function TaskWorkChrome({
                 onClick={onSave}
               >
                 {saveLabel}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="shrink-0 px-3"
+                onClick={onClose}
+              >
+                إغلاق
               </Button>
             </div>
           ) : null}

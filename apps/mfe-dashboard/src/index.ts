@@ -1,4 +1,4 @@
-/** @dashboard/mfe — لوحة التحكم */
+/** @dashboard/mfe — dashboard */
 
 export { DashboardView } from "./views/DashboardView";
 

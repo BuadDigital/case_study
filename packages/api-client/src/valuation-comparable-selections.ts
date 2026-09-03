@@ -1,5 +1,7 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
+import { parseJson } from "./parse-json";
 
 export type ValuationComparableAdjustmentLineDto = {
   id: string;
@@ -7,8 +9,12 @@ export type ValuationComparableAdjustmentLineDto = {
   labelAr: string;
   percent: number;
   rationale: string;
+  /** compSpec: comparable description for this factor. */
+  descriptionAr?: string | null;
   isIncluded: boolean;
   sortOrder: number;
+  /** true = displayed value is a suggested default the valuer has not entered — shown as suggested. */
+  isSuggestedValue?: boolean;
 };
 
 export type ValuationComparableMarketDto = {
@@ -16,8 +22,12 @@ export type ValuationComparableMarketDto = {
   sumSequentialPct: number;
   sumDifferencePct: number;
   sumIncludedPct: number;
+  /** |factorsSum| > 35% — justification required (interactive form spec). */
   exceedsLargeAdjustmentThreshold: boolean;
+  /** Deal age in months — shown for inference; market-conditions adjustment is manual. */
   dealAgeMonths: number;
+  /** Default comparable-type adjustment: executed 0 · listing −5 · bid −8 · asking +6. */
+  suggestedTransactionTypePct?: number;
   pricePerSqmAfterSequential: number;
   pricePerSqmAfterDifference: number;
   suggestedWeightPct: number;
@@ -26,9 +36,9 @@ export type ValuationComparableMarketDto = {
   weightPct?: number | null;
   /** Decision 19.3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
- /** multiplier | amthal. */
+ /** multiplier | amthal — table-wide auto choice. */
   areaAdjustmentMethod: string;
- /** computed suggestion (provisional until v3). */
+ /** Auto area adjustment % (amthal / multiplier). */
   suggestedAreaAdjustmentPct: number;
 };
 
@@ -42,11 +52,20 @@ export type ValuationComparableSelectionDto = {
   selectedAtUtc: string;
   comparable: ComparablePropertyDto;
   market?: ValuationComparableMarketDto | null;
+  /** compEdit: this valuation's price/area overrides for the comparable — does not touch the shared bank. */
+  priceOverrideSar?: number | null;
+  areaOverrideSqm?: number | null;
+  /** Effective values after overrides. */
+  effectivePriceSar?: number;
+  effectiveAreaSqm?: number;
+  effectivePricePerSqm?: number;
 };
 
 export type ValuationComparableSelectionListDto = {
   valuationRequestId: string;
   propertyId: string;
+  /** market | land_within_cost */
+  selectionContext?: string;
   adoptedCount: number;
   meetsMinimumAdoptedGate: boolean;
   weightsSumTo100: boolean;
@@ -55,16 +74,41 @@ export type ValuationComparableSelectionListDto = {
  /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
   adjustmentBasisLabelAr: string;
+  /** Per-m²: weighted × area. Whole-property: weighted — before rounding. */
+  marketOpinionValueRaw?: number;
+  /** Adjustments logic: after rounding to nearest 10^n. */
   marketOpinionValue: number;
+  /** Frozen area factor % for this valuation. */
+  areaFactorPct?: number;
+  /** Frozen annual market rate % for mkt suggestion. */
+  annualMarketRatePct?: number;
+  /** Frozen market-value rounding exponent (10^n). */
+  valueRoundDecimals?: number;
   analysisNotes?: string | null;
+  /** subjSpec: subject-property descriptions per difference factor. */
+  subjectSpecs?: Record<string, string>;
+  /** Q-8-1: factor-level justifications — comparable row holds allocation only. */
+  factorRationales?: ValuationAdjustmentFactorRationaleDto[];
   items: ValuationComparableSelectionDto[];
+};
+
+/** Q-8-1: single adjustment-factor justification (covers all comparables). */
+export type ValuationAdjustmentFactorRationaleDto = {
+  selectionContext: string;
+  factorKey: string;
+  rationaleAr: string;
 };
 
 export type SaveValuationMarketApproachRequest = {
   subjectAreaSqm?: number | null;
  /** price_per_sqm (default) | whole_property. */
   adjustmentBasis?: string | null;
+  areaFactorPct?: number | null;
+  annualMarketRatePct?: number | null;
+  valueRoundDecimals?: number | null;
   analysisNotes?: string | null;
+  /** subjSpec — null keeps the stored value. */
+  subjectSpecs?: Record<string, string> | null;
 };
 
 export type ValuationCostLineDto = {
@@ -84,7 +128,15 @@ export type ValuationCostLineDto = {
  /** quantity derives from first floor × count. */
   repeatedFloorCount?: number | null;
   unitCostSar: number;
+  /** Effective unit cost — inherits first-floor SAR/m² when left empty on a repeating floor line. */
+  effectiveUnitCostSar?: number;
+  /** true = inherited from the first floor. */
+  unitCostInherited?: boolean;
+  /** Effective quantity after build ratio — floor area N m². */
+  effectiveQuantity?: number;
   lineTotal: number;
+  /** Price per m² after indirect costs. */
+  netUnitRateWithIndirect?: number;
   rationale: string;
   isIncluded: boolean;
   sortOrder: number;
@@ -93,9 +145,11 @@ export type ValuationCostLineDto = {
 export type ValuationCostApproachDto = {
   valuationRequestId: string;
   propertyId: string;
- /** market weighted unit rate imported at land import (locked). */
+ /** weighted unit rate from land_within_cost comps. */
   landUnitRateFromMarket: number;
   landAreaSqm: number;
+  /** true when land comps produced a unit rate. */
+  landEstimateComplete?: boolean;
   useRestrictionDiscountPct: number;
   useRestrictionRationale?: string | null;
   apartmentLandShareSqm?: number | null;
@@ -125,8 +179,13 @@ export type ValuationCostApproachDto = {
   totalObsolescencePct: number;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
+  /** Method index by scope: land_and_building = land + buildings; building_only = buildings after depreciation. */
   costOpinionWithLand: number;
   costOpinionBuildingsOnly: number;
+  /** land_and_building | building_only. */
+  costScopeKey?: string;
+  /** Σ effective quantity of m² lines in the floor-area group. */
+  buildingAreaSqm?: number;
   analysisNotes?: string | null;
   lines: ValuationCostLineDto[];
 };
@@ -168,7 +227,8 @@ export type SaveValuationCostLineRequest = {
 export type SaveValuationCostApproachRequest = {
   lines: SaveValuationCostLineRequest[];
   analysisNotes?: string | null;
-  importLandFromMarket?: boolean;
+  /** Refresh land unit rate from land_within_cost comps (not market). */
+  refreshLandFromLandComps?: boolean;
  /** 0–100, default 0. */
   useRestrictionDiscountPct?: number;
  /** required when the discount is above zero. */
@@ -265,12 +325,18 @@ export type SaveValuationComparableAdjustmentLineRequest = {
   labelAr?: string | null;
   percent: number;
   rationale?: string | null;
+  /** compSpec: comparable description for this factor. */
+  descriptionAr?: string | null;
   isIncluded?: boolean;
   sortOrder?: number;
 };
 
 export type SaveValuationComparableMarketRequest = {
   adjustmentLines: SaveValuationComparableAdjustmentLineRequest[];
+  /** compEdit: override total property price — null clears the override. */
+  priceOverrideSar?: number | null;
+  /** compEdit: override comparable area (m²) — null clears the override. */
+  areaOverrideSqm?: number | null;
   weightPct?: number | null;
   weightIsManual?: boolean;
   /** Decision 19.3 — required when weightIsManual. */
@@ -279,43 +345,48 @@ export type SaveValuationComparableMarketRequest = {
   areaAdjustmentMethod?: string | null;
 };
 
-/** شاشة 1 — الأساليب المطبَّقة (ق-2/ق-3) + أساس/وحدة التكلفة + صلاحية التسويات. */
+/** Screen 1 — applied approaches (Q-2/Q-3) + cost basis/unit + adjustments eligibility. */
 export type ValuationApproachSettingsDto = {
   valuationRequestId: string;
   propertyId: string;
   propertyType: string;
-  /** نوع العقار «أرض» (بأي تصنيف). */
+  /** Property type is land (any classification). */
   isLandPropertyType: boolean;
-  /** سؤال الحصر: هل توجد مبانٍ/إنشاءات يجب تقييمها؟ */
+  /** Scope question: are there buildings/improvements to value? */
   hasStructuresToValue: boolean;
-  /** ق-3 المعدَّل: أرض بلا إنشاءات وحدها تعطّل أسلوب التكلفة. */
+  /** Q-3 (revised): land with no improvements alone disables the cost approach. */
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;
-  /** مؤجَّل — يُعرض «قيد الإنشاء» ولا يقبل التفعيل. */
+  /** Deferred — shown as under construction and cannot be enabled. */
   incomeApproachEnabled: boolean;
   /** replacement | reproduction. */
   costBasisKey: string;
   costBasisLabelAr: string;
+  /** Cost-approach scope: land_and_building (default) | building_only. */
+  costScopeKey?: string;
+  costScopeLabelAr?: string;
   /** comparison_unit | quantity_survey | lump_sum | per_item. */
   costMeasurementUnitKey: string;
   costMeasurementUnitLabelAr: string;
   adjustmentsEditUnlocked: boolean;
-  /** الغرض من التقييم — auction_liquidation | sale | judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
+  /** Valuation purpose — auction_liquidation | sale | judicial_execution | sale_purchase | financing | financial_reporting | litigation | other. */
   valuationPurposeKey: string;
   valuationPurposeLabelAr: string;
   valuationPurposeNote?: string | null;
-  /** بند الأخصائي الخارجي (IVS 101) — ليس أخصائي الإسناد ولا أخصائي دراسة الحالة. */
+  /** External specialist item (IVS 101) — not the assignment specialist or case-study specialist. */
   externalSpecialistUsed: boolean;
   externalSpecialistDetails?: string | null;
-  /** تاريخ التقييم: issue (إصدار القيمة — آلي) | retrospective (أثر رجعي يدوي). */
+  /** Valuation date: issue (value issuance — automatic) | retrospective (manual backdate). */
   valuationDateMode: string;
   valuationDateModeLabelAr: string;
   retrospectiveDate?: string | null;
+  /** yyyy-MM-dd — period end; empty = single date. */
+  retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
-  /** بنود الافتراضات المنتقاة/المضافة (نصوص مجمّدة). */
+  /** Selected/added assumption items (frozen text). */
   selectedAssumptions: string[];
-  /** مكتبة الانتقاء من إعدادات تبويب تقرير التقييم. */
+  /** Selection library from valuation-report settings tab. */
   assumptionLibrary: string[];
   /** false = property-type defaults (no row saved yet). */
   isSaved: boolean;
@@ -326,17 +397,21 @@ export type SaveValuationApproachSettingsRequest = {
   costApproachEnabled: boolean;
   incomeApproachEnabled?: boolean;
   costBasisKey?: string | null;
+  /** land_and_building (default) | building_only. */
+  costScopeKey?: string | null;
   costMeasurementUnitKey?: string | null;
   adjustmentsEditUnlocked?: boolean;
-  /** إلزامي (§4ج-5). */
+  /** Required (§4j-5). */
   valuationPurposeKey?: string | null;
   valuationPurposeNote?: string | null;
   externalSpecialistUsed?: boolean;
   externalSpecialistDetails?: string | null;
-  /** issue (افتراضي) | retrospective. */
+  /** issue (default) | retrospective. */
   valuationDateMode?: string | null;
-  /** yyyy-MM-dd — إلزامي عند retrospective. */
+  /** yyyy-MM-dd — required for retrospective (or period start). */
   retrospectiveDate?: string | null;
+  /** yyyy-MM-dd — period end; empty = single date. */
+  retrospectiveDateEnd?: string | null;
   retrospectiveRationale?: string | null;
   selectedAssumptions?: string[] | null;
 };
@@ -383,14 +458,11 @@ function headers(token: string): HeadersInit {
   };
 }
 
-async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T;
-}
 
 export async function getOpenValuationRequestByProperty(
   config: ValuationSelectionsApiConfig,
   propertyId: string,
-): Promise<Result<ValuationRequestLiteDto>> {
+): Promise<Result<ValuationRequestLiteDto | null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
@@ -398,9 +470,10 @@ export async function getOpenValuationRequestByProperty(
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationRequestLiteDto>(res) };
+    const data = await parseJson<ValuationRequestLiteDto | null>(res);
+    return { ok: true, data: data?.id ? data : null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -412,8 +485,8 @@ export async function ensureOpenValuationRequestByProperty(
 ): Promise<Result<ValuationRequestLiteDto>> {
   const base = config.baseUrl ?? getApiBase();
   const open = await getOpenValuationRequestByProperty(config, body.propId);
-  if (open.ok) return open;
-  if (open.kind === "auth" || open.kind === "network") return open;
+  if (open.ok && open.data) return { ok: true, data: open.data };
+  if (!open.ok && (open.kind === "auth" || open.kind === "network")) return open;
 
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -441,11 +514,15 @@ export async function ensureOpenValuationRequestByProperty(
 export async function listValuationComparableSelections(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
+  selectionContext: string = "market",
 ): Promise<Result<ValuationComparableSelectionListDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
+    const qs = new URLSearchParams();
+    if (selectionContext) qs.set("selectionContext", selectionContext);
+    const q = qs.toString();
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections`,
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections${q ? `?${q}` : ""}`,
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -457,61 +534,22 @@ export async function listValuationComparableSelections(
   }
 }
 
-export async function replaceValuationComparableSelections(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  items: ValuationComparableSelectionItemRequest[],
-): Promise<Result<ValuationComparableSelectionListDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections`,
-      {
-        method: "PUT",
-        headers: headers(config.token),
-        body: JSON.stringify({ items }),
-      },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
-        message?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message:
-          payload?.errors
-            ? Object.values(payload.errors)[0]
-            : payload?.message ?? "بيانات غير صالحة",
-        errors: payload?.errors,
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return {
-      ok: true,
-      data: await parseJson<ValuationComparableSelectionListDto>(res),
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function setValuationComparableAdopted(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
   comparablePropertyId: string,
   isAdopted: boolean,
+  selectionContext: string = "market",
 ): Promise<Result<ValuationComparableSelectionDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
+    const qs = new URLSearchParams({ selectionContext });
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}/adopt`,
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}/adopt?${qs}`,
       {
         method: "POST",
         headers: headers(config.token),
-        body: JSON.stringify({ isAdopted }),
+        body: JSON.stringify({ isAdopted, selectionContext }),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -530,25 +568,6 @@ export async function setValuationComparableAdopted(
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
     };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function removeValuationComparableSelection(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  comparablePropertyId: string,
-): Promise<Result<null>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}`,
-      { method: "DELETE", headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -590,6 +609,47 @@ export async function saveValuationComparableMarket(
     return {
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
+    };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Q-8-1: save/clear single adjustment-factor justification — empty clears; min 10 chars (Q-8-2). */
+export async function saveAdjustmentFactorRationale(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: { selectionContext: string; factorKey: string; rationaleAr: string | null },
+): Promise<Result<ValuationAdjustmentFactorRationaleDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/adjustment-factor-rationale`,
+      {
+        method: "PUT",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.errors
+          ? Object.values(payload.errors)[0]
+          : (payload?.message ?? "المبرر غير صالح"),
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return {
+      ok: true,
+      data: await parseJson<ValuationAdjustmentFactorRationaleDto>(res),
     };
   } catch {
     return { ok: false, kind: "network" };
@@ -906,7 +966,7 @@ export type ValuationReportPrintedAttachmentDto = {
   fileName: string;
   reportSectionNumber: number;
   isImage: boolean;
-  /** 11س — capture date, YYYY/MM/DD. */
+  /** Field 11s — capture date, YYYY/MM/DD. */
   capturedAtDisplay?: string | null;
 };
 
@@ -936,6 +996,12 @@ export type ValuationReportDocumentDto = {
   approvedTemplateUrl?: string;
   /** Org-settings letterhead for the 3-slice render; null keeps the baked one. */
   letterheadImageUrl?: string | null;
+  letterheadHeadMm?: number | null;
+  letterheadFootTopMm?: number | null;
+  letterheadPadMm?: number | null;
+  letterheadPadStartMm?: number | null;
+  stampWidthCm?: number | null;
+  stampHeightCm?: number | null;
   marketMethodLabelAr: string;
   costMethodLabelAr: string;
   incomeMethodLabelAr: string;
@@ -993,48 +1059,143 @@ export async function getValuationReportPdf(
   }
 }
 
-export type ValuationReportFieldDto = {
-  fieldKey: string;
-  labelAr: string;
-  valueType: string;
-  valueTypeLabelAr: string;
-  sourceKind: string;
-  value?: string | null;
-  filled: boolean;
-  note?: string | null;
-};
+/* ─── Q-6: two-phase issuance + deposit certificate ─── */
 
-export type ValuationReportFieldPayloadDto = {
+export type ValuationReportIssuanceStateDto = {
   valuationRequestId: string;
-  displayId: string;
-  propertyId: string;
-  hasStructuresToValue: boolean;
-  catalogCount: number;
-  resolvableCount: number;
-  filledCount: number;
-  deferredCount: number;
-  assetCount: number;
-  packageNoteAr: string;
-  fields: ValuationReportFieldDto[];
-  valuesByFieldKey: Record<string, string>;
-  /** Set when adopted comparables exceed the platform's 3 slots. */
-  truncationNoteAr?: string | null;
+  /** draft | deposit_issued | final_issued */
+  stage: string;
+  allowsDepositIssue: boolean;
+  blockingReasonsAr: string[];
+  depositIssuedAtUtc?: string | null;
+  depositCode?: string | null;
+  certificateFileName?: string | null;
+  certificateUploadedAtUtc?: string | null;
+  finalIssuedAtUtc?: string | null;
+  hasDepositPdf: boolean;
+  hasFinalPdf: boolean;
+  /** Q-9 supplement (r2): active valuation round number — 1 before any reopen. */
+  version: number;
+  /** Count of superseded cancelled copies still kept on the transaction file. */
+  supersededCount: number;
 };
 
-export async function getValuationReportFieldPayload(
+export async function getReportIssuanceState(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
-): Promise<Result<ValuationReportFieldPayloadDto>> {
+): Promise<Result<ValuationReportIssuanceStateDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/valuation-report-fields`,
+      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance`,
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationReportFieldPayloadDto>(res) };
+    return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+async function postIssuance(
+  config: ValuationSelectionsApiConfig,
+  url: string,
+  body?: unknown,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headers(config.token),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.errors
+          ? Object.values(payload.errors)[0]
+          : (payload?.message ?? "تعذّر تنفيذ خطوة الإصدار"),
+        errors: payload?.errors,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Q-6-1: when gates complete — full freeze + generate deposit copy (code field empty). */
+export function issueDepositVersion(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/deposit`,
+  );
+}
+
+/** Q-6-3/4: record certificate and code — generates final copy with certificate/code page in meta. */
+export function registerDepositCertificate(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: {
+    depositCode: string;
+    certificateFileName?: string | null;
+    certificateContentType?: string | null;
+    certificateContentBase64?: string | null;
+  },
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/certificate`,
+    body,
+  );
+}
+
+/**
+ * Q-9 supplement (r2): reopen valuation round after deposit — department supervisor
+ * approval required; the active copy is marked superseded and remains on file.
+ */
+export function reopenReportIssuance(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  reason: string,
+): Promise<Result<ValuationReportIssuanceStateDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  return postIssuance(
+    config,
+    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/reopen`,
+    { reason },
+  );
+}
+
+/** Download deposit copy or final PDF. */
+export async function getIssuancePdf(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  kind: "deposit" | "final",
+): Promise<Result<Blob>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/${kind}-pdf`,
+      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await res.blob() };
   } catch {
     return { ok: false, kind: "network" };
   }

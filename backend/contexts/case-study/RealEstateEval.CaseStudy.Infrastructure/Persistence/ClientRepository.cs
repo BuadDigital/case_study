@@ -4,8 +4,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Persistence;
+namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 public sealed class ClientRepository(
     CaseStudyDbContext db,

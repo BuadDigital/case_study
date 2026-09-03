@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Operations.Application.Abstractions;
 
 /// <summary>
 /// Resolves user display names for key-envelope DTOs (created-by, handoffs, timeline).

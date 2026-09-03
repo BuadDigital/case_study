@@ -1,48 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { cn } from "@platform/ui-kit";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import {
+  EmptyState,
+  StatusPill,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  finStatusStyle,
+  opsLetterCard,
+  opsSearchInput,
+  opsTfNote,
+} from "@platform/ui-kit";
 import {
   buildFinanceCostParties,
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
 import {
-  finCard,
-  finEmpty,
-  finEmptyS,
-  finEmptyT,
   finMuted,
-  finNote,
-  finNum,
-  finRow,
-  finRowClickable,
-  finScroll,
+  finRowActive,
   finSearch,
   finSearchIcon,
-  finSearchInput,
-  finStatus,
-  finStatusTeal,
-  finTd,
-  finTh,
-  finThead,
 } from "../lib/finance-tw";
 
-function fmtSar(n: number) {
-  return `${n.toLocaleString("en-US", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0,
-  })} ر.س`;
-}
+const EMPTY_STAFF_USERS: StaffUser[] = [];
 
-const grid =
-  "min-w-[920px] grid-cols-[minmax(68px,0.5fr)_minmax(135px,1.5fr)_minmax(90px,0.6fr)_minmax(148px,1.1fr)_minmax(108px,0.85fr)_minmax(92px,0.72fr)_minmax(120px,0.75fr)_32px]";
+// SAR suffix without forced fractional zeros — keep local to preserve the same display.
+function fmtSar(n: number) {
+  return `${fmtMax(n)} ر.س`;
+}
 
 function SearchIcon() {
   return (
@@ -68,32 +69,35 @@ function SearchIcon() {
 function PayeeChip({ party }: { party: FinanceCostParty }) {
   const isInd = party.payeeType === "individual";
   return (
-    <span className={isInd ? finStatusTeal : finStatus}>
-      {party.payeeTypeLabel || (isInd ? "فرد" : "مورّد")}
-    </span>
+    <StatusPill
+      label={party.payeeTypeLabel || (isInd ? "فرد" : "مورّد")}
+      style={finStatusStyle(isInd ? "individual" : "default")}
+    />
   );
 }
 
 export function FinanceCostPartiesList({
   onSelectParty,
 }: {
-  /** preferredSection: dues إن وُجدت بنود جاهزة، وإلا statements إن وُجدت مسيرات مفتوحة */
+  /** preferredSection: dues if ready lines exist, else statements if open payrolls exist */
   onSelectParty: (
     assigneeId: string,
     preferredSection?: "dues" | "statements",
   ) => void;
 }) {
   const [q, setQ] = useState("");
+  /** Deferred value for filtering — search input stays immediate without blocking typing */
+  const deferredQ = useDeferredValue(q);
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   const readyQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "ready-lines", "parties"],
+    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "parties"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "party-billing", "statements", "parties"],
+    queryKey: [...appDataKeys.all, "party-billing", "statements", "parties"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });
@@ -109,7 +113,7 @@ export function FinanceCostPartiesList({
   );
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = deferredQ.trim().toLowerCase();
     if (!needle) return parties;
     return parties.filter(
       (p) =>
@@ -117,14 +121,25 @@ export function FinanceCostPartiesList({
         p.assigneeId.toLowerCase().includes(needle) ||
         p.taskKindLabel.toLowerCase().includes(needle),
     );
-  }, [parties, q]);
+  }, [parties, deferredQ]);
 
   const pending =
     readyQuery.isPending || statementsQuery.isPending;
 
+  const selectParty = (p: FinanceCostParty) => {
+    onSelectParty(
+      p.assigneeId,
+      p.pendingLines > 0
+        ? "dues"
+        : p.openStatements > 0
+          ? "statements"
+          : "dues",
+    );
+  };
+
   return (
     <div>
-      <p className={finNote}>
+      <p className={cn(opsTfNote, "mb-3.5")}>
         المستحقون المسجّلون لدى المالية — موردون خارجيون وموظفون لهم أتعاب على
         المعاملات والمهام. اضغط الاسم للدخول على تفاصيله المالية.
       </p>
@@ -133,7 +148,7 @@ export function FinanceCostPartiesList({
         <div className={cn(finSearch, "ms-0 max-w-none flex-1")}>
           <SearchIcon />
           <input
-            className={finSearchInput}
+            className={opsSearchInput}
             placeholder="بحث باسم المستحق أو رقمه"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -146,139 +161,108 @@ export function FinanceCostPartiesList({
       </div>
 
       {pending ? (
-        <div className={finCard}>
-          <div className={finEmpty}>
-            <div className={finEmptyT}>جاري التحميل…</div>
-          </div>
+        <div className={opsLetterCard}>
+          <EmptyState panel line="جاري التحميل…" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className={finCard}>
-          <div className={finEmpty}>
-            <div className={finEmptyT}>لا مستحقين مطابقين</div>
-            <div className={finEmptyS}>
-              تظهر هنا الجهات التي لها مستحقات أو مسيرات صرف.
-            </div>
-          </div>
+        <div className={opsLetterCard}>
+          <EmptyState
+            panel
+            line="لا مستحقين مطابقين"
+            hint="تظهر هنا الجهات التي لها مستحقات أو مسيرات صرف."
+          />
         </div>
       ) : (
-        <div className={finCard}>
-          <div className={finScroll}>
-            <div className={cn(finThead, grid)}>
-              {[
-                "الرقم",
-                "الاسم",
-                "الصفة",
-                "المهمة",
-                "الجوال",
-                "مستحق له",
-                "مستحقات قائمة",
-                "",
-              ].map((h, i) => (
-                <div
-                  key={h || "chev"}
-                  className={cn(
-                    finTh,
-                    i > 0 && "!justify-center !text-center",
-                  )}
+        <TableFrame>
+          <Table>
+            <THead>
+              <Tr hoverable={false}>
+                <Th>الرقم</Th>
+                <Th>الاسم</Th>
+                <Th className="text-center">الصفة</Th>
+                <Th className="text-center">المهمة</Th>
+                <Th className="text-center">الجوال</Th>
+                <Th className="text-center">مستحق له</Th>
+                <Th className="text-center">مستحقات قائمة</Th>
+                <Th className="w-8 text-center" aria-hidden />
+              </Tr>
+            </THead>
+            <TBody>
+              {filtered.map((p) => (
+                <Tr
+                  key={p.assigneeId}
+                  className="cursor-pointer"
+                  onClick={() => selectParty(p)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      selectParty(p);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
                 >
-                  {h}
-                </div>
-              ))}
-            </div>
-            {filtered.map((p) => (
-              <div
-                key={p.assigneeId}
-                className={cn(finRow, grid, finRowClickable)}
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  onSelectParty(
-                    p.assigneeId,
-                    p.pendingLines > 0
-                      ? "dues"
-                      : p.openStatements > 0
-                        ? "statements"
-                        : "dues",
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectParty(
-                      p.assigneeId,
-                      p.pendingLines > 0
-                        ? "dues"
-                        : p.openStatements > 0
-                          ? "statements"
-                          : "dues",
-                    );
-                  }
-                }}
-              >
-                <div className={finTd}>
-                  <span
-                    className="text-[11px] font-bold text-text-2"
-                    dir="ltr"
-                  >
+                  <TdLtr valueClassName="text-[11px] font-bold text-text-2">
                     {p.assigneeId.slice(0, 10)}
-                  </span>
-                </div>
-                <div className={finTd}>
-                  <span className="text-[13px] font-bold text-heading">
-                    {p.name}
-                  </span>
-                </div>
-                <div className={finTd}>
-                  <PayeeChip party={p} />
-                </div>
-                <div className={finTd}>
-                  <span className={finStatus}>{p.taskKindLabel}</span>
-                </div>
-                <div className={finTd}>
-                  <span className={finMuted} dir="ltr">
+                  </TdLtr>
+                  <Td>
+                    <span className="text-[13px] font-bold text-heading">
+                      {p.name}
+                    </span>
+                  </Td>
+                  <Td className="text-center">
+                    <PayeeChip party={p} />
+                  </Td>
+                  <Td className="text-center">
+                    <StatusPill label={p.taskKindLabel} style={finStatusStyle("default")} />
+                  </Td>
+                  <TdLtr className="text-center" valueClassName="text-[13px] text-text-2">
                     —
-                  </span>
-                </div>
-                <div className={finTd}>
-                  <span className={finNum}>{fmtSar(p.balanceSar)}</span>
-                </div>
-                <div className={finTd}>
-                  {p.pendingLines > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8a5e14]">
-                      <span className="h-[7px] w-[7px] rounded-full bg-[#d9a441]" />
-                      {p.pendingLines} بند جاهز
-                    </span>
-                  ) : p.openStatements > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
-                      <span className="h-[7px] w-[7px] rounded-full bg-[#102B4E]" />
-                      {p.openStatements} مسير/أمر
-                    </span>
-                  ) : (
-                    <span className="text-[11.5px] text-text-3">مسوّى</span>
-                  )}
-                </div>
-                <div className={finTd}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-text-3"
-                    aria-hidden
+                  </TdLtr>
+                  <TdLtr
+                    className="text-center"
+                    valueClassName="text-[14px] font-extrabold text-heading"
                   >
-                    <path
-                      d="M15 18l-6-6 6-6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                    {fmtSar(p.balanceSar)}
+                  </TdLtr>
+                  <Td className="text-center">
+                    {p.pendingLines > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8a5e14]">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[#d9a441]" />
+                        {p.pendingLines} بند جاهز
+                      </span>
+                    ) : p.openStatements > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[#102B4E]" />
+                        {p.openStatements} مسير/أمر
+                      </span>
+                    ) : (
+                      <span className="text-[11.5px] text-text-3">مسوّى</span>
+                    )}
+                  </Td>
+                  <Td className="text-center">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-text-3"
+                      aria-hidden
+                    >
+                      <path
+                        d="M15 18l-6-6 6-6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+        </TableFrame>
       )}
     </div>
   );

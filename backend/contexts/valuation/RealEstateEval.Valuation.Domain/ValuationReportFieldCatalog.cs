@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Valuation report fields, identified by field key (label, value type, source).
@@ -78,9 +78,9 @@ public static class ValuationReportFieldCatalog
         new("inventory.5280", "عدد المصاعد", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
         new("inventory.5330", "جاكوزي(عدد)", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
         new("inventory.5350", "ملاحق (عدد)", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
-        new("pending.5360", "ملاعب أطفال (عدد)", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, "لم يُربط بعد"),
+        new("pending.5360", "ملاعب أطفال (عدد)", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
         new("inventory.6040", "غرف النوم - الاجمالي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
-        new("pending.6090", "الصالات - الاجمالي", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, "لم يُربط بعد"),
+        new("pending.6090", "الصالات - الاجمالي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, "مكونات العقار"),
         new("inventory.6140", "غرف الطعام - الاجمالي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
         new("inventory.6190", "المجالس - الاجمالي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
         new("inventory.6240", "غرف الخدم - الاجمالي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Number, "مكونات العقار"),
@@ -236,7 +236,7 @@ public static class ValuationReportFieldCatalog
         new("adj.40061", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 2", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("adj.40063", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 4", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
         new("adj.40065", "تسوية الأرض -  سعر متر الأرض بالنسبة للمقارنات 6", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Percent, "خلية تسوية مسطّحة — تُسطَّح من بنك المقارنات لاحقًا"),
-        new("cost.land_value_from_market", "قيمة الارض بطرقية التسوية", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Money, "من رأي السوق"),
+        new("cost.land_value_from_market", "قيمة الأرض من مقارنات الأراضي الفضاء", ValuationReportFieldSourceKind.Computed, ValuationReportFieldValueType.Money, "من جدول land_within_cost ضمن أسلوب التكلفة"),
         new("pending.50016", "ملاحظات العيوب 2", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, "لم يُربط بعد"),
         new("pending.50017", "ملاحظات العيوب 3", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, "لم يُربط بعد"),
         new("comp1.transaction_date", "تاريخ البيع 1 - عروض بيع لأراضي مماثلة", ValuationReportFieldSourceKind.Platform, ValuationReportFieldValueType.Date, null),

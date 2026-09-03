@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class AuditLogQueryService(PlatformDbContext db) : IAuditLogQueryService
 {

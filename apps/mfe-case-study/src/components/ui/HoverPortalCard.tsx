@@ -83,11 +83,12 @@ export function HoverPortalCard({
     placeCard();
     raf = requestAnimationFrame(placeCard);
     window.addEventListener("resize", placeCard);
-    window.addEventListener("scroll", placeCard, true);
+    // passive: listener does not block scroll — lets the browser skip waiting (client-passive-event-listeners).
+    window.addEventListener("scroll", placeCard, { capture: true, passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", placeCard);
-      window.removeEventListener("scroll", placeCard, true);
+      window.removeEventListener("scroll", placeCard, { capture: true });
     };
   }, [align, content, open]);
 

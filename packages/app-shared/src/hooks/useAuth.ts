@@ -1,8 +1,9 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
 import { revokeAuthSession } from "@platform/api-client";
 import { clearAuthSession, getValidAuthSession } from "@platform/auth-client";
-import { usePrototype } from "../contexts/PrototypeContext";
+import { useAppAccess } from "../contexts/AppAccessContext";
 
 export function useAuth() {
   const {
@@ -13,38 +14,66 @@ export function useAuth() {
     capabilities,
     hasCapability,
     rolePages,
-  } = usePrototype();
+  } = useAppAccess();
+  // Session ref is stable (raw-string cache in auth-client) so it works as a dependency.
   const session = getValidAuthSession();
 
-  return {
-    isAuthenticated: Boolean(session),
-    authReady,
-    user: session?.user ?? null,
-    token: session?.token ?? null,
-    expiresAtUtc: session?.expiresAtUtc ?? null,
-    role,
-    email: viewerEmail,
-    displayName: viewerDisplayName,
-    capabilities,
-    hasCapability,
-    rolePages,
-    logout() {
-      void (async () => {
-        try {
-          const { purgeOfflineData, closeOfflineDb } = await import(
-            "@platform/offline-client"
-          );
-          if (session?.user?.id) {
-            await purgeOfflineData(session.user.id, "logout");
-            await closeOfflineDb();
-          }
-        } catch {
-          /* ignore */
+  const logout = useCallback(() => {
+    void (async () => {
+      const current = getValidAuthSession();
+      const refreshToken = current?.refreshToken;
+      const userId = current?.user?.id;
+      try {
+        const { purgeOfflineData, closeOfflineDb } = await import(
+          "@platform/offline-client"
+        );
+        if (userId) {
+          await Promise.race([
+            (async () => {
+              await purgeOfflineData(userId, "logout");
+              await closeOfflineDb();
+            })(),
+            new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 2000);
+            }),
+          ]);
         }
-        if (session?.refreshToken) void revokeAuthSession(session.refreshToken);
-        clearAuthSession();
-        window.location.href = "/login";
-      })();
-    },
-  };
+      } catch {
+        /* ignore */
+      }
+      if (refreshToken) void revokeAuthSession(refreshToken);
+      clearAuthSession();
+      window.location.assign("/login");
+    })();
+  }, []);
+
+  // Stable-identity value — a new object each render used to break any memo/dep on it
+  // (rerender-split-combined-hooks).
+  return useMemo(
+    () => ({
+      isAuthenticated: Boolean(session),
+      authReady,
+      user: session?.user ?? null,
+      token: session?.token ?? null,
+      expiresAtUtc: session?.expiresAtUtc ?? null,
+      role,
+      email: viewerEmail,
+      displayName: viewerDisplayName,
+      capabilities,
+      hasCapability,
+      rolePages,
+      logout,
+    }),
+    [
+      session,
+      authReady,
+      role,
+      viewerEmail,
+      viewerDisplayName,
+      capabilities,
+      hasCapability,
+      rolePages,
+      logout,
+    ],
+  );
 }

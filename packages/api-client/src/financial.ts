@@ -1,4 +1,4 @@
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 import type { FinancialRevenueRowStatus } from "./property-list-wire";

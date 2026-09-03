@@ -1,7 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 public interface IWorkflowTaskService
 {
@@ -49,7 +49,7 @@ public interface IWorkflowTaskService
         Guid propertyId,
         int expectedPropertyCount = 1,
         CancellationToken cancellationToken = default);
- /// <summary>حذف خانة/معاملة دراسة حالة (والعقار المرتبط يُعلَّم محذوفاً مع السبب إن وُجد).</summary>
+ /// <summary>Delete a case-study slot/transaction (linked property marked removed with reason if provided).</summary>
     Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteCaseStudySlotAsync(
         Guid id,
         DeleteCaseStudySlotRequest request,
@@ -62,7 +62,7 @@ public interface IWorkflowTaskService
         string? actorName,
         CancellationToken cancellationToken = default);
 
- /// <summary>يعدّل إسناد أطراف دراسة الحالة (المهام الفرعية القائمة) دون إعادة فتح التوزيع كاملاً.</summary>
+ /// <summary>Updates case-study party assignment (existing subtasks) without fully reopening distribution.</summary>
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
         RedistributePartiesRequest request,

@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Valuation.Application.Abstractions;
 
 public interface IValuationReconciliationService
 {
@@ -8,7 +9,7 @@ public interface IValuationReconciliationService
         Guid valuationRequestId,
         CancellationToken cancellationToken = default);
 
- /// <summary>actorId feeds the audit trail — alert-pass resolutions are logged (س2).</summary>
+ /// <summary>actorId feeds the audit trail — alert-pass resolutions are logged (S2).</summary>
     Task<(ValuationReconciliationDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
         Guid valuationRequestId,
         SaveValuationReconciliationRequest request,

@@ -1,7 +1,11 @@
 import {
+  basisOfValueKeyForAssignment,
   basisOfValueLabelArForAssignment,
+  defaultPremiseKeyForBasis,
+  valuationPurposeKeyForAssignment,
   VALUE_BASIS_OPTIONS,
-} from "@platform/app-shared/prototype/assignment-valuation-defaults";
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import { ESG_NONE_NOTES } from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
 
 export type EvaluatorSubmissionStatus =
   | "draft"
@@ -40,19 +44,19 @@ export const EVALUATOR_WORKER_ROLES: readonly EvaluatorReportWorkerRole[] = [
   "معتمد",
 ];
 
-/** الأسلوب المستخدم — قائمة مغلقة وفق infath_case_study_fields.md §١ */
+/** Valuation approach used — closed list per infath_case_study_fields.md §1. */
 export const EVALUATOR_VALUATION_METHODS = [
   "طريقة البيوع المقارنة",
   "طريقة التكلفة (طريقة المقاول)",
   "رسملة الدخل",
 ] as const;
 
-/** أساس القيمة — نفس قائمة IVS الثمانية في تبويب التقييم. */
+/** Basis of value — same eight IVS options as on the valuation tab. */
 export const EVALUATOR_VALUE_BASIS_OPTIONS = VALUE_BASIS_OPTIONS.map(
   (option) => option.label,
 );
 
-/** حجم الطلب على العقار — infath_case_study_fields.md §٣.٢ */
+/** Property demand level — infath_case_study_fields.md §3.2. */
 export const EVALUATOR_DEMAND_LEVEL_OPTIONS = [
   "مرتفع",
   "متوسط",
@@ -73,19 +77,164 @@ export const DEFAULT_APPRAISER_ADDRESS =
   "جدة — حي الروضة، شارع الأمير سلطان، مبنى 42";
 export const DEFAULT_APPRAISER_PHONE = "0126612345";
 
+export type EvaluatorEsgGroup = {
+  none: boolean;
+  selected: string[];
+  notes: string;
+};
+
+/** Appraiser choices on the property valuation tab — from valuation lists and the professional report. */
+export type EvaluatorReportChoices = {
+  purposeKey: string;
+  valueBasisKey: string;
+  premiseKey: string;
+  marketMethodKey: string;
+  costMethodKey: string;
+  incomeMethodKey: string;
+  finishingLevel: "" | "luxury" | "medium" | "ordinary" | "none";
+  specialAssumptionOn: boolean[];
+  esgEnv: EvaluatorEsgGroup;
+  esgSoc: EvaluatorEsgGroup;
+  esgGov: EvaluatorEsgGroup;
+  printAttachmentKeys: string[];
+  incomeAnnual: string;
+  incomeVacancyPct: string;
+  incomeOpexPct: string;
+  incomeCapRatePct: string;
+  methodsRationale: string;
+};
+
+const EMPTY_ESG: EvaluatorEsgGroup = {
+  none: true,
+  selected: [],
+  notes: "",
+};
+
+function defaultEsgGroup(noneNotes: string): EvaluatorEsgGroup {
+  return { none: true, selected: [], notes: noneNotes };
+}
+
+export { defaultPremiseKeyForBasis };
+
+export function seedReportChoicesFromAssignment(
+  assignmentType?: string | null,
+  subClientId?: string | null,
+  existing?: EvaluatorReportChoices | null,
+): EvaluatorReportChoices {
+  const base = existing ?? emptyReportChoices();
+  // Without a known assignment type, do not force "liquidation" — that briefly showed then hid the discount.
+  if (!(assignmentType ?? "").trim()) return base;
+  const purposeKey = valuationPurposeKeyForAssignment(
+    assignmentType,
+    subClientId,
+  );
+  const valueBasisKey = basisOfValueKeyForAssignment(
+    assignmentType,
+    subClientId,
+  );
+  const premiseCompatible =
+    valueBasisKey === "liquidation"
+      ? base.premiseKey === "orderly" || base.premiseKey === "forced"
+      : base.premiseKey === "hau" || base.premiseKey === "current";
+  const premiseKey = premiseCompatible
+    ? base.premiseKey
+    : defaultPremiseKeyForBasis(valueBasisKey);
+  return { ...base, purposeKey, valueBasisKey, premiseKey };
+}
+
+export function emptyReportChoices(): EvaluatorReportChoices {
+  return {
+    purposeKey: "",
+    valueBasisKey: "",
+    premiseKey: "",
+    marketMethodKey: "",
+    costMethodKey: "",
+    incomeMethodKey: "",
+    finishingLevel: "",
+    specialAssumptionOn: [],
+    esgEnv: defaultEsgGroup(ESG_NONE_NOTES.env),
+    esgSoc: defaultEsgGroup(ESG_NONE_NOTES.soc),
+    esgGov: defaultEsgGroup(ESG_NONE_NOTES.gov),
+    printAttachmentKeys: [],
+    incomeAnnual: "",
+    incomeVacancyPct: "",
+    incomeOpexPct: "",
+    incomeCapRatePct: "",
+    methodsRationale: "",
+  };
+}
+
+export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
+  const base = emptyReportChoices();
+  if (!raw || typeof raw !== "object") return base;
+  const row = raw as Partial<EvaluatorReportChoices>;
+  const esg = (value: unknown, noneNotes: string): EvaluatorEsgGroup => {
+    if (!value || typeof value !== "object") return defaultEsgGroup(noneNotes);
+    const g = value as Partial<EvaluatorEsgGroup>;
+    const none = g.none !== false;
+    const notes =
+      typeof g.notes === "string" && g.notes.trim()
+        ? g.notes
+        : none
+          ? noneNotes
+          : "";
+    return {
+      none,
+      selected: Array.isArray(g.selected)
+        ? g.selected.filter((x): x is string => typeof x === "string")
+        : [],
+      notes,
+    };
+  };
+  return {
+    purposeKey: typeof row.purposeKey === "string" ? row.purposeKey : "",
+    valueBasisKey: typeof row.valueBasisKey === "string" ? row.valueBasisKey : "",
+    premiseKey: typeof row.premiseKey === "string" ? row.premiseKey : "",
+    marketMethodKey:
+      typeof row.marketMethodKey === "string" ? row.marketMethodKey : "",
+    costMethodKey: typeof row.costMethodKey === "string" ? row.costMethodKey : "",
+    incomeMethodKey:
+      typeof row.incomeMethodKey === "string" ? row.incomeMethodKey : "",
+    finishingLevel:
+      row.finishingLevel === "luxury" ||
+      row.finishingLevel === "medium" ||
+      row.finishingLevel === "ordinary" ||
+      row.finishingLevel === "none"
+        ? row.finishingLevel
+        : "",
+    specialAssumptionOn: Array.isArray(row.specialAssumptionOn)
+      ? row.specialAssumptionOn.map(Boolean)
+      : [],
+    esgEnv: esg(row.esgEnv, ESG_NONE_NOTES.env),
+    esgSoc: esg(row.esgSoc, ESG_NONE_NOTES.soc),
+    esgGov: esg(row.esgGov, ESG_NONE_NOTES.gov),
+    printAttachmentKeys: Array.isArray(row.printAttachmentKeys)
+      ? row.printAttachmentKeys.filter((x): x is string => typeof x === "string")
+      : [],
+    incomeAnnual: typeof row.incomeAnnual === "string" ? row.incomeAnnual : "",
+    incomeVacancyPct:
+      typeof row.incomeVacancyPct === "string" ? row.incomeVacancyPct : "",
+    incomeOpexPct: typeof row.incomeOpexPct === "string" ? row.incomeOpexPct : "",
+    incomeCapRatePct:
+      typeof row.incomeCapRatePct === "string" ? row.incomeCapRatePct : "",
+    methodsRationale:
+      typeof row.methodsRationale === "string" ? row.methodsRationale : "",
+  };
+}
+
 export type EvaluatorSubmission = {
   taskId: string;
   propertyId: string;
   poNumber: string;
   status: EvaluatorSubmissionStatus;
-  /** رقم التقرير — يُحجز عند توزيع المعاملة على المقيم (TQ…). */
+  /** Report number — reserved when the work order is assigned to the appraiser (TQ…). */
   reportNo: string;
   evaluatorPrice: string;
   evaluatorNotes: string;
   checklist: EvaluatorChecklistAnswers;
   /** Snapshot file name of the generated valuation report (not an upload). */
   reportFileName: string | null;
-  /** حقول الرفع لإنفاذ — المقيّم */
+  /** Enfaz upload fields — appraiser. */
   appraisalDate: string;
   valuationMethod: string;
   valueBasis: string;
@@ -97,20 +246,22 @@ export type EvaluatorSubmission = {
   planImageFileName: string | null;
   appraiserAddress: string;
   appraiserPhone: string;
-  /** تاريخ إصدار التقرير — يُثبَّت عند اعتماد التقييم. */
+  /** Report issue date — fixed when the valuation is approved. */
   reportIssueDate: string;
-  /** رمز إيداع التقرير في قيمة — اختياري، لا يمنع الاعتماد. */
+  /** Qeema deposit code for the report — optional; does not block approval. */
   depositCode: string;
-  /** شهادة الرفع على قيمة — مرفق اختياري يُطبع مع التقرير. */
+  /** Qeema upload certificate — optional attachment printed with the report. */
   depositCertificateFileName: string | null;
-  /** إقرار الاستقلالية وعدم تضارب المصالح */
+  /** Independence / no-conflict-of-interest declaration. */
   independenceDeclared: boolean;
-  /** بيانات العاملين على التقرير (معد / مراجع / معتمد) */
+  /** Report staff details (preparer / reviewer / approver). */
   reportWorkers: EvaluatorReportWorker[];
-  /** تأكيد مراجعة بيانات الأصل المعروضة من مصادرها (معاين / مكتب هندسي / أخصائي / مراجع) */
+  /** Confirm reviewed asset data from sources (inspector / engineering office / specialist / reviewer). */
   assetDataConfirmed: boolean;
-  /** ملاحظات التباين عند عدم تأكيد بيانات الأصل كما هي */
+  /** Variance notes when asset data is not confirmed as-is. */
   assetDataVarianceNotes: string;
+  /** Professional valuation-report choices on the work order. */
+  reportChoices: EvaluatorReportChoices;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -282,6 +433,7 @@ export function createEvaluatorDraft(input: {
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,
     assetDataVarianceNotes: "",
+    reportChoices: seedReportChoicesFromAssignment(assignmentType),
     submittedAtUtc: null,
     updatedAtUtc: now,
   };
@@ -294,14 +446,16 @@ export function evaluatorStatusLabel(status: EvaluatorSubmissionStatus): string 
   return "مكتمل";
 }
 
+const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "SAR",
+  maximumFractionDigits: 2,
+});
+
 export function formatEvaluatorPriceDisplay(raw: string): string {
   const n = Number.parseFloat(raw.replace(/,/g, ""));
   if (!Number.isFinite(n) || n <= 0) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(n);
+  return PRICE_FORMAT.format(n);
 }
 
 export function checklistAnswerLabel(value: boolean | null): string {

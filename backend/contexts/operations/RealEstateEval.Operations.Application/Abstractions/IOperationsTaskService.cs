@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Operations.Application.Abstractions;
 
 public interface IOperationsTaskService
 {
@@ -62,7 +63,7 @@ public interface IOperationsTaskService
         string? actorName,
         CancellationToken cancellationToken = default);
 
- /// <summary>أتعاب الزيارة generated from completed court_visit ops tasks.</summary>
+ /// <summary>Visit fees generated from completed court_visit ops tasks.</summary>
     Task<IReadOnlyList<CourtVisitFeeReportRowDto>> ListCourtVisitFeesAsync(
         string? creditAssigneeId = null,
         CancellationToken cancellationToken = default);

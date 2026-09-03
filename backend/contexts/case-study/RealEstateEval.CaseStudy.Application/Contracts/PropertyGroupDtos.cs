@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>grouped-property link member for display.</summary>
 public class PropertyGroupMemberDto
@@ -45,7 +45,7 @@ public class ConfirmPropertyGroupLinkRequest
 
 public class UnlinkPropertyGroupRequest
 {
- /// <summary>قابل للفك بمبرر — required.</summary>
+ /// <summary>Unlockable with justification — required.</summary>
     [Required, MaxLength(2000)]
     public string Reason { get; init; } = "";
 }

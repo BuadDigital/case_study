@@ -176,7 +176,7 @@ public class BoundedContextBoundaryTests
 
             Assert.True(file is not null, $"{service} moved; update this guardrail.");
 
-            if (File.ReadAllText(file!).Contains(nameof(ApplicationDbContext), StringComparison.Ordinal))
+            if (File.ReadAllText(file!).Contains("ApplicationDbContext", StringComparison.Ordinal))
                 failures.Add($"{service} still takes the legacy context");
         }
 

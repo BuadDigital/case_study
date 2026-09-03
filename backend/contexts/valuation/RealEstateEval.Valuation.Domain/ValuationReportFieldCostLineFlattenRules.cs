@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Maps priced cost-approach (or inventory area) lines into cost_line.* / inventory.* field keys.
@@ -73,6 +75,7 @@ public static class ValuationReportFieldCostLineFlattenRules
             CostLineItemKeys.FirstFloor => Bucket.FirstFloor,
             CostLineItemKeys.RepeatedFloors => Bucket.RepeatedFloor,
             CostLineItemKeys.UpperAnnex => Bucket.AnnexUpper,
+            CostLineItemKeys.LowerAnnex => Bucket.AnnexGround,
             CostLineItemKeys.ApartmentArea => Bucket.Apartment,
             CostLineItemKeys.Fence => Bucket.Fence,
             CostLineItemKeys.Pool => Bucket.Pool,

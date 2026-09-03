@@ -17,7 +17,7 @@ import type {
   CreateFailureInput,
   FailureRecord,
   ResolveFailureInput,
-} from "./failures-types";
+} from "@platform/app-shared/failures/failures-types";
 
 export type { FailureMutationResult } from "./failures-api";
 
@@ -27,8 +27,9 @@ export async function loadFailuresQuery(): Promise<FailureRecord[]> {
 
 export async function createFailure(
   input: CreateFailureInput,
+  idempotencyKey?: string,
 ): Promise<FailureRecord> {
-  return createFailureAsync(input);
+  return createFailureAsync(input, idempotencyKey);
 }
 
 export async function upgradeFailureToInternal(

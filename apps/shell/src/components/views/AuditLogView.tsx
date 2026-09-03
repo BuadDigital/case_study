@@ -9,29 +9,36 @@ import { exportRowsToCsv } from "@platform/app-shared/export/export-csv";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { Can } from "@platform/app-shared/components/Can";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
-import { cn, InlineLoadingSkeleton, PageShell, Spinner } from "@platform/ui-kit";
 import {
+  cn,
+  EmptyState,
+  InlineLoadingSkeleton,
+  PageShell,
+  Spinner,
+  Table,
+  TableFrame,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
   opsBtnGhost,
-  opsEmptyHint,
   opsLetterCard,
-  opsLetterRow,
   opsListCount,
-  opsTdPlain,
   opsTfNote,
-  opsThead,
-  opsThStart,
   opsToolbar,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+} from "@platform/ui-kit";
 
-const GRID_COLS =
-  "[grid-template-columns:150px_1fr_1fr_1.3fr_2fr]";
+// Hoisted: constructing Intl.DateTimeFormat per row is expensive.
+const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
 function formatAt(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(iso));
+    return AT_FORMATTER.format(new Date(iso));
   } catch {
     return iso;
   }
@@ -149,50 +156,48 @@ export function AuditLogView() {
         <InlineLoadingSkeleton />
       ) : failed ? (
         <section className={opsLetterCard}>
-          <p className={opsEmptyHint}>
-            تعذر تحميل سجل التدقيق. حاول التحديث مرة أخرى.
-          </p>
+          <EmptyState line="تعذر تحميل سجل التدقيق. حاول التحديث مرة أخرى." />
         </section>
       ) : entries.length === 0 ? (
         <section className={opsLetterCard}>
-          <p className={opsEmptyHint}>لا توجد أحداث مسجّلة بعد.</p>
+          <EmptyState line="لا توجد أحداث مسجّلة بعد." />
         </section>
       ) : (
-        <section className={cn(opsLetterCard, "overflow-x-auto")}>
-          <div className="min-w-[860px]" dir="rtl">
-            <div className={cn(opsThead, GRID_COLS)}>
-              <div className={opsThStart}>الوقت</div>
-              <div className={opsThStart}>المستخدم</div>
-              <div className={opsThStart}>الإجراء</div>
-              <div className={opsThStart}>الكيان</div>
-              <div className={opsThStart}>التفاصيل</div>
-            </div>
-            {entries.map((entry) => (
-              <div key={entry.id} className={cn(opsLetterRow, GRID_COLS)}>
-                <div className={cn(opsTdPlain, "whitespace-nowrap text-text-2")}>
-                  {formatAt(entry.createdAtUtc)}
-                </div>
-                <div className={cn(opsTdPlain, "font-semibold text-text-2")}>
-                  {entry.actorId}
-                </div>
-                <div className={cn(opsTdPlain, "font-bold text-heading")}>
-                  {entry.action}
-                </div>
-                <div className={opsTdPlain}>
-                  <span className="min-w-0 truncate">
-                    {entry.entityType} · {entry.entityId}
-                  </span>
-                </div>
-                <div
-                  className={cn(opsTdPlain, "text-text-3")}
-                  title={formatDetail(entry)}
-                >
-                  <span className="min-w-0 truncate">{formatDetail(entry)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <TableFrame className={opsLetterCard}>
+          <Table wrapClassName="min-w-[860px]">
+            <THead>
+              <Tr hoverable={false}>
+                <Th className="w-[150px] whitespace-nowrap">الوقت</Th>
+                <Th>المستخدم</Th>
+                <Th>الإجراء</Th>
+                <Th>الكيان</Th>
+                <Th>التفاصيل</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {entries.map((entry) => {
+                const detail = formatDetail(entry);
+                return (
+                  <Tr key={entry.id} hoverable={false}>
+                    <TdLtr className="whitespace-nowrap text-text-2">
+                      {formatAt(entry.createdAtUtc)}
+                    </TdLtr>
+                    <Td className="font-semibold text-text-2">{entry.actorId}</Td>
+                    <Td className="font-bold text-heading">{entry.action}</Td>
+                    <Td>
+                      <span className="min-w-0 truncate">
+                        {entry.entityType} · {entry.entityId}
+                      </span>
+                    </Td>
+                    <Td className="text-text-3" title={detail}>
+                      <span className="min-w-0 truncate">{detail}</span>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </TBody>
+          </Table>
+        </TableFrame>
       )}
     </PageShell>
   );

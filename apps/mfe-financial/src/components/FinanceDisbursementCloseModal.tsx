@@ -1,17 +1,23 @@
 "use client";
 
 /**
- * HTML-aligned modal: توثيق الصرف (مهامي → فتح الإجراء).
- * سند صرف + مرجع تحويل + إيصال على نفس الصفحة.
+ * HTML-aligned modal: disbursement documentation (My Tasks → open action).
+ * Disbursement voucher + transfer ref + receipt on the same page.
  */
 
-import { useEffect, useState } from "react";
-import type { PartyBillingStatementDto } from "@platform/api-client";
+import { useCallback, useRef, useState } from "react";
+import type {
+  ClosePartyBillingStatementRequest,
+  PartyBillingStatementDto,
+} from "@platform/api-client";
+import { useIdempotentAction } from "@platform/app-shared";
+import { fmtMax } from "@platform/app-shared/format/number";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import {
   openPartyBillingAttachment,
   runClosePartyBillingStatement,
   uploadPartyBillingTransferReceipt,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
 import {
   ModalBody,
   ModalCard,
@@ -21,17 +27,14 @@ import {
   ModalOverlay,
   ModalTitle,
   cn,
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsFldControl,
+  opsFldTextarea,
+  opsTfNote,
   useToast,
 } from "@platform/ui-kit";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
-import { finGhost, finNote, finPrimary } from "../lib/finance-tw";
-
-function formatSar(n: number): string {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
 
 export function FinanceDisbursementCloseModal({
   statement,
@@ -41,6 +44,26 @@ export function FinanceDisbursementCloseModal({
 }: {
   statement: PartyBillingStatementDto | null;
   open: boolean;
+  onClose: () => void;
+  onDone: () => void | Promise<void>;
+}) {
+  if (!open || !statement) return null;
+  return (
+    <FinanceDisbursementCloseForm
+      key={statement.id}
+      statement={statement}
+      onClose={onClose}
+      onDone={onDone}
+    />
+  );
+}
+
+function FinanceDisbursementCloseForm({
+  statement,
+  onClose,
+  onDone,
+}: {
+  statement: PartyBillingStatementDto;
   onClose: () => void;
   onDone: () => void | Promise<void>;
 }) {
@@ -54,35 +77,27 @@ export function FinanceDisbursementCloseModal({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const pendingClose = useRef<ClosePartyBillingStatementRequest | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setVoucher("");
-    setTransferRef("");
-    setPaidAt("");
-    setReceiptRef("");
-    setReceiptId(null);
-    setReceiptName("");
-    setErr("");
-    setBusy(false);
-    setUploading(false);
-  }, [open, statement?.id]);
+  const { execute: executeClose, loading: closing } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) => {
+        const body = pendingClose.current;
+        if (!body) throw new Error("لا توجد بيانات صرف");
+        return runClosePartyBillingStatement(statement.id, body, idempotencyKey);
+      },
+      [statement.id],
+    ),
+  );
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy && !uploading) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, uploading, onClose]);
+  const commandBusy = busy || closing;
 
-  if (!open || !statement) return null;
+  useEscapeKey(!commandBusy && !uploading, onClose);
 
   const total = statementDisplayTotal(statement);
 
   async function handleReceiptFile(file: File | undefined) {
-    if (!statement || !file) return;
+    if (!file) return;
     setUploading(true);
     setErr("");
     try {
@@ -100,7 +115,6 @@ export function FinanceDisbursementCloseModal({
   }
 
   async function handleClosePaid() {
-    if (!statement) return;
     const v = voucher.trim();
     const t = transferRef.trim();
     if (!v) {
@@ -121,13 +135,16 @@ export function FinanceDisbursementCloseModal({
       const paidAtUtc = paidAt
         ? new Date(`${paidAt}T12:00:00`).toISOString()
         : undefined;
-      const result = await runClosePartyBillingStatement(statement.id, {
+      pendingClose.current = {
         disbursementVoucher: v,
         transferReference: t,
         transferReceiptAttachmentId: receiptId,
         transferReceiptRef: receiptRef.trim() || undefined,
         paidAtUtc,
-      });
+      };
+      const outcome = await executeClose();
+      if (outcome.status === "skipped") return;
+      const result = outcome.value;
       if (!result.ok) {
         setErr(result.error);
         showToast(result.error, "error");
@@ -150,9 +167,9 @@ export function FinanceDisbursementCloseModal({
   return (
     <ModalOverlay
       role="presentation"
-      className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[200]"
+      className="items-start bg-[rgba(16,43,78,0.42)] pt-[6vh] backdrop-blur-[2px] !z-[var(--z-modal)]"
       onClick={() => {
-        if (!busy && !uploading) onClose();
+        if (!commandBusy && !uploading) onClose();
       }}
     >
       <ModalCard
@@ -173,7 +190,7 @@ export function FinanceDisbursementCloseModal({
             </ModalTitle>
           </div>
           <ModalClose
-            disabled={busy || uploading}
+            disabled={commandBusy || uploading}
             onClick={onClose}
             aria-label="إغلاق"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] text-text-2 hover:bg-[#faf6ee] hover:text-heading"
@@ -192,7 +209,7 @@ export function FinanceDisbursementCloseModal({
             </div>
           ) : null}
 
-          <p className={cn(finNote, "mb-4 text-center")}>
+          <p className={cn(opsTfNote, "mb-4 text-center")}>
             بعد إقرار المطابقة — أوامر الصرف تُقفل من البرنامج المحاسبي: سند +
             مرجع تحويل + إيصال.
           </p>
@@ -214,7 +231,7 @@ export function FinanceDisbursementCloseModal({
               <div className="px-3.5 py-3">
                 <div className="mb-1 text-[11px] text-text-3">المبلغ ر.س</div>
                 <div className="text-[13px] font-bold text-heading" dir="ltr">
-                  {formatSar(total)}
+                  {fmtMax(total)}
                 </div>
               </div>
             </div>
@@ -232,14 +249,14 @@ export function FinanceDisbursementCloseModal({
               <input
                 id="disburse-voucher"
                 dir="ltr"
-                disabled={busy}
+                disabled={commandBusy}
                 value={voucher}
                 onChange={(e) => {
                   setVoucher(e.target.value);
                   setErr("");
                 }}
                 placeholder="من البرنامج المحاسبي"
-                className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+                className={cn(opsFldControl, "placeholder:text-text-3 disabled:opacity-60")}
               />
             </div>
             <div>
@@ -252,14 +269,14 @@ export function FinanceDisbursementCloseModal({
               <input
                 id="disburse-transfer"
                 dir="ltr"
-                disabled={busy}
+                disabled={commandBusy}
                 value={transferRef}
                 onChange={(e) => {
                   setTransferRef(e.target.value);
                   setErr("");
                 }}
                 placeholder="رقم التحويل البنكي"
-                className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)] disabled:opacity-60"
+                className={cn(opsFldControl, "placeholder:text-text-3 disabled:opacity-60")}
               />
             </div>
           </div>
@@ -274,7 +291,7 @@ export function FinanceDisbursementCloseModal({
             <input
               id="disburse-paid-at"
               type="date"
-              disabled={busy}
+              disabled={commandBusy}
               value={paidAt}
               onChange={(e) => setPaidAt(e.target.value)}
               className="w-full max-w-[220px] rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none focus:border-gold disabled:opacity-60"
@@ -292,7 +309,7 @@ export function FinanceDisbursementCloseModal({
               id="disburse-receipt"
               type="file"
               accept="image/*,application/pdf"
-              disabled={busy || uploading}
+              disabled={commandBusy || uploading}
               onChange={(e) => {
                 void handleReceiptFile(e.target.files?.[0]);
                 e.target.value = "";
@@ -308,7 +325,7 @@ export function FinanceDisbursementCloseModal({
                 </span>
                 <button
                   type="button"
-                  className={cn(finGhost, "px-2 py-1 text-[11px]")}
+                  className={cn(opsBtnGhost, "px-2 py-1 text-[11px]")}
                   onClick={() => void viewReceipt()}
                 >
                   معاينة
@@ -326,7 +343,7 @@ export function FinanceDisbursementCloseModal({
             </label>
             <input
               id="disburse-receipt-note"
-              disabled={busy}
+              disabled={commandBusy}
               value={receiptRef}
               onChange={(e) => setReceiptRef(e.target.value)}
               className="w-full rounded-[9px] border border-[#ddd8cc] bg-surface-2 px-3 py-2.5 text-[13px] text-text outline-none focus:border-gold disabled:opacity-60"
@@ -337,16 +354,16 @@ export function FinanceDisbursementCloseModal({
         <ModalFooter className="flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-[22px] py-3.5">
           <button
             type="button"
-            className={finGhost}
-            disabled={busy || uploading}
+            className={opsBtnGhost}
+            disabled={commandBusy || uploading}
             onClick={onClose}
           >
             إلغاء
           </button>
           <button
             type="button"
-            className={cn(finPrimary, (busy || uploading) && "opacity-75")}
-            disabled={busy || uploading}
+            className={cn(opsBtnPrimary, (commandBusy || uploading) && "opacity-75")}
+            disabled={commandBusy || uploading}
             onClick={() => void handleClosePaid()}
           >
             {busy ? "جارٍ…" : "إقفال أمر الصرف كمدفوع"}

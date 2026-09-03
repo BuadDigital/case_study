@@ -29,10 +29,12 @@ export type SubmissionSaveFn = (input: {
 
 export type SubmissionSubmitFn = (input: {
   taskId: string;
+  idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
 export type KeyEnvelopeCreateFn = (input: {
   bodyJson: string;
+  idempotencyKey?: string;
 }) => Promise<
   | { ok: true; envelopeId: string }
   | { ok: false; error: string; terminal?: boolean }
@@ -41,12 +43,30 @@ export type KeyEnvelopeCreateFn = (input: {
 export type KeyEnvelopeMutationFn = (input: {
   envelopeId: string;
   payloadJson: string;
+  idempotencyKey?: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
+export type OperationsTaskPatchFn = (input: {
+  taskId: string;
+  bodyJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
+export type OperationsTaskCommentFn = (input: {
+  taskId: string;
+  payloadJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
+export type PropertyCourtAccessFn = (input: {
+  bodyJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
 export type OfflineSyncDeps = {
   uploadAttachment: AttachmentUploadFn;
   saveSubmission: SubmissionSaveFn;
   submitSubmission: SubmissionSubmitFn;
+  patchOperationsTask?: OperationsTaskPatchFn;
+  addOperationsTaskComment?: OperationsTaskCommentFn;
+  upsertPropertyCourtAccess?: PropertyCourtAccessFn;
   createKeyEnvelope?: KeyEnvelopeCreateFn;
   addKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
   confirmKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
@@ -87,6 +107,7 @@ export async function enqueueOutbox(
     attempts: 0,
     targetId: item.targetId,
     payloadJson: item.payloadJson,
+    idempotencyKey: item.idempotencyKey,
     localAttachmentId: item.localAttachmentId,
     scope: item.scope,
     scopeKey: item.scopeKey,
@@ -122,9 +143,16 @@ export async function requestBackgroundSync(): Promise<boolean> {
 
 function kindOrder(kind: OutboxKind): number {
   if (kind === "attachment-upload") return 0;
-  if (kind === "party-submission-save") return 1;
-  if (kind === "key-envelope-create") return 1;
   if (
+    kind === "party-submission-save" ||
+    kind === "key-envelope-create" ||
+    kind === "operations-task-patch" ||
+    kind === "property-court-access"
+  ) {
+    return 1;
+  }
+  if (
+    kind === "operations-task-comment" ||
     kind === "key-envelope-assignment-add" ||
     kind === "key-envelope-handoff-create"
   ) {
@@ -185,6 +213,7 @@ export function rewriteLocalAttachmentIds(
   return next;
 }
 
+/** Built once per sync run; processAttachment appends fresh server ids as uploads land. */
 async function buildLocalAttachmentMap(
   userId: string,
 ): Promise<Map<string, string>> {
@@ -208,9 +237,9 @@ async function buildLocalAttachmentMap(
       }
     }
   }
-  // Also check blobs that already have server ids
-  const { listOfflineBlobs } = await import("./store");
-  const blobs = await listOfflineBlobs(userId);
+  // Also check blobs that already have server ids (meta only — no byte decrypt).
+  const { listOfflineBlobMeta } = await import("./store");
+  const blobs = await listOfflineBlobMeta(userId);
   for (const blob of blobs) {
     if (blob.serverAttachmentId) {
       map.set(blob.id, blob.serverAttachmentId);
@@ -219,10 +248,23 @@ async function buildLocalAttachmentMap(
   return map;
 }
 
+function recordUploadedAttachment(
+  attachmentMap: Map<string, string>,
+  item: OfflineOutboxItem,
+  blobId: string,
+  serverAttachmentId: string,
+): void {
+  attachmentMap.set(blobId, serverAttachmentId);
+  if (item.localAttachmentId) {
+    attachmentMap.set(item.localAttachmentId, serverAttachmentId);
+  }
+}
+
 async function processAttachment(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   const blob = await getOfflineBlob(userId, item.targetId);
   if (!blob) {
@@ -235,6 +277,12 @@ async function processAttachment(
     return false;
   }
   if (blob.serverAttachmentId) {
+    recordUploadedAttachment(
+      attachmentMap,
+      item,
+      blob.id,
+      blob.serverAttachmentId,
+    );
     await saveOutboxItem({
       ...item,
       status: "done",
@@ -263,6 +311,7 @@ async function processAttachment(
     return false;
   }
   await markBlobUploaded(userId, blob.id, result.attachmentId);
+  recordUploadedAttachment(attachmentMap, item, blob.id, result.attachmentId);
   await saveOutboxItem({
     ...item,
     status: "done",
@@ -277,9 +326,9 @@ async function processSave(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
-  const map = await buildLocalAttachmentMap(userId);
-  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
   if (payloadJson.includes("local:")) {
     await saveOutboxItem({
       ...item,
@@ -332,7 +381,127 @@ async function processSubmit(
     });
     return false;
   }
-  const result = await deps.submitSubmission({ taskId: item.targetId });
+  const result = await deps.submitSubmission({
+    taskId: item.targetId,
+    idempotencyKey: item.idempotencyKey,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processOperationsTaskPatch(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
+): Promise<boolean> {
+  if (!deps.patchOperationsTask) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة مهام العمليات غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  if (bodyJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع المرفقات",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.patchOperationsTask({
+    taskId: item.targetId,
+    bodyJson,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processOperationsTaskComment(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
+): Promise<boolean> {
+  if (!deps.addOperationsTaskComment) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة تعليقات المهام غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  if (payloadJson.includes("local:")) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "بانتظار رفع مرفقات التعليق",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.addOperationsTaskComment({
+    taskId: item.targetId,
+    payloadJson,
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...item,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: item.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+async function processPropertyCourtAccess(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+): Promise<boolean> {
+  if (!deps.upsertPropertyCourtAccess) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة مسار الدخول غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.upsertPropertyCourtAccess({
+    bodyJson: item.payloadJson,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,
@@ -351,6 +520,7 @@ async function processKeyEnvelopeCreate(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   if (!deps.createKeyEnvelope) {
     await saveOutboxItem({
@@ -361,8 +531,7 @@ async function processKeyEnvelopeCreate(
     });
     return false;
   }
-  const map = await buildLocalAttachmentMap(userId);
-  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
   if (bodyJson.includes("local:")) {
     await saveOutboxItem({
       ...item,
@@ -372,7 +541,10 @@ async function processKeyEnvelopeCreate(
     });
     return false;
   }
-  const result = await deps.createKeyEnvelope({ bodyJson });
+  const result = await deps.createKeyEnvelope({
+    bodyJson,
+    idempotencyKey: item.idempotencyKey,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,
@@ -414,6 +586,7 @@ async function processKeyEnvelopeMutation(
     | "confirmKeyEnvelopeAssignment"
     | "createKeyEnvelopeHandoff"
     | "confirmKeyEnvelopeHandoff",
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   const fn = deps[mutate];
   if (!fn) {
@@ -454,10 +627,9 @@ async function processKeyEnvelopeMutation(
     return false;
   }
 
-  const map = await buildLocalAttachmentMap(userId);
   const payloadJson = rewriteLocalAttachmentIds(
     JSON.stringify({ ...payload, envelopeId }),
-    map,
+    attachmentMap,
   );
   if (payloadJson.includes("local:")) {
     await saveOutboxItem({
@@ -469,7 +641,11 @@ async function processKeyEnvelopeMutation(
     return false;
   }
 
-  const result = await fn({ envelopeId, payloadJson });
+  const result = await fn({
+    envelopeId,
+    payloadJson,
+    idempotencyKey: item.idempotencyKey,
+  });
   if (!result.ok) {
     await saveOutboxItem({
       ...item,
@@ -516,6 +692,11 @@ export async function runOfflineSync(
         return a.createdAtUtc.localeCompare(b.createdAtUtc);
       });
 
+    const attachmentMap =
+      items.length > 0
+        ? await buildLocalAttachmentMap(userId)
+        : new Map<string, string>();
+
     for (const item of items) {
       await saveOutboxItem({
         ...item,
@@ -524,19 +705,36 @@ export async function runOfflineSync(
       });
       let ok = false;
       if (item.kind === "attachment-upload") {
-        ok = await processAttachment(userId, item, deps);
+        ok = await processAttachment(userId, item, deps, attachmentMap);
       } else if (item.kind === "party-submission-save") {
-        ok = await processSave(userId, item, deps);
+        ok = await processSave(userId, item, deps, attachmentMap);
       } else if (item.kind === "party-submission-submit") {
         ok = await processSubmit(userId, item, deps);
+      } else if (item.kind === "operations-task-patch") {
+        ok = await processOperationsTaskPatch(
+          userId,
+          item,
+          deps,
+          attachmentMap,
+        );
+      } else if (item.kind === "operations-task-comment") {
+        ok = await processOperationsTaskComment(
+          userId,
+          item,
+          deps,
+          attachmentMap,
+        );
+      } else if (item.kind === "property-court-access") {
+        ok = await processPropertyCourtAccess(userId, item, deps);
       } else if (item.kind === "key-envelope-create") {
-        ok = await processKeyEnvelopeCreate(userId, item, deps);
+        ok = await processKeyEnvelopeCreate(userId, item, deps, attachmentMap);
       } else if (item.kind === "key-envelope-assignment-add") {
         ok = await processKeyEnvelopeMutation(
           userId,
           item,
           deps,
           "addKeyEnvelopeAssignment",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-assignment-confirm") {
         ok = await processKeyEnvelopeMutation(
@@ -544,6 +742,7 @@ export async function runOfflineSync(
           item,
           deps,
           "confirmKeyEnvelopeAssignment",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-handoff-create") {
         ok = await processKeyEnvelopeMutation(
@@ -551,6 +750,7 @@ export async function runOfflineSync(
           item,
           deps,
           "createKeyEnvelopeHandoff",
+          attachmentMap,
         );
       } else if (item.kind === "key-envelope-handoff-confirm") {
         ok = await processKeyEnvelopeMutation(
@@ -558,6 +758,7 @@ export async function runOfflineSync(
           item,
           deps,
           "confirmKeyEnvelopeHandoff",
+          attachmentMap,
         );
       } else {
         ok = false;

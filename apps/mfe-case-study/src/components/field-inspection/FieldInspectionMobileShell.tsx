@@ -8,10 +8,10 @@ import {
   type RefObject,
 } from "react";
 import { Button, cn } from "@platform/ui-kit";
-import { FailureRaisePanel } from "@failures/mfe";
+import { FailureRaisePanel } from "@failures/mfe/components/failures/FailureRaisePanel";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import {
   FieldInspectionWorkBody,
   type FieldInspectionWorkHostRef,
@@ -27,7 +27,7 @@ function IconClose() {
 
 /**
  * Case Study.html `renderInspectMobile`:
- * ink header + scroll progress + accordion body + sticky «حفظ وإرسال المعاينة».
+ * ink header + scroll progress + accordion body + sticky "save and submit inspection".
  * No key/fees tab strip — failure opens as a secondary panel only.
  */
 export function FieldInspectionMobileShell({

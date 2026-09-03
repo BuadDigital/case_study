@@ -4,6 +4,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Identity.Infrastructure;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Identity.Api;
 

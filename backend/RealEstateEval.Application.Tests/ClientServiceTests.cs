@@ -1,7 +1,10 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Application.Services;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.Application.Tests;
 

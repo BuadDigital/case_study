@@ -2,6 +2,15 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -33,13 +42,13 @@ public class FailureBourseObstructionResumeTests
         Assert.NotNull(dto);
         Assert.Equal(PropertyFailureStatus.Resolved, dto!.Status);
 
-        var task = await bundle.App.WorkflowTasks.AsNoTracking()
+        var task = await bundle.CaseStudy.WorkflowTasks.AsNoTracking()
             .SingleAsync(t => t.Id == TaskId);
         Assert.Equal(WorkflowTaskPhase.Bourse, task.Phase);
         Assert.Equal(WorkflowTaskStatus.Open, task.Status);
         Assert.Null(task.ObstructionPriorPhase);
 
-        var property = await bundle.App.WorkOrderProperties.AsNoTracking()
+        var property = await bundle.CaseStudy.WorkOrderProperties.AsNoTracking()
             .SingleAsync(p => p.Id == PropertyId);
         Assert.False(property.BourseDataCompleted);
         Assert.Null(property.BourseCompletedAtUtc);
@@ -79,7 +88,7 @@ public class FailureBourseObstructionResumeTests
             obstructionPriorPhase: WorkflowTaskPhase.Bourse,
             seedFailure: false);
 
-        var tasks = TestInspectorFeeServiceFactory.CreateWorkflow(bundle.App);
+        var tasks = TestInspectorFeeServiceFactory.CreateWorkflow(bundle.CaseStudy);
         var dto = await tasks.AdvanceAfterBourseAsync(
             TaskId,
             new AdvanceTaskAfterBourseRequest { DeedNumber = "DEED-1" });
@@ -87,7 +96,7 @@ public class FailureBourseObstructionResumeTests
         Assert.NotNull(dto);
         Assert.Equal(WorkflowTaskPhaseValues.Bourse, dto!.Phase);
 
-        var task = await bundle.App.WorkflowTasks.AsNoTracking()
+        var task = await bundle.CaseStudy.WorkflowTasks.AsNoTracking()
             .SingleAsync(t => t.Id == TaskId);
         Assert.Equal(WorkflowTaskPhase.Bourse, task.Phase);
         Assert.Equal(WorkflowTaskStatus.Blocked, task.Status);
@@ -101,7 +110,7 @@ public class FailureBourseObstructionResumeTests
         bool seedFailure = true)
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var workOrderId = Guid.NewGuid();
         db.WorkOrders.Add(new WorkOrder
         {
@@ -181,10 +190,10 @@ public class FailureBourseObstructionResumeTests
     private static async Task<IReadOnlyList<PendingBoursePropertyDto>> ListPendingBourseAsync(
         TestBoundedContexts.Bundle bundle)
     {
-        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App);
+        var caseStudy = bundle.CaseStudy;
         var failures = bundle.Failures;
-        var financial = TestInspectorFeeServiceFactory.ShareFinancial(bundle.App);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.App);
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(bundle.CaseStudy);
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
         var loader = new WorkOrderLoader(caseStudy);
         var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failures), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader);
         return await query.ListPendingBourseAsync(CancellationToken.None);

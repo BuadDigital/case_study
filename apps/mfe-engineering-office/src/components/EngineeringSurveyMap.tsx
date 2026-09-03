@@ -7,8 +7,13 @@ import {
   loadGoogleMapsApi,
   parseCoord,
 } from "../lib/google-maps-loader";
-import { Skeleton, Button } from "@platform/ui-kit";
-import { JEDDAH_DEFAULT_CENTER } from "../lib/jeddah-default-coords";
+import {
+  Button,
+  Skeleton,
+  cn,
+  opsEmptyHint,
+} from "@platform/ui-kit";
+import { JEDDAH_DEFAULT_CENTER } from "@platform/app-shared/domain/jeddah-default-coords";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
 const DEFAULT_ZOOM = 6;
@@ -37,10 +42,6 @@ export function EngineeringSurveyMap({
   const lat = parseCoord(latitude);
   const lng = parseCoord(longitude);
   const hasPin = lat !== null && lng !== null;
-  const osmEmbedUrl =
-    hasPin
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${(lng! - 0.006).toFixed(5)}%2C${(lat! - 0.004).toFixed(5)}%2C${(lng! + 0.006).toFixed(5)}%2C${(lat! + 0.004).toFixed(5)}&layer=mapnik&marker=${lat!}%2C${lng!}`
-      : null;
 
   useEffect(() => {
     if (!googleMapsApiKey()) {
@@ -62,6 +63,7 @@ export function EngineeringSurveyMap({
         const map = new google.maps.Map(containerRef.current, {
           center,
           zoom,
+          mapTypeId: "satellite",
           mapTypeControl: true,
           streetViewControl: false,
           fullscreenControl: true,
@@ -139,45 +141,34 @@ export function EngineeringSurveyMap({
         aria-hidden={mapError ? true : undefined}
       />
       {mapError ? (
-        <div className="rounded-DEFAULT border border-dashed border-border-md bg-surface-2 text-center text-xs text-text-3">
-          {osmEmbedUrl ? (
-            <iframe
-              title="خريطة الموقع"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="block h-[200px] w-full border-0"
-              src={osmEmbedUrl}
-            />
+        <div className={cn(opsEmptyHint, "rounded-DEFAULT border-dashed bg-surface-2 px-4 py-8 text-xs")}>
+          <p className="m-0 mb-2.5">{mapError}</p>
+          {googleMapsApiKey() ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mb-2.5"
+              onClick={() => {
+                setMapError(null);
+                setReloadKey((key) => key + 1);
+              }}
+            >
+              إعادة المحاولة
+            </Button>
           ) : null}
-          <div className="px-4 py-3">
-            <p className="m-0 mb-2.5">{mapError}</p>
-            {googleMapsApiKey() ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mb-2.5"
-                onClick={() => {
-                  setMapError(null);
-                  setReloadKey((key) => key + 1);
-                }}
-              >
-                إعادة المحاولة
-              </Button>
-            ) : null}
-            {hasPin ? (
-              <a
-                href={googleMapsSearchUrl(lat!, lng!)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary no-underline hover:underline"
-              >
-                فتح الموقع في Google Maps ({latitude}, {longitude})
-              </a>
-            ) : (
-              <span>أدخل الإحداثيات أو التقط الموقع من الجهاز.</span>
-            )}
-          </div>
+          {hasPin ? (
+            <a
+              href={googleMapsSearchUrl(lat!, lng!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary no-underline hover:underline"
+            >
+              فتح الموقع في Google Maps ({latitude}, {longitude})
+            </a>
+          ) : (
+            <span>أدخل الإحداثيات أو التقط الموقع من الجهاز.</span>
+          )}
         </div>
       ) : (
         <>

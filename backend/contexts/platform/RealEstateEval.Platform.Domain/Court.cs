@@ -1,6 +1,6 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Platform.Domain;
 
-/// <summary>محكمة — دليل النظام (لا حذف نهائي؛ يُعطَّل عبر IsActive).</summary>
+/// <summary>Court — system directory (no hard delete; deactivate via IsActive).</summary>
 public class Court
 {
     public Guid Id { get; set; }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   Button,
   FormGroup,
@@ -15,44 +16,54 @@ import {
   progressMessageForActionLabel,
   useToast,
 } from "@platform/ui-kit";
+import { useIdempotentAction } from "@platform/app-shared";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/prototype/case-study-form-data";
+import { CASE_STUDY_FORM_STEPS, caseStudyAnswerKey,type CaseStudyFormAnswer,type CaseStudyQuestionSection} from "../../lib/app-data/case-study-form-data";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
-import { canPartyAnswerQuestion, canSpecialistApproveQuestion, CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+import {
+  canPartyAnswerQuestion,
+  canSpecialistApproveQuestion,
+  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
+import {
   partyById,
   type CaseStudyInfoPartyId,
-} from "@settings/mfe";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import {
   collectPartyAnswersByQuestion,
   type PartyQuestionContribution,
-} from "../../lib/prototype/case-study-party-answers";
+} from "../../lib/app-data/case-study-party-answers";
 import { useCaseStudyInfoRolesQuery, useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
+  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
+  type CaseStudyFormDraft,
+  type CaseStudyMeterType,
+} from "../../lib/app-data/case-study-form-model";
+import {
   loadCaseStudyFormDraft,
   loadCaseStudyFormDraftOrThrow,
   loadPartyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraftOrThrow,
-  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
+} from "../../lib/app-data/case-study-form-reads";
+import {
   saveCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-  type CaseStudyFormDraft,
-  type CaseStudyMeterType,
-} from "../../lib/prototype/case-study-form-storage";
-import { buildCaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
-import { scheduleScrollToCaseStudyQuestion } from "../../lib/prototype/case-study-form-ux";
-import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
+} from "../../lib/app-data/case-study-form-commands";
+import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import { scheduleScrollToCaseStudyQuestion } from "../../lib/app-data/case-study-form-ux";
+import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
-import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "../../lib/prototype/case-study-question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluator-events";
 
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
@@ -341,23 +352,18 @@ export function CaseStudyForm({
     );
   }, [isParty, partyAnswersByKey]);
 
-  useEffect(() => {
-    if (isParty) return;
-    const refresh = () => setPartyRevision((n) => n + 1);
-    window.addEventListener("focus", refresh);
-    window.addEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener(CASE_STUDY_INFO_ROLES_CHANGED_EVENT, refresh);
-      window.removeEventListener(
-        PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
-        refresh,
-      );
-      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    };
-  }, [isParty]);
+  // Form parties do not subscribe to other parties' changes — listeners are specialist-only.
+  const refreshPartyRevision = () => setPartyRevision((n) => n + 1);
+  useWindowEvents(
+    isParty
+      ? {}
+      : {
+          focus: refreshPartyRevision,
+          [CASE_STUDY_INFO_ROLES_CHANGED_EVENT]: refreshPartyRevision,
+          [PARTY_CASE_STUDY_FORM_CHANGED_EVENT]: refreshPartyRevision,
+          [EVALUATOR_SUBMISSION_CHANGED_EVENT]: refreshPartyRevision,
+        },
+  );
 
   const canEditKey = useCallback(
     (key: string) => {
@@ -411,13 +417,12 @@ export function CaseStudyForm({
     setLoadError(null);
     (async () => {
       try {
-      const parentDraft = await loadCaseStudyFormDraftOrThrow(referenceTaskId);
-      const partyStored = isParty
-        ? await loadPartyCaseStudyFormDraftOrThrow(storageTaskId)
-        : null;
-      const stored = isParty
-        ? partyStored
-        : await loadCaseStudyFormDraftOrThrow(storageTaskId);
+      const [parentDraft, stored] = await Promise.all([
+        loadCaseStudyFormDraftOrThrow(referenceTaskId),
+        isParty
+          ? loadPartyCaseStudyFormDraftOrThrow(storageTaskId)
+          : loadCaseStudyFormDraftOrThrow(storageTaskId),
+      ]);
       const base =
         stored ?? emptyCaseStudyFormDraft(storageTaskId, seed);
       const mergedAnswers = isParty
@@ -501,12 +506,25 @@ export function CaseStudyForm({
   }, [isParty, partyChildTaskId]);
 
   const persistToServer = useCallback(
-    async (next: CaseStudyFormDraft) => {
+    async (next: CaseStudyFormDraft, idempotencyKey?: string) => {
       if (isParty) return savePartyCaseStudyFormDraft(next);
-      return saveCaseStudyFormDraft(next);
+      return saveCaseStudyFormDraft(next, idempotencyKey);
     },
     [isParty],
   );
+
+  const pendingSubmitDraft = useRef<CaseStudyFormDraft | null>(null);
+  const { execute: executeFormSubmit, loading: submittingForm } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) => {
+          const next = pendingSubmitDraft.current;
+          if (!next) throw new Error("لا يوجد نموذج للإرسال");
+          return persistToServer(next, idempotencyKey);
+        },
+        [persistToServer],
+      ),
+    );
 
   const persist = useCallback(
     (next: CaseStudyFormDraft) => {
@@ -647,15 +665,24 @@ export function CaseStudyForm({
     actionLabel: string,
     successMessage: string,
     buildNext: () => CaseStudyFormDraft,
+    opts?: { skipSavingGuard?: boolean; idempotentSubmit?: boolean },
   ): Promise<boolean> => {
-    if (saving) return false;
+    if (!opts?.skipSavingGuard && (saving || submittingForm)) return false;
 
     const progressId = showProgressToast(
       progressMessageForActionLabel(actionLabel),
     );
-    setSaving(true);
+    if (!opts?.skipSavingGuard) setSaving(true);
     try {
-      const result = await persistToServer(buildNext());
+      let result: Awaited<ReturnType<typeof persistToServer>>;
+      if (opts?.idempotentSubmit) {
+        pendingSubmitDraft.current = buildNext();
+        const outcome = await executeFormSubmit();
+        if (outcome.status === "skipped") return false;
+        result = outcome.value;
+      } else {
+        result = await persistToServer(buildNext());
+      }
       if (!result.ok) {
         showToast(result.error, "error");
         return false;
@@ -665,7 +692,7 @@ export function CaseStudyForm({
       return true;
     } finally {
       dismissToast(progressId);
-      setSaving(false);
+      if (!opts?.skipSavingGuard) setSaving(false);
     }
   };
 
@@ -678,17 +705,21 @@ export function CaseStudyForm({
     );
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
     if (!isParty && draft.status === "submitted") return;
     if (isParty && (draft.status === "submitted" || parentFormSubmitted)) return;
+    if (saving || submittingForm) return;
     if (isParty) {
-      void withSaveFeedback(
+      await withSaveFeedback(
         "حفظ إجاباتي",
         "تم حفظ إجاباتك في نموذج الدراسة",
         () => ({ ...draft, status: "draft" }),
       );
       return;
     }
+
+    setSaving(true);
+    try {
     const { answered, total, pct } = summary;
     const deedNonMatchKeys = sectionQuestions.deed
       .map((_, i) => caseStudyAnswerKey("deed", i))
@@ -738,11 +769,15 @@ export function CaseStudyForm({
       if (!ok) return;
       setMissingAnswerKeys(new Set());
     }
-    void withSaveFeedback(
+    await withSaveFeedback(
       "رفع النموذج للنظام",
       "تم رفع نموذج دراسة الحالة للنظام بنجاح",
       () => ({ ...draft, status: "submitted" }),
+      { skipSavingGuard: true, idempotentSubmit: true },
     );
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loadError) {
@@ -834,7 +869,7 @@ export function CaseStudyForm({
         <Button
           variant="primary"
           showActionToast={false}
-          loading={saving}
+          loading={saving || submittingForm}
           onClick={submitForm}
         >
           رفع النموذج للنظام

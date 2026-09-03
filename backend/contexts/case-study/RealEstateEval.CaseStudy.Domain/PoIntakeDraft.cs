@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>Per-user PO intake wizard draft (JSON payload).</summary>
 public class PoIntakeDraft

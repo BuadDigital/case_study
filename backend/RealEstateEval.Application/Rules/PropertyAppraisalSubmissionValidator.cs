@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -38,20 +39,11 @@ public static class PropertyAppraisalSubmissionValidator
         return errors;
     }
 
-    private static bool HasNonEmpty(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return false;
-        return prop.ValueKind == JsonValueKind.String
-            && !string.IsNullOrWhiteSpace(prop.GetString());
-    }
+    private static bool HasNonEmpty(JsonElement element, string name) =>
+        JsonElementReader.HasNonEmptyString(element, name);
 
-    private static bool GetBool(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var prop))
-            return false;
-        return prop.ValueKind == JsonValueKind.True;
-    }
+    private static bool GetBool(JsonElement element, string name) =>
+        JsonElementReader.GetBool(element, name);
 
     private static bool HasNamedReportWorker(JsonElement root)
     {

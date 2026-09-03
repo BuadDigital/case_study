@@ -7,12 +7,13 @@
     ".": "./src/index.ts",
     "./tokens.css": "./src/styles/tokens.css",
     "./animations.css": "./src/styles/animations.css",
-    "./operational-toolbar.css": "./src/styles/operational-toolbar.css"
+    "./document-reports.css": "./src/styles/document-reports.css"
   },
   "peerDependencies": {
     "react": "^19"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/react": "^19",
     "react": "^19.2.4"
   }

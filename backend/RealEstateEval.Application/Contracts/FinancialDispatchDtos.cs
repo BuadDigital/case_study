@@ -23,15 +23,6 @@ public sealed class StringListRequest
     public IReadOnlyList<string> Values { get; init; } = [];
 }
 
-public sealed class InspectorFeeActorRequest
-{
-    public string ActorUserId { get; set; } = "";
-    public string? ActorAssigneeId { get; set; }
-    public bool IsOperationsManager { get; set; }
-    public bool IsFinancialOfficer { get; set; }
-    public string? ActorDepartment { get; set; }
-    public bool CanManageAllDepartments { get; set; }
-}
 
 public sealed class InspectorFeePatchDispatchRequest
 {

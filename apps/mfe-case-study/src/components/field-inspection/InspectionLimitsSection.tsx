@@ -24,9 +24,9 @@ const SCOPE_OPTIONS = [
 ] as const;
 
 /**
- * حدود المعاينة = القيود على المعاينة (القرار 24 + ق-7): مدخلات منظّمة لا نص حر —
- * النظام يركّب نص التحفّظ ويضعه ضمن الافتراضات الخاصة. نطاق المعاينة إلزامي،
- * والمكتبية عن بُعد حاجب إصدار حتى يعتمدها المقيّم المعتمد.
+ * Inspection limits = constraints on the inspection (Decision 24 + Q-7): structured inputs, not free text —
+ * the system composes the reservation text and places it among special assumptions. Inspection scope is required,
+ * and remote desktop scope blocks issuance until the certified valuer approves it.
  */
 export function InspectionLimitsSection({
   poNumber,

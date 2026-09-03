@@ -2,11 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
 {
@@ -45,110 +50,178 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         if (feeTasks.Count == 0) return;
 
         var now = _time.UtcNow();
+
+        /* The loop issued up to 5 calls per (task × deed): party type, compensation, and fee
+           depend on repeating keys so they are cached in dictionaries; ledger identity is resolved
+           once per task (only DeedId changes across deeds); existence/hold checks become two queries. */
+        var partyTypeCache = new Dictionary<(WorkflowTaskKind Kind, string AssigneeId), string>();
+        var compensationCache = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var feeCache =
+            new Dictionary<(WorkflowTaskKind, string, decimal?, string), ResolvedPartyFee>();
         var pendingTriples = new HashSet<(Guid TransactionId, Guid DeedId, string UserId)>();
+        var candidates = new List<PendingLedgerCandidate>();
+
         foreach (var task in feeTasks)
         {
-            var partyType = await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
+            var assigneeKey = task.AssigneeId?.Trim() ?? "";
+            if (!partyTypeCache.TryGetValue((task.Kind, assigneeKey), out var partyType))
+            {
+                partyType = await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
+                partyTypeCache[(task.Kind, assigneeKey)] = partyType;
+            }
             var isEmployee = InspectorFeeRules.IsEmployee(partyType);
 
  // Employee incentives require an active compensation flag and a resolved flat table.
  // Opening a zero draft for every employee was the hand-entry path replaces.
             if (isEmployee)
             {
-                var hasCompensation = await _resolver.AssigneeHasCompensationAsync(
-                    task.AssigneeId,
-                    cancellationToken);
+                if (!compensationCache.TryGetValue(assigneeKey, out var hasCompensation))
+                {
+                    hasCompensation = await _resolver.AssigneeHasCompensationAsync(
+                        task.AssigneeId,
+                        cancellationToken);
+                    compensationCache[assigneeKey] = hasCompensation;
+                }
                 if (!hasCompensation) continue;
             }
 
             var po = task.PoNumber.Trim();
             var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
+ // TransactionId/UserId does not depend on Deed; The DeedId passed is always non-empty
+ // It literally equals deed.DeedId (same format as ResolveLedgerIdentityAsync).
+            var baseIdentity = await _resolver.ResolveLedgerIdentityAsync(
+                task,
+                cancellationToken);
             var ordinal = 0;
             foreach (var deed in deeds)
             {
                 ordinal++;
                 var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
                     task, cancellationToken, deed.PropertyId);
-                var agreedFee = await _pricing.ResolveDefaultFeeAsync(
-                    task.Kind,
-                    partyType,
-                    areaM2,
-                    task.AssigneeId,
-                    cancellationToken);
+                var feeKey = (task.Kind, partyType, areaM2, assigneeKey);
+                if (!feeCache.TryGetValue(feeKey, out var agreedFee))
+                {
+                    agreedFee = await _pricing.ResolveDefaultFeeAsync(
+                        task.Kind,
+                        partyType,
+                        areaM2,
+                        task.AssigneeId,
+                        cancellationToken);
+                    feeCache[feeKey] = agreedFee;
+                }
 
  // Unresolved means no rate yet — inventing zero here is exactly what we are removing.
                 if (!agreedFee.IsResolved) continue;
 
-                var identity = await _resolver.ResolveLedgerIdentityAsync(
-                    task,
-                    cancellationToken,
-                    deed.DeedId);
  // same (transaction, deed, user) must not open a second line — even via another task.
-                var tripleKey = (identity.TransactionId, identity.DeedId, identity.UserId);
+                var tripleKey = (baseIdentity.TransactionId, deed.DeedId, baseIdentity.UserId);
                 if (!pendingTriples.Add(tripleKey)) continue;
-                var tripleExists = await _financial.InspectorFeeLedgers.AnyAsync(
-                    x => x.TransactionId == identity.TransactionId
-                        && x.DeedId == identity.DeedId
-                        && x.UserId == identity.UserId,
-                    cancellationToken);
-                if (tripleExists) continue;
 
-                var billingStatus = InspectorFeeBillingStatus.Draft;
-                string? preSuspension = null;
-                string? suspensionReason = null;
-                if (isEmployee && !string.IsNullOrWhiteSpace(task.AssigneeId))
-                {
-                    var withhold = await _financial.IncentiveSuspensions.AsNoTracking()
-                        .Where(x =>
-                            x.AssigneeId == task.AssigneeId.Trim()
-                            && x.TransactionKey == po
-                            && x.LiftedAtUtc == null)
-                        .Select(x => x.Reason)
-                        .FirstOrDefaultAsync(cancellationToken);
-                    if (withhold is not null)
-                    {
-                        billingStatus = InspectorFeeBillingStatus.Suspended;
-                        preSuspension = InspectorFeeBillingStatus.Draft;
-                        suspensionReason = withhold;
-                    }
-                }
-
-                _financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
-                {
-                    Id = Guid.NewGuid(),
-                    TransactionId = identity.TransactionId,
-                    DeedId = identity.DeedId,
-                    UserId = identity.UserId,
-                    WorkflowTaskId = task.Id,
-                    PoNumber = po,
-                    PropertyId = deed.PropertyId,
-                    PropertyOrdinal = deed.PropertyId == task.PropertyId
-                        ? task.PropertyOrdinal
-                        : ordinal,
-                    AssigneeId = task.AssigneeId,
-                    InspectorType = partyType,
-                    SupervisingDepartment = SupervisingDepartments.ForTaskKind(task.Kind),
-                    AgreedFeeSar = agreedFee.FeeSar!.Value,
-                    PricingTableId = agreedFee.PricingTableId,
-                    SupervisorDiscountSar = 0m,
-                    DiscountReason = null,
-                    BillingStatus = billingStatus,
-                    PreSuspensionStatus = preSuspension,
-                    SuspensionReason = suspensionReason,
-                    ExcludedFromBatch = false,
-                    ExclusionReason = null,
-                    ReturnTo = null,
-                    DisbursementBatchId = null,
-                    DisbursementVoucher = null,
-                    AccruedAtUtc = now,
-                    CreatedAtUtc = now,
-                    UpdatedAtUtc = now,
-                });
+                candidates.Add(new PendingLedgerCandidate(
+                    task, deed, ordinal, partyType, isEmployee, tripleKey, agreedFee, po));
             }
+        }
+
+ // There is one query per batch instead of AnyAsync per Deed.
+        var existingTriples = new HashSet<(Guid, Guid, string)>();
+        if (candidates.Count > 0)
+        {
+            var txIds = candidates
+                .Select(c => c.Triple.TransactionId)
+                .Distinct()
+                .ToList();
+            var existing = await _financial.InspectorFeeLedgers.AsNoTracking()
+                .Where(x => txIds.Contains(x.TransactionId))
+                .Select(x => new { x.TransactionId, x.DeedId, x.UserId })
+                .ToListAsync(cancellationToken);
+            foreach (var row in existing)
+                existingTriples.Add((row.TransactionId, row.DeedId, row.UserId));
+        }
+
+ // One comment query per (Employee, Transaction) pairs.
+        var suspensionByPair = new Dictionary<(string Aid, string Po), string>();
+        var employeePairs = candidates
+            .Where(c => c.IsEmployee && !string.IsNullOrWhiteSpace(c.Task.AssigneeId))
+            .Select(c => (Aid: c.Task.AssigneeId!.Trim(), c.Po))
+            .Distinct()
+            .ToList();
+        if (employeePairs.Count > 0)
+        {
+            var aids = employeePairs.Select(p => p.Aid).Distinct().ToList();
+            var pos = employeePairs.Select(p => p.Po).Distinct().ToList();
+            var suspensions = await _financial.IncentiveSuspensions.AsNoTracking()
+                .Where(x =>
+                    aids.Contains(x.AssigneeId)
+                    && pos.Contains(x.TransactionKey)
+                    && x.LiftedAtUtc == null)
+                .Select(x => new { x.AssigneeId, x.TransactionKey, x.Reason })
+                .ToListAsync(cancellationToken);
+            foreach (var s in suspensions)
+                suspensionByPair.TryAdd((s.AssigneeId, s.TransactionKey), s.Reason);
+        }
+
+        foreach (var c in candidates)
+        {
+            if (existingTriples.Contains(c.Triple)) continue;
+
+            var billingStatus = InspectorFeeBillingStatus.Draft;
+            string? preSuspension = null;
+            string? suspensionReason = null;
+            if (c.IsEmployee
+                && !string.IsNullOrWhiteSpace(c.Task.AssigneeId)
+                && suspensionByPair.TryGetValue(
+                    (c.Task.AssigneeId.Trim(), c.Po), out var withhold))
+            {
+                billingStatus = InspectorFeeBillingStatus.Suspended;
+                preSuspension = InspectorFeeBillingStatus.Draft;
+                suspensionReason = withhold;
+            }
+
+            _financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
+            {
+                Id = Guid.NewGuid(),
+                TransactionId = c.Triple.TransactionId,
+                DeedId = c.Triple.DeedId,
+                UserId = c.Triple.UserId,
+                WorkflowTaskId = c.Task.Id,
+                PoNumber = c.Po,
+                PropertyId = c.Deed.PropertyId,
+                PropertyOrdinal = c.Deed.PropertyId == c.Task.PropertyId
+                    ? c.Task.PropertyOrdinal
+                    : c.Ordinal,
+                AssigneeId = c.Task.AssigneeId,
+                InspectorType = c.PartyType,
+                SupervisingDepartment = SupervisingDepartments.ForTaskKind(c.Task.Kind),
+                AgreedFeeSar = c.Fee.FeeSar!.Value,
+                PricingTableId = c.Fee.PricingTableId,
+                SupervisorDiscountSar = 0m,
+                DiscountReason = null,
+                BillingStatus = billingStatus,
+                PreSuspensionStatus = preSuspension,
+                SuspensionReason = suspensionReason,
+                ExcludedFromBatch = false,
+                ExclusionReason = null,
+                ReturnTo = null,
+                DisbursementBatchId = null,
+                DisbursementVoucher = null,
+                AccruedAtUtc = now,
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now,
+            });
         }
 
         await _financial.SaveChangesAsync(cancellationToken);
     }
+
+    private sealed record PendingLedgerCandidate(
+        WorkflowTask Task,
+        InspectorFeeDeedTarget Deed,
+        int Ordinal,
+        string PartyType,
+        bool IsEmployee,
+        (Guid TransactionId, Guid DeedId, string UserId) Triple,
+        ResolvedPartyFee Fee,
+        string Po);
 
     public async Task BackfillMissingLedgersAsync(CancellationToken cancellationToken = default)
     {
@@ -160,7 +233,7 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
             .ToList();
         if (feeTasks.Count == 0) return;
 
-        var readyPropertyIds = await GetCompletedCaseStudyPropertyIdsAsync(
+        var readyPropertyIds = await _lookup.GetCompletedCaseStudyPropertyIdsAsync(
             feeTasks.Select(t => t.PropertyId),
             cancellationToken);
 
@@ -176,18 +249,53 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         await EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
     }
 
-    private async Task<HashSet<Guid>> GetCompletedCaseStudyPropertyIdsAsync(
-        IEnumerable<Guid?> propertyIds,
-        CancellationToken cancellationToken)
+        /* Previously ran inside a summary GET (load all ledgers + tasks and write on every
+           fees-screen poll) — moved to the background maintenance loop. */
+    public async Task SyncLedgerSnapshotsFromTasksAsync(CancellationToken cancellationToken = default)
     {
-        var ids = propertyIds
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-        if (ids.Count == 0) return [];
+        var ledgers = await _financial.InspectorFeeLedgers.ToListAsync(cancellationToken);
+        if (ledgers.Count == 0) return;
 
-        var ready = await _lookup.ListCompletedCaseStudyPropertyIdsAsync(cancellationToken);
-        return ready.Where(ids.Contains).ToHashSet();
+        var taskIds = ledgers.Select(l => l.WorkflowTaskId).Distinct().ToList();
+        var taskSnapshots = await _lookup.ListWorkflowTasksByIdsAsync(taskIds, cancellationToken);
+        var tasks = taskSnapshots.ToDictionary(t => t.Id, t => t.ToWorkflowTask());
+
+        var anyChanged = false;
+        var now = _time.UtcNow();
+        foreach (var ledger in ledgers)
+        {
+            if (!tasks.TryGetValue(ledger.WorkflowTaskId, out var task))
+                continue;
+
+            var rowChanged = false;
+
+            if (task.PropertyId is Guid propertyId && ledger.PropertyId != propertyId)
+            {
+                ledger.PropertyId = propertyId;
+                rowChanged = true;
+            }
+
+            if (ledger.PropertyOrdinal != task.PropertyOrdinal)
+            {
+                ledger.PropertyOrdinal = task.PropertyOrdinal;
+                rowChanged = true;
+            }
+
+            var taskAssignee = task.AssigneeId?.Trim();
+            var ledgerAssignee = ledger.AssigneeId?.Trim();
+            if (!string.Equals(taskAssignee, ledgerAssignee, StringComparison.Ordinal))
+            {
+                ledger.AssigneeId = string.IsNullOrEmpty(taskAssignee) ? null : taskAssignee;
+                rowChanged = true;
+            }
+
+            if (!rowChanged) continue;
+
+            ledger.UpdatedAtUtc = now;
+            anyChanged = true;
+        }
+
+        if (anyChanged)
+            await _financial.SaveChangesAsync(cancellationToken);
     }
 }

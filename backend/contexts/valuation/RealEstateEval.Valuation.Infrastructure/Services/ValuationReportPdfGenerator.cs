@@ -2,15 +2,27 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Builds the issued Arabic RTL valuation report PDF from the live document DTO.</summary>
 public static class ValuationReportPdfGenerator
 {
     private static bool _licenseConfigured;
 
-    public static byte[] Generate(ValuationReportDocumentDto doc)
+    /// <summary>
+    /// Q-6-4: deposit-certificate data for the final copy — attached page + code in page metadata.
+    /// </summary>
+    public sealed record IssuanceCertificateStamp(
+        string DepositCode,
+        string? CertificateFileName,
+        string? CertificateContentType,
+        byte[]? CertificateContent);
+
+    public static byte[] Generate(
+        ValuationReportDocumentDto doc,
+        IssuanceCertificateStamp? certificate = null)
     {
         EnsureLicense();
 
@@ -60,6 +72,11 @@ public static class ValuationReportPdfGenerator
 
                 page.Content().PaddingTop(16).Column(col =>
                 {
+                    // Decision 23: one line labels the whole package — "standard texts — package version N".
+                    col.Item().PaddingBottom(6)
+                        .Text($"النصوص المعيارية/القانونية — الحزمة نسخة {doc.TextPackageVersion}")
+                        .FontSize(8).FontColor(Colors.Grey.Darken1);
+
                     if (!string.IsNullOrWhiteSpace(doc.FinalOpinionDisplay))
                     {
                         col.Item().Text($"الرأي النهائي للقيمة: {doc.FinalOpinionDisplay}")
@@ -142,8 +159,68 @@ public static class ValuationReportPdfGenerator
                     text.CurrentPageNumber();
                     text.Span(" من ");
                     text.TotalPages();
+                    // Q-6-4: code is filled into page metadata — final copy only.
+                    if (certificate is not null)
+                        text.Span($" · رمز الإيداع: {certificate.DepositCode}");
                 });
             });
+
+            // Q-6-4: deposit-certificate page enters the report as an attached page (Sulaiman wording) —
+            // certificate and code alone are outside freeze scope.
+            if (certificate is not null)
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(36);
+                    page.DefaultTextStyle(x => x
+                        .FontFamily(Fonts.Tahoma, Fonts.Arial, "Noto Sans Arabic", "DejaVu Sans")
+                        .FontSize(10));
+                    page.ContentFromRightToLeft();
+
+                    page.Header().AlignCenter().Text("شهادة الإيداع — منصة قيمة")
+                        .Bold().FontSize(16);
+
+                    page.Content().PaddingTop(16).Column(col =>
+                    {
+                        col.Item().Text($"رمز الإيداع: {certificate.DepositCode}")
+                            .SemiBold().FontSize(12);
+                        if (!string.IsNullOrWhiteSpace(certificate.CertificateFileName))
+                        {
+                            col.Item().PaddingTop(4)
+                                .Text($"مستند الشهادة: {certificate.CertificateFileName}")
+                                .FontColor(Colors.Grey.Darken1);
+                        }
+
+                        var isImage = certificate.CertificateContent is { Length: > 0 }
+                            && (certificate.CertificateContentType ?? "")
+                                .StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+                        if (isImage)
+                        {
+                            col.Item().PaddingTop(12).AlignCenter()
+                                .MaxHeight(640)
+                                .Image(certificate.CertificateContent!)
+                                .FitArea();
+                        }
+                        else
+                        {
+                            col.Item().PaddingTop(12)
+                                .Text("الشهادة محفوظة مستنداً في ملف المعاملة (صيغة غير صورية) — "
+                                      + "هذه الصفحة مرجعها ورمزها.")
+                                .FontColor(Colors.Grey.Darken1);
+                        }
+                    });
+
+                    page.Footer().AlignCenter().Text(text =>
+                    {
+                        text.Span("صفحة ");
+                        text.CurrentPageNumber();
+                        text.Span(" من ");
+                        text.TotalPages();
+                        text.Span($" · رمز الإيداع: {certificate.DepositCode}");
+                    });
+                });
+            }
         }).GeneratePdf();
 
         static IContainer HeaderCell(IContainer c) =>

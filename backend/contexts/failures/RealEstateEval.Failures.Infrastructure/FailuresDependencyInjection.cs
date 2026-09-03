@@ -3,8 +3,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Failures.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Failures bounded context (A8). The shared
@@ -33,4 +39,20 @@ public static class FailuresDependencyInjection
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
         return services;
     }
+ /// <summary>Failures write context. Prefers a dedicated Failures connection string.
+ /// A8 physical move: lives beside <see cref="FailuresDbContext"/> in the context library.</summary>
+    public static IServiceCollection AddFailuresPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var failuresConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Failures,
+            connectionString);
+        return services.AddBoundedContextPersistence<FailuresDbContext>(
+            configuration,
+            failuresConnection);
+    }
+
 }

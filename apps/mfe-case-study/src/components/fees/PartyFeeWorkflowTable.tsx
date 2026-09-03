@@ -6,17 +6,18 @@ import {
   Badge,
   Button,
   SkeletonTableRows,
-  Table,
   TBody,
+  THead,
+  Table,
+  TableFrame,
   Td,
   Th,
-  THead,
   Tr,
   cn,
-  queueTableWrapClassName,
+  opsMobileCard,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
@@ -24,7 +25,7 @@ import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/prototype/inspector-fees-api";
+import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { PoNumber } from "../ui/PoNumber";
 
@@ -37,10 +38,12 @@ type ReasonAction =
   | "office-dispute"
   | "suspend";
 
+const AR_NUM = new Intl.NumberFormat("ar-SA");
+
 function Sar({ value }: { value: number }) {
   return (
     <span className="tabular-nums whitespace-nowrap font-medium">
-      {value.toLocaleString("ar-SA")}{" "}
+      {AR_NUM.format(value)}{" "}
       <span className="text-[10px] font-normal text-text-3">ر.س</span>
     </span>
   );
@@ -234,7 +237,7 @@ export function PartyFeeWorkflowTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);
@@ -265,14 +268,10 @@ export function PartyFeeWorkflowTable({
     setReasonModal({ row, action });
 
   return (
-    <div
-      className={cn(
-        queueTableWrapClassName,
-        "rounded-[var(--radius-lg)] border border-border bg-surface",
-      )}
-    >
-      <div className="hidden lg:block">
-        <Table className="min-w-[920px] w-full" pending={pending}>
+    <>
+      <TableFrame>
+        <div className="hidden lg:block">
+          <Table className="min-w-[920px] w-full" pending={pending}>
           <THead>
             <Tr hoverable={false}>
               <Th>المعاملة</Th>
@@ -300,7 +299,7 @@ export function PartyFeeWorkflowTable({
                         <Sar value={row.netFeeSar} />
                         {row.supervisorDiscountSar > 0 ? (
                           <span className="text-[10px] text-text-3">
-                            حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                            حسم {AR_NUM.format(row.supervisorDiscountSar)}
                             {row.discountReason
                               ? ` — ${row.discountReason}`
                               : ""}
@@ -348,9 +347,9 @@ export function PartyFeeWorkflowTable({
             )}
           </TBody>
         </Table>
-      </div>
+        </div>
 
-      <div className="lg:hidden">
+        <div className="lg:hidden">
         {pending && rows.length === 0 ? (
           <div className="space-y-2.5 p-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -371,7 +370,7 @@ export function PartyFeeWorkflowTable({
               return (
                 <li
                   key={`m-${row.workflowTaskId}`}
-                  className="rounded-[14px] border border-border border-s-[3px] border-s-gold bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                  className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
                 >
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -386,7 +385,7 @@ export function PartyFeeWorkflowTable({
                       <Sar value={row.netFeeSar} />
                       {row.supervisorDiscountSar > 0 ? (
                         <div className="mt-0.5 text-[10px] text-text-3">
-                          حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                          حسم {AR_NUM.format(row.supervisorDiscountSar)}
                         </div>
                       ) : null}
                     </div>
@@ -424,7 +423,8 @@ export function PartyFeeWorkflowTable({
             })}
           </ul>
         )}
-      </div>
+        </div>
+      </TableFrame>
 
       <FeeActionReasonModal
         open={reasonModal !== null}
@@ -453,6 +453,6 @@ export function PartyFeeWorkflowTable({
           await act(reasonModal.row, reasonModal.action, { reason });
         }}
       />
-    </div>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   getAuthSession,
   isRefreshTokenExpired,
@@ -9,12 +9,13 @@ import {
   notifyAuthExpired,
   subscribeAuthExpired,
 } from "@platform/auth-client";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import {
-  ensureFreshAuthSession,
   evaluateOfflineLease,
   isOfflineCapableRole,
-} from "@platform/app-shared";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "@platform/app-shared/offline/offline-write";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import { beginOfflineLease } from "@platform/offline-client";
 
 const CHECK_INTERVAL_MS = 30_000;
@@ -25,7 +26,10 @@ const CHECK_INTERVAL_MS = 30_000;
  */
 export function AuthSessionWatcher() {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
+  const visible = useDocumentVisible();
+  const checkRef = useRef<() => void>(() => {});
+  const wasVisibleRef = useRef(visible);
 
   useEffect(() => {
     const redirect = () => router.replace("/login");
@@ -64,18 +68,22 @@ export function AuthSessionWatcher() {
       }
     };
 
+    checkRef.current = () => void check();
     const timer = window.setInterval(() => void check(), CHECK_INTERVAL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void check();
-    };
-    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       unsubscribe();
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
+      checkRef.current = () => {};
     };
   }, [router, role]);
+
+  // Hidden → visible only: reading visibility state would also check the session on mount.
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (visible && !wasVisible) checkRef.current();
+  }, [visible]);
 
   return null;
 }

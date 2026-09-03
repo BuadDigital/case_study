@@ -5,6 +5,11 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -30,12 +35,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        store.App.WorkflowTasks.Add(task);
-        await store.App.SaveChangesAsync();
+        store.CaseStudy.WorkflowTasks.Add(task);
+        await store.CaseStudy.SaveChangesAsync();
 
         await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(350m, ledger.AgreedFeeSar);
         Assert.NotNull(ledger.PricingTableId);
@@ -58,12 +63,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        store.App.WorkflowTasks.Add(task);
-        await store.App.SaveChangesAsync();
+        store.CaseStudy.WorkflowTasks.Add(task);
+        await store.CaseStudy.SaveChangesAsync();
 
         await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        Assert.False(await store.App.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == taskId));
+        Assert.False(await store.Fin.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == taskId));
     }
 
     [Fact]
@@ -93,12 +98,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        store.App.WorkflowTasks.Add(task);
-        await store.App.SaveChangesAsync();
+        store.CaseStudy.WorkflowTasks.Add(task);
+        await store.CaseStudy.SaveChangesAsync();
 
         await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(350m, ledger.AgreedFeeSar);
         Assert.Equal(InspectorFeeBillingStatus.Suspended, ledger.BillingStatus);
@@ -113,7 +118,7 @@ public class FlatIncentivePricingTests
         await SeedFlatAssignmentAsync(store, amount: 200m, hasCompensation: true);
         var taskId = Guid.NewGuid();
         var now = DateTime.UtcNow;
-        store.App.WorkflowTasks.Add(WorkflowTask.Create(
+        store.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-FLAT",
             now,
@@ -122,7 +127,7 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        store.App.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        store.Fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-FLAT",
@@ -134,7 +139,8 @@ public class FlatIncentivePricingTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await store.App.SaveChangesAsync();
+        await store.CaseStudy.SaveChangesAsync();
+        await store.Fin.SaveChangesAsync();
 
         var (row, error) = await store.IncentiveSuspensions().CreateAsync(
             new CreateIncentiveSuspensionRequest
@@ -147,7 +153,7 @@ public class FlatIncentivePricingTests
 
         Assert.Null(error);
         Assert.NotNull(row);
-        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(InspectorFeeBillingStatus.Suspended, ledger.BillingStatus);
         Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.PreSuspensionStatus);
@@ -164,12 +170,12 @@ public class FlatIncentivePricingTests
         };
         Assert.Equal(
             275m,
-            PartyFeePricingService.ResolveFromDto(
+            PartyFeePricingRules.ResolveFromDto(
                 flat,
                 WorkflowTaskKind.FieldInspection,
                 InspectorFeeRules.TypeEmployee));
         Assert.Null(
-            PartyFeePricingService.ResolveFromDto(
+            PartyFeePricingRules.ResolveFromDto(
                 flat,
                 WorkflowTaskKind.FieldInspection,
                 InspectorFeeRules.TypeCooperatorIndividual));
@@ -181,7 +187,7 @@ public class FlatIncentivePricingTests
         await using var store = new TestInspectorFeeServiceFactory.Store("flat-wrong-assign");
         await SeedFlatAssignmentAsync(store, amount: 350m, hasCompensation: true);
 
- // Accidental cooperator-table assignment (the production symptom for عبدالله).
+ // Accidental cooperator-table assignment (the production symptom for Abdullah).
         var partyRatesId = Guid.NewGuid();
         store.Fin.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
@@ -210,12 +216,12 @@ public class FlatIncentivePricingTests
             assigneeId: "insp-emp-1",
             id: taskId,
             status: WorkflowTaskStatus.Completed);
-        store.App.WorkflowTasks.Add(task);
-        await store.App.SaveChangesAsync();
+        store.CaseStudy.WorkflowTasks.Add(task);
+        await store.CaseStudy.SaveChangesAsync();
 
         await store.Fees().EnsureLedgersForTasksAsync([task]);
 
-        var ledger = await store.App.InspectorFeeLedgers.AsNoTracking()
+        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
         Assert.Equal(350m, ledger.AgreedFeeSar);
     }

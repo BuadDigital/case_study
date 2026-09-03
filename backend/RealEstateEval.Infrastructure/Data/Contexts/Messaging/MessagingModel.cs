@@ -15,7 +15,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// for transitional dual write until owner APIs replace them.
 /// </para>
 /// </summary>
-internal static class MessagingModel
+// A8: public — owner contexts (incl. Valuation outbox mapping) live in context libraries.
+public static class MessagingModel
 {
     public static ModelBuilder ApplyOutboxModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
@@ -49,6 +50,30 @@ internal static class MessagingModel
             e.Property(x => x.Consumer).HasMaxLength(128);
             e.Property(x => x.EventType).HasMaxLength(128);
             e.HasIndex(x => x.ProcessedAtUtc);
+        });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Durable HTTP command idempotency (ADR 0008). Same actor + method + path + key
+    /// replays the stored response across instances.
+    /// </summary>
+    public static ModelBuilder ApplyCommandIdempotencyModel(
+        this ModelBuilder builder,
+        bool ownsMigrations = true)
+    {
+        builder.Entity<CommandIdempotencyRecord>(e =>
+        {
+            MapTable(e, "CommandIdempotencyRecords", DatabaseSchemas.Messaging, ownsMigrations);
+            e.HasKey(x => new { x.ActorId, x.HttpMethod, x.RequestPath, x.IdempotencyKey });
+            e.Property(x => x.ActorId).HasMaxLength(450);
+            e.Property(x => x.HttpMethod).HasMaxLength(16);
+            e.Property(x => x.RequestPath).HasMaxLength(512);
+            e.Property(x => x.IdempotencyKey).HasMaxLength(128);
+            e.Property(x => x.ContentType).HasMaxLength(128);
+            e.Property(x => x.ResponseBody).HasColumnType("bytea");
+            e.HasIndex(x => x.ExpiresAtUtc);
         });
 
         return builder;
@@ -119,6 +144,7 @@ internal static class MessagingModel
         builder
             .ApplyOutboxModel(ownsMigrations)
             .ApplyInboxModel(ownsMigrations)
+            .ApplyCommandIdempotencyModel(ownsMigrations)
             .ApplyNotificationModel(ownsMigrations);
 
     private static void MapTable<TEntity>(

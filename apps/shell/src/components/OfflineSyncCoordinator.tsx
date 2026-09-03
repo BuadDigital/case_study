@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   evaluateOfflineLease,
   isOfflineCapableRole,
   syncOfflineQueue,
-} from "@platform/app-shared";
+} from "@platform/app-shared/offline/offline-write";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
+import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import {
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
@@ -29,10 +30,13 @@ import {
   createKeyEnvelopeHandoff,
   confirmKeyEnvelopeHandoff,
   upsertFieldSyncStatus,
+  patchOperationsTask,
+  addOperationsTaskComment,
+  upsertPropertyCourtAccess,
 } from "@platform/api-client";
 import { getValidAuthSession } from "@platform/auth-client";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { workOrdersApiConfig } from "@platform/app-shared/prototype/work-orders-api-config";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -51,6 +55,12 @@ function outboxKindLabel(kind: string): string {
       return "حفظ مسودة";
     case "party-submission-submit":
       return "إرسال مهمة";
+    case "operations-task-patch":
+      return "تحديث مهمة عمليات";
+    case "operations-task-comment":
+      return "تعليق مهمة";
+    case "property-court-access":
+      return "مسار دخول المحكمة";
     case "key-envelope-create":
       return "تسجيل ظرف مفاتيح";
     case "key-envelope-assignment-add":
@@ -96,8 +106,16 @@ async function reportFieldSyncHeartbeat(
     );
     return;
   }
-  const oldest = active.map((item) => item.createdAtUtc).sort()[0];
-  const kinds = [...new Set(active.map((item) => item.kind))];
+  // Single pass: oldest timestamp (min) + unique kinds — no sort/extra arrays.
+  let oldest: string | undefined;
+  const kindSet = new Set<string>();
+  for (const item of active) {
+    if (oldest === undefined || item.createdAtUtc < oldest) {
+      oldest = item.createdAtUtc;
+    }
+    kindSet.add(item.kind);
+  }
+  const kinds = [...kindSet];
   await upsertFieldSyncStatus(
     { token: session.token },
     {
@@ -193,6 +211,7 @@ async function runSync(userId: string): Promise<void> {
       const submitResult = await submitPartyTaskSubmission(
         workOrdersConfig,
         input.taskId,
+        input.idempotencyKey,
       );
       if (!submitResult.ok) {
         if (submitResult.kind === "auth" || submitResult.kind === "forbidden") {
@@ -209,6 +228,99 @@ async function runSync(userId: string): Promise<void> {
       }
       return { ok: true };
     },
+    patchOperationsTask: async (input) => {
+      if (!workOrdersConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let body: Parameters<typeof patchOperationsTask>[2];
+      try {
+        body = JSON.parse(input.bodyJson) as Parameters<
+          typeof patchOperationsTask
+        >[2];
+      } catch {
+        return { ok: false, error: "بيانات مهمة غير صالحة", terminal: true };
+      }
+      const result = await patchOperationsTask(
+        workOrdersConfig,
+        input.taskId,
+        body,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر تحديث المهمة",
+          terminal:
+            result.kind === "auth" ||
+            result.kind === "forbidden" ||
+            result.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    addOperationsTaskComment: async (input) => {
+      if (!workOrdersConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let payload: {
+        text?: string;
+        kind?: string;
+        files?: Parameters<typeof addOperationsTaskComment>[4];
+      };
+      try {
+        payload = JSON.parse(input.payloadJson) as typeof payload;
+      } catch {
+        return { ok: false, error: "بيانات تعليق غير صالحة", terminal: true };
+      }
+      const result = await addOperationsTaskComment(
+        workOrdersConfig,
+        input.taskId,
+        payload.text ?? "",
+        payload.kind,
+        payload.files,
+      );
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر إضافة التعليق",
+          terminal:
+            result.kind === "auth" ||
+            result.kind === "forbidden" ||
+            result.kind === "validation",
+        };
+      }
+      return { ok: true };
+    },
+    upsertPropertyCourtAccess: async (input) => {
+      if (!modulesConfig) {
+        return { ok: false, error: "غير مصادق", terminal: true };
+      }
+      let body: Parameters<typeof upsertPropertyCourtAccess>[1];
+      try {
+        body = JSON.parse(input.bodyJson) as Parameters<
+          typeof upsertPropertyCourtAccess
+        >[1];
+      } catch {
+        return { ok: false, error: "بيانات مسار الدخول غير صالحة", terminal: true };
+      }
+      const result = await upsertPropertyCourtAccess(modulesConfig, body);
+      if (!result.ok) {
+        if (result.kind === "auth" || result.kind === "forbidden") {
+          await purgeOfflineData(userId, "auth-rejected");
+        }
+        return {
+          ok: false,
+          error: "تعذّر حفظ مسار الدخول",
+          terminal: result.kind === "auth" || result.kind === "forbidden",
+        };
+      }
+      return { ok: true };
+    },
     createKeyEnvelope: async (input) => {
       if (!modulesConfig) {
         return { ok: false, error: "غير مصادق", terminal: true };
@@ -221,7 +333,11 @@ async function runSync(userId: string): Promise<void> {
       } catch {
         return { ok: false, error: "بيانات ظرف غير صالحة", terminal: true };
       }
-      const createResult = await createKeyEnvelope(modulesConfig, body);
+      const createResult = await createKeyEnvelope(
+        modulesConfig,
+        body,
+        input.idempotencyKey,
+      );
       if (!createResult.ok) {
         if (createResult.kind === "auth" || createResult.kind === "forbidden") {
           await purgeOfflineData(userId, "auth-rejected");
@@ -290,6 +406,7 @@ async function runSync(userId: string): Promise<void> {
         input.envelopeId,
         payload.assignmentId,
         { status: payload.status, notes: payload.notes ?? null },
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {
@@ -319,6 +436,7 @@ async function runSync(userId: string): Promise<void> {
         modulesConfig,
         input.envelopeId,
         payload,
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {
@@ -349,6 +467,7 @@ async function runSync(userId: string): Promise<void> {
         modulesConfig,
         input.envelopeId,
         payload.handoffId,
+        input.idempotencyKey,
       );
       if (!result.ok) {
         if (result.kind === "auth" || result.kind === "forbidden") {
@@ -373,7 +492,11 @@ async function runSync(userId: string): Promise<void> {
 export function OfflineSyncCoordinator() {
   const { role, user, isAuthenticated, displayName } = useAuth();
   const online = useOnlineStatus();
+  const visible = useDocumentVisible();
   const capable = isOfflineCapableRole(role);
+  const wasVisibleRef = useRef(visible);
+  const heartbeatMetaRef = useRef({ displayName, role, user });
+  heartbeatMetaRef.current = { displayName, role, user };
   const [syncState, setSyncState] = useState<OfflineSyncState>("synced");
   const [pending, setPending] = useState(0);
   const [pendingItems, setPendingItems] = useState<OfflineOutboxItem[]>([]);
@@ -453,15 +576,20 @@ export function OfflineSyncCoordinator() {
     if (!userId) return;
     void runSync(userId);
     const timer = window.setInterval(() => void runSync(userId), 30_000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void runSync(userId);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => window.clearInterval(timer);
   }, [capable, isAuthenticated, online, user?.id]);
+
+  // Hidden → visible only: the effect above already syncs on mount/reconnect, so reading
+  // visibility state here would double the sync.
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (!visible || wasVisible) return;
+    if (!capable || !isAuthenticated || !online) return;
+    const userId = user?.id;
+    if (!userId) return;
+    void runSync(userId);
+  }, [visible, capable, isAuthenticated, online, user?.id]);
 
   useEffect(() => {
     if (!capable || !isAuthenticated || !user?.id) return;
@@ -476,14 +604,18 @@ export function OfflineSyncCoordinator() {
     };
   }, [capable, isAuthenticated, user?.id]);
 
+  // Minute pulse reads the queue itself; putting pending/name/role in deps
+  // tore down the timer and fired an extra POST on every queue change (advanced-use-latest).
   useEffect(() => {
-    if (!capable || !isAuthenticated || !online || !user?.id) return;
+    const userId = user?.id;
+    if (!capable || !isAuthenticated || !online || !userId) return;
     const report = () => {
-      void listOutboxItems(user.id)
+      void listOutboxItems(userId)
         .then((items) => {
+          const meta = heartbeatMetaRef.current;
           void reportFieldSyncHeartbeat(items, {
-            displayName: displayName ?? user.displayName,
-            roleId: role,
+            displayName: meta.displayName ?? meta.user?.displayName,
+            roleId: meta.role,
           });
         })
         .catch(() => {
@@ -493,16 +625,7 @@ export function OfflineSyncCoordinator() {
     report();
     const timer = window.setInterval(report, 60_000);
     return () => window.clearInterval(timer);
-  }, [
-    capable,
-    displayName,
-    isAuthenticated,
-    online,
-    pending,
-    role,
-    user?.displayName,
-    user?.id,
-  ]);
+  }, [capable, isAuthenticated, online, user?.id]);
 
   useEffect(() => {
     if (!capable) return;

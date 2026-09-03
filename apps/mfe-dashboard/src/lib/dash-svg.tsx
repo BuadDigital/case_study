@@ -1,7 +1,9 @@
 "use client";
 
-import { animate } from "animejs";
 import { useEffect, useId, useRef } from "react";
+
+// animejs is loaded on demand inside effects so it stays out of the initial bundle.
+type DashAnimation = { pause: () => void };
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -36,13 +38,19 @@ function MiniDonut({
       return;
     }
     el.style.strokeDashoffset = String(cc);
-    const anim = animate(el, {
-      strokeDashoffset: [cc, off],
-      duration: 1100,
-      ease: "outCubic",
+    let anim: DashAnimation | null = null;
+    let cancelled = false;
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
+      anim = animate(el, {
+        strokeDashoffset: [cc, off],
+        duration: 1100,
+        ease: "outCubic",
+      });
     });
     return () => {
-      anim.pause();
+      cancelled = true;
+      anim?.pause();
     };
   }, [cc, off]);
 
@@ -120,13 +128,19 @@ export function BigRing({ pct, color }: { pct: number; color: string }) {
       return;
     }
     el.style.strokeDashoffset = String(c);
-    const anim = animate(el, {
-      strokeDashoffset: [c, off],
-      duration: 1100,
-      ease: "outCubic",
+    let anim: DashAnimation | null = null;
+    let cancelled = false;
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
+      anim = animate(el, {
+        strokeDashoffset: [c, off],
+        duration: 1100,
+        ease: "outCubic",
+      });
     });
     return () => {
-      anim.pause();
+      cancelled = true;
+      anim?.pause();
     };
   }, [c, off]);
 
@@ -188,7 +202,7 @@ export function TrendChart({
   series: { year: string; color: string; values: number[] }[];
 }) {
   const gid = useId().replace(/:/g, "");
-  const rootRef = useRef<SVGSVGElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const seriesKey = series.map((s) => `${s.year}:${s.values.join(",")}`).join("|");
   const W = 760;
   const H = 168;
@@ -213,160 +227,181 @@ export function TrendChart({
     if (!root) return;
 
     const lines = root.querySelectorAll<SVGPathElement>("[data-trend-line]");
-    const areas = root.querySelectorAll<SVGPathElement>("[data-trend-area]");
-    const dots = root.querySelectorAll<SVGCircleElement>("[data-trend-dot]");
+    const areaLayer = root.querySelector<HTMLElement>("[data-trend-area]");
+    const dotLayer = root.querySelector<HTMLElement>("[data-trend-dot]");
 
     if (prefersReducedMotion()) {
       lines.forEach((el) => {
         el.style.strokeDasharray = "none";
         el.style.strokeDashoffset = "0";
       });
-      areas.forEach((el) => {
-        el.style.opacity = "1";
-      });
-      dots.forEach((el) => {
-        el.style.opacity = "1";
-      });
+      if (areaLayer) areaLayer.style.opacity = "1";
+      if (dotLayer) dotLayer.style.opacity = "1";
       return;
     }
 
-    const anims: { pause: () => void }[] = [];
+    const anims: DashAnimation[] = [];
+    let cancelled = false;
+    const len = 400;
 
-    lines.forEach((el, i) => {
-      const len = 400;
+    lines.forEach((el) => {
       el.style.strokeDasharray = String(len);
       el.style.strokeDashoffset = String(len);
-      anims.push(
-        animate(el, {
-          strokeDashoffset: [len, 0],
-          duration: 1100,
-          delay: i * 80,
-          ease: "inOutQuad",
-        }),
-      );
     });
+    if (areaLayer) areaLayer.style.opacity = "0";
+    if (dotLayer) dotLayer.style.opacity = "0";
 
-    areas.forEach((el) => {
-      el.style.opacity = "0";
-      anims.push(
-        animate(el, {
-          opacity: [0, 1],
-          duration: 800,
-          delay: 300,
-          ease: "inOutQuad",
-        }),
-      );
-    });
+    void import("animejs").then(({ animate }) => {
+      if (cancelled) return;
 
-    dots.forEach((el, i) => {
-      el.style.opacity = "0";
-      anims.push(
-        animate(el, {
-          opacity: [0, 1],
-          duration: 400,
-          delay: 550 + i * 40,
-          ease: "inOutQuad",
-        }),
-      );
+      lines.forEach((el, i) => {
+        anims.push(
+          animate(el, {
+            strokeDashoffset: [len, 0],
+            duration: 1100,
+            delay: i * 80,
+            ease: "inOutQuad",
+          }),
+        );
+      });
+
+      if (areaLayer) {
+        anims.push(
+          animate(areaLayer, {
+            opacity: [0, 1],
+            duration: 800,
+            delay: 300,
+            ease: "inOutQuad",
+          }),
+        );
+      }
+
+      if (dotLayer) {
+        anims.push(
+          animate(dotLayer, {
+            opacity: [0, 1],
+            duration: 400,
+            delay: 550,
+            ease: "inOutQuad",
+          }),
+        );
+      }
     });
 
     return () => {
+      cancelled = true;
       for (const a of anims) a.pause();
     };
   }, [seriesKey, labels.join(",")]);
 
+  const linePath = (values: number[]) =>
+    values
+      .map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`)
+      .join(" ");
+  const last = series[series.length - 1];
+  const areaId = `${gid}-area`;
+
   return (
-    <svg
-      ref={rootRef}
-      viewBox={`0 0 ${W} ${H}`}
-      className="h-auto w-full"
-      role="img"
-      aria-label="اتجاه الإنجاز"
-    >
-      {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-        const y = padT + ph * (1 - t);
-        const val = Math.round(max * t);
-        return (
-          <g key={t}>
-            <line
-              x1={padL}
-              x2={W - padR}
-              y1={y}
-              y2={y}
-              stroke="var(--border)"
-              strokeWidth={1}
-            />
-            <text
-              x={padL - 6}
-              y={y + 3}
-              textAnchor="end"
-              fontSize="10"
-              fill="var(--text-3)"
-            >
-              {val}
-            </text>
-          </g>
-        );
-      })}
-      {series.map((s, si) => {
-        const pts = s.values
-          .map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`)
-          .join(" ");
-        const area = `${pts} L${X(n - 1)} ${padT + ph} L${X(0)} ${padT + ph} Z`;
-        const id = `${gid}-${s.year}`;
-        return (
-          <g key={s.year}>
+    <div ref={rootRef} className="relative">
+      {last ? (
+        <div
+          data-trend-area=""
+          className="pointer-events-none absolute inset-0"
+          style={{ opacity: 0 }}
+          aria-hidden
+        >
+          <svg viewBox={`0 0 ${W} ${H}`} className="block h-full w-full">
             <defs>
-              <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={s.color} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+              <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={last.color} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={last.color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            {si === series.length - 1 ? (
-              <path
-                d={area}
-                fill={`url(#${id})`}
-                data-trend-area=""
-                opacity={0}
-              />
-            ) : null}
             <path
-              d={pts}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={2.2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              data-trend-line=""
+              d={`${linePath(last.values)} L${X(n - 1)} ${padT + ph} L${X(0)} ${padT + ph} Z`}
+              fill={`url(#${areaId})`}
             />
-            {s.values.map((v, i) => (
+          </svg>
+        </div>
+      ) : null}
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="relative block h-auto w-full"
+        role="img"
+        aria-label="اتجاه الإنجاز"
+      >
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+          const y = padT + ph * (1 - t);
+          const val = Math.round(max * t);
+          return (
+            <g key={t}>
+              <line
+                x1={padL}
+                x2={W - padR}
+                y1={y}
+                y2={y}
+                stroke="var(--border)"
+                strokeWidth={1}
+              />
+              <text
+                x={padL - 6}
+                y={y + 3}
+                textAnchor="end"
+                fontSize="10"
+                fill="var(--text-3)"
+              >
+                {val}
+              </text>
+            </g>
+          );
+        })}
+        {series.map((s) => (
+          <path
+            key={s.year}
+            d={linePath(s.values)}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            data-trend-line=""
+          />
+        ))}
+        {labels.map((lab, i) => (
+          <text
+            key={lab + i}
+            x={X(i)}
+            y={H - 8}
+            textAnchor="middle"
+            fontSize="10"
+            fill="var(--text-3)"
+          >
+            {lab}
+          </text>
+        ))}
+      </svg>
+      <div
+        data-trend-dot=""
+        className="pointer-events-none absolute inset-0"
+        style={{ opacity: 0 }}
+        aria-hidden
+      >
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full">
+          {series.map((s) =>
+            s.values.map((v, i) => (
               <circle
                 key={`${s.year}-${i}`}
-                data-trend-dot=""
                 cx={X(i)}
                 cy={Y(v)}
                 r={3.2}
                 fill="var(--surface)"
                 stroke={s.color}
                 strokeWidth={2}
-                opacity={0}
               />
-            ))}
-          </g>
-        );
-      })}
-      {labels.map((lab, i) => (
-        <text
-          key={lab + i}
-          x={X(i)}
-          y={H - 8}
-          textAnchor="middle"
-          fontSize="10"
-          fill="var(--text-3)"
-        >
-          {lab}
-        </text>
-      ))}
-    </svg>
+            )),
+          )}
+        </svg>
+      </div>
+    </div>
   );
 }

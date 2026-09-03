@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Operations.Application.Contracts;
 
 public class KeyEnvelopeLinkedPropertyDto
 {
@@ -19,7 +20,7 @@ public class KeyEnvelopeAssignmentDto
     public Guid Id { get; init; }
     public string DeedNumber { get; init; } = "";
     public Guid? PropertyId { get; init; }
-    public string Status { get; init; } = "pending";
+    public string Status { get; init; } = KeyAssignmentStatuses.Pending;
     public string? Notes { get; init; }
     public string? ConfirmedByName { get; init; }
     public DateTime? ConfirmedAtUtc { get; init; }
@@ -55,6 +56,8 @@ public class KeyEnvelopeDto
 {
     public Guid Id { get; init; }
     public string RequestNumber { get; init; } = "";
+ /// <summary>Numbering workshop: Internal reference number KE-{year}-{sequence 5}.</summary>
+    public string? ReferenceNumber { get; init; }
     public string Court { get; init; } = "";
     public string Circuit { get; init; } = "";
     public int KeysCountLabeled { get; init; }
@@ -70,7 +73,7 @@ public class KeyEnvelopeDto
  /// <summary>Historical stamp — see <see cref="RevenueEntitlementAtUtc"/> for current envelopes.</summary>
     public bool FeeGenerated { get; init; }
     public decimal? FeeAmountSar { get; init; }
- /// <summary>مؤشر استحقاق إيراد استلام المفاتيح — بلا مبلغ.</summary>
+ /// <summary>Key Receipt Revenue Accrual Indicator — No amount.</summary>
     public DateTime? RevenueEntitlementAtUtc { get; init; }
     public string CreatedByUserId { get; init; } = "";
     public string CreatedByName { get; init; } = "";
@@ -93,6 +96,7 @@ public class KeyEnvelopeFeeReportRowDto
     public Guid? ReceiptAttachmentId { get; init; }
  /// <summary>Null for an entitlement finance has not yet priced in enforcement billing.</summary>
     public decimal? FeeAmountSar { get; init; }
+    // "open" = KeyReceiptFeeStatuses.Open (Financial.Domain) — We are not importing another context Domain here.
     public string CollectionStatus { get; init; } = "open";
     public string? InvoiceReference { get; init; }
     public DateTime? CollectedAtUtc { get; init; }

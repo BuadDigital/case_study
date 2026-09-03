@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Operations.Api.Controllers;
 
@@ -10,6 +12,7 @@ namespace RealEstateEval.Operations.Api.Controllers;
 [ApiController]
 [Route("api/operations-task-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class OperationsTaskDispatchController(IOperationsTaskService tasks) : ControllerBase
 {
     [HttpPost("backfill-visit-charges")]

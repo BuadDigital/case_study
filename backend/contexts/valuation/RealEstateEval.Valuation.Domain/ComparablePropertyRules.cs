@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Validation + price/m² + source-card helpers for the comparable bank scaffold.</summary>
 public static class ComparablePropertyRules
@@ -22,7 +22,7 @@ public static class ComparablePropertyRules
     public static string FreshnessLabelAr(DateOnly transactionDate, DateOnly today) =>
         IsRecentTransaction(transactionDate, today) ? "حديث" : "مخزن";
 
- /// <summary>computed price/m² deviating this far from the district median flags شذوذ.</summary>
+ /// <summary>computed price/m² deviating this far from the district median flags anomaly.</summary>
     public const decimal AnomalyDeviationPct = 50m;
 
  /// <summary>Minimum active peers in the district before the median check runs.</summary>
@@ -30,7 +30,7 @@ public static class ComparablePropertyRules
 
  /// <summary>
  /// anomaly notice — advisory, never blocking: zero rate, or a rate deviating
- /// more than <see cref="AnomalyDeviationPct"/>٪ from the district's median.
+ /// more than <see cref="AnomalyDeviationPct"/>% from the district's median.
  /// </summary>
     public static string? PricePerSqmAnomalyNote(
         decimal pricePerSqm,

@@ -1,8 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using System.Net.Mail;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 public static class WorkOrderValidator
 {
@@ -44,7 +43,7 @@ public static class WorkOrderValidator
         return errors;
     }
 
- /// <summary>مرحلة إنفاذ — إضافة عقار داخل أمر العمل.</summary>
+ /// <summary>Enfaz stage — Add property within Work Order.</summary>
     public static Dictionary<string, string> ValidatePropertyEnfath(
         WorkOrderPropertyDto dto,
         AssignmentType assignmentType,
@@ -55,69 +54,24 @@ public static class WorkOrderValidator
         var errors = new Dictionary<string, string>();
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
 
+        // Specific to each track: Check ID + Deed date (Real Estate Exchange inquiry) or authorization letter (Deed/record).
         if (idType == PropertyIdentifierType.BourseInquiry)
         {
             ValidateIdentifierNumber(dto, idType, errors);
-
-            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
-                dto.HasRequestNumber &&
-                string.IsNullOrWhiteSpace(dto.RequestNumber))
-                errors["requestNumber"] = "رقم الطلب مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
-                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
-                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
             if (string.IsNullOrWhiteSpace(dto.DeedDate))
                 errors["deedDate"] = "تاريخ الصك مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.OwnerName))
-                errors["ownerName"] = "اسم المالك مطلوب";
-            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
-            {
-                if (string.IsNullOrWhiteSpace(dto.Court))
-                    errors["court"] = "المحكمة مطلوبة";
-                if (string.IsNullOrWhiteSpace(dto.Circuit))
-                    errors["circuit"] = "الدائرة مطلوبة";
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
-                deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
-            {
-                errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
-            }
         }
         else
         {
             ValidateDeedOrRealEstateReg(dto, errors);
-
-            if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
-                dto.HasRequestNumber &&
-                string.IsNullOrWhiteSpace(dto.RequestNumber))
-                errors["requestNumber"] = "رقم الطلب مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
-                errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
-                errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
-            if (string.IsNullOrWhiteSpace(dto.OwnerName))
-                errors["ownerName"] = "اسم المالك مطلوب";
-            if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
-            {
-                if (string.IsNullOrWhiteSpace(dto.Court))
-                    errors["court"] = "المحكمة مطلوبة";
-                if (string.IsNullOrWhiteSpace(dto.Circuit))
-                    errors["circuit"] = "الدائرة مطلوبة";
-            }
             if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
                 errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
-
-            if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
-                deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
-            {
-                errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
-            }
         }
 
- // ق-11: رقم الطلب ≠ رقم الصك تحوّل من قيد منع إلى تحقق تحذيري — التطابق الحرفي
- // وارد مصادفة وليس دليل خطأ قاطعاً؛ التنبيه في الواجهة والمُدخل يؤكد ويمضي.
+        ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, errors);
+
+ // Q-11: Order number ≠ Deed number changed from blocking restriction to warning check — literal match
+ // It is a coincidence and not conclusive evidence of error; The alert is on the interface and the input confirms and proceeds.
 
         if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {
@@ -129,7 +83,40 @@ public static class WorkOrderValidator
         return errors;
     }
 
- /// <summary>مرحلة البورصة — استعلام البورصة.</summary>
+ /// <summary>Fields common to both Enfaz paths (exchange/Deed or record query) — were duplicated in the two branches.</summary>
+    private static void ValidateSharedEnfathFields(
+        WorkOrderPropertyDto dto,
+        AssignmentType assignmentType,
+        Guid? excludePropertyId,
+        Func<string, Guid?, bool> deedExistsInPo,
+        Dictionary<string, string> errors)
+    {
+        if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
+            dto.HasRequestNumber &&
+            string.IsNullOrWhiteSpace(dto.RequestNumber))
+            errors["requestNumber"] = "رقم الطلب مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.AssignmentMandateNumber))
+            errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
+            errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
+        if (string.IsNullOrWhiteSpace(dto.OwnerName))
+            errors["ownerName"] = "اسم المالك مطلوب";
+        if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
+        {
+            if (string.IsNullOrWhiteSpace(dto.Court))
+                errors["court"] = "المحكمة مطلوبة";
+            if (string.IsNullOrWhiteSpace(dto.Circuit))
+                errors["circuit"] = "الدائرة مطلوبة";
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
+            deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))
+        {
+            errors["deedNumber"] = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
+        }
+    }
+
+ /// <summary>Real Estate Exchange stage — Real Estate Exchange query.</summary>
     public static Dictionary<string, string> ValidatePropertyBourse(UpdatePropertyBourseRequest dto)
     {
         var errors = new Dictionary<string, string>();
@@ -183,8 +170,8 @@ public static class WorkOrderValidator
         var hasDeed = !string.IsNullOrWhiteSpace(dto.DeedNumber);
         var hasReg = !string.IsNullOrWhiteSpace(dto.RealEstateRegNumber);
 
- // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
- // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
+ // At least one of them is required: No. Deed or Real Estate Registration (or both).
+ // Real Estate Registration on fill overrides Real Estate Exchange query.
         if (!hasDeed && !hasReg)
         {
             const string msg = "أدخل رقم الصك أو رقم التسجيل العيني";
@@ -223,7 +210,7 @@ public static class WorkOrderValidator
         PropertyIdentifierType idType,
         Dictionary<string, string> errors)
     {
- // رقم الصك دائماً 12 رقماً — التسجيل العيني حقل منفصل.
+ // Deed number is always 12 digits — Real Estate Registration is a separate field.
         _ = idType;
         const string label = "رقم الصك";
         const int requiredLength = DeedNumberDigitLength;
@@ -242,7 +229,7 @@ public static class WorkOrderValidator
     }
 
     private static string NormalizeIdentifierDigits(string value) =>
-        new string(value.Where(char.IsDigit).ToArray());
+        Texts.DigitsOnly(value);
 
     private static readonly HashSet<string> AllowedRestrictionTypes = new(StringComparer.Ordinal)
     {
@@ -295,7 +282,7 @@ public static class WorkOrderValidator
     private static List<string> SplitPhones(string? phone) =>
         (phone ?? "")
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => new string(p.Where(char.IsDigit).ToArray()))
+            .Select(Texts.DigitsOnly)
             .Where(p => p.Length > 0)
             .ToList();
 
@@ -311,16 +298,6 @@ public static class WorkOrderValidator
             errors["assignmentSpecialistEmail"] = "صيغة الإيميل غير صالحة";
     }
 
-    private static bool IsValidEmail(string email)
-    {
-        try
-        {
-            _ = new MailAddress(email.Trim());
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    // Federated Validation — Here MailAddress and regex were in the identity context with two different acceptors.
+    private static bool IsValidEmail(string email) => Texts.IsValidEmail(email.Trim());
 }

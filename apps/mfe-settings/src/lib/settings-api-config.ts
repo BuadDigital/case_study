@@ -1,44 +1,28 @@
-import {
-  getApiBase,
-  type CaseStudyInfoRolesApiConfig,
-  type CourtsApiConfig,
-  type OrganizationSettingsApiConfig,
-  type RegionsApiConfig,
+import type {
+  CaseStudyInfoRolesApiConfig,
+  CourtsApiConfig,
+  OrganizationSettingsApiConfig,
+  RegionsApiConfig,
 } from "@platform/api-client";
-import { getAuthSession } from "@platform/auth-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
+// Names per domain with matching type — same construction from the unified source.
 export function courtsApiConfig(): CourtsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function regionsApiConfig(): RegionsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function caseStudyInfoRolesApiConfig(): CaseStudyInfoRolesApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
 export function organizationSettingsApiConfig(): OrganizationSettingsApiConfig | null {
-  const session = getAuthSession();
-  if (!session?.token) return null;
-  return { token: session.token, baseUrl: getApiBase() };
+  return apiConfig();
 }
 
-export function apiErrorMessage(
-  kind: string,
-  fallback = "تعذّر الاتصال بالخادم",
-): string {
-  if (kind === "auth") return "يجب تسجيل الدخول أولاً";
-  if (kind === "network") return "تعذّر الاتصال بالخادم — تحقق من تشغيل API";
-  if (kind === "validation") return "يرجى مراجعة الحقول المطلوبة";
-  if (kind === "server") return "حدث خطأ في الخادم — حاول لاحقاً";
-  if (kind === "not_found") return "لم يُعثر على أمر العمل";
-  return fallback;
-}
+// A forked copy dropped forbidden/conflict branches and swallowed 403/409 —
+// messages come from the unified source in app-shared.
+export { apiErrorMessage } from "@platform/app-shared/app-data/work-orders-api-config";

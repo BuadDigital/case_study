@@ -7,19 +7,19 @@ import {
   Button,
   Input,
   SkeletonTableRows,
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Th,
   ThAction,
-  THead,
   Tr,
   cn,
+  opsMobileCard,
   pageToolbarClassName,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/ui-kit";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
@@ -29,11 +29,11 @@ import { PoNumber } from "../ui/PoNumber";
 import {
   runInspectorFeeTransition,
   saveInspectorFeePatch,
-} from "@platform/app-shared/prototype/inspector-fees-api";
+} from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/prototype/po-intake-data";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 export type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
@@ -49,6 +49,8 @@ type RowDraft = {
   excludedFromBatch: boolean;
   exclusionReason: string;
 };
+
+const AR_NUM = new Intl.NumberFormat("ar-SA");
 
 const fieldSm =
   "h-8 w-[4.75rem] px-2 py-1 text-end text-xs tabular-nums";
@@ -89,7 +91,7 @@ function Sar({
   return (
     <span className={cn("tabular-nums whitespace-nowrap", className)}>
       {prefix}
-      {value.toLocaleString("ar-SA")}{" "}
+      {AR_NUM.format(value)}{" "}
       <span className="text-[10px] font-normal text-text-3">ر.س</span>
     </span>
   );
@@ -126,10 +128,10 @@ function SupervisorToolbar({
     <div className={cn(pageToolbarClassName, "mb-0 rounded-t-[var(--radius-lg)]")}>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-text">
-          {total.toLocaleString("ar-SA")} عقار
+          {AR_NUM.format(total)} عقار
         </p>
         <p className="text-[11px] text-text-3">
-          {eligibleCount.toLocaleString("ar-SA")} قابلة للمراجعة
+          {AR_NUM.format(eligibleCount)} قابلة للمراجعة
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -138,7 +140,7 @@ function SupervisorToolbar({
         </Button>
         {selectedCount > 0 ? (
           <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-            إلغاء ({selectedCount.toLocaleString("ar-SA")})
+            إلغاء ({AR_NUM.format(selectedCount)})
           </Button>
         ) : null}
         <Button
@@ -201,7 +203,7 @@ export function InspectorFeesBillingTable({
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: [...prototypeKeys.all, "inspector-fees"],
+      queryKey: [...appDataKeys.all, "inspector-fees"],
     });
     onChanged?.();
   }, [onChanged, queryClient]);
@@ -276,11 +278,13 @@ export function InspectorFeesBillingTable({
     if (ids.length === 0) return;
     setBusyId("batch");
     try {
-      for (const id of ids) {
-        const row = rows.find((r) => r.workflowTaskId === id);
-        if (!row) continue;
-        await saveRow(row);
-      }
+      await Promise.all(
+        ids.map(async (id) => {
+          const row = rows.find((r) => r.workflowTaskId === id);
+          if (!row) return;
+          await saveRow(row);
+        }),
+      );
       setSelected(new Set());
     } finally {
       setBusyId(null);
@@ -305,7 +309,7 @@ export function InspectorFeesBillingTable({
         />
       ) : null}
 
-      <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+      <div className="hidden lg:block">
         <Table className="min-w-[980px] w-full" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -605,7 +609,7 @@ export function InspectorFeesBillingTable({
             {rows.map((row) => (
               <li
                 key={`m-bill-${row.workflowTaskId}`}
-                className="rounded-[14px] border border-border border-s-[3px] border-s-ink bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]"
+                className={cn(opsMobileCard, "border-s-[3px] border-s-ink")}
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -623,7 +627,7 @@ export function InspectorFeesBillingTable({
                     <Sar value={row.netFeeSar} />
                     {row.supervisorDiscountSar > 0 ? (
                       <div className="mt-0.5 text-[10px] text-danger-text">
-                        حسم {row.supervisorDiscountSar.toLocaleString("ar-SA")}
+                        حسم {AR_NUM.format(row.supervisorDiscountSar)}
                       </div>
                     ) : null}
                   </div>

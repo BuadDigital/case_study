@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using RealEstateEval.Shared.Web.Middleware;
 
 namespace RealEstateEval.Shared.Web;
 
@@ -53,6 +54,7 @@ public static class RealEstateEvalApiHostExtensions
         builder.Services.AddRealEstateEvalCors(builder.Configuration, builder.Environment);
         builder.Services.AddRealEstateEvalRateLimiting(builder.Configuration, builder.Environment);
         builder.Services.AddRealEstateEvalOpenApi(openApiTitle);
+        builder.Services.AddCommandIdempotency();
         return builder;
     }
 

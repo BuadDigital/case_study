@@ -31,7 +31,7 @@ function emptyFactor(sortOrder: number): DifferenceFactorDefinitionDto {
 
 /**
  * Decision 19.2  — difference-factor definitions are admin-managed
- * reference data with a version log; «ما لا يشمله» is the anti-double-counting control.
+ * reference data with a version log; «what it does not cover» is the anti-double-counting control.
  */
 export function DifferenceFactorCatalogView() {
   const { showToast } = useToast();

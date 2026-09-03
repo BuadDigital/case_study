@@ -1,8 +1,11 @@
-import type { RemainingTimeState } from "@case-study/mfe";
+"use client";
 
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
+import { pad2 } from "@platform/app-shared/format/date";
+import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
+import {
+  resolveRemainingTime,
+  type RemainingTimeState,
+} from "../../lib/app-data/my-task-row";
 
 export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
   if (state.status === "missing") {
@@ -29,4 +32,13 @@ export function RemainingTimeCell({ state }: { state: RemainingTimeState }) {
       {days}.{pad2(hours)}.{pad2(minutes)}.{pad2(seconds)}
     </span>
   );
+}
+
+/**
+ * Countdown that ticks every second inside the cell itself — clock subscription lives here, not on the screen,
+ * so every row is not rebuilt each second (rerender-defer-reads).
+ */
+export function TickingRemainingTimeCell({ dueIso }: { dueIso: string }) {
+  const nowMs = useTickingNow();
+  return <RemainingTimeCell state={resolveRemainingTime(dueIso, new Date(nowMs))} />;
 }

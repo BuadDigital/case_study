@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 public class UninspectedUnitEntryDto
 {
@@ -8,19 +8,19 @@ public class UninspectedUnitEntryDto
     public string Reason { get; init; } = "";
 }
 
-/// <summary>حدود المعاينة (القرار 24 + ق-7) — مدخلات منظّمة يعبّئها المعاين.</summary>
+/// <summary>Inspection Limitations (Decision 24 + Q-7) — structured inputs packaged by Inspector.</summary>
 public class InspectionLimitsDto
 {
     public Guid PropertyId { get; init; }
- /// <summary>full | external | desktop | "" (لم يُلتقط بعد).</summary>
+ /// <summary>full| external | desktop | “(Not captured yet).</summary>
     public string InspectionScopeKey { get; init; } = "";
     public string InspectionScopeLabelAr { get; init; } = "";
     public string? InspectionRestrictionReason { get; init; }
     public IReadOnlyList<UninspectedUnitEntryDto> UninspectedUnits { get; init; } = [];
     public int TotalUninspectedUnits { get; init; }
- /// <summary>نص التحفّظ المركّب آلياً — يوضع ضمن الافتراضات الخاصة.</summary>
+ /// <summary>Automatically compounded reservation text — placed within Special Assumptions.</summary>
     public string ReservationTextAr { get; init; } = "";
- /// <summary>ق-7 — اعتماد المقيّم المعتمد لنطاق «مكتبية عن بُعد».</summary>
+ /// <summary>Q-7 — certified appraiser approval for the “remote desktop” scope.</summary>
     public string? RemoteInspectionApprovedBy { get; init; }
     public string? RemoteInspectionApprovedAtUtc { get; init; }
     public bool RemoteInspectionApproved { get; init; }

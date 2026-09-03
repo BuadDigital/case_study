@@ -1,4 +1,4 @@
-/** مسارات شاشة المالية — مهامي · الإيرادات · التكاليف · بوابات الأطراف */
+/** Finance screen routes — My Tasks · Revenue · Costs · party portals */
 
 export type FinanceArea =
   | "tasks"
@@ -37,7 +37,7 @@ export const REVENUE_STAGES: {
   { id: "excluded", label: "مستبعدة" },
 ];
 
-/** تبويبات حساب مستحق واحد — مطابق HTML */
+/** Tabs for a single payee account — matches HTML */
 export const COSTS_ACCOUNT_TABS: {
   id: CostsSection;
   label: string;
@@ -54,7 +54,7 @@ export const COSTS_ACCOUNT_TABS: {
   { id: "excluded", label: "مستبعدة" },
 ];
 
-/** توافق خلفي */
+/** Backward compatibility */
 export const COSTS_SECTIONS: {
   id: CostsSection;
   label: string;
@@ -84,7 +84,7 @@ export function parseRevenueStage(
   raw: string | null | undefined,
 ): RevenueStage {
   if (REVENUE_STAGES.some((s) => s.id === raw)) return raw as RevenueStage;
-  /** أول تبويب في التصميم — تحت الدراسة */
+  /** First tab in the design — under study */
   return "under_study";
 }
 

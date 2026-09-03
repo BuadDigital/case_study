@@ -17,7 +17,7 @@ vi.mock("@platform/api-client", () => ({
   submitPartyTaskSubmission: vi.fn(),
 }));
 
-vi.mock("@platform/app-shared/prototype/work-orders-api-config", () => ({
+vi.mock("@platform/app-shared/app-data/work-orders-api-config", () => ({
   workOrdersApiConfig: () => ({ baseUrl: "http://test", token: "t" }),
   apiErrorMessage: () => "error",
   mutationFromApiResult: (result: { ok: boolean }) => result,
@@ -29,7 +29,7 @@ const {
   prefetchPartySubmissionsForTasks,
   getCachedPartySubmission,
   setCachedPartySubmission,
-} = await import("../src/prototype/party-submission-api");
+} = await import("../src/app-data/party-submission-api");
 
 function taskId(n: number): string {
   return `task-${String(n).padStart(4, "0")}`;

@@ -1,17 +1,26 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
-// Optional leftover shared database: if REAL_ESTATE_EVAL_PG_CONNECTION_STRING is set,
-// apply the frozen legacy ApplicationDbContext stream first (ADR 0006, including xmin).
-// Dedicated owner databases still require their own connection strings; production
-// compose does not set the unsuffixed leftover variable.
-// Then apply each bounded-context stream in BoundedContextMigrations.ApplyOrder.
+// A10: the frozen legacy god-context stream is archived — every database is
+// provisioned and migrated from its own bounded-context stream (each stream carries an
+// Ensure*TablesForStandalone baseline). To migrate a restored pre-split database, check
+// out the git tag `a10-legacy-stream-final`, which still carries the legacy stream.
+// Streams apply in BoundedContextMigrations.ApplyOrder.
 //
 // Usage:
 // RealEstateEval.DbMigrate apply all pending migrations, all streams
@@ -23,8 +32,6 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 var configuration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
-
-var leftoverConnection = Environment.GetEnvironmentVariable(BoundedContextConnections.SharedEnvVar);
 
 // A8: the catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
 // This migrator keeps the concrete list and fails loudly if it drifts from the catalog —
@@ -55,13 +62,6 @@ foreach (var type in streamTypes)
     streamConnections[type] = BoundedContextConnections.ForContext(configuration, type);
 }
 
-if (!string.IsNullOrWhiteSpace(leftoverConnection))
-{
-    Console.WriteLine(
-        $"[migrate] ApplicationDbContext uses leftover database '{DatabaseName(leftoverConnection)}'.");
-    await PostgresDatabaseProvisioner.EnsureExistsAsync(leftoverConnection);
-}
-
 foreach (var connection in streamConnections.Values.Distinct(StringComparer.Ordinal))
     await PostgresDatabaseProvisioner.EnsureExistsAsync(connection);
 
@@ -73,11 +73,6 @@ foreach (var (type, connection) in streamConnections)
 
 var services = new ServiceCollection();
 services.AddLogging();
-if (!string.IsNullOrWhiteSpace(leftoverConnection))
-{
-    services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(leftoverConnection));
-}
 services.AddDbContext<AttachmentsDbContext>(options =>
     UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
 services.AddDbContext<PlatformDbContext>(options =>
@@ -112,12 +107,6 @@ switch (command)
 {
     case "update":
     case "migrate":
-        if (!string.IsNullOrWhiteSpace(leftoverConnection))
-        {
-            var legacy = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            await ApplyPendingAsync("ApplicationDbContext", leftoverConnection, legacy);
-        }
-
         foreach (var (name, db, connection) in streams)
             await ApplyPendingAsync(name, connection, db);
 
@@ -125,12 +114,6 @@ switch (command)
         break;
 
     case "list":
-        if (!string.IsNullOrWhiteSpace(leftoverConnection))
-        {
-            var legacy = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            await ListStreamAsync("ApplicationDbContext", leftoverConnection, legacy);
-        }
-
         foreach (var (name, db, connection) in streams)
             await ListStreamAsync(name, connection, db);
 
@@ -202,9 +185,11 @@ async Task ListStreamAsync(string name, string connection, DbContext db)
 
 void UseStream<TContext>(DbContextOptionsBuilder options, string connectionString)
     where TContext : DbContext =>
-    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
-        BoundedContextMigrations.HistoryTable,
-        BoundedContextMigrations.HistorySchemaFor<TContext>()));
+    options
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+        .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(
+            BoundedContextMigrations.HistoryTable,
+            BoundedContextMigrations.HistorySchemaFor<TContext>()));
 
 static string DatabaseName(string connectionString) =>
     new NpgsqlConnectionStringBuilder(connectionString).Database ?? "(unknown)";

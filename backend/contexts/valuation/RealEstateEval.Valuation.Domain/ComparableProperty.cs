@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Company-wide comparable property bank (/ ).
@@ -9,10 +9,10 @@ public class ComparableProperty
     public Guid Id { get; set; }
     public string ReferenceCode { get; set; } = "";
 
- /// <summary>Comparable property type — ق-3/5: قائمة مغلقة تُغلق من الواجهة (نفس قائمة العقار محل التقييم).</summary>
+ /// <summary>Comparable property type — Q-3/5: closed list enforced by the UI (same as subject property types).</summary>
     public string ComparablePropertyType { get; set; } = "";
 
- /// <summary>استخدام المقارن — ق-3/5: قائمة مغلقة = قائمة استخدام العقار محل التقييم.</summary>
+ /// <summary>Comparable use — Q-3/5: closed list = subject property use list.</summary>
     public string Usage { get; set; } = "";
 
  /// <summary>offer | executed</summary>
@@ -25,7 +25,7 @@ public class ComparableProperty
     public string Source { get; set; } = ComparableSources.Other;
 
     public string? ListingNumber { get; set; }
- /// <summary>ق-3/3: مرجع صفقة البورصة العقارية للمنفّذ — نظير رقم الإعلان للعروض.</summary>
+ /// <summary>Q-3/3: real-estate bourse deal reference for closed deals — counterpart to listing number for offers.</summary>
     public string? TransactionReference { get; set; }
     public string? AdvertiserPhone { get; set; }
  /// <summary>Stored only — never printed in report appendices.</summary>
@@ -43,6 +43,8 @@ public class ComparableProperty
 
     public string? City { get; set; }
     public string District { get; set; } = "";
+    public string? PlanNumber { get; set; }
+    public string? PlotNumber { get; set; }
     public string? Description { get; set; }
 
  /// <summary>field | office | system — intake stream.</summary>
@@ -57,27 +59,61 @@ public class ComparableProperty
 
     public bool IsActive { get; set; } = true;
 
- // ق-3: منظومة الوسوم البشرية — السجل يبقى موسوماً لا يُحذف.
- /// <summary>normal | anomalous | unreliable — وسم الموثوقية يضعه المقيّم بمبرر.</summary>
+ // Q-3: human tagging system — the record stays tagged; it is not deleted.
+ /// <summary>normal | anomalous | unreliable — reliability tag set by the valuer with a rationale.</summary>
     public string ReliabilityTag { get; set; } = ComparableReliabilityTags.Normal;
- /// <summary>وسم «مكرر» — بشري لا آلي؛ المرفوض تسجيل نفس العملية مرتين لا تعاقب البيوع.</summary>
+ /// <summary>"Duplicate" tag — human, not automatic; rejects recording the same deal twice, not successive sales.</summary>
     public bool IsDuplicateTagged { get; set; }
- /// <summary>إلزامي عند أي وسم مفعَّل.</summary>
+ /// <summary>Required when any tag is enabled.</summary>
     public string? TagRationale { get; set; }
- /// <summary>الوسم مؤرَّخ باسم واضعه (بطاقة مصدر).</summary>
+ /// <summary>Tag is dated with the author name (source card).</summary>
     public string? TaggedByUserId { get; set; }
     public DateTime? TaggedAtUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
- /// <summary>ق-3: الموسوم شاذاً/غير موثوق/مكرراً يُستبعد من الاقتراحات (ويُميَّز بصرياً في القوائم).</summary>
+ /// <summary>Q-3: anomalous/unreliable/duplicate tagged items are excluded from suggestions (and visually marked in lists).</summary>
     public bool IsExcludedFromSuggestions =>
         IsDuplicateTagged
         || !string.Equals(ReliabilityTag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
+
+ /// <summary>
+ /// B2/Q-3: tagging rules on the aggregate — any enabled tag requires a substantive rationale (Q-8-2),
+ /// and the tag is dated with the author; clearing all tags clears the trail.
+ /// Returns (field name, message) on rejection.
+ /// </summary>
+    public (string Field, string MessageAr)? ApplyQualityTags(
+        string? reliabilityTag,
+        bool isDuplicateTagged,
+        string? tagRationale,
+        string? taggedByUserId,
+        DateTime nowUtc)
+    {
+        if (!ComparableReliabilityTags.IsKnown(reliabilityTag))
+            return ("reliabilityTag", "وسم الموثوقية غير معروف (عادي/شاذ/غير موثوق)");
+
+        var tag = ComparableReliabilityTags.Normalize(reliabilityTag);
+        var anyTag = isDuplicateTagged
+            || !string.Equals(tag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
+        if (anyTag && string.IsNullOrWhiteSpace(tagRationale))
+            return ("tagRationale", "مبرر الوسم إلزامي عند وسم شاذ/غير موثوق/مكرر");
+        if (anyTag && JustificationRules.IsTooShort(tagRationale))
+            return ("tagRationale", JustificationRules.TooShortMessageAr("مبرر الوسم"));
+
+        ReliabilityTag = tag;
+        IsDuplicateTagged = isDuplicateTagged;
+        TagRationale = anyTag ? tagRationale!.Trim() : null;
+        TaggedByUserId = anyTag
+            ? (string.IsNullOrWhiteSpace(taggedByUserId) ? "unknown" : taggedByUserId.Trim())
+            : null;
+        TaggedAtUtc = anyTag ? nowUtc : null;
+        UpdatedAtUtc = nowUtc;
+        return null;
+    }
 }
 
-/// <summary>ق-3/1 — وسم موثوقية المقارن: عادي · شاذ · غير موثوق.</summary>
+/// <summary>Q-3/1 — comparable reliability tag: normal · anomalous · unreliable.</summary>
 public static class ComparableReliabilityTags
 {
     public const string Normal = "normal";
@@ -111,19 +147,19 @@ public static class ComparableTransactionKinds
 
     public static string LabelAr(string value) => value switch
     {
-        Offer => "عرض",
-        Executed => "تنفيذ",
+        Offer => "عرض قائم",
+        Executed => "صفقة منفذة",
         _ => value,
     };
 }
 
 public static class ComparablePriceDescriptions
 {
- /// <summary>حد — سقف أعلى يحدّه البائع (ق-2).</summary>
+ /// <summary>Ceiling — upper bound set by the seller (Q-2).</summary>
     public const string Asking = "asking";
- /// <summary>ق-2: أُسقطت من قوائم الإدخال (كانت من العينة) — تبقى مقروءة للسجلات القديمة.</summary>
+ /// <summary>Q-2: dropped from input lists (was sample data) — still readable for legacy records.</summary>
     public const string Negotiable = "negotiable";
- /// <summary>سوم — آخر سعر من راغب شراء (ق-2).</summary>
+ /// <summary>Som — last price from a willing buyer (Q-2).</summary>
     public const string Som = "som";
 
     public static bool IsKnown(string? value) =>

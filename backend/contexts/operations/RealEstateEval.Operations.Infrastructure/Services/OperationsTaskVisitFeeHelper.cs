@@ -1,3 +1,4 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
@@ -6,8 +7,10 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
 {
@@ -181,9 +184,6 @@ public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
 
         return added;
     }
-
-    public Task SaveChargesAsync(CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
 
     private async Task<string> ResolveReviewerTypeAsync(
         string assigneeId,

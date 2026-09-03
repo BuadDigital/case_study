@@ -4,6 +4,9 @@ export type OutboxKind =
   | "attachment-upload"
   | "party-submission-save"
   | "party-submission-submit"
+  | "operations-task-patch"
+  | "operations-task-comment"
+  | "property-court-access"
   | "key-envelope-create"
   | "key-envelope-assignment-add"
   | "key-envelope-assignment-confirm"
@@ -30,6 +33,11 @@ export type OfflineOutboxItem = {
   targetId: string;
   /** JSON payload for replay. */
   payloadJson: string;
+  /**
+   * Stable Idempotency-Key for this outbox intent. Replayed on flush so
+   * online retries after timeout match the original user action.
+   */
+  idempotencyKey?: string;
   /** When kind is attachment-upload, the local placeholder id written into drafts. */
   localAttachmentId?: string;
   scope?: string;

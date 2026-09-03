@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/ui-kit";
+import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
-import { buildCaseStudyReportPrintHtml } from "../../lib/prototype/case-study-report-html";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
-import type { CaseStudyReportModel } from "../../lib/prototype/case-study-report-model";
+import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 
 type Props = {
   model: CaseStudyReportModel;
@@ -15,14 +16,7 @@ export function CaseStudyReportActions({ model }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPreviewOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [previewOpen]);
+  useEscapeKey(previewOpen, () => setPreviewOpen(false));
 
   const printFromPreview = useCallback(() => {
     window.print();
@@ -51,7 +45,7 @@ export function CaseStudyReportActions({ model }: Props) {
 
       {previewOpen ? (
         <ModalOverlay
-          className="z-[1200] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
+          className="z-[var(--z-lightbox)] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
           onClick={() => setPreviewOpen(false)}
           role="dialog"
           aria-modal="true"

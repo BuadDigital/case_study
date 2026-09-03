@@ -1,6 +1,9 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Operations.Application.Rules;
 
 /// <summary>
 /// Court-visit result normalization and system comment fan-out for operations tasks.
@@ -9,7 +12,10 @@ public static class OperationsTaskCourtVisitRules
 {
     private static readonly HashSet<string> ValidCourtVisitKinds =
     [
-        "received", "other_party", "none", "other",
+        CourtVisitOutcomeKindValues.Received,
+        CourtVisitOutcomeKindValues.OtherParty,
+        CourtVisitOutcomeKindValues.None,
+        CourtVisitOutcomeKindValues.Other,
     ];
 
     public static (OperationsTaskCourtVisitResultDto? Result, string? Error) Normalize(
@@ -23,7 +29,7 @@ public static class OperationsTaskCourtVisitRules
             return (null, "نتيجة زيارة المحكمة غير مدعومة");
 
         var other = (raw.Other ?? "").Trim();
-        if (kind == "other" && other.Length == 0)
+        if (kind == CourtVisitOutcomeKindValues.Other && other.Length == 0)
             return (null, "يلزم توضيح النتيجة عند اختيار «أخرى»");
 
         var statement = NullIfBlank(raw.Statement);
@@ -114,15 +120,14 @@ public static class OperationsTaskCourtVisitRules
     public static string KindLabel(OperationsTaskCourtVisitResultDto result) =>
         result.Kind switch
         {
-            "received" => "استُلم ظرف مفاتيح",
-            "other_party" => "الظرف عند طرف آخر",
-            "none" => "لا توجد مفاتيح مسجلة لدى الدائرة",
-            "other" => string.IsNullOrWhiteSpace(result.Other)
+            CourtVisitOutcomeKindValues.Received => "استُلم ظرف مفاتيح",
+            CourtVisitOutcomeKindValues.OtherParty => "الظرف عند طرف آخر",
+            CourtVisitOutcomeKindValues.None => "لا توجد مفاتيح مسجلة لدى الدائرة",
+            CourtVisitOutcomeKindValues.Other => string.IsNullOrWhiteSpace(result.Other)
                 ? "أخرى"
                 : "أخرى — " + result.Other.Trim(),
             _ => result.Kind,
         };
 
-    private static string? NullIfBlank(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? NullIfBlank(string? value) => Texts.NullIfBlank(value);
 }

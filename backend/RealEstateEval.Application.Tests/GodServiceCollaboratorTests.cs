@@ -1,6 +1,14 @@
+using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -165,11 +173,11 @@ public class GodServiceCollaboratorTests
     [Fact]
     public void Inspector_fee_stable_transaction_key_is_deterministic()
     {
-        var a = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var a = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-orphan");
-        var b = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var b = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-orphan");
-        var c = RealEstateEval.Infrastructure.Services.InspectorFeeLedgerResolver
+        var c = RealEstateEval.Financial.Infrastructure.Services.InspectorFeeLedgerResolver
             .StableGuidFromKey("tx:PO-other");
 
         Assert.Equal(a, b);
@@ -215,6 +223,22 @@ public class GodServiceCollaboratorTests
 
         var errors = PartyTaskSubmissionPayloadRules.ValidateForSubmit(entity);
         Assert.True(errors.ContainsKey("coordinates"));
+        Assert.DoesNotContain("siteLetterFileName", errors.Keys);
+    }
+
+    [Fact]
+    public void Site_letter_is_optional_when_property_has_plan_and_plot()
+    {
+        using var doc = JsonDocument.Parse("""{"siteLetterFileName":""}""");
+        var waived = new Dictionary<string, string>();
+        PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
+            waived, doc.RootElement, "1234", "56");
+        Assert.Empty(waived);
+
+        var required = new Dictionary<string, string>();
+        PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
+            required, doc.RootElement, "1234", "");
+        Assert.Equal("خطاب الموقع مطلوب", required["siteLetterFileName"]);
     }
 
     [Fact]
@@ -235,19 +259,20 @@ public class GodServiceCollaboratorTests
     [Fact]
     public void Workflow_visibility_hides_foreign_assignee()
     {
-        var filter = new RealEstateEval.Infrastructure.Services.WorkflowTaskVisibilityFilter();
         var tasks = new[]
         {
             FieldInspectionTask(Guid.NewGuid(), "mine", WorkflowTaskStatus.Open, assigneeId: "me"),
             FieldInspectionTask(Guid.NewGuid(), "theirs", WorkflowTaskStatus.Open, assigneeId: "them"),
         }.AsQueryable();
 
-        var visible = filter.VisibleTaskQuery(tasks, new PermissionsDto
-        {
-            UserId = "u1",
-            PrototypeRole = "field-inspector",
-            DistributionAssigneeId = "me",
-        }).ToList();
+        var visible = tasks
+            .Where(RealEstateEval.CaseStudy.Application.Rules.WorkflowTaskVisibilityRules.VisibleTo(new PermissionsDto
+            {
+                UserId = "u1",
+                PrototypeRole = "field-inspector",
+                DistributionAssigneeId = "me",
+            }))
+            .ToList();
 
         Assert.Single(visible);
         Assert.Equal("me", visible[0].AssigneeId);

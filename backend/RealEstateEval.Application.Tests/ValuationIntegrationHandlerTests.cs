@@ -2,10 +2,15 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Integration;
+using RealEstateEval.Valuation.Infrastructure.Integration;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -21,7 +26,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
@@ -45,7 +50,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
@@ -82,20 +87,20 @@ public class ValuationIntegrationHandlerTests
       new ValuationRequestCreatedPayload("vr-2", PropertyId.ToString(), "PO-300"));
     await contexts.Valuation.SaveChangesAsync();
 
-    var row = await contexts.Legacy.OutboxMessages.SingleAsync();
+    var row = await contexts.Messaging.OutboxMessages.SingleAsync();
     Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, row.EventType);
     Assert.Contains("PO-300", row.PayloadJson);
   }
 
-  private static ApplicationDbContext CreateDb()
+  private static CaseStudyDbContext CreateDb()
   {
-    var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+    var options = new DbContextOptionsBuilder<CaseStudyDbContext>()
       .UseInMemoryDatabase($"valuation-integration-{Guid.NewGuid():N}")
       .Options;
-    return new ApplicationDbContext(options);
+    return new CaseStudyDbContext(options);
   }
 
-  private static void SeedOpenAppraisalTask(ApplicationDbContext db)
+  private static void SeedOpenAppraisalTask(CaseStudyDbContext db)
   {
     db.WorkflowTasks.Add(WorkflowTask.Create(
       WorkflowTaskKind.PropertyAppraisal,

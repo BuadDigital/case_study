@@ -1,3 +1,4 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
@@ -6,16 +7,19 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class OperationsTaskNotifier
 {
     private static readonly string[] StakeholderRoles =
     [
-        "section-supervisor",
+        StaffRoleIds.SectionSupervisor,
  // general managers often oversee case study — keep in ops lifecycle loop
-        "general-manager",
+        StaffRoleIds.GeneralManager,
     ];
 
     private readonly OperationsDbContext _ops;
@@ -24,15 +28,7 @@ public sealed class OperationsTaskNotifier
     private readonly IUserLabelLookup _labels;
     private readonly TimeProvider _time;
 
-    public OperationsTaskNotifier(
-        OperationsDbContext ops,
-        IdentityDbContext db,
-        INotificationService notifications,
-        IUserLabelLookup? labels = null,
-        TimeProvider? time = null)
-        : this(ops, new IdentityDirectory(db), notifications, labels ?? new UserLabelLookup(db), time)
-    {
-    }
+    // A8: the IdentityDbContext convenience ctor is gone — pass IIdentityDirectory + IUserLabelLookup.
 
     [ActivatorUtilitiesConstructor]
     public OperationsTaskNotifier(
@@ -269,7 +265,7 @@ public sealed class OperationsTaskNotifier
  // same each time, so the SourceEvent must stay stable (no timestamp): while the previous
  // reminder is still unread, NotificationService refreshes it in place
  // (IX_UserNotifications_UserId_SourceEvent_Unread) instead of piling up duplicate
- // "تذكير بمهمة" rows in the activity feed. A new row only appears after the user read
+ // "Task Reminder" rows in the activity feed. A new row only appears after the user reads
  // the previous one.
         var body = $"تذكير بالمهمة {entity.DisplayId}: {entity.Title}.";
         var href = OperationsTaskHref(entity.Id);
@@ -293,7 +289,7 @@ public sealed class OperationsTaskNotifier
                 cancellationToken);
         }
 
- // Auto reminders escalate to creator until close (دورة اسناد المهام ).
+ // Auto reminders escalate to creator until close (assignment cycle).
         if (!auto) return;
 
         var creatorId = entity.CreatedBy.Trim();
@@ -439,16 +435,10 @@ public sealed class OperationsTaskNotifier
         if (creatorId.Length > 0)
             ids.Add(creatorId);
 
-        foreach (var role in StakeholderRoles)
+        foreach (var id in await ResolveStakeholderRoleUserIdsAsync(cancellationToken))
         {
-            var roleUsers = await _identity.ResolveUserIdsWithPrototypeRoleAsync(
-                role,
-                cancellationToken);
-            foreach (var id in roleUsers)
-            {
-                if (!string.IsNullOrWhiteSpace(id))
-                    ids.Add(id);
-            }
+            if (!string.IsNullOrWhiteSpace(id))
+                ids.Add(id);
         }
 
         var exclude = excludeUserId?.Trim() ?? "";
@@ -456,6 +446,24 @@ public sealed class OperationsTaskNotifier
             ids.Remove(exclude);
 
         return ids.ToList();
+    }
+
+    private IReadOnlyList<string>? _stakeholderRoleUserIds;
+
+ /// <summary>One call for each role in the scope of the order — a reminder was repeated for each task.</summary>
+    private async Task<IReadOnlyList<string>> ResolveStakeholderRoleUserIdsAsync(
+        CancellationToken cancellationToken)
+    {
+        if (_stakeholderRoleUserIds is not null) return _stakeholderRoleUserIds;
+        var ids = new List<string>();
+        foreach (var role in StakeholderRoles)
+        {
+            ids.AddRange(await _identity.ResolveUserIdsWithPrototypeRoleAsync(
+                role,
+                cancellationToken));
+        }
+        _stakeholderRoleUserIds = ids;
+        return ids;
     }
 
     private async Task<string?> ResolveUserIdForAssigneeAsync(

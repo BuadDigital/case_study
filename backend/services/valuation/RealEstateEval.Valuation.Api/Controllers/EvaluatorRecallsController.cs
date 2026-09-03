@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
@@ -25,7 +28,7 @@ public class EvaluatorRecallsController : ControllerBase
     public async Task<ActionResult<EvaluatorRecallDto>> Get(string taskId, CancellationToken ct)
     {
         var dto = await _recalls.GetAsync(taskId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        return this.OkOrEmpty(dto);
     }
 
     [HttpPost]

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>
 /// Creates end-of-month vendor billing statements automatically (design ).

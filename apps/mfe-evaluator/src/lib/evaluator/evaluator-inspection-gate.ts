@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
 export type InspectionGateState =
   | { ready: true }
@@ -20,22 +20,22 @@ export function findSiblingInspectionTask(
 }
 
 /**
- * Appraiser starts valuation only after the specialist accepts inspection
- * (party data the valuer uses officially). Prefer server
- * `fieldInspectionAccepted` — party lists hide the sibling inspection row.
+ * Appraiser starts valuation after field inspection is completed/submitted.
+ * Specialist اعتماد of the valuation report (تقرير التقييم) is a later step
+ * inside دراسة الحالة — not a gate on starting appraisal.
+ * Prefer server `fieldInspectionCompleted` — party lists hide the sibling row.
  */
 export function inspectionGateForAppraisal(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): InspectionGateState {
-  if (typeof appraisalTask.fieldInspectionAccepted === "boolean") {
-    return appraisalTask.fieldInspectionAccepted
+  if (typeof appraisalTask.fieldInspectionCompleted === "boolean") {
+    return appraisalTask.fieldInspectionCompleted
       ? { ready: true }
       : {
           ready: false,
-          reason: appraisalTask.fieldInspectionCompleted
-            ? "معاينة العقار مكتملة — بانتظار اعتماد الأخصائي لبيانات الأطراف."
-            : "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اعتماد بيانات معاينة العقار.",
+          reason:
+            "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اكتمال معاينة العقار.",
         };
   }
 
@@ -49,13 +49,11 @@ export function inspectionGateForAppraisal(
   if (inspection.status !== "completed") {
     return {
       ready: false,
-      reason: "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اعتماد بيانات معاينة العقار.",
+      reason:
+        "راقب تقدم الأطراف. لا يبدأ التقييم إلا بعد اكتمال معاينة العقار.",
     };
   }
-  return {
-    ready: false,
-    reason: "معاينة العقار مكتملة — بانتظار اعتماد الأخصائي لبيانات الأطراف.",
-  };
+  return { ready: true };
 }
 
 export function findAppraisalChildForParent(

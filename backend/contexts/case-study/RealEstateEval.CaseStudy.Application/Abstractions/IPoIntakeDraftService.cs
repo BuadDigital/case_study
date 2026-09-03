@@ -1,10 +1,10 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 public interface IPoIntakeDraftService
 {
-    Task<PoIntakeDraftDto?> GetForUserAsync(
+    Task<PoIntakeDraftDto> GetForUserAsync(
         string userId,
         CancellationToken cancellationToken = default);
 

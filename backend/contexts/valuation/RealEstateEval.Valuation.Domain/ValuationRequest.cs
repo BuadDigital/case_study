@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// A valuation request dispatched for one property. Only one may be open per property, so the
@@ -63,7 +65,17 @@ public class ValuationRequest
     }
 
  /// <summary>
- /// An impediment (تعذر) keeps the request open — the property stays held until the
+ /// Q-9 supplement (R2): reopen valuation cycle after deposit — inverse of <see cref="SubmitReport"/>;
+ /// the request reopens and holds the property again until a newer deposit copy.
+ /// </summary>
+    public void ReopenReport(DateTime nowUtc)
+    {
+        Status = ValuationRequestStatus.Progress;
+        UpdatedAtUtc = nowUtc;
+    }
+
+ /// <summary>
+ /// An impediment (unable/blocked) keeps the request open — the property stays held until the
  /// impediment is resolved and a report is submitted.
  /// </summary>
     public ValuationRequestTransition RecordImpediment(DateTime nowUtc)

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Attachments.Application.Rules;
 
 /// <summary>Formats the platform is willing to store and serve back.</summary>
 public enum DetectedFileFormat
@@ -19,9 +19,6 @@ public enum DetectedFileFormat
 /// </summary>
 public static class FileSignatureInspector
 {
- /// <summary>Longest signature we need to look at (RIFF/WEBP needs 12 bytes).</summary>
-    public const int MinimumInspectableBytes = 12;
-
     private static readonly byte[] PngSignature =
         [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 

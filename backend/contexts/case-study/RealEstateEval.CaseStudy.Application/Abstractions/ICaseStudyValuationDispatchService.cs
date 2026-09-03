@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
 /// Creates the native valuation request as content of the property-appraisal child

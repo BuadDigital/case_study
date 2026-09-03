@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -25,7 +27,12 @@ public class PropertyGroupsController : ControllerBase
     public async Task<ActionResult<PropertyGroupDto?>> GetForProperty(
         Guid propertyId,
         CancellationToken ct)
-        => Ok(await _groups.GetForPropertyAsync(propertyId, ct));
+    {
+ // “NoSet” should arrive as JSON null with status 200 not 204 — the TS client always reads the body,
+ // The empty body is interpreted as a network error (HttpNoContentOutputFormatter converts null to 204).
+        var group = await _groups.GetForPropertyAsync(propertyId, ct);
+        return new JsonResult(group);
+    }
 
     [HttpGet("by-property/{propertyId:guid}/suggestions")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

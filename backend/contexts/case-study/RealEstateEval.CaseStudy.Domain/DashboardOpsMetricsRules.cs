@@ -1,4 +1,6 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// Operational dashboard metrics from live workflow tasks — not prototype numbers.
@@ -14,11 +16,11 @@ public static class DashboardOpsMetricsRules
     public const decimal GovernmentReviewSlaDays = 1.5m;
     public const decimal AppraisalSlaDays = 1.5m;
 
-    public const string StageEnfath = "enfath";
-    public const string StageBourse = "bourse";
-    public const string StageDistribution = "distribution";
-    public const string StageCaseStudy = "case-study";
-    public const string StageGovernmentReview = "government-review";
+    public const string StageEnfath = WorkflowTaskPhaseValues.Enfath;
+    public const string StageBourse = WorkflowTaskPhaseValues.Bourse;
+    public const string StageDistribution = WorkflowTaskPhaseValues.Distribution;
+    public const string StageCaseStudy = WorkflowTaskPhaseValues.CaseStudy;
+    public const string StageGovernmentReview = WorkflowTaskKindValues.GovernmentReview;
     public const string StageAppraisal = "appraisal";
 
     public sealed record TaskSnap(
@@ -39,15 +41,6 @@ public static class DashboardOpsMetricsRules
 
     public sealed record YearlyCounts(int Year, IReadOnlyList<int> Monthly);
 
-    public static IReadOnlyList<StageDwell> EmptyStages() =>
-    [
-        Stage(StageEnfath, "البيانات الأولية", EnfathSlaDays, 0, 0),
-        Stage(StageBourse, "البورصة", BourseSlaDays, 0, 0),
-        Stage(StageDistribution, "التوزيع", DistributionSlaDays, 0, 0),
-        Stage(StageCaseStudy, "دراسة الحالة", CaseStudySlaDays, 0, 0),
-        Stage(StageGovernmentReview, "المراجعة الحكومية", GovernmentReviewSlaDays, 0, 0),
-        Stage(StageAppraisal, "التقييم والرفع", AppraisalSlaDays, 0, 0),
-    ];
 
     public static IReadOnlyList<StageDwell> BuildStageDwell(
         IEnumerable<TaskSnap> tasks,

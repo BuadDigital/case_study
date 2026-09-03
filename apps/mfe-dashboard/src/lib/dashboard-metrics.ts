@@ -1,5 +1,5 @@
-import type { PoRow } from "@platform/app-shared/prototype/constants";
-import { normalizePoListStatus } from "@platform/app-shared/prototype/po-list-status";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
+import { normalizePoListStatus } from "@platform/app-shared/app-data/po-list-status";
 import type { OperationsTaskDto } from "@platform/api-client";
 
 /** HTML DONE_ST — completed / fully billed / cancelled. */
@@ -8,11 +8,13 @@ function isDashPoDone(status: string): boolean {
   return s === "completed" || s === "fully_billed" || s === "cancelled";
 }
 
+const DMY_DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+
 export function parseDashDate(value: string | undefined | null): number {
   if (!value) return Number.NaN;
   const iso = Date.parse(value);
   if (!Number.isNaN(iso)) return iso;
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  const m = DMY_DATE_RE.exec(value.trim());
   if (m) {
     const d = Number(m[1]);
     const mo = Number(m[2]) - 1;
@@ -139,23 +141,23 @@ export function buildDashKpis(
 ): DashKpiModel {
   const active = activePoOrders(poRows);
   const today = startOfLocalDay(now);
-  const atRisk = active.filter((o) => {
+  let atRisk = 0;
+  let propsLeft = 0;
+  for (const o of active) {
     const due = parseDashDate(o.dueDate);
-    if (Number.isNaN(due)) return false;
-    return daysUntilDue(due, today) <= 1;
-  }).length;
-  const propsLeft = active.reduce(
-    (n, o) => n + Math.max(0, o.count - o.done),
-    0,
-  );
-  const totalProps = poRows.reduce((a, o) => a + o.count, 0);
+    if (!Number.isNaN(due) && daysUntilDue(due, today) <= 1) atRisk += 1;
+    propsLeft += Math.max(0, o.count - o.done);
+  }
+  let totalProps = 0;
+  let stopped = 0;
+  for (const o of poRows) {
+    totalProps += o.count;
+    if (normalizePoListStatus(o.status) === "stopped") stopped += 1;
+  }
   const overdueTasks = openTasks.filter((t) => {
     const due = parseDashDate(t.dueAt);
     return !Number.isNaN(due) && due < now;
   });
-  const stopped = poRows.filter(
-    (o) => normalizePoListStatus(o.status) === "stopped",
-  ).length;
 
   return {
     activeOrders: active.length,
@@ -188,9 +190,14 @@ export type DashCompletionModel = {
 };
 
 export function buildCompletion(poRows: PoRow[]): DashCompletionModel {
-  const pTotal = poRows.reduce((a, o) => a + o.count, 0);
-  const pReg = poRows.reduce((a, o) => a + o.registered, 0);
-  const pDone = poRows.reduce((a, o) => a + o.done, 0);
+  let pTotal = 0;
+  let pReg = 0;
+  let pDone = 0;
+  for (const o of poRows) {
+    pTotal += o.count;
+    pReg += o.registered;
+    pDone += o.done;
+  }
   const pInProg = Math.max(0, pReg - pDone);
   const pNotReg = Math.max(0, pTotal - pReg);
   return {

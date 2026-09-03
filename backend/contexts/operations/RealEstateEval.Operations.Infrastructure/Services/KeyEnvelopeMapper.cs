@@ -1,7 +1,9 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public static class KeyEnvelopeMapper
 {
@@ -11,6 +13,7 @@ public static class KeyEnvelopeMapper
     {
         Id = row.Id,
         RequestNumber = row.RequestNumber,
+        ReferenceNumber = row.ReferenceNumber,
         Court = row.Court,
         Circuit = row.Circuit,
         KeysCountLabeled = row.KeysCountLabeled,

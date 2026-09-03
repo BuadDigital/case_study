@@ -16,7 +16,7 @@ import {
 import {
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/prototype-modules-api-config";
+} from "@platform/app-shared/app-data/modules-api-config";
 
 export type {
   FinancialSummaryDto,

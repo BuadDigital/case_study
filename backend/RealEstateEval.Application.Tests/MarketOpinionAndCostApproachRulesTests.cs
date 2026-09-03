@@ -1,5 +1,6 @@
 using RealEstateEval.Domain;
 using Xunit;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -22,7 +23,14 @@ public class MarketOpinionAndCostApproachRulesTests
             (50m, 400m, false),
         ]);
         Assert.Equal(120_000m, direct);
-        Assert.Equal(620_000m, CostApproachRules.CostOpinionWithLand(120_000m, 500_000m));
+        Assert.Equal(620_000m, CostApproachRules.CostOpinionWithLand(120_000m, 500_000m, true));
+        // Interactive model specification: Incomplete land enters zero — partial index = buildings alone.
+        Assert.Equal(120_000m, CostApproachRules.CostOpinionWithLand(120_000m, 0m, false));
+        Assert.Equal(120_000m, CostApproachRules.CostOpinionWithLand(120_000m, 500_000m, false));
+        // “Building only”: Buildings alone even with completed land.
+        Assert.Equal(
+            120_000m,
+            CostApproachRules.CostOpinionForScope(120_000m, 500_000m, true, buildingOnlyScope: true));
     }
 
     [Theory]
@@ -99,8 +107,10 @@ public class MarketOpinionAndCostApproachRulesTests
     {
  // Actual 60 over extended 50 = 120% — must stay unclamped so alert 3 sees it.
         Assert.Equal(120m, CostApproachRules.PhysicalObsolescencePct(60m, 50m));
- // But the depreciation VALUE clamps at 100% so the building never goes negative.
-        Assert.Equal(1_000m, CostApproachRules.DepreciationValue(1_000m, 120m));
+ // Interactive model specification: Depreciation without cap — aging > 100% produces a negative value
+ // It is obscured by the M4 methodological alert when relying, not mathematics.
+        Assert.Equal(1_200m, CostApproachRules.DepreciationValue(1_000m, 120m));
+        Assert.Equal(-200m, CostApproachRules.BuildingsAfterDepreciation(1_000m, 1_200m));
     }
 
     [Fact]
@@ -113,8 +123,8 @@ public class MarketOpinionAndCostApproachRulesTests
     [Fact]
     public void Cost_item_catalog_covers_the_15_defined_items()
     {
- // : group 1 (7 مسطحات) + group 2 (8 تجهيزات) + custom.
-        Assert.Equal(7, CostLineItemKeys.Group1.Length);
+ // : group 1 (7 surfaces) + group 2 (8 fittings) + custom.
+        Assert.Equal(8, CostLineItemKeys.Group1.Length);
         Assert.Equal(8, CostLineItemKeys.Group2.Length);
         Assert.True(CostLineItemKeys.IsKnown("fence"));
         Assert.False(CostLineItemKeys.IsKnown("garage"));

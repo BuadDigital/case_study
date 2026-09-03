@@ -7,7 +7,7 @@ public class UsernameLoginRequest
 {
     [Required]
     [MinLength(2)]
-    [MaxLength(64)]
+    [MaxLength(120)]
     public string Username { get; set; } = string.Empty;
 }
 

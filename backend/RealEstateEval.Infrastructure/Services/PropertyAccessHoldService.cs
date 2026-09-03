@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Failures.Application.Abstractions;
 
 namespace RealEstateEval.Infrastructure.Services;
 

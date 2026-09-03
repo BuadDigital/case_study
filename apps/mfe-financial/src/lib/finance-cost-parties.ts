@@ -1,12 +1,12 @@
 /**
- * تجميع بيانات التكاليف حسب المستحق — لعرض قائمة المستحقين.
+ * Aggregate cost data by payee — for the payees list.
  */
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
 export type FinanceCostParty = {
   assigneeId: string;
@@ -15,15 +15,15 @@ export type FinanceCostParty = {
   payeeTypeLabel: string;
   taskKindLabel: string;
   phone: string | null;
-  /** مستحق مفتوح (جاهز) */
+  /** Open due (ready) */
   dueSar: number;
-  /** في مسيرات/أوامر غير مدفوعة */
+  /** In unpaid payrolls/orders */
   inStatementSar: number;
   paidSar: number;
-  /** بنود جاهزة للصرف (عداد) */
+  /** Lines ready for disbursement (count) */
   pendingLines: number;
   openStatements: number;
-  /** إجمالي مستحق له الآن (مع ضريبة المورّد 15٪) */
+  /** Total due to them now (incl. vendor 15% VAT) */
   balanceSar: number;
 };
 
@@ -151,7 +151,7 @@ export function statementDisplayTotal(s: {
 }
 
 /**
- * تسمية تشغيلية لحالة المسير/أمر الصرف — أوضح من status الخام بعد المطابقة.
+ * Operational label for payroll/disbursement status — clearer than raw status after match.
  */
 export function partyBillingWorkflowLabel(s: {
   status: string;
@@ -177,7 +177,7 @@ export function partyBillingWorkflowLabel(s: {
   return (s.statusLabel || "").trim() || s.status;
 }
 
-/** tone لـ finStatusFor */
+/** tone for finStatusStyle (ui-kit) */
 export function partyBillingWorkflowTone(s: {
   status: string;
   vendorInvoiceMatched?: boolean;

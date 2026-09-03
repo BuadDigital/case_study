@@ -3,8 +3,15 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Attachments.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Aggregates credential + case-study match + gates + methodology alerts.
@@ -37,7 +44,7 @@ public sealed class ValuationIssuanceGateService(
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
         var hasStructures = false;
         var propertyType = "";
- // حدود المعاينة (القرار 24 + ق-7) — تغذي m18/m21.
+ // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
         string? inspectionRestrictionReason = null;
@@ -67,7 +74,14 @@ public sealed class ValuationIssuanceGateService(
             }
         }
 
-        var market = await selections.ListAsync(valuationRequestId, cancellationToken);
+        var market = await selections.ListAsync(
+            valuationRequestId,
+            ComparableSelectionContexts.Market,
+            cancellationToken);
+        var landWithinCost = await selections.ListAsync(
+            valuationRequestId,
+            ComparableSelectionContexts.LandWithinCost,
+            cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var hasReconSaved = !string.IsNullOrWhiteSpace(recon?.MethodsRationale)
@@ -76,12 +90,16 @@ public sealed class ValuationIssuanceGateService(
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
             || (cost?.Lines.Count ?? 0) > 0;
 
- // ق-2/ق-3 المعدَّل: cost alerts are irrelevant when the approach is off
+ // Q-2/Q-3 amended: cost alerts are irrelevant when the approach is off
  // (bare land defaults it off; land with structures keeps it available).
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
         var costApproachEnabled = approachSettings?.CostApproachEnabled
             ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
+        // "Building only" scope: land section hidden — its gates do not apply.
+        var costLandRelevant = costApproachEnabled
+            && !CostScopeKeys.IsBuildingOnly(approachSettings?.CostScopeKey);
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -99,10 +117,31 @@ public sealed class ValuationIssuanceGateService(
                     .ToList(),
                 today),
             ValuationIssuanceGateRules.DeedNatureMatch(deedKind, matchOutcome),
-            ValuationIssuanceGateRules.MinAdoptedComparables(market?.AdoptedCount ?? 0),
-            ValuationIssuanceGateRules.ComparableWeights(
-                market?.WeightsSumTo100 ?? true,
+            ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+                "market",
+                "مقارنات أسلوب السوق",
+                marketApproachEnabled,
                 market?.AdoptedCount ?? 0),
+            ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+                "land_within_cost",
+                "مقارنات الأرض ضمن التكلفة",
+                costLandRelevant,
+                landWithinCost?.AdoptedCount ?? 0),
+            ValuationIssuanceGateRules.CostLandEstimateComplete(
+                costLandRelevant,
+                cost?.LandEstimateComplete == true),
+            ValuationIssuanceGateRules.ComparableWeights(
+                "market",
+                "أوزان مقارنات أسلوب السوق = 100٪",
+                marketApproachEnabled,
+                market?.WeightsSumTo100 ?? true,
+                marketApproachEnabled ? market?.AdoptedCount ?? 0 : 0),
+            ValuationIssuanceGateRules.ComparableWeights(
+                "land_within_cost",
+                "أوزان مقارنات الأرض ضمن التكلفة = 100٪",
+                costLandRelevant,
+                landWithinCost?.WeightsSumTo100 ?? true,
+                costLandRelevant ? landWithinCost?.AdoptedCount ?? 0 : 0),
             ValuationIssuanceGateRules.ReconciliationWeights(
                 hasReconSaved,
                 recon?.WeightsSumTo100 ?? false),
@@ -118,8 +157,8 @@ public sealed class ValuationIssuanceGateService(
                 o.Acknowledged))
             .ToList();
 
- // القرار 24: سبب التقييد المنظّم هو شرح المقيّم لقيود المعاينة —
- // يفي بمبرر m18 دون إعادة كتابته في بوابات الإصدار (المصدر الواحد).
+ // Decision 24: the structured restriction reason is the valuer's explanation of inspection limits —
+ // it satisfies the m18 rationale without rewriting it in issuance gates (single source).
         if (!string.IsNullOrWhiteSpace(inspectionRestrictionReason)
             && resolutions.All(r => !string.Equals(
                 r.Code,
@@ -236,8 +275,8 @@ public sealed class ValuationIssuanceGateService(
     }
 
  /// <summary>
- /// for every active dictionary type marked required (and matching the property
- /// type, when linked), at least one printable classified upload must exist.
+ /// For every active dictionary type marked required (and matching the property
+ /// type, when linked), at least one upload whose scope maps to that type must exist.
  /// </summary>
     private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
         string propertyId,
@@ -255,17 +294,14 @@ public sealed class ValuationIssuanceGateService(
             .ToList();
         if (required.Count == 0) return [];
 
-        var printableKeys = (await attachments.ListForPropertyAsync(propertyId, cancellationToken))
-            .Where(a => a.PrintInReport)
-            .Select(a => a.DictionaryTypeKey)
-            .Distinct()
-            .ToList();
-        var have = printableKeys
-            .Select(k => (k ?? "").Trim().ToLowerInvariant())
+        var presentKeys = (await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken))
+            .Select(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope))
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k!.Trim().ToLowerInvariant())
             .ToHashSet(StringComparer.Ordinal);
 
         return required
-            .Where(t => !have.Contains(t.Key.Trim().ToLowerInvariant()))
+            .Where(t => !presentKeys.Contains(t.Key.Trim().ToLowerInvariant()))
             .Select(t => t.LabelAr)
             .ToList();
     }

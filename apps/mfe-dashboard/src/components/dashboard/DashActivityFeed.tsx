@@ -7,13 +7,10 @@ import { useSyncedNotifications } from "@platform/app-shared/notifications/useSy
 import { filterNotificationsForRole } from "@platform/app-shared/notifications/role-notification-policy";
 import type { AppNotification } from "@platform/app-shared/notifications/notification-store";
 import { formatRelativeAr, formatGapAr } from "../../lib/dashboard-metrics";
-import {
-  dashCard,
-  dashIco,
-  dashLine,
-  dashLineNew,
-} from "../../lib/dashboard-tw";
-import { cn } from "@platform/ui-kit";
+import { dashIco, dashLine, dashLineNew } from "../../lib/dashboard-tw";
+
+import { cn, opsDashCard } from "@platform/ui-kit";
+
 import {
   DashActivityIconSvg,
   type DashActivityIcon,
@@ -69,13 +66,10 @@ export function DashActivityFeed() {
 
   const items = useMemo(() => {
     return filterNotificationsForRole(role, allItems)
-      .slice()
-      .sort(
-        (a, b) =>
-          Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
-          b.id.localeCompare(a.id),
-      )
-      .slice(0, FEED_LIMIT);
+      .map((item) => ({ item, ts: Date.parse(item.createdAt) }))
+      .sort((a, b) => b.ts - a.ts || b.item.id.localeCompare(a.item.id))
+      .slice(0, FEED_LIMIT)
+      .map(({ item }) => item);
   }, [allItems, role]);
 
   const unreadCount = items.filter((item) => !item.read).length;
@@ -90,7 +84,7 @@ export function DashActivityFeed() {
   };
 
   return (
-    <div className={cn(dashCard, "mb-4 border-s-[3px] border-s-gold")}>
+    <div className={cn(opsDashCard, "mb-4 border-s-[3px] border-s-gold")}>
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <h3 className="m-0 text-[14px] font-bold text-heading">آخر الأحداث</h3>
         {unreadCount ? (

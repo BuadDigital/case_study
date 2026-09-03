@@ -1,7 +1,7 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Failures.Domain;
 
 /// <summary>
-/// Property failure (تعذر). Status transitions are owned here; side effects (timeline,
+/// Property failure (obstruction). Status transitions are owned here; side effects (timeline,
 /// task obstruction, deed status) stay in the application service.
 /// </summary>
 public class PropertyFailure
@@ -19,7 +19,7 @@ public class PropertyFailure
     public string Title { get; private set; } = "";
     public string ProblemTypeId { get; private set; } = "";
  /// <summary>suspected | internal</summary>
-    public string Severity { get; private set; } = "internal";
+    public string Severity { get; private set; } = PropertyFailureSeverity.Internal;
     public string RaisedByRole { get; private set; } = "";
     public string InternalNote { get; private set; } = "";
     public string FinalNote { get; private set; } = "";
@@ -69,9 +69,9 @@ public class PropertyFailure
 
     public bool TryUpgradeToInternal(DateTime nowUtc)
     {
-        if (Status != PropertyFailureStatus.Internal || Severity != "suspected")
+        if (Status != PropertyFailureStatus.Internal || Severity != PropertyFailureSeverity.Suspected)
             return false;
-        Severity = "internal";
+        Severity = PropertyFailureSeverity.Internal;
         UpdatedAtUtc = nowUtc;
         return true;
     }

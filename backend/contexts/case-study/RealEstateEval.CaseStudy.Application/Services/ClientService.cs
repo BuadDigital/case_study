@@ -1,8 +1,12 @@
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Application;
 
-namespace RealEstateEval.Application.Services;
+namespace RealEstateEval.CaseStudy.Application.Services;
 
 public class ClientService(IClientRepository clients, TimeProvider? time = null) : IClientService
 {
@@ -133,8 +137,7 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
         return errors;
     }
 
-    private static string? Normalize(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string? Normalize(string? value) => Texts.NullIfBlank(value);
 
     private static ClientDto ToDto(Client c) => new()
     {

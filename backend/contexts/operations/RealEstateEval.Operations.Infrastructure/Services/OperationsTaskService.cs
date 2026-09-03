@@ -1,9 +1,13 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 /// <summary>
 /// Operations-task façade. Query, commands, and fees/notifications live on collaborators.
@@ -31,21 +35,22 @@ public sealed class OperationsTaskService : IOperationsTaskService
     {
     }
 
- /// <summary>Test-friendly compose from shared bounded-context pair. The charge service
- /// is passed as its abstraction: the concrete lives in the Financial slice (A8).</summary>
+ /// <summary>Test-friendly compose from shared bounded-context pair. A8: takes the Identity
+ /// abstractions instead of the Identity context type.</summary>
     public static OperationsTaskService Create(
         OperationsDbContext ops,
         ICourtVisitFeeChargeService charges,
-        IdentityDbContext identity,
+        IIdentityDirectory identityDirectory,
+        IUserLabelLookup labels,
         INotificationService notifications,
         IPartyFeePricingService pricing,
         TimeProvider? time = null)
     {
         var clock = time ?? TimeProvider.System;
-        var query = new OperationsTaskQueryService(ops, charges, new UserLabelLookup(identity));
-        var notifier = new OperationsTaskNotifier(ops, identity, notifications, time: clock);
+        var query = new OperationsTaskQueryService(ops, charges, labels);
+        var notifier = new OperationsTaskNotifier(ops, identityDirectory, notifications, labels, clock);
         var visitFees = new OperationsTaskVisitFeeHelper(
-            ops, charges, new IdentityDirectory(identity), pricing, clock);
+            ops, charges, identityDirectory, pricing, clock);
         var commands = new OperationsTaskCommands(ops, query, notifier, visitFees, clock);
         return new OperationsTaskService(query, commands, visitFees);
     }

@@ -6,6 +6,16 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -16,7 +26,7 @@ namespace RealEstateEval.Application.Tests;
 internal static class TestBoundedContexts
 {
     public sealed record Bundle(
-        ApplicationDbContext App,
+        CaseStudyDbContext CaseStudy,
         FailuresDbContext Failures,
         OperationsDbContext Ops,
         string DatabaseName,
@@ -27,8 +37,8 @@ internal static class TestBoundedContexts
         name ??= $"ree-test-{Guid.NewGuid():N}";
         var root = new InMemoryDatabaseRoot();
 
-        var app = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
+        var caseStudy = new CaseStudyDbContext(
+            new DbContextOptionsBuilder<CaseStudyDbContext>()
                 .UseInMemoryDatabase(name, root)
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
@@ -45,7 +55,7 @@ internal static class TestBoundedContexts
                 .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options);
 
-        return new Bundle(app, failures, ops, name, root);
+        return new Bundle(caseStudy, failures, ops, name, root);
     }
 
  /// <summary>
@@ -80,12 +90,11 @@ internal static class TestBoundedContexts
         NotificationRecipientResolver? recipients = null,
         IUserLabelLookup? labels = null)
     {
-        var app = bundle.App;
-        var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
+        var cs = bundle.CaseStudy;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(cs);
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(bundle.Failures));
         notifications ??= new NullNotificationService();
-        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
+        recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
@@ -98,7 +107,7 @@ internal static class TestBoundedContexts
     }
 
     public static FailureService CreateFailureService(
-        ApplicationDbContext app,
+        DbContext app,
         FailuresDbContext failures,
         IWorkflowTaskShellPatcher? tasks = null,
         IPropertyTimelineService? timeline = null,
@@ -110,7 +119,7 @@ internal static class TestBoundedContexts
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(failures));
         notifications ??= new NullNotificationService();
-        recipients ??= NotificationRecipientResolver.ForContexts(cs, identity);
+        recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
@@ -123,7 +132,7 @@ internal static class TestBoundedContexts
     }
 
     public static PropertyAccessHoldService CreateAccessHolds(
-        ApplicationDbContext app,
+        DbContext app,
         FailuresDbContext failures)
     {
         var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
@@ -132,12 +141,11 @@ internal static class TestBoundedContexts
 
     public static KeyEnvelopesService CreateKeyEnvelopesService(Bundle bundle)
     {
-        var app = bundle.App;
-        return CreateKeyEnvelopesService(app, bundle.Failures, bundle.Ops);
+        return CreateKeyEnvelopesService(bundle.CaseStudy, bundle.Failures, bundle.Ops);
     }
 
     public static KeyEnvelopesService CreateKeyEnvelopesService(
-        ApplicationDbContext app,
+        DbContext app,
         FailuresDbContext failures,
         OperationsDbContext ops)
     {
@@ -149,19 +157,19 @@ internal static class TestBoundedContexts
             new KeyReceiptFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(app)),
             TestInspectorFeeServiceFactory.ShareAttachmentLookup(app),
             CreateAccessHolds(app, failures),
-            new KeyEnvelopePeopleResolver(identity),
+            new KeyEnvelopePeopleResolver(new UserLabelLookup(identity)),
             new NullNotificationService(),
-            NotificationRecipientResolver.ForContexts(cs, identity));
+            TestNotificationRecipients.ForContexts(cs, identity));
     }
 
-    public static PropertyKeyGateResolver CreateKeyGate(ApplicationDbContext app, OperationsDbContext ops) =>
+    public static PropertyKeyGateResolver CreateKeyGate(DbContext app, OperationsDbContext ops) =>
         new(ops, new CaseStudyLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(app)));
 
     public static PropertyKeyGateResolver CreateKeyGate(Bundle bundle) =>
-        CreateKeyGate(bundle.App, bundle.Ops);
+        CreateKeyGate(bundle.CaseStudy, bundle.Ops);
 
     public static PropertyKeysService CreatePropertyKeys(Bundle bundle) =>
-        new(bundle.Ops, new CaseStudyLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(bundle.App)));
+        new(bundle.Ops, new CaseStudyLookup(bundle.CaseStudy));
 
     public static OperationsTaskService CreateOperationsTasks(
         Bundle bundle,
@@ -169,11 +177,12 @@ internal static class TestBoundedContexts
         IPartyFeePricingService? pricing = null) =>
         OperationsTaskService.Create(
             bundle.Ops,
-            new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)),
-            TestInspectorFeeServiceFactory.ShareIdentity(bundle.App),
+            new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(bundle.CaseStudy)),
+            new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy)),
+            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy)),
             notifications ?? new NullNotificationService(),
-            pricing ?? new PartyFeePricingService(
-                TestInspectorFeeServiceFactory.ShareFinancial(bundle.App)));
+            pricing ?? TestPricing.Create(
+                TestInspectorFeeServiceFactory.ShareFinancial(bundle.CaseStudy)));
 
     private sealed class NullNotificationService : INotificationService
     {

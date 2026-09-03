@@ -44,7 +44,4 @@ public static class RealEstateEvalServiceModule
         return (IRealEstateEvalServiceModule)Activator.CreateInstance(types[0])!;
     }
 
-    public static IRealEstateEvalServiceModule ResolveFromEntryAssembly() =>
-        ResolveFrom(Assembly.GetEntryAssembly()
-            ?? throw new InvalidOperationException("Entry assembly is required."));
 }

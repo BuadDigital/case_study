@@ -3,12 +3,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -18,9 +26,10 @@ public sealed class AssignmentNotificationRegressionTests
     public async Task OperationsTask_CreateAsync_queues_assignee_notification()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedAssigneeProfile(db, "user-reviewer", "gov-1");
-        await db.SaveChangesAsync();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(bundle.CaseStudy);
+        SeedAssigneeProfile(identity, "user-reviewer", "gov-1");
+        await identity.SaveChangesAsync();
         var service = CreateOpsService(bundle);
 
         var (task, error) = await service.CreateAsync(
@@ -38,7 +47,7 @@ public sealed class AssignmentNotificationRegressionTests
 
         Assert.Null(error);
         Assert.NotNull(task);
-        var payload = await AssertSingleNotificationRequest(db);
+        var payload = await AssertSingleNotificationRequest(messaging);
         Assert.Equal(["user-reviewer"], payload.UserIds);
         Assert.Equal("مهمة جديدة بانتظارك", payload.Title);
         Assert.Equal(NotificationContract.Categories.Workflow, payload.Category);
@@ -52,10 +61,11 @@ public sealed class AssignmentNotificationRegressionTests
     public async Task OperationsTask_ReassignAsync_queues_new_assignee_notification()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedAssigneeProfile(db, "user-a", "a-1");
-        SeedAssigneeProfile(db, "user-b", "b-1");
-        await db.SaveChangesAsync();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(bundle.CaseStudy);
+        SeedAssigneeProfile(identity, "user-a", "a-1");
+        SeedAssigneeProfile(identity, "user-b", "b-1");
+        await identity.SaveChangesAsync();
         var service = CreateOpsService(bundle);
 
         var (created, _) = await service.CreateAsync(
@@ -70,7 +80,7 @@ public sealed class AssignmentNotificationRegressionTests
             "creator-1",
             "منشئ");
         Assert.NotNull(created);
-        Assert.Single(await db.OutboxMessages.ToListAsync());
+        Assert.Single(await messaging.OutboxMessages.ToListAsync());
 
         var (reassigned, error) = await service.ReassignAsync(
             Guid.Parse(created!.Id),
@@ -86,7 +96,7 @@ public sealed class AssignmentNotificationRegressionTests
 
         Assert.Null(error);
         Assert.NotNull(reassigned);
-        var rows = await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
+        var rows = await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
         Assert.Equal(2, rows.Count);
         var payload = Deserialize(rows[^1]);
         Assert.Equal(["user-b"], payload.UserIds);
@@ -98,11 +108,12 @@ public sealed class AssignmentNotificationRegressionTests
     public async Task OperationsTask_Receipt_and_Complete_notify_creator_and_section_supervisor()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedAssigneeProfile(db, "user-gov", "gov-1");
-        SeedRoleProfile(db, "user-specialist", "case-specialist");
-        SeedRoleProfile(db, "user-supervisor", "section-supervisor");
-        await db.SaveChangesAsync();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(bundle.CaseStudy);
+        SeedAssigneeProfile(identity, "user-gov", "gov-1");
+        SeedRoleProfile(identity, "user-specialist", "case-specialist");
+        SeedRoleProfile(identity, "user-supervisor", "section-supervisor");
+        await identity.SaveChangesAsync();
         var service = CreateOpsService(bundle);
 
         var (created, createError) = await service.CreateAsync(
@@ -129,7 +140,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Null(startError);
         Assert.NotNull(started);
 
-        var receiptRows = await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
+        var receiptRows = await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
         var receipt = Deserialize(receiptRows[^1]);
         Assert.Equal("تأكيد استلام المهمة", receipt.Title);
         Assert.Equal($"ops-task-receipt:{created.Id}", receipt.SourceEvent);
@@ -149,7 +160,7 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.NotNull(done);
 
         var complete = Deserialize(
-            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+            (await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
         Assert.Equal("اكتملت المهمة", complete.Title);
         Assert.Equal($"ops-task-done:{created.Id}", complete.SourceEvent);
         Assert.Contains("user-specialist", complete.UserIds);
@@ -161,10 +172,11 @@ public sealed class AssignmentNotificationRegressionTests
     public async Task OperationsTask_Cancel_priority_comment_notify_counterparties()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
-        SeedAssigneeProfile(db, "user-gov", "gov-1");
-        SeedRoleProfile(db, "user-specialist", "case-specialist");
-        await db.SaveChangesAsync();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(bundle.CaseStudy);
+        SeedAssigneeProfile(identity, "user-gov", "gov-1");
+        SeedRoleProfile(identity, "user-specialist", "case-specialist");
+        await identity.SaveChangesAsync();
         var service = CreateOpsService(bundle);
 
         var (created, _) = await service.CreateAsync(
@@ -192,7 +204,7 @@ public sealed class AssignmentNotificationRegressionTests
             "user-specialist");
         Assert.Null(prioErr);
         var prioPayload = Deserialize(
-            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+            (await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
         Assert.Equal("تحديث على المهمة", prioPayload.Title);
         Assert.Equal(["user-gov"], prioPayload.UserIds);
         Assert.StartsWith("ops-task-schedule:", prioPayload.SourceEvent);
@@ -206,7 +218,7 @@ public sealed class AssignmentNotificationRegressionTests
             "أخصائي");
         Assert.Null(cmtErr);
         var cmtPayload = Deserialize(
-            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+            (await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
         Assert.Equal("تحديث على المهمة", cmtPayload.Title);
         Assert.Equal(["user-gov"], cmtPayload.UserIds);
         Assert.StartsWith("ops-task-comment:", cmtPayload.SourceEvent);
@@ -225,7 +237,7 @@ public sealed class AssignmentNotificationRegressionTests
             "user-specialist");
         Assert.Null(cancelErr);
         var cancelPayload = Deserialize(
-            (await db.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
+            (await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync())[^1]);
         Assert.Equal("أُلغيت المهمة", cancelPayload.Title);
         Assert.Equal(["user-gov"], cancelPayload.UserIds);
         Assert.Equal($"ops-task-cancelled:{created.Id}", cancelPayload.SourceEvent);
@@ -235,7 +247,9 @@ public sealed class AssignmentNotificationRegressionTests
     public async Task ConfirmDistribution_government_auditor_flag_is_ignored_and_does_not_spawn_child()
     {
         var bundle = CreateDb();
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var propertyId = Guid.NewGuid();
         var workOrderId = Guid.NewGuid();
         var parentId = Guid.NewGuid();
@@ -272,8 +286,9 @@ public sealed class AssignmentNotificationRegressionTests
             phase: WorkflowTaskPhase.Distribution,
             id: parentId,
             propertyId: propertyId));
-        SeedAssigneeProfile(db, "user-gov", "gov-auditor-1");
+        SeedAssigneeProfile(identity, "user-gov", "gov-auditor-1");
         await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
 
         var workflow = CreateWorkflowService(db);
         var (result, errors) = await workflow.ConfirmDistributionAsync(
@@ -295,11 +310,11 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.NotNull(errors);
         Assert.Null(result);
         Assert.Contains("أخصائي", errors!["_"]);
-        Assert.Empty(await db.OutboxMessages.ToListAsync());
+        Assert.Empty(await messaging.OutboxMessages.ToListAsync());
     }
 
     private static void SeedAssigneeProfile(
-        ApplicationDbContext db,
+        IdentityDbContext db,
         string userId,
         string distributionAssigneeId)
     {
@@ -323,7 +338,7 @@ public sealed class AssignmentNotificationRegressionTests
     }
 
     private static void SeedRoleProfile(
-        ApplicationDbContext db,
+        IdentityDbContext db,
         string userId,
         string roleId)
     {
@@ -346,7 +361,7 @@ public sealed class AssignmentNotificationRegressionTests
     }
 
     private static async Task<NotificationUsersRequestedPayload> AssertSingleNotificationRequest(
-        ApplicationDbContext db)
+        MessagingDbContext db)
     {
         var outbox = Assert.Single(await db.OutboxMessages.ToListAsync());
         Assert.Equal(IntegrationEventTypes.NotificationUsersRequested, outbox.EventType);
@@ -363,7 +378,7 @@ public sealed class AssignmentNotificationRegressionTests
 
     private static OperationsTaskService CreateOpsService(TestBoundedContexts.Bundle bundle)
     {
-        var db = bundle.App;
+        var db = bundle.CaseStudy;
         var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(
             messaging,
@@ -373,12 +388,13 @@ public sealed class AssignmentNotificationRegressionTests
         return OperationsTaskService.Create(
             bundle.Ops,
             new CourtVisitFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(db)),
-            TestInspectorFeeServiceFactory.ShareIdentity(db),
+            new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(db)),
+            new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(db)),
             notifications,
-            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
+            TestPricing.Create(TestInspectorFeeServiceFactory.ShareFinancial(db)));
     }
 
-    private static WorkflowTaskService CreateWorkflowService(ApplicationDbContext db)
+    private static WorkflowTaskService CreateWorkflowService(CaseStudyDbContext db)
     {
         var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
         var notifications = new PlatformNotificationRequestService(
@@ -391,7 +407,7 @@ public sealed class AssignmentNotificationRegressionTests
             db,
             notifications,
             recipients,
-            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
+            TestPricing.Create(TestInspectorFeeServiceFactory.ShareFinancial(db)));
         return TestInspectorFeeServiceFactory.ComposeWorkflow(
             db,
             fees,

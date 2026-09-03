@@ -1,7 +1,9 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 internal static class ComparablePropertyMapping
 {
@@ -22,7 +24,10 @@ internal static class ComparablePropertyMapping
             ComparablePropertyType = row.ComparablePropertyType,
             Usage = row.Usage,
             TransactionKind = row.TransactionKind,
-            TransactionKindLabelAr = ComparableTransactionKinds.LabelAr(row.TransactionKind),
+            TransactionKindLabelAr = row.TransactionKind == ComparableTransactionKinds.Offer
+                && row.PriceDescription == ComparablePriceDescriptions.Som
+                    ? "سوم"
+                    : ComparableTransactionKinds.LabelAr(row.TransactionKind),
             PriceDescription = row.PriceDescription ?? "",
             PriceDescriptionLabelAr = ComparablePriceDescriptions.LabelAr(row.PriceDescription),
             Source = row.Source,
@@ -39,6 +44,8 @@ internal static class ComparablePropertyMapping
             PricePerSqmAnomalyNoteAr = anomalyNoteAr,
             City = row.City,
             District = row.District,
+            PlanNumber = row.PlanNumber,
+            PlotNumber = row.PlotNumber,
             Description = row.Description,
             IntakeChannel = row.IntakeChannel,
             EnteredByUserId = row.EnteredByUserId,

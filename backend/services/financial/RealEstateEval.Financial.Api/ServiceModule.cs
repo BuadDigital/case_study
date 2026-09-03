@@ -4,6 +4,9 @@ using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Financial.Infrastructure;
+using RealEstateEval.Financial.Application.Validation;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Financial.Api;
 
@@ -17,7 +20,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
-        builder.Services.AddFinancialInfrastructure(builder.Configuration, connectionString!);
+        builder.Services.AddFinancialInfrastructure(
+            builder.Configuration, connectionString!, builder.Environment);
         // A8: Financial boundary validators moved out of the globally scanned assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreatePartyFeePricingTableRequestValidator>();
     }
@@ -26,7 +30,8 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         app.MapDatabaseReady(
             ServiceName,
-            typeof(FinancialDbContext));
+            typeof(FinancialDbContext),
+            typeof(MessagingDbContext));
         return Task.CompletedTask;
     }
 }

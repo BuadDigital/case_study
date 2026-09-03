@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -19,7 +19,6 @@ import {
   notificationStorageKey,
   pushNotification,
   setNotificationStorageUser,
-  unreadNotificationCount,
   type AppNotification,
 } from "./notification-store";
 import { useValidAuthSession } from "../auth/use-auth-session";
@@ -67,7 +66,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const value = useMemo<NotificationContextValue>(
     () => ({
       items,
-      unreadCount: unreadNotificationCount(),
+      // Read from memory — previously re-read/parsed the whole store on every change (js-cache-storage).
+      unreadCount: items.filter((n) => !n.read).length,
       push: pushNotification,
       markRead: markNotificationRead,
       remove: deleteNotification,
@@ -86,7 +86,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 }
 
 export function useNotifications() {
-  const ctx = useContext(NotificationContext);
+  const ctx = use(NotificationContext);
   if (!ctx) {
     throw new Error("useNotifications must be used within NotificationProvider");
   }

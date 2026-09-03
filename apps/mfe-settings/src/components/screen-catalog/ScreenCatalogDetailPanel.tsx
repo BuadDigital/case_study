@@ -8,7 +8,7 @@ import {
   screenCatalogRoleGroup,
   screenCatalogRoleLabel,
   type SystemScreenEntry,
-} from "@platform/app-shared/prototype/screen-catalog";
+} from "@platform/app-shared/app-data/screen-catalog";
 
 export function ScreenCatalogDetailPanel({
   screen,

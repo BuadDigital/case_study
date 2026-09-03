@@ -3,6 +3,7 @@ import { Tajawal } from "next/font/google";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { ToastRootProvider } from "@/providers/ToastRootProvider";
+import "@platform/ui-kit/document-reports.css";
 import "./globals.css";
 
 const arabic = Tajawal({

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -43,56 +43,26 @@ public static class DependencyInjection
         return services;
     }
 
- // Phase 5: AddPersistence / AddLegacyApplicationPersistence removed — no runtime
- // composition registers ApplicationDbContext any more. The class survives only for
- // the frozen legacy migration stream (DbMigrate, design-time factory, guardrails).
+ // A10: the legacy god context is archived (git tag a10-legacy-stream-final carries its
+ // final stream). Owner contexts are the only persistence; shared model mappings and the
+ // audit/messaging plumbing below are all that remain here.
 
- /// <summary>Attachments write context. Prefers a dedicated Attachments connection string.</summary>
-    public static IServiceCollection AddAttachmentsPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
- // Block body (not expression-bodied): architecture fan-out scans method braces.
-        var attachmentsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Attachments,
-            connectionString);
-        return services.AddBoundedContextPersistence<AttachmentsDbContext>(
-            configuration,
-            attachmentsConnection);
-    }
+ // A8 physical move: AddAttachmentsPersistence lives in AttachmentsDependencyInjection
+ // (contexts/attachments) beside its DbContext; the generic pool helper below is public
+ // so per-context registrations can move with their contexts.
 
- /// <summary>Platform catalog write context.</summary>
-    public static IServiceCollection AddPlatformPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
-    }
+ // A8 physical move: AddPlatformPersistence lives in PlatformDependencyInjection
+ // (contexts/platform) beside its DbContext.
 
- /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated Valuation connection string.</summary>
-    public static IServiceCollection AddValuationPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var valuationConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Valuation,
-            connectionString);
-        return services.AddBoundedContextPersistence<ValuationDbContext>(
-            configuration,
-            valuationConnection);
-    }
+ // A8 physical move: AddValuationPersistence lives in ValuationDependencyInjection
+ // (contexts/valuation) beside its DbContext.
 
  /// <summary>
  /// Registers one bounded-context pool. Phase 1 used one physical database; Phase 4
  /// may point an extracted context at a dedicated database via
  /// <see cref="BoundedContextConnections"/>.
  /// </summary>
-    private static IServiceCollection AddBoundedContextPersistence<TContext>(
+    public static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
         IConfiguration configuration,
         string connectionString)
@@ -146,121 +116,30 @@ public static class DependencyInjection
         }
 
         services.AddSingleton<ApiResponseCache>();
+        services.AddSingleton<IResponseCache>(sp => sp.GetRequiredService<ApiResponseCache>());
         return services;
     }
 
- /// <summary>Identity write context.</summary>
-    public static IServiceCollection AddIdentityPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
-    }
+ // A8 physical move: AddIdentityPersistence and AddIdentityStores live in
+ // IdentityDependencyInjection (contexts/identity) beside their DbContext.
 
- /// <summary>Failures write context. Prefers a dedicated Failures connection string.</summary>
-    public static IServiceCollection AddFailuresPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var failuresConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Failures,
-            connectionString);
-        return services.AddBoundedContextPersistence<FailuresDbContext>(
-            configuration,
-            failuresConnection);
-    }
+ // A8 physical move: AddFailuresPersistence lives in FailuresDependencyInjection
+ // (contexts/failures) beside its DbContext.
 
- /// <summary>Operations write context. Prefers a dedicated Operations connection string.</summary>
-    public static IServiceCollection AddOperationsPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var operationsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Operations,
-            connectionString);
-        return services.AddBoundedContextPersistence<OperationsDbContext>(
-            configuration,
-            operationsConnection);
-    }
+ // A8 physical move: AddOperationsPersistence lives in OperationsDependencyInjection
+ // (contexts/operations) beside its DbContext.
 
- /// <summary>Financial write context. Prefers a dedicated Financial connection string.</summary>
-    public static IServiceCollection AddFinancialPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var financialConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Financial,
-            connectionString);
-        return services.AddBoundedContextPersistence<FinancialDbContext>(
-            configuration,
-            financialConnection);
-    }
+ // A8 physical move: AddFinancialPersistence lives in FinancialDependencyInjection
+ // (contexts/financial) beside its DbContext.
 
- /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.</summary>
-    public static IServiceCollection AddCaseStudyPersistence(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        var caseStudyConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.CaseStudy,
-            connectionString);
-        services.AddBoundedContextPersistence<CaseStudyDbContext>(
-            configuration,
-            caseStudyConnection);
-        services.AddScoped<ICaseStudyRepository>(sp => sp.GetRequiredService<CaseStudyDbContext>());
-        return services;
-    }
+ // A8 physical move: AddCaseStudyPersistence lives in CaseStudyDependencyInjection
+ // (contexts/case-study) beside its DbContext.
 
     // AddIdentityApplicationServices and AddIdentityInfrastructure moved to
     // RealEstateEval.Identity.Infrastructure (A8).
 
- /// <summary>
- /// ASP.NET Identity stores against <see cref="IdentityDbContext"/>. Used by the Identity
- /// host and by Development seeding hosts that still need <see cref="UserManager{TUser}"/>.
- /// </summary>
-    public static IServiceCollection AddIdentityStores(this IServiceCollection services)
-    {
-        services
-            .AddIdentity<ApplicationUser, IdentityRole>(options =>
-            {
-                options.User.RequireUniqueEmail = true;
-                options.Password.RequiredLength = 12;
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
-                options.Lockout.AllowedForNewUsers = true;
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-            })
-            .AddEntityFrameworkStores<IdentityDbContext>()
-            .AddDefaultTokenProviders();
-
-        // AddIdentity() makes the Identity application cookie the default
-        // authenticate/challenge scheme, which sends API callers to /Account/Login —
-        // on the Identity host this 401'd every [Authorize] endpoint (incl.
-        // /api/permissions, breaking the shell role chip). The APIs are JWT-only,
-        // so re-assert bearer; this Configure runs after Identity's and wins.
-        services.Configure<AuthenticationOptions>(options =>
-        {
-            options.DefaultAuthenticateScheme = "Bearer";
-            options.DefaultChallengeScheme = "Bearer";
-        });
-
-        services.Configure<DataProtectionTokenProviderOptions>(options =>
-            options.TokenLifespan = TimeSpan.FromHours(24));
-
-        return services;
-    }
+ // A8 physical move: AddIdentityStores lives in IdentityDependencyInjection
+ // (contexts/identity) beside the Identity context and stores.
 
  /// <summary>
  /// Resolves the caller's permissions from JWT claims. Non-Identity APIs use this instead of
@@ -273,44 +152,11 @@ public static class DependencyInjection
         return services;
     }
 
- /// <summary>
- /// Development-only Identity stores for demo seeding. Does not register auth write services
- /// or database-backed <see cref="IPermissionService"/> — request paths still use claims.
- /// </summary>
-    public static IServiceCollection AddIdentitySeedStores(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
-    {
-        services.AddIdentityPersistence(configuration, connectionString);
-        services.AddPlatformPersistence(configuration, connectionString);
-        services.AddIdentityStores();
-        return services;
-    }
+ // A8: AddIdentitySeedStores lives in the DevSeed leaf (DevSeedProvider) — it wires
+ // Identity + Platform persistence for the throwaway seed graph only.
 
- /// <summary>
- /// Short-lived DI graph for Development identity seed/reset. Case Study request paths stay
- /// claims-only; only this throwaway provider opens Identity stores and registration writes.
- /// </summary>
-    public static ServiceProvider CreateIdentityMaintenanceProvider(
-        IConfiguration configuration,
-        string connectionString)
-    {
- // Phase 5: the seed graph is bounded-context only — no ApplicationDbContext.
- // DataSeeder.SeedAsync needs all six owner contexts; each resolves its own
- // connection string, so seeding requires them configured.
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton(configuration);
-        services.AddHostSharedInfrastructure(configuration);
-        services.AddIdentitySeedStores(configuration, connectionString);
-        services.AddOperationsPersistence(configuration, connectionString);
-        services.AddFinancialPersistence(configuration, connectionString);
-        services.AddCaseStudyPersistence(configuration, connectionString);
-        services.AddValuationPersistence(configuration, connectionString);
-        services.AddFailuresPersistence(configuration, connectionString);
-        return services.BuildServiceProvider();
-    }
+ // A8: CreateIdentityMaintenanceProvider moved to the RealEstateEval.DevSeed leaf project
+ // (tools/DevSeed) beside DataSeeder, so context registrations can move with their contexts.
 
  // AddBlobStorage folded into AddAttachmentsInfrastructure (RealEstateEval.Attachments.Infrastructure, A8).
 
@@ -324,157 +170,8 @@ public static class DependencyInjection
 
  // AddAttachmentsInfrastructure moved to RealEstateEval.Attachments.Infrastructure (A8).
 
-    /// <summary>
-    /// Attachment existence and report lookups via the Attachments HTTP API.
-    /// Forwards the caller's Authorization header. Do not combine with
-    /// <see cref="AddAttachmentsPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteAttachmentLookup(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IAttachmentLookup, HttpAttachmentLookup>();
-        return services;
-    }
-
-    /// <summary>
-    /// Print dictionary and organization settings via the Platform HTTP API.
-    /// Do not combine with <see cref="AddPlatformPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemotePlatformCatalogs(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IAttachmentPrintDictionaryService, HttpAttachmentPrintDictionaryService>();
-        services.AddHttpClient<IOrganizationSettingsService, HttpOrganizationSettingsService>();
-        return services;
-    }
-
-    /// <summary>
-    /// Create/open valuation requests via the Valuation HTTP API (Case Study dispatch).
-    /// Do not combine with <see cref="AddValuationRequestInfrastructure"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteValuationRequests(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>();
-        return services;
-    }
-
-    /// <summary>
-    /// Inspector fees, billing, Enfaz, pricing, and charges via the Financial HTTP API.
-    /// Do not combine with <see cref="AddFinancialPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteFinancial(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IInspectorFeeService, HttpInspectorFeeService>();
-        services.AddHttpClient<IPartyBillingStatementService, HttpPartyBillingStatementService>();
-        services.AddHttpClient<IPoEnfazBillingService, HttpPoEnfazBillingService>();
-        services.AddHttpClient<IPartyFeePricingService, HttpPartyFeePricingService>();
-        services.AddHttpClient<ICourtVisitFeeChargeService, HttpCourtVisitFeeChargeService>();
-        services.AddHttpClient<IKeyReceiptFeeChargeService, HttpKeyReceiptFeeChargeService>();
-        services.AddHttpClient<IPoEnfazInvoiceLookup, HttpPoEnfazInvoiceLookup>();
-        return services;
-    }
-
-    /// <summary>
-    /// Failure commands and gates via the Failures HTTP API. Do not combine with
-    /// <see cref="AddFailuresPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteFailures(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IFailureService, HttpFailureService>();
-        services.AddHttpClient<IFailureLookup, HttpFailureLookup>();
-        return services;
-    }
-
-    /// <summary>
-    /// Case Study lookups via the Case Study HTTP API. Do not combine with
-    /// <see cref="AddCaseStudyPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteCaseStudy(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<ICaseStudyLookup, HttpCaseStudyLookup>();
-        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
-        return services;
-    }
-
-    /// <summary>
-    /// Operations tasks, keys, envelopes, and survey offices via the Operations HTTP API.
-    /// Do not combine with <see cref="AddOperationsPersistence"/> on the same host.
-    /// </summary>
-    public static IServiceCollection AddRemoteOperations(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
-        services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
-        services.AddHttpClient<IPropertyKeyGateResolver, HttpPropertyKeyGateResolver>();
-        services.AddHttpClient<IPropertyKeysService, HttpPropertyKeysService>();
-        services.AddHttpClient<ISurveyOfficesService, HttpSurveyOfficesService>();
-        return services;
-    }
-
-    /// <summary>
-    /// Display-name lookup via the Identity HTTP API.
-    /// </summary>
-    public static IServiceCollection AddRemoteAuditLogAppend(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IAuditLogAppend, HttpAuditLogAppend>();
-        return services;
-    }
-
-    public static IServiceCollection AddRemoteIdentityDirectory(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IIdentityDirectory, HttpIdentityDirectory>();
-        services.AddScoped<IUserLabelLookup>(sp => sp.GetRequiredService<IIdentityDirectory>());
-        return services;
-    }
-
-    public static IServiceCollection AddRemoteWorkflowAssignees(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
-        return services;
-    }
-
-    public static IServiceCollection AddRemoteUserLabelLookup(
-        this IServiceCollection services,
-        IConfiguration configuration) =>
-        services.AddRemoteIdentityDirectory(configuration);
-
-    private static IServiceCollection AddUpstreamHttp(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddHttpContextAccessor();
-        services.AddOptions<UpstreamServicesOptions>()
-            .Bind(configuration.GetSection(UpstreamServicesOptions.SectionName));
-        return services;
-    }
-
+    // A8: the AddRemote* owner-to-owner HTTP client registrations moved to
+    // RemoteClientRegistration in RealEstateEval.Shared.RemoteClients (same namespace).
     // AddFinancialInfrastructure moved to RealEstateEval.Financial.Infrastructure (A8);
     // the dead parameterless overload was dropped.
 
@@ -496,9 +193,13 @@ public static class DependencyInjection
         var messagingConnection = BoundedContextConnections.Resolve(
             configuration,
             BoundedContextConnections.ServiceNames.Messaging);
-        return services.AddBoundedContextPersistence<MessagingDbContext>(
+        services.AddBoundedContextPersistence<MessagingDbContext>(
             configuration,
             messagingConnection);
+        // Durable Idempotency-Key replay across instances (ADR 0008).
+        services.RemoveAll<ICommandIdempotencyStore>();
+        services.AddScoped<ICommandIdempotencyStore, EfCommandIdempotencyStore>();
+        return services;
     }
 
  /// <summary>
@@ -511,8 +212,7 @@ public static class DependencyInjection
         IHostEnvironment environment)
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
- // Phase 5: every calling host registers MessagingDbContext — the legacy
- // ApplicationDbContext fallback is gone.
+ // Phase 5: every calling host registers MessagingDbContext (no legacy fallback).
         services.AddScoped<IIntegrationEventPublisher, MessagingOutboxPublisher>();
         services.AddScoped<NotificationRecipientResolver>();
         services.AddScoped<INotificationRecipientResolver>(sp =>

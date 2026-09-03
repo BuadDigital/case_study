@@ -5,8 +5,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 {

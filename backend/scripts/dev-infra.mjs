@@ -63,7 +63,6 @@ function runDockerCompose(args) {
     const child = spawn("docker", ["compose", "-f", composeFile, ...args], {
       cwd: root,
       stdio: "inherit",
-      shell: true,
     });
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`docker compose exited ${code}`)),

@@ -2,27 +2,27 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { loadEnfazTracking } from "@platform/app-shared/prototype/enfaz-billing-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
-} from "@platform/app-shared/prototype/party-billing-statements-api";
-import type { FinanceNavArea } from "@platform/app-shared/prototype/financial-nav";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { buildFinanceMyTasks } from "@financial/mfe";
+} from "@platform/app-shared/app-data/party-billing-statements-api";
+import type { FinanceNavArea } from "@platform/app-shared/app-data/financial-nav";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { buildFinanceMyTasks } from "@financial/mfe/lib/finance-my-tasks";
 import { bucketRevenueRows } from "@financial/mfe/lib/finance-revenue-stages";
 
 /**
- * عدّادات السايدبار (قابل للإجراء فقط) — مهامي · الإيرادات · التكاليف.
- * مهامي = طول قائمة مهامي الفعلية (buildFinanceMyTasks) وليس مجموع تقريبي.
+ * Sidebar badges (actionable only) — My Tasks · Revenue · Costs.
+ * My Tasks = length of the real My Tasks list (buildFinanceMyTasks), not an approximate sum.
  */
 export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
-  const { hasCapability } = usePrototype();
+  const { hasCapability } = useAppAccess();
   const enabled = hasCapability("manage-financial");
 
   const trackingQuery = useQuery({
-    queryKey: [...prototypeKeys.all, "enfaz-billing", "tracking", "nav-badges"],
+    queryKey: [...appDataKeys.all, "enfaz-billing", "tracking", "nav-badges"],
     queryFn: loadEnfazTracking,
     staleTime: 30_000,
     enabled,
@@ -30,7 +30,7 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
 
   const readyQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "ready-lines",
       "nav-badges",
@@ -42,7 +42,7 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
 
   const statementsQuery = useQuery({
     queryKey: [
-      ...prototypeKeys.all,
+      ...appDataKeys.all,
       "party-billing",
       "statements",
       "nav-badges",
@@ -66,7 +66,7 @@ export function useFinanceNavBadges(): Partial<Record<FinanceNavArea, number>> {
       buckets.awaiting_collection.length +
       buckets.stopped.length;
 
-    // تكاليف: مستحقات + مسيرات/أوامر تحتاج عمل (مسودة، صادر، فاتورة واردة)
+    // Costs: dues + payrolls/orders needing work (draft, issued, inbound invoice)
     const openStmts = statements.filter(
       (s) =>
         s.status === "draft" ||

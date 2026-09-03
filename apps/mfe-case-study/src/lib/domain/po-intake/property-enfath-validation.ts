@@ -6,7 +6,7 @@ import {
   validatePropertyIdentifierNumber,
   type AssignmentType,
   type PoPropertyIntake,
-} from "../../prototype/po-intake-data";
+} from "../../app-data/po-intake-data";
 import {
   collectRequiredErrors,
   mergeFieldErrors,
@@ -18,8 +18,8 @@ function validateDeedOrRealEstateReg(p: PoPropertyIntake, errors: FieldErrors) {
   const hasDeed = p.deedNumber.trim().length > 0;
   const hasReg = p.realEstateRegNumber.trim().length > 0;
 
-  // مطلوب أحدهما على الأقل: رقم الصك أو التسجيل العيني (أو كلاهما).
-  // التسجيل العيني عند التعبئة يتجاوز استعلام البورصة.
+  // At least one required: deed number or title registry (or both).
+  // A filled title registry skips bourse inquiry.
   if (!hasDeed && !hasReg) {
     const msg = "أدخل رقم الصك أو رقم التسجيل العيني";
     errors.deedNumber = msg;

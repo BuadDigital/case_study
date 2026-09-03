@@ -1,35 +1,38 @@
 "use client";
 
-import { Button, InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WorkflowTask } from "@case-study/mfe";
+import {
+  InlineLoadingSkeleton,
+  Spinner,
+  cn,
+  opsPpHeadCard,
+  opsWorkspaceCard,
+  useToast,
+} from "@platform/ui-kit";
+import {
+  getOpenValuationRequestByProperty,
+  getValuationIssuanceGates,
+} from "@platform/api-client";
+import { getAuthSession } from "@platform/auth-client";
+import { useIdempotentAction } from "@platform/app-shared";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import dynamic from "next/dynamic";
+import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
+import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import {
-  cacheEvaluatorPlanImage,
-  clearCachedEvaluatorPlanImage,
-  getCachedEvaluatorPlanImage,
-} from "../../lib/evaluator/evaluator-plan-attachments";
-import {
-  cacheEvaluatorDepositCertificate,
-  clearCachedEvaluatorDepositCertificate,
-  getCachedEvaluatorDepositCertificate,
-} from "../../lib/evaluator/evaluator-deposit-attachments";
-import {
-  createEvaluatorDraft,
-  evaluatorStatusLabel,
-} from "../../lib/evaluator/evaluator-window-data";
-import {
-  hydrateEvaluatorSubmission,
   isEvaluatorFormLocked,
-  updateEvaluatorDraft,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
-} from "../../lib/evaluator/evaluator-submission-storage";
-import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
+} from "../../lib/evaluator/evaluator-submission-model";
+import {
+  hydrateEvaluatorSubmission,
+  updateEvaluatorDraft,
+} from "../../lib/evaluator/evaluator-submission-commands";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
-  evaluatorInvalidControlClass,
-  EVALUATOR_INFATH_ERROR_KEYS,
   firstEvaluatorError,
   firstEvaluatorErrorTarget,
   validateEvaluatorSubmission,
@@ -37,32 +40,12 @@ import {
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
-import { ValueEstimationSection } from "./ValueEstimationSection";
-import {
-  InfathSection,
-  InfathSelectField,
-  InfathTextAreaField,
-  InfathTextField,
-} from "./InfathFormFields";
-import { EvaluatorIssuedReportActions } from "./EvaluatorIssuedReportActions";
-import { EvaluatorReportWorkersSection } from "./EvaluatorReportWorkersSection";
 import type {
   EvaluatorChecklistAnswers,
+  EvaluatorReportChoices,
   EvaluatorReportWorker,
 } from "../../lib/evaluator/evaluator-window-data";
-import {
-  DEFAULT_APPRAISER_ADDRESS,
-  DEFAULT_APPRAISER_PHONE,
-  EVALUATOR_DEMAND_LEVEL_OPTIONS,
-  EVALUATOR_VALUATION_METHODS,
-  EVALUATOR_VALUE_BASIS_OPTIONS,
-} from "../../lib/evaluator/evaluator-window-data";
-import {
-  EvaluatorPropertyTab,
-  type EvaluatorPropertySummary,
-} from "./EvaluatorPropertyTab";
-import { EvaluatorChecklistTab } from "./EvaluatorChecklistTab";
-import { EvaluatorComparableSelectionPanel } from "./EvaluatorComparableSelectionPanel";
+import { type EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
 import {
   appraiserInspectionDone,
@@ -70,50 +53,64 @@ import {
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
+import { EngInfo, ValTabBar } from "./EvaluatorHtmlPrimitives";
 import {
-  EngField,
-  EngInfo,
-  EngSection,
-  ValDepChip,
-  ValStatusPill,
-  ValTabBar,
-  VAL_STATUS_COLORS,
-  valCardClassName,
-  valChipClassName,
-  valPpHeadClassName,
-  valPrimaryBtnClassName,
-} from "./EvaluatorHtmlPrimitives";
+  ValuationWorkShell,
+  type ValuationWorkNavAvailability,
+  type ValuationWorkScreenId,
+} from "./EvaluatorComparableSelectionPanel";
 
-export type EvaluatorWindowTab =
-  | "property"
-  | "report"
-  | "comparables"
-  | "valuation"
-  | "infath"
-  | "checklist";
+export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
 
-const VAL_TABS: { id: EvaluatorWindowTab; label: string }[] = [
-  { id: "property", label: "بيانات العقار" },
-  { id: "report", label: "تقييم العقار" },
-  { id: "comparables", label: "المقارنات" },
-  { id: "valuation", label: "التقييم" },
-  { id: "infath", label: "بيانات الرفع لإنفاذ" },
-  { id: "checklist", label: "قائمة الفحص" },
+const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
+
+const WORK_SCREENS: ValuationWorkScreenId[] = [
+  "basic",
+  "market",
+  "cost",
+  "final",
+  "review",
 ];
 
-function extraSelectOption(options: readonly string[], current: string) {
-  const trimmed = current.trim();
-  if (!trimmed || (options as readonly string[]).includes(trimmed)) return null;
-  return <option value={trimmed}>{trimmed}</option>;
+const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string }[] = [
+  { id: "basic", label: "البيانات الأساسية" },
+  { id: "market", label: "طريقة المقارنة" },
+  { id: "cost", label: "طريقة المقاول" },
+  { id: "final", label: "رأي القيمة النهائي" },
+  { id: "review", label: "المراجعة النهائية" },
+  { id: "output", label: "تقرير التقييم" },
+];
+
+function isWorkScreen(id: EvaluatorWindowTab): id is ValuationWorkScreenId {
+  return id !== "output";
 }
+
+const EvaluatorValuationReportOutputTab = dynamic(
+  () =>
+    import("./EvaluatorValuationReportOutputTab").then(
+      (m) => m.EvaluatorValuationReportOutputTab,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-10">
+        <Spinner />
+      </div>
+    ),
+  },
+);
+
+const preloadValuationReportOutputTab = () =>
+  void import("./EvaluatorValuationReportOutputTab");
 
 export function EvaluatorWindow({
   task,
   tasks,
   hostRef,
   propertySummary,
-  initialTab = "report",
+  initialTab = "basic",
   deedLabel,
+  embeddedInPropertyChrome = false,
 }: {
   task: WorkflowTask;
   tasks: WorkflowTask[];
@@ -122,14 +119,33 @@ export function EvaluatorWindow({
   initialTab?: EvaluatorWindowTab;
   deedLabel?: string;
   onBack?: () => void;
+  embeddedInPropertyChrome?: boolean;
 }) {
   const gate = useMemo(
     () => inspectionGateForAppraisal(task, tasks),
     [task, tasks],
   );
-  const { showToast, runWithUploadToast } = useToast();
-  const planFileInputRef = useRef<HTMLInputElement>(null);
-  const depositFileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
+  const { data: staffResult } = useStaffUsersQuery();
+  const assignedAppraiserName = useMemo(() => {
+    const session = getAuthSession();
+    const selfFallback =
+      session?.user?.id &&
+      task.assigneeId?.trim() &&
+      session.user.id === task.assigneeId.trim()
+        ? session.user.displayName
+        : undefined;
+    return resolveAssigneeDisplayName({
+      assigneeName: task.assigneeName,
+      assigneeId: task.assigneeId,
+      staffUsers: staffResult?.users ?? [],
+      fallback: selfFallback,
+    });
+  }, [
+    task.assigneeName,
+    task.assigneeId,
+    staffResult?.users,
+  ]);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
@@ -140,35 +156,52 @@ export function EvaluatorWindow({
     }),
   );
   const [draftLoading, setDraftLoading] = useState(true);
-  const [planUploadError, setPlanUploadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<EvaluatorValidationErrors>(
-    {},
-  );
-  const [planUploading, setPlanUploading] = useState(false);
-  const [depositUploading, setDepositUploading] = useState(false);
-  const [depositUploadError, setDepositUploadError] = useState<string | null>(
-    null,
-  );
+  const [fieldErrors, setFieldErrors] =
+    useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
   const [submitting, setSubmitting] = useState(false);
-  const [planName, setPlanName] = useState<string | null>(() => {
-    const cached = getCachedEvaluatorPlanImage(task.id);
-    return cached?.fileName ?? null;
-  });
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
+  const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
+    market: false,
+    cost: false,
+  });
+  const visitedTabsRef = useRef<Set<EvaluatorWindowTab>>(new Set());
+  visitedTabsRef.current.add(activeTab);
+  const lastWorkScreenRef = useRef<ValuationWorkScreenId>(
+    isWorkScreen(initialTab) ? initialTab : "basic",
+  );
+  if (isWorkScreen(activeTab)) lastWorkScreenRef.current = activeTab;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editVersionRef = useRef(0);
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
-  const hasPlan = Boolean(
-    planName ||
-      draft.planImageFileName ||
-      getCachedEvaluatorPlanImage(task.id)?.dataUrl,
+
+  const { execute: executeAppraiserSubmit, loading: appraiserSubmitting } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) =>
+          finalizeAppraiserSubmission(task.id, idempotencyKey),
+        [task.id],
+      ),
+    );
+
+  const submitBusy = submitting || appraiserSubmitting;
+
+  const visibleTabs = useMemo(
+    () =>
+      VAL_TAB_DEFS.filter((t) => {
+        if (t.id === "market") return navAvail.market;
+        if (t.id === "cost") return navAvail.cost;
+        return true;
+      }),
+    [navAvail.cost, navAvail.market],
   );
-  const hasDepositCertificate = Boolean(
-    draft.depositCertificateFileName?.trim() ||
-      getCachedEvaluatorDepositCertificate(task.id)?.fileName,
-  );
+
+  useEffect(() => {
+    if (visibleTabs.some((t) => t.id === activeTab)) return;
+    setActiveTab(visibleTabs[0]?.id ?? "basic");
+  }, [activeTab, visibleTabs]);
 
   const persistDraft = useCallback(
     (
@@ -193,18 +226,24 @@ export function EvaluatorWindow({
         reportWorkers: EvaluatorReportWorker[];
         depositCode: string;
         depositCertificateFileName: string | null;
+        reportChoices: EvaluatorReportChoices;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
       planImageMetadata?: EvaluatorPlanImageMetadata,
     ) => {
       if (locked) return;
+      const versionAtSave = editVersionRef.current;
       void updateEvaluatorDraft(task.id, patch, reportMetadata, planImageMetadata)
         .then((updated) => {
-          if (updated) setDraft(updated);
+          if (updated && editVersionRef.current === versionAtSave) {
+            setDraft(updated);
+          }
         })
         .catch((err: unknown) => {
           showToast(
-            err instanceof Error ? err.message : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
+            err instanceof Error
+              ? err.message
+              : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
             "error",
           );
         });
@@ -214,6 +253,7 @@ export function EvaluatorWindow({
 
   const scheduleAutosave = useCallback(
     (patch: Parameters<typeof persistDraft>[0]) => {
+      editVersionRef.current += 1;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => persistDraft(patch), 400);
     },
@@ -252,9 +292,6 @@ export function EvaluatorWindow({
             /* best-effort; UI already shows the sum */
           });
         }
-        if (reconciled.planImageFileName) {
-          setPlanName(reconciled.planImageFileName);
-        }
         setDraftLoading(false);
       }
     });
@@ -277,16 +314,23 @@ export function EvaluatorWindow({
       return false;
     }
 
+    const choices = draft.reportChoices;
+    const methodOn = (key?: string) =>
+      Boolean(key?.trim()) && key !== "__unused__";
+    const approachesOn =
+      methodOn(choices?.marketMethodKey) || methodOn(choices?.costMethodKey);
     const errors = validateEvaluatorSubmission({
       taskId: task.id,
       evaluatorPrice: draft.evaluatorPrice,
       landValue: draft.landValue,
       buildingValue: draft.buildingValue,
       forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
+      valueBasisKey: draft.reportChoices?.valueBasisKey,
       assetDataConfirmed: draft.assetDataConfirmed,
       assetDataVarianceNotes: draft.assetDataVarianceNotes,
       independenceDeclared: draft.independenceDeclared,
       reportWorkers: draft.reportWorkers,
+      skipManualLandBuilding: approachesOn,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -294,12 +338,37 @@ export function EvaluatorWindow({
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
       setFormError(message);
       showToast(message, "error");
-      const infathError = EVALUATOR_INFATH_ERROR_KEYS.some(
-        (key) => errors[key],
-      );
-      setActiveTab(infathError ? "infath" : "valuation");
+      setActiveTab("review");
       scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
       return false;
+    }
+
+    const session = getAuthSession();
+    if (session?.token && task.propertyId) {
+      try {
+        const open = await getOpenValuationRequestByProperty(
+          { token: session.token },
+          task.propertyId,
+        );
+        if (open.ok && open.data?.id) {
+          const gatesRes = await getValuationIssuanceGates(
+            { token: session.token },
+            open.data.id,
+          );
+          if (gatesRes.ok && !gatesRes.data.allowsIssuance) {
+            const reason =
+              gatesRes.data.blockingReasonsAr[0] ??
+              "شروط الإصدار غير مستوفاة";
+            const message = `الاعتماد ممنوع — ${reason}`;
+            setFormError(message);
+            showToast(message, "error");
+            setActiveTab("review");
+            return false;
+          }
+        }
+      } catch {
+        // Gate check failed (network) — the server will still reject an incomplete issue later.
+      }
     }
 
     if (saveTimer.current) {
@@ -338,7 +407,10 @@ export function EvaluatorWindow({
         return false;
       }
 
-      const result = await finalizeAppraiserSubmission(task.id);
+      const outcome = await executeAppraiserSubmit();
+      if (outcome.status === "skipped") return false;
+
+      const result = outcome.value;
       if (result.ok) {
         setDraft(result.submission);
         showToast(
@@ -359,6 +431,7 @@ export function EvaluatorWindow({
     locked,
     gate,
     task.id,
+    task.propertyId,
     draft.evaluatorPrice,
     draft.landValue,
     draft.buildingValue,
@@ -372,8 +445,10 @@ export function EvaluatorWindow({
     draft.demandLevel,
     draft.depositCode,
     draft.depositCertificateFileName,
+    draft.reportChoices,
     hostRef,
     showToast,
+    executeAppraiserSubmit,
   ]);
 
   useEffect(() => {
@@ -389,85 +464,62 @@ export function EvaluatorWindow({
     };
   }, [hostRef, submit]);
 
-  async function onPlanSelected(file: File | null) {
-    if (!file || formDisabled) return;
-    setPlanUploadError(null);
-    await runWithUploadToast(async () => {
-      setPlanUploading(true);
-      try {
-        const result = await cacheEvaluatorPlanImage(task.id, file);
-        if (!result.ok) {
-          setPlanUploadError(result.error);
-          throw new Error(result.error);
-        }
-        setPlanName(file.name);
-        persistDraft(
-          { planImageFileName: file.name },
-          undefined,
-          {
-            fileName: file.name,
-            mimeType: file.type || "application/octet-stream",
-            sizeBytes: file.size,
-          },
-        );
-        return true;
-      } finally {
-        setPlanUploading(false);
-      }
-    });
-  }
+  const onTabChange = useCallback((id: string) => {
+    setActiveTab(id as EvaluatorWindowTab);
+  }, []);
 
-  async function clearPlan() {
-    if (formDisabled) return;
-    try {
-      await clearCachedEvaluatorPlanImage(task.id);
-      setPlanName(null);
-      setDraft((prev) => ({ ...prev, planImageFileName: null }));
-      if (planFileInputRef.current) planFileInputRef.current.value = "";
-    } catch (err: unknown) {
-      showToast(
-        err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
-        "error",
-      );
-    }
-  }
+  const onDraftPatch = useCallback(
+    (values: Parameters<typeof persistDraft>[0]) => {
+      setDraft((prev) => ({ ...prev, ...values }));
+      scheduleAutosave(values);
+    },
+    [scheduleAutosave],
+  );
 
-  async function onDepositCertificateSelected(file: File | null) {
-    if (!file || formDisabled) return;
-    setDepositUploadError(null);
-    await runWithUploadToast(async () => {
-      setDepositUploading(true);
-      try {
-        const result = await cacheEvaluatorDepositCertificate(task.id, file);
-        if (!result.ok) {
-          setDepositUploadError(result.error);
-          throw new Error(result.error);
-        }
-        setDraft((prev) => ({
-          ...prev,
-          depositCertificateFileName: file.name,
-        }));
-        persistDraft({ depositCertificateFileName: file.name });
-        return true;
-      } finally {
-        setDepositUploading(false);
-      }
-    });
-  }
+  const onReportChoicesChange = useCallback(
+    (
+      reportChoices: EvaluatorReportChoices,
+      extras?: { valueBasis?: string; valuationMethod?: string },
+    ) => {
+      const patch = {
+        reportChoices,
+        ...(extras?.valueBasis ? { valueBasis: extras.valueBasis } : {}),
+        ...(extras?.valuationMethod
+          ? { valuationMethod: extras.valuationMethod }
+          : {}),
+      };
+      setDraft((prev) => ({ ...prev, ...patch }));
+      scheduleAutosave(patch);
+    },
+    [scheduleAutosave],
+  );
 
-  async function clearDepositCertificate() {
-    if (formDisabled) return;
-    try {
-      await clearCachedEvaluatorDepositCertificate(task.id);
-      setDraft((prev) => ({ ...prev, depositCertificateFileName: null }));
-      if (depositFileInputRef.current) depositFileInputRef.current.value = "";
-    } catch (err: unknown) {
-      showToast(
-        err instanceof Error ? err.message : "تعذّر حذف الملف — حاول مرة أخرى",
-        "error",
-      );
-    }
-  }
+  const syncFinalOpinion = useCallback(
+    (value: number) => {
+      if (!Number.isFinite(value) || value <= 0) return;
+      onDraftPatch({ evaluatorPrice: String(Math.round(value)) });
+    },
+    [onDraftPatch],
+  );
+
+  const onReportChoicesPatch = useCallback(
+    (patch: Partial<EvaluatorReportChoices>) => {
+      const current = draft.reportChoices ?? emptyReportChoices();
+      onReportChoicesChange({ ...current, ...patch });
+    },
+    [draft.reportChoices, onReportChoicesChange],
+  );
+
+  const onNavAvailabilityChange = useCallback(
+    (nav: ValuationWorkNavAvailability) => {
+      setNavAvail(nav);
+    },
+    [],
+  );
+
+  const onWorkScreenChange = useCallback((screen: ValuationWorkScreenId) => {
+    setActiveTab(screen);
+  }, []);
 
   if (draftLoading) {
     return (
@@ -480,7 +532,6 @@ export function EvaluatorWindow({
   const inspected = appraiserInspectionDone(task, tasks);
   const needsSurvey = appraiserNeedsSurvey(task, tasks);
   const surveyed = appraiserSurveyDone(task, tasks);
-  const gated = !gate.ready;
   const summary: EvaluatorPropertySummary = {
     deedNumber: propertySummary?.deedNumber ?? "—",
     poNumber: propertySummary?.poNumber ?? task.poNumber,
@@ -499,741 +550,136 @@ export function EvaluatorWindow({
     appraisalTaskId: propertySummary?.appraisalTaskId ?? task.id,
   };
 
-  const depChips = [
-    {
-      t: "معاينة العقار — المعاين",
-      ok: inspected,
-      wait: "تُراقب حتى اكتمالها",
-    },
-    {
-      t: "اعتماد بيانات الأطراف — الأخصائي",
-      ok: !gated,
-      wait: "شرط بدء التقييم",
-    },
-    ...(needsSurvey
-      ? [
-          {
-            t: "الرفع المساحي — المكتب الهندسي",
-            ok: surveyed,
-            wait: "وصف إضافي — لا يمنع بدء التقييم",
-          },
-        ]
-      : []),
-  ];
+  const property = summary.property;
+  const workVisited = WORK_SCREENS.some((id) =>
+    visitedTabsRef.current.has(id),
+  );
+  const workScreen = isWorkScreen(activeTab)
+    ? activeTab
+    : lastWorkScreenRef.current;
 
   return (
-    <div className="flex flex-col">
-      <div className={valPpHeadClassName}>
-        <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
-          <span>نافذة المقيم العقاري</span>
-          <span className="text-[14px] font-bold text-gold-d" dir="ltr">
-            صك {deedLabel ?? summary.deedNumber}
-          </span>
-        </h1>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <span className={valChipClassName}>{summary.poNumber}</span>
-          {draft.reportNo.trim() ? (
-            <span className={valChipClassName} dir="ltr" title="رقم التقرير">
-              {draft.reportNo.trim()}
+    <div className="flex min-w-0 flex-col overflow-x-hidden">
+      {embeddedInPropertyChrome ? null : (
+        <div className={opsPpHeadCard}>
+          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
+            <span>نافذة المقيم العقاري</span>
+            <span className="text-[14px] font-bold text-gold-d" dir="ltr">
+              صك {deedLabel ?? summary.deedNumber}
             </span>
-          ) : null}
-          <ValStatusPill
-            label={evaluatorStatusLabel(draft.status)}
-            color={
-              VAL_STATUS_COLORS[draft.status] ?? VAL_STATUS_COLORS.draft
-            }
-          />
-          {gated ? (
-            <ValStatusPill
-              label="تراقب تقدم الأطراف"
-              color={VAL_STATUS_COLORS.gated}
-            />
-          ) : null}
+          </h1>
         </div>
-      </div>
+      )}
 
-      <div className={valCardClassName}>
-        <ValTabBar
-          tabs={VAL_TABS}
-          active={activeTab}
-          onChange={(id) => setActiveTab(id as EvaluatorWindowTab)}
-        />
-
-        <div className="mb-3.5 flex flex-wrap gap-2">
-          {depChips.map((dep) => (
-            <ValDepChip
-              key={dep.t}
-              label={dep.t}
-              ok={dep.ok}
-              title={dep.wait}
-            />
-          ))}
-        </div>
-
-        {gated ? (
-          <EngInfo variant="amber">
-            <strong>تراقب تقدم الأطراف:</strong>{" "}
-            {!gate.ready ? gate.reason : ""} يمكنك متابعة بيانات العقار
-            والمقارنات دون حساب القيمة حتى اعتماد بيانات معاينة العقار.
-          </EngInfo>
-        ) : needsSurvey && !surveyed && !locked ? (
-          <EngInfo variant="amber">
-            ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي وصف
-            إضافي: قد يلزم تعديل التقييم بعد صدوره.
-          </EngInfo>
-        ) : null}
-
-        {draft.status === "reopened" ? (
-          <EngInfo variant="amber">
-            <strong>⚠ معادة للتصحيح</strong> — أرجعها الأخصائي؛ يمكنك تعديل
-            جميع الحقول وإعادة الإرسال.
-          </EngInfo>
-        ) : null}
-
-        {locked ? (
-          <EngInfo variant="amber">
-            تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
-            الأخصائي.
-          </EngInfo>
-        ) : null}
-
-        {formError ? <EngInfo variant="red"><strong>!</strong> {formError}</EngInfo> : null}
-
+      <div
+        className={cn(
+          opsWorkspaceCard,
+          "overflow-hidden pt-0",
+          embeddedInPropertyChrome &&
+            "overflow-x-hidden border-0 bg-transparent p-0 shadow-none",
+        )}
+      >
         <div
-          className={cn(
-            formDisabled &&
-              activeTab !== "property" &&
-              activeTab !== "report" &&
-              activeTab !== "comparables"
-              ? "opacity-75"
-              : undefined,
-          )}
+          onMouseEnter={preloadValuationReportOutputTab}
+          onFocus={preloadValuationReportOutputTab}
         >
-          {activeTab === "property" ? (
-            <EvaluatorPropertyTab property={summary} />
+          <ValTabBar
+            tabs={visibleTabs}
+            active={activeTab}
+            onChange={onTabChange}
+          />
+        </div>
+
+        <div className="pt-5">
+          {needsSurvey && !surveyed && !locked && gate.ready ? (
+            <EngInfo variant="amber">
+              ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي
+              وصف إضافي: قد يلزم تعديل التقييم بعد صدوره.
+            </EngInfo>
           ) : null}
 
-          {activeTab === "report" ? (
-            <EvaluatorValuationReportTab
-              propertyId={task.propertyId ?? ""}
-              districtHint={
-                summary.property?.district?.trim() ||
-                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
-                undefined
-              }
-              draft={draft}
-              inspectionTaskId={summary.inspectionTaskId}
-            />
+          {locked ? (
+            <EngInfo variant="amber">
+              تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
+              الأخصائي.
+            </EngInfo>
           ) : null}
 
-          {activeTab === "comparables" ? (
-            <EvaluatorComparableSelectionPanel
-              propertyId={task.propertyId ?? ""}
-              poNumber={task.poNumber}
-              assignmentType={task.assignmentType}
-              districtHint={
-                summary.property?.district?.trim() ||
-                summary.cityDistrict.split(/[|/·,،]/)[0]?.trim() ||
-                undefined
-              }
-            />
+          {formError ? (
+            <EngInfo variant="red">
+              <strong>!</strong> {formError}
+            </EngInfo>
           ) : null}
 
-          {activeTab === "checklist" ? (
-            <EvaluatorChecklistTab
-              checklist={draft.checklist}
-              disabled={formDisabled}
-              error={fieldErrors.checklist}
-              fieldErrors={fieldErrors}
-              onChange={(patch) => {
-                const checklist = { ...draft.checklist, ...patch };
-                setDraft((prev) => ({ ...prev, checklist }));
-                scheduleAutosave({ checklist });
-                setFieldErrors((prev) => {
-                  const next = { ...prev };
-                  delete next.checklist;
-                  delete next.shared_deed_scope;
-                  delete next.shared_deed_percentage;
-                  delete next.q_lease_active;
-                  delete next.technical_notes_text;
-                  return next;
-                });
-              }}
-            />
-          ) : null}
-
-          {activeTab === "valuation" ? (
-            <div className="flex flex-col gap-3">
-              <EngSection>تقرير التقييم</EngSection>
-              <p className="m-0 text-[12px] leading-relaxed text-text-2">
-                استعراض تقرير التقييم يعرض مسودة المستند المولَّد — وليس معاينة
-                العقار. التقرير يُصدَر PDF عند الاعتماد، ويُحجز رقمه عند توزيع
-                المعاملة على المقيم. معاينة العقار مصدر بيانات يبني عليه المقيم
-                التقرير دون إعادة إدخالها.
-              </p>
-              {draft.reportNo.trim() ? (
-                <p className="m-0 text-[12.5px] text-text">
-                  رقم التقرير:{" "}
-                  <span className="font-bold" dir="ltr">
-                    {draft.reportNo.trim()}
-                  </span>
-                  {draft.reportIssueDate.trim() ? (
-                    <>
-                      {" "}
-                      · تاريخ الإصدار: {draft.reportIssueDate.trim()}
-                    </>
-                  ) : (
-                    <> · محجوز — يُثبَّت تاريخ الإصدار عند الاعتماد</>
-                  )}
-                </p>
-              ) : (
-                <p className="m-0 text-[12px] text-text-3">
-                  يُحجز الرقم تلقائياً بصيغة TQ عند توزيع المعاملة على المقيم.
-                </p>
-              )}
-              <EvaluatorIssuedReportActions
-                taskId={task.id}
-                propertyId={task.propertyId ?? ""}
-                reportNo={draft.reportNo}
-                depositCode={draft.depositCode}
-                area={summary.cityDistrict}
-                propertyType={summary.classification}
-                appraiserName={task.assigneeName}
-                issued={
-                  draft.status === "submitted" || draft.status === "completed"
-                }
-              />
-
-              <ValueEstimationSection
-                landValue={draft.landValue}
-                buildingValue={draft.buildingValue}
-                propertyTotal={draft.evaluatorPrice}
-                forcedSaleDiscountPct={draft.forcedSaleDiscountPct}
-                disabled={formDisabled}
-                landError={fieldErrors.land_value}
-                buildingError={fieldErrors.building_value}
-                totalError={fieldErrors.evaluator_price}
-                discountError={fieldErrors.forced_sale_discount}
-                onLandChange={(landValue) => {
-                  const evaluatorPrice = String(
-                    computePropertyTotal(landValue, draft.buildingValue),
-                  );
-                  setDraft((prev) => ({
-                    ...prev,
-                    landValue,
-                    evaluatorPrice: String(
-                      computePropertyTotal(landValue, prev.buildingValue),
-                    ),
-                  }));
-                  scheduleAutosave({ landValue, evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.land_value;
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onBuildingChange={(buildingValue) => {
-                  const evaluatorPrice = String(
-                    computePropertyTotal(draft.landValue, buildingValue),
-                  );
-                  setDraft((prev) => ({
-                    ...prev,
-                    buildingValue,
-                    evaluatorPrice: String(
-                      computePropertyTotal(prev.landValue, buildingValue),
-                    ),
-                  }));
-                  scheduleAutosave({ buildingValue, evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.building_value;
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onTotalChange={(evaluatorPrice) => {
-                  setDraft((prev) => ({ ...prev, evaluatorPrice }));
-                  scheduleAutosave({ evaluatorPrice });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.evaluator_price;
-                    return next;
-                  });
-                }}
-                onDiscountChange={(forcedSaleDiscountPct) => {
-                  setDraft((prev) => ({ ...prev, forcedSaleDiscountPct }));
-                  scheduleAutosave({ forcedSaleDiscountPct });
-                  setFieldErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.forced_sale_discount;
-                    return next;
-                  });
-                }}
-              />
-
-              <EngSection>مراجعة بيانات الأصل</EngSection>
-              <div
-                id="val-asset-data"
-                className={cn(
-                  "flex flex-col gap-3 rounded-[10px] border border-border bg-surface-2/60 p-3",
-                  fieldErrors.asset_data_confirmed &&
-                    evaluatorInvalidControlClass,
-                )}
+          <div className={cn(formDisabled ? "opacity-75" : undefined)}>
+            {workVisited || isWorkScreen(activeTab) ? (
+              <Activity
+                mode={activeTab !== "output" ? "visible" : "hidden"}
               >
-                <p className="text-[12px] leading-relaxed text-text-2">
-                  راجع بيانات الأصل من معاينة العقار / الرفع المساحي / دراسة الحالة.
-                  أكّد مطابقتها، أو دوّن ملاحظات التباين إن وُجدت اختلافات.
-                </p>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-start gap-2.5 text-[13px] font-medium text-text",
-                    formDisabled && "cursor-not-allowed opacity-65",
-                  )}
-                >
-                  <input
-                    id="asset-data-confirmed"
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 accent-primary"
+                <div className="mb-5">
+                  <EvaluatorValuationReportTab
+                    draft={draft}
                     disabled={formDisabled}
-                    checked={draft.assetDataConfirmed}
-                    onChange={(e) => {
-                      const assetDataConfirmed = e.target.checked;
-                      setDraft((prev) => ({
-                        ...prev,
-                        assetDataConfirmed,
-                      }));
-                      scheduleAutosave({ assetDataConfirmed });
-                      setFieldErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.asset_data_confirmed;
-                        return next;
-                      });
-                    }}
+                    property={summary.property}
+                    inspectionTaskId={summary.inspectionTaskId}
+                    surveyTaskId={summary.surveyTaskId}
+                    appraisalTaskId={task.id}
+                    assignmentType={task.assignmentType}
+                    fieldErrors={fieldErrors}
+                    onChange={onReportChoicesChange}
+                    onDraftPatch={onDraftPatch}
+                    showPropertyMedia={workScreen === "basic"}
                   />
-                  <span>
-                    أؤكّد مراجعة بيانات الأصل وأنها مطابقة لما وُثِّق من
-                    الأطراف
-                    <span className="text-[#a5432e]"> *</span>
-                  </span>
-                </label>
-                <InfathTextAreaField
-                  id="asset-data-variance-notes"
-                  label="ملاحظات التباين (إن وُجدت)"
-                  autoComplete="off"
-                  disabled={formDisabled}
-                  placeholder="مثال: فرق في مساحة البناء مقارنة بالمعاينة الميدانية…"
-                  rows={2}
-                  value={draft.assetDataVarianceNotes}
-                  onChange={(e) => {
-                    const assetDataVarianceNotes = e.target.value;
-                    setDraft((prev) => ({
-                      ...prev,
-                      assetDataVarianceNotes,
-                    }));
-                    scheduleAutosave({ assetDataVarianceNotes });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      if (
-                        draft.assetDataConfirmed ||
-                        assetDataVarianceNotes.trim()
-                      ) {
-                        delete next.asset_data_confirmed;
-                      }
-                      return next;
-                    });
-                  }}
+                </div>
+                {property?.id ? (
+                  <ValuationWorkShell
+                    propertyId={property.id}
+                    poNumber={draft.poNumber}
+                    assignmentType={task.assignmentType ?? undefined}
+                    districtHint={property.district}
+                    property={{
+                      area: property.area,
+                      district: property.district,
+                      city: property.city,
+                      deedNumber: property.deedNumber,
+                      propertyType: property.propertyType,
+                      classification: property.classification,
+                    }}
+                    intakeProperty={property}
+                    onFinalOpinionChange={syncFinalOpinion}
+                    draft={draft}
+                    disabled={formDisabled}
+                    fieldErrors={fieldErrors}
+                    onDraftPatch={onDraftPatch}
+                    onReportChoicesPatch={onReportChoicesPatch}
+                    onSubmit={() => void submit()}
+                    submitting={submitBusy}
+                    showSubmit={!formDisabled}
+                    screen={workScreen}
+                    onScreenChange={onWorkScreenChange}
+                    embeddedInTopTabs
+                    onNavAvailabilityChange={onNavAvailabilityChange}
+                  />
+                ) : (
+                  <p className="text-[13px] text-text-3">
+                    لا يتوفر عقار مرتبط لهذه المهمة.
+                  </p>
+                )}
+              </Activity>
+            ) : null}
+
+            {visitedTabsRef.current.has("output") ? (
+              <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
+                <EvaluatorValuationReportOutputTab
+                  draft={draft}
+                  property={summary.property}
+                  inspectionTaskId={summary.inspectionTaskId}
+                  surveyTaskId={summary.surveyTaskId}
+                  assignedAppraiserName={assignedAppraiserName}
                 />
-                {fieldErrors.asset_data_confirmed ? (
-                  <span className="text-[11px] text-danger-text">
-                    {fieldErrors.asset_data_confirmed}
-                  </span>
-                ) : null}
-              </div>
-
-              <EngSection>ملاحظات</EngSection>
-              <InfathTextAreaField
-                id="evaluator_notes"
-                label="ملاحظات على العقار (اختياري)"
-                autoComplete="off"
-                disabled={formDisabled}
-                placeholder="أي ملاحظات على العقار…"
-                rows={3}
-                value={draft.evaluatorNotes}
-                onChange={(e) => {
-                  const evaluatorNotes = e.target.value;
-                  setDraft((prev) => ({ ...prev, evaluatorNotes }));
-                  scheduleAutosave({ evaluatorNotes });
-                }}
-              />
-              {!formDisabled ? (
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    className={valPrimaryBtnClassName}
-                    disabled={submitting}
-                    aria-busy={submitting || undefined}
-                    onClick={() => void submit()}
-                  >
-                    {submitting ? <Spinner /> : null}
-                    <span>
-                      {submitting
-                        ? "جاري الاعتماد…"
-                        : "اعتماد التقييم وإرسال للأخصائي"}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {activeTab === "infath" ? (
-            <div className="flex flex-col gap-6">
-              <InfathSection title="بيانات الرفع لإنفاذ (المقيّم)">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <InfathTextField
-                    id="inf-appraisal-date"
-                    label="تاريخ التقييم"
-                    type="date"
-                    autoComplete="off"
-                    disabled={formDisabled}
-                    value={draft.appraisalDate}
-                    onChange={(e) => {
-                      const appraisalDate = e.target.value;
-                      setDraft((prev) => ({ ...prev, appraisalDate }));
-                      scheduleAutosave({ appraisalDate });
-                    }}
-                  />
-                  {draft.reportIssueDate.trim() ? (
-                    <InfathTextField
-                      id="inf-issue-date"
-                      label="تاريخ إصدار التقرير"
-                      readOnly
-                      disabled
-                      value={draft.reportIssueDate}
-                    />
-                  ) : null}
-                  <InfathSelectField
-                    id="inf-method"
-                    label="الأسلوب المستخدم"
-                    disabled={formDisabled}
-                    value={draft.valuationMethod}
-                    onChange={(e) => {
-                      const valuationMethod = e.target.value;
-                      setDraft((prev) => ({ ...prev, valuationMethod }));
-                      scheduleAutosave({ valuationMethod });
-                    }}
-                  >
-                    {extraSelectOption(
-                      EVALUATOR_VALUATION_METHODS,
-                      draft.valuationMethod,
-                    )}
-                    {EVALUATOR_VALUATION_METHODS.map((method) => (
-                      <option key={method} value={method}>
-                        {method}
-                      </option>
-                    ))}
-                  </InfathSelectField>
-                  <InfathSelectField
-                    id="inf-basis"
-                    label="أساس القيمة"
-                    disabled={formDisabled}
-                    value={draft.valueBasis}
-                    onChange={(e) => {
-                      const valueBasis = e.target.value;
-                      setDraft((prev) => ({ ...prev, valueBasis }));
-                      scheduleAutosave({ valueBasis });
-                    }}
-                  >
-                    {extraSelectOption(
-                      EVALUATOR_VALUE_BASIS_OPTIONS,
-                      draft.valueBasis,
-                    )}
-                    {EVALUATOR_VALUE_BASIS_OPTIONS.map((basis) => (
-                      <option key={basis} value={basis}>
-                        {basis}
-                      </option>
-                    ))}
-                  </InfathSelectField>
-                </div>
-                <p className="mt-3 rounded-lg border border-[color-mix(in_srgb,#d9a441_28%,transparent)] bg-[color-mix(in_srgb,#d9a441_8%,transparent)] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5b12]">
-                  قيم الأرض والمباني ونسبة خصم البيع القسري تُدخل في تبويب
-                  «التقييم» — قسم تقدير القيمة.
-                </p>
-                <div className="mt-3">
-                  <InfathSelectField
-                    id="inf-demand"
-                    label="حجم الطلب على العقار"
-                    disabled={formDisabled}
-                    value={draft.demandLevel}
-                    onChange={(e) => {
-                      const demandLevel = e.target.value;
-                      setDraft((prev) => ({ ...prev, demandLevel }));
-                      scheduleAutosave({ demandLevel });
-                    }}
-                  >
-                    <option value="">اختر</option>
-                    {extraSelectOption(
-                      EVALUATOR_DEMAND_LEVEL_OPTIONS,
-                      draft.demandLevel,
-                    )}
-                    {EVALUATOR_DEMAND_LEVEL_OPTIONS.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </InfathSelectField>
-                </div>
-                <div className="mt-3">
-                  <InfathTextAreaField
-                    id="inf-search"
-                    label="نطاق البحث ومصادر معلومات القيم"
-                    autoComplete="off"
-                    disabled={formDisabled}
-                    rows={3}
-                    value={draft.searchScopeNotes}
-                    onChange={(e) => {
-                      const searchScopeNotes = e.target.value;
-                      setDraft((prev) => ({ ...prev, searchScopeNotes }));
-                      scheduleAutosave({ searchScopeNotes });
-                    }}
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <EngField
-                    label="عنوان المقيم — من إعدادات النظام"
-                    value={
-                      draft.appraiserAddress.trim() || DEFAULT_APPRAISER_ADDRESS
-                    }
-                  />
-                  <EngField
-                    label="رقم تواصل المقيّم — من إعدادات النظام"
-                    value={
-                      draft.appraiserPhone.trim() || DEFAULT_APPRAISER_PHONE
-                    }
-                    ltr
-                  />
-                </div>
-              </InfathSection>
-
-              <InfathSection title="نطاق العمل">
-                <div
-                  id="inf-independence"
-                  className={cn(
-                    "flex flex-col gap-2 rounded-[10px] border border-border bg-surface-2/60 p-3",
-                    fieldErrors.independence_declared &&
-                      evaluatorInvalidControlClass,
-                  )}
-                >
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-start gap-2.5 text-[13px] font-medium text-text",
-                      formDisabled && "cursor-not-allowed opacity-65",
-                    )}
-                  >
-                    <input
-                      id="inf-independence-check"
-                      type="checkbox"
-                      className="mt-0.5 size-4 shrink-0 accent-primary"
-                      disabled={formDisabled}
-                      checked={draft.independenceDeclared}
-                      onChange={(e) => {
-                        const independenceDeclared = e.target.checked;
-                        setDraft((prev) => ({
-                          ...prev,
-                          independenceDeclared,
-                        }));
-                        scheduleAutosave({ independenceDeclared });
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next.independence_declared;
-                          return next;
-                        });
-                      }}
-                    />
-                    <span>
-                      أقر بالاستقلالية وعدم تضارب المصالح
-                      <span className="text-[#a5432e]"> *</span>
-                    </span>
-                  </label>
-                  {fieldErrors.independence_declared ? (
-                    <span className="text-[11px] text-danger-text">
-                      {fieldErrors.independence_declared}
-                    </span>
-                  ) : null}
-                </div>
-              </InfathSection>
-
-              <InfathSection title="العاملون على التقرير">
-                <EvaluatorReportWorkersSection
-                  workers={draft.reportWorkers}
-                  disabled={formDisabled}
-                  error={fieldErrors.report_workers}
-                  onChange={(reportWorkers) => {
-                    setDraft((prev) => ({ ...prev, reportWorkers }));
-                    scheduleAutosave({ reportWorkers });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.report_workers;
-                      return next;
-                    });
-                  }}
-                />
-              </InfathSection>
-
-              <InfathSection title="صورة الأصل من المخطط">
-                <div
-                  className={cn(
-                    "file-zone rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-4 text-center",
-                    hasPlan && "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
-                    formDisabled && "cursor-not-allowed opacity-65",
-                  )}
-                >
-                  <input
-                    ref={planFileInputRef}
-                    type="file"
-                    accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                    disabled={formDisabled || planUploading}
-                    className="pointer-events-none absolute size-0 opacity-0"
-                    onChange={(e) =>
-                      void onPlanSelected(e.target.files?.[0] ?? null)
-                    }
-                  />
-                  {!hasPlan ? (
-                    <>
-                      <div className="mb-1 text-[12px] font-bold text-text-2">
-                        رفع ملف المخطط
-                      </div>
-                      <div className="mb-2.5 text-[11px] text-text-3">
-                        PDF أو صورة · حتى 20 ميجابايت
-                      </div>
-                      {!formDisabled ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="primary"
-                          loading={planUploading}
-                          disabled={planUploading}
-                          showActionToast={false}
-                          onClick={() => planFileInputRef.current?.click()}
-                        >
-                          اختيار ملف
-                        </Button>
-                      ) : null}
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2 text-[12px]">
-                      <span>
-                        📎 {planName ?? draft.planImageFileName ?? "تم رفع الملف"}
-                      </span>
-                      {!formDisabled ? (
-                        <button
-                          type="button"
-                          aria-label="حذف ملف المخطط"
-                          className="cursor-pointer border-0 bg-transparent p-1 text-[14px] text-text-3"
-                          onClick={() => void clearPlan()}
-                        >
-                          ✕
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                {planUploadError ? (
-                  <span className="mt-1 block text-[11px] text-danger-text">
-                    {planUploadError}
-                  </span>
-                ) : null}
-              </InfathSection>
-
-              <InfathSection title="شهادة الإيداع في قيمة">
-                <p className="mb-3 text-[12px] leading-relaxed text-text-2">
-                  اختيارية — لا تمنع اعتماد التقييم. الرمز يظهر في ترويسة التقرير،
-                  والشهادة تُرفق ضمن مرفقات التقرير.
-                </p>
-                <div className="mb-3">
-                  <InfathTextField
-                    id="inf-deposit-code"
-                    label="رمز الإيداع"
-                    dir="ltr"
-                    autoComplete="off"
-                    disabled={formDisabled}
-                    value={draft.depositCode}
-                    onChange={(e) => {
-                      const depositCode = e.target.value;
-                      setDraft((prev) => ({ ...prev, depositCode }));
-                      scheduleAutosave({ depositCode });
-                    }}
-                  />
-                </div>
-                <div
-                  className={cn(
-                    "file-zone rounded-[10px] border-2 border-dashed border-border-md bg-surface-2 p-4 text-center",
-                    hasDepositCertificate &&
-                      "border-solid border-[#a9dfbf] bg-[#d5f5ef]",
-                    formDisabled && "cursor-not-allowed opacity-65",
-                  )}
-                >
-                  <input
-                    ref={depositFileInputRef}
-                    type="file"
-                    accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                    disabled={formDisabled || depositUploading}
-                    className="pointer-events-none absolute size-0 opacity-0"
-                    onChange={(e) =>
-                      void onDepositCertificateSelected(e.target.files?.[0] ?? null)
-                    }
-                  />
-                  {!hasDepositCertificate ? (
-                    <>
-                      <div className="mb-1 text-[12px] font-bold text-text-2">
-                        رفع شهادة الرفع على قيمة
-                      </div>
-                      <div className="mb-2.5 text-[11px] text-text-3">
-                        PDF أو صورة · حتى 20 ميجابايت · اختياري
-                      </div>
-                      {!formDisabled ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="primary"
-                          loading={depositUploading}
-                          disabled={depositUploading}
-                          showActionToast={false}
-                          onClick={() => depositFileInputRef.current?.click()}
-                        >
-                          اختيار ملف
-                        </Button>
-                      ) : null}
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2 text-[12px]">
-                      <span>
-                        📎{" "}
-                        {draft.depositCertificateFileName ??
-                          getCachedEvaluatorDepositCertificate(task.id)?.fileName}
-                      </span>
-                      {!formDisabled ? (
-                        <button
-                          type="button"
-                          aria-label="حذف شهادة الإيداع"
-                          className="cursor-pointer border-0 bg-transparent p-1 text-[14px] text-text-3"
-                          onClick={() => void clearDepositCertificate()}
-                        >
-                          ✕
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                {depositUploadError ? (
-                  <span className="mt-1 block text-[11px] text-danger-text">
-                    {depositUploadError}
-                  </span>
-                ) : null}
-              </InfathSection>
-            </div>
-          ) : null}
+              </Activity>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

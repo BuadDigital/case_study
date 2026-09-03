@@ -1,8 +1,8 @@
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Valuation.Application.Abstractions;
 
 /// <summary>
 // / the shared bank includes prior transactions: a completed valuation's
-/// subject enters the bank as a «تقييم سابق» comparable (source card: من معاملات سابقة).
+/// subject enters the bank as a "prior valuation" comparable (source card: from prior transactions).
 /// </summary>
 public interface IPriorValuationBankFeeder
 {

@@ -1,6 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -62,7 +64,7 @@ public class WorkOrderValidatorTests
     [Fact]
     public void Request_number_matching_deed_number_is_a_warning_not_a_block()
     {
- // ق-11: التطابق الحرفي وارد مصادفة — تحذير في الواجهة لا قيد منع.
+ // Q-11: exact match may occur by chance — UI warning, not a hard block.
         var dto = ValidDeedProperty();
         dto.RequestNumber = dto.DeedNumber;
 

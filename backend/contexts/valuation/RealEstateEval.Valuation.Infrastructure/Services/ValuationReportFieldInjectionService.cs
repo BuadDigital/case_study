@@ -1,9 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
-namespace RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Attachments.Domain;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// Builds valuation-report field payload from live context.
@@ -14,6 +23,7 @@ public sealed class ValuationReportFieldInjectionService(
     ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
+    IValuationListsService valuationLists,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
@@ -39,6 +49,7 @@ public sealed class ValuationReportFieldInjectionService(
         var propertyId = vr.PropertyId?.Trim() ?? "";
         WorkOrderProperty? prop = null;
         FieldInspectionWorkspace? workspace = null;
+        InspectorPayloadFacts inspector = new();
         Client? client = null;
         var deedNatureMatchOutcome = DeedNatureMatchOutcomes.Unset;
         if (Guid.TryParse(propertyId, out var propertyGuid))
@@ -50,6 +61,7 @@ public sealed class ValuationReportFieldInjectionService(
             {
                 prop = context.ToProperty();
                 workspace = context.LatestWorkspace?.ToWorkspace();
+                inspector = InspectorPayloadFacts.Parse(context.InspectorPayloadJson);
                 deedNatureMatchOutcome = context.DeedNatureMatchOutcome ?? "";
                 client = context.ClientNameAr is null && context.ClientNameEn is null
                     ? null
@@ -67,10 +79,25 @@ public sealed class ValuationReportFieldInjectionService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var org = await organizationSettings.GetAsync(cancellationToken);
+        var valuationCatalog = await valuationLists.GetAsync(cancellationToken);
         var printable = await LoadPrintableAttachmentsAsync(propertyId, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var bag = BuildValueBag( vr, prop, workspace, client, org, market, cost, recon, printable, hasStructures, deedNatureMatchOutcome, today);
+        var bag = BuildValueBag(
+            vr,
+            prop,
+            workspace,
+            inspector,
+            client,
+            org,
+            market,
+            cost,
+            recon,
+            printable,
+            hasStructures,
+            deedNatureMatchOutcome,
+            today,
+            valuationCatalog);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -143,15 +170,14 @@ public sealed class ValuationReportFieldInjectionService(
     {
         if (string.IsNullOrWhiteSpace(propertyId)) return [];
 
-        var all = await attachments.ListForPropertyAsync(propertyId, cancellationToken);
+        var all = await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken);
 
- // Prefer classified print-in-report rows; fall back to images scoped to this property id.
-        var classified = all
-            .Where(a => a.PrintInReport)
+        var routed = all
+            .Where(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope) is not null)
             .OrderBy(a => a.CreatedAtUtc)
             .Take(40)
             .ToList();
-        if (classified.Count > 0) return classified;
+        if (routed.Count > 0) return routed;
 
         return all
             .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
@@ -164,6 +190,7 @@ public sealed class ValuationReportFieldInjectionService(
         ValuationRequest vr,
         WorkOrderProperty? prop,
         FieldInspectionWorkspace? workspace,
+        InspectorPayloadFacts inspector,
         Client? client,
         OrganizationSettingsDto org,
         ValuationComparableSelectionListDto? market,
@@ -172,7 +199,8 @@ public sealed class ValuationReportFieldInjectionService(
         IReadOnlyList<FileAttachmentMetaDto> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
-        DateOnly today)
+        DateOnly today,
+        ValuationListsDto? valuationCatalog = null)
     {
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
 
@@ -211,21 +239,24 @@ public sealed class ValuationReportFieldInjectionService(
         Put("owner_name", prop?.OwnerName);
         Put("deed_number", prop?.DeedNumber);
         Put("deed_date_h", prop?.DeedDate);
+        Put("partition_minutes_number", prop?.PartitionMinutesNumber);
+        if (!string.IsNullOrWhiteSpace(prop?.PartitionMinutesDate))
+            Put("partition_minutes_date", prop!.PartitionMinutesDate);
         Put("north_boundary", prop?.NorthBoundary);
         Put("north_boundary_length_m", prop?.NorthBoundaryLengthM);
-        Put("boundary_north_type", PropertyBoundaryTypes.LabelAr(prop?.NorthBoundaryType));
+        Put("boundary_north_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType));
         Put("finishing_facade_north", prop?.NorthFacadeFinishing);
         Put("south_boundary", prop?.SouthBoundary);
         Put("south_boundary_length_m", prop?.SouthBoundaryLengthM);
-        Put("boundary_south_type", PropertyBoundaryTypes.LabelAr(prop?.SouthBoundaryType));
+        Put("boundary_south_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType));
         Put("finishing_facade_south", prop?.SouthFacadeFinishing);
         Put("east_boundary", prop?.EastBoundary);
         Put("east_boundary_length_m", prop?.EastBoundaryLengthM);
-        Put("boundary_east_type", PropertyBoundaryTypes.LabelAr(prop?.EastBoundaryType));
+        Put("boundary_east_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType));
         Put("finishing_facade_east", prop?.EastFacadeFinishing);
         Put("west_boundary", prop?.WestBoundary);
         Put("west_boundary_length_m", prop?.WestBoundaryLengthM);
-        Put("boundary_west_type", PropertyBoundaryTypes.LabelAr(prop?.WestBoundaryType));
+        Put("boundary_west_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType));
         Put("finishing_facade_west", prop?.WestFacadeFinishing);
 
         var streetCount = PropertyBoundaryTypes.CountStreets(
@@ -246,6 +277,8 @@ public sealed class ValuationReportFieldInjectionService(
             Put("geo_latitude", lat.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Put("geo_longitude", lon.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
+
+        PutInspectorComponentCounts(Put, inspector, hasStructures);
 
         Put("valuer.name_ar", org.Evaluator.Name);
         Put("valuer.membership_number", org.Evaluator.MembershipNumber);
@@ -378,6 +411,8 @@ public sealed class ValuationReportFieldInjectionService(
             PutMoney("final.opinion_value", recon.FinalOpinionValue);
             PutMoney("final.opinion_before_liquidation", recon.FinalOpinionBeforeLiquidation);
             PutMoney("final.liquidation_discount_pct", recon.LiquidationDiscountPct);
+            if (!string.IsNullOrWhiteSpace(recon.MethodsRationale))
+                Put("methods_rationale", recon.MethodsRationale);
         }
         else if (market is not null)
         {
@@ -422,5 +457,50 @@ public sealed class ValuationReportFieldInjectionService(
 
         _ = hasStructures;
         return d;
+    }
+
+    private static void PutInspectorComponentCounts(
+        Action<string, string?> put,
+        InspectorPayloadFacts inspector,
+        bool hasStructures)
+    {
+    put("building_condition_ar", inspector.BuildState);
+        put("vacancy_ar", inspector.OccupancyState);
+        put("meter.4120", inspector.ElectricityMeterCount);
+        put("meter.4130", inspector.ElectricityMeterNumbers);
+        put("meter.4160", inspector.WaterMeterCount);
+        put("meter.4170", inspector.WaterMeterNumbers);
+        if (!hasStructures) return;
+
+        put("property_age_years", inspector.PropertyAgeYears);
+
+        put("inventory.6040", inspector.RoomCount);
+        put("pending.6090", inspector.HallCount);
+        put("inventory.6140", inspector.DiningCount);
+        put("inventory.6190", inspector.MajlisCount);
+        put("inventory.6240", inspector.MaidRoomCount);
+        put("inventory.6290", inspector.Kitchen);
+        put("inventory.6390", inspector.GuardRoomCount);
+        put("inventory.6440", inspector.StoreCount);
+        put("inventory.6490", inspector.ParkingCount);
+        put("inventory.6540", inspector.BathroomCount);
+        put("inventory.5330", inspector.JacuzziCount);
+        put("inventory.5280", inspector.HasElevator);
+        put("pending.5360", inspector.PlaygroundCount);
+        put("inventory.5350", AnnexCountOrFlag(inspector));
+        put("inventory.6590", inspector.OtherComponents);
+    }
+
+    private static string? AnnexCountOrFlag(InspectorPayloadFacts inspector)
+    {
+        var u = ParsePositive(inspector.AnnexUpperCount);
+        var g = ParsePositive(inspector.AnnexGroundCount);
+        if (u + g > 0) return (u + g).ToString();
+        return string.IsNullOrWhiteSpace(inspector.HasAnnex) ? null : inspector.HasAnnex;
+    }
+
+    private static int ParsePositive(string? raw)
+    {
+        return int.TryParse((raw ?? "").Trim(), out var n) && n > 0 ? n : 0;
     }
 }

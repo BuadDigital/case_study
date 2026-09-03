@@ -2,15 +2,21 @@
 
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { cn } from "@platform/ui-kit";
-import { formatPoDisplay } from "@case-study/mfe";
-import { poPropertiesPath } from "@case-study/mfe";
+import {
+  PoNumber as PoNumberDisplay,
+  cn,
+  formatPoDisplay,
+  poNumberClassName,
+  poNumberLinkClassName,
+} from "@platform/ui-kit";
+import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { prefetchPoRecord } from "../../query/case-study-queries";
 
-const poNumBase =
-  "inline-block font-sans text-[11px] font-medium [unicode-bidi:isolate]";
-
-/** PO number isolated for correct display in RTL (Arabic label + LTR code). */
+/**
+ * PO number with case-study routing: adds the linked variant on top of the
+ * shared display contract (ui-kit is framework-free, so `next/link` and the
+ * query-cache warm-up stay here).
+ */
 export function PoNumber({
   value,
   className,
@@ -22,13 +28,6 @@ export function PoNumber({
   link?: boolean;
 }) {
   const queryClient = useQueryClient();
-  const display = formatPoDisplay(value);
-  const cls = cn(
-    poNumBase,
-    link &&
-      "text-primary underline decoration-primary underline-offset-2 hover:text-primary-mid",
-    className,
-  );
 
   const warmCache = () => {
     if (value.trim()) prefetchPoRecord(queryClient, value);
@@ -39,19 +38,15 @@ export function PoNumber({
       <Link
         href={poPropertiesPath(value)}
         dir="ltr"
-        className={cls}
+        className={cn(poNumberClassName, poNumberLinkClassName, className)}
         onClick={(e) => e.stopPropagation()}
         onMouseEnter={warmCache}
         onFocus={warmCache}
       >
-        {display}
+        {formatPoDisplay(value)}
       </Link>
     );
   }
 
-  return (
-    <span dir="ltr" className={cls}>
-      {display}
-    </span>
-  );
+  return <PoNumberDisplay value={value} className={className} />;
 }

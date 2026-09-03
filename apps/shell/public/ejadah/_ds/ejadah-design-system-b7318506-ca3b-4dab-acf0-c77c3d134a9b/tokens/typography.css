@@ -1,0 +1,30 @@
+/* Ejadah typography.
+   UI font (shipped app): Tajawal 400/500/700/800.
+   Approved spec direction: IBM Plex Sans Arabic + IBM Plex Sans, weights 400/500 only,
+   line-height 1.75, min size 12px, tabular-nums on numeric columns. */
+:root {
+  --font-sans: "Tajawal", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "IBM Plex Sans", sans-serif;
+  --font-lat: "IBM Plex Sans", sans-serif;
+  --base-size: 14px;
+  --lh: 1.75; /* @kind other */
+  --sec: 12px;
+  --cell-pad: 10px 12px;
+  /* type scale (spec §4) */
+  --fs-page-title: 20px;
+  --fs-section-title: 17px;
+  --fs-body: 14px;
+  --fs-label: 13px;
+  --fs-hint: 12px;
+  --fs-stat: 24px;
+}
+[data-density="comfortable"] { --base-size: 15px; --sec: 13px; --cell-pad: 12px 14px; }
+body { font-family: var(--font-sans); font-size: var(--base-size); line-height: var(--lh); font-weight: 400; color: var(--text-1); background: var(--bg); }
+h2 { font-size: var(--fs-page-title); font-weight: 500; }
+h3 { font-size: var(--fs-section-title); font-weight: 500; }
+.lat { font-family: var(--font-lat); }
+.num { font-variant-numeric: tabular-nums; }
+.sec { font-size: var(--sec); color: var(--text-2); }
+p { max-width: 68ch; }
+a { color: var(--blue-text); text-decoration: none; }
+a:hover { color: var(--navy-3); text-decoration: underline; }

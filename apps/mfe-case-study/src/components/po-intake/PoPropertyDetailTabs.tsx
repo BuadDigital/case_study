@@ -1,61 +1,131 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { findSurveyChildForParent } from "@engineering-office/mfe";
-import { useMemo, useState, useEffect } from "react";
-import { failuresForProperty, useFailuresQuery } from "@failures/mfe";
+import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
+import { Activity, useMemo, useRef, useState, useEffect } from "react";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
-import type { FailureRecord } from "@failures/mfe";
-import { Button, cn, Tab, TabBar, TabPanel } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { canViewPropertyTimelineRail } from "../../lib/prototype/po-roles";
-import { DetailBadge, EmptyState, FieldBox, FieldsGrid, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
-import { PropertyDetailAppraisalTab } from "./PropertyDetailAppraisalTab";
-import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
-import { PropertyDetailLinkedTab } from "./PropertyDetailLinkedTab";
-import { PropertyDetailCaseStudyReport } from "./PropertyDetailCaseStudyReport";
-import { PropertyDetailGovernmentReviewsTab } from "./PropertyDetailGovernmentReviewsTab";
-import { PropertyDetailPropertyKeys } from "./PropertyDetailPropertyKeys";
-import { PropertyDetailEnfathUpload } from "./PropertyDetailEnfathUpload";
-import { PropertyDetailFinanceTab } from "./PropertyDetailFinanceTab";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
+import {
+  Button,
+  InlineLoadingSkeleton,
+  Tab,
+  TabBar,
+  TabPanel,
+  cn,
+  opsContentPanel,
+} from "@platform/ui-kit";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canViewPropertyTimelineRail } from "../../lib/app-data/po-roles";
+import { DetailBadge, EmptyState, InfoBox, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
+import { PropertyDetailBasicTab } from "./PropertyDetailBasicTab";
 import { PropertyDetailSurveyNotesTab, buildPartyRemarksSections } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
-import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
-import { PropertyDetailInspectionTab } from "./PropertyDetailInspectionTab";
-import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import { boundariesAvailabilityLabel, boundariesMarkedUnavailable, formatDateAr, formatPropertyDeedDisplay,
-  hasBourseDetailFields, 
-  ownershipStatusLabel, 
-  formatPropertyRestrictionsLine,
-  showsCourtFields,
-  skipsBourseForIdentifier,
-  PROPERTY_BOUNDARY_ROWS,
-  type PoIntakeRecord,
-  type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+import { formatDateAr, formatPropertyDeedDisplay, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
-import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
-import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import { poPropertyFailurePath } from "../../lib/po-routes";
-import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/prototype/property-detail-timeline";
+import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
+import { poPropertyFailurePath } from "@platform/app-shared/domain/po-routes";
+import { buildPropertyDetailTimeline, formatTimelineDate } from "../../lib/app-data/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
-import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/prototype/tasks-storage";
-import { childTasksForCaseStudyParent } from "../../lib/prototype/case-study-party-answers";
-import { downloadPropertyDetailDocument, listPropertyDetailPhotos, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/prototype/property-detail-documents";
-import { ReportAttachmentClassifyControls } from "./ReportAttachmentClassifyControls";
+import { caseStudyTaskForProperty, type WorkflowTask } from "../../lib/app-data/tasks-storage";
+import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
+import { downloadPropertyDetailDocument, listPropertyDetailPhotos, pickPrimaryPropertyDetailPhoto, type PropertyDetailDocumentEntry, type PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
-import { poPropertyPath } from "../../lib/po-routes";
+import { poPropertyPath, poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import { keysStatusLabelAr, usePropertyKeyGateQuery } from "../../query/use-property-key-gate-query";
-import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/prototype/property-detail-local-ui";
-import { buildPropertyDetailTabActivity } from "../../lib/prototype/property-detail-tab-activity";
+import { loadSeenPropertyTabFingerprints, markPropertyTabSeen, propertyTabHasNewDot, type SeenPropertyTabMap} from "../../lib/app-data/property-detail-local-ui";
+import { buildPropertyDetailTabActivity } from "../../lib/app-data/property-detail-tab-activity";
+
+const tabChunkFallback = () => (
+  <InlineLoadingSkeleton className="my-2" />
+);
+
+const PropertyDetailAppraisalTab = dynamic(
+  () =>
+    import("./PropertyDetailAppraisalTab").then(
+      (m) => m.PropertyDetailAppraisalTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPhotosTab = dynamic(
+  () =>
+    import("./PropertyDetailPhotosTab").then(
+      (m) => m.PropertyDetailPhotosTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailLinkedTab = dynamic(
+  () =>
+    import("./PropertyDetailLinkedTab").then(
+      (m) => m.PropertyDetailLinkedTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailCaseStudyReport = dynamic(
+  () =>
+    import("./PropertyDetailCaseStudyReport").then(
+      (m) => m.PropertyDetailCaseStudyReport,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailGovernmentReviewsTab = dynamic(
+  () =>
+    import("./PropertyDetailGovernmentReviewsTab").then(
+      (m) => m.PropertyDetailGovernmentReviewsTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPropertyKeys = dynamic(
+  () =>
+    import("./PropertyDetailPropertyKeys").then(
+      (m) => m.PropertyDetailPropertyKeys,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailEnfathUpload = dynamic(
+  () =>
+    import("./PropertyDetailEnfathUpload").then(
+      (m) => m.PropertyDetailEnfathUpload,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailFinanceTab = dynamic(
+  () =>
+    import("./PropertyDetailFinanceTab").then(
+      (m) => m.PropertyDetailFinanceTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailInspectionTab = dynamic(
+  () =>
+    import("./PropertyDetailInspectionTab").then(
+      (m) => m.PropertyDetailInspectionTab,
+    ),
+  { loading: tabChunkFallback },
+);
+const PropertyDetailPartyPackageReview = dynamic(
+  () =>
+    import("./PropertyDetailPartyPackageReview").then(
+      (m) => m.PropertyDetailPartyPackageReview,
+    ),
+  { loading: tabChunkFallback },
+);
+const PartyRoleDetailPanel = dynamic(
+  () =>
+    import("./PartyRoleDetailPanel").then(
+      (m) => m.PartyRoleDetailPanel,
+    ),
+  { loading: tabChunkFallback },
+);
 
 const TABS = [
   { id: "basic", label: "البيانات الأساسية" },
@@ -77,7 +147,7 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-/** مراجعي حكومي: only the tabs they need for court-visit / keys work. */
+/** Government reviewer: only the tabs they need for court-visit / keys work. */
 const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
   "basic",
   "government",
@@ -101,7 +171,7 @@ const REAL_ESTATE_APPRAISER_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
-/** مكتب هندسي: survey package + dues/notes. */
+/** Engineering office: survey package + dues/notes. */
 const ENGINEERING_OFFICE_TAB_IDS: readonly TabId[] = [
   "basic",
   "survey",
@@ -110,7 +180,7 @@ const ENGINEERING_OFFICE_TAB_IDS: readonly TabId[] = [
   "survey-notes",
 ];
 
-/** معاين ميداني: inspection media + dues/notes. */
+/** Field inspector: inspection media + dues/notes. */
 const FIELD_INSPECTOR_TAB_IDS: readonly TabId[] = [
   "basic",
   "documents",
@@ -145,46 +215,34 @@ function isAllowedPropertyTab(
   return propertyDetailTabsForRole(role).some((t) => t.id === tabId);
 }
 
-function docExtLabel(doc: PropertyDetailDocumentEntry): string {
-  if (doc.kind === "pdf") return "PDF";
-  if (doc.kind === "image") return "IMG";
-  const parts = doc.fileName.trim().split(".");
-  const ext = parts.length > 1 ? parts[parts.length - 1]!.toUpperCase() : "DOC";
-  return ext.slice(0, 4) || "DOC";
+/** Arabic kind label for the row badge — no file extensions in the UI. */
+function docKindLabel(doc: PropertyDetailDocumentEntry): string {
+  if (doc.kind === "pdf") return "مستند";
+  if (doc.kind === "image") return "صورة";
+  return "ملف";
 }
 
-function suggestDocKindForClassify(doc: PropertyDetailDocumentEntry): string {
-  const id = doc.id.toLowerCase();
-  if (id.includes("reg")) return "registry";
-  if (id.includes("assignment") || id.includes("decree")) return "decree";
-  if (id.includes("bourse")) return "bourse-deed";
-  if (id.includes("deed")) return "deed";
-  if (id.includes("delegation")) return "delegation";
-  if (id.includes("boundar") || id.includes("survey")) return "boundaries";
-  if (id.includes("map") || id.includes("site")) return "site-map";
-  if (id.includes("photo") || doc.kind === "image") return "photo";
-  return "other";
+/** Generated storage names (UUIDs, hashes) carry no meaning for the specialist; hide them. */
+function isGeneratedFileName(fileName: string): boolean {
+  const stem = fileName.trim().replace(/\.[a-z0-9]+$/i, "");
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hash = /^[0-9a-f]{24,}$/i;
+  return uuid.test(stem) || hash.test(stem);
 }
 
-function DocumentRow({
-  doc,
-  propertyTypeKey,
-}: {
-  doc: PropertyDetailDocumentEntry;
-  propertyTypeKey?: string;
-}) {
-  const ext = docExtLabel(doc);
-  const attachmentId = doc.attachmentId?.trim();
+function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
+  const kind = docKindLabel(doc);
+  const showFileName = doc.fileName.trim().length > 0 && !isGeneratedFileName(doc.fileName);
 
   return (
     <div className="rounded border border-border bg-surface-2 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[9px] font-extrabold text-[#8c7857]"
+            className="inline-flex h-[30px] min-w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] px-1.5 text-[10px] font-extrabold text-[#8c7857]"
             aria-hidden
           >
-            {ext}
+            {kind}
           </span>
           <span className="inline-flex min-w-0 flex-col gap-px">
             <span className="truncate text-[12.5px] font-semibold text-text">
@@ -192,10 +250,14 @@ function DocumentRow({
             </span>
             <span className="truncate text-[10.5px] text-text-3">
               {doc.source}
-              {" · "}
-              <bdi dir="ltr" className={ltrValueClass}>
-                {doc.fileName}
-              </bdi>
+              {showFileName ? (
+                <>
+                  {" · "}
+                  <bdi dir="ltr" className={ltrValueClass}>
+                    {doc.fileName}
+                  </bdi>
+                </>
+              ) : null}
             </span>
           </span>
         </div>
@@ -207,23 +269,14 @@ function DocumentRow({
           تنزيل
         </button>
       </div>
-      {attachmentId ? (
-        <ReportAttachmentClassifyControls
-          attachmentId={attachmentId}
-          docKind={suggestDocKindForClassify(doc)}
-          propertyTypeKey={propertyTypeKey}
-        />
-      ) : null}
     </div>
   );
 }
 
 function DocumentsTab({
   sections,
-  propertyTypeKey,
 }: {
   sections: PropertyDetailDocumentSection[];
-  propertyTypeKey?: string;
 }) {
   if (sections.length === 0) {
     return (
@@ -244,14 +297,15 @@ function DocumentsTab({
           </div>
           <div className="grid gap-2">
             {section.documents.map((doc) => (
-              <DocumentRow key={doc.id} doc={doc} propertyTypeKey={propertyTypeKey} />
+              <DocumentRow key={doc.id} doc={doc} />
             ))}
           </div>
         </section>
       ))}
       <p className="m-0 text-[11.5px] text-text-3">
         تُرفع المستندات من كل طرف تحت قسمه — التقرير المساحي من المكتب الهندسي
-        عند إصداره، وتقرير المعاينة عند اكتمالها.
+        عند إصداره، وتقرير المعاينة عند اكتمالها. مرفقات التقرير يحدّدها الأخصائي
+        من تبويب تقييم العقار.
       </p>
     </>
   );
@@ -264,248 +318,6 @@ function logIconGlyph(): string {
 
 function logIconClass(): string {
   return "bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] text-[#2f7a4d]";
-}
-
-function BasicTab({
-  record,
-  property,
-  primaryPhoto,
-}: {
-  record: PoIntakeRecord;
-  property: PoPropertyIntake;
-  primaryPhoto?: PropertyDetailDocumentEntry | null;
-}) {
-  const boursePending = !property.bourseDataCompleted;
-  const needsBourse = !skipsBourseForIdentifier(property.identifierType);
-  const showBourseSection =
-    needsBourse &&
-    (boursePending ||
-      hasBourseDetailFields(property) ||
-      property.bourseDataCompleted);
-  const validContacts = property.contacts.filter((c) => isValidContactEntry(c));
-  const restrictions = formatPropertyRestrictionsLine(property);
-  const courtLine = [property.court, property.circuit]
-    .filter(Boolean)
-    .join(" / ");
-  const primaryContact = validContacts[0];
-  const ownershipStatus = ownershipStatusLabel(property);
-  const boundaryRows = PROPERTY_BOUNDARY_ROWS.map((row) => ({
-    label: row.label,
-    desc: property[row.descKey].trim(),
-    len: property[row.lenKey].trim(),
-  }));
-  const hasBoundaryRows = boundaryRows.some((r) => r.desc || r.len);
-  const boundariesUnavailable = boundariesMarkedUnavailable( property.boundariesAvailability );
-  const boundariesAwaiting = !boundariesUnavailable && !hasBoundaryRows && !property.bourseDataCompleted;
-
-  return (
-    <>
-      <PropertyDetailMediaGlance
-        property={property}
-        primaryPhoto={primaryPhoto}
-      />
-
-      <SectionHeader>بيانات الصك</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="رقم أمر العمل" value={record.poNumber} ltr />
-        <FieldBox label="رقم الصك" value={property.deedNumber} ltr />
-        <FieldBox label="تاريخ الصك" value={property.deedDate} ltr />
-        <FieldBox
-          label="تسجيل عيني"
-          value={property.realEstateRegNumber}
-          ltr
-        />
-        <FieldBox
-          label="تاريخ التسجيل العيني"
-          value={property.realEstateRegDate}
-          ltr
-        />
-        <FieldBox
-          label="رقم التكليف"
-          value={property.assignmentMandateNumber}
-          ltr
-        />
-        <FieldBox
-          label="تاريخ التكليف"
-          value={property.assignmentMandateDate}
-          ltr
-        />
-        <FieldBox label="رقم الطلب" value={property.requestNumber} ltr />
-        <FieldBox label="حالة الصك">
-          {property.deedStatus.trim() ? (
-            <DetailBadge tone="teal">{property.deedStatus}</DetailBadge>
-          ) : null}
-        </FieldBox>
-        <FieldBox label="اسم المالك" value={property.ownerName} />
-        <FieldBox label="حالة الملك" value={ownershipStatus} />
-        <FieldBox
-          label="القيود على العقار"
-          value={restrictions}
-          emptyLabel="لا توجد قيود"
-        />
-      </FieldsGrid>
-
-      <SectionHeader>بيانات الموقع</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="المدينة" value={property.city} />
-        <FieldBox label="الحي" value={property.district} />
-        {showsCourtFields(record.assignmentType) ? (
-          <FieldBox label="المحكمة / الدائرة" value={courtLine} />
-        ) : null}
-        <FieldBox label="رقم المخطط" value={property.planNumber} ltr />
-        <FieldBox label="رقم القطعة" value={property.plotNumber} ltr />
-      </FieldsGrid>
-
-      <SectionHeader>البيانات المساحية</SectionHeader>
-      <FieldsGrid>
-        <FieldBox label="التصنيف" value={property.classification} />
-        <FieldBox label="النوع / الاستخدام" value={property.propertyType} />
-        <FieldBox
-          label="المساحة الإجمالية"
-          value={property.area.trim() ? `${property.area.trim()} م²` : ""}
-        />
-      </FieldsGrid>
-
-      <div className="mb-2 mt-3.5 text-[11.5px] font-bold text-heading">
-        حدود العقار وأطواله
-      </div>
-      {boundariesUnavailable ? (
-        <InfoBox icon="ℹ">الحدود غير متوفرة لهذا العقار.</InfoBox>
-      ) : boundariesAwaiting ? (
-        <div className="rounded border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-relaxed text-[#7a5b12]">
-          بانتظار بيانات البورصة — تُعرض حدود العقار وأطوال أضلاعه بعد اكتمال
-          الاستعلام.
-        </div>
-      ) : hasBoundaryRows ? (
-        <>
-          <div className="overflow-x-auto rounded border border-border">
-            <table className="w-full min-w-[420px] border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-surface-2">
-                  <th className="border-b border-border px-3 py-2 text-start text-[11px] font-bold text-text-2">
-                    الحد
-                  </th>
-                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
-                    وصف الحد
-                  </th>
-                  <th className="border-b border-border px-3 py-2 text-center text-[11px] font-bold text-text-2">
-                    طول الضلع
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {boundaryRows.map((row, i) => (
-                  <tr key={row.label}>
-                    <td
-                      className={cn(
-                        "px-3 py-2 font-semibold text-heading",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.label}
-                    </td>
-                    <td
-                      className={cn(
-                        "px-3 py-2 text-center text-text",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.desc || "—"}
-                    </td>
-                    <td
-                      className={cn(
-                        "px-3 py-2 text-center text-text [direction:ltr]",
-                        i < boundaryRows.length - 1 && "border-b border-border",
-                      )}
-                    >
-                      {row.len ? `${row.len} م` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-1.5 mb-0 text-[10.5px] text-text-3">
-            «بطول» = طول ضلع العقار على ذلك الحد. المصدر: البورصة العقارية /
-            الصك.
-          </p>
-        </>
-      ) : (
-        <InfoBox icon="ℹ">لم تُسجَّل حدود وأطوال بعد.</InfoBox>
-      )}
-
-      <SectionHeader>بيانات الاتصال</SectionHeader>
-      <p className="-mt-1 mb-2 text-[10.5px] text-text-3">
-        المصدر: البيانات الأولية للمعاملة
-      </p>
-      {validContacts.length === 0 ? (
-        <InfoBox icon="ℹ">لا يوجد ضابط اتصال مسجّل.</InfoBox>
-      ) : (
-        <FieldsGrid cols={3}>
-          <FieldBox label="الاسم" value={primaryContact.name.trim() || "—"} />
-          <FieldBox label="رقم الجوال" value={primaryContact.phone} ltr />
-          <FieldBox
-            label="الصلة"
-            value={primaryContact.role.trim() || "المالك"}
-          />
-        </FieldsGrid>
-      )}
-
-      {showBourseSection ? (
-        <>
-          <SectionHeader>بيانات الاستعلام — البورصة العقارية</SectionHeader>
-          {boursePending && !hasBourseDetailFields(property) ? (
-            <InfoBox variant="amber" icon="ℹ">
-              لم تُسجَّل بعد بيانات استعلام البورصة — أكملها من «استعلام
-              البورصة» في شريط الإجراءات.
-            </InfoBox>
-          ) : (
-            <>
-              {property.bourseDataCompleted ? (
-                <InfoBox variant="teal" icon="✓">
-                  اكتمل استعلام البورصة العقارية بنجاح
-                  {record.receivedFromEnfathAt ? (
-                    <>
-                      {" بتاريخ "}
-                      <bdi dir="ltr" className={ltrValueClass}>
-                        {formatDateAr(record.receivedFromEnfathAt)}
-                      </bdi>
-                    </>
-                  ) : null}
-                  .
-                </InfoBox>
-              ) : null}
-              <FieldsGrid>
-                <FieldBox
-                  label="حالة الصك في البورصة"
-                  value={property.deedStatus}
-                />
-                <FieldBox
-                  label="توفر الحدود"
-                  value={boundariesAvailabilityLabel(
-                    property.boundariesAvailability,
-                  )}
-                />
-                <FieldBox
-                  label="الفروق / الملاحظات"
-                  emptyLabel="لا توجد فروق"
-                />
-                <FieldBox
-                  label="تاريخ آخر تحديث"
-                  ltr
-                  value={
-                    record.receivedFromEnfathAt
-                      ? formatDateAr(record.receivedFromEnfathAt)
-                      : ""
-                  }
-                />
-              </FieldsGrid>
-            </>
-          )}
-        </>
-      ) : null}
-    </>
-  );
 }
 
 export type PoPropertyDetailInspectorWorkspace = {
@@ -534,7 +346,7 @@ export function PoPropertyDetailTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
   const showCaseStudySideRail = canViewPropertyTimelineRail(role);
   const initialTab = searchParams.get("tab");
@@ -566,6 +378,14 @@ export function PoPropertyDetailTabs({
     router.replace(`${base}?tab=inspection`, { scroll: false });
   };
 
+  const selectTab = (next: TabId) => {
+    setTab(next);
+    if (workspaceForced) return;
+    router.replace(poPropertyDetailPath(poNumber, property.id, next), {
+      scroll: false,
+    });
+  };
+
   useEffect(() => {
     if (workspaceForced) {
       setTab("inspection");
@@ -581,12 +401,16 @@ export function PoPropertyDetailTabs({
     setInspectEdit(nextInspect === "edit");
   }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
 
-  useEffect(() => {
-    if (workspaceForced) return;
-    if (!visibleTabs.some((t) => t.id === tab)) {
-      setTab(visibleTabs[0]?.id ?? "basic");
-    }
-  }, [visibleTabs, tab, workspaceForced]);
+  /** Active tab is derived during render — a role change moves the selection immediately without an extra pass. */
+  const effectiveTab: TabId =
+    workspaceForced || visibleTabs.some((t) => t.id === tab)
+      ? tab
+      : visibleTabs[0]?.id ?? "basic";
+
+  /** Tab mounts only after first visit — then stays mounted but hidden so its state is kept. */
+  const visitedTabsRef = useRef<Set<TabId>>(new Set());
+  visitedTabsRef.current.add(effectiveTab);
+  const tabMode = (id: TabId) => (effectiveTab === id ? "visible" : "hidden");
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
@@ -657,15 +481,7 @@ export function PoPropertyDetailTabs({
     [propertyDocumentSections],
   );
   const primaryPhoto = useMemo(() => {
-    const preferred = propertyPhotos.find((p) =>
-      /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
-    );
-    return (
-      preferred ??
-      propertyPhotos.find((p) => Boolean(p.dataUrl)) ??
-      propertyPhotos[0] ??
-      null
-    );
+    return pickPrimaryPropertyDetailPhoto(propertyPhotos);
   }, [propertyPhotos]);
   const partyCards = buildPropertyDetailPartyCards({
     task: task ?? null,
@@ -822,14 +638,14 @@ export function PoPropertyDetailTabs({
   );
 
   useEffect(() => {
-    const fingerprint = tabActivity[tab] ?? null;
+    const fingerprint = tabActivity[effectiveTab] ?? null;
     if (!fingerprint) return;
-    markPropertyTabSeen(property.id, tab, fingerprint);
+    markPropertyTabSeen(property.id, effectiveTab, fingerprint);
     setSeenTabs((prev) => {
-      if (prev[tab] === fingerprint) return prev;
-      return { ...prev, [tab]: fingerprint };
+      if (prev[effectiveTab] === fingerprint) return prev;
+      return { ...prev, [effectiveTab]: fingerprint };
     });
-  }, [property.id, tab, tabActivity]);
+  }, [property.id, effectiveTab, tabActivity]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -843,7 +659,7 @@ export function PoPropertyDetailTabs({
         allowedTabs={visibleTabs.map((t) => t.id)}
         onOpenTab={(next) => {
           if (!isAllowedPropertyTab(role, next)) return;
-          setTab(next);
+          selectTab(next);
           if (inspectEdit) {
             setInspectEdit(false);
             replaceInspectQuery(null);
@@ -857,14 +673,14 @@ export function PoPropertyDetailTabs({
           showCaseStudySideRail && "lg:grid-cols-[minmax(0,1fr)_250px]",
         )}
       >
-        <div className="min-w-0 overflow-hidden rounded-[12px] border border-border bg-surface px-5 pb-5 shadow-[0_1px_2px_rgba(18,40,76,0.03),0_6px_16px_-18px_rgba(18,40,76,0.10)]">
+        <div className={opsContentPanel}>
           {/* Case Study.html `.tabs` inside card: margin 0 -20px, padding 0 14px, wrap, gap 2px */}
           <TabBar
             className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
             aria-label="أقسام تفاصيل العقار"
           >
             {visibleTabs.map((t) => {
-              const active = tab === t.id;
+              const active = effectiveTab === t.id;
               const hasNew = propertyTabHasNewDot(
                 t.id,
                 tabActivity[t.id],
@@ -875,7 +691,7 @@ export function PoPropertyDetailTabs({
                   key={t.id}
                   active={active}
                   onClick={() => {
-                    setTab(t.id);
+                    selectTab(t.id);
                     if (workspaceForced) return;
                     /* Tab is view-only — input mode opens from the property-inspection button. */
                     if (t.id === "inspection" && inspectEdit) {
@@ -883,6 +699,7 @@ export function PoPropertyDetailTabs({
                       replaceInspectQuery(null);
                     } else if (t.id !== "inspection" && inspectEdit) {
                       setInspectEdit(false);
+                      replaceInspectQuery(null);
                     }
                   }}
                   className={cn(
@@ -901,29 +718,41 @@ export function PoPropertyDetailTabs({
             })}
           </TabBar>
 
-          <TabPanel className="min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0">
-          {tab === "basic" ? (
-            <BasicTab
-              record={record}
-              property={property}
-              primaryPhoto={primaryPhoto}
-            />
+          <TabPanel
+            className={cn(
+              "min-h-0 overflow-visible bg-transparent px-0 py-5 sm:px-0",
+              effectiveTab === "appraisal" && "pt-0",
+            )}
+          >
+          {visitedTabsRef.current.has("basic") ? (
+            <Activity mode={tabMode("basic")}>
+              <PropertyDetailBasicTab
+                record={record}
+                property={property}
+                primaryPhoto={primaryPhoto}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "documents" ? (
-            <DocumentsTab sections={propertyDocumentSections} propertyTypeKey={property.propertyType} />
+          {visitedTabsRef.current.has("documents") ? (
+            <Activity mode={tabMode("documents")}>
+              <DocumentsTab sections={propertyDocumentSections} />
+            </Activity>
           ) : null}
 
-          {tab === "linked" ? (
-            <PropertyDetailLinkedTab
-              record={record}
-              property={property}
-              caseStudyTask={task ?? null}
-            />
+          {visitedTabsRef.current.has("linked") ? (
+            <Activity mode={tabMode("linked")}>
+              <PropertyDetailLinkedTab
+                record={record}
+                property={property}
+                caseStudyTask={task ?? null}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "failures" ? (
-            propertyFailures.length > 0 ? (
+          {visitedTabsRef.current.has("failures") ? (
+            <Activity mode={tabMode("failures")}>
+            {propertyFailures.length > 0 ? (
               <>
                 <SectionHeader>التعذرات المسجلة</SectionHeader>
                 {propertyFailures.map((failure: FailureRecord) => (
@@ -1004,11 +833,13 @@ export function PoPropertyDetailTabs({
                   </Button>
                 </p>
               </>
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "survey" ? (
-            surveyCard ? (
+          {visitedTabsRef.current.has("survey") ? (
+            <Activity mode={tabMode("survey")}>
+            {surveyCard ? (
               <>
                 <PropertyDetailPartyPackageReview
                   taskId={surveyTask?.id}
@@ -1044,21 +875,30 @@ export function PoPropertyDetailTabs({
                 title="لم يُعيَّن طرف لهذا الدور"
                 sub="سيظهر هنا الطرف وبيانات عمله بعد التعيين."
               />
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "inspection" ? (
+          {visitedTabsRef.current.has("inspection") ? (
+            <Activity mode={tabMode("inspection")}>
             <PropertyDetailInspectionTab
               property={property}
               inspectionTask={inspectionTask}
               inspectionCard={inspectionCard}
-              editMode={inspectEdit}
-              lockEditMode={workspaceForced && inspectorWorkspace?.forceEdit !== false}
+              editMode={
+                workspaceForced
+                  ? inspectorWorkspace?.forceEdit !== false
+                  : false
+              }
+              lockEditMode={
+                workspaceForced && inspectorWorkspace?.forceEdit !== false
+              }
               onEditModeChange={(edit) => {
                 if (workspaceForced && !edit) {
                   inspectorWorkspace?.onCancel?.();
                   return;
                 }
+                if (!workspaceForced) return;
                 setInspectEdit(edit);
                 replaceInspectQuery(edit ? "edit" : null);
               }}
@@ -1067,44 +907,51 @@ export function PoPropertyDetailTabs({
                 inspectorWorkspace?.onSubmitted?.();
               }}
             />
+            </Activity>
           ) : null}
 
-          {tab === "government" ? (
-            <PropertyDetailGovernmentReviewsTab
-              poNumber={poNumber}
-              property={property}
-            />
+          {visitedTabsRef.current.has("government") ? (
+            <Activity mode={tabMode("government")}>
+              <PropertyDetailGovernmentReviewsTab
+                poNumber={poNumber}
+                property={property}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "report" ? (
-            <PropertyDetailCaseStudyReport
-              record={record}
-              property={property}
-              task={task ?? null}
-            />
+          {visitedTabsRef.current.has("report") ? (
+            <Activity mode={tabMode("report")}>
+              <PropertyDetailCaseStudyReport
+                record={record}
+                property={property}
+                task={task ?? null}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "appraisal" ? (
+          {visitedTabsRef.current.has("appraisal") ? (
+            <Activity mode={tabMode("appraisal")}>
             <PropertyDetailAppraisalTab
+              propertyId={property.id}
               appraisalTaskId={appraisalTask?.id}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
               onReviewChanged={() => {
                 void partySubmissionsQuery.refetch();
               }}
             />
+            </Activity>
           ) : null}
 
-          {tab === "photos" ? (
-            <PropertyDetailPhotosTab photos={propertyPhotos} />
+          {visitedTabsRef.current.has("photos") ? (
+            <Activity mode={tabMode("photos")}>
+              <PropertyDetailPhotosTab photos={propertyPhotos} />
+            </Activity>
           ) : null}
 
-          {tab === "log" ? (
-            logEvents.length === 0 ? (
+          {visitedTabsRef.current.has("log") ? (
+            <Activity mode={tabMode("log")}>
+            {logEvents.length === 0 ? (
               <EmptyState title="لا يوجد سجل إجراءات" />
             ) : (
               <>
@@ -1137,17 +984,21 @@ export function PoPropertyDetailTabs({
                   ))}
                 </div>
               </>
-            )
+            )}
+            </Activity>
           ) : null}
 
-          {tab === "keys" ? (
-            <PropertyDetailPropertyKeys
-              poNumber={poNumber}
-              property={property}
-            />
+          {visitedTabsRef.current.has("keys") ? (
+            <Activity mode={tabMode("keys")}>
+              <PropertyDetailPropertyKeys
+                poNumber={poNumber}
+                property={property}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "enfath-upload" ? (
+          {visitedTabsRef.current.has("enfath-upload") ? (
+            <Activity mode={tabMode("enfath-upload")}>
             <PropertyDetailEnfathUpload
               record={record}
               property={property}
@@ -1159,24 +1010,29 @@ export function PoPropertyDetailTabs({
                 partySubmissionsQuery.isFetching
               }
             />
+            </Activity>
           ) : null}
 
-          {tab === "finance" ? (
-            <PropertyDetailFinanceTab
-              poNumber={poNumber}
-              property={property}
-              tasks={tasks}
-            />
+          {visitedTabsRef.current.has("finance") ? (
+            <Activity mode={tabMode("finance")}>
+              <PropertyDetailFinanceTab
+                poNumber={poNumber}
+                property={property}
+                tasks={tasks}
+              />
+            </Activity>
           ) : null}
 
-          {tab === "survey-notes" ? (
-            <PropertyDetailSurveyNotesTab
-              sections={partyRemarksSections}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
-            />
+          {visitedTabsRef.current.has("survey-notes") ? (
+            <Activity mode={tabMode("survey-notes")}>
+              <PropertyDetailSurveyNotesTab
+                sections={partyRemarksSections}
+                loading={
+                  partySubmissionsQuery.isLoading ||
+                  partySubmissionsQuery.isFetching
+                }
+              />
+            </Activity>
           ) : null}
           </TabPanel>
         </div>

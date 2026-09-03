@@ -1,45 +1,32 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@platform/ui-kit";
+import { cn, ShowAllEye } from "@platform/ui-kit";
 
 /**
- * HTML primitives for المهام — Case Study.html `renderTasks` / `renderTaskDetail` /
+ * HTML primitives for tasks — Case Study.html `renderTasks` / `renderTaskDetail` /
  * `renderTaskNew` / `openCloseModal` / `openPauseModal` / `openPriorityModal` /
- * `openReassignModal` (primary: `_تصميم واجهة احترافية - المهام`).
+ * `openReassignModal` (primary: professional tasks UI design).
  *
  * Layout tokens live in `ops-tasks-tw.ts`; this module holds shared chrome helpers.
  */
-
-/** `renderTasks` COLS */
-export const TASKS_LIST_COLS =
-  "40px minmax(170px,1.8fr) minmax(110px,1.1fr) minmax(120px,1.1fr) minmax(120px,1.2fr) minmax(84px,.85fr) 84px";
 
 /** Case Study.html `.card` footer note under the grid. */
 export const TASKS_LIST_FOOTER =
   "اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التفويض حالتان من هذه الطبقة.";
 
-/** Case Study.html `#tkShowAll` eye (static — no blink). */
-export function TasksShowAllEye() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+/** Case Study.html `#tkShowAll` eye — shared blink motion. */
+export function TasksShowAllEye({
+  open = true,
+  blink = false,
+}: {
+  open?: boolean;
+  blink?: boolean;
+}) {
+  return <ShowAllEye open={open} blink={blink} />;
 }
 
-/** KPI icon from `renderTasks` — منشأة (sun rays). */
+/** KPI icon from `renderTasks` — created (sun rays). */
 export function TasksKpiCreatedIcon() {
   return (
     <svg
@@ -58,7 +45,7 @@ export function TasksKpiCreatedIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — قيد التنفيذ. */
+/** KPI icon from `renderTasks` — in progress. */
 export function TasksKpiInProgressIcon() {
   return (
     <svg
@@ -78,7 +65,7 @@ export function TasksKpiInProgressIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — مكتملة. */
+/** KPI icon from `renderTasks` — completed. */
 export function TasksKpiCompletedIcon() {
   return (
     <svg
@@ -98,7 +85,7 @@ export function TasksKpiCompletedIcon() {
   );
 }
 
-/** KPI icon from `renderTasks` — مهام نشطة (clipboard check). */
+/** KPI icon from `renderTasks` — active tasks (clipboard check). */
 export function TasksKpiActiveIcon() {
   return (
     <svg
@@ -124,12 +111,6 @@ export function TasksSectionNote({ children }: { children: ReactNode }) {
     <div className="border-t border-border px-4 py-[11px] text-xs text-text-3">
       {children}
     </div>
-  );
-}
-
-export function TasksEmptyRows({ message = "لا توجد مهام مطابقة." }: { message?: string }) {
-  return (
-    <div className="px-4 py-11 text-center text-[13.5px] text-text-3">{message}</div>
   );
 }
 

@@ -6,8 +6,11 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Platform.Application.Contracts;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class PushSubscriptionService : IPushSubscriptionService
 {
@@ -145,18 +148,6 @@ public sealed class PushSubscriptionService : IPushSubscriptionService
 
         await _db.SaveChangesAsync(cancellationToken);
         return new PushPreferenceDto(row.PushEnabled);
-    }
-
- /// <summary>Prune soft-disabled subscriptions older than 30 days.</summary>
-    public static async Task PruneDisabledAsync(
-        MessagingDbContext db,
-        TimeProvider? time = null,
-        CancellationToken cancellationToken = default)
-    {
-        var cutoff = (time ?? TimeProvider.System).UtcNow().AddDays(-30);
-        await db.PushSubscriptions
-            .Where(x => x.DisabledAtUtc != null && x.DisabledAtUtc < cutoff)
-            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private static PushSubscriptionDto ToDto(PushSubscription row) =>

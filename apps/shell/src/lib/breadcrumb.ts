@@ -8,7 +8,7 @@ export type BreadcrumbSegment = {
 
 /**
  * Known intermediate crumb labels → routes (Case Study.html crumbs).
- * Section headers (دراسة الحالة، المعاملات النشطة، …) intentionally omit href.
+ * Section headers (Case Study, Active Transactions, …) intentionally omit href.
  */
 const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   الرئيسية: "/dashboard",

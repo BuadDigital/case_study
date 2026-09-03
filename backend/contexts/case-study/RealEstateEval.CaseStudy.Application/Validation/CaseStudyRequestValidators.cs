@@ -2,8 +2,11 @@ using FluentValidation;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.Application.Validation;
 
-namespace RealEstateEval.Application.Validation;
+namespace RealEstateEval.CaseStudy.Application.Validation;
 
 // Case-study-owned boundary validators (A8): work orders, clients, and inspection limits.
 // Registered on the Case Study host via AddValidatorsFromAssemblyContaining.

@@ -1,5 +1,4 @@
 type ContractType = "Internal" | "Freelance" | "ServiceProvider";
-type RegistrationSourceApi = "Hr" | "Proc";
 export type UserStatusApi = "Active" | "Disabled" | "PendingActivation" | "Locked";
 
 type UserDetailField = {
@@ -10,6 +9,8 @@ type UserDetailField = {
 
 export type UserListItem = {
   id: string;
+  /** Numbering workshop: internal ref US-{year}-{5-digit seq}. */
+  referenceNumber?: string | null;
   displayName: string;
   jobTitle: string;
   email: string;
@@ -31,7 +32,6 @@ export type UserListItem = {
   reviewerCityCoverage?: string[];
   contractType: ContractType;
   status: UserStatusApi;
-  registrationSource: RegistrationSourceApi;
   phoneNumber?: string | null;
   createdAtUtc?: string;
   lastLoginAtUtc?: string | null;

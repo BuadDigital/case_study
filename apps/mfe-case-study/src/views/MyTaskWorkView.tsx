@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { DistributionPartiesForm } from "@case-study/mfe/components/distribution/DistributionPartiesForm";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { TaskWorkChrome } from "@case-study/mfe/components/primary-data/TaskWorkChrome";
-import { PoPropertyEnfathForm } from "@case-study/mfe/components/po-intake/PoPropertyEnfathForm";
-import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPropertyBourseForm";
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
@@ -21,10 +19,10 @@ import {
   hasFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
 import { myTasksPath } from "../lib/my-task-routes";
 import {
-  classificationRequiresSurvey,
   emptyProperty,
   formatPoDisplay,
   formatPropertyDeedDisplay,
@@ -34,47 +32,93 @@ import {
   type BourseDeedVitality,
   type PoPropertyIntake,
   type PropertyIdentifierType,
-} from "../lib/prototype/po-intake-data";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+} from "../lib/app-data/po-intake-data";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   submitBourseObstruction,
   validateBourseObstructionReason,
-} from "../lib/prototype/bourse-obstruction";
+} from "../lib/app-data/bourse-obstruction";
+import {
+  deedExistsInPo,
+  findPriorDeedFull,
+} from "../lib/app-data/po-intake-reads";
 import {
   addPropertyToPo,
   completePropertyBourse,
-  deedExistsInPo,
-  findPriorDeedFull,
   updatePropertyInPo,
-} from "../lib/prototype/po-intake-storage";
+} from "../lib/app-data/po-intake-commands";
 import {
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
-} from "@failures/mfe";
-import { FailureRaiseModal } from "@case-study/mfe/components/failures/FailureRaiseModal";
+} from "@failures/mfe/lib/failure-party-roles";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
   confirmTaskDistribution,
   distributionValidationError,
   engineeringOfficeAvailable,
+  engineeringOfficeUnavailableReason,
   migrateDistribution,
   patchTaskDistribution,
   resolveTaskObstruction,
   taskDisplayPropertyLabel,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import {
   usePoRecordQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 
 const LOADING_TEXT = "text-xs text-text-3";
-const CONFIRM_DISTRIBUTION_ERROR = "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
+const CONFIRM_DISTRIBUTION_ERROR =
+  "تعذّر تأكيد التوزيع — تحقق من المرحلة وحاول مرة أخرى";
+const NOOP_DISTRIBUTION_PATCH = () => {};
+
+const formChunkFallback = () => (
+  <InlineLoadingSkeleton className="my-2" />
+);
+
+const DistributionPartiesForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/distribution/DistributionPartiesForm").then(
+      (m) => m.DistributionPartiesForm,
+    ),
+  { loading: formChunkFallback },
+);
+const PoPropertyEnfathForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm").then(
+      (m) => m.PoPropertyEnfathForm,
+    ),
+  { loading: formChunkFallback },
+);
+const PoPropertyBourseForm = dynamic(
+  () =>
+    import("@case-study/mfe/components/po-intake/PoPropertyBourseForm").then(
+      (m) => m.PoPropertyBourseForm,
+    ),
+  { loading: formChunkFallback },
+);
+const FailureRaiseModal = dynamic(
+  () =>
+    import("@case-study/mfe/components/failures/FailureRaiseModal").then(
+      (m) => m.FailureRaiseModal,
+    ),
+  { ssr: false },
+);
+// Prefetch on hover/focus — hides chunk fetch latency (bundle-preload).
+const preloadDistributionPartiesForm = () =>
+  void import(
+    "@case-study/mfe/components/distribution/DistributionPartiesForm"
+  );
+const preloadPoPropertyBourseForm = () =>
+  void import("@case-study/mfe/components/po-intake/PoPropertyBourseForm");
+const preloadFailureRaiseModal = () =>
+  void import("@case-study/mfe/components/failures/FailureRaiseModal");
 
 export function CaseStudyTaskWork({
   task,
@@ -87,7 +131,7 @@ export function CaseStudyTaskWork({
   onRefresh: () => void;
   layout?: "page" | "panel";
   onClose?: () => void;
-  /** After successful إنفاذ save (panel flow): advance or route by identifier type. */
+  /** After successful Infath save (panel flow): advance or route by identifier type. */
   onEnfathSaved?: (
     taskId: string,
     meta: { identifierType: PropertyIdentifierType },
@@ -96,7 +140,7 @@ export function CaseStudyTaskWork({
   const router = useRouter();
   const queryClient = useQueryClient();
   const exit = onClose ?? (() => router.push(myTasksPath()));
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast, runWithActionToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -105,6 +149,11 @@ export function CaseStudyTaskWork({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const pendingBourseComplete = useRef<{
+    poNumber: string;
+    propertyId: string;
+    property: PoPropertyIntake;
+  } | null>(null);
   const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
@@ -120,6 +169,39 @@ export function CaseStudyTaskWork({
   const [phaseOverride, setPhaseOverride] = useState<WorkflowTask["phase"] | null>(
     null,
   );
+
+  const { execute: executeBourseComplete, loading: bourseCompleting } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingBourseComplete.current;
+        if (!pending) {
+          throw new Error("لا توجد بيانات بورصة للإرسال");
+        }
+        return completePropertyBourse(
+          pending.poNumber,
+          pending.propertyId,
+          pending.property,
+          idempotencyKey,
+        );
+      }, []),
+    );
+
+  const { execute: executeConfirmDistribution, loading: confirmingDistribution } =
+    useIdempotentAction(
+      useCallback(
+        async (idempotencyKey: string) =>
+          confirmTaskDistribution(
+            task.id,
+            distribution,
+            formatPropertyDeedDisplay(property),
+            staffUsers,
+            idempotencyKey,
+          ),
+        [task.id, distribution, property, staffUsers],
+      ),
+    );
+
+  const submitBusy = saving || bourseCompleting || confirmingDistribution;
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
   );
@@ -193,8 +275,12 @@ export function CaseStudyTaskWork({
     setFieldErrors({});
   }, []);
 
+  const onObstructionReasonChange = useCallback((value: string) => {
+    setObstructionReason(value);
+    setObstructionReasonError(undefined);
+  }, []);
+
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
-  const requiresSurvey = classificationRequiresSurvey(property.classification);
 
   useEffect(() => {
     if (loading || task.phase !== "distribution" || showEngineering) return;
@@ -214,14 +300,10 @@ export function CaseStudyTaskWork({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.phase, task.id, showEngineering, property.classification]);
+  }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
 
   function engineeringUnavailableHint(): string | null {
-    if (!requiresSurvey) {
-      return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
-    }
-    if (hasPriorSurvey) return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
-    return null;
+    return engineeringOfficeUnavailableReason(property, hasPriorSurvey);
   }
 
   async function saveEnfath() {
@@ -335,10 +417,10 @@ export function CaseStudyTaskWork({
             specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
           });
           void queryClient.invalidateQueries({
-            queryKey: prototypeKeys.failures(),
+            queryKey: appDataKeys.failures(),
           });
           void queryClient.invalidateQueries({
-            queryKey: prototypeKeys.workflowTasks(),
+            queryKey: appDataKeys.workflowTasks(),
           });
           onRefresh();
         } finally {
@@ -427,11 +509,18 @@ export function CaseStudyTaskWork({
           setPhaseOverride(enfathAdvance.task.phase);
         }
 
-        const result = await completePropertyBourse(
-          task.poNumber,
-          propertyId!,
-          { ...prop, deedStatus: "فعال" },
-        );
+        const result = await (async () => {
+          pendingBourseComplete.current = {
+            poNumber: task.poNumber,
+            propertyId: propertyId!,
+            property: { ...prop, deedStatus: "فعال" },
+          };
+          const outcome = await executeBourseComplete();
+          if (outcome.status === "skipped") {
+            throw new Error("duplicate-submit");
+          }
+          return outcome.value;
+        })();
 
         if (!result.ok) {
           setFormError(result.error);
@@ -478,12 +567,10 @@ export function CaseStudyTaskWork({
     await runWithActionToast("تأكيد التوزيع وإرسال المهام", async () => {
       setSaving(true);
       try {
-        const result = await confirmTaskDistribution(
-          task.id,
-          distribution,
-          formatPropertyDeedDisplay(property),
-          staffUsers,
-        );
+        const outcome = await executeConfirmDistribution();
+        if (outcome.status === "skipped") return;
+
+        const result = outcome.value;
         if (!result.parent) {
           const message = result.error ?? CONFIRM_DISTRIBUTION_ERROR;
           setFormError(message);
@@ -492,7 +579,7 @@ export function CaseStudyTaskWork({
 
         setPhaseOverride(result.parent.phase);
         void queryClient.invalidateQueries({
-          queryKey: prototypeKeys.workflowTasks(),
+          queryKey: appDataKeys.workflowTasks(),
         });
         onRefresh();
       } finally {
@@ -516,7 +603,7 @@ export function CaseStudyTaskWork({
 
   const bourseInquiryFastPath =
     effectivePhase === "enfath" && isBourseInquiryIdentifier(property.identifierType);
-  /** Primary-data panel: استعلام بورصة fields live on «استعلام بورصة» tab only. */
+  /** Primary-data panel: bourse-inquiry fields live on the «Bourse inquiry» tab only. */
   const bourseInquiryPanelOnly =
     layout === "panel" && bourseInquiryFastPath;
   const showEnfathStep =
@@ -667,7 +754,7 @@ export function CaseStudyTaskWork({
           </Note>
           <DistributionPartiesForm
             distribution={migrateDistribution(task.distribution)}
-            onPatch={() => {}}
+            onPatch={NOOP_DISTRIBUTION_PATCH}
             showEngineering={engineeringOfficeAvailable(
               property,
               hasPriorSurvey,
@@ -722,13 +809,23 @@ export function CaseStudyTaskWork({
     );
   }
 
+  const panelStepTitle = showEnfathStep
+    ? "البيانات الأولية"
+    : showBourseStep
+      ? "استعلام البورصة"
+      : showDistribution
+        ? "توزيع المعاملة"
+        : "تنفيذ المعاملة";
+
   return (
     <TaskWorkChrome
       layout={layout}
-      title={`تعديل عقار — ${deedTitle}`}
+      title={
+        layout === "panel" ? panelStepTitle : `تعديل عقار — ${deedTitle}`
+      }
       subtitle={workSubtitle}
       deedBadge={panelDeedBadge}
-      saving={saving}
+      saving={submitBusy}
       onClose={exit}
       onSave={showPrimarySave ? handlePrimarySave : exit}
       saveLabel={showPrimarySave ? saveLabel : "رجوع للمهام"}
@@ -740,6 +837,8 @@ export function CaseStudyTaskWork({
               variant="dangerOutline"
               size="sm"
               onClick={() => setFailureModalOpen(true)}
+              onMouseEnter={preloadFailureRaiseModal}
+              onFocus={preloadFailureRaiseModal}
             >
               تسجيل تعذر
             </Button>
@@ -760,20 +859,26 @@ export function CaseStudyTaskWork({
             layout === "panel" ? undefined : "البيانات الواردة من منصة إنفاذ"
           }
         >
-          <PoPropertyEnfathForm
-            property={property}
-            assignmentType={assignmentType}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            onReplaceProperty={replaceProperty}
-            poNumber={task.poNumber}
-            excludePoNumber={task.poNumber}
-            fieldsMode={
-              bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
-            }
-            showStageNote={layout !== "panel"}
-            hideBoursePathStatus={bourseInquiryPanelOnly}
-          />
+          {/* Working the Infath step = next step is bourse — prefetch (bundle-preload). */}
+          <div
+            onMouseEnter={preloadPoPropertyBourseForm}
+            onFocus={preloadPoPropertyBourseForm}
+          >
+            <PoPropertyEnfathForm
+              property={property}
+              assignmentType={assignmentType}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              onReplaceProperty={replaceProperty}
+              poNumber={task.poNumber}
+              excludePoNumber={task.poNumber}
+              fieldsMode={
+                bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
+              }
+              showStageNote={layout !== "panel"}
+              hideBoursePathStatus={bourseInquiryPanelOnly}
+            />
+          </div>
         </RegistrationFormCard>
       ) : null}
 
@@ -801,21 +906,24 @@ export function CaseStudyTaskWork({
           {bourseInquiryFastPath ? (
             <hr className="my-4 border-0 border-t border-border" aria-hidden />
           ) : null}
-          <PoPropertyBourseForm
-            property={property}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            poNumber={task.poNumber}
-            showDeedVitalityFlow
-            deedVitality={deedVitality}
-            onDeedVitalityChange={setDeedVitality}
-            obstructionReason={obstructionReason}
-            onObstructionReasonChange={(v) => {
-              setObstructionReason(v);
-              setObstructionReasonError(undefined);
-            }}
-            obstructionReasonError={obstructionReasonError}
-          />
+          {/* Working the bourse step = next step is distribution — prefetch (bundle-preload). */}
+          <div
+            onMouseEnter={preloadDistributionPartiesForm}
+            onFocus={preloadDistributionPartiesForm}
+          >
+            <PoPropertyBourseForm
+              property={property}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              poNumber={task.poNumber}
+              showDeedVitalityFlow
+              deedVitality={deedVitality}
+              onDeedVitalityChange={setDeedVitality}
+              obstructionReason={obstructionReason}
+              onObstructionReasonChange={onObstructionReasonChange}
+              obstructionReasonError={obstructionReasonError}
+            />
+          </div>
         </RegistrationFormCard>
       ) : null}
 
@@ -837,7 +945,7 @@ export function CaseStudyTaskWork({
         </RegistrationFormCard>
       ) : null}
 
-      {task.propertyId ? (
+      {task.propertyId && failureModalOpen ? (
         <FailureRaiseModal
           open={failureModalOpen}
           onClose={() => setFailureModalOpen(false)}

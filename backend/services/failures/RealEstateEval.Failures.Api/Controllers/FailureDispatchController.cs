@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Application.Contracts;
 
 namespace RealEstateEval.Failures.Api.Controllers;
 
@@ -10,9 +10,11 @@ namespace RealEstateEval.Failures.Api.Controllers;
 /// Authenticated lookup/commands used by Case Study and Operations. Operator queue routes
 /// on <see cref="FailuresController"/> keep RaiseFailures / ManageFailures.
 /// </summary>
+
 [ApiController]
 [Route("api/failure-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class FailureDispatchController(
     IFailureService failures,
     IFailureLookup lookup) : ControllerBase

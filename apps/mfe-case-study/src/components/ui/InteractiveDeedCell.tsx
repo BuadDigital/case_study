@@ -27,7 +27,7 @@ export function InteractiveDeedCell({
   label: string;
   loading?: boolean;
   tone?: keyof typeof TONE_CLASS;
-  /** Use when the label is Arabic (e.g. «قيد الدراسة»). */
+  /** Use when the label is Arabic (e.g. "under study"). */
   rtl?: boolean;
   trailing?: ReactNode;
   subtitle?: ReactNode;

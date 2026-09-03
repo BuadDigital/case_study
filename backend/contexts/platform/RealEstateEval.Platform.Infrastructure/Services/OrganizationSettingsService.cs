@@ -5,14 +5,17 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Domain;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class OrganizationSettingsService : IOrganizationSettingsService
 {
  // Distinct from CaseStudyInfoRoles / FieldDictionary singleton rows.
     private static readonly Guid SingletonId = Guid.Parse("c3d4e5f6-a7b8-9012-cdef-345678901234");
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
     private readonly PlatformDbContext _db;
     private readonly IAuditLogWriter _audit;
@@ -38,7 +41,17 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     {
         var row = await _db.OrganizationSettings.AsNoTracking()
             .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? Defaults() : FromRow(row);
+        var dto = row is null ? Defaults() : FromRow(row);
+
+        // Decision 23: Seed Package (default) version 1 implicit; Version History actually starts with
+        // The first save touches the managed block.
+        var latestVersion = await _db.ValuationReportTextPackages.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .Select(p => (int?)p.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+        dto.ValuationReport.TextPackageVersion =
+            latestVersion ?? ReportTextPackageRules.InitialVersion;
+        return dto;
     }
 
     public async Task<OrganizationSettingsDto> SaveAsync(
@@ -51,9 +64,17 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         ValidateSla(next.Sla);
         ValidateCommunications(next.Communications);
         ValidateValuation(next.Valuation);
+        ValidateBranding(next.Branding);
 
         var row = await _db.OrganizationSettings.FirstOrDefaultAsync(cancellationToken);
         var now = _time.UtcNow();
+
+        // Decision 23: Any modification in the managed text block releases a complete new text package with number
+        // one version for the package — an immutable version history.
+        var textPackageVersion = await EnsureTextPackageVersionAsync(
+            current.ValuationReport, next.ValuationReport, actorId, now, cancellationToken);
+        next.ValuationReport.TextPackageVersion = textPackageVersion;
+
         var payload = JsonSerializer.Serialize(next, JsonOptions);
 
         if (row is null)
@@ -73,6 +94,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         }
 
         next = FromRow(row);
+        // Reconstruction via normalization drops the calculated number — it is re-stamped from the record.
+        next.ValuationReport.TextPackageVersion = textPackageVersion;
  // Audit without secret values — only configuration shape.
         _db.AuditLogs.Add(_audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
@@ -93,12 +116,112 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(sla.PrivateSectorBusinessDays), "مهلة القطاع الخاص يجب أن تكون بين 1 و 60 يوم عمل.");
     }
 
+ /// <summary>
+ /// Decision 23: Managed block = 6 fields (Professional Standards/Autonomy/Restrictions/Conditions/IVS/Glossary).
+ /// Seed Package “Copy 1” is recorded when the block is first touched, any subsequent variation adds a copy
+ /// Completely new — rows are never modified.
+ /// </summary>
+    private async Task<int> EnsureTextPackageVersionAsync(
+        OrganizationValuationReportSettingsDto current,
+        OrganizationValuationReportSettingsDto next,
+        string actorId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var latest = await _db.ValuationReportTextPackages.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var nextJson = CanonicalTextsJson(next);
+
+        if (latest is null)
+        {
+            var currentJson = CanonicalTextsJson(current);
+            _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+            {
+                Id = Guid.NewGuid(),
+                Version = ReportTextPackageRules.InitialVersion,
+                TextsJson = currentJson,
+                CreatedAtUtc = nowUtc,
+                CreatedByUserId = null, // Seed package — not a user edit.
+            });
+            if (string.Equals(nextJson, currentJson, StringComparison.Ordinal))
+                return ReportTextPackageRules.InitialVersion;
+
+            _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+            {
+                Id = Guid.NewGuid(),
+                Version = ReportTextPackageRules.InitialVersion + 1,
+                TextsJson = nextJson,
+                CreatedAtUtc = nowUtc,
+                CreatedByUserId = string.IsNullOrWhiteSpace(actorId) ? null : actorId,
+            });
+            return ReportTextPackageRules.InitialVersion + 1;
+        }
+
+        if (string.Equals(nextJson, latest.TextsJson, StringComparison.Ordinal))
+            return latest.Version;
+
+        var version = latest.Version + 1;
+        _db.ValuationReportTextPackages.Add(new ValuationReportTextPackage
+        {
+            Id = Guid.NewGuid(),
+            Version = version,
+            TextsJson = nextJson,
+            CreatedAtUtc = nowUtc,
+            CreatedByUserId = string.IsNullOrWhiteSpace(actorId) ? null : actorId,
+        });
+        return version;
+    }
+
+ /// <summary>Fixed order for literal comparison — only the six fields (no version number).</summary>
+    private static string CanonicalTextsJson(OrganizationValuationReportSettingsDto vr) =>
+        JsonSerializer.Serialize(new
+        {
+            professionalStandards = vr.ProfessionalStandards ?? "",
+            independence = vr.Independence ?? "",
+            restrictions = vr.Restrictions ?? "",
+            terms = vr.Terms ?? "",
+            ivsStandards = vr.IvsStandards ?? "",
+            glossary = vr.Glossary ?? "",
+        }, JsonOptions);
+
     private static void ValidateValuation(OrganizationValuationSettingsDto v)
     {
         if (v.MaxAdoptedComparables is < 1 or > 20)
             throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
         if (v.ComparableTimeGapMonths is < 1 or > 60)
             throw new ArgumentOutOfRangeException(nameof(v.ComparableTimeGapMonths), "عتبة الفارق الزمني يجب أن تكون بين 1 و 60 شهراً.");
+        if (v.AreaFactorPct is < 0.1m or > 50m)
+            throw new ArgumentOutOfRangeException(nameof(v.AreaFactorPct), "معامل المساحة يجب أن يكون بين 0.1 و 50٪.");
+        if (v.AnnualMarketRatePct is < 0m or > 50m)
+            throw new ArgumentOutOfRangeException(nameof(v.AnnualMarketRatePct), "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50٪.");
+        if (v.MarketValueRoundDecimals is < 0 or > 6)
+            throw new ArgumentOutOfRangeException(nameof(v.MarketValueRoundDecimals), "أسّ تقريب قيمة السوق يجب أن يكون بين 0 و 6.");
+    }
+
+    private static void ValidateBranding(OrganizationBrandingSettingsDto b)
+    {
+        static void Mm(decimal? v, string name, decimal max)
+        {
+            if (v is null) return;
+            if (v.Value < 0 || v.Value > max)
+                throw new ArgumentOutOfRangeException(name, $"قيمة {name} خارج النطاق.");
+        }
+
+        if (b.StampWidthCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.StampWidthCm), "عرض الختم يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.StampHeightCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.StampHeightCm), "ارتفاع الختم يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.SignatureWidthCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.SignatureWidthCm), "عرض التوقيع يجب أن يكون بين 0.5 و 20 سم.");
+        if (b.SignatureHeightCm is > 0 and (< 0.5m or > 20m))
+            throw new ArgumentOutOfRangeException(nameof(b.SignatureHeightCm), "ارتفاع التوقيع يجب أن يكون بين 0.5 و 20 سم.");
+        Mm(b.LetterheadHeadMm, "الهامش الأعلى", 297);
+        Mm(b.LetterheadFootTopMm, "الهامش الأسفل", 297);
+        Mm(b.LetterheadPadMm, "الهامش الأيسر", 210);
+        Mm(b.LetterheadPadStartMm, "الهامش الأيمن", 210);
+        Mm(b.LetterheadStripMm, "شريط الكليشة", 210);
     }
 
     private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
@@ -137,7 +260,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
                 Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
- // كانتا تسقطان هنا فتضيع القيم المحفوظة عند القراءة — تصحيح.
+ // They were dropped here and the saved values were lost when reading - Correction.
                 Valuation = dto.Valuation ?? new OrganizationValuationSettingsDto(),
                 ValuationReport = NormalizeValuationReport(
                     dto.ValuationReport ?? new OrganizationValuationReportSettingsDto()),
@@ -234,11 +357,15 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 LicenseExpiresAt = string.IsNullOrWhiteSpace(v.LicenseExpiresAt)
                     ? null
                     : v.LicenseExpiresAt.Trim(),
+                LicenseIssuedAt = string.IsNullOrWhiteSpace(v.LicenseIssuedAt)
+                    ? null
+                    : v.LicenseIssuedAt.Trim(),
                 MembershipExpiresAt = string.IsNullOrWhiteSpace(v.MembershipExpiresAt)
                     ? null
                     : v.MembershipExpiresAt.Trim(),
                 Role = NormalizeValuerRole(v.Role),
                 IsActive = v.IsActive,
+                SignatureUrl = string.IsNullOrWhiteSpace(v.SignatureUrl) ? null : v.SignatureUrl.Trim(),
             })
             .ToList();
     }
@@ -246,7 +373,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
     private static string NormalizeValuerRole(string? role)
     {
         var r = (role ?? "assistant").Trim().ToLowerInvariant();
-        return r is "certified" or "assistant" or "reviewer" ? r : "assistant";
+        return r is "certified" or "valuer" or "assistant" or "reviewer" ? r : "assistant";
     }
 
     private static OrganizationSlaSettingsDto NormalizeSla(OrganizationSlaSettingsDto? sla) =>
@@ -279,7 +406,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             UpdatedAtUtc = _time.UtcNow(),
         };
 
-    /// <summary>نصوص تقرير التقييم: فراغ ⟵ افتراضي القالب؛ قص الحقول الطويلة.</summary>
+    /// <summary>Valuation Report text: blank ⟵ template default; trim long fields.</summary>
     private static OrganizationValuationReportSettingsDto NormalizeValuationReport(
         OrganizationValuationReportSettingsDto dto) => new()
     {

@@ -3,7 +3,8 @@
  * GET/PUT /api/party-task-submissions/{taskId}; POST .../submit completes the workflow child task; POST .../reopen (engineering, appraisal, field-inspection).
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -53,11 +54,12 @@ export type ReopenPartyTaskSubmissionRequest = {
   returnNote: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
@@ -109,6 +111,13 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
   };
 }
 
+/** Unsaved GET placeholders have no row id — treat them as "not started". */
+export function isPersistedPartyTaskSubmission(
+  dto: PartyTaskSubmissionDto | null | undefined,
+): dto is PartyTaskSubmissionDto {
+  return Boolean(dto?.id?.trim());
+}
+
 export async function getPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -154,6 +163,7 @@ export async function savePartyTaskSubmission(
 export async function submitPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -162,7 +172,7 @@ export async function submitPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/submit`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
@@ -197,10 +207,11 @@ export async function reopenPartyTaskSubmission(
   }
 }
 
-/** Specialist accepts party outputs (survey fee accrual; inspection → إنفاذ package). */
+/** Specialist accepts party outputs (survey fee accrual; inspection → Enfaz package). */
 export async function acceptPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -209,7 +220,7 @@ export async function acceptPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/accept`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);

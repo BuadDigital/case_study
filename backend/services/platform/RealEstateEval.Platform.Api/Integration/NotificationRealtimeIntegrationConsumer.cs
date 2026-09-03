@@ -4,6 +4,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Platform.Infrastructure.Integration;
 
 namespace RealEstateEval.Platform.Api.Integration;
 

@@ -1,12 +1,5 @@
 import type { ValuationReportDocumentDto } from "@platform/api-client";
-
-function esc(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escHtml as esc } from "./html-escape";
 
 function field(doc: ValuationReportDocumentDto, sectionNumber: number, key: string): string {
   const section = doc.sections.find((s) => s.number === sectionNumber);
@@ -18,7 +11,7 @@ function dash(v: string | null | undefined): string {
   return v == null || v.trim() === "" ? "-" : v;
 }
 
-/** قاعدة n (11ك): weighting table only with two or more included methods. */
+/** Rule n (11k): weighting table only with two or more included methods. */
 function isMultiMethod(doc: ValuationReportDocumentDto): boolean {
   return doc.sections.find((s) => s.number === 15)?.fields?.["multiMethod"] === "yes";
 }
@@ -57,7 +50,7 @@ function renderPrintedAttachments(
 
   const renderOne = (a: (typeof items)[number]): string => {
     const url = resolveAttachmentUrl(a.contentUrl);
-    // 11س — photos print with their auto-capture date.
+    // 11s — photos print with their auto-capture date.
     const dated = a.capturedAtDisplay
       ? `${a.labelAr || "صورة"} — ${a.capturedAtDisplay}`
       : a.labelAr || a.fileName || "مرفق";
@@ -69,7 +62,7 @@ function renderPrintedAttachments(
     return `<p class="attach-link"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${caption}</a> — <span class="attach-fn">${name}</span></p>`;
   };
 
-  // 11س — ست صور في الصفحة: chunked grids with print page breaks between them.
+  // 11s — six photos per page: chunked grids with print page breaks between them.
   if (perPage && perPage > 0) {
     const chunks: string[] = [];
     for (let i = 0; i < items.length; i += perPage) {
@@ -116,12 +109,11 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
     case 6:
       return kvTable([
         ["رقم الصك / المعرف", field(doc, 6, "deedNumber")],
-        ["نوع الصك", field(doc, 6, "deedKindLabel")],
         ["المالك", field(doc, 6, "ownerName")],
         ["نوع الملكية", field(doc, 6, "ownershipType")],
         ["المدينة / الحي", `${field(doc, 6, "city")} / ${field(doc, 6, "district")}`],
         ["هل توجد مبانٍ/إنشاءات؟", field(doc, 6, "hasStructures") === "yes" ? "نعم" : "لا"],
-        // Building-only rows (decision 6 / 8ب) — deleted for land, no dash.
+        // Building-only rows (decision 6 / 8b) — deleted for land, no dash.
         ...(doc.hasStructuresToValue
           ? ([
               ["حالة العقار", field(doc, 6, "propertyCondition")],
@@ -241,7 +233,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
     case 15:
       return kvTable([["مبرر استخدام طرق التقييم", doc.methodsRationale?.trim() || "-"]]);
     case 16: {
-      // قاعدة n (11ك/11ل): with one method there is no weighting table at all —
+      // Rule n (11k/11l): with one method there is no weighting table at all —
       // its value flows straight to the final opinion and section 15 carries the
       // rationale. With n≥2 the table prints and the rationale is its LAST row.
       const methodRows =
@@ -339,21 +331,35 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
 }
 
 /**
- * الكليشة أصل نظام تُستبدل من الإعدادات دون أثر على الكود :
- * ثلاث شرائح — ترويسة حتى 41مم، تذييل من 270مم (27مم)، شريط جانبي 13مم repeat-y.
+ * Letterhead is a system asset replaced from settings without code changes:
+ * three visual-identity margin slices (HTML defaults: header 41mm, footer from 270mm, right 13mm).
  * Null keeps the template's baked letterhead untouched.
  */
-function applyLetterheadSlices(dom: Document, letterheadUrl?: string | null): void {
+function applyLetterheadSlices(
+  dom: Document,
+  letterheadUrl?: string | null,
+  geo?: {
+    letterheadHeadMm?: number | null;
+    letterheadFootTopMm?: number | null;
+    letterheadPadStartMm?: number | null;
+  },
+): void {
   const url = letterheadUrl?.trim();
   if (!url) return;
   const cssUrl = url.replace(/["\)]/g, "");
+  const head = geo?.letterheadHeadMm && geo.letterheadHeadMm > 0 ? geo.letterheadHeadMm : 41;
+  const footTop =
+    geo?.letterheadFootTopMm && geo.letterheadFootTopMm > 0 ? geo.letterheadFootTopMm : 270;
+  const footH = Math.max(0, 297 - footTop);
+  const side =
+    geo?.letterheadPadStartMm && geo.letterheadPadStartMm > 0 ? geo.letterheadPadStartMm : 13;
   const style = dom.createElement("style");
   style.textContent =
     `.sheet{position:relative;background:#fff!important}` +
     `.lh-slice{position:absolute;pointer-events:none;background-image:url("${cssUrl}")}` +
-    `.lh-head{top:0;left:0;right:0;height:41mm;background-size:210mm auto;background-position:top center;background-repeat:no-repeat}` +
-    `.lh-foot{bottom:0;left:0;right:0;height:27mm;background-size:210mm auto;background-position:bottom center;background-repeat:no-repeat}` +
-    `.lh-side{top:41mm;bottom:27mm;right:0;width:13mm;background-size:210mm auto;background-position:top right;background-repeat:repeat-y}`;
+    `.lh-head{top:0;left:0;right:0;height:${head}mm;background-size:210mm auto;background-position:top center;background-repeat:no-repeat}` +
+    `.lh-foot{bottom:0;left:0;right:0;height:${footH}mm;background-size:210mm auto;background-position:bottom center;background-repeat:no-repeat}` +
+    `.lh-side{top:${head}mm;bottom:${footH}mm;right:0;width:${side}mm;background-size:210mm auto;background-position:top right;background-repeat:repeat-y}`;
   dom.head.appendChild(style);
   dom.querySelectorAll<HTMLElement>(".sheet").forEach((sheet) => {
     for (const cls of ["lh-head", "lh-foot", "lh-side"]) {
@@ -361,6 +367,23 @@ function applyLetterheadSlices(dom: Document, letterheadUrl?: string | null): vo
       slice.className = `lh-slice ${cls}`;
       sheet.insertBefore(slice, sheet.firstChild);
     }
+  });
+}
+
+function applyStampSize(
+  dom: Document,
+  widthCm?: number | null,
+  heightCm?: number | null,
+): void {
+  const w = widthCm && widthCm > 0 ? widthCm : 4;
+  const h = heightCm && heightCm > 0 ? heightCm : 4;
+  dom.querySelectorAll("img").forEach((img) => {
+    const alt = img.getAttribute("alt") ?? "";
+    const src = img.getAttribute("src") ?? "";
+    if (!/ختم|stamp/i.test(`${alt} ${src}`)) return;
+    img.style.width = `${w}cm`;
+    img.style.height = `${h}cm`;
+    img.style.objectFit = "contain";
   });
 }
 
@@ -479,7 +502,7 @@ export function mergeApprovedValuationTemplate(
   });
 
   const included = new Set(doc.sections.filter((s) => s.included).map((s) => s.number));
-  // قاعدة n (11ل): with weighting, the rationale becomes the weighting table's
+  // Rule n (11l): with weighting, the rationale becomes the weighting table's
   // last row (section 16) — the standalone section 15 table drops out.
   if (isMultiMethod(doc)) included.delete(15);
 
@@ -500,11 +523,12 @@ export function mergeApprovedValuationTemplate(
     while (wrap.firstChild) sec.appendChild(wrap.firstChild);
   });
 
-  applyLetterheadSlices(dom, doc.letterheadImageUrl);
+  applyLetterheadSlices(dom, doc.letterheadImageUrl, doc);
+  applyStampSize(dom, doc.stampWidthCm, doc.stampHeightCm);
 
- // محرك الصف التلقائي : لا توزيع يدويًا —
-  // القسم وحدة لا تنشطر بين صفحتين، وما لا يتسع ينزل لبداية الصفحة التالية،
-  // وحذف الشرطيات يسحب ما بعدها، وصفحات المرفقات حاويات صفحة كاملة.
+ // Automatic page-flow engine: no manual pagination —
+  // a section stays on one page; overflow starts on the next page;
+  // removing conditionals pulls following content up; attachment pages are full-page containers.
   reflowSheets(dom);
 
   const printBtn = dom.createElement("p");
@@ -540,8 +564,11 @@ export async function openApprovedValuationReportPreview(
   templateUrl = doc.approvedTemplateUrl || "/ejadah/report-template-approved.html",
 ): Promise<void> {
   const merged = await buildApprovedValuationReportHtml(doc, extras, templateUrl);
-  const w = window.open("", "_blank", "noopener,noreferrer,width=980,height=1100");
+  // "noopener" in features makes window.open return null per spec — we need the handle
+  // to write, then clear opener manually afterward.
+  const w = window.open("", "_blank", "width=980,height=1100");
   if (!w) throw new Error("المتصفح منع فتح نافذة استعراض تقرير التقييم");
+  w.opener = null;
   w.document.open();
   w.document.write(merged);
   w.document.close();

@@ -2,36 +2,46 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
+  cn,
   Note,
   PageGutter,
-  cn,
   PanelSkeleton,
+  RowMoreMenu,
+  type RowMoreMenuItem,
+  Table,
+  TableFrame,
+  TBody,
+  Td,
+  TdAction,
+  Th,
+  ThAction,
+  THead,
+  Tr,
 } from "@platform/ui-kit";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { ltrValueClass } from "../components/po-intake/PropertyDetailFields";
-import { CopyFromPriorTransactionModal } from "../components/po-intake/CopyFromPriorTransactionModal";
+const CopyFromPriorTransactionModal = dynamic(
+  () =>
+    import("../components/po-intake/CopyFromPriorTransactionModal").then(
+      (m) => m.CopyFromPriorTransactionModal,
+    ),
+  { ssr: false },
+);
 import {
   PpBadge,
-  PpCard,
   PpCell,
   PpDeedCell,
   PpEmpty,
   PpFooterHint,
-  PpGrid,
   PpHead,
   PpMeta,
   PpPo,
-  PpRow,
   PpStatus,
   PpSummary,
-  PpTd,
-  PpTh,
-  PpThead,
   PpTitle,
   assignmentTypeTone,
   deedStatusStyle,
@@ -44,13 +54,13 @@ import {
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
-} from "../lib/prototype/po-intake-data";
-import { poPropertyPath, poListPath } from "../lib/po-routes";
-import { buildCopyPriorTargetOptions } from "../lib/prototype/po-intake-storage";
+} from "../lib/app-data/po-intake-data";
+import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
+import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
 import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
-} from "../lib/prototype/po-properties-row-menu";
+} from "../lib/app-data/po-properties-row-menu";
 import { DeliveryCountdown } from "../components/po-intake/DeliveryCountdown";
 import {
   usePoRecordQuery,
@@ -58,15 +68,16 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import {
+  canEditPoHeader,
   canEditProperty,
   canRaisePropertyFailure,
   canViewPoEye,
-} from "../lib/prototype/po-roles";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import type { PropertyWorkflowStage } from "@platform/app-shared/prototype/constants";
+} from "../lib/app-data/po-roles";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import type { PropertyWorkflowStage } from "@platform/app-shared/app-data/constants";
 import { PropertyListRowStatuses } from "@platform/api-client";
-import type { PoPropertyIntake } from "../lib/prototype/po-intake-data";
+import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 
 function deedLabel(property: PoPropertyIntake): string {
   return (
@@ -106,8 +117,9 @@ export function PoPropertiesPage({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
+  const showHeaderEdit = canEditPoHeader(role) || showEdit;
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
   const showRowMenu =
@@ -146,16 +158,16 @@ export function PoPropertiesPage({
 
   const handleCopiedFromPrior = useCallback(() => {
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.poRecord(poNumber),
+      queryKey: appDataKeys.poRecord(poNumber),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
+      queryKey: appDataKeys.workflowTasks(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
+      queryKey: appDataKeys.pendingBourseItems(),
     });
     void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.propertyListItems(),
+      queryKey: appDataKeys.propertyListItems(),
     });
   }, [queryClient, poNumber]);
 
@@ -234,6 +246,21 @@ export function PoPropertiesPage({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 max-lg:px-3 sm:px-[30px] sm:py-[26px]">
       <PpHead>
+        {showHeaderEdit ? (
+          <div className="absolute left-3 top-3 z-10">
+            <RowMoreMenu
+              ariaLabel="إجراءات أمر العمل"
+              items={[
+                {
+                  id: "edit-po-header",
+                  label: "تعديل أمر العمل",
+                  onClick: () =>
+                    router.push(poHeaderEditPath(record.poNumber)),
+                },
+              ]}
+            />
+          </div>
+        ) : null}
         <PpTitle>
           <span>عقارات</span>
           <PpPo>
@@ -291,27 +318,29 @@ export function PoPropertiesPage({
         </PpSummary>
       </PpHead>
 
-      <PpCard>
-        {visibleProperties.length === 0 ? (
-          expected > 0 ? (
-            <PpEmpty
-              title="لم تُسجَّل عقارات هذا الأمر بعد."
-              subtitle={`بانتظار تسجيل ${expected === 1 ? "عقار واحد" : `${expected} عقارات`} من قِبل أخصائي دراسة الحالة.`}
-            />
-          ) : (
-            <PpEmpty />
-          )
+      {visibleProperties.length === 0 ? (
+        expected > 0 ? (
+          <PpEmpty
+            title="لم تُسجَّل عقارات هذا الأمر بعد."
+            subtitle={`بانتظار تسجيل ${expected === 1 ? "عقار واحد" : `${expected} عقارات`} من قِبل أخصائي دراسة الحالة.`}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <PpGrid>
-              <PpThead>
-                <PpTh>رقم الصك</PpTh>
-                <PpTh>الموقع</PpTh>
-                <PpTh>التصنيف / النوع</PpTh>
-                <PpTh>حالة الصك</PpTh>
-                <PpTh>الحالة</PpTh>
-                <PpTh center />
-              </PpThead>
+          <PpEmpty />
+        )
+      ) : (
+        <TableFrame>
+          <Table className="min-w-[720px]">
+            <THead>
+              <Tr hoverable={false}>
+                <Th>رقم الصك</Th>
+                <Th>الموقع</Th>
+                <Th>التصنيف / النوع</Th>
+                <Th>حالة الصك</Th>
+                <Th>الحالة</Th>
+                <ThAction aria-hidden />
+              </Tr>
+            </THead>
+            <TBody>
               {visibleProperties.map((prop, index) => {
                 const serverStatus =
                   statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
@@ -340,36 +369,41 @@ export function PoPropertiesPage({
                 const deedSt = prop.deedStatus.trim();
 
                 return (
-                  <PpRow
+                  <Tr
                     key={prop.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       router.push(detailHref);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(detailHref);
+                      }
+                    }}
                   >
-                    <PpTd>
-                      <PpDeedCell
-                        index={index + 1}
-                        deed={label}
-                      />
-                    </PpTd>
-                    <PpTd muted>
+                    <Td>
+                      <PpDeedCell index={index + 1} deed={label} />
+                    </Td>
+                    <Td className="text-text-2">
                       <span className="truncate">{location}</span>
-                    </PpTd>
-                    <PpTd>
+                    </Td>
+                    <Td>
                       {boursePending && !hasBourseDetailFields(prop) ? (
                         <span className="text-text-2">—</span>
                       ) : (
                         <span className="truncate">{typeDisplay}</span>
                       )}
-                    </PpTd>
-                    <PpTd>
+                    </Td>
+                    <Td>
                       {boursePending || !deedSt ? (
                         <span className="text-text-2">—</span>
                       ) : (
                         <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
                       )}
-                    </PpTd>
-                    <PpTd>
+                    </Td>
+                    <Td>
                       <div className="flex min-w-0 flex-col items-start gap-0.5">
                         <PpStatus
                           label={workflowStyle.label}
@@ -381,26 +415,26 @@ export function PoPropertiesPage({
                           </span>
                         ) : null}
                       </div>
-                    </PpTd>
-                    <PpTd
-                      className="justify-center overflow-visible"
+                    </Td>
+                    <TdAction
+                      className="overflow-visible"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {showRowMenu ? (
                         <RowMoreMenu items={resolveRowMoreItems(prop)} />
                       ) : null}
-                    </PpTd>
-                  </PpRow>
+                    </TdAction>
+                  </Tr>
                 );
               })}
-            </PpGrid>
-          </div>
-        )}
-      </PpCard>
+            </TBody>
+          </Table>
+        </TableFrame>
+      )}
 
       {visibleProperties.length > 0 ? <PpFooterHint /> : null}
 
-      {showEdit ? (
+      {showEdit && copyModalOpen ? (
         <CopyFromPriorTransactionModal
           open={copyModalOpen}
           poNumber={poNumber}

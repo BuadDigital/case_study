@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   CONTACT_ROLE_OPTIONS,
   type PoContact,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
   Button,

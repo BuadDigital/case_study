@@ -8,8 +8,6 @@ import {
   DEED_STATUS_OPTIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
   RESTRICTION_TYPE_OPTIONS,
-  PROPERTY_FINISHING_STRUCTURE_OPTIONS,
-  PROPERTY_FINISHING_TYPE_OPTIONS,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
@@ -17,11 +15,11 @@ import {
   toggleRestrictionType,
   type BourseDeedVitality,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import {
   cacheBourseDeedImageDoc,
   clearCachedPropertyDoc,
-} from "../../lib/prototype/assignment-doc-attachments";
+} from "../../lib/app-data/assignment-doc-attachments";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
@@ -29,7 +27,7 @@ import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import { cn, FormRow, Label, Note, useToast } from "@platform/ui-kit";
+import { cn, FormRow, InfathSection, Label, Note, useToast } from "@platform/ui-kit";
 
 type Props = {
   property: PoPropertyIntake;
@@ -40,7 +38,7 @@ type Props = {
   ) => void;
   poNumber?: string;
   showIntroNote?: boolean;
-  /** مسار الصك فعال / غير فعال → متعذر (استعلام البورصة ومهام الأخصائي). */
+  /** Deed track active / inactive → failed (bourse inquiry and specialist tasks). */
   showDeedVitalityFlow?: boolean;
   deedVitality?: BourseDeedVitality | null;
   onDeedVitalityChange?: (value: BourseDeedVitality) => void;
@@ -50,11 +48,8 @@ type Props = {
 };
 
 const pillClass = (selected: boolean) =>
-  cn(
-    "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-2 px-4 py-2 font-[inherit] text-xs font-semibold transition-all",
-    selected
-      ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]"
-      : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
+  cn( "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-DEFAULT)] border-2 px-4 py-2 font-[inherit] text-xs font-semibold transition-all",
+    selected ? "border-primary bg-primary text-white shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_20%,transparent)]" : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
   );
 
 export function PoPropertyBourseForm({
@@ -130,12 +125,11 @@ export function PoPropertyBourseForm({
       ) : null}
 
       {showIntroNote && !obstructionPath ? (
-        <Note tone="info" className="mb-3">
-          بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.
-        </Note>
+        <Note tone="info" className="mb-3">بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.</Note>
       ) : null}
 
       {!obstructionPath ? (
+        <InfathSection title="الموقع والمساحة" className="mt-3">
         <FormRow>
           <RegionCitySelects
             property={property}
@@ -144,9 +138,29 @@ export function PoPropertyBourseForm({
           />
           <RegField
             id="area"
-            label="المساحة"
+            label="المساحة (م²)"
+            dir="ltr"
+            inputMode="decimal"
             value={property.area}
+            error={fieldErrors.area}
             onChange={(v) => onPatch("area", v)}
+            placeholder="مثال: 900"
+          />
+          <RegField
+            id="classification"
+            label="التصنيف"
+            value={property.classification}
+            error={fieldErrors.classification}
+            onChange={(v) => onPatch("classification", v)}
+            placeholder="أرض · مبنى · وحدة داخل مبنى…"
+          />
+          <RegField
+            id="property_type"
+            label="النوع / الاستخدام"
+            value={property.propertyType}
+            error={fieldErrors.propertyType}
+            onChange={(v) => onPatch("propertyType", v)}
+            placeholder="سكني · تجاري · فيلا…"
           />
           {showDeedVitalityFlow ? null : (
             <RegSelect
@@ -158,10 +172,12 @@ export function PoPropertyBourseForm({
             />
           )}
         </FormRow>
+        </InfathSection>
       ) : null}
 
       {!obstructionPath ? (
         <>
+          <InfathSection title="صورة الصك" className="mt-3">
           <PropertyFileUploadField
             id={`bourse_deed_image_${property.id}`}
             label={<>صورة الصك من البورصة *</>}
@@ -192,16 +208,18 @@ export function PoPropertyBourseForm({
               }
             }}
           />
+          </InfathSection>
 
+          <InfathSection title="القيود على العقار" className="mt-3">
           <div
             id="restrictions_present"
             className={cn(
-              "mt-3 w-full rounded-lg p-1",
+              "w-full rounded-lg p-1",
               fieldErrors.restrictionsPresent &&
                 "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
             )}
           >
-            <Label className="mb-1 text-[11px]">القيود على العقار</Label>
+            <Label className="mb-1 text-[11px]">هل توجد قيود؟</Label>
             <div className="flex flex-wrap gap-1.5">
               {RESTRICTIONS_PRESENT_OPTIONS.map((opt) => (
                 <button
@@ -289,19 +307,21 @@ export function PoPropertyBourseForm({
               </div>
             ) : null}
           </div>
+          </InfathSection>
 
           <PoPropertyOwnersSection property={property} onPatch={onPatch} />
           <PoPropertyGroupSection propertyId={property.id} />
 
+          <InfathSection title="توفر الحدود" className="mt-3">
           <div
             id="boundaries_availability"
             className={cn(
-              "mt-3 w-full rounded-lg p-1",
+              "w-full rounded-lg p-1",
               fieldErrors.boundariesAvailability &&
                 "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
             )}
           >
-            <Label className="mb-1 text-[11px]">توفر الحدود</Label>
+            <Label className="mb-1 text-[11px]">مصدر الحدود</Label>
             <div className="flex flex-wrap gap-1.5">
               {BOUNDARIES_AVAILABILITY_OPTIONS.map((opt) => (
                 <button
@@ -359,31 +379,8 @@ export function PoPropertyBourseForm({
                 onPatch={onPatch}
               />
             ) : null}
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RegSelect
-                id="finishing_type"
-                label="مستوى التشطيب"
-                value={property.finishingType}
-                error={fieldErrors.finishingType}
-                onChange={(v) => onPatch("finishingType", v)}
-                options={PROPERTY_FINISHING_TYPE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-              />
-              <RegSelect
-                id="finishing_structure"
-                label="الهيكل الإنشائي"
-                value={property.finishingStructure}
-                error={fieldErrors.finishingStructure}
-                onChange={(v) => onPatch("finishingStructure", v)}
-                options={PROPERTY_FINISHING_STRUCTURE_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-              />
-            </div>
           </div>
+          </InfathSection>
         </>
       ) : null}
     </>

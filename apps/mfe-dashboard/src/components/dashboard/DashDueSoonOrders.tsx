@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { PoRow } from "@platform/app-shared/prototype/constants";
+import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   daysUntilDue,
   formatDateLtr,
@@ -10,8 +10,8 @@ import {
   parseDashDate,
   startOfLocalDay,
 } from "../../lib/dashboard-metrics";
-import { dashCard, dashLine } from "../../lib/dashboard-tw";
-import { cn } from "@platform/ui-kit";
+import { dashLine } from "../../lib/dashboard-tw";
+import { cn, opsDashCard } from "@platform/ui-kit";
 
 export function DashDueSoonOrders({ orders }: { orders: PoRow[] }) {
   const router = useRouter();
@@ -23,7 +23,7 @@ export function DashDueSoonOrders({ orders }: { orders: PoRow[] }) {
     .slice(0, 6);
 
   return (
-    <div className={dashCard}>
+    <div className={opsDashCard}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className="m-0 text-[14px] font-bold text-heading">
           أوامر قاربت المهلة

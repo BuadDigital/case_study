@@ -1,5 +1,5 @@
-import { decodeTaskParam } from "@case-study/mfe";
-import { partyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
+import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { PageId } from "@platform/types";
 
 type MyTasksChrome = {
@@ -8,7 +8,7 @@ type MyTasksChrome = {
 };
 
 type MyTasksChromeOptions = {
-  /** Appended after breadcrumb on `/case-study/[taskId]` (e.g. رقم الصك). */
+  /** Appended after breadcrumb on `/case-study/[taskId]` (e.g. deed number). */
   deedLabel?: string;
   /** Operations task title for `/operations-tasks?task=` (HTML `t.title`). */
   opsTaskTitle?: string;
@@ -16,7 +16,7 @@ type MyTasksChromeOptions = {
 
 /**
  * Workspace / task-detail topbar chrome — current leaf label only
- * (no لوحة التحكم / section parents).
+ * (no dashboard / section parents).
  */
 export function resolveMyTasksChrome(
   pathname: string,
@@ -41,15 +41,16 @@ export function resolveMyTasksChrome(
   }
 
   if (page === "property-appraisal" && parts[1]) {
+    const deed = options?.deedLabel?.trim();
     return {
-      breadcrumb: "نافذة التقييم",
-      title: "المقيم العقاري — نافذة التقييم",
+      breadcrumb: deed || "نافذة التقييم",
+      title: "",
     };
   }
 
   if (page === "active-inspection" && parts[1]) {
     return {
-      breadcrumb: "مساحة العمل",
+      breadcrumb: "معاينة العقار / مساحة العمل",
       title: "معاينة العقار",
     };
   }
@@ -74,9 +75,10 @@ export function resolveMyTasksChrome(
     const party = partyTaskPageDef(page);
     if (party) {
       if (page === "property-appraisal") {
+        const deed = options?.deedLabel?.trim();
         return {
-          breadcrumb: "نافذة التقييم",
-          title: "المقيم العقاري — نافذة التقييم",
+          breadcrumb: deed || "نافذة التقييم",
+          title: "",
         };
       }
       if (page === "active-survey") {

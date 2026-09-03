@@ -1,7 +1,7 @@
 import type { PageId } from "@platform/types";
-import { isPartyTaskPage } from "@platform/app-shared/prototype/party-task-pages";
-import { poPropertyInspectionInputPath } from "./po-routes";
-import type { WorkflowTask } from "./prototype/tasks-storage";
+import { isPartyTaskPage } from "@platform/app-shared/app-data/party-task-pages";
+import { poPropertyInspectionInputPath } from "@platform/app-shared/domain/po-routes";
+import type { WorkflowTask } from "./app-data/tasks-storage";
 
 export function myTasksPath(): string {
   return "/active-primary-data";
@@ -40,27 +40,27 @@ export function partyTaskTaskPath(pageId: PageId, taskId: string): string {
   return `/${pageId}?task=${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for المكتب الهندسي (الرفع المساحي). */
+/** Full-page workspace for the engineering office (survey). */
 export function activeSurveyWorkspacePath(taskId: string): string {
   return `/active-survey/${encodeURIComponent(taskId)}`;
 }
 
-/** Data-entry page for الرفع المساحي (editable form). */
+/** Data-entry page for survey (editable form). */
 export function activeSurveyEntryPath(taskId: string): string {
   return `/active-survey/${encodeURIComponent(taskId)}/entry`;
 }
 
-/** Full-page workspace for المقيم العقاري (تقييم العقار). */
+/** Full-page workspace for the property appraiser (property valuation). */
 export function propertyAppraisalWorkspacePath(taskId: string): string {
   return `/property-appraisal/${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for المعاين الميداني — المسار الرسمي تحت المعاملات النشطة. */
+/** Full-page workspace for the field inspector — official path under active transactions. */
 export function activeInspectionWorkspacePath(taskId: string): string {
   return `/active-inspection/${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for المعاين الميداني (معاينة العقار — شاشة يتيمة). */
+/** Full-page workspace for the field inspector (property inspection — orphan screen). */
 export function propertyInspectionWorkspacePath(taskId: string): string {
   return `/property-inspection/${encodeURIComponent(taskId)}`;
 }
@@ -104,7 +104,7 @@ export function favoritesTaskPath(taskId: string): string {
   return `/favorites?task=${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for distributed party tasks opened from جميع المعاملات. */
+/** Full-page workspace for distributed party tasks opened from all-transactions. */
 export function partyTaskWorkspacePath(task: WorkflowTask): string | undefined {
   switch (task.kind) {
     case "field-inspection": {

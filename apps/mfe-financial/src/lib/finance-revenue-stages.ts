@@ -1,7 +1,7 @@
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import type { RevenueStage } from "./finance-nav";
 
-/** أيام قبل اعتبار المعاملة «متوقفة» (فاتورة متأخرة أو جاهزة ولم تُرفع). */
+/** Days before a transaction is treated as «stopped» (overdue invoice or ready but not uploaded). */
 const REVENUE_STALL_DAYS = 30;
 
 function daysSinceIso(iso: string | null | undefined): number | null {
@@ -18,8 +18,8 @@ function isStalledWithoutInvoice(row: EnfazTrackingRowDto): boolean {
 }
 
 /**
- * يطابق مرجع منطق المالية على بيانات التتبّع.
- * «متوقفة» = علامة يدوية، أو فاتورة مفتوحة متأخرة، أو مكتملة ≥30 يوماً دون فوترة/رفع.
+ * Matches finance logic reference against tracking data.
+ * «Stopped» = manual flag, overdue open invoice, or completed ≥30 days without billing/upload.
  */
 export function resolveRevenueStage(row: EnfazTrackingRowDto): RevenueStage {
   const flag = (row.financeFlag ?? "").toLowerCase();
@@ -41,13 +41,13 @@ export function resolveRevenueStage(row: EnfazTrackingRowDto): RevenueStage {
   if (openInvoice && row.isOverdue) return "stopped";
   if (openInvoice) return "awaiting_collection";
 
-  // جاهزة ولم تُرفع / لم تُفوتَر — متوقفة بسنّ العمر
+  // Ready but not uploaded / not invoiced — stopped by age
   if (isStalledWithoutInvoice(row)) return "stopped";
 
-  // أتعاب معبّأة = مطابقة تمت → مساعد الفوترة
+  // Fees filled = match done → billing assistant
   if (row.enfazFilled && row.enfazFeeSar > 0) return "billing_assistant";
 
-  // مكتملة وجاهزة للمطابقة/الفوترة
+  // Completed and ready for match/billing
   return "eligible";
 }
 
@@ -93,7 +93,7 @@ export function revenueStageEmptyHint(stage: RevenueStage): string | null {
   }
 }
 
-/** تجميع صفوف لنفس أمر العمل (العرض بالطيّ). */
+/** Group rows for the same work order (collapsible display). */
 export function groupRowsByPo(
   rows: EnfazTrackingRowDto[],
 ): { poNumber: string; rows: EnfazTrackingRowDto[] }[] {
@@ -110,7 +110,7 @@ export function groupRowsByPo(
   }));
 }
 
-/** التحصيل على الفاتورة: تجميع بانتظار التحصيل برقم الفاتورة. */
+/** Collection by invoice: group awaiting-collection by invoice number. */
 export function groupRowsByInvoice(
   rows: EnfazTrackingRowDto[],
 ): { invoiceKey: string; invoiceNumber: string; rows: EnfazTrackingRowDto[] }[] {
@@ -131,11 +131,14 @@ export function groupRowsByInvoice(
     .sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber, "en"));
 }
 
+/** Shared formatter — avoid new Intl.DateTimeFormat per row */
+const DATE_EN = new Intl.DateTimeFormat("en-GB");
+
 export function formatDateEn(iso: string | null | undefined): string {
   if (!iso) return "—";
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return "—";
-  return new Date(t).toLocaleDateString("en-GB");
+  return DATE_EN.format(t);
 }
 
 export function uniqueCities(rows: EnfazTrackingRowDto[]): string[] {
@@ -154,7 +157,7 @@ function taxableFeesSar(row: {
   return (row.caseStudyFeeSar || 0) + (row.surveyFeeSar || 0);
 }
 
-/** (تقييم+رفع) + ضريبة 15٪ على مجموعهما + مفاتيح شاملة الضريبة */
+/** (valuation+survey) + 15% VAT on their sum + keys fees VAT-inclusive */
 function computeEnfazLineTotals(input: {
   caseStudyFeeSar: number;
   surveyFeeSar: number;
@@ -166,7 +169,7 @@ function computeEnfazLineTotals(input: {
   return { taxable, vat, key, total: taxable + vat + key };
 }
 
-/** تفكيك بنود الأتعاب + الضريبة — مطابق حساب المرجع المنطقي. */
+/** Break down fee lines + tax — matches logic-reference calculation. */
 export function revenueAmountsFromRow(row: {
   caseStudyFeeSar: number;
   surveyFeeSar: number;
@@ -209,7 +212,7 @@ export function stoppedReasonLabel(row: EnfazTrackingRowDto): string {
   return "متوقفة";
 }
 
-/** تاريخ مرجعي لفلتر الفترة (إصدار فاتورة / اكتمال). */
+/** Reference date for period filter (invoice issue / completion). */
 export function revenuePeriodDateIso(row: EnfazTrackingRowDto): string | null {
   return row.invoiceIssuedAtUtc ?? row.completedAtUtc;
 }
@@ -220,7 +223,7 @@ export function revenueInPeriod(
 ): boolean {
   if (period === "all") return true;
   const age = daysSinceIso(iso);
-  // قيد الدراسة غالباً بلا تاريخ اكتمال — لا تُستبعد كلها بفلتر الفترة
+  // Under study often has no completion date — do not exclude them all via period filter
   if (age == null) return true;
   const max = period === "30" ? 30 : 90;
   return age <= max;

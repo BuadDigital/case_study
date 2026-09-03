@@ -1,9 +1,9 @@
-import type { FailureRecord, FailureStatus } from "./failures-types";
+import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 import {
   DEED_INACTIVE_RESOLVED_LABEL,
   failureProblemTypeLabel,
 } from "./failure-types-data";
-import { isHistoricalFailureStatus } from "./failures-types";
+import { isHistoricalFailureStatus } from "@platform/app-shared/failures/failures-types";
 
 export function failureRecordTitle(
   failure: Pick<FailureRecord, "problemTypeId" | "title" | "status">,
@@ -36,18 +36,21 @@ export function failureStatusLabel(status: FailureStatus): string {
   return "معاد للأخصائي";
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Display labels for raiser / specialist cells (system token + raw user ids). */
 export function failureActorLabel(raw: string | null | undefined): string {
   const value = (raw ?? "").trim();
   if (!value) return "—";
   if (value.toLowerCase() === "system" || value === "النظام") return "النظام";
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+  if (UUID_PATTERN.test(value)) {
     return "—";
   }
   return value;
 }
 
-/** HTML Case Study list vocabulary for إدارة التعذرات. */
+/** HTML Case Study list vocabulary for Failures management. */
 export function failureListStatusLabel(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
@@ -82,7 +85,7 @@ export function failureSeverityLabel(
   return "تعذر داخلي";
 }
 
-/** HTML list: مؤكد / احتمال */
+/** HTML list: confirmed / possible */
 export function failureListSeverityLabel(
   severity: FailureRecord["severity"],
 ): string {

@@ -5,6 +5,9 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 using Xunit;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Platform.Application.Contracts;
 
 namespace RealEstateEval.Application.Tests;
 

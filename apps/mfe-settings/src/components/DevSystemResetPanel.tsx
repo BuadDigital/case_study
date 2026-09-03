@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Can } from "@platform/app-shared/components/Can";
-import { notifyWorkOrdersChanged } from "@platform/app-shared/prototype/work-orders-api-config";
+import { notifyWorkOrdersChanged } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   Button,
   ModalBody,

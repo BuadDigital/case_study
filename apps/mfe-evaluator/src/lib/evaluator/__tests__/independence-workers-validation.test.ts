@@ -58,31 +58,24 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.asset_data_confirmed).toBeUndefined();
   });
 
-  it("requires independence declaration", () => {
+  it("does not require liquidation discount unless value basis is liquidation", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
+      forcedSaleDiscountPct: "",
+      valueBasisKey: "market",
       assetDataConfirmed: true,
-      independenceDeclared: false,
     });
-    expect(errors.independence_declared).toBeTruthy();
+    expect(errors.forced_sale_discount).toBeUndefined();
   });
 
-  it("requires a named report worker", () => {
+  it("requires liquidation discount when value basis is liquidation", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
+      forcedSaleDiscountPct: "",
+      valueBasisKey: "liquidation",
       assetDataConfirmed: true,
-      reportWorkers: [
-        {
-          id: "w1",
-          role: "معد",
-          name: "  ",
-          licenseNumber: "",
-          licenseDate: "",
-          licenseFileName: null,
-        },
-      ],
     });
-    expect(errors.report_workers).toBeTruthy();
+    expect(errors.forced_sale_discount).toBeTruthy();
   });
 });
 

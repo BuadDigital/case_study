@@ -1,25 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageShell, cn } from "@platform/ui-kit";
-import {
-  opsFldControl,
-  opsIconBoxGold,
-  opsLetterCard,
-  opsLetterHead,
-  opsLetterMeta,
-  opsLetterSub,
-  opsLetterTitle,
-  opsTfSeg,
-  opsTfSegActive,
-  opsTfSegRow,
-} from "@case-study/mfe/lib/prototype/ops-tasks-tw";
+import { PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSeg, opsTfSegActive, opsTfSegRow } from "@platform/ui-kit";
 import {
   FIELD_DICTIONARY_STAGES,
   fieldsForDictionaryStage,
   propertyFieldsCatalogTotalCount,
   type FieldDictionaryStageId,
-} from "@platform/app-shared/prototype/property-fields-catalog";
+} from "@platform/app-shared/app-data/property-fields-catalog";
 
 function DictionaryIcon() {
   return (

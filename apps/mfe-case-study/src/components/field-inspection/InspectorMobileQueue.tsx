@@ -4,21 +4,21 @@ import {
   ActiveQueueMobileCards,
   toneFromLegacyBadge,
   type ActiveQueueMobileCardItem,
-} from "../queue/ActiveQueueMobileCards";
-import type { RowMoreMenuItem } from "../ui/RowMoreMenu";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import {
   buildPrimaryDataTableRow,
   findPropertyForTask,
   formatRemainingDuration,
   resolveSlaTimerRatio,
-} from "../../lib/prototype/my-task-row";
-import type { PoIntakeRecord } from "../../lib/prototype/po-intake-data";
-import { formatPoDisplay } from "../../lib/prototype/po-intake-data";
-import type { WorkflowTask } from "../../lib/prototype/tasks-storage";
-import type { QueueTaskStatusBadge } from "../../lib/prototype/active-queue-list-filters";
+} from "../../lib/app-data/my-task-row";
+import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
+import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { QueueTaskStatusBadge } from "../../lib/app-data/active-queue-list-filters";
 
 /**
- * Mobile task-card list matching docs/المعاين/inspector_screen 1.html.
+ * Mobile task-card list matching docs/inspector/inspector_screen 1.html.
  * Shown under max-lg for field-inspection queues (active-inspection / legacy).
  */
 export function InspectorMobileQueue({

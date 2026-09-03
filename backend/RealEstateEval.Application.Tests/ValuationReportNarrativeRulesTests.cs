@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -30,7 +31,7 @@ public class ValuationReportNarrativeRulesTests
         Assert.Contains("قيمة التصفية", text);
         Assert.Contains("تصفية منظمة", text);
         Assert.Contains("ESG", text);
- // بند الأخصائي: الافتراضي نفي قياسي.
+ // Specialist clause: default is the standard denial.
         Assert.Contains("لم يستعن المقيّم بأي أخصائي خارجي", text);
     }
 
@@ -50,6 +51,28 @@ public class ValuationReportNarrativeRulesTests
         Assert.Contains("خبير إنشائي", text);
         Assert.Contains("تقريره مرفق", text);
         Assert.DoesNotContain("لم يستعن المقيّم", text);
+    }
+
+    [Fact]
+    public void Special_assumptions_drop_library_denial_when_specialist_used()
+    {
+        var libraryDenial =
+            "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.";
+        var text = ValuationReportNarrativeRules.SpecialAssumptionsBody(
+            hasStructures: true,
+            deedKindLabelAr: null,
+            basisLabelAr: null,
+            premiseLabelAr: null,
+            restrictionsLine: null,
+            inspectionReservationLine: null,
+            externalSpecialistUsed: true,
+            externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي",
+            selectedAssumptions: [libraryDenial, "تم افتراض بأن قطعة الأرض ليست زائدة تنظيمية."]);
+
+        Assert.Contains("خبير إنشائي", text);
+        Assert.Contains("زائدة تنظيمية", text);
+        Assert.DoesNotContain("لم يستعن المقيّم", text);
+        Assert.DoesNotContain("مؤسسة خدمات", text);
     }
 
     [Fact]

@@ -5,19 +5,26 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Platform.Domain;
+using RealEstateEval.Valuation.Infrastructure.Services;
+using RealEstateEval.Valuation.Infrastructure.Integration;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Acceptance tests for context extraction of architecture docs. They
 /// check the two properties the split has to preserve while one database is shared: a row
-/// written through its owner context is the same row every other context sees, and a business
-/// write still commits atomically with the event that announces it.
+/// written through its owner context is the same row every other context over the store sees,
+/// and a business write still commits atomically with the event that announces it.
 /// </summary>
 public class ContextSplitTests
 {
     [Fact]
-    public async Task Attachment_written_through_its_owner_context_is_the_row_the_legacy_context_reads()
+    public async Task Attachment_written_through_its_owner_context_is_the_row_a_sibling_context_reads()
     {
         await using var contexts = TestDatabases.Create("phase1-attachments");
         var id = Guid.NewGuid();
@@ -36,10 +43,13 @@ public class ContextSplitTests
         });
         await contexts.Attachments.SaveChangesAsync();
 
-        var throughLegacy = await contexts.Legacy.FileAttachments
+        // A sibling owner context derived from another member of the set proves the store is
+        // one physical database shared by every context.
+        await using var sibling = TestInspectorFeeServiceFactory.ShareAttachments(contexts.CaseStudy);
+        var throughSibling = await sibling.FileAttachments
             .AsNoTracking()
             .SingleAsync(row => row.Id == id);
-        Assert.Equal("deed.pdf", throughLegacy.FileName);
+        Assert.Equal("deed.pdf", throughSibling.FileName);
     }
 
     [Fact]
@@ -60,7 +70,8 @@ public class ContextSplitTests
         });
         await contexts.Platform.SaveChangesAsync();
 
-        Assert.True(await contexts.Legacy.Courts.AsNoTracking().AnyAsync(court => court.Id == id));
+        await using var sibling = TestInspectorFeeServiceFactory.SharePlatform(contexts.CaseStudy);
+        Assert.True(await sibling.Courts.AsNoTracking().AnyAsync(court => court.Id == id));
     }
 
  /// <summary>
@@ -100,8 +111,8 @@ public class ContextSplitTests
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
         Assert.Contains("PO-777", outbox.PayloadJson);
 
- // Same physical tables, so the central dispatcher still sees the row.
-        Assert.Single(contexts.Legacy.OutboxMessages);
+ // Same physical tables, so the central dispatcher (Messaging context) still sees the row.
+        Assert.Single(contexts.Messaging.OutboxMessages);
     }
 
  /// <summary>
@@ -132,7 +143,7 @@ public class ContextSplitTests
         var propertyId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
-        contexts.Legacy.WorkOrders.Add(new WorkOrder
+        contexts.CaseStudy.WorkOrders.Add(new WorkOrder
         {
             Id = workOrderId,
             PoNumber = "PO-4242",
@@ -143,7 +154,7 @@ public class ContextSplitTests
             DueDateAt = DateOnly.FromDateTime(now),
             AssignmentType = AssignmentType.Execution,
         });
-        contexts.Legacy.WorkOrderProperties.Add(new WorkOrderProperty
+        contexts.CaseStudy.WorkOrderProperties.Add(new WorkOrderProperty
         {
             Id = propertyId,
             WorkOrderId = workOrderId,
@@ -153,7 +164,7 @@ public class ContextSplitTests
             IdentifierType = PropertyIdentifierType.RealEstateRegistration,
             DeedNumber = "1234567890",
         });
-        await contexts.Legacy.SaveChangesAsync();
+        await contexts.CaseStudy.SaveChangesAsync();
 
         var lookup = new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy);
 

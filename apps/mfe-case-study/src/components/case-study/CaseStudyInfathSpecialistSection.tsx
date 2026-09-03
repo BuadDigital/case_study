@@ -7,11 +7,11 @@ import {
   Textarea,
   cn,
 } from "@platform/ui-kit";
-import type { CaseStudyFormDraft } from "../../lib/prototype/case-study-form-storage";
+import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 import {
   INFATH_FIELD_LABELS,
   INFATH_YES_NO_OPTIONS,
-} from "../../lib/prototype/infath-field-labels";
+} from "../../lib/app-data/infath-field-labels";
 
 export function CaseStudyInfathSpecialistSection({
   draft,

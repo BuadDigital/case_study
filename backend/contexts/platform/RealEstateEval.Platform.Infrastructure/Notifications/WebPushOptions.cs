@@ -1,4 +1,4 @@
-namespace RealEstateEval.Infrastructure.Notifications;
+namespace RealEstateEval.Platform.Infrastructure.Notifications;
 
 public sealed class WebPushOptions
 {

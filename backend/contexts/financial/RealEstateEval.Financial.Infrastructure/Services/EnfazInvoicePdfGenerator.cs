@@ -5,7 +5,7 @@ using QuestPDF.Infrastructure;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>Builds an Arabic RTL Enfaz tax invoice PDF for a work order.</summary>
 public static class EnfazInvoicePdfGenerator

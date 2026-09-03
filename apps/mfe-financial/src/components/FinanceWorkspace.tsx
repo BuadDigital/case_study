@@ -1,21 +1,54 @@
 "use client";
 
 import { useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   parseCostsSection,
   parseFinanceArea,
   parseRevenueStage,
   type CostsSection,
+  type FinanceArea,
   type RevenueStage,
 } from "../lib/finance-nav";
-import { financeLeafForArea } from "@platform/app-shared/prototype/financial-nav";
+import { financeLeafForArea } from "@platform/app-shared/app-data/financial-nav";
 import { FinanceMyTasks } from "./FinanceMyTasks";
-import { FinanceRevenueView } from "./FinanceRevenueView";
-import { FinanceCostsView } from "./FinanceCostsView";
-import { FinanceEngOfficePortal } from "./FinanceEngOfficePortal";
-import { FinanceInspectorPortal } from "./FinanceInspectorPortal";
+import { EmptyState, opsLetterCard } from "@platform/ui-kit";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
+
+const areaChunkFallback = () => (
+  <div className={opsLetterCard}>
+    <EmptyState panel line="جاري التحميل…" />
+  </div>
+);
+
+const FinanceRevenueView = dynamic(
+  () => import("./FinanceRevenueView").then((m) => m.FinanceRevenueView),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceCostsView = dynamic(
+  () => import("./FinanceCostsView").then((m) => m.FinanceCostsView),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceEngOfficePortal = dynamic(
+  () =>
+    import("./FinanceEngOfficePortal").then((m) => m.FinanceEngOfficePortal),
+  { ssr: false, loading: areaChunkFallback },
+);
+const FinanceInspectorPortal = dynamic(
+  () =>
+    import("./FinanceInspectorPortal").then((m) => m.FinanceInspectorPortal),
+  { ssr: false, loading: areaChunkFallback },
+);
+// Prefetch the route chunk on hover/focus of its tab (bundle-preload).
+export const FINANCE_AREA_CHUNK_PRELOAD: Partial<
+  Record<FinanceArea, () => Promise<unknown>>
+> = {
+  revenue: () => import("./FinanceRevenueView"),
+  costs: () => import("./FinanceCostsView"),
+  eng_portal: () => import("./FinanceEngOfficePortal"),
+  inspector_portal: () => import("./FinanceInspectorPortal"),
+};
 
 export function FinanceWorkspace() {
   const router = useRouter();

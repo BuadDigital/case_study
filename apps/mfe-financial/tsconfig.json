@@ -1,7 +1,6 @@
 {
   "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@financial/mfe": ["./src/index.ts"],
       "@financial/mfe/*": ["./src/*"],

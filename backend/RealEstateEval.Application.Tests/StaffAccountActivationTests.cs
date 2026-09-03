@@ -9,8 +9,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure;
+using RealEstateEval.Identity.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -224,8 +227,6 @@ public class StaffAccountActivationTests
         services.AddDataProtection();
         services.AddSingleton<IConfiguration>(configuration);
         var databaseName = $"staff-activation-{Guid.NewGuid()}";
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase(databaseName));
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();
@@ -235,7 +236,7 @@ public class StaffAccountActivationTests
         await db.Database.EnsureCreatedAsync();
 
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (var role in new[] { DepartmentRoles.Hr, "Editor", "Supervisor" })
+        foreach (var role in new[] { "Editor", "Supervisor" })
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole(role));

@@ -1,13 +1,13 @@
 "use client";
 
-import type { PoPropertyIntake } from "@case-study/mfe";
+import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   boundariesAvailabilityLabel,
   formatPropertyDeedDisplay,
   restrictionsPresentLabel,
   showsCourtFields,
   type PoIntakeRecord,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/app-data/po-intake-data";
 import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import {
   EngField,

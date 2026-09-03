@@ -6,6 +6,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Attachments.Application.Abstractions;
 
 namespace RealEstateEval.Attachments.Api.Controllers;
 
@@ -90,7 +92,8 @@ public class AttachmentsController : ControllerBase
         CancellationToken ct)
     {
         var parsed = ParseIds(ids);
-        return Ok(await _lookup.GetRefsAsync(parsed, ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _lookup.GetRefsAsync(parsed, actor, ct));
     }
 
     [HttpGet("for-property")]
@@ -101,24 +104,15 @@ public class AttachmentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(propertyId))
             return this.BadRequestProblem("propertyId is required");
 
-        return Ok(await _lookup.ListForPropertyAsync(propertyId, ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _lookup.ListForPropertyAsync(propertyId, actor, ct));
     }
 
     [HttpGet("{id:guid}/exists")]
-    public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct) =>
-        Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, ct) });
-
-    [HttpPatch("{id:guid}/classify")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
-    public async Task<ActionResult<FileAttachmentMetaDto>> Classify(
-        Guid id,
-        [FromBody] ClassifyAttachmentRequest request,
-        CancellationToken ct)
+    public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct)
     {
-        var (meta, error) = await _attachments.ClassifyAsync(id, request, ct);
-        if (error is not null)
-            return this.BadRequestProblem(error);
-        return meta is null ? NotFound() : Ok(meta);
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, actor, ct) });
     }
 
     [HttpDelete("{id:guid}")]

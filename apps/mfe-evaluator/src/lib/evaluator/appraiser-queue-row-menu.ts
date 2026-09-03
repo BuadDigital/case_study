@@ -1,9 +1,9 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
 import {
   poPropertiesPath,
   poPropertyPath,
-} from "@case-study/mfe/lib/po-routes";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
+} from "@platform/app-shared/domain/po-routes";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
 export function buildAppraiserQueueRowMoreItems(options: {
   task: WorkflowTask;
@@ -19,7 +19,7 @@ export function buildAppraiserQueueRowMoreItems(options: {
   const items: RowMoreMenuItem[] = [
     {
       id: "property-data",
-      label: "بيانات العقار",
+      label: "تفاصيل العقار",
       onClick: () => {
         if (po && propertyId) {
           options.router.push(poPropertyPath(po, propertyId));
@@ -30,7 +30,7 @@ export function buildAppraiserQueueRowMoreItems(options: {
     },
     {
       id: "open-report",
-      label: "تقرير التقييم",
+      label: "تقييم العقار",
       onClick: options.openTask,
     },
   ];

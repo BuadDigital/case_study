@@ -4,9 +4,18 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Persistence;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Domain;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -31,8 +40,7 @@ public class GeneralizedBillingStatementTests
 
         Assert.Null(result.Error);
         Assert.NotNull(result.Statement);
-        var ledger = await TestInspectorFeeServiceFactory.ShareFinancial(db)
-            .InspectorFeeLedgers.AsNoTracking()
+        var ledger = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync();
         Assert.Equal(InspectorFeeBillingStatus.InStatement, ledger.BillingStatus);
         Assert.NotNull(ledger.PartyBillingStatementId);
@@ -45,7 +53,7 @@ public class GeneralizedBillingStatementTests
         var now = DateTime.UtcNow;
         var taskId = Guid.NewGuid();
         var propertyId = Guid.NewGuid();
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-DUP",
             now,
@@ -56,7 +64,7 @@ public class GeneralizedBillingStatementTests
             status: WorkflowTaskStatus.Completed));
 
  // Legacy UserId + current assignee twins (same task + property).
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-DUP",
@@ -71,7 +79,7 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now.AddHours(-2),
             UpdatedAtUtc = now.AddHours(-1),
         });
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-DUP",
@@ -86,7 +94,8 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
         var service = CreateStatementService(db);
         var ready = await service.ListReadyLinesAsync();
@@ -103,8 +112,7 @@ public class GeneralizedBillingStatementTests
         Assert.Null(result.Error);
         Assert.NotNull(result.Statement);
         Assert.Single(result.Statement!.Lines);
-        var inStatement = await TestInspectorFeeServiceFactory.ShareFinancial(db)
-            .InspectorFeeLedgers.AsNoTracking()
+        var inStatement = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .Where(l => l.BillingStatus == InspectorFeeBillingStatus.InStatement)
             .ToListAsync();
         Assert.Single(inStatement);
@@ -117,7 +125,7 @@ public class GeneralizedBillingStatementTests
         await using var db = CreateDb();
         var now = DateTime.UtcNow;
         var taskId = Guid.NewGuid();
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             WorkflowTaskKind.FieldInspection,
             "PO-PAID",
             now,
@@ -127,7 +135,7 @@ public class GeneralizedBillingStatementTests
             id: taskId,
             status: WorkflowTaskStatus.Completed));
         var closedStatementId = Guid.NewGuid();
-        db.PartyBillingStatements.Add(new PartyBillingStatement
+        db.Financial.PartyBillingStatements.Add(new PartyBillingStatement
         {
             Id = closedStatementId,
             ReferenceNumber = "FN-CS-000",
@@ -140,7 +148,7 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now.AddDays(-1),
             ClosedAtUtc = now.AddDays(-1),
         });
-        db.PartyBillingStatementLines.Add(new PartyBillingStatementLine
+        db.Financial.PartyBillingStatementLines.Add(new PartyBillingStatementLine
         {
             Id = Guid.NewGuid(),
             StatementId = closedStatementId,
@@ -148,7 +156,7 @@ public class GeneralizedBillingStatementTests
             NetFeeSar = 400m,
         });
  // Twin still looks "ready" in ledger table.
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-PAID",
@@ -161,7 +169,8 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
         var service = CreateStatementService(db);
         var ready = await service.ListReadyLinesAsync();
@@ -204,7 +213,7 @@ public class GeneralizedBillingStatementTests
         var now = DateTime.UtcNow;
         var opsTaskId = Guid.NewGuid();
         var chargeId = Guid.NewGuid();
-        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        db.Financial.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
         {
             Id = chargeId,
             OperationsTaskId = opsTaskId,
@@ -217,7 +226,8 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
         var service = CreateStatementService(db);
         var ready = await service.ListReadyLinesAsync();
@@ -250,7 +260,7 @@ public class GeneralizedBillingStatementTests
         await using var db = CreateDb();
         var now = DateTime.UtcNow;
         var chargeId = Guid.NewGuid();
-        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        db.Financial.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
         {
             Id = chargeId,
             OperationsTaskId = Guid.NewGuid(),
@@ -264,7 +274,7 @@ public class GeneralizedBillingStatementTests
             UpdatedAtUtc = now,
         });
         var receiptId = Guid.NewGuid();
-        db.FileAttachments.Add(new FileAttachment
+        db.Attachments.FileAttachments.Add(new FileAttachment
         {
             Id = receiptId,
             Scope = "transfer-receipt",
@@ -276,7 +286,8 @@ public class GeneralizedBillingStatementTests
             UploadedByUserId = "finance-1",
             CreatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
+        await db.Attachments.SaveChangesAsync();
 
         var service = CreateStatementService(db);
         var created = await service.CreateStatementAsync(
@@ -304,8 +315,7 @@ public class GeneralizedBillingStatementTests
         Assert.NotNull(closed);
         Assert.Equal(PartyBillingStatementStatus.Closed, closed!.Status);
 
-        var charge = await TestInspectorFeeServiceFactory.ShareFinancial(db)
-            .CourtVisitFeeCharges.AsNoTracking()
+        var charge = await db.Financial.CourtVisitFeeCharges.AsNoTracking()
             .SingleAsync(c => c.Id == chargeId);
         Assert.Equal(CourtVisitFeeStatuses.Settled, charge.Status);
     }
@@ -317,7 +327,7 @@ public class GeneralizedBillingStatementTests
         var fieldId = await SeedReadyLedgerAsync(db, WorkflowTaskKind.FieldInspection, "fi-1");
         var now = DateTime.UtcNow;
         var chargeId = Guid.NewGuid();
-        db.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
+        db.Financial.CourtVisitFeeCharges.Add(new CourtVisitFeeCharge
         {
             Id = chargeId,
             OperationsTaskId = Guid.NewGuid(),
@@ -329,7 +339,8 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
         var service = CreateStatementService(db);
         var result = await service.CreateStatementAsync(
@@ -349,7 +360,7 @@ public class GeneralizedBillingStatementTests
         await using var db = CreateDb();
         var taskId = await SeedReadyLedgerAsync(db, WorkflowTaskKind.FieldInspection, "fi-1");
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db).TransitionAsync(
+        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
             taskId,
             new InspectorFeeTransitionRequest
             {
@@ -365,13 +376,13 @@ public class GeneralizedBillingStatementTests
     }
 
     private static async Task<Guid> SeedReadyLedgerAsync(
-        ApplicationDbContext db,
+        TestDatabases.ContextSet db,
         WorkflowTaskKind kind,
         string assigneeId)
     {
         var now = DateTime.UtcNow;
         var taskId = Guid.NewGuid();
-        db.WorkflowTasks.Add(WorkflowTask.Create(
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
             kind,
             "PO-STMT",
             now,
@@ -382,7 +393,7 @@ public class GeneralizedBillingStatementTests
             assigneeId: assigneeId,
             id: taskId,
             status: WorkflowTaskStatus.Completed));
-        db.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
         {
             WorkflowTaskId = taskId,
             PoNumber = "PO-STMT",
@@ -396,41 +407,32 @@ public class GeneralizedBillingStatementTests
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
-        await db.SaveChangesAsync();
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
         return taskId;
     }
 
-    private static PartyBillingStatementService CreateStatementService(ApplicationDbContext db)
+    private static PartyBillingStatementService CreateStatementService(TestDatabases.ContextSet db)
     {
-        var financial = TestInspectorFeeServiceFactory.ShareFinancial(db);
-        var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
-        var attachments = TestInspectorFeeServiceFactory.ShareAttachmentLookup(db);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
-        var ops = TestInspectorFeeServiceFactory.ShareOps(db);
+        var attachments = TestInspectorFeeServiceFactory.ShareAttachmentLookup(db.Attachments);
         var visitFees = new OperationsTaskVisitFeeHelper(
-            ops,
-            new CourtVisitFeeChargeService(financial),
-            new IdentityDirectory(identity),
-            new PartyFeePricingService(financial));
+            db.Operations,
+            new CourtVisitFeeChargeService(db.Financial),
+            new IdentityDirectory(db.Identity),
+            TestPricing.Create(db.Financial));
         return new(
-            financial,
-            new CaseStudyLookup(caseStudy),
-            new CaseStudyCommands(caseStudy),
-            attachments,
+            new PartyBillingStatementRepository(db.Financial),
+            new CaseStudyLookup(db.CaseStudy),
+            new StatementAttachmentLookup(attachments),
             new NullNotificationService(),
-            TestInspectorFeeServiceFactory.CreateRecipients(db),
-            visitFees,
-            NullLogger<PartyBillingStatementService>.Instance);
+            TestInspectorFeeServiceFactory.CreateRecipients(db.CaseStudy),
+            NullLogger<PartyBillingStatementService>.Instance,
+            time: null,
+            visitFees);
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(
-                $"stmt-gen-{Guid.NewGuid():N}",
-                new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot())
-            .ConfigureWarnings(w =>
-                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("stmt-gen");
 
     private sealed class NullNotificationService : INotificationService
     {

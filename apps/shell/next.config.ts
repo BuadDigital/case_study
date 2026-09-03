@@ -1,4 +1,5 @@
 import os from "node:os";
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const apiUpstream =
@@ -38,6 +39,33 @@ const allowedDevOrigins = getDevAllowedOrigins();
 const nextConfig: NextConfig = {
   /** Produce a self-contained server.js for Docker / Hetzner deployment. */
   output: "standalone",
+  /** Transform barrel imports to per-module paths (Vercel bundle-barrel-imports). */
+  experimental: {
+    optimizePackageImports: [
+      "@platform/ui-kit",
+      "@platform/api-client",
+      "@platform/app-shared",
+      "@platform/offline-client",
+      "@case-study/mfe",
+      "@evaluator/mfe",
+      "@engineering-office/mfe",
+      "@failures/mfe",
+      "@settings/mfe",
+      "@survey/mfe",
+      "@financial/mfe",
+      "@keys/mfe",
+      "@dashboard/mfe",
+      "@valuation/mfe",
+    ],
+  },
+  /**
+   * Monorepo: lockfile lives at the repo root. Without an explicit root,
+   * Turbopack can infer the wrong workspace and emit AppRoutes = never
+   * (every page 404s in `next dev` while layout.tsx still compiles).
+   */
+  turbopack: {
+    root: path.join(__dirname, "..", ".."),
+  },
   /** Hide the floating "N" dev badge (bottom-left) during `npm run dev`. */
   devIndicators: false,
   /** Required when colleagues open http://YOUR_LAN_IP:3000 — otherwise login JS is blocked. */
@@ -67,7 +95,7 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
             value: "camera=(self), geolocation=(self), microphone=()",
@@ -76,14 +104,13 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://server.arcgisonline.com https://*.arcgisonline.com",
-              "font-src 'self' data:",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com https://maps.google.com https://*.google.com https://*.googleusercontent.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://server.arcgisonline.com https://*.arcgisonline.com",
+              "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
               "connect-src 'self' https: http: ws: wss:",
               "worker-src 'self' blob:",
-              /* Field inspection / survey maps embed OSM (Case Study.html). */
-              "frame-src 'self' https://www.openstreetmap.org https://openstreetmap.org",
+              "frame-src 'self' https://www.google.com https://maps.google.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -120,6 +147,10 @@ const nextConfig: NextConfig = {
     "@survey/mfe",
     "@financial/mfe",
     "@keys/mfe",
+    "@dashboard/mfe",
+    "@engineering-office/mfe",
+    "@evaluator/mfe",
+    "@valuation/mfe",
     "@platform/app-shared",
     "@platform/api-client",
     "@platform/auth-client",

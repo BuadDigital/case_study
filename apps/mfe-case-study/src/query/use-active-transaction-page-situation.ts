@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { getAuthSession } from "@platform/auth-client";
-import { prefetchPartySubmissionsForTasks, partySubmissionTaskIdsKey } from "@platform/app-shared/prototype/party-submission-api";
-import { loadPartyBillingStatements } from "@platform/app-shared/prototype/party-billing-statements-api";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { prefetchPartySubmissionsForTasks, partySubmissionTaskIdsKey } from "@platform/app-shared/app-data/party-submission-api";
+import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { PageId, RoleId } from "@platform/types";
 import {
@@ -18,13 +18,13 @@ import {
   ENGINEERING_FEES_SITUATION_CARDS,
   type PageSituationCardDef,
   type PageSituationValues,
-} from "../lib/prototype/active-transaction-page-situation";
-import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
-import { resolveQueueTasksForViewer } from "../lib/prototype/viewer-task-access";
+} from "../lib/app-data/active-transaction-page-situation";
+import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
+import { resolveQueueTasksForViewer } from "../lib/app-data/viewer-task-access";
 import {
   partyTaskPageDef,
   PARTY_TASK_PAGES,
-} from "@platform/app-shared/prototype/party-task-pages";
+} from "@platform/app-shared/app-data/party-task-pages";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { useFieldInspectionWorkspacesQuery } from "./field-inspection-workspaces-queries";
 import {
@@ -55,7 +55,7 @@ export type ActiveTransactionPageSituation = {
 export function useActiveTransactionPageSituation(
   pageId: PageId | undefined,
 ): ActiveTransactionPageSituation | null {
-  const { role, viewerEmail, distributionAssigneeId } = usePrototype();
+  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const cardsBase = pageId ? pageSituationCards(pageId) : null;
@@ -113,7 +113,7 @@ export function useActiveTransactionPageSituation(
   const { data: engFeeStatements = [], isFetched: engFeeStatementsFetched } =
     useQuery({
       queryKey: [
-        ...prototypeKeys.all,
+        ...appDataKeys.all,
         "party-billing",
         "statements",
         feesAssigneeId ?? "none",

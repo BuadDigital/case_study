@@ -1,5 +1,6 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { fetchAllListPages } from "./pagination";
 
@@ -8,11 +9,12 @@ export type WorkOrdersApiConfig = {
   token: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 export type PropertyContactDto = {
@@ -28,6 +30,8 @@ export type DeedOwnerDto = {
 
 export type WorkOrderPropertyDto = {
   id?: string;
+  /** Numbering workshop: internal transaction ref TX-{year}-{5-digit seq} — owned by the server. */
+  referenceNumber?: string | null;
   identifierType: string;
   deedNumber: string;
   requestNumber?: string;
@@ -42,7 +46,7 @@ export type WorkOrderPropertyDto = {
   deedKind?: string;
   deedKindLabelAr?: string;
   suggestedDeedKind?: string;
- /** الملاك وحصصهم. */
+ /** Owners and their shares. */
   owners?: DeedOwnerDto[];
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
@@ -94,8 +98,12 @@ export type WorkOrderPropertyDto = {
   plotNumber?: string;
   blockNumber?: string;
   locationMapUrl?: string;
+  partitionMinutesNumber?: string;
+  partitionMinutesDate?: string;
   finishingType?: string;
   finishingStructure?: string;
+  /** JSON specialist valuation extras (ESG, search scope, print keys, Infath deposit). */
+  specialistReportExtrasJson?: string | null;
   isRemoved?: boolean;
   removalReason?: string;
   removedAtUtc?: string;
@@ -255,6 +263,8 @@ export type PriorDeedRegistrationDto = {
   plotNumber?: string;
   blockNumber?: string;
   locationMapUrl?: string;
+  partitionMinutesNumber?: string;
+  partitionMinutesDate?: string;
   finishingType?: string;
   finishingStructure?: string;
   bourseDataCompleted?: boolean;
@@ -477,9 +487,10 @@ export async function findPriorDeed(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
-    if (res.status === 404) return { ok: true, data: null };
+    if (res.status === 404 || res.status === 204) return { ok: true, data: null };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as PriorDeedRegistrationDto };
+    const data = (await res.json()) as PriorDeedRegistrationDto | null;
+    return { ok: true, data: data ?? null };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -520,6 +531,7 @@ export async function listPriorDeeds(
 export async function createWorkOrder(
   config: WorkOrdersApiConfig,
   body: CreateWorkOrderRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<WorkOrderDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const payload: CreateWorkOrderRequest = {
@@ -529,7 +541,7 @@ export async function createWorkOrder(
   try {
     const res = await fetch(`${base}/api/work-orders`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: JSON.stringify(payload),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -706,25 +718,24 @@ export async function updateWorkOrderProperty(
   }
 }
 
-/** Narrow patch for informal unlock — allowed for inspector without manage-work-orders. */
-export async function updateWorkOrderPropertyLocationMapUrl(
+export async function updateSpecialistReportExtras(
   config: WorkOrdersApiConfig,
   poNumber: string,
   propertyId: string,
-  locationMapUrl: string,
+  body: { specialistReportExtrasJson?: string | null },
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/location-map-url`,
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/specialist-report-extras`,
       {
         method: "PUT",
         headers: headers(config.token),
-        body: JSON.stringify({ locationMapUrl }),
+        body: JSON.stringify(body),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (res.status === 400) {
       return {
         ok: false,
@@ -745,6 +756,7 @@ export async function completePropertyBourseData(
   poNumber: string,
   propertyId: string,
   body: UpdatePropertyBourseRequest,
+  idempotencyKey?: string,
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -752,7 +764,7 @@ export async function completePropertyBourseData(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/bourse`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: headers(config.token, idempotencyKey),
         body: JSON.stringify(body),
       },
     );
@@ -797,6 +809,94 @@ export async function deleteWorkOrderProperty(
       return { ok: false, kind: "server", message };
     }
     return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/* ─── Q-9: derived transaction status + full Enfaz upload ─── */
+
+export type TransactionStageStateDto = {
+  key: string;
+  labelAr: string;
+  status: string;
+  statusLabelAr: string;
+};
+
+export type TransactionPartyStateDto = {
+  key: string;
+  labelAr: string;
+  status: string;
+  statusLabelAr: string;
+  waitingOn: string[];
+  waitingOnLabelsAr: string[];
+};
+
+export type TransactionStateDto = {
+  workOrderId: string;
+  propertyId: string;
+  stages: TransactionStageStateDto[];
+  parties: TransactionPartyStateDto[];
+  overallStatus: string;
+  overallStatusLabelAr: string;
+  waitingSummaryAr: string;
+  allowsEnfazHandover: boolean;
+  enfazHandoverAtUtc?: string | null;
+  handoverPackageAr: string[];
+};
+
+/** Q-9: transaction status grid — UI shows who waits on whom. */
+export async function getTransactionState(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<
+  | { ok: true; data: TransactionStateDto }
+  | { ok: false; kind: "auth" | "not_found" | "server" | "network"; message?: string }
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as TransactionStateDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Q-9 (second closing): upload transaction to Enfaz — after deposit certificate and parties complete. */
+export async function recordEnfazHandover(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<
+  | { ok: true; data: TransactionStateDto }
+  | { ok: false; kind: "auth" | "server" | "network"; message?: string }
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
+      { method: "POST", headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "server",
+        message: payload?.errors ? Object.values(payload.errors)[0] : payload?.message,
+      };
+    }
+    return { ok: true, data: (await res.json()) as TransactionStateDto };
   } catch {
     return { ok: false, kind: "network" };
   }

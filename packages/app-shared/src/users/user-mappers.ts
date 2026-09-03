@@ -1,12 +1,12 @@
 import type { UserListItem } from "@platform/types";
-import type { StaffUser } from "../prototype/constants";
+import type { StaffUser } from "../app-data/constants";
 
 function reviewerCityCoverageFromUser(u: UserListItem): string[] {
   const raw = u.reviewerCityCoverage;
   return Array.isArray(raw) ? raw.filter((city) => city.trim()) : [];
 }
 
-export function contractTypeToStaffType(
+function contractTypeToStaffType(
   t: UserListItem["contractType"],
 ): StaffUser["type"] {
   if (t === "Internal") return "internal";
@@ -17,6 +17,7 @@ export function contractTypeToStaffType(
 export function userListItemToStaff(u: UserListItem): StaffUser {
   return {
     id: u.id,
+    referenceNumber: u.referenceNumber ?? null,
     name: u.displayName,
     role: u.jobTitle,
     email: u.email,
@@ -24,12 +25,6 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     distributionAssigneeId: u.distributionAssigneeId ?? undefined,
     reviewerCityCoverage: reviewerCityCoverageFromUser(u),
     type: contractTypeToStaffType(u.contractType),
-    source:
-      u.registrationSource === "Hr"
-        ? "hr"
-        : u.registrationSource === "Proc"
-          ? "proc"
-          : "crm",
     phone: u.mobile ?? u.phoneNumber,
     roleId: u.roleId,
     city: u.city,

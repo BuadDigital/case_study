@@ -1,15 +1,18 @@
 "use client";
 
-import { Note, Spinner } from "@platform/ui-kit";
-import { AppModal } from "../ui/AppModal";
+import {
+  AppModal,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   opsBtnGhost,
   opsBtnPrimary,
   opsFldControl,
   opsFldTextarea,
   opsTfLbl,
-} from "../../lib/prototype/ops-tasks-tw";
-import type { DistributionAssignee } from "../../lib/prototype/distribution-parties";
+} from "../../lib/app-data/ops-tasks-tw";
+import type { DistributionAssignee } from "../../lib/app-data/distribution-parties";
 
 function ArrowRightIcon() {
   return (
@@ -29,7 +32,7 @@ function ArrowRightIcon() {
   );
 }
 
-/** إعادة توجيه وإسناد مهمة عمليات — مطابقة Case Study.html `openReassignModal`. */
+/** Redirect and reassign an operations task — matches Case Study.html `openReassignModal`. */
 export function ReassignOperationsTaskModal({
   open,
   currentAssigneeName,

@@ -1,20 +1,12 @@
-"use client";
+// Server component — the page was "use client" only to unwrap params (server-side).
+import { decodeTaskParam } from "@case-study/mfe/lib/my-task-routes";
+import { EngineeringSurveyWorkPageClient } from "../../../../components/party-tasks/EngineeringSurveyWorkPageClient";
 
-import { use } from "react";
-import { PartyActiveTaskWorkPage, decodeTaskParam } from "@case-study/mfe";
-import { partyEngineeringSurveyExtensions } from "@engineering-office/mfe";
-
-export default function ActiveSurveyWorkPage({
+export default async function ActiveSurveyWorkPage({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
-  const { taskId } = use(params);
-  return (
-    <PartyActiveTaskWorkPage
-      pageId="active-survey"
-      taskId={decodeTaskParam(taskId)}
-      engineeringSurveyExtensions={partyEngineeringSurveyExtensions}
-    />
-  );
+  const { taskId } = await params;
+  return <EngineeringSurveyWorkPageClient taskId={decodeTaskParam(taskId)} />;
 }

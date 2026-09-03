@@ -29,6 +29,17 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Services;
 
 using AttachmentsMarker = AttachmentsApi::RealEstateEval.Attachments.Api.Controllers.AttachmentsController;
 using CaseStudyMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Controllers.WorkflowTasksController;
@@ -61,12 +72,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             return;
 
         _connectionString = await _postgres.EnsureDatabaseAsync("controller_bodies");
-        await using var db = new ApplicationDbContext(
-            new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql(_connectionString)
-                .Options);
-        await db.Database.MigrateAsync();
-        // Post-cutover columns (e.g. WorkOrder.ClientId) live in the per-context streams.
+        // A10: the nine context streams alone provision the schema.
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(_connectionString);
     }
 
@@ -272,7 +278,10 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
 
         using var missingRequest = AuthorizedGet("/api/po-intake-draft/mine");
         var missing = await client.SendAsync(missingRequest);
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, missing.StatusCode);
+        var missingBody = await missing.Content.ReadFromJsonAsync<PoIntakeDraftDto>();
+        Assert.Equal("", missingBody?.PoNumber);
+        Assert.Null(missingBody?.UpdatedAtUtc);
 
         using var saveRequest = AuthorizedPut(
             "/api/po-intake-draft",
@@ -295,7 +304,10 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
 
         using var afterDeleteRequest = AuthorizedGet("/api/po-intake-draft/mine");
         var afterDelete = await client.SendAsync(afterDeleteRequest);
-        Assert.Equal(HttpStatusCode.NotFound, afterDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, afterDelete.StatusCode);
+        var afterDeleteBody = await afterDelete.Content.ReadFromJsonAsync<PoIntakeDraftDto>();
+        Assert.Equal("", afterDeleteBody?.PoNumber);
+        Assert.Null(afterDeleteBody?.UpdatedAtUtc);
     }
 
     [DockerFact]
@@ -457,8 +469,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, recalls.StatusCode);
 
         using var missingRecall = AuthorizedGet("/api/evaluator-recalls/missing-task");
-        var recall404 = await client.SendAsync(missingRecall);
-        Assert.Equal(HttpStatusCode.NotFound, recall404.StatusCode);
+        var recallEmpty = await client.SendAsync(missingRecall);
+        Assert.Equal(HttpStatusCode.OK, recallEmpty.StatusCode);
     }
 
     [DockerFact]
@@ -580,6 +592,102 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var keyReceiptRequest = AuthorizedGet("/api/financial-dispatch/key-receipt-charges");
         var keyReceipt = await client.SendAsync(keyReceiptRequest);
         Assert.Equal(HttpStatusCode.OK, keyReceipt.StatusCode);
+    }
+
+ /// <summary>
+ /// F6 — Q-8/Q-6: factor rationale (minimum 10 characters + persistence and retrieval) and two-stage issuance
+ /// (Draft status, Upload rejected before block, 404 for ungenerated versions) on real Postgres.
+ /// </summary>
+    [DockerFact]
+    public async Task Valuation_factor_rationale_and_report_issuance_execute()
+    {
+        using var factory = Factory<ValuationMarker>("Valuation");
+        using var client = factory.CreateClient();
+
+        using var createRequest = AuthorizedPost(
+            "/api/valuation-requests",
+            new SaveValuationRequestRequest
+            {
+                PropId = Guid.NewGuid().ToString(),
+                Area = "جدة",
+                Type = "فيلا",
+                Appraiser = "مقيم الاختبار",
+                Status = "progress",
+                Date = "2026-08-28",
+            });
+        var create = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
+
+        // Q-8-2: placeholder rationale is rejected.
+        using var shortRationale = AuthorizedPut(
+            $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
+            new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
+        var tooShort = await client.SendAsync(shortRationale);
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        Assert.Equal("application/problem+json", tooShort.Content.Headers.ContentType?.MediaType);
+
+        // Q-8-1: one rationale per factor — persisted and returned in the comparables payload.
+        using var saveRationale = AuthorizedPut(
+            $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
+            new
+            {
+                selectionContext = "market",
+                factorKey = "financing",
+                rationaleAr = "شروط التمويل مماثلة لكل المقارنات",
+            });
+        var saved = await client.SendAsync(saveRationale);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        // (Read comparison list Requires live upstream platform for facility setups — out of scope
+        // Container insulation; The proof here is via the Postgres save body.)
+        var savedBody = await saved.Content.ReadAsStringAsync();
+        Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
+        Assert.Contains("financing", savedBody);
+
+        // Q-6: Draft — Incomplete, no uploads, no copies generated yet.
+        using var stateRequest = AuthorizedGet(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance");
+        var state = await client.SendAsync(stateRequest);
+        Assert.Equal(HttpStatusCode.OK, state.StatusCode);
+        using var stateDoc = JsonDocument.Parse(await state.Content.ReadAsStringAsync());
+        Assert.Equal("draft", stateDoc.RootElement.GetProperty("stage").GetString());
+        Assert.False(stateDoc.RootElement.GetProperty("allowsDepositIssue").GetBoolean());
+
+        using var depositRequest = AuthorizedPost(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit",
+            new { });
+        var deposit = await client.SendAsync(depositRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, deposit.StatusCode);
+        Assert.Equal("application/problem+json", deposit.Content.Headers.ContentType?.MediaType);
+
+        using var pdfRequest = AuthorizedGet(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit-pdf");
+        var pdf = await client.SendAsync(pdfRequest);
+        Assert.Equal(HttpStatusCode.NotFound, pdf.StatusCode);
+    }
+
+ /// <summary>
+ /// F6 — Q-9: Network transaction status and upload Enfaz — 404 for unknown, reject upload before ready
+ /// With a problem message, on real Postgres.
+ /// </summary>
+    [DockerFact]
+    public async Task Case_study_transaction_state_and_handover_guards_execute()
+    {
+        using var factory = Factory<CaseStudyMarker>("CaseStudy");
+        using var client = factory.CreateClient();
+
+        using var missingState = AuthorizedGet(
+            $"/api/work-orders/{Guid.NewGuid():D}/properties/{Guid.NewGuid():D}/transaction-state");
+        var missing = await client.SendAsync(missingState);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        using var handoverRequest = AuthorizedPost(
+            $"/api/work-orders/{Guid.NewGuid():D}/properties/{Guid.NewGuid():D}/transaction-state/enfaz-handover",
+            new { });
+        var handover = await client.SendAsync(handoverRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, handover.StatusCode);
+        Assert.Equal("application/problem+json", handover.Content.Headers.ContentType?.MediaType);
     }
 
     private RealDatabaseApiFactory<TMarker> Factory<TMarker>(string serviceName)

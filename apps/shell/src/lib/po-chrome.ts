@@ -1,10 +1,10 @@
 import {
   decodePoParam,
-  formatPoDisplay,
   PO_PROPERTY_SEGMENT,
   poListPath,
   poPropertiesPath,
-} from "@case-study/mfe";
+} from "@platform/app-shared/domain/po-routes";
+import { formatPoDisplay } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { BreadcrumbSegment } from "./breadcrumb";
 
 type PoChrome = {
@@ -15,6 +15,8 @@ type PoChrome = {
   /** Property detail route — used by chrome consumers for detail-specific UI. */
   propertyDetail?: { poNumber: string; propertyId: string };
 };
+
+const ARABIC_CHAR_RE = /[\u0600-\u06FF]/;
 
 /** Nested PO trail after list (edit / workspace) — leaf-only style: no dashboard parents. */
 function poTrailBase(poNumber: string): BreadcrumbSegment[] {
@@ -38,7 +40,7 @@ function buildPoPropertyDetailSegments(
   ];
 }
 
-/** Workspace chrome (معاينة / دراسة / مساحي) — trail ends with deed when known. */
+/** Workspace chrome (inspection / study / survey) — trail ends with deed when known. */
 export function buildPoPropertyWorkspaceSegments(
   poNumber: string,
   deedLabel?: string,
@@ -46,7 +48,7 @@ export function buildPoPropertyWorkspaceSegments(
   const segments: BreadcrumbSegment[] = [...poTrailBase(poNumber)];
   const deed = deedLabel?.trim();
   if (deed) {
-    const ltr = !/[\u0600-\u06FF]/.test(deed);
+    const ltr = !ARABIC_CHAR_RE.test(deed);
     segments.push({ label: deed, current: true, ltr });
   }
   return segments;

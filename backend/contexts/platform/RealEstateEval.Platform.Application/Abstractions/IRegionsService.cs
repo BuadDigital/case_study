@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Platform.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Platform.Application.Abstractions;
 
 public interface IRegionsService
 {
@@ -10,10 +11,6 @@ public interface IRegionsService
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SelectableCityDto>> ListAllSelectableCitiesAsync(
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<SelectableCityDto>> ListSelectableCitiesAsync(
-        Guid regionId,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SelectableCityDto>> SearchCitiesAsync(

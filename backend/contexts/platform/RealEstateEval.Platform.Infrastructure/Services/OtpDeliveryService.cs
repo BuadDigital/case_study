@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Platform.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 /// <summary>
 /// Routes OTP delivery by organization communications settings.

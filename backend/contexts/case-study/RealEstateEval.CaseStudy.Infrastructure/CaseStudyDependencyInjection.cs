@@ -2,12 +2,19 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Services;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.Infrastructure.Integration;
-using RealEstateEval.Infrastructure.Persistence;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.CaseStudy.Infrastructure.Integration;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.CaseStudy.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Case Study bounded context (A8): work orders, workflow
@@ -22,20 +29,33 @@ public static class CaseStudyDependencyInjection
     {
         services.AddScoped<IWorkOrderLoader, WorkOrderLoader>();
         services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
+        services.AddScoped<IWorkOrderPropertyRepository, WorkOrderPropertyRepository>();
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
+        services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IBuildingInventoryRepository, BuildingInventoryRepository>();
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
+        services.AddScoped<IPropertyGroupRepository, PropertyGroupRepository>();
         services.AddScoped<IPropertyGroupService, PropertyGroupService>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
+        services.AddScoped<ICaseStudyFormRepository, CaseStudyFormRepository>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
+        services.AddScoped<ICaseStudyValuationDispatchRepository, CaseStudyValuationDispatchRepository>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
+        services.AddScoped<IPartyTaskSubmissionRepository, PartyTaskSubmissionRepository>();
+        services.AddScoped<IPartyTaskFailureGate, PartyTaskFailureGate>();
+        services.AddScoped<ICaseStudyFailureGate, CaseStudyFailureGate>();
+        services.AddScoped<ICurrentPrototypeRoleResolver, HttpCurrentPrototypeRoleResolver>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
+        // Q-9: derived transaction-state machine + comprehensive Enfaz upload.
+        services.AddScoped<ITransactionStateRepository, TransactionStateRepository>();
+        services.AddScoped<ITransactionStateService, TransactionStateService>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         return services;
@@ -47,6 +67,7 @@ public static class CaseStudyDependencyInjection
     {
         services.AddScoped<IPoIntakeDraftRepository, PoIntakeDraftRepository>();
         services.AddScoped<IPoIntakeDraftService, PoIntakeDraftService>();
+        services.AddScoped<INumberedDocumentService, NumberedDocumentService>();
         services.AddScoped<ISuspendedTransactionsService, SuspendedTransactionsService>();
         return services;
     }
@@ -63,6 +84,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<ICaseStudyLookup, CaseStudyLookup>();
         services.AddScoped<ICaseStudyCommands, CaseStudyCommands>();
         services.AddScoped<ICaseStudyFailureCommands, CaseStudyFailureCommands>();
+        services.AddScoped<IInspectionLimitsRepository, InspectionLimitsRepository>();
         services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddRemoteAttachmentLookup(configuration);
         services.AddRemotePlatformCatalogs(configuration);
@@ -80,12 +102,14 @@ public static class CaseStudyDependencyInjection
  /// <summary>Workflow task façade + query / distribution / lifecycle collaborators.</summary>
     public static IServiceCollection AddWorkflowTaskCollaborators(this IServiceCollection services)
     {
-        services.AddScoped<IWorkflowTaskVisibilityFilter, WorkflowTaskVisibilityFilter>();
         services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
         services.AddScoped<IDashboardOpsMetricsQuery, DashboardOpsMetricsQueryService>();
+        services.AddScoped<IWorkflowTaskSlotRepository, WorkflowTaskSlotRepository>();
         services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();
+        services.AddScoped<IWorkflowTaskDistributionRepository, WorkflowTaskDistributionRepository>();
         services.AddScoped<IWorkflowTaskDistributionCommands, WorkflowTaskDistributionCommands>();
-        services.AddScoped<WorkflowTaskCascadeCleanup>();
+        services.AddScoped<IWorkflowTaskCascadeCleanup, WorkflowTaskCascadeCleanup>();
+        services.AddScoped<IWorkflowTaskLifecycleRepository, WorkflowTaskLifecycleRepository>();
         services.AddScoped<IWorkflowTaskLifecycleCommands, WorkflowTaskLifecycleCommands>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         return services;
@@ -94,7 +118,25 @@ public static class CaseStudyDependencyInjection
     /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
     public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
     {
+        services.AddScoped<IValuationReportWorkflowTaskLookup, ValuationReportWorkflowTaskLookup>();
         services.AddScoped<ValuationReportWorkflowHandler>();
         return services;
     }
+ /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.
+ /// A8 physical move: lives beside <see cref="CaseStudyDbContext"/>.</summary>
+    public static IServiceCollection AddCaseStudyPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var caseStudyConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.CaseStudy,
+            connectionString);
+        services.AddBoundedContextPersistence<CaseStudyDbContext>(
+            configuration,
+            caseStudyConnection);
+        return services;
+    }
+
 }

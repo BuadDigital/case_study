@@ -4,11 +4,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -121,12 +121,12 @@ public sealed class NotificationBatchingTests
     private static MessagingDbContext CreateMessagingDb(SaveCounterInterceptor? saveCounter = null) =>
         TestMessagingContexts.CreateMessaging(interceptor: saveCounter);
 
-    private static ApplicationDbContext CreateDb()
+    private static IdentityDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"notifications-app-{Guid.NewGuid():N}")
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseInMemoryDatabase($"notifications-identity-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new IdentityDbContext(options);
     }
 
     private sealed class SaveCounterInterceptor : SaveChangesInterceptor

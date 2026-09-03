@@ -240,6 +240,14 @@ services:
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_identity;Username=postgres;Password=Admin
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_CASESTUDY: Host=postgres;Port=5432;Database=realestate_eval_case_study;Username=postgres;Password=Admin
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
+      # Dev-only system reset (DELETE /api/system/data): the DevSeed maintenance graph opens
+      # every owner database on demand; request paths never use these.
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_platform;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_valuation;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FAILURES: Host=postgres;Port=5432;Database=realestate_eval_failures;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS: Host=postgres;Port=5432;Database=realestate_eval_operations;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_financial;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_attachments;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF

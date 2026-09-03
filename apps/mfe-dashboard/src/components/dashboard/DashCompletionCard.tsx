@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { opsDashCard } from "@platform/ui-kit";
 import { BigRing } from "../../lib/dash-svg";
 import type { DashCompletionModel } from "../../lib/dashboard-metrics";
-import { dashCard } from "../../lib/dashboard-tw";
+
 
 export function DashCompletionCard({
   model,
@@ -20,7 +21,7 @@ export function DashCompletionCard({
   const total = model.pTotal || 1;
 
   return (
-    <div className={dashCard}>
+    <div className={opsDashCard}>
       <div className="mb-3.5 flex items-center justify-between">
         <h3 className="m-0 text-[14px] font-bold text-heading">
           إنجاز العقارات

@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Contractor cost approach scaffold — land from market ; lines priced by appraiser.</summary>
 public sealed class ValuationCostApproachService(
@@ -29,7 +33,10 @@ public sealed class ValuationCostApproachService(
             .Include(x => x.IndirectItems)
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
-        return ToDto(vr, entity);
+        var settings = await db.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+
+        return ToDto(vr, entity, CostScopeKeys.Normalize(settings?.CostScopeKey));
     }
 
     public async Task<(ValuationCostApproachDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -43,8 +50,11 @@ public sealed class ValuationCostApproachService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
- // ق-2/ق-3 المعدَّل: cost tab is closed when the approach is off (bare land defaults it off;
+ // Q-2/Q-3 amended: cost tab is closed when the approach is off (bare land defaults it off;
  // land WITH structures opens it for the structure lines only — spec v2 §3).
         var approachSettings = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
@@ -92,11 +102,9 @@ public sealed class ValuationCostApproachService(
                 errors[$"lines[{i}].repeatedFloorCount"] = "عدد الأدوار المتكررة يجب أن يكون ≥ 0";
         }
 
+        // "Blocking happens at adoption only": rationales are demanded by methodology alerts (m6/m10/m12), not by save.
         if (request.UseRestrictionDiscountPct is < 0m or > 100m)
             errors["useRestrictionDiscountPct"] = "خصم تقييد الاستخدام يجب أن يكون بين 0 و 100";
-        if (request.UseRestrictionDiscountPct > 0m
-            && string.IsNullOrWhiteSpace(request.UseRestrictionRationale))
-            errors["useRestrictionRationale"] = "مبرر خصم تقييد الاستخدام إلزامي عند نسبة أكبر من صفر";
         if (request.ApartmentLandShareSqm is < 0m)
             errors["apartmentLandShareSqm"] = "حصة الشقة من الأرض يجب أن تكون ≥ 0";
 
@@ -124,18 +132,10 @@ public sealed class ValuationCostApproachService(
             errors["economicAgeYears"] = "العمر الاقتصادي يجب أن يكون ≥ 0";
         if (request.LifeExtensionYears < 0m)
             errors["lifeExtensionYears"] = "تمديد العمر يجب أن يكون ≥ 0";
-        if (request.LifeExtensionYears > 0m && string.IsNullOrWhiteSpace(request.LifeExtensionBasis))
-            errors["lifeExtensionBasis"] = "بيان أساس تمديد العمر إلزامي عند التمديد";
         if (request.FunctionalObsolescencePct is < 0m or > 100m)
             errors["functionalObsolescencePct"] = "التقادم الوظيفي يجب أن يكون بين 0 و 100";
-        if (request.FunctionalObsolescencePct > 0m
-            && string.IsNullOrWhiteSpace(request.FunctionalObsolescenceRationale))
-            errors["functionalObsolescenceRationale"] = "مبرر التقادم الوظيفي إلزامي";
         if (request.ExternalObsolescencePct is < 0m or > 100m)
             errors["externalObsolescencePct"] = "التقادم الخارجي يجب أن يكون بين 0 و 100";
-        if (request.ExternalObsolescencePct > 0m
-            && string.IsNullOrWhiteSpace(request.ExternalObsolescenceRationale))
-            errors["externalObsolescenceRationale"] = "مبرر التقادم الخارجي إلزامي";
 
         if (errors.Count > 0) return (null, errors);
 
@@ -153,14 +153,18 @@ public sealed class ValuationCostApproachService(
             db.ValuationCostApproaches.Add(entity);
         }
 
-        if (request.ImportLandFromMarket)
+        if (request.RefreshLandFromLandComps)
         {
-            var market = await selections.ListAsync(valuationRequestId, cancellationToken);
- // : import the weighted unit rate, never the whole-property opinion —
- // otherwise the building would be counted twice in the contractor method.
-            entity.LandUnitRateFromMarket = market?.WeightedPricePerSqm ?? 0m;
-            entity.LandAreaSqm = market?.SubjectAreaSqm ?? 0m;
-            entity.LandImportedAtUtc = _time.UtcNow();
+            // Cost land comes from the land_within_cost table only — no import from the market approach.
+            var landComps = await selections.ListAsync(
+                valuationRequestId,
+                ComparableSelectionContexts.LandWithinCost,
+                cancellationToken);
+            entity.LandUnitRateFromMarket = landComps?.WeightedPricePerSqm ?? 0m;
+            entity.LandAreaSqm = landComps?.SubjectAreaSqm ?? 0m;
+            entity.LandImportedAtUtc = landComps is { AdoptedCount: > 0 }
+                ? _time.UtcNow()
+                : null;
         }
 
         entity.UseRestrictionDiscountPct = request.UseRestrictionDiscountPct;
@@ -174,8 +178,10 @@ public sealed class ValuationCostApproachService(
             entity.LandAreaSqm,
             entity.ApartmentLandShareSqm);
 
-        db.ValuationCostLines.RemoveRange(entity.Lines);
-        entity.Lines.Clear();
+        // Upsert in place — navigation-adds with pre-set GUIDs get marked Modified
+        // by EF's graph heuristic (UPDATE 0 rows → global 409) on re-saves.
+        var linesById = entity.Lines.ToDictionary(l => l.Id);
+        var keepLines = new HashSet<Guid>();
 
  // repeated-floors quantity derives from the first-floor area × count.
         var firstFloorArea = lines
@@ -195,44 +201,85 @@ public sealed class ValuationCostApproachService(
                 quantity = RepeatedFloorRules.DeriveQuantity(firstFloorArea, count);
             }
 
-            entity.Lines.Add(new ValuationCostLine
-            {
-                Id = line.Id is { } id && id != Guid.Empty ? id : Guid.NewGuid(),
-                CostApproachId = entity.Id,
-                SourceInventoryLineId = line.SourceInventoryLineId,
-                StructureKind = string.IsNullOrWhiteSpace(line.StructureKind)
-                    ? BuildingStructureKinds.Other
-                    : line.StructureKind.Trim(),
-                ItemKey = itemKey,
-                Label = string.IsNullOrWhiteSpace(line.Label)
-                    ? CostLineItemKeys.LabelAr(itemKey)
-                    : line.Label.Trim(),
-                AreaSqm = quantity,
-                Unit = CostLineUnits.Normalize(line.Unit ?? CostLineItemKeys.DefaultUnit(itemKey)),
-                BuildRatioPct = line.BuildRatioPct,
-                RepeatedFloorCount = line.RepeatedFloorCount,
-                UnitCostSar = line.UnitCostSar,
-                Rationale = line.Rationale?.Trim() ?? "",
-                IsIncluded = line.IsIncluded,
-                SortOrder = line.SortOrder != 0 ? line.SortOrder : i,
-            });
-        }
+            var lineId = line.Id is { } id && id != Guid.Empty ? id : Guid.NewGuid();
+            var structureKind = string.IsNullOrWhiteSpace(line.StructureKind)
+                ? BuildingStructureKinds.Other
+                : line.StructureKind.Trim();
+            var label = string.IsNullOrWhiteSpace(line.Label)
+                ? CostLineItemKeys.LabelAr(itemKey)
+                : line.Label.Trim();
+            var unit = CostLineUnits.Normalize(line.Unit ?? CostLineItemKeys.DefaultUnit(itemKey));
+            var sortOrder = line.SortOrder != 0 ? line.SortOrder : i;
 
-        db.ValuationIndirectCostItems.RemoveRange(entity.IndirectItems);
-        entity.IndirectItems.Clear();
+            if (linesById.TryGetValue(lineId, out var row))
+            {
+                row.SourceInventoryLineId = line.SourceInventoryLineId;
+                row.StructureKind = structureKind;
+                row.ItemKey = itemKey;
+                row.Label = label;
+                row.AreaSqm = quantity;
+                row.Unit = unit;
+                row.BuildRatioPct = line.BuildRatioPct;
+                row.RepeatedFloorCount = line.RepeatedFloorCount;
+                row.UnitCostSar = line.UnitCostSar;
+                row.Rationale = line.Rationale?.Trim() ?? "";
+                row.IsIncluded = line.IsIncluded;
+                row.SortOrder = sortOrder;
+            }
+            else
+            {
+                db.ValuationCostLines.Add(new ValuationCostLine
+                {
+                    Id = lineId,
+                    CostApproachId = entity.Id,
+                    SourceInventoryLineId = line.SourceInventoryLineId,
+                    StructureKind = structureKind,
+                    ItemKey = itemKey,
+                    Label = label,
+                    AreaSqm = quantity,
+                    Unit = unit,
+                    BuildRatioPct = line.BuildRatioPct,
+                    RepeatedFloorCount = line.RepeatedFloorCount,
+                    UnitCostSar = line.UnitCostSar,
+                    Rationale = line.Rationale?.Trim() ?? "",
+                    IsIncluded = line.IsIncluded,
+                    SortOrder = sortOrder,
+                });
+            }
+            keepLines.Add(lineId);
+        }
+        db.ValuationCostLines.RemoveRange(
+            entity.Lines.Where(l => !keepLines.Contains(l.Id)).ToList());
+
+        var indirectByKey = entity.IndirectItems.ToDictionary(x => x.ItemKey);
+        var keepIndirect = new HashSet<string>();
         for (var i = 0; i < indirectItems.Count; i++)
         {
             var item = indirectItems[i];
-            entity.IndirectItems.Add(new ValuationIndirectCostItem
+            var sortOrder = item.SortOrder != 0 ? item.SortOrder : i;
+            var rationale = string.IsNullOrWhiteSpace(item.Rationale) ? null : item.Rationale.Trim();
+            if (indirectByKey.TryGetValue(item.ItemKey, out var row))
             {
-                Id = Guid.NewGuid(),
-                CostApproachId = entity.Id,
-                ItemKey = item.ItemKey,
-                Pct = item.Pct,
-                Rationale = string.IsNullOrWhiteSpace(item.Rationale) ? null : item.Rationale.Trim(),
-                SortOrder = item.SortOrder != 0 ? item.SortOrder : i,
-            });
+                row.Pct = item.Pct;
+                row.Rationale = rationale;
+                row.SortOrder = sortOrder;
+            }
+            else
+            {
+                db.ValuationIndirectCostItems.Add(new ValuationIndirectCostItem
+                {
+                    Id = Guid.NewGuid(),
+                    CostApproachId = entity.Id,
+                    ItemKey = item.ItemKey,
+                    Pct = item.Pct,
+                    Rationale = rationale,
+                    SortOrder = sortOrder,
+                });
+            }
+            keepIndirect.Add(item.ItemKey);
         }
+        db.ValuationIndirectCostItems.RemoveRange(
+            entity.IndirectItems.Where(x => !keepIndirect.Contains(x.ItemKey)).ToList());
 
         entity.FinancingAnnualRatePct = request.FinancingAnnualRatePct;
         entity.FinancingMonths = request.FinancingMonths;
@@ -260,37 +307,42 @@ public sealed class ValuationCostApproachService(
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
-    private static ValuationCostApproachDto ToDto(ValuationRequest vr, ValuationCostApproach? entity)
+    private static ValuationCostApproachDto ToDto(
+        ValuationRequest vr,
+        ValuationCostApproach? entity,
+        string costScopeKey)
     {
-        var lines = (entity?.Lines ?? [])
-            .OrderBy(l => l.SortOrder)
-            .Select(l => new ValuationCostLineDto
+        var orderedLines = (entity?.Lines ?? []).OrderBy(l => l.SortOrder).ToList();
+
+        // Interactive model spec: repeating-floor line inherits "first floor" m² rate when left empty.
+        var firstFloorUnitCost = orderedLines
+            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
+            .Select(l => l.UnitCostSar)
+            .FirstOrDefault();
+
+        var computed = orderedLines
+            .Select(l =>
             {
-                Id = l.Id,
-                SourceInventoryLineId = l.SourceInventoryLineId,
-                StructureKind = l.StructureKind,
-                ItemKey = l.ItemKey,
-                ItemLabelAr = CostLineItemKeys.LabelAr(l.ItemKey),
-                Label = l.Label,
-                AreaSqm = l.AreaSqm,
-                Unit = l.Unit,
-                UnitLabelAr = CostLineUnits.LabelAr(l.Unit),
-                BuildRatioPct = l.BuildRatioPct,
-                RepeatedFloorCount = l.RepeatedFloorCount,
-                UnitCostSar = l.UnitCostSar,
-                LineTotal = CostApproachRules.LineTotal(l.AreaSqm, l.UnitCostSar),
-                Rationale = l.Rationale,
-                IsIncluded = l.IsIncluded,
-                SortOrder = l.SortOrder,
+                var effectiveUnitCost = CostApproachRules.InheritedUnitCost(
+                    l.ItemKey, l.UnitCostSar, firstFloorUnitCost);
+                var effectiveQty = CostApproachRules.EffectiveQuantity(
+                    l.AreaSqm, l.Unit, l.BuildRatioPct);
+                return (Line: l,
+                    EffectiveUnitCost: effectiveUnitCost,
+                    Inherited: effectiveUnitCost != Math.Max(0m, l.UnitCostSar),
+                    EffectiveQty: effectiveQty,
+                    Total: CostApproachRules.LineTotal(effectiveQty, effectiveUnitCost));
             })
             .ToList();
 
-        var direct = CostApproachRules.SumDirectCost(
-            lines.Select(l => (l.AreaSqm, l.UnitCostSar, l.IsIncluded)));
+        var direct = computed.Where(c => c.Line.IsIncluded).Sum(c => c.Total);
         var land = entity?.LandValueFromMarket ?? 0m;
         var rateAfterDiscount = CostApproachRules.LandUnitRateAfterDiscount(
             entity?.LandUnitRateFromMarket ?? 0m,
             entity?.UseRestrictionDiscountPct ?? 0m);
+        var landEstimateComplete =
+            (entity?.LandUnitRateFromMarket ?? 0m) > 0m
+            && (entity?.LandAreaSqm ?? 0m) > 0m;
 
  // chain (–)
         var financingPct = CostApproachRules.FinancingPct(
@@ -312,6 +364,46 @@ public sealed class ValuationCostApproachService(
             indirectItems.Select(i => i.Pct), financingPct);
         var totalCost = CostApproachRules.TotalCostWithIndirect(direct, indirectSum);
 
+        var lines = computed
+            .Select(c => new ValuationCostLineDto
+            {
+                Id = c.Line.Id,
+                SourceInventoryLineId = c.Line.SourceInventoryLineId,
+                StructureKind = c.Line.StructureKind,
+                ItemKey = c.Line.ItemKey,
+                ItemLabelAr = CostLineItemKeys.LabelAr(c.Line.ItemKey),
+                Label = c.Line.Label,
+                AreaSqm = c.Line.AreaSqm,
+                Unit = c.Line.Unit,
+                UnitLabelAr = CostLineUnits.LabelAr(c.Line.Unit),
+                BuildRatioPct = c.Line.BuildRatioPct,
+                RepeatedFloorCount = c.Line.RepeatedFloorCount,
+                UnitCostSar = c.Line.UnitCostSar,
+                EffectiveUnitCostSar = c.EffectiveUnitCost,
+                UnitCostInherited = c.Inherited,
+                EffectiveQuantity = c.EffectiveQty,
+                LineTotal = c.Total,
+                NetUnitRateWithIndirect = CostApproachRules.NetUnitRateWithIndirect(
+                    c.Total, c.EffectiveQty, indirectSum),
+                Rationale = c.Line.Rationale,
+                IsIncluded = c.Line.IsIncluded,
+                SortOrder = c.Line.SortOrder,
+            })
+            .ToList();
+
+        // Building floor areas: Σ effective quantity of m² lines in the floor-areas group
+        // (including custom lines placed in the group via structureKind = floor).
+        var buildingArea = computed
+            .Where(c => c.Line.IsIncluded
+                && CostLineUnits.Normalize(c.Line.Unit) == CostLineUnits.Sqm
+                && (CostLineItemKeys.Group1.Contains(CostLineItemKeys.Normalize(c.Line.ItemKey))
+                    || (CostLineItemKeys.Normalize(c.Line.ItemKey) == CostLineItemKeys.Custom
+                        && string.Equals(
+                            c.Line.StructureKind,
+                            BuildingStructureKinds.Floor,
+                            StringComparison.OrdinalIgnoreCase))))
+            .Sum(c => c.EffectiveQty);
+
  // chain (–)
         var extendedLife = CostApproachRules.ExtendedLifeYears(
             entity?.EconomicAgeYears, entity?.LifeExtensionYears ?? 0m);
@@ -330,6 +422,7 @@ public sealed class ValuationCostApproachService(
             PropertyId = vr.PropertyId,
             LandUnitRateFromMarket = entity?.LandUnitRateFromMarket ?? 0m,
             LandAreaSqm = entity?.LandAreaSqm ?? 0m,
+            LandEstimateComplete = landEstimateComplete,
             UseRestrictionDiscountPct = entity?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale = entity?.UseRestrictionRationale,
             ApartmentLandShareSqm = entity?.ApartmentLandShareSqm,
@@ -357,7 +450,13 @@ public sealed class ValuationCostApproachService(
             DepreciationValue = depreciation,
             BuildingsValueAfterDepreciation = buildingsAfterDep,
             CostOpinionBuildingsOnly = buildingsAfterDep,
-            CostOpinionWithLand = CostApproachRules.CostOpinionWithLand(buildingsAfterDep, land),
+            CostOpinionWithLand = CostApproachRules.CostOpinionForScope(
+                buildingsAfterDep,
+                land,
+                landEstimateComplete,
+                CostScopeKeys.IsBuildingOnly(costScopeKey)),
+            CostScopeKey = CostScopeKeys.Normalize(costScopeKey),
+            BuildingAreaSqm = buildingArea,
             AnalysisNotes = entity?.AnalysisNotes,
             Lines = lines,
         };

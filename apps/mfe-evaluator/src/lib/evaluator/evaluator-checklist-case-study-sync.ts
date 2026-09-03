@@ -1,5 +1,5 @@
-import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/prototype/case-study-form-data";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
-import { isPartyQuestionVisible } from "@settings/mfe/lib/prototype/case-study-info-roles-storage";
+import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/app-data/case-study-form-data";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
+import { isPartyQuestionVisible } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import type {
   EvaluatorChecklistAnswers,
   EvaluatorBooleanQuestion,
@@ -9,7 +9,7 @@ import { checklistAnswerLabel } from "./evaluator-window-data";
 
 export const APPRAISER_PARTY_ID = "val" as const;
 
-/** قائمة فحص المقيم ↔ مفاتيح إجابات نموذج دراسة الحالة (طرف المقيم). */
+/** Appraiser checklist ↔ case-study form answer keys (appraiser party). */
 export type EvaluatorChecklistCaseStudyLink = {
   checklistKey: keyof Pick<
     EvaluatorChecklistAnswers,
@@ -51,7 +51,7 @@ export const EVALUATOR_CHECKLIST_CASE_STUDY_LINKS: EvaluatorChecklistCaseStudyLi
     { checklistKey: "q_unregistered_additions", caseStudyKey: "extra_3" },
   ];
 
-/** أسئلة نموذج الدراسة المسندة للمقيم دون مفتاح q_* في قائمة الفحص القديمة. */
+/** Case-study form questions assigned to the appraiser without a q_* key in the legacy checklist. */
 export type AppraiserOnlyCaseStudyChecklistItem = {
   caseStudyKey: string;
   label: string;
@@ -67,7 +67,7 @@ const LEGACY_MAPPED_CASE_STUDY_KEYS = new Set(
 export type EvaluatorChecklistBooleanKey =
   EvaluatorChecklistCaseStudyLink["checklistKey"];
 
-/** هل سؤال قائمة الفحص مسند للمقيم العقاري في علاقة المستخدم بالمعلومة؟ */
+/** Is the checklist question assigned to the real-estate appraiser in the user–data relation? */
 export function isEvaluatorChecklistQuestionAssignedToAppraiser(
   matrix: CaseStudyInfoRolesMatrix,
   checklistKey: EvaluatorChecklistBooleanKey,
@@ -97,7 +97,7 @@ export function filterEvaluatorChecklistQuestions(
   return questions.filter((q) => assigned.has(q.id));
 }
 
-/** أسئلة الدراسة الإضافية المسندة للمقيم (ليست ضمن الـ 13 سؤالاً القديمة). */
+/** Extra case-study questions assigned to the appraiser (not among the legacy 13). */
 export function appraiserOnlyCaseStudyChecklistItems(
   matrix: CaseStudyInfoRolesMatrix,
 ): AppraiserOnlyCaseStudyChecklistItem[] {
@@ -137,11 +137,11 @@ export type CaseStudyChecklistRemarks = {
 };
 
 export type MergeEvaluatorChecklistOptions = {
-  /** يستبدل مفاتيح q_* المرتبطة بإجابات نموذج الدراسة عند توفرها. */
+  /** Replaces linked q_* keys with case-study form answers when available. */
   overwriteLinked?: boolean;
 };
 
-/** يملأ قائمة الفحص من إجابات نموذج الدراسة (طرف المقيم). */
+/** Fills the checklist from case-study form answers (appraiser party). */
 export function mergeEvaluatorChecklistFromCaseStudy(
   checklist: EvaluatorChecklistAnswers,
   answers: Record<string, CaseStudyFormAnswer | null | undefined>,

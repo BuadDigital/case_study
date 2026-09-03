@@ -6,16 +6,17 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Locations;
+using RealEstateEval.Platform.Infrastructure.Locations;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class RegionsService : IRegionsService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
     private readonly PlatformDbContext _db;
     private readonly ApiResponseCache _cache;
@@ -231,11 +232,6 @@ public sealed class RegionsService : IRegionsService
             },
             cancellationToken);
     }
-
-    public Task<IReadOnlyList<SelectableCityDto>> ListSelectableCitiesAsync(
-        Guid regionId,
-        CancellationToken cancellationToken = default)
-        => SearchCitiesAsync(regionId, query: null, cancellationToken);
 
     public async Task<IReadOnlyList<SelectableCityDto>> SearchCitiesAsync(
         Guid regionId,

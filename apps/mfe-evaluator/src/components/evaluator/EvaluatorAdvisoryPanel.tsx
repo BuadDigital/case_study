@@ -3,23 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, cn, InlineLoadingSkeleton } from "@platform/ui-kit";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
-  loadPartyCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "@case-study/mfe";
+} from "@case-study/mfe/lib/app-data/case-study-form-model";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
   EVALUATOR_SUBMISSION_CHANGED_EVENT,
-  fetchEvaluatorSubmissionSnapshot,
   loadEvaluatorSubmission,
-} from "../../lib/evaluator/evaluator-submission-storage";
+} from "../../lib/evaluator/evaluator-submission-model";
+import { fetchEvaluatorSubmissionSnapshot } from "../../lib/evaluator/evaluator-submission-reads";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {
   checklistAnswerLabel,
   EVALUATOR_CONDITIONAL_QUESTIONS,
@@ -75,17 +76,12 @@ export function EvaluatorAdvisoryPanel({
     [parentTask.id, propertyId, tasks, refreshKey],
   );
 
-  useEffect(() => {
-    const refresh = () => setRefreshKey((k) => k + 1);
-    window.addEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
-    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    return () => {
-      window.removeEventListener(EVALUATOR_SUBMISSION_CHANGED_EVENT, refresh);
-      window.removeEventListener(PARTY_TASK_RECALL_CHANGED_EVENT, refresh);
-      window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, refresh);
-    };
-  }, []);
+  const bumpRefresh = () => setRefreshKey((k) => k + 1);
+  useWindowEvents({
+    [EVALUATOR_SUBMISSION_CHANGED_EVENT]: bumpRefresh,
+    [PARTY_TASK_RECALL_CHANGED_EVENT]: bumpRefresh,
+    [PARTY_CASE_STUDY_FORM_CHANGED_EVENT]: bumpRefresh,
+  });
 
   useEffect(() => {
     if (!appraisalTask) {

@@ -12,7 +12,7 @@ import {
   skipsBourseForIdentifier,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
 import { PoPropertyDetailTabs } from "./PoPropertyDetailTabs";

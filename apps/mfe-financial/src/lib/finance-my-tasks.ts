@@ -25,29 +25,29 @@ export type FinanceMyTaskKind =
 
 export type FinanceMyTaskDomain = "revenue" | "costs";
 
-/** صف مهامي — مطابق لأعمدة تصميم الحزمة + بطاقات KPI */
+/** My-tasks row — matches package design columns + KPI cards */
 export type FinanceMyTask = {
   id: string;
   kind: FinanceMyTaskKind;
   domain: FinanceMyTaskDomain;
-  /** عنوان الإجراء المطلوب */
+  /** Required action title */
   title: string;
-  /** المرجع (PO / فاتورة / رقم مسير) */
+  /** Reference (PO / invoice / payroll number) */
   reference: string;
-  /** الجهة / المعاملة — سطر فرعي تحت المرجع أو عمود منفصل */
+  /** Party / transaction — subtitle under reference or separate column */
   subject: string;
   amountSar: number;
-  /** ما يلزم لإتمامه */
+  /** What is needed to complete */
   requirement: string;
-  /** ينتقل إلى */
+  /** Navigates to */
   movesTo: string;
   ageDays: number | null;
-  /** سطر ثانٍ تحت العمر (مثال: فاتورة 2026-01-15) */
+  /** Second line under age (e.g. invoice 2026-01-15) */
   ageNote: string | null;
   href: string;
-  /** فتح الإجراء / فتح الحساب */
+  /** Open action / open account */
   openLabel: string;
-  /** ربط بمسير/أمر صرف عند فتح منبثق من مهامي */
+  /** Link to payroll/disbursement when opening modal from My Tasks */
   statementId?: string | null;
 };
 
@@ -58,11 +58,14 @@ function daysSince(iso: string | null | undefined): number | null {
   return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
 }
 
+/** Shared formatter — avoid new Intl.DateTimeFormat per row */
+const DATE_EN = new Intl.DateTimeFormat("en-GB");
+
 function formatDateNote(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null;
-  return new Date(t).toLocaleDateString("en-GB");
+  return DATE_EN.format(t);
 }
 
 function href(target: FinanceNavTarget): string {
@@ -107,19 +110,17 @@ const REVENUE_META: Record<
 function buildRevenueMyTasks(
   tracking: EnfazTrackingRowDto[],
 ): FinanceMyTask[] {
-  const actionable = tracking.filter((r) => {
-    const stage = resolveRevenueStage(r);
-    return (
-      stage === "eligible" ||
-      stage === "billing_assistant" ||
-      stage === "awaiting_collection" ||
-      stage === "stopped"
-    );
-  });
-
   const byStage = new Map<RevenueStage, EnfazTrackingRowDto[]>();
-  for (const row of actionable) {
+  for (const row of tracking) {
     const stage = resolveRevenueStage(row);
+    if (
+      stage !== "eligible" &&
+      stage !== "billing_assistant" &&
+      stage !== "awaiting_collection" &&
+      stage !== "stopped"
+    ) {
+      continue;
+    }
     const list = byStage.get(stage) ?? [];
     list.push(row);
     byStage.set(stage, list);
@@ -268,7 +269,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     } else if (s.status === "invoice_received") {
-      // بعد إقرار المطابقة: يخرج من مهامي — توثيق الصرف من التكاليف فقط.
+      // After match approval: leaves My Tasks — disbursement docs from Costs only.
       if (s.vendorInvoiceMatched) {
         continue;
       }
@@ -289,7 +290,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     } else if (s.status === "issued" && s.payeeType === "individual") {
-      // فرد: لا فاتورة — أمر صرف مباشر (مرجع منطق 4.2)
+      // Individual: no invoice — direct disbursement order (logic ref 4.2)
       tasks.push({
         id: `cost-close-${s.id}`,
         kind: "cost_close_statement",
@@ -307,7 +308,7 @@ function buildCostMyTasks(input: {
         statementId: s.id,
       });
     }
- // issued + vendor: بانتظار المكتب — ليس إجراء مالية (بوابة المكتب / مرجع )
+ // issued + vendor: awaiting eng. office — not a finance action (office portal / ref)
   }
 
   return tasks;
@@ -336,24 +337,36 @@ export function buildFinanceMyTasks(input: {
   });
 }
 
-/** بطاقات KPI لمهامي — مطابقة اللقطة */
+/** My Tasks KPI cards — matches snapshot */
 export function buildFinanceMyTasksKpis(tasks: FinanceMyTask[]) {
-  const match = tasks.filter((t) => t.kind === "revenue_match");
-  const collect = tasks.filter((t) => t.kind === "revenue_collect");
-  const docs = tasks.filter(
-    (t) =>
+  let matchCount = 0;
+  let collectCount = 0;
+  let collectAmountSar = 0;
+  let docsCount = 0;
+  let closeCount = 0;
+
+  for (const t of tasks) {
+    if (t.kind === "revenue_match") {
+      matchCount += 1;
+    } else if (t.kind === "revenue_collect") {
+      collectCount += 1;
+      collectAmountSar += t.amountSar;
+    } else if (
       t.kind === "cost_create_statement" ||
       t.kind === "cost_issue_statement" ||
-      t.kind === "cost_match_invoice",
-  );
-  const close = tasks.filter((t) => t.kind === "cost_close_statement");
-  const collectAmt = collect.reduce((s, t) => s + t.amountSar, 0);
+      t.kind === "cost_match_invoice"
+    ) {
+      docsCount += 1;
+    } else if (t.kind === "cost_close_statement") {
+      closeCount += 1;
+    }
+  }
 
   return {
-    matchCount: match.length,
-    collectCount: collect.length,
-    collectAmountSar: collectAmt,
-    docsCount: docs.length,
-    closeCount: close.length,
+    matchCount,
+    collectCount,
+    collectAmountSar,
+    docsCount,
+    closeCount,
   };
 }

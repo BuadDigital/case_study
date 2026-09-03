@@ -1,7 +1,7 @@
 import type {
   UserListItem,
 } from "@platform/types";
-import { getApiBase } from "./index";
+import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 export type UsersApiConfig = {

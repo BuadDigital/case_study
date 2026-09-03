@@ -1,6 +1,7 @@
 using System.Linq;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Final 27-section reading order (decisions log v2 — clean renumber 1–27).
@@ -135,14 +136,17 @@ public static class ValuationReportSectionCatalog
         hasStructuresToValue ? "حتى 12 صورة (6 بالصفحة)" : "حتى 6 صور (أرض)";
 }
 
-/// <summary>Issued report number — preliminary format until numbering workshop locks prefixes.</summary>
+/// <summary>
+/// Valuation report number — numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}
+/// for numbers issued after activation; numbers frozen in Q-6 snapshots never change.
+/// </summary>
 public static class ValuationReportNumberRules
 {
-    /// <summary>Format: TQ + yyyyMMdd + 4-digit daily ordinal (e.g. TQ202608190001).</summary>
-    public static string FormatIssued(DateOnly reportDate, int dailyOrdinal)
+    /// <summary>Format: TQ-{yyyy}-{#####} (e.g. TQ-2026-00012).</summary>
+    public static string FormatIssued(DateOnly reportDate, int ordinal)
     {
-        var n = dailyOrdinal < 1 ? 1 : dailyOrdinal;
-        return $"TQ{reportDate:yyyyMMdd}{n:D4}";
+        var n = ordinal < 1 ? 1 : ordinal;
+        return ReferenceNumbering.Format(ReferenceNumbering.ValuationReport, reportDate.Year, n);
     }
 
     /// <summary>
@@ -163,7 +167,7 @@ public static class ValuationReportNumberRules
         FormatTemporary(displayId, reservedDate);
 }
 
-/// <summary>report validity: 90 days from the report date. ضابط تنبيهي لا حاجب.</summary>
+/// <summary>report validity: 90 days from the report date. Advisory control, not a hard gate.</summary>
 public static class ValuationReportValidityRules
 {
     public const int ValidityDays = 90;
@@ -183,7 +187,7 @@ public static class ValuationReportDisplayRules
     public static string FormatGregorianDate(DateOnly date) =>
         $"{date.Year:D4}/{date.Month:D2}/{date.Day:D2}";
 
- /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), «هـ» suffix.</summary>
+ /// <summary>Hijri display — Um Al-Qura calendar (the Kingdom's official one), "AH" suffix.</summary>
     public static string FormatHijriDate(DateOnly date)
     {
         var hijri = new System.Globalization.UmAlQuraCalendar();
@@ -204,6 +208,6 @@ public static class ValuationReportDisplayRules
     public static string FormatMoney(decimal amount) =>
         amount.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 
- /// <summary>«المقيم» without tashkeel in body copy.</summary>
+ /// <summary>Plain Arabic valuer word (al-muqayyim) without tashkeel in body copy.</summary>
     public const string ValuerWordPlain = "المقيم";
 }

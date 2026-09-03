@@ -2,22 +2,22 @@
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
 import {
   loadPropertyDetailPartySubmissions,
   type PropertyDetailPartySubmissionsMap,
-} from "../lib/prototype/property-detail-party-submissions";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/property-detail-party-submissions";
+import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { TASKS_CHANGED_EVENT } from "./case-study-queries";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 
 export function propertyDetailPartySubmissionsQueryKey(parentTaskId: string) {
-  return prototypeKeys.propertyDetailPartySubmissions(parentTaskId);
+  return appDataKeys.propertyDetailPartySubmissions(parentTaskId);
 }
 
 /** Fetches every party-role submission as one unit (parallel API + prototype reads). */

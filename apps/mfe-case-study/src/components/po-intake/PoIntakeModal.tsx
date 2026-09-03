@@ -1,11 +1,14 @@
 "use client";
 
-import { AppModal } from "@case-study/mfe/components/ui/AppModal";
+import {
+  AppModal,
+  Button,
+  Note,
+} from "@platform/ui-kit";
 import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
-import { Button, Note } from "@platform/ui-kit";
-import type { PoIntakeRecord } from "../../lib/prototype/po-intake-data";
+import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
 import { AssignmentTypeFields } from "@case-study/mfe/components/po-intake/AssignmentTypeFields";
 import { AssignmentValuationFields } from "@case-study/mfe/components/po-intake/AssignmentValuationFields";
 import { PoWorkOrderPartyFields } from "@case-study/mfe/components/po-intake/PoWorkOrderPartyFields";

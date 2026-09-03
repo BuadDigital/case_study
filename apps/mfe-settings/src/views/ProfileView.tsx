@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAuthSession } from "@platform/auth-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { Note, Spinner } from "@platform/ui-kit";
 import { UserProfileContent } from "../components/UserProfileContent";
 import { PushNotificationSettings } from "../components/PushNotificationSettings";

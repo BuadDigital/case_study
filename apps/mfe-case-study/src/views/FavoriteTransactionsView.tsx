@@ -1,19 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pages";
 import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { findPropertyForTask } from "../lib/prototype/my-task-row";
+import { findPropertyForTask } from "../lib/app-data/my-task-row";
 import {
   favoritePropertyKey,
   useFavoriteProperties,
-} from "../lib/prototype/favorite-properties";
-import type { WorkflowTask } from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/favorite-properties";
+import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import {
   favoritesPath,
   favoritesTaskPath,
@@ -22,10 +22,10 @@ import {
 import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
-} from "../lib/prototype/all-transactions-queue";
+} from "../lib/app-data/all-transactions-queue";
 
 export function FavoriteTransactionsView() {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { favoriteKeys, toggleFavorite } = useFavoriteProperties();
 
   const isPartyRole = isPartyWorkflowRole(role);
@@ -40,8 +40,7 @@ export function FavoriteTransactionsView() {
       emptyHint:
         "افتح تفاصيل أي عقار واضغط النجمة بجانب رقم الصك لإضافته هنا.",
       panelId: "favorite-transactions-panel",
-      tableHint:
-        "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
+      tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: favoritesPath,

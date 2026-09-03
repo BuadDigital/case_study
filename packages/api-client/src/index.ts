@@ -1,36 +1,10 @@
-/** Private LAN host (Wi‑Fi demo) — not localhost and not a public DNS name. */
-function isPrivateLanHost(hostname: string): boolean {
-  if (hostname === "localhost" || hostname === "127.0.0.1") return false;
-  if (hostname.startsWith("192.168.")) return true;
-  if (hostname.startsWith("10.")) return true;
-  return /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
-}
+export { getApiBase } from "./api-base";
 
-/**
- * API base URL.
- * - localhost dev: NEXT_PUBLIC_API_URL or same origin (Next.js rewrites /api/* → :5160).
- * - LAN IP dev (e.g. 192.168.x.x:3000): gateway on :5160 on the same host (CORS allows :3000).
- *   Ignores NEXT_PUBLIC_API_URL when it points at localhost — that breaks LAN teammates.
- */
-export function getApiBase(): string {
-  const apiPort = process.env.NEXT_PUBLIC_API_PORT ?? "5160";
-  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-
-  if (typeof window !== "undefined") {
-    const { hostname, origin, protocol } = window.location;
-    if (
-      process.env.NODE_ENV === "development" &&
-      isPrivateLanHost(hostname)
-    ) {
-      return `${protocol}//${hostname}:${apiPort}`;
-    }
-    if (fromEnv) return fromEnv;
-    return origin;
-  }
-
-  if (fromEnv) return fromEnv;
-  return `http://127.0.0.1:${apiPort}`;
-}
+export {
+  createIdempotencyKey,
+  IDEMPOTENCY_HEADER,
+  withIdempotencyKey,
+} from "./idempotency-key";
 
 export {
   clearApiWriteInterceptor,
@@ -71,6 +45,11 @@ export {
   createWorkOrder,
   deleteWorkOrder,
   deleteWorkOrderProperty,
+  getTransactionState,
+  recordEnfazHandover,
+  type TransactionStateDto,
+  type TransactionStageStateDto,
+  type TransactionPartyStateDto,
   findPriorDeed,
   listPriorDeeds,
   getWorkOrder,
@@ -82,7 +61,7 @@ export {
   stopWorkOrder,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
-  updateWorkOrderPropertyLocationMapUrl,
+  updateSpecialistReportExtras,
   workOrderExists,
   type ApiErr,
   type ApiOk,
@@ -206,6 +185,7 @@ export {
 export {
   acceptPartyTaskSubmission,
   getPartyTaskSubmission,
+  isPersistedPartyTaskSubmission,
   listPartyTaskSubmissions,
   reopenPartyTaskSubmission,
   savePartyTaskSubmission,
@@ -255,17 +235,15 @@ export {
   type ResolveFailureRequest,
 } from "./failures";
 
-
-
 export {
   deleteAttachment,
   downloadAttachmentBlob,
   getAttachmentMeta,
-  classifyAttachment,
   getFailureTypesCatalog,
   getFieldDictionary,
   getEvaluatorRecallApi,
   listAttachments,
+  listAttachmentsForProperty,
   listEvaluatorRecallsApi,
   listKeyEnvelopeFeeReport,
   listKeyEnvelopeLinkedProperties,
@@ -289,7 +267,6 @@ export {
   rejectEvaluatorRecallApi,
   requestEvaluatorRecallApi,
   saveFailureTypesCatalog,
-  saveFieldDictionary,
   uploadAttachment,
   upsertPropertyCourtAccess,
   type CreateKeyEnvelopeHandoffRequest,
@@ -305,7 +282,6 @@ export {
   type FieldDictionaryFieldDto,
   type FieldDictionaryStateDto,
   type FileAttachmentMetaDto,
-  type ClassifyAttachmentRequest,
   type KeyEnvelopeAssignmentDto,
   type KeyEnvelopeAssignmentInput,
   type KeyEnvelopeDto,
@@ -466,7 +442,6 @@ export {
   cancelPartyBillingStatement,
   closePartyBillingStatement,
   deferPartyBillingLines,
-  partyBillingStatementStatusTone,
   type PartyBillingStatementsApiConfig,
   type PartyBillingStatementStatus,
   type PartyBillingPayeeType,
@@ -499,12 +474,22 @@ export {
   saveOrganizationSettings,
   testOrganizationCommunication,
   emptyValuationReportSettings,
+  VALUATION_REPORT_HTML_DEFAULTS,
+  isNoExternalSpecialistAssumption,
+  applyIvsDateToStandards,
   type OrganizationBrandingSettings,
   type OrganizationCommunicationsSettings,
   type OrganizationCompanySettings,
   type OrganizationEvaluatorSettings,
   type OrganizationValuerRosterEntry,
   VALUER_MEMBERSHIP_CATEGORIES,
+  VALUER_ROSTER_MEMBERSHIP_OPTIONS,
+  VALUER_SYS_ROLES,
+  VALUER_ROSTER_HTML_DEFAULTS,
+  CERTIFIED_VALUER_HTML_DEFAULTS,
+  CERTIFIED_VALUER_HTML_BRANCH,
+  BRAND_IDENTITY_DEFAULTS,
+  ORG_COMPANY_DEFAULTS,
   type OrganizationSettingsApiConfig,
   type OrganizationSettingsDto,
   type OrganizationSettingsResult,
@@ -514,12 +499,13 @@ export {
 } from "./organization-settings";
 
 export {
-  getAttachmentPrintDictionary,
-  saveAttachmentPrintDictionary,
-  type AttachmentPrintDictionaryApiConfig,
-  type AttachmentPrintDictionaryDto,
-  type AttachmentPrintTypeDto,
-} from "./attachment-print-dictionary";
+  getValuationLists,
+  saveValuationLists,
+  activeValuationListOptions,
+  type ValuationListsApiConfig,
+  type ValuationListsDto,
+  type ValuationListItemDto,
+} from "./valuation-lists";
 
 export {
   getDifferenceFactorCatalog,
@@ -559,11 +545,14 @@ export {
   type FieldSyncStatusDto,
   type UpsertFieldSyncStatusRequest,
 } from "./field-sync-status";
+
 export {
   listComparableProperties,
   suggestComparablePropertiesByProximity,
   createComparableProperty,
+  updateComparableProperty,
   deactivateComparableProperty,
+  reactivateComparableProperty,
   setComparableQualityTags,
   type SaveComparableQualityTagsRequest,
   type ComparablePropertiesApiConfig,
@@ -577,13 +566,36 @@ export {
 } from "./comparable-properties";
 
 export {
+  allocateNumberedDocument,
+  listNumberedDocuments,
+  type NumberedDocumentDto,
+  type NumberedDocumentKind,
+  type NumberedDocumentsApiConfig,
+} from "./numbered-documents";
+
+export {
+  listPropertyComparableLinks,
+  linkPropertyComparable,
+  patchPropertyComparableLinkDescription,
+  unlinkPropertyComparable,
+  type PropertyComparableLinkItemDto,
+  type PropertyComparableLinkListDto,
+} from "./property-comparable-links";
+
+export {
   getOpenValuationRequestByProperty,
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
-  replaceValuationComparableSelections,
   setValuationComparableAdopted,
-  removeValuationComparableSelection,
   saveValuationComparableMarket,
+  saveAdjustmentFactorRationale,
+  type ValuationAdjustmentFactorRationaleDto,
+  getReportIssuanceState,
+  issueDepositVersion,
+  registerDepositCertificate,
+  reopenReportIssuance,
+  getIssuancePdf,
+  type ValuationReportIssuanceStateDto,
   saveValuationMarketApproach,
   getValuationCostApproach,
   saveValuationCostApproach,
@@ -594,7 +606,6 @@ export {
   getValuationIssuanceGates,
   getValuationReportDocument,
   getValuationReportPdf,
-  getValuationReportFieldPayload,
   type ValuationComparableAdjustmentLineDto,
   type ValuationComparableMarketDto,
   type ValuationComparableSelectionDto,
@@ -619,14 +630,11 @@ export {
   type ValuationRequestLiteDto,
   type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
-  type ValuationReportFieldPayloadDto,
-  type ValuationReportFieldDto,
 } from "./valuation-comparable-selections";
 
 export {
   getInspectionLimits,
   saveInspectionLimits,
-  approveRemoteInspection,
   type InspectionLimitsDto,
   type InspectionScopeKey,
   type SaveInspectionLimitsRequest,

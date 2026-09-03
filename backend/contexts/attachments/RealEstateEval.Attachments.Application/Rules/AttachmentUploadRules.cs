@@ -1,7 +1,8 @@
 using System.Buffers;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.Attachments.Application.Rules;
 
 /// <summary>
 /// Server-side MIME / size gates for <c>/api/attachments</c>.

@@ -1,7 +1,6 @@
 {
   "extends": ["../../tsconfig.base.json", "../tsconfig.mfe-paths.json"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@platform/app-shared": ["./src/index.ts"],
       "@platform/app-shared/*": ["./src/*"],

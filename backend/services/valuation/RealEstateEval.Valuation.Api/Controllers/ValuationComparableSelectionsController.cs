@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
@@ -23,9 +25,13 @@ public class ValuationComparableSelectionsController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> List(
         Guid valuationRequestId,
+        [FromQuery] string? selectionContext,
         CancellationToken ct)
     {
-        var dto = await _selections.ListAsync(valuationRequestId, ct);
+        var dto = await _selections.ListAsync(
+            valuationRequestId,
+            selectionContext ?? "market",
+            ct);
         return dto is null ? NotFound() : Ok(dto);
     }
 
@@ -64,6 +70,24 @@ public class ValuationComparableSelectionsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Q-8-1: one factor-level rationale covers all comparables — save/clear.</summary>
+    [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/adjustment-factor-rationale")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationAdjustmentFactorRationaleDto>> SaveFactorRationale(
+        Guid valuationRequestId,
+        [FromBody] SaveAdjustmentFactorRationaleRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _selections.SaveFactorRationaleAsync(
+            valuationRequestId,
+            request,
+            ActorClaims.Id(User),
+            ct);
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+        return Ok(result);
+    }
+
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/market-approach")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> SaveMarketApproach(
@@ -86,6 +110,7 @@ public class ValuationComparableSelectionsController : ControllerBase
         Guid valuationRequestId,
         Guid comparablePropertyId,
         [FromBody] AdoptComparableRequest body,
+        [FromQuery] string? selectionContext,
         CancellationToken ct)
     {
         var (result, error) = await _selections.SetAdoptedAsync(
@@ -93,7 +118,8 @@ public class ValuationComparableSelectionsController : ControllerBase
             comparablePropertyId,
             body.IsAdopted,
             ActorClaims.Id(User),
-            ct);
+            ct,
+            selectionContext: selectionContext ?? body.SelectionContext);
         if (error is not null)
             return this.BadRequestProblem(error);
         return Ok(result);
@@ -104,12 +130,14 @@ public class ValuationComparableSelectionsController : ControllerBase
     public async Task<IActionResult> Remove(
         Guid valuationRequestId,
         Guid comparablePropertyId,
+        [FromQuery] string? selectionContext,
         CancellationToken ct)
     {
         var (ok, error) = await _selections.RemoveAsync(
             valuationRequestId,
             comparablePropertyId,
-            ct);
+            ct,
+            selectionContext: selectionContext);
         if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
         return NoContent();
     }
@@ -118,4 +146,6 @@ public class ValuationComparableSelectionsController : ControllerBase
 public sealed class AdoptComparableRequest
 {
     public bool IsAdopted { get; init; } = true;
+    /// <summary>market | land_within_cost</summary>
+    public string? SelectionContext { get; init; }
 }

@@ -5,8 +5,16 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Platform.Infrastructure.Notifications;
+using RealEstateEval.Platform.Infrastructure.Integration;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Platform.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Platform bounded context (A8): the reference catalogs
@@ -24,7 +32,11 @@ public static class PlatformDependencyInjection
         services.AddPlatformPersistence(configuration, connectionString);
         services.AddScoped<IAuditLogAppend, PlatformAuditLogAppend>();
         services.AddScoped<IFieldDictionaryService, FieldDictionaryService>();
-        services.AddScoped<IAttachmentPrintDictionaryService, AttachmentPrintDictionaryService>();
+        services.AddScoped<AttachmentPrintDictionaryService>();
+        services.AddScoped<IAttachmentPrintDictionaryService>(sp =>
+            sp.GetRequiredService<AttachmentPrintDictionaryService>());
+        services.AddScoped<IValuationListsService>(sp =>
+            sp.GetRequiredService<AttachmentPrintDictionaryService>());
         services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
@@ -76,4 +88,13 @@ public static class PlatformDependencyInjection
         services.AddScoped<NotificationRealtimePushHandler>();
         return services;
     }
+ /// <summary>Platform catalog write context. A8 physical move: lives beside <see cref="PlatformDbContext"/>.</summary>
+    public static IServiceCollection AddPlatformPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+    }
+
 }

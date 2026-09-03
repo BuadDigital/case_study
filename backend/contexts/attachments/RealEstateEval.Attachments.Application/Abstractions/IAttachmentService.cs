@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Attachments.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Attachments.Application.Abstractions;
 
 public interface IAttachmentService
 {
@@ -22,11 +23,6 @@ public interface IAttachmentService
     Task<FileAttachmentMetaDto?> GetMetaAsync(
         Guid id,
         PermissionsDto? actor,
-        CancellationToken cancellationToken = default);
-
-    Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
-        Guid id,
-        ClassifyAttachmentRequest request,
         CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(

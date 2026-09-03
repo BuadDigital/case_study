@@ -1,5 +1,5 @@
 import type { RoleId } from "@platform/types";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 
 /**
  * Visibility of failure-type categories when raising a failure.

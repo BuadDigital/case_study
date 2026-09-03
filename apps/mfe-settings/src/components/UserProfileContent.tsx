@@ -1,16 +1,50 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Activity, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   listInspectorFees,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import {
+  tryGetPartyOfficeBillingStatementsPanel,
+  type PartyOfficeBillingStatementsPanelProps,
+} from "@platform/app-shared/party-appraisal/billing-statements-slot";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
 import { getAuthSession } from "@platform/auth-client";
-import { Badge, Spinner, Table, TBody, Td, Th, THead, Tr } from "@platform/ui-kit";
-import { PartyOfficeBillingStatementsPanel } from "@case-study/mfe/components/fees/PartyOfficeBillingStatementsPanel";
+import {
+  Badge,
+  Spinner,
+  TBody,
+  THead,
+  Table,
+  Td,
+  TdLtr,
+  Th,
+  Tr,
+  cn,
+  opsTfNote,
+} from "@platform/ui-kit";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
+
+/**
+ * Supplied by the shell at boot via the app-shared slot — settings must not
+ * import `@case-study/mfe` (it would re-create the settings <-> case-study cycle).
+ */
+function PartyOfficeBillingStatementsPanel(
+  props: PartyOfficeBillingStatementsPanelProps,
+) {
+  const Panel = tryGetPartyOfficeBillingStatementsPanel();
+  if (!Panel) {
+    return (
+      <div className="flex justify-center py-10">
+        <Spinner />
+      </div>
+    );
+  }
+  return <Panel {...props} />;
+}
 
 type ProfileTab =
   | "basic"
@@ -40,19 +74,24 @@ function typeLabel(type: StaffUser["type"]): string {
   return "خارجي";
 }
 
-/** حساب مكتب هندسي — تظهر له تبويبة مسيرات الصرف */
+const ENG_OFFICE_ROLE_RE = /مكتب.*مساح|مقدم خدمة\s*[—\-]\s*جهة/i;
+const ENG_OFFICE_DETAIL_RE = /engineering-office/i;
+const FIELD_INSPECTOR_DETAIL_RE = /field-inspector/i;
+const LTR_FIELD_LABEL_RE = /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i;
+
+/** Engineering-office account — shows disbursement-payrolls tab */
 function isEngineeringOfficeProfile(user: StaffUser): boolean {
   if ((user.roleId ?? "").trim() === "engineering-office") return true;
   if ((user.distributionAssigneeId ?? "").trim().toLowerCase().startsWith("eo-"))
     return true;
   if ((user.role ?? "").trim() === "مقدم خدمة — جهة") return true;
-  if (/مكتب.*مساح|مقدم خدمة\s*[—\-]\s*جهة/i.test(user.role ?? "")) return true;
+  if (ENG_OFFICE_ROLE_RE.test(user.role ?? "")) return true;
   return (user.details ?? []).some((d) =>
-    /engineering-office/i.test(d.value),
+    ENG_OFFICE_DETAIL_RE.test(d.value),
   );
 }
 
-/** حساب معاين ميداني — تظهر له تبويبة المستحقات */
+/** Field-inspector account — shows dues tab */
 function isFieldInspectorProfile(user: StaffUser): boolean {
   if ((user.roleId ?? "").trim() === "field-inspector") return true;
   const assignee = (user.distributionAssigneeId ?? "").trim().toLowerCase();
@@ -61,7 +100,7 @@ function isFieldInspectorProfile(user: StaffUser): boolean {
   if (user.inspectorType === "employee" || user.inspectorType === "contractor")
     return true;
   return (user.details ?? []).some((d) =>
-    /field-inspector/i.test(d.value),
+    FIELD_INSPECTOR_DETAIL_RE.test(d.value),
   );
 }
 
@@ -132,7 +171,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       { id: "login", label: "بيانات الدخول" },
       { id: "activity", label: "سجل الأعمال" },
     ];
-    // بجانب سجل الأعمال — مسيرات المكتب / مستحقات المعاين
+    // Beside work log — office payrolls / inspector dues
     if (showEngStatements) {
       items.push({ id: "eng_statements", label: "مسيرات الصرف" });
     }
@@ -143,14 +182,16 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     return items;
   }, [showEngStatements, showInspectorDues, showFinancial]);
 
-  useEffect(() => {
-    if (tab === "eng_statements" && !showEngStatements) setTab("basic");
-    if (tab === "inspector_dues" && !showInspectorDues) setTab("basic");
-    if (tab === "financial" && !showFinancial) setTab("basic");
-  }, [tab, showEngStatements, showInspectorDues, showFinancial]);
+  const effectiveTab = tabs.some((item) => item.id === tab) ? tab : "basic";
+
+  /** Panel mounts only after first visit — then stays mounted hidden so state is kept. */
+  const visitedTabsRef = useRef<Set<ProfileTab>>(new Set());
+  visitedTabsRef.current.add(effectiveTab);
+  const tabMode = (id: ProfileTab) =>
+    effectiveTab === id ? "visible" : "hidden";
 
   useEffect(() => {
-    if (tab !== "activity" && tab !== "financial") return;
+    if (effectiveTab !== "activity" && effectiveTab !== "financial") return;
     const token = getAuthSession()?.token;
     if (!token) return;
     let cancelled = false;
@@ -182,7 +223,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     return () => {
       cancelled = true;
     };
-  }, [tab, user.distributionAssigneeId, user.id]);
+  }, [effectiveTab, user.distributionAssigneeId, user.id]);
 
   const activityRows = useMemo(() => completedRows(feeRows), [feeRows]);
 
@@ -242,7 +283,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             type="button"
             onClick={() => setTab(item.id)}
             className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-              tab === item.id
+              effectiveTab === item.id
                 ? "bg-ink text-white"
                 : "bg-surface-2 text-text-2 hover:border-border-md hover:text-heading"
             }`}
@@ -252,8 +293,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         ))}
       </div>
 
-      {tab === "basic" ? (
-        <>
+      {visitedTabsRef.current.has("basic") ? (
+        <Activity mode={tabMode("basic")}>
           <section>
             <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
               البيانات الأساسية
@@ -319,19 +360,18 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
                     label={field.label}
                     value={field.value}
                     dir={
-                      /إيميل|بريد|جوال|هوية|عضوية|مستخدم|معرّف/i.test(field.label)
-                        ? "ltr"
-                        : undefined
+                      LTR_FIELD_LABEL_RE.test(field.label) ? "ltr" : undefined
                     }
                   />
                 ))}
               </div>
             </section>
           ))}
-        </>
+        </Activity>
       ) : null}
 
-      {tab === "login" ? (
+      {visitedTabsRef.current.has("login") ? (
+        <Activity mode={tabMode("login")}>
         <section className="grid gap-3 sm:grid-cols-2">
           <ProfileField label="الحالة" value={statusLabel(user.status)} />
           <ProfileField
@@ -345,9 +385,11 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             dir="ltr"
           />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "activity" ? (
+      {visitedTabsRef.current.has("activity") ? (
+        <Activity mode={tabMode("activity")}>
         <section>
           {feesLoading ? (
             <div className="flex justify-center py-10">
@@ -358,54 +400,58 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           ) : activityRows.length === 0 ? (
             <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[560px]">
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>أمر العمل</Th>
-                    <Th>تاريخ الإنجاز</Th>
-                    <Th>نوع المهمة</Th>
-                    <Th>الحالة</Th>
+            <Table framed className="min-w-[560px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>أمر العمل</Th>
+                  <Th>تاريخ الإنجاز</Th>
+                  <Th>نوع المهمة</Th>
+                  <Th>الحالة</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {activityRows.map((row) => (
+                  <Tr key={row.workflowTaskId}>
+                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                    <TdLtr bare>
+                      {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                    </TdLtr>
+                    <Td>{row.taskKind || "—"}</Td>
+                    <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
                   </Tr>
-                </THead>
-                <TBody>
-                  {activityRows.map((row) => (
-                    <Tr key={row.workflowTaskId}>
-                      <Td dir="ltr">{row.poNumber || "—"}</Td>
-                      <Td dir="ltr">
-                        {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
-                      </Td>
-                      <Td>{row.taskKind || "—"}</Td>
-                      <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
+                ))}
+              </TBody>
+            </Table>
           )}
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "eng_statements" && showEngStatements ? (
+      {visitedTabsRef.current.has("eng_statements") && showEngStatements ? (
+        <Activity mode={tabMode("eng_statements")}>
         <section className="space-y-3">
           <PartyOfficeBillingStatementsPanel
             assigneeId={user.distributionAssigneeId || undefined}
             issuedOrLaterOnly
           />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "inspector_dues" && showInspectorDues ? (
+      {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
+        <Activity mode={tabMode("inspector_dues")}>
         <section className="space-y-3">
-          <p className="m-0 rounded-[10px] border border-dashed border-border-md bg-surface-2 px-[15px] py-[11px] text-[12.5px] leading-[1.7] text-text-3">
+          <p className={cn(opsTfNote, "m-0")}>
             مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
             مورّد لمعاين الميدان.
           </p>
           <ProfileInspectorDuesPanel user={user} />
         </section>
+        </Activity>
       ) : null}
 
-      {tab === "financial" && showFinancial ? (
+      {visitedTabsRef.current.has("financial") && showFinancial ? (
+        <Activity mode={tabMode("financial")}>
         <section className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
             <ProfileField
@@ -432,32 +478,31 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           ) : feeRows.length === 0 ? (
             <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[640px]">
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>أمر العمل</Th>
-                    <Th>الصافي</Th>
-                    <Th>المدفوع</Th>
-                    <Th>الحالة</Th>
-                    <Th>آخر تحديث</Th>
+            <Table framed className="min-w-[640px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>أمر العمل</Th>
+                  <Th>الصافي</Th>
+                  <Th>المدفوع</Th>
+                  <Th>الحالة</Th>
+                  <Th>آخر تحديث</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {feeRows.map((row) => (
+                  <Tr key={row.workflowTaskId}>
+                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                    <TdLtr bare>{row.netFeeSar.toLocaleString("ar-SA")}</TdLtr>
+                    <TdLtr bare>{row.paidAmountSar.toLocaleString("ar-SA")}</TdLtr>
+                    <Td>{row.billingStatusLabel}</Td>
+                    <TdLtr bare>{formatAt(row.updatedAtUtc)}</TdLtr>
                   </Tr>
-                </THead>
-                <TBody>
-                  {feeRows.map((row) => (
-                    <Tr key={row.workflowTaskId}>
-                      <Td dir="ltr">{row.poNumber || "—"}</Td>
-                      <Td dir="ltr">{row.netFeeSar.toLocaleString("ar-SA")}</Td>
-                      <Td dir="ltr">{row.paidAmountSar.toLocaleString("ar-SA")}</Td>
-                      <Td>{row.billingStatusLabel}</Td>
-                      <Td dir="ltr">{formatAt(row.updatedAtUtc)}</Td>
-                    </Tr>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
+                ))}
+              </TBody>
+            </Table>
           )}
         </section>
+        </Activity>
       ) : null}
     </div>
   );

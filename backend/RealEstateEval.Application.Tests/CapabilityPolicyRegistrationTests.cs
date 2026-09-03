@@ -30,6 +30,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadKeyData,
                      CapabilityPolicyNames.ReadValuationQueue,
                      CapabilityPolicyNames.WriteComparableBank,
+                     CapabilityPolicyNames.ReadComparableBank,
                      CapabilityPolicyNames.ListDistributionAssignees,
                  })
         {

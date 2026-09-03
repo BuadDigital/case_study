@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Button, useToast } from "@platform/ui-kit";
 import {
-  approvePartyTaskRecall,
   getPartyTaskRecall,
   partyTaskRecallStatusLabel,
+} from "@platform/app-shared/app-data/party-task-recall-model";
+import {
+  approvePartyTaskRecall,
   rejectPartyTaskRecall,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
-import { getCachedPartySubmission } from "@platform/app-shared/prototype/party-submission-api";
+} from "@platform/app-shared/app-data/party-task-recall-commands";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 
 const noteWarnClass =
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";

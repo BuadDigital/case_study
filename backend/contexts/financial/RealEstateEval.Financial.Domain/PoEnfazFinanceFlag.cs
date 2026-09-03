@@ -1,8 +1,8 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Explicit finance lifecycle flag for an Enfaz tracking row (optional property scope).
-/// Design: متوقفة / مستبعدة when centre or finance marks blocked / final exclusion.
+/// Design: suspended / excluded when centre or finance marks blocked / final exclusion.
 /// </summary>
 public class PoEnfazFinanceFlag
 {

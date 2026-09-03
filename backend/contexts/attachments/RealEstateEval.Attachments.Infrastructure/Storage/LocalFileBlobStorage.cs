@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Attachments.Application.Abstractions;
 
-namespace RealEstateEval.Infrastructure.Storage;
+namespace RealEstateEval.Attachments.Infrastructure.Storage;
 
 public sealed class LocalFileBlobStorage : IBlobStorage
 {

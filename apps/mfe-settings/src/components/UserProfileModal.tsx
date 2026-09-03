@@ -1,6 +1,6 @@
 "use client";
 
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   Button,
   ModalBody,

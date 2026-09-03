@@ -1,10 +1,17 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
-namespace RealEstateEval.Infrastructure;
+namespace RealEstateEval.Operations.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Operations bounded context (A8): survey offices,
@@ -51,6 +58,23 @@ public static class OperationsDependencyInjection
         services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();
         services.AddHostedService<OperationsTaskReminderHostedService>();
+        services.AddHostedService<PropertyKeysProjectionHostedService>();
         return services;
     }
+ /// <summary>Operations write context. Prefers a dedicated Operations connection string.
+ /// A8 physical move: lives beside <see cref="OperationsDbContext"/> in the context library.</summary>
+    public static IServiceCollection AddOperationsPersistence(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string connectionString)
+    {
+        var operationsConnection = BoundedContextConnections.Resolve(
+            configuration,
+            BoundedContextConnections.ServiceNames.Operations,
+            connectionString);
+        return services.AddBoundedContextPersistence<OperationsDbContext>(
+            configuration,
+            operationsConnection);
+    }
+
 }

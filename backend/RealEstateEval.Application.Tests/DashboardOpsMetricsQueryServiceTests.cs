@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -47,11 +51,11 @@ public class DashboardOpsMetricsQueryServiceTests
         Assert.Equal(1, thisYear.Monthly.Sum());
     }
 
-    private static ApplicationDbContext CreateDb()
+    private static CaseStudyDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<CaseStudyDbContext>()
             .UseInMemoryDatabase($"dashboard-ops-{Guid.NewGuid():N}")
             .Options;
-        return new ApplicationDbContext(options);
+        return new CaseStudyDbContext(options);
     }
 }

@@ -61,7 +61,7 @@ export function Button({
       data-action-label={actionLabel}
       data-no-action-toast={showActionToast ? undefined : true}
       className={cn(
-        "inline-flex items-center justify-center rounded-[9px] font-[inherit] whitespace-nowrap outline-none transition-colors duration-[130ms] cursor-pointer disabled:cursor-not-allowed disabled:opacity-55",
+        "inline-flex items-center justify-center rounded-[9px] font-[inherit] whitespace-nowrap outline-none transition-colors duration-[130ms] cursor-pointer enabled:active:brightness-95 disabled:cursor-not-allowed disabled:opacity-55",
         variantClasses[variant],
         sizeClasses[size],
         className,

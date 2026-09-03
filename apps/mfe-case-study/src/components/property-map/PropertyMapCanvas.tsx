@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import "./leaflet.css";
-import type { LayerKey, MapCoords } from "../../lib/prototype/map-locations-logic";
+import "leaflet/dist/leaflet.css";
+import type { LayerKey, MapCoords } from "../../lib/app-data/map-locations-logic";
+import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 
 export type PropertyMapMarker = {
   id: string;
@@ -133,6 +134,8 @@ function clusterIconHtml(kind: LayerKey, count: number): string {
   return `<div style="width:${size}px;height:${size}px;${shape};background:${colors.bg};box-shadow:0 0 0 5px ${colors.ring},0 2px 10px rgba(18,40,76,.4);display:grid;place-items:center"><span style="${inner}color:${colors.fg};font:700 ${count < 100 ? 12 : 11}px Tajawal,sans-serif">${count.toLocaleString("en-US")}</span></div>`;
 }
 
+// HTML escape via the shared helper in app-shared.
+
 function leafletNs(mod: typeof import("leaflet")): LeafletNS {
   const withDefault = mod as typeof import("leaflet") & {
     default?: typeof import("leaflet");
@@ -244,8 +247,10 @@ export function PropertyMapCanvas({
         onSelectRef.current(m.id);
       });
       if (m.title) {
+        const title = escapeHtml(m.title);
+        const subtitle = m.subtitle ? escapeHtml(m.subtitle) : "";
         marker.bindTooltip(
-          `<b>${m.title}</b>${m.subtitle ? `<br><span style="opacity:.75">${m.subtitle}</span>` : ""}`,
+          `<b>${title}</b>${subtitle ? `<br><span style="opacity:.75">${subtitle}</span>` : ""}`,
           { className: "ejada-map-tip", direction: "top", offset: [0, -10], sticky: false },
         );
       }

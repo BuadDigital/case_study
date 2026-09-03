@@ -42,6 +42,20 @@ type ClassifiedWrite =
     }
   | { type: "party-submission-submit"; taskId: string }
   | { type: "key-envelope-create"; body: unknown }
+  | {
+      type: "operations-task-patch";
+      taskId: string;
+      body: Record<string, unknown>;
+    }
+  | {
+      type: "operations-task-comment";
+      taskId: string;
+      payload: Record<string, unknown>;
+    }
+  | {
+      type: "property-court-access";
+      body: Record<string, unknown>;
+    }
   | KeyEnvelopeOutboxWrite;
 
 function requestUrl(request: ApiWriteRequest): string {
@@ -156,6 +170,37 @@ async function classifyWrite(
     };
   }
 
+  const opsPatch = path.match(/\/api\/operations-tasks\/([^/?#]+)\/?$/i);
+  if (opsPatch && request.method === "PATCH") {
+    return {
+      type: "operations-task-patch",
+      taskId: decodeURIComponent(opsPatch[1]!),
+      body: parseBody(request),
+    };
+  }
+
+  const opsComment = path.match(
+    /\/api\/operations-tasks\/([^/?#]+)\/comments\/?$/i,
+  );
+  if (opsComment && request.method === "POST") {
+    const body = parseBody(request);
+    return {
+      type: "operations-task-comment",
+      taskId: decodeURIComponent(opsComment[1]!),
+      payload: body,
+    };
+  }
+
+  if (
+    path.match(/\/api\/key-envelopes\/court-access\/?$/i) &&
+    request.method === "PUT"
+  ) {
+    return {
+      type: "property-court-access",
+      body: parseBody(request),
+    };
+  }
+
   return null;
 }
 
@@ -195,6 +240,38 @@ async function enqueueClassified(
     });
     return;
   }
+  if (classified.type === "operations-task-patch") {
+    await enqueueOutbox({
+      userId,
+      kind: "operations-task-patch",
+      targetId: classified.taskId,
+      payloadJson: JSON.stringify(classified.body),
+    });
+    return;
+  }
+  if (classified.type === "operations-task-comment") {
+    await enqueueOutbox({
+      userId,
+      kind: "operations-task-comment",
+      targetId: classified.taskId,
+      payloadJson: JSON.stringify(classified.payload),
+    });
+    return;
+  }
+  if (classified.type === "property-court-access") {
+    const targetId = String(
+      classified.body.propertyId ??
+        classified.body.deedNumber ??
+        crypto.randomUUID(),
+    );
+    await enqueueOutbox({
+      userId,
+      kind: "property-court-access",
+      targetId,
+      payloadJson: JSON.stringify(classified.body),
+    });
+    return;
+  }
   await enqueueOutbox({
     userId,
     kind: classified.type,
@@ -219,13 +296,16 @@ export function installOfflineWriteInterceptor(): () => void {
       return next();
     }
 
-    const classified = await classifyWrite(request);
+    // Classification is only needed when offline — skip it on the hot online path.
     const offline =
       typeof navigator !== "undefined" && navigator.onLine === false;
 
-    if (offline && classified) {
-      await enqueueClassified(userId, classified);
-      throw new TypeError("Failed to fetch");
+    if (offline) {
+      const classified = await classifyWrite(request);
+      if (classified) {
+        await enqueueClassified(userId, classified);
+        throw new TypeError("Failed to fetch");
+      }
     }
 
     const response = await next();

@@ -1,26 +1,26 @@
 "use client";
 
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { loadPoListRows } from "@platform/app-shared/prototype/work-orders-read";
-import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { loadPoListRows } from "@platform/app-shared/app-data/work-orders-read";
+import { loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import {
   getPoRecord,
   loadPendingBourseItems,
   loadPoRecords,
-} from "../lib/prototype/po-intake-storage";
+} from "../lib/app-data/po-intake-reads";
 import {
   loadWorkflowTasks,
   loadWorkflowTasksForQuery,
   syncTasksFromPoRecords,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 
 export { loadWorkflowTasks, loadWorkflowTasksForQuery };
 export { WORK_ORDERS_CHANGED_EVENT } from "../lib/work-orders-api-config";
-export { TASKS_CHANGED_EVENT, TASKS_STORAGE_KEY } from "../lib/prototype/tasks-storage";
+export { TASKS_CHANGED_EVENT, TASKS_STORAGE_KEY } from "../lib/app-data/tasks-storage";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
@@ -28,11 +28,14 @@ const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
 /** Loads POs from API and keeps workflow task slots in sync. */
 export async function loadPoRecordsWithTaskSync() {
-  const records = await loadPoRecords();
   // Quiet slot sync: keep primary-data task slots aligned without broadcasting
   // TASKS_CHANGED (that would re-invalidate workflow-tasks on every PO warm
   // and compete with page navigation). Mutating paths already notify.
-  const sync = await syncTasksFromPoRecords({ notify: false });
+  // Sync is independent of records — run in parallel, not sequentially (async-parallel).
+  const [records, sync] = await Promise.all([
+    loadPoRecords(),
+    syncTasksFromPoRecords({ notify: false }),
+  ]);
   if (!sync.ok) {
     throw new Error(sync.error);
   }
@@ -43,7 +46,7 @@ export function prefetchPoRecord(queryClient: QueryClient, poNumber: string): vo
   const n = poNumber.trim();
   if (!n) return;
   void queryClient.prefetchQuery({
-    queryKey: prototypeKeys.poRecord(n),
+    queryKey: appDataKeys.poRecord(n),
     queryFn: () => getPoRecord(n),
     staleTime: STALE_MS,
   });
@@ -53,7 +56,7 @@ export function useWorkflowTasksQuery(options?: { live?: boolean }) {
   const live =
     options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
-    queryKey: prototypeKeys.workflowTasks(),
+    queryKey: appDataKeys.workflowTasks(),
     queryFn: loadWorkflowTasksForQuery,
     ...queryDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
@@ -61,9 +64,9 @@ export function useWorkflowTasksQuery(options?: { live?: boolean }) {
 }
 
 export function usePoRecordsQuery() {
-  const { authReady, capabilities } = usePrototype();
+  const { authReady, capabilities } = useAppAccess();
   return useQuery({
-    queryKey: [...prototypeKeys.poRecords(), capabilities.join(",")],
+    queryKey: [...appDataKeys.poRecords(), capabilities.join(",")],
     queryFn: loadPoRecordsWithTaskSync,
     enabled: authReady,
     ...queryDefaults,
@@ -72,7 +75,7 @@ export function usePoRecordsQuery() {
 
 export function usePendingBourseItemsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.pendingBourseItems(),
+    queryKey: appDataKeys.pendingBourseItems(),
     queryFn: loadPendingBourseItems,
     ...queryDefaults,
   });
@@ -80,7 +83,7 @@ export function usePendingBourseItemsQuery() {
 
 export function usePoListRowsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.poListRows(),
+    queryKey: appDataKeys.poListRows(),
     queryFn: loadPoListRows,
     ...queryDefaults,
   });
@@ -88,7 +91,7 @@ export function usePoListRowsQuery() {
 
 export function usePropertyListItemsQuery() {
   return useQuery({
-    queryKey: prototypeKeys.propertyListItems(),
+    queryKey: appDataKeys.propertyListItems(),
     queryFn: loadPropertyListItems,
     ...queryDefaults,
   });
@@ -96,7 +99,7 @@ export function usePropertyListItemsQuery() {
 
 export function usePoRecordQuery(poNumber: string | null) {
   return useQuery({
-    queryKey: prototypeKeys.poRecord(poNumber ?? ""),
+    queryKey: appDataKeys.poRecord(poNumber ?? ""),
     queryFn: () => getPoRecord(poNumber!),
     enabled: Boolean(poNumber),
     ...queryDefaults,

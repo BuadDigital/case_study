@@ -1,7 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Rules;
+namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// Slot / child-task factory helpers and phase title rules for workflow sync.
@@ -44,15 +45,9 @@ public static class WorkflowTaskPhaseRules
         return string.IsNullOrEmpty(deed) ? "—" : deed;
     }
 
-    public static string PartyAssignedTitle(WorkflowTaskKind kind) => kind switch
-    {
-        WorkflowTaskKind.FieldInspection => "تعيين المعاين الميداني",
-        WorkflowTaskKind.EngineeringSurvey => "تعيين المكتب الهندسي",
-        WorkflowTaskKind.PropertyAppraisal => "تعيين المقيّم العقاري",
- // Legacy government-review children (no longer spawned).
-        WorkflowTaskKind.GovernmentReview => "تعيين المراجع الحكومي",
-        _ => "تعيين طرف",
-    };
+    // Was a literal copy of the shared map — two producers of the same timeline-stored title.
+    public static string PartyAssignedTitle(WorkflowTaskKind kind) =>
+        WorkflowTaskKindLabels.AssignedTitleAr(kind);
 
  /// <summary>The shell keys assignee display names by the wire kind value.</summary>
     public static string ResolveName(
@@ -65,7 +60,7 @@ public static class WorkflowTaskPhaseRules
 
     public static TaskDistributionDraftDto NormalizeDistribution(TaskDistributionDraftDto dto)
     {
- // المراجع الحكومي يُسند من مهام العمليات (court_visit) وليس من توزيع المعاملات.
+ // Government reviewer is assigned from operations tasks (court_visit), not from party distribution.
         dto.GovernmentAuditor = false;
         dto.GovernmentAuditorId = "";
         dto.OperationsCoordinatorId = "";

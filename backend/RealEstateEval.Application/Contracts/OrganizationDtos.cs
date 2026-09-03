@@ -15,7 +15,6 @@ public class OrgDepartmentDto
     public required string Title { get; init; }
     public required string Description { get; init; }
     public bool IsActive { get; init; }
-    public OrgPersonDto? Admin { get; init; }
 }
 
 public class OrganizationOverviewDto

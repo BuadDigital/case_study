@@ -1,5 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Attachments.Application.Rules;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -74,6 +77,18 @@ public class PoRoleMatrixRulesTests
             taskAssigneeId: "dist-1",
             actorUserId: "sup-1",
             actorDistributionAssigneeId: null));
+    }
+
+    [Theory]
+    [InlineData("case-specialist", true)]
+    [InlineData("section-supervisor", true)]
+    [InlineData("general-manager", true)]
+    [InlineData("cdo", true)]
+    [InlineData("field-inspector", false)]
+    [InlineData("real-estate-appraiser", false)]
+    public void CanCorrectFieldInspectionSubmission_matches_case_staff(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(role));
     }
 
     [Theory]

@@ -1,9 +1,13 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
 {
@@ -38,22 +42,8 @@ public sealed class SuspendedTransactionsService : ISuspendedTransactionsService
             RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(x.RaisedByRole),
             Specialist = PersonLabelResolver.ApplyResolved(x.Specialist, names),
             SupervisorNote = x.FinalNote,
-            SuspendedAt = ParseUtc(x.SuspendedAt) ?? ParseUtc(x.UpdatedAt) ?? DateTime.UnixEpoch,
+            SuspendedAt = IsoTimestamps.ParseUtc(x.SuspendedAt) ?? IsoTimestamps.ParseUtc(x.UpdatedAt) ?? DateTime.UnixEpoch,
             SuspendedBy = PersonLabelResolver.ApplyResolved(x.SuspendedByUserId, names),
         }).ToList();
-    }
-
-    private static DateTime? ParseUtc(string? value)
-    {
-        if (!DateTime.TryParse(
-                value,
-                null,
-                System.Globalization.DateTimeStyles.RoundtripKind,
-                out var parsed))
-        {
-            return null;
-        }
-
-        return parsed.Kind == DateTimeKind.Utc ? parsed : DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified);
     }
 }

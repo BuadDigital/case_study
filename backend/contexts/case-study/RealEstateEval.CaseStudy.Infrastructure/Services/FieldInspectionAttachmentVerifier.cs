@@ -2,8 +2,11 @@ using System.Text.Json;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
 public sealed class FieldInspectionAttachmentVerifier : IFieldInspectionAttachmentVerifier
 {
@@ -25,7 +28,7 @@ public sealed class FieldInspectionAttachmentVerifier : IFieldInspectionAttachme
             return errors;
 
         var ids = refs.Select(r => r.AttachmentId).Distinct().ToArray();
-        var rows = (await _lookup.GetRefsAsync(ids, cancellationToken))
+        var rows = (await _lookup.GetRefsAsync(ids, actor: null, cancellationToken))
             .ToDictionary(x => x.Id);
 
         var taskPrefix = $"{workflowTaskId}:";

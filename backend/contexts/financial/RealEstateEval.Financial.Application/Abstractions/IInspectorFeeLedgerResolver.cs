@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Financial.Application.Abstractions;
 
 /// <summary>
 /// Resolves ledger identity, deed targets, area, party type, and compensation flags

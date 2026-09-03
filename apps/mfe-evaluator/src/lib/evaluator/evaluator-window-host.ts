@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 
-/** جسر بين الشاشة الأم ونافذة المقيم — يُمرَّر كـ ref لتجنب props دوال في حدود Next.js. */
+/** Bridge between parent screen and appraiser window — passed as a ref to avoid function props at Next.js boundaries. */
 export type EvaluatorWindowHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;

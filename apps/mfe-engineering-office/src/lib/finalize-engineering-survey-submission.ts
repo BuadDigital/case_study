@@ -1,9 +1,7 @@
-import {
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-} from "@case-study/mfe";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
-import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-storage";
+import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-commands";
 
 export type FinalizeEngineeringSurveyResult = {
   submission: EngineeringSurveySubmission;
@@ -22,17 +20,18 @@ function isPartyFormAlreadyClosedError(error: string | undefined): boolean {
   );
 }
 
-/** يرسل الرفع المساحي + إجابات نموذج الدراسة لأخصائي دراسة الحالة. */
+/** Sends the survey + case-study form answers to the case-study specialist. */
 export async function finalizeEngineeringSurveySubmission(
   surveyTaskId: string,
+  idempotencyKey?: string,
 ): Promise<FinalizeEngineeringSurveyResult | null> {
-  const submitted = await submitEngineeringSurveySubmission(surveyTaskId);
+  const submitted = await submitEngineeringSurveySubmission(surveyTaskId, idempotencyKey);
   if (!submitted.ok) return null;
 
   let warning: string | undefined;
   const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
   // Already locked on a previous attempt — leave alone; success UI is the
-  // single host toast ("اكتمل الرفع المساحي…"), not this side-effect.
+  // single host toast ("survey completed…"), not this side-effect.
   if (partyDraft && partyDraft.status !== "submitted") {
     const saved = await savePartyCaseStudyFormDraft({
       ...partyDraft,

@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>Method participation + round-once final opinion; liquidation discount when basis allows.</summary>
 public sealed class ValuationReconciliationService(
@@ -43,7 +47,7 @@ public sealed class ValuationReconciliationService(
             assignmentType);
     }
 
- /// <summary>ق-2: الأسلوب غير المفعَّل لا يظهر صفاً ولا يدخل في الوزن.</summary>
+ /// <summary>Q-2: a disabled approach neither shows a row nor enters the weight.</summary>
     private async Task<IReadOnlyList<string>> GetEnabledKindsAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)
@@ -94,8 +98,11 @@ public sealed class ValuationReconciliationService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
+        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
+        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
- // بوابة جودة قبل الحساب لا عند الإصدار فقط: traditional deeds must clear
+ // Quality gate before calculation, not only at issuance: traditional deeds must clear
  // the deed↔nature match before the final opinion is computed (registered title skips).
         if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
         {
@@ -116,14 +123,13 @@ public sealed class ValuationReconciliationService(
             }
         }
 
+        // "Blocking happens at adoption only — partial input is kept as draft":
+        // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
         var methods = request.Methods ?? [];
         var errors = new Dictionary<string, string>();
 
-        if (string.IsNullOrWhiteSpace(request.MethodsRationale))
-            errors["methodsRationale"] = "مبرر استخدام طرق التقييم مطلوب";
-
-        if (request.FinalRoundDecimals is < 0 or > 4)
-            errors["finalRoundDecimals"] = "خانات التقريب يجب أن تكون بين 0 و 4";
+        if (request.FinalRoundDecimals is < 0 or > 6)
+            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب ١٠^ن ريال)";
 
         if (request.LiquidationDiscountPct is < 0m or > 100m)
             errors["liquidationDiscountPct"] = "نسبة الخصم يجب أن تكون بين 0 و 100";
@@ -142,11 +148,12 @@ public sealed class ValuationReconciliationService(
         else if (premiseKey is not null && !ValuePremiseKeys.IsCompatible(basisKey, premiseKey))
             errors["valuePremiseKey"] = "فرضية القيمة غير متوافقة مع أساس القيمة المختار";
 
+        // Interactive model spec: discount follows the "liquidation value" basis directly;
+        // an unset premise is auto-filled with "forced sale".
         if (string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
-            && request.LiquidationDiscountPct > 0m
             && premiseKey is null)
         {
-            errors["valuePremiseKey"] = "فرضية القيمة مطلوبة عند خصم التصفية";
+            premiseKey = ValuePremiseKeys.Forced;
         }
 
         if (request.LiquidationDiscountPct > 0m
@@ -184,17 +191,7 @@ public sealed class ValuationReconciliationService(
 
             if (m.WeightPct is < 0m or > 100m)
                 errors[$"methods[{i}].weightPct"] = "نسبة المشاركة يجب أن تكون بين 0 و 100";
-
-            if (ReconciliationRules.RequiresWeightRationale(m.WeightPct, m.IsIncluded)
-                && string.IsNullOrWhiteSpace(m.Rationale))
-            {
-                errors[$"methods[{i}].rationale"] = "مبرر نسبة المشاركة إلزامي";
-            }
         }
-
-        var includedWeights = methods.Where(m => m.IsIncluded).Select(m => m.WeightPct);
-        if (methods.Any(m => m.IsIncluded) && !ReconciliationRules.WeightsSumTo100(includedWeights))
-            errors["weightSum"] = "مجموع نسب المشاركة يجب أن يساوي 100٪";
 
         if (errors.Count > 0) return (null, errors);
 
@@ -216,9 +213,12 @@ public sealed class ValuationReconciliationService(
             db.ValuationReconciliations.Add(entity);
         }
 
-        db.ValuationReconciliationMethodLines.RemoveRange(entity.Methods);
-        entity.Methods.Clear();
-
+        // Upsert by approach kind — navigation-adds with pre-set GUIDs get marked
+        // Modified by EF's graph heuristic (UPDATE 0 rows → global 409) on re-saves.
+        var methodsByKind = entity.Methods
+            .GroupBy(x => x.ApproachKind)
+            .ToDictionary(g => g.Key, g => g.First());
+        var keepKinds = new HashSet<string>();
         for (var i = 0; i < methods.Count; i++)
         {
             var m = methods[i];
@@ -226,19 +226,34 @@ public sealed class ValuationReconciliationService(
             var value = string.Equals(kind, ValuationApproachKinds.Cost, StringComparison.Ordinal)
                 ? costValue
                 : marketValue;
+            var sortOrder = m.SortOrder != 0 ? m.SortOrder : i;
 
-            entity.Methods.Add(new ValuationReconciliationMethodLine
+            if (methodsByKind.TryGetValue(kind, out var row))
             {
-                Id = m.Id is { } id && id != Guid.Empty ? id : Guid.NewGuid(),
-                ReconciliationId = entity.Id,
-                ApproachKind = kind,
-                ApproachValue = value,
-                WeightPct = m.WeightPct,
-                Rationale = m.Rationale?.Trim() ?? "",
-                IsIncluded = m.IsIncluded,
-                SortOrder = m.SortOrder != 0 ? m.SortOrder : i,
-            });
+                row.ApproachValue = value;
+                row.WeightPct = m.WeightPct;
+                row.Rationale = m.Rationale?.Trim() ?? "";
+                row.IsIncluded = m.IsIncluded;
+                row.SortOrder = sortOrder;
+            }
+            else
+            {
+                db.ValuationReconciliationMethodLines.Add(new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.NewGuid(),
+                    ReconciliationId = entity.Id,
+                    ApproachKind = kind,
+                    ApproachValue = value,
+                    WeightPct = m.WeightPct,
+                    Rationale = m.Rationale?.Trim() ?? "",
+                    IsIncluded = m.IsIncluded,
+                    SortOrder = sortOrder,
+                });
+            }
+            keepKinds.Add(kind);
         }
+        db.ValuationReconciliationMethodLines.RemoveRange(
+            entity.Methods.Where(x => !keepKinds.Contains(x.ApproachKind)).ToList());
 
         entity.MethodsRationale = request.MethodsRationale.Trim();
         entity.FinalRoundDecimals = request.FinalRoundDecimals;
@@ -256,7 +271,7 @@ public sealed class ValuationReconciliationService(
 
         await db.SaveChangesAsync(cancellationToken);
 
- // س2 : every alert pass — rationale or acknowledgement —
+ // S2 : every alert pass — rationale or acknowledgement —
  // leaves an audit trail. Logged best-effort after the main save.
         if (!string.Equals(previousOverridesJson, entity.MethodologyAlertOverridesJson, StringComparison.Ordinal))
         {
@@ -280,7 +295,7 @@ public sealed class ValuationReconciliationService(
         IReadOnlyList<string> enabledKinds,
         AssignmentType assignmentType)
     {
- // ق-2: a disabled approach neither shows a row nor skews the suggestion split.
+ // Q-2: a disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
             ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
         var costEnabled = enabledKinds.Contains(
@@ -339,7 +354,8 @@ public sealed class ValuationReconciliationService(
         if (string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrWhiteSpace(premise))
         {
-            premise = ValuePremiseKeys.Orderly;
+            // Forced-sale discount (interactive model spec) — default premise for liquidation.
+            premise = ValuePremiseKeys.Forced;
         }
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;
         var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
@@ -359,7 +375,7 @@ public sealed class ValuationReconciliationService(
             WeightSumPct = weightSum,
             WeightsSumTo100 = includedMethods.Count == 0
                 || ReconciliationRules.WeightsSumTo100(includedMethods.Select(m => m.WeightPct)),
-            MeetsMultiMethodGate = ReconciliationRules.MeetsMultiMethodGate(includedMethods),
+            MeetsMultiMethodGate = ReconciliationRules.MeetsMultiMethodGate(enabledKinds.Count),
             WeightedValue = weighted,
             FinalRoundDecimals = decimals,
             FinalOpinionValue = final,

@@ -17,8 +17,8 @@ import {
   notifyWorkOrdersChanged,
   workOrdersApiConfig,
   apiErrorMessage,
-} from "@platform/app-shared/prototype/work-orders-api-config";
-import { notifyTasksChanged } from "@case-study/mfe/lib/prototype/tasks-storage";
+} from "@platform/app-shared/app-data/work-orders-api-config";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   getCachedFailuresList,
   getCachedPropertyFailure,
@@ -34,7 +34,7 @@ import type {
   FailureSeverity,
   FailureStatus,
   ResolveFailureInput,
-} from "./failures-types";
+} from "@platform/app-shared/failures/failures-types";
 
 export type { FailuresApiConfig };
 
@@ -115,20 +115,25 @@ export function getPropertyFailureFromCache(
 
 export async function createFailureAsync(
   input: CreateFailureInput,
+  idempotencyKey?: string,
 ): Promise<FailureRecord> {
   const config = requireFailuresApi();
 
-  const result = await apiCreateFailure(config, {
-    poNumber: input.poNumber,
-    propertyId: input.propertyId,
-    deedNumber: input.deedNumber,
-    problemTypeId: input.problemTypeId,
-    severity: input.severity,
-    raisedByRole: input.raisedByRole,
-    title: input.title,
-    internalNote: input.internalNote,
-    specialist: input.specialist,
-  });
+  const result = await apiCreateFailure(
+    config,
+    {
+      poNumber: input.poNumber,
+      propertyId: input.propertyId,
+      deedNumber: input.deedNumber,
+      problemTypeId: input.problemTypeId,
+      severity: input.severity,
+      raisedByRole: input.raisedByRole,
+      title: input.title,
+      internalNote: input.internalNote,
+      specialist: input.specialist,
+    },
+    idempotencyKey,
+  );
   if (!result.ok) {
     throw new Error(`createFailure failed: ${result.kind}`);
   }

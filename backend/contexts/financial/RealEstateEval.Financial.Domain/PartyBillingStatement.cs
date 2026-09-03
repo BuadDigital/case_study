@@ -1,14 +1,16 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
-/// Monthly payee billing document (مسير / أمر صرف) — stages 6–8.
+/// Monthly payee billing document (Payment Order) — stages 6–8.
 /// Reference format: FN-CS-YYMMDD-NNN.
 /// </summary>
 public class PartyBillingStatement
 {
     public Guid Id { get; set; }
     public string ReferenceNumber { get; set; } = "";
- /// <summary>Distribution assignee id (المستحق).</summary>
+ /// <summary>Distribution assignee id.</summary>
     public string AssigneeId { get; set; } = "";
  /// <summary><see cref="PartyBillingPayeeType"/> — vendor needs invoice match; individual does not.</summary>
     public string PayeeType { get; set; } = PartyBillingPayeeType.Vendor;
@@ -31,12 +33,12 @@ public class PartyBillingStatement
     public string? TransferReceiptRef { get; set; }
  /// <summary>Bank transfer reference — required with voucher + receipt at close.</summary>
     public string? TransferReference { get; set; }
- /// <summary>Disbursement voucher number (سند صرف) — unique.</summary>
+ /// <summary>Disbursement voucher number (Disbursement Voucher) — unique.</summary>
     public string? DisbursementVoucher { get; set; }
     public DateTime? PaidAtUtc { get; set; }
     public string? Notes { get; set; }
 
- // ---- Vendor invoice lifecycle (مكتب / منشأة) ----
+ // ---- Vendor invoice lifecycle (office/facility) ----
     public string? VendorInvoiceNumber { get; set; }
     public DateTime? VendorInvoiceDate { get; set; }
     public Guid? VendorInvoiceAttachmentId { get; set; }

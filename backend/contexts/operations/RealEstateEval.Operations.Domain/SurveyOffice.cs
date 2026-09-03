@@ -1,4 +1,4 @@
-namespace RealEstateEval.Domain;
+namespace RealEstateEval.Operations.Domain;
 
 public class SurveyOffice
 {

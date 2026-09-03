@@ -1,6 +1,81 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
+import { opsIconBoxGold, opsPanelCard } from "../lib/ops-chrome";
+import { Spinner } from "./Spinner";
 import { Tr, Td } from "./Table";
+
+/**
+ * Brand loading mark — gold soft tile + gold spinner (matches ops chrome).
+ */
+function LoadingMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        opsIconBoxGold,
+        "mx-auto grid h-12 w-12 place-items-center rounded-[12px]",
+        className,
+      )}
+      aria-hidden
+    >
+      <Spinner className="size-[1.15rem] border-[2.5px] text-gold-d" />
+    </span>
+  );
+}
+
+/**
+ * Centered middle card — used for page / MFE chunk waits.
+ * Replaces the old top-corner “جاري التحميل …” line.
+ */
+function LoadingBox({
+  className,
+  title = "جاري التحميل",
+  hint = "نجهّز الصفحة…",
+  compact = false,
+}: {
+  className?: string;
+  title?: string;
+  hint?: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn(
+        opsPanelCard,
+        "w-full text-center",
+        compact
+          ? "max-w-[16rem] px-4 py-5"
+          : "max-w-[20rem] px-6 py-8 shadow-[0_8px_28px_-12px_rgba(16,43,78,0.18)]",
+        className,
+      )}
+    >
+      <LoadingMark className={compact ? "mb-3 h-10 w-10" : "mb-4"} />
+      <div
+        className={cn(
+          "font-extrabold text-heading",
+          compact ? "text-[13px]" : "text-[14.5px]",
+        )}
+      >
+        {title}
+      </div>
+      {hint ? (
+        <div
+          className={cn(
+            "text-text-3",
+            compact ? "mt-0.5 text-[11px]" : "mt-1 text-[12px]",
+          )}
+        >
+          {hint}
+        </div>
+      ) : null}
+      <div className={cn("space-y-2", compact ? "mt-3.5" : "mt-5")}>
+        <Skeleton className="mx-auto h-1.5 w-[78%]" />
+        <Skeleton className="mx-auto h-1.5 w-[52%]" />
+      </div>
+    </div>
+  );
+}
 
 export function Skeleton({
   className,
@@ -18,27 +93,29 @@ export function Skeleton({
   );
 }
 
-/** Full panel / page block while content loads */
+/** Full panel / page block while content loads — centered brand card. */
 export function PanelSkeleton({ className }: { className?: string }) {
   return (
     <div
-      className={cn("space-y-3 p-6", className)}
+      className={cn(
+        "grid min-h-[min(50vh,28rem)] w-full place-items-center p-6",
+        className,
+      )}
       aria-busy
-      aria-label="جاري التحميل"
     >
-      <Skeleton className="h-4 w-48" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-10 w-36" />
+      <LoadingBox />
     </div>
   );
 }
 
-/** Compact inline block (forms, tabs, side panels) */
+/** Compact inline block (forms, tabs, side panels). */
 export function InlineLoadingSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("space-y-2", className)} aria-busy aria-label="جاري التحميل">
-      <Skeleton className="h-3 w-32" />
-      <Skeleton className="h-16 w-full" />
+    <div
+      className={cn("grid w-full place-items-center py-3", className)}
+      aria-busy
+    >
+      <LoadingBox compact hint="لحظات…" />
     </div>
   );
 }

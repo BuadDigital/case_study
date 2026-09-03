@@ -2,18 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { filterTasksForCaseStudy } from "@platform/app-shared/prototype/active-transactions";
+import dynamic from "next/dynamic";
+import { filterTasksForCaseStudy } from "@platform/app-shared/app-data/active-transactions";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
-import { RedistributePartiesModal } from "../components/distribution/RedistributePartiesModal";
+import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
+const RedistributePartiesModal = dynamic(
+  () =>
+    import("../components/distribution/RedistributePartiesModal").then(
+      (m) => m.RedistributePartiesModal,
+    ),
+  { ssr: false },
+);
 import {
   redistributeTaskParties,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import {
   activeCaseStudyPath,
   caseStudyTaskPath,
@@ -40,9 +47,11 @@ export function ActiveCaseStudyView() {
     pageTitle: "دراسة حالة العقارات",
     hidePageTitle: true,
     tableLayout: "case-study",
+    disableRowOpen: true,
     emptyLine: "لا توجد معاملات في مرحلة دراسة الحالة.",
     emptyHint:
-      "تظهر هنا بعد تأكيد توزيع المعاملة وإرسال المهام للأطراف. اضغط الصف لفتح دراسة الحالة.",
+      "تظهر هنا بعد تأكيد توزيع المعاملة وإرسال المهام للأطراف. افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮.",
+    tableHint: "افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮.",
     panelId: "case-study-panel",
     getBasePath: activeCaseStudyPath,
     getTaskPath: caseStudyTaskPath,
@@ -66,24 +75,28 @@ export function ActiveCaseStudyView() {
   return (
     <>
       <ActiveTransactionQueueView config={config} />
-      <RedistributePartiesModal
-        open={redistributeTask !== null}
-        task={redistributeTask}
-        onClose={() => setRedistributeTask(null)}
-        onConfirm={async (distribution, reason) => {
-          if (!redistributeTask) return;
-          const result = await redistributeTaskParties(
-            redistributeTask.id,
-            distribution,
-            reason,
-          );
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-          showToast("تم تحديث إسناد الأطراف", "success");
-        }}
-      />
+      {redistributeTask !== null ? (
+        <RedistributePartiesModal
+          open={redistributeTask !== null}
+          task={redistributeTask}
+          onClose={() => setRedistributeTask(null)}
+          onConfirm={async (distribution, reason, idempotencyKey) => {
+            if (!redistributeTask) return;
+            const result = await redistributeTaskParties(
+              redistributeTask.id,
+              distribution,
+              reason,
+              [],
+              idempotencyKey,
+            );
+            if (!result.ok) {
+              showToast(result.error, "error");
+              throw new Error(result.error);
+            }
+            showToast("تم تحديث إسناد الأطراف", "success");
+          }}
+        />
+      ) : null}
     </>
   );
 }

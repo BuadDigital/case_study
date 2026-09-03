@@ -1,5 +1,5 @@
-/** شعار إجادة الرسمي — مطابق لـ docs/new look.
- *  `onDark` = أبيض + ذهبي (الشريط الجانبي)، `onLight` = كحلي + ذهبي (تسجيل الدخول).
+/** Official Ejada mark — matches docs/new look.
+ *  `onDark` = white + gold (sidebar), `onLight` = navy + gold (login).
  */
 export function EjadaLogo({
   className,

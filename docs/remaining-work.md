@@ -22,19 +22,80 @@ Status values: **todo** · **in progress** · **blocked** · **deferred** · **d
 
 
 
-## Remaining work at a glance — updated 2026-08-19 (evening)
+## Remaining work at a glance — updated 2026-08-28 (night)
 
-Everything below is current after the A8 extraction marathon (2026-08-18/19).
-`dev` **is fully pushed to GitHub (through** `9cdbeffd`**);** `main` **is untouched — nothing has
-deployed to production yet.** Landed after the marathon, same day:
+**TL;DR after the 2026-08-28 marathon:** the architecture split is COMPLETE (A8+A10+cleanup —
+legacy context deleted, global Domain retired, namespaces aligned to `RealEstateEval.<Ctx>.*`),
+the dev system reset works again, and the v2 product queue مقفل (ق-8+ق-6+ق-9 shipped؛
+قرارا 23/25 كذلك — محلياً غير مرتكب). What's left is Omar-side (deploy decision, metrics
+window, validators ownership), and product-side (E6 policy, ورشة الترقيم, ورشة الرجوع/التجميد
+الحقلي لِق-9). Quality tracks F6/B2: closed 2026-08-28. `dev` head: `471407ae`.
+
+- **Namespace/cleanup wave (late 2026-08-28):** global `RealEstateEval.Domain` deleted
+  (entities distributed to ctx Domains, pure statics to `Shared.Contracts`), all 464
+  context files renamed to `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}`,
+  all eight snapshots resynced with EMPTY temp migrations. Suite counts since:
+  Architecture 54 / Application 936 / Integration 214 / Container 39.
+- **Feature wave (late 2026-08-28):** ق-8 هندسة المبررات + ق-6 الإصدار ثنائي المرحلة +
+  ق-9 آلة الحالات — details in §4.
+
+**2026-08-27/28 wave (on `dev`, NOT yet on production — `main`/production remain `d880b070`
+from 2026-08-20, so the deploy decision is back on the table):**
+
+- **A8 physical DbContext moves: complete.** All nine contexts' DbContexts, migrations
+  (100% git renames), design-time factories, and persistence registrations now live in
+  `backend/contexts/<ctx>/…Infrastructure/Data`. Shared model mappings (`*Model.cs`, audit,
+  messaging) stay global beside the frozen legacy context until it is archived (they are the
+  drift guard both contexts compile against). New leaf `backend/tools/DevSeed` carries
+  DataSeeder + the identity maintenance provider + AddIdentitySeedStores. Verified per slice:
+  Architecture 56 / Application 919 / Integration 214 / Container 38, and `DbMigrate -- list`
+  zero-pending on all nine streams.
+- **Hard-stay unwind: done.** Recipient-resolver EF wiring moved to tests; the ops hold path
+  was already interface-only (`ICaseStudyLookup`/`IFailureService` + `AddRemote*` — the old
+  note predated the 2026-08-20 ctor cleanup); all typed cross-context convenience ctors
+  deleted (tests compose explicitly); `UserRegistrationService` lost its optional
+  `PlatformDbContext` leg (seed graph registers `IAuditLogAppend` → `PlatformAuditLogAppend`).
+- **Guardrail drift repaired:** the 2026-08-23..27 hand-written valuation migrations had
+  desynced both the valuation and frozen-legacy snapshots (every container `MigrateAsync`
+  failed on EF10's PendingModelChangesWarning) and `PropertyComparableLinks` had no ownership
+  row. Snapshots resynced (temp-migration-then-delete; no migration files added), row added,
+  and `property-groups/by-property` no longer 204s misses (TS client reads the body).
+  **Lesson:** hand-written migrations must regenerate both snapshots and the ownership row —
+  the suites only gate `main`.
+- **A10 legacy-context archival (2026-08-28, late):** `ApplicationDbContext` + its 166-file
+  migration stream **deleted** (tag `a10-legacy-stream-final` is the archive). Fresh
+  databases provision from the nine context streams alone (container-proven); the app test
+  suite runs on owner contexts; `*Model.cs` mappings moved into their context libraries.
+  See §1 for what this unblocks.
+- **A8 retirement wave (2026-08-28, after the dev-reset restore):** reporting/work-order wire
+  contracts + shared enums → `Shared.Contracts` (Domain now references only that leaf);
+  case-study EF services → `CaseStudy.Infrastructure`; all owner-to-owner HTTP clients +
+  `AddRemote*` → new `shared/RealEstateEval.Shared.RemoteClients`; permission catalog/role
+  resolver → `Identity.Infrastructure`. Global assemblies are down to the legacy-context
+  compile surface + genuinely multi-context plumbing (see §1).
+- **Evaluator frontend wave (2026-08-27):** valuation workspace decomposed into memoized
+  draft-owning sections (shell 5,097 → ~2,000 lines), scoped reloads/bundle trims/react-query
+  tab caches, popup-`noopener` fix, plus a reusable Playwright smoke driver
+  (`e2e/.smoke-evaluator.mjs`, 12/13 checks incl. preview click).
+
+Everything below this block predates the wave and is updated in place where an item moved.
+
+Landed after the marathon, now **on production**:
 
 - **Identity auth-scheme fix** (`8021ac44`): `AddIdentity()` was overriding the JWT default
 scheme with its login cookie, so every `[Authorize]` endpoint on the Identity host — incl.
 `/api/permissions`, which feeds the shell role chip — returned 401 and the UI fell back to
-the hardcoded «مدير إدارة التقييم العقاري» persona under real users. Latent pre-existing
-bug, **would have shipped to production** — make sure the next `main` deploy includes it.
-Fix: bearer re-asserted after `AddIdentityStores`; verified all four suites green + live
-`/api/permissions` 200.
+the hardcoded «مدير إدارة التقييم العقاري» persona under real users. Fix: bearer re-asserted
+after `AddIdentityStores`.
+- **B7 / F16 leftover / evaluator report tab** (`28d181f5`): Case Study services off
+`CaseStudyDbContext`, broader controller-body Postgres coverage, evaluator valuation-report
+tab + org-settings overlay.
+- **Deploy plumbing** (`8130f805`, `fe1fd253`, `d880b070`): UTF-8 Arabic in Case Study
+sources, `ui-kit` COPY in the shell image, `Directory.Build.props` in API images (shared
+`Program`/`Main`), deploy loads `/app/.env` when GitHub does not define compose secrets.
+
+Still local-only (dev box, not production):
+
 - **Dev upstream URLs → 127.0.0.1** (`9cdbeffd`): on this Windows box, `localhost` resolves
 to `::1` first and the firewall silently drops it → every fresh service-to-service
 connection stalled ~2s (keys page = 2 hops = ~4s after idle). Dev-only files; production
@@ -42,37 +103,88 @@ compose uses container names and is unaffected. **Needs one stack restart to tak
 (options are cached at startup) — if keys/إدارة المفاتيح still feels slow on first load,
 the stack predates this fix.
 
-**1. Needs a supervised session (A8 tail — the only substantial engineering left in the split):**
+**1. A8 tail — status after the 2026-08-27/28 session:**
 
-- **Physical DbContext + model + migrations moves** into the context libraries. The catalog
-blocker is removed (de-typing enabler, 2026-08-19). Order: pilot **Attachments** (smallest pin
-surface) → **Failures/Operations/Financial** (first extract a dev-seeding leaf project for
-`DataSeeder`) → **Valuation** → **Platform/Identity/CaseStudy** last (their hard-stay services
-must be unwound first). Rules: every `Migrations/` file must be a 100% rename in
-`git diff --find-renames`; never run `dotnet ef migrations add` during a move; `DbMigrate -- list`
-against a scratch copy must show all-applied/zero-pending after each move.
-- **Hard-stay unwind** (unlocks the rest of Case Study): ~~delete the `new CaseStudyLookup(...)` /
-`new CaseStudyCommands(...)` convenience ctors in the 9 financial/operations infra files~~ **done 2026-08-20**, move
-`NotificationRecipientResolver.ForContexts` off `new WorkflowAssigneeLookup`, give Operations an
-HTTP path instead of registering `PropertyAccessHoldService`, and move the reporting-shared DTO
-files (`WorkOrderDtos`/`WorkflowTaskDtos`/`FieldInspectionWorkspaceDtos`/`ReportingDtos`) to
-`Shared.Contracts`.
-- **Namespace alignment + global Domain/Application/Infrastructure retirement** — after the two
-items above.
+- ~~**Physical DbContext + migrations moves**~~ **done 2026-08-28** for all nine contexts (see
+at-a-glance). One deliberate deviation from the original wording: the `*Model.cs` mapping
+files stay global — the frozen legacy context maps every schema through them, and a single
+definition is what stops the two mappings drifting. They move only when the legacy context is
+archived (A10).
+- ~~**Hard-stay unwind**~~ **done 2026-08-28** (see at-a-glance).
+- ~~**Reporting-DTO contract question**~~ **resolved 2026-08-28**: the shared wire enums
+(`WorkOrderEnums`, `WorkflowTaskEnums`, `Enums`, `ValuationRequestStatus(es)`,
+`DomainWireStatuses`) and the reporting/work-order DTO files (`WorkOrderDtos`,
+`ReportingDtos`, `WorkflowTaskDtos`, `FieldInspectionWorkspaceDtos`, `PrototypeModulesDtos`,
+`PagedResultDto`) moved into `Shared.Contracts` with their declared namespaces unchanged.
+`Shared.Contracts` keeps zero project references; Domain now references only that leaf
+(`WorkOrderListStatus.Resolve` was rewritten scalar-shaped to drop its entity parameter).
+- **Pre-retirement relocation wave — done 2026-08-28:** case-study EF services
+(`CaseStudyLookup`/`CaseStudyCommands`/`CaseStudyPropertyPoNumberLookup`/`WorkflowTaskMapper`)
+moved into `CaseStudy.Infrastructure`; the owner-to-owner HTTP clients + `UpstreamServicesOptions`
++ `AddRemote*` registrations moved into the new `shared/RealEstateEval.Shared.RemoteClients`
+library (same namespaces, zero using churn; recorded in `boundary-baseline.json`);
+`PlatformPermissionCatalog`/`PrototypeRoleResolver` moved into `Identity.Infrastructure`.
+Deliberately still global: `PropertyAccessHoldService` (registered by two contexts),
+`DbContextTransaction` + `ICaseStudyRepository` (multi-context data plumbing),
+`NotificationRecipientResolver` (five consumer contexts), `ServiceHealthEndpoints` (needs
+global data/integration internals), messaging/outbox plumbing (Messaging stays global by
+design), and everything the frozen legacy context compiles against.
+- ~~**A10 legacy-context archival**~~ **done 2026-08-28 (Omar: "go to A10"):**
+`ApplicationDbContext`, its 166-file migration stream, and the legacy design-time factory
+are **deleted**. The last commit carrying them is tagged **`a10-legacy-stream-final`** —
+that tag is the recovery path for migrating any restored pre-split database (A7 restore
+recipe: check out the tag, run DbMigrate with the unsuffixed env var). DbMigrate and all
+container tests now provision fresh databases from the nine context streams alone (each
+stream's `Ensure*TablesForStandalone` baseline — proven by
+`Context_streams_provision_an_empty_database_and_leave_nothing_pending`). The application
+test suite runs entirely on owner contexts (support fixtures expose all nine over one
+shared in-memory store). Each context's `*Model.cs` mapping moved into its context library;
+`AuditModel` (3 consumer contexts) and Messaging stay global. Guardrails updated: the union
+of the nine owner models is now the schema/ownership authority (with built-in
+shared-mapping drift checks), the legacy-token ban is total, and the legacy-only tests
+(snapshot drift, cutover freeze) are retired — suite is 54 tests.
+- ~~**Cosmetic cleanup**~~ **done 2026-08-28 (Omar: "finish the remaining cosmetic
+cleanup"):**
+  - **Entities distributed:** every remaining global Domain file moved to its owner —
+    case-study (18 files incl. WorkOrder/WorkflowTask/CaseStudyForm), financial (ledger +
+    pricing), valuation (rules + ArabicAmountWords), identity (RefreshToken/OrgRoles);
+    messaging entities beside `MessagingModel`; pure cross-context statics
+    (AuditLog, SupervisingDepartments, WorkflowStatuses, DeedKindRules, InspectionScopeKeys,
+    MarketAdjustmentFactorKeys, ComparableProximityRules, BuildingStructureKinds) into
+    `Shared.Contracts`.
+  - **`RealEstateEval.Domain` project retired** (deleted; guardrail
+    `TheGlobalDomainProjectStaysRetired` keeps it gone; ctx Domain libraries may reference
+    only the contracts leaf — enforced).
+  - **Namespace alignment done:** all 464 context-library files now declare
+    `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}` (RootNamespaces aligned);
+    consumers fixed by a compiler-driven codemod. All eight context migration snapshots
+    regenerated via empty temp migrations — **zero relational changes**, proving the
+    rename was purely cosmetic. Ctx Infrastructure projects carry the EF Design package
+    (PrivateAssets) so `dotnet ef` can resync snapshots in place.
+  - **Deliberate end state:** `RealEstateEval.Application` and
+    `RealEstateEval.Infrastructure` remain as the two explicitly-shared assemblies
+    (cross-service abstractions/contracts/rules; connection/persistence plumbing,
+    messaging + outbox + `MessagingDbContext`, audit mapping, `ApplicationUser`, shared
+    services). Renaming or dissolving them would churn every Dockerfile/CI path and needs
+    per-abstraction ownership decisions — not cosmetic; schedule separately if ever wanted.
+- **Production-side items still open:** the metrics window (§3) and the leftover
+`realestate_eval_dev` database decision (untouched; do not drop — with the code stream
+archived, the git tag + that leftover are the only restore pair).
 
 **2. Waiting on Omar:**
 
-- ~~Push authorization~~ **done 2026-08-19** — `dev` pushed as sole author (standing rule: no
-AI co-author trailers in this repo). **Next decision: deploy** — merging `dev` → `main`
-auto-deploys production with no test gate. Smoke-test first (failure lifecycle, valuation
-report preview, a notification, role chip shows real roles), then merge when ready; the
-identity auth-scheme fix should ship with it.
-- **Dev system reset redesign** (explicitly parked "for later"): the old reset walked the god
-context; `DELETE /api/system/data` returns 501. The settings UI
-(`apps/mfe-settings/src/lib/system-maintenance-api.ts`) and `apps/shell/scripts/clear-all-pos.mjs`
-still call it. A working reset must fan out per owner service (or a dedicated maintenance job);
-also wire `IAuthSessionService`/`IAuditLogWriter` into `CreateIdentityMaintenanceProvider` when
-redesigning, or `DeleteAllRegisteredAsync` fails there.
+- ~~Push authorization~~ **done 2026-08-19**. ~~Deploy~~ **done 2026-08-20** (`d880b070`).
+**Deploy decision pending again (2026-08-28):** `dev` now carries the evaluator frontend wave
+plus the complete A8 physical-move wave; merging `dev` → `main` auto-deploys. The valuation
+report preview was smoke-clicked on dev (and its popup bug fixed); after deploy, re-smoke:
+failure lifecycle, report preview, a notification, real role chip.
+- ~~Dev system reset redesign~~ **done 2026-08-28**: `DELETE /api/system/data` works again in
+Development. `DevSystemMaintenanceService` (DevSeed leaf) truncates every owner context's
+mapped tables (audit schema preserved), purges registered non-org users through
+`DevSeedProvider.CreateResetProvider` (which wires `IAuthSessionService` +
+`IUserRegistrationService` + `IAuditLogAppend`), then re-runs the idempotent demo seed.
+Registered only under `IsDevelopment()` in the Case Study `ServiceModule`; any other
+environment still gets 501. Covered by `SystemResetTests` in the container suite.
 - **E6** — billing negotiation deadline notifications: product policy undefined.
 - **7 party-billing/Enfaz validators** — financially-shaped but bound by the case-study host;
 decide which slice owns them before moving.
@@ -80,15 +192,42 @@ decide which slice owns them before moving.
 **3. Gated on production/ops (not a decision, an observation window):**
 
 - p95 / connection-pool / outbox metrics capture (section A gates block).
-- Retiring the idle `realestate_eval_dev` leftover — needs the metrics gate **plus** a backup
-decision; it is the A7 restore source. Do **not** drop it, do **not** point the unsuffixed
-`REAL_ESTATE_EVAL_PG_CONNECTION_STRING` at it, do **not** run `copy-*-data.sh` /
-`drop-leftover-shared.sh` casually.
-- B2 (more aggregates) and F6 (broader controller-body coverage) — open-ended, no gate.
+- ~~Retiring the idle `realestate_eval_dev` leftover~~ **done 2026-08-28 (Omar's decision):**
+backed up first (`pg_dump -Fc`, verified — 529 TOC entries / 97 tables) then dropped along
+with the empty unsuffixed `realestate_eval` shell; both lived on the docker Postgres `:5433`
+(the host `:5432` cluster was already clean). The docker instance now holds exactly the nine
+owner databases. **Pre-split restore story:** git tag `a10-legacy-stream-final` (code) +
+`C:\workspace\pg-backups\realestate_eval_dev-final-20260828.dump` (data).
+- ~~B2 (more aggregates)~~ **done 2026-08-28** (transition-bearing aggregates closed, data sheets deliberately stay). ~~F6 (broader controller-body coverage)~~ **done 2026-08-28** — coverage current with every shipped endpoint surface (container suite 41); new endpoints must land with their controller-body test.
 
 **4. Product queue (separate track, governed by** `docs/ejadah-cursor-package-v2`**):**
-ق-8 هندسة المبررات ← ق-6 الإصدار ثنائي المرحلة ← ق-9 آلة الحالات + المكتب الهندسي ← أصول
-المنشأة المشتركة (قرار 25) ← منظومة النصوص (قرار 23).
+- ~~ق-8 هندسة المبررات~~ **done 2026-08-28** (`b982c3df`): مبرر على مستوى العامل
+  (`ValuationAdjustmentFactorRationale` + هجرة رفع النصوص المكررة) + تخصيص لمقارن بعينه في
+  المصفوفة + حد أدنى ١٠ أحرف (`JustificationRules`) يسري على مبررات التسويات والأوزان
+  وفكّ تنبيهات «بمبرر» (`IsResolved` يرفض الصوري).
+- ~~ق-6 الإصدار ثنائي المرحلة~~ **done 2026-08-28** (`471407ae`): `ValuationReportIssuance`
+  — نسخة الإيداع تجمّد التقرير (لقطة JSON + PDF بخانة رمز فارغة، حارس تجميد على ٩ مسارات
+  كتابة) ثم تسجيل شهادة قيمة ورمزها يولّد النسخة النهائية من نفس اللقطة حرفياً (صفحة
+  الشهادة مرفقة + الرمز في الميتا وحقله) ويقفل طلب التقييم. لوحة كاملة في المراجعة
+  النهائية؛ الرمز والشهادة وحدهما خارج التجميد.
+- ~~ق-9 آلة الحالات + المكتب الهندسي~~ **done 2026-08-28** (نفس الدفعة): `TransactionStateRules`
+  (شبكة توزيع واعتماديات — المعاين عقدة المفتاح، الأخصائي ينتظر الجميع، ختام بخطوتين:
+  شهادة الإيداع ثم رفع إنفاذ الشامل بأعمدة `EnfazHandover*` وقيد زمني) + شريط حالة
+  المعاملة أعلى تفاصيل العقار يعرض «من ينتظر من» وزر الرفع عند الجاهزية. دور المكتب
+  الهندسي كان قائماً سلفاً (engineering-office + EngineeringSurvey + mfe-engineering-office).
+  المتبقي للورشة التكميلية: حالات الرجوع/إعادة الفتح ونطاق التجميد الحقلي.
+- ~~منظومة النصوص بنسخة الحزمة (قرار 23)~~ **done 2026-08-28:** سجل نسخ `ValuationReportTextPackages` (platform، صفوف غير قابلة للتعديل) — الكتلة المُدارة = الحقول الستة في إعدادات المنشأة؛ أي تعديل ولو في فقرة يصدر حزمة كاملة جديدة (نسخة N+1، الحفظ المطابق لا يبدّل)، والشُحنة الافتراضية نسخة 1 ضمنياً. الرقم يسافر في `OrganizationValuationReportSettingsDto.TextPackageVersion` ويُختم في التقرير (سطر «النصوص المعيارية — الحزمة نسخة N» في الحمولة والـPDF وحقول الأقسام)؛ قيد العمل يتبنى الأحدث تلقائياً والمُصدَر مجمّد على نصوصه بلقطة ق-6 — لا أثر رجعي. شارة النسخة ظاهرة في تبويب تقرير التقييم بالإعدادات. لا نسخ إنجليزية (23-3).
+- ~~أصول المنشأة المشتركة (قرار 25)~~ **جُردت وأُغلقت فجواتها 2026-08-28 (غير مرتكب):**
+  الطبقة (أ) قائمة سلفاً في إعدادات المنشأة — بيانات المنشأة وتواريخها (رخصة المزاولة
+  إصدار/انتهاء)، المقيّم المعتمد وسجل المقيمين (ترخيص + عضوية بفئتها، و«سريان العضوية» =
+  `MembershipExpiresAt` تحرسه `ValuerCredentialRules`)، والختم/التوقيع/الورق الرسمي في الهوية
+  البصرية. تقرير التقييم (واجهة + PDF) وتقرير دراسة الحالة كانا يستهلكانها. الفجوات المغلقة
+  في مسارَي دراسة الحالة: (1) معتمد تقرير دراسة الحالة كان ثابتاً نصياً — صار
+  `caseStudyApproverName()` من المقيّم المعتمد بالإعدادات؛ (2) خطاب التفويض الداخلي كان
+  يطبع اسم المنشأة/السجل التجاري/الورق الرسمي/الختم/التوقيع من ثوابت — صار يقرأ الخمسة من
+  كاش الإعدادات (الثوابت بقيت افتراضياتٍ عند برود الكاش فقط)، وحُذفت الصادرات الثابتة
+  `CASE_STUDY_{STAMP,SIGNATURE}_IMAGE` لمنع الالتفاف على المصدر المركزي. كيانا «الخطابات»
+  و«تقارير دراسة الحالة» كوحدات مرقّمة يبقيان على ورشة الترقيم (نص القرار نفسه يحيل إليها).
 
 Local run reminders: nine dedicated DBs + DbMigrate (the Failures schema is **not** migrated by
 CS startup) + the upstream APIs Case Study calls. Run `npm run dev:api:run` from a human
@@ -128,9 +267,9 @@ Source of truth: `[architecture-split-plan.md](architecture-split-plan.md)`.
 | A5  | Phase 1 step 5 — Messaging (per-producer outbox / per-consumer inbox shape)                      | **done**                                | `MessagingDbContext` + empty baseline; Platform notifications/push/outbox/inbox on Messaging; Valuation still maps own outbox (D5); Case Study dispatcher claims via legacy App against same table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | A6  | Phase 1 exit — every API stops registering legacy `AddPersistence` write path                    | **done**                                | Hosts use `AddHostSharedInfrastructure` + owned persistence; no service `ServiceModule` calls `AddPersistence`. Closeout: `[backend/plan/A6_CLOSEOUT.md](../backend/plan/A6_CLOSEOUT.md)`. Transitional `ApplicationDbContext` shims in Infrastructure remain until A9                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | A7  | ADR 0006 deploy migrator vs restored production-like DB (incl. `xmin` SQL)                       | **done**                                | Idle leftover `realestate_eval_dev` on host Postgres 17.9 `:5432` (apps no longer use it after the Phase 4 dedicated-DB split). Copied to `realestate_eval_a7_scratch`; `DbMigrate` applied legacy then bounded-context streams including `20260729104156_AddOptimisticConcurrencyTokens`. `xmin` is DDL-neutral (no user column; system `xmin` readable). Source leftover left untouched.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| A8  | Phase 2 — split Domain / Application / Infrastructure into per-context libraries                 | **in progress — extraction phase done** | **All eight extraction slices landed** (Failures 2026-08-18 as the template, then Attachments, Valuation, Platform, Operations, Financial, Identity, Case Study by 2026-08-19), each verified against all four suites (Architecture 48 / Application 839 / Integration 207 / Container 26). **Messaging + Reporting closed as no-op slices** (Messaging is D5 shared plumbing registered by 2–5 hosts; Reporting lives entirely in its host with zero DB access — `ReportingHasNoDirectDatabaseAccess` guardrail); the platform-only notification handlers folded into the Platform slice. **Migration-catalog de-typing enabler landed 2026-08-19**: `ApplyOrder`/`HistorySchemaByContextName`/`ServiceNameFor` keyed by context class name; hosts enumerate `BoundedContextStreamRegistration` markers; DbMigrate + the container-test stream migrator hold concrete lists that fail loudly on drift; no migration file touched. **Template facts** (apply to every slice): `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}` under `backend/contexts/<ctx>/`, RootNamespace stays global (zero using churn), reference direction `Ctx.Infrastructure → {Ctx.Application, global Infrastructure}` and `global Infrastructure → Ctx.Application → {Ctx.Domain, global Application}` (acyclic), DbContexts+migrations still global, HTTP clients consumed by other hosts stay global, context validators register on their host via `AddValidatorsFromAssemblyContaining` (the global FV scan anchors on `PasswordLoginRequestValidator`, which must stay global), context DI in `<Ctx>DependencyInjection.cs` (SourceFacts parses those), every Dockerfile copies `backend/contexts/`. Per-slice detail lives in the eight commit messages on `dev` (2026-08-18/19). **Remaining (supervised session — see at-a-glance §1):** physical DbContext+migrations moves (pilot Attachments → Failures/Ops/Financial with a DataSeeder leaf → Valuation → Platform/Identity/CaseStudy last); the hard-stay unwind (`CaseStudyLookup`/`CaseStudyCommands` ctor `new`s in 9 financial/ops files, `NotificationRecipientResolver.ForContexts`, `PropertyAccessHoldService` on the ops host, `WorkflowTaskMapper` in DataSeeder, reporting DTOs → Shared.Contracts, shared-kernel rules `PoRoleMatrixRules`/`DocumentaryWorkflowRules`/`PartyTaskSubmissionPayloadRules` stay by design, 7 party-billing/Enfaz validators pending ownership decision); then namespace alignment and global project retirement |
+| A8  | Phase 2 — split Domain / Application / Infrastructure into per-context libraries                 | **done 2026-08-28**                     | Complete end to end: the eight extraction slices (2026-08-18/19), the physical DbContext+migrations moves for all nine contexts, the hard-stay unwind, the retirement wave (`Shared.Contracts` wire DTOs/enums, `Shared.RemoteClients`, ctx service moves), the global `RealEstateEval.Domain` retirement (entities → ctx Domains, pure statics → contracts leaf), and namespace alignment — all 464 context files declare `RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}` with RootNamespaces aligned and all eight stream snapshots resynced via EMPTY temp migrations. `RealEstateEval.Application`/`RealEstateEval.Infrastructure` remain as the two deliberately-shared assemblies (dissolving them = ownership design + Dockerfile churn, out of scope by decision). History: the per-slice detail lives in the `dev` commit messages 2026-08-18 → 2026-08-28. |
 | A9  | Phase 3 — remove cross-boundary DB access (owner APIs + events/projections)                      | **done**                                | Completed 2026-08-18. All cross-boundary readers/writers are on owner HTTP APIs: Platform audit append, Failures HTTP, Operations HTTP, Financial HTTP (`AddRemoteFinancial` / `/api/financial-dispatch`), Case Study HTTP for Operations/Financial (`ICaseStudyLookup` / `ICaseStudyCommands`), **Valuation** (one-call `valuation-property-context` read; `RemotePropertyPoNumberLookup`), and **Failures** (reads via `ICaseStudyLookup` incl. `po-numbers-by-assignee`; workflow/deed/timeline side effects server-side on `ICaseStudyFailureCommands` — the old flow was already non-atomic across contexts, so HTTP changed no guarantees; hold block/unblock returns `{TaskId, AssigneeId}` so Failures still notifies). No host outside Case Study opens `CaseStudyDbContext`; D10 Identity reads closed the same day. The only second connections left are the Messaging outboxes — **D5 by design, not residual**. No compose `depends_on` cycles. Owner + D6 inventory gates closed (see ops-gates block); the p95/connection/outbox metrics capture is evidence for **Phase 5**, tracked there                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| A10 | Phase 4–5 — schema/DB physical separation                                                        | **in progress**                         | Owner databases wired; compose apps no longer use the leftover. **Phase 5 shims removed 2026-08-18:** `ApplicationDbContext` is no longer registered by any runtime composition — `DataSeeder` was ported to the six owner contexts (also fixing a latent bug: the seed would have written to the wrong database in the split world), the seed/maintenance provider is bounded-context-only, `AddPersistence`/`AddLegacyApplicationPersistence` are deleted, the Messaging notification/outbox/inbox fallbacks are collapsed to hard `MessagingDbContext` dependencies (dual App constructors deleted), the dead `SystemMaintenanceService` is gone, and the reseed tool runs on Identity infrastructure alone. `ApplicationDbContext` survives only as the frozen legacy-stream artifact (DbMigrate optional legacy apply, design-time factory, EF-model guardrails) and as InMemory test fixtures. Remaining: retire the idle `realestate_eval_dev` leftover (A7 restore source — needs the metrics gate + a backup decision), then archive the legacy stream + context                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| A10 | Phase 4–5 — schema/DB physical separation                                                        | **done 2026-08-28**                     | Legacy `ApplicationDbContext` + its 166-file migration stream **deleted** (archive tag `a10-legacy-stream-final`). DbMigrate and the container suite provision fresh databases from the nine context streams alone (`Ensure*TablesForStandalone`, container-proven); app tests run on owner contexts; `*Model.cs` mappings live in their context libraries. Leftover `realestate_eval_dev` + the empty unsuffixed `realestate_eval` **backed up then dropped 2026-08-28** (Omar's decision) — the docker `:5433` instance holds exactly the nine owner databases. Pre-split restore pair: the git tag (code) + `C:\workspace\pg-backups\realestate_eval_dev-final-20260828.dump` (data). Only follow-up: the production metrics window (observational, post-deploy). |
 
 
 **Operations gates (updated 2026-08-18):**
@@ -151,7 +290,7 @@ Source of truth: `[architecture-split-plan.md](architecture-split-plan.md)`.
 | #   | Item                                             | Status       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | --- | ------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B1  | Stringly-typed statuses/kinds on hot paths       | **done**     | Fee work / case-study form / gov-review visit / property-key workflow+gate / property-list row states / timeline tones / financial revenue-row chips. Prototype-only UI strings (queue card tones, HTML aliases like `removed`) remain                                                                                                                                                                                                                                                                  |
-| B2  | Anemic domain (public setters, thin aggregates)  | **partial**  | `PropertyFailure` + fee `ApplyBillingStatus`; `KeyEnvelope` create/handoff/assignment; `WorkOrder` create/lifecycle; more aggregates still open                                                                                                                                                                                                                                                                                                                                                         |
+| B2  | Anemic domain (public setters, thin aggregates)  | **done 2026-08-28**  | Every transition-bearing aggregate now owns its transitions: `PropertyFailure`, fee `ApplyBillingStatus`, `KeyEnvelope` create/handoff/assignment, `WorkOrder` create/lifecycle, `ValuationRequest` (create/submit/impediment), **`PartyTaskSubmission` full lifecycle** (CreateDraft/SaveDraft/Submit/ReturnForCorrection/Accept — return voids acceptance, accept keeps the first stamp), **`ComparableProperty.ApplyQualityTags`** (ق-3 tag ⇒ substantive rationale per ق-8-2, stamped and cleared with the tags), **`ValuationReportIssuance`** (IssueDeposit/RegisterCertificate/IssueFinal — final requires a registered code). Deliberate end state: pure data-entry sheets (`WorkOrderProperty`, `CaseStudyForm`, inspection workspace, cost/recon rows) stay property bags with their invariants in Rules classes + services — converting them is churn without invariants to protect. |
 | B3  | God services (~1k+ line Infrastructure services) | **done**     | InspectorFee / WorkOrder / WorkflowTask / OperationsTask façades + collaborators                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | B4  | Domain depends on ASP.NET Identity               | **done**     | Types moved to Infrastructure; Domain has zero package refs                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | B5  | CQRS / MediatR                                   | **deferred** | Identity + Phase 1 are done. Wait until A9 lookup/host wiring settles; a first MediatR slice would collide with DI, ServiceModule, and HTTP lookups still in motion                                                                                                                                                                                                                                                                                                                                     |
@@ -238,7 +377,7 @@ Source of truth: `[architecture-split-plan.md](architecture-split-plan.md)`.
 | F3  | Production observability Compose              | **done**    | OTel → Jaeger/Prometheus/Grafana; Fluent Bit → ES                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | F4  | Compose healthchecks + Docker image hygiene   | **done**    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | F5  | Testcontainers (Postgres / Rabbit / Redis)    | **done**    | Opt-out via `REAL_ESTATE_EVAL_CONTAINER_TESTS=0`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| F6  | Broader controller-body coverage              | **partial** | Lists + create-400s (work-orders, ops, key-envelopes, failures) plus A9 dispatch Postgres tests (2026-08-18). **2026-08-20:** clients/PO drafts/work-orders/inspector-fee dispatch; factory re-points `IFailureLookup`. **Later 2026-08-20:** Platform catalogs + court create 400 + notification roundtrip; Valuation queue/comparables/recalls; Reporting dashboard (stubbed upstreams, plus `/v1` alias); Identity users; survey offices; failure catalog + dispatch gates; Case Study workspaces/ops-metrics/inspection-limits 404; financial court-visit and key-receipt lists. Still open-ended (not every controller action). |
+| F6  | Broader controller-body coverage              | **done 2026-08-28** | Lists + create-400s (work-orders, ops, key-envelopes, failures) plus A9 dispatch Postgres tests (2026-08-18). **2026-08-20:** clients/PO drafts/work-orders/inspector-fee dispatch; factory re-points `IFailureLookup`. **Later 2026-08-20:** Platform catalogs + court create 400 + notification roundtrip; Valuation queue/comparables/recalls; Reporting dashboard (stubbed upstreams, plus `/v1` alias); Identity users; survey offices; failure catalog + dispatch gates; Case Study workspaces/ops-metrics/inspection-limits 404; financial court-visit and key-receipt lists. Still open-ended (not every controller action). **2026-08-28:** ق-8 factor-rationale (min-length 400 + save roundtrip), ق-6 issuance (draft state, deposit refused pre-gates as clean 400, pdf 404) — the pass surfaced and fixed a real fragility: gate evaluation upstream failures now degrade the state GET gracefully and return a clear 400 on deposit instead of 500 — and ق-9 transaction-state guards (404 + handover refusal). Container suite 41. Coverage is now current with every shipped endpoint surface. |
 | F7  | Coverlet in CI                                | **done**    | Soft floor documented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | F8  | Readiness logging + deeper dependency checks  | **done**    | `/ready` logs DB failures. Soft Rabbit + Redis TCP probes (`Readiness:CheckRabbit` / `CheckRedis`) report in the body and never flip HTTP 503. Blob storage is not probed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | F9  | Serilog / structured JSON correlation         | **done**    | Built-in JSON console (not Serilog) outside Dev with `CorrelationId` + `Service` scopes and trace/span ids. Validated `X-Correlation-Id`; gateway overwrites on proxy; `HttpClient` forwards on owner lookups                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -268,16 +407,14 @@ Do **not** delete empty baselines or Sync no-ops once they exist in a stream peo
 1. **Smoke-test + push** — restart the stack (human terminal), verify failure lifecycle /
   valuation report preview / a notification, then Omar authorizes the push of the ~23 `dev`
    commits (push to `main` auto-deploys production).
-2. **Supervised A8 tail session** — physical context moves (pilot Attachments) and the
-  hard-stay unwind, per the at-a-glance §1 plan. Never touch migration file contents; renames
-   only.
+2. ~~Supervised A8 tail session~~ **done 2026-08-28** — physical moves + hard-stay unwind landed (at-a-glance §1); only the gated namespace/global-retirement remainder is open.
 3. **Production metrics window** — capture p95 / connection-pool / outbox metrics (section A
-  gates block); afterwards decide the `realestate_eval_dev` retirement (backup first — it is
-   the A7 restore source).
-4. **Product queue** — ق-8 ← ق-6 ← ق-9 per the v2 package, any time; it does not conflict
-  with the A8 tail.
-5. **Open-ended / parallel:** F6 controller-body coverage, B2 aggregates, dev-reset redesign
-  (when Omar un-parks it), E6 after product defines deadline/escalation rules.
+  gates block). (~~`realestate_eval_dev` retirement~~ done 2026-08-28 — backed up then
+   dropped; restore pair = tag + `C:\workspace\pg-backups\`.)
+4. ~~**Product queue** — ق-8 ← ق-6 ← ق-9 ← قرار 23 ← قرار 25~~ **done 2026-08-28**
+  (§4؛ قرارا 23/25 محلياً غير مرتكب بأمر عمر).
+5. **Open-ended / parallel:** ~~F6 controller-body coverage~~ ~~B2 aggregates~~ both done 2026-08-28 (~~dev-reset
+  redesign~~ done 2026-08-28), E6 after product defines deadline/escalation rules.
 6. **Standing "do nots":** no `ApplicationDbContext` on request hosts; no cross-context EF
   opens (Case Study must not open Failures/Operations/Financial contexts and vice versa); no
    new compose `depends_on` cycles; no shared-DB connection reintroduction.

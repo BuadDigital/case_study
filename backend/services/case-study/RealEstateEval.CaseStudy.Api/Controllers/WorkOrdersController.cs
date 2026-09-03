@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -89,8 +90,7 @@ public class WorkOrdersController : ControllerBase
             excludePo,
             cancellationToken,
             excludePropertyId);
-        if (hit is null) return NotFound();
-        return Ok(hit);
+        return this.OkOrEmpty(hit);
     }
 
  /// <summary>
@@ -300,6 +300,39 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             propertyId,
             request.LocationMapUrl,
+            cancellationToken);
+        if (errors is { Count: > 0 })
+            return this.FieldErrorsProblem(errors);
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
+ /// <summary>
+ /// Narrow write for specialist valuation extras (ESG / search scope / print keys / Infath deposit).
+ /// Allowed for case staff (manage work orders) and party submitters.
+ /// </summary>
+    [HttpPut("{poNumber}/properties/{propertyId:guid}/specialist-report-extras")]
+    public async Task<ActionResult<WorkOrderPropertyDto>> UpdateSpecialistReportExtras(
+        string poNumber,
+        Guid propertyId,
+        [FromBody] UpdateSpecialistReportExtrasRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        var canWrite =
+            PoRoleMatrixRules.CanEditProperty(perms?.PrototypeRole)
+            || DocumentaryWorkflowRules.RoleCanSetLocationMapUrl(perms?.PrototypeRole)
+            || string.Equals(perms?.PrototypeRole, "real-estate-appraiser", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(perms?.PrototypeRole, "report-preparer", StringComparison.OrdinalIgnoreCase);
+        if (!canWrite)
+            return Forbid();
+
+        var (result, errors) = await _workOrders.UpdateSpecialistReportExtrasAsync(
+            poNumber,
+            propertyId,
+            request.SpecialistReportExtrasJson,
             cancellationToken);
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);

@@ -8,8 +8,11 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public sealed class AuthSessionService(
     UserManager<ApplicationUser> userManager,
@@ -67,7 +70,10 @@ public sealed class AuthSessionService(
         if (string.IsNullOrWhiteSpace(username))
             return null;
 
-        var user = await userManager.FindByNameAsync(username.Trim());
+        var user = await LoginUserResolver.FindAsync(
+            userManager,
+            username,
+            cancellationToken);
         return user is null
             ? null
             : await IssueAsync(user, cancellationToken);

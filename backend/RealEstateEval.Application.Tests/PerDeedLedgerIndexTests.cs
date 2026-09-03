@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -21,17 +22,17 @@ public class PerDeedLedgerIndexTests
         var deed3 = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
-        db.WorkOrders.Add(new WorkOrder
+        db.CaseStudy.WorkOrders.Add(new WorkOrder
         {
             Id = workOrderId,
             PoNumber = "PO-SPLIT",
             CreatedAtUtc = now,
         });
-        db.WorkOrderProperties.AddRange(
+        db.CaseStudy.WorkOrderProperties.AddRange(
             new WorkOrderProperty { Id = deed1, WorkOrderId = workOrderId, Area = "100" },
             new WorkOrderProperty { Id = deed2, WorkOrderId = workOrderId, Area = "200" },
             new WorkOrderProperty { Id = deed3, WorkOrderId = workOrderId, Area = "300" });
-        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        db.Financial.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
             Category = PartyFeePricingCategories.FieldInspector,
@@ -51,12 +52,13 @@ public class PerDeedLedgerIndexTests
             propertyId: null,
             id: Guid.NewGuid(),
             status: WorkflowTaskStatus.Completed);
-        db.WorkflowTasks.Add(poLevel);
-        await db.SaveChangesAsync();
+        db.CaseStudy.WorkflowTasks.Add(poLevel);
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([poLevel]);
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).EnsureLedgersForTasksAsync([poLevel]);
 
-        var rows = await db.InspectorFeeLedgers.AsNoTracking()
+        var rows = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .OrderBy(r => r.DeedId)
             .ToListAsync();
         Assert.Equal(3, rows.Count);
@@ -75,19 +77,19 @@ public class PerDeedLedgerIndexTests
         var deedId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
-        db.WorkOrders.Add(new WorkOrder
+        db.CaseStudy.WorkOrders.Add(new WorkOrder
         {
             Id = workOrderId,
             PoNumber = "PO-DEED",
             CreatedAtUtc = now,
         });
-        db.WorkOrderProperties.Add(new WorkOrderProperty
+        db.CaseStudy.WorkOrderProperties.Add(new WorkOrderProperty
         {
             Id = deedId,
             WorkOrderId = workOrderId,
             Area = "500",
         });
-        db.PartyFeePricingTables.Add(new PartyFeePricingTable
+        db.Financial.PartyFeePricingTables.Add(new PartyFeePricingTable
         {
             Id = Guid.NewGuid(),
             Category = PartyFeePricingCategories.FieldInspector,
@@ -118,12 +120,13 @@ public class PerDeedLedgerIndexTests
             propertyId: deedId,
             id: Guid.NewGuid(),
             status: WorkflowTaskStatus.Completed);
-        db.WorkflowTasks.AddRange(task1, task2);
-        await db.SaveChangesAsync();
+        db.CaseStudy.WorkflowTasks.AddRange(task1, task2);
+        await db.CaseStudy.SaveChangesAsync();
+        await db.Financial.SaveChangesAsync();
 
-        await TestInspectorFeeServiceFactory.Create(db).EnsureLedgersForTasksAsync([task1, task2]);
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).EnsureLedgersForTasksAsync([task1, task2]);
 
-        var rows = await db.InspectorFeeLedgers.AsNoTracking().ToListAsync();
+        var rows = await db.Financial.InspectorFeeLedgers.AsNoTracking().ToListAsync();
         Assert.Single(rows);
         Assert.Equal(workOrderId, rows[0].TransactionId);
         Assert.Equal(deedId, rows[0].DeedId);
@@ -137,7 +140,7 @@ public class PerDeedLedgerIndexTests
     public async Task Unique_triple_is_modeled_on_the_ledger()
     {
         await using var db = CreateDb();
-        var entity = db.Model.FindEntityType(typeof(InspectorFeeLedger));
+        var entity = db.Financial.Model.FindEntityType(typeof(InspectorFeeLedger));
         Assert.NotNull(entity);
         Assert.Equal(nameof(InspectorFeeLedger.Id), entity!.FindPrimaryKey()?.Properties.Single().Name);
 
@@ -155,8 +158,6 @@ public class PerDeedLedgerIndexTests
             unique.Properties.Select(p => p.Name).ToArray());
     }
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase($"per-deed-{Guid.NewGuid():N}")
-            .Options);
+    private static TestDatabases.ContextSet CreateDb() =>
+        TestDatabases.Create("per-deed");
 }

@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.13.0" />
     <PackageReference Include="Testcontainers.Redis" Version="4.13.0" />
@@ -20,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\tools\DevSeed\RealEstateEval.DevSeed.csproj" />
     <ProjectReference Include="..\contexts\identity\RealEstateEval.Identity.Infrastructure\RealEstateEval.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\services\attachments\RealEstateEval.Attachments.Api\RealEstateEval.Attachments.Api.csproj" Aliases="AttachmentsApi" />
     <ProjectReference Include="..\services\case-study\RealEstateEval.CaseStudy.Api\RealEstateEval.CaseStudy.Api.csproj" Aliases="CaseStudyApi" />

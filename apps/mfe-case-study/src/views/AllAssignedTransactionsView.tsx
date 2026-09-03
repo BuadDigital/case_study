@@ -2,20 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isPartyWorkflowRole } from "@platform/app-shared/prototype/party-task-pages";
+import dynamic from "next/dynamic";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pages";
 import { PanelSkeleton, useToast } from "@platform/ui-kit";
 import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
-import { filterOpenAssignedTransactions } from "../lib/prototype/assigned-transactions-filter";
-import { isTaskOnSuspendedProperty } from "../lib/prototype/suspended-transactions-storage";
+import { filterOpenAssignedTransactions } from "../lib/app-data/assigned-transactions-filter";
+import { isTaskOnSuspendedProperty } from "../lib/app-data/suspended-transactions-model";
 import {
   reopenCompletedTransaction,
   type WorkflowTask,
-} from "../lib/prototype/tasks-storage";
+} from "../lib/app-data/tasks-storage";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
@@ -29,8 +30,14 @@ import {
 import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
-} from "../lib/prototype/all-transactions-queue";
-import { ReopenCompletedTransactionModal } from "../components/transactions/ReopenCompletedTransactionModal";
+} from "../lib/app-data/all-transactions-queue";
+const ReopenCompletedTransactionModal = dynamic(
+  () =>
+    import("../components/transactions/ReopenCompletedTransactionModal").then(
+      (m) => m.ReopenCompletedTransactionModal,
+    ),
+  { ssr: false },
+);
 
 const PARTY_QUEUE_REFRESH_EVENTS = [
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -43,7 +50,7 @@ function assignedListedTasks(tasks: WorkflowTask[]): WorkflowTask[] {
 }
 
 export function AllAssignedTransactionsView() {
-  const { role, viewerDisplayName } = usePrototype();
+  const { role, viewerDisplayName } = useAppAccess();
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacyTask = searchParams.get("task");
@@ -81,8 +88,7 @@ export function AllAssignedTransactionsView() {
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
         : "تظهر هنا المعاملات المسندة لك — صف واحد لكل صك مع آخر مرحلة وصل إليها (البيانات الأولية حتى الإكمال).",
       panelId: "all-assigned-transactions-panel",
-      tableHint:
-        "اضغط الصف لفتح المعاملة في مرحلتها الحالية — اضغط نفس الصف مرة أخرى للإغلاق.",
+      tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: allTransactionsPath,
@@ -154,24 +160,26 @@ export function AllAssignedTransactionsView() {
               )
         }
       />
-      <ReopenCompletedTransactionModal
-        open={reopenTask !== null}
-        task={reopenTask}
-        deedLabel={reopenDeedLabel}
-        onClose={() => {
-          setReopenTask(null);
-          setReopenDeedLabel("");
-        }}
-        onConfirm={async (reason) => {
-          if (!reopenTask) return;
-          const result = await reopenCompletedTransaction(reopenTask.id, reason);
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-          showToast("تمت إعادة فتح المعاملة", "success");
-        }}
-      />
+      {reopenTask !== null ? (
+        <ReopenCompletedTransactionModal
+          open={reopenTask !== null}
+          task={reopenTask}
+          deedLabel={reopenDeedLabel}
+          onClose={() => {
+            setReopenTask(null);
+            setReopenDeedLabel("");
+          }}
+          onConfirm={async (reason) => {
+            if (!reopenTask) return;
+            const result = await reopenCompletedTransaction(reopenTask.id, reason);
+            if (!result.ok) {
+              showToast(result.error, "error");
+              return;
+            }
+            showToast("تمت إعادة فتح المعاملة", "success");
+          }}
+        />
+      ) : null}
     </>
   );
 }

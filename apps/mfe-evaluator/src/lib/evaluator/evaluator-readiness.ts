@@ -1,13 +1,12 @@
-import type { WorkflowTask } from "@case-study/mfe";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
-import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
-import { getPartyTaskRecall } from "@platform/app-shared/prototype/party-task-recall-storage";
+import { loadEvaluatorSubmission } from "./evaluator-submission-model";
+import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
 
 /** Case Study.html `valReadiness` buckets. */
 export type AppraiserReadiness =
   | "new"
   | "wait_inspection"
-  | "wait_specialist"
   | "ready";
 
 export function findSiblingSurveyTask(
@@ -56,10 +55,16 @@ export function appraiserNeedsSurvey(
   return Boolean(findSiblingSurveyTask(appraisalTask, tasks));
 }
 
+/**
+ * @deprecated Specialist no longer gates appraisal start via inspection accept.
+ * Kept for callers that still surface the server stamp; always prefer
+ * {@link appraiserInspectionDone} for readiness.
+ */
 export function appraiserInspectionAccepted(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): boolean {
+  void tasks;
   if (typeof appraisalTask.fieldInspectionAccepted === "boolean") {
     return appraisalTask.fieldInspectionAccepted;
   }
@@ -70,15 +75,12 @@ export function appraiserReadiness(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): AppraiserReadiness {
-  const inspected = appraiserInspectionDone(appraisalTask, tasks);
-  const accepted = appraiserInspectionAccepted(appraisalTask, tasks);
-  if (accepted) return "ready";
-  if (inspected) return "wait_specialist";
+  if (appraiserInspectionDone(appraisalTask, tasks)) return "ready";
   return "wait_inspection";
 }
 
 /**
- * Case Study.html queue status pill for تقييم العقار.
+ * Case Study.html queue status pill for property valuation.
  * className maps to StatusPill colors (same vocabulary as eng survey).
  */
 export function appraiserQueueStatusBadge(
@@ -105,9 +107,6 @@ export function appraiserQueueStatusBadge(
   }
   const rd = appraiserReadiness(task, tasks);
   if (rd === "ready") return { label: "جاهزة للتقييم", className: "b-gold" };
-  if (rd === "wait_specialist") {
-    return { label: "بانتظار اعتماد بيانات معاينة العقار", className: "b-prog" };
-  }
   if (rd === "wait_inspection") {
     return { label: "تراقب تقدم الأطراف", className: "b-new" };
   }

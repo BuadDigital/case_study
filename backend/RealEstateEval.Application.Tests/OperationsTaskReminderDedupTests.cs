@@ -1,15 +1,23 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Auto reminders repeat on the work-hours cadence, but the activity feed must not fill up with
-/// duplicate "تذكير بمهمة" rows: while the previous reminder notification is still unread, a
+/// duplicate "task reminder" rows: while the previous reminder notification is still unread, a
 /// re-emit refreshes it in place (stable SourceEvent + the unread source-event index probe in
 /// NotificationService). A fresh row may only appear after the user read the previous one.
 /// </summary>
@@ -103,7 +111,7 @@ public sealed class OperationsTaskReminderDedupTests
     {
         var name = $"ops-reminder-dedup-{Guid.NewGuid():N}";
         var root = new Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot();
-        var app = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+        var identity = new IdentityDbContext(new DbContextOptionsBuilder<IdentityDbContext>()
             .UseInMemoryDatabase(name, root)
             .ConfigureWarnings(w =>
                 w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
@@ -116,7 +124,7 @@ public sealed class OperationsTaskReminderDedupTests
         var messaging = TestMessagingContexts.CreateMessaging();
         var notifications = TestMessagingContexts.CreateNotificationService(messaging);
 
-        app.UserProfiles.Add(new UserProfile
+        identity.UserProfiles.Add(new UserProfile
         {
             UserId = AssigneeUserId,
             DistributionAssigneeId = "a1",
@@ -125,12 +133,15 @@ public sealed class OperationsTaskReminderDedupTests
             Status = UserStatus.Active,
             CreatedAtUtc = DateTime.UtcNow,
         });
-        await app.SaveChangesAsync();
+        await identity.SaveChangesAsync();
 
         var time = new FakeTime(SundayMorningUtc);
-        var financial = TestInspectorFeeServiceFactory.ShareFinancial(app);
-        var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
-        var notifier = new OperationsTaskNotifier(ops, identity, notifications);
+        var financial = TestInspectorFeeServiceFactory.ShareFinancial(identity);
+        var notifier = new OperationsTaskNotifier(
+            ops,
+            new IdentityDirectory(identity),
+            notifications,
+            new UserLabelLookup(identity));
         var charges = new CourtVisitFeeChargeService(financial);
         var commands = new OperationsTaskCommands(
             ops,
@@ -140,7 +151,7 @@ public sealed class OperationsTaskReminderDedupTests
                 ops,
                 charges,
                 new IdentityDirectory(identity),
-                new PartyFeePricingService(financial)),
+                TestPricing.Create(financial)),
             time);
 
         return new Fixture(ops, messaging, notifications, notifier, commands, time);

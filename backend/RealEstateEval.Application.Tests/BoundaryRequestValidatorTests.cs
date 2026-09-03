@@ -1,6 +1,17 @@
 ﻿using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Validation;
 using RealEstateEval.Domain;
+using RealEstateEval.Attachments.Application.Validation;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Validation;
+using RealEstateEval.Operations.Application.Validation;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Failures.Application.Validation;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Platform.Application.Validation;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.Financial.Application.Validation;
 
 namespace RealEstateEval.Application.Tests;
 

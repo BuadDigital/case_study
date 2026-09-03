@@ -2,7 +2,7 @@ import { fetchReportingDashboard } from "@platform/api-client";
 import {
   requirePrototypeModulesApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/prototype-modules-api-config";
+} from "@platform/app-shared/app-data/modules-api-config";
 
 export async function loadReportingDashboard() {
   const config = requirePrototypeModulesApiConfig();

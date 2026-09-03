@@ -1,9 +1,8 @@
 namespace RealEstateEval.Application.Abstractions;
 
 /// <summary>
-/// Pure-read lookup of display labels for users and system tokens.
-/// Implementation today loads Identity tables via residual <c>ApplicationDbContext</c>
-/// ; can rebind this interface to Identity without changing call sites.
+/// Pure-read lookup of display labels for users and system tokens. Implemented over the
+/// Identity context (in-process) or the Identity HTTP directory (cross-service).
 /// </summary>
 public interface IUserLabelLookup
 {

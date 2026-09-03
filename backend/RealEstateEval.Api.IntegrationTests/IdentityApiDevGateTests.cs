@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Identity.Application.Abstractions;
 
 namespace RealEstateEval.Api.IntegrationTests;
 

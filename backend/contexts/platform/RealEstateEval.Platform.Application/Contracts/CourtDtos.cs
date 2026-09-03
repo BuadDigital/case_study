@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Platform.Application.Contracts;
 
 public class CourtDto
 {

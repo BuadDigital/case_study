@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -94,20 +94,21 @@ function ToastIcon({ tone }: { tone: ToastTone }) {
   }
   if (tone === "progress") {
     return (
-      <svg
-        width="17"
-        height="17"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--gold-2)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-        className="shrink-0 animate-spin"
-      >
-        <path d="M12 3a9 9 0 1 0 9 9" />
-      </svg>
+      <span className="inline-flex shrink-0 animate-spin" aria-hidden>
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--gold-2)"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3a9 9 0 1 0 9 9" />
+        </svg>
+      </span>
     );
   }
   if (tone === "info") {
@@ -235,7 +236,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-6 right-6 z-[400] flex max-w-[min(420px,calc(100vw-3rem))] flex-col items-end gap-2"
+        className="pointer-events-none fixed bottom-6 right-6 z-[var(--z-toast)] flex max-w-[min(420px,calc(100vw-3rem))] flex-col items-end gap-2"
         aria-live="polite"
         aria-relevant="additions"
       >
@@ -265,7 +266,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export function useToast(): ToastContextValue {
-  const context = useContext(ToastContext);
+  const context = use(ToastContext);
   if (!context) {
     throw new Error("useToast must be used within ToastProvider");
   }
@@ -273,5 +274,5 @@ export function useToast(): ToastContextValue {
 }
 
 export function useOptionalToast(): ToastContextValue | null {
-  return useContext(ToastContext);
+  return use(ToastContext);
 }

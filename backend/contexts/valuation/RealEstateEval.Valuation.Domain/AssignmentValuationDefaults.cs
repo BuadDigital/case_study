@@ -1,8 +1,10 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// الغرض من التقييم وأساس القيمة يُشتقّان من التصنيف الأساسي لأمر العمل
-/// (خاص → بيع / قيمة سوقية، وإلا → مزاد تصفية / قيمة تصفية).
+/// Valuation purpose, value basis, and value premise are derived from the work-order primary classification
+/// (private → sale / market value / current use; otherwise → liquidation auction / liquidation value / orderly liquidation).
 /// </summary>
 public static class AssignmentValuationDefaults
 {
@@ -24,4 +26,12 @@ public static class AssignmentValuationDefaults
 
     public static string BasisOfValueLabelAr(AssignmentType type) =>
         BasisOfValueKeys.LabelAr(BasisOfValueKey(type));
+
+    public static string PremiseKey(AssignmentType type) =>
+        string.Equals(BasisOfValueKey(type), BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
+            ? ValuePremiseKeys.Orderly
+            : ValuePremiseKeys.CurrentUse;
+
+    public static string PremiseLabelAr(AssignmentType type) =>
+        ValuePremiseKeys.LabelAr(PremiseKey(type));
 }

@@ -1,39 +1,41 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import {
   Button,
   Card,
   CardBody,
+  cn,
   EmptyState,
   Note,
   OperationalPanel,
   QueueTableHint,
+  queueTableRowActiveClassName,
+  queueTableRowClassName,
+  RowMoreMenu,
   SkeletonTableRows,
   Table,
+  TableFrame,
   TBody,
   Td,
   TdAction,
+  TdLtr,
   Th,
   ThAction,
   THead,
   Tr,
-  cn,
-  queueTableRowActiveClassName,
-  queueTableRowClassName,
-  queueTableWrapClassName,
   useToast,
 } from "@platform/ui-kit";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { ROLES } from "@platform/app-shared/prototype/constants";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
+import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   submitBourseObstruction,
   validateBourseObstructionReason,
-} from "../lib/prototype/bourse-obstruction";
-import type { BourseDeedVitality } from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/bourse-obstruction";
+import type { BourseDeedVitality } from "../lib/app-data/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { RowMoreMenu } from "@case-study/mfe/components/ui/RowMoreMenu";
 import {
   emptyProperty,
   formatDateAr,
@@ -41,12 +43,10 @@ import {
   formatPoDisplay,
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   type PoPropertyIntake,
-} from "../lib/prototype/po-intake-data";
-import {
-  completePropertyBourse,
-  findPropertyInRecord,
-} from "../lib/prototype/po-intake-storage";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+} from "../lib/app-data/po-intake-data";
+import { findPropertyInRecord } from "../lib/app-data/po-intake-reads";
+import { completePropertyBourse } from "../lib/app-data/po-intake-commands";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   usePendingBourseItemsQuery,
@@ -65,21 +65,21 @@ import {
 import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
-import { filterActionablePendingBourseItems } from "../lib/prototype/pending-bourse-queue";
+import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import { ActiveQueueMobileCards } from "../components/queue/ActiveQueueMobileCards";
-import type { ActiveQueueMobileCardItem } from "../components/queue/ActiveQueueMobileCards";
-import { buildBourseQueueRowMoreItems } from "../lib/prototype/active-queue-row-menu";
-import { caseStudyTaskForProperty } from "../lib/prototype/tasks-storage";
+import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
+import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
+import { buildBourseQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
+import { caseStudyTaskForProperty } from "../lib/app-data/tasks-storage";
 import { useRouter } from "next/navigation";
-import { poPropertyPath } from "../lib/po-routes";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 
 export function BourseInquiryView() {
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const router = useRouter();
   const queryClient = useQueryClient();
   const {
@@ -121,16 +121,39 @@ export function BourseInquiryView() {
   );
 
   const refresh = useCallback(async () => {
+    // Invalidating pendingBourseItems refetches the active inquiry on its own —
+    // the extra refetch was a duplicate identical GET.
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
+        queryKey: appDataKeys.pendingBourseItems(),
       }),
       queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
+        queryKey: appDataKeys.workflowTasks(),
       }),
     ]);
-    await refetch();
-  }, [queryClient, refetch]);
+  }, [queryClient]);
+
+  const pendingBourseComplete = useRef<{
+    poNumber: string;
+    propertyId: string;
+    property: PoPropertyIntake;
+  } | null>(null);
+
+  const { execute: executeBourseComplete, loading: bourseCompleting } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingBourseComplete.current;
+        if (!pending) {
+          throw new Error("لا توجد بيانات بورصة للإرسال");
+        }
+        return completePropertyBourse(
+          pending.poNumber,
+          pending.propertyId,
+          pending.property,
+          idempotencyKey,
+        );
+      }, []),
+    );
 
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
@@ -234,13 +257,13 @@ export function BourseInquiryView() {
             specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
           });
           closeForm();
-          await queryClient.invalidateQueries({
-            queryKey: prototypeKeys.failures(),
-          });
-          await queryClient.invalidateQueries({
-            queryKey: prototypeKeys.workflowTasks(),
-          });
-          await refresh();
+          // refresh() invalidates workflowTasks on its own — keep invalidating failures in parallel with it.
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: appDataKeys.failures(),
+            }),
+            refresh(),
+          ]);
         } finally {
           setSaving(false);
         }
@@ -260,12 +283,15 @@ export function BourseInquiryView() {
       setSaving(true);
       setFormError(null);
       try {
-        const result = await completePropertyBourse(
-          selected.poNumber,
-          selected.propertyId,
-          { ...property, deedStatus: "فعال" },
-        );
+        pendingBourseComplete.current = {
+          poNumber: selected.poNumber,
+          propertyId: selected.propertyId,
+          property: { ...property, deedStatus: "فعال" },
+        };
+        const outcome = await executeBourseComplete();
+        if (outcome.status === "skipped") return;
 
+        const result = outcome.value;
         if (!result.ok) {
           setFormError(result.error);
           if (result.errors) setFieldErrors(result.errors);
@@ -371,7 +397,7 @@ export function BourseInquiryView() {
                   emptyMessage="لا توجد صكوك بانتظار البورصة"
                 />
               </div>
-              <div className={cn(queueTableWrapClassName, "hidden lg:block")}>
+              <TableFrame className="hidden lg:block">
                 <Table pending={queuePending}>
                   <THead>
                     <Tr hoverable={false}>
@@ -446,11 +472,11 @@ export function BourseInquiryView() {
                               loading={isItemOpening(item)}
                             />
                           </Td>
-                          <Td className="text-text-2">
+                          <TdLtr className="text-text-2">
                             {item.deedDate?.trim()
                               ? formatDateAr(item.deedDate)
                               : "—"}
-                          </Td>
+                          </TdLtr>
                           <Td className="text-text-2">
                             <PoNumber
                               value={item.poNumber}
@@ -458,20 +484,18 @@ export function BourseInquiryView() {
                               className="!text-[12.5px] !font-semibold text-text-2"
                             />
                           </Td>
-                          <Td className="text-text-2">
-                            <span
-                              dir="ltr"
-                              className="inline-block text-[12.5px] font-semibold text-primary"
-                            >
-                              {item.requestNumber?.trim() || "—"}
-                            </span>
-                          </Td>
+                          <TdLtr
+                            className="text-text-2"
+                            valueClassName="text-[12.5px] font-semibold text-primary"
+                          >
+                            {item.requestNumber?.trim() || "—"}
+                          </TdLtr>
                           <Td className="text-text-2">
                             {item.ownerName || "—"}
                           </Td>
-                          <Td className="text-text-2">
+                          <TdLtr className="text-text-2">
                             {formatDateAr(item.dueDateAt)}
-                          </Td>
+                          </TdLtr>
                           <TdAction>
                             <RowMoreMenu items={moreItems} />
                           </TdAction>
@@ -481,10 +505,10 @@ export function BourseInquiryView() {
                     )}
                   </TBody>
                 </Table>
-              </div>
-              <QueueTableHint className="hidden border-t border-border bg-surface-2 lg:block">
-                اضغط الصف لفتح نموذج إكمال البورصة.
-              </QueueTableHint>
+                <QueueTableHint className="border-t border-border bg-surface-2">
+                  اضغط الصف لفتح نموذج إكمال البورصة.
+                </QueueTableHint>
+              </TableFrame>
             </>
           )}
         </OperationalPanel>
@@ -531,8 +555,8 @@ export function BourseInquiryView() {
                 <Button
                   type="button"
                   variant="primary"
-                  loading={saving}
-                  disabled={saving}
+                  loading={saving || bourseCompleting}
+                  disabled={saving || bourseCompleting}
                   showActionToast={false}
                   className="min-h-10 leading-tight"
                   actionLabel={

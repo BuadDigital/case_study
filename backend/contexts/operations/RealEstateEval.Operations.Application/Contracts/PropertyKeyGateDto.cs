@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Operations.Domain;
 
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Operations.Application.Contracts;
 
 /// <summary>Projection of envelope/court-access state into legacy queue gates.</summary>
 public sealed class PropertyKeyGateDto

@@ -1,18 +1,31 @@
 "use client";
 
-import type { PartyAppraisalExtensions } from "@case-study/mfe";
-import type { PoIntakeRecord } from "@case-study/mfe";
-import type { WorkflowTask } from "@case-study/mfe";
+import type { PartyAppraisalExtensions } from "@case-study/mfe/lib/party-appraisal-extensions";
+import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
-import { AppraiserUploadTab } from "../components/evaluator/AppraiserUploadTab";
+import dynamic from "next/dynamic";
+
+const AppraiserUploadTab = dynamic(() =>
+    import("../components/evaluator/AppraiserUploadTab").then(
+      (m) => m.AppraiserUploadTab,
+    ),
+  { ssr: false },
+);
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
-import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
-import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/prototype/party-task-recall-storage";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT, isEvaluatorFormLocked, loadEvaluatorSubmission, prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-storage";
+import { canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
+import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
+import {
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  isEvaluatorFormLocked,
+  loadEvaluatorSubmission,
+} from "../lib/evaluator/evaluator-submission-model";
+import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-reads";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
 /** Footer from Case Study.html `renderValOrders`. */
-const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اعتماد الأخصائي لبيانات معاينة العقار — المقيّم يعتمد القيمة، واستلام الأخصائي ليس اعتماداً للسعر.";
+const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اكتمال معاينة العقار — الأخصائي يعتمد تقرير التقييم لاحقاً داخل دراسة الحالة (أو يعيده للتصحيح).";
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {
@@ -57,6 +70,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     propertySummary,
     deedLabel,
     onBack,
+    embeddedInPropertyChrome,
   }) {
     return (
       <AppraiserUploadTab
@@ -66,6 +80,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         propertySummary={propertySummary}
         deedLabel={deedLabel}
         onBack={onBack}
+        embeddedInPropertyChrome={embeddedInPropertyChrome}
       />
     );
   },

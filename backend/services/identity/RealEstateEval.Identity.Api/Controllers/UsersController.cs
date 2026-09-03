@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Identity.Application.Abstractions;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -30,7 +31,7 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List(
         CancellationToken cancellationToken)
     {
-        var list = await _users.ListAsync(null, cancellationToken);
+        var list = await _users.ListAsync(cancellationToken);
         return Ok(list);
     }
 

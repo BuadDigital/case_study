@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>RealEstateEval.Application</RootNamespace>
+    <RootNamespace>RealEstateEval.Financial.Application</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <!-- Abstractions only. Use-case services carry [ActivatorUtilitiesConstructor];
+         the package pulls in neither hosting nor EF. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

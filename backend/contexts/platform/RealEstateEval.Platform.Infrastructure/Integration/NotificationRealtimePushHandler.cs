@@ -3,16 +3,14 @@ using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Domain;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.Platform.Infrastructure.Integration;
 
 /// <summary>Pushes <see cref="IntegrationEventTypes.NotificationUserCreated"/> to connected SSE clients.</summary>
 public sealed class NotificationRealtimePushHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
     private readonly INotificationRealtimePublisher _realtime;
     private readonly ILogger<NotificationRealtimePushHandler> _logger;

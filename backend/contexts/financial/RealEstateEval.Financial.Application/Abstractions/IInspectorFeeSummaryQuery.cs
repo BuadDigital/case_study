@@ -1,6 +1,6 @@
 using RealEstateEval.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Financial.Application.Abstractions;
 
 /// <summary>
 /// Read path for fee ledger list/detail (includes snapshot sync + backfill side effects).

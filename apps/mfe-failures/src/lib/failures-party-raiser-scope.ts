@@ -1,7 +1,7 @@
 import type { RoleId } from "@platform/types";
 import { FAILURE_RAISER_LABEL_BY_KIND } from "./failure-party-roles";
-import type { FailureRecord } from "./failures-types";
-import { countOpenFailures } from "./failures-types";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
+import { countOpenFailures } from "@platform/app-shared/failures/failures-types";
 
 /** Roles that see only failures they raised from their party workspace. */
 const PARTY_SCOPED_FAILURE_RAISER: Partial<Record<RoleId, string>> = {

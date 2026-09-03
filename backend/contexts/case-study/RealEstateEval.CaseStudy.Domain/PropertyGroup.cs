@@ -1,7 +1,9 @@
-namespace RealEstateEval.Domain;
+using RealEstateEval.Domain;
+
+namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
-/// العقار المجمع linking entity: deeds scattered
+/// Linking entity: deeds scattered
 /// across work orders link to one grouped property. Work orders stay administratively
 /// independent; each deed keeps its own rule. Comparable/cost/weighting
 /// distribution across units belongs to the grouped-property workshop.
@@ -9,7 +11,7 @@ namespace RealEstateEval.Domain;
 public class PropertyGroup
 {
     public Guid Id { get; set; }
- /// <summary>Optional display name (e.g. مخطط/مالك).</summary>
+ /// <summary>Optional display name (e.g. scheme/owner).</summary>
     public string? Name { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
@@ -22,13 +24,13 @@ public class PropertyGroupMember
     public Guid Id { get; set; }
     public Guid GroupId { get; set; }
     public Guid PropertyId { get; set; }
- /// <summary>Human confirmation actor (دارس الحالة/المقيّم) — stage 1.</summary>
+ /// <summary>Human confirmation actor (Case Study Specialist/Appraiser) — stage 1.</summary>
     public string LinkedByUserId { get; set; } = "";
     public DateTime LinkedAtUtc { get; set; }
  /// <summary>Signals that suggested the link, comma-separated codes (provenance).</summary>
     public string? SuggestionSignals { get; set; }
     public bool IsActive { get; set; } = true;
- /// <summary>Unlink requires a reason (قابل للفك بمبرر).</summary>
+ /// <summary>Unlink requires a reason.</summary>
     public string? UnlinkReason { get; set; }
     public string? UnlinkedByUserId { get; set; }
     public DateTime? UnlinkedAtUtc { get; set; }

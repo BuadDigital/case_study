@@ -1,6 +1,4 @@
-/** بحث وترتيب دوائر المحكمة — مواصفة circuit_select_field_spec. */
-
-const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+/** Court circuit search and sort — circuit_select_field_spec. */
 
 export type CircuitSearchItem = {
   id: string;
@@ -8,12 +6,8 @@ export type CircuitSearchItem = {
   circuitName?: string | null;
 };
 
-export function toLatinDigits(value: string): string {
-  return value.replace(/[٠-٩]/g, (ch) => {
-    const i = ARABIC_DIGITS.indexOf(ch);
-    return i >= 0 ? String(i) : ch;
-  });
-}
+import { toLatinDigits } from "../../lib/arabic-digits";
+export { toLatinDigits };
 
 export function normalizeArabicSearchText(value: string): string {
   let s = toLatinDigits(value).trim().toLowerCase();
@@ -25,7 +19,7 @@ export function normalizeArabicSearchText(value: string): string {
   return s;
 }
 
-/** تجاهل «ال» التعريف في بداية كل كلمة. */
+/** Strip leading Arabic definite article (al-) from each word. */
 export function stripArabicAl(value: string): string {
   return normalizeArabicSearchText(value)
     .split(" ")
@@ -38,7 +32,7 @@ function digitsOnly(value: string): string {
   return toLatinDigits(value).replace(/\D/g, "");
 }
 
-/** صيغ ترتيبية شائعة للدوائر (١–٤٠). */
+/** Common ordinal forms for circuits (1–40). */
 const ORDINAL_FORMS: Record<number, string[]> = {
   1: ["الاولى", "الاول", "اولى", "اول", "واحده", "واحد"],
   2: ["الثانيه", "الثاني", "ثانيه", "ثاني"],
@@ -119,15 +113,28 @@ function ordinalFormsFor(n: number): string[] {
   return (ORDINAL_FORMS[n] ?? []).map(normalizeOrdinalForm);
 }
 
+/** Keys derived from stable fields — computed once per item instead of on every keystroke. */
+const HAYSTACK_CACHE = new WeakMap<CircuitSearchItem, string>();
+const SORT_KEY_CACHE = new WeakMap<CircuitSearchItem, string>();
+
 function circuitHaystack(item: CircuitSearchItem): string {
+  const cached = HAYSTACK_CACHE.get(item);
+  if (cached !== undefined) return cached;
   const label = `${item.circuitName ?? ""} ${item.circuitNo}`.trim();
-  return stripArabicAl(label);
+  const hay = stripArabicAl(label);
+  HAYSTACK_CACHE.set(item, hay);
+  return hay;
 }
 
 function circuitSortKey(item: CircuitSearchItem): string {
+  const cached = SORT_KEY_CACHE.get(item);
+  if (cached !== undefined) return cached;
   const digits = digitsOnly(item.circuitNo);
-  if (digits) return digits.padStart(4, "0");
-  return stripArabicAl(item.circuitNo || item.circuitName || "");
+  const key = digits
+    ? digits.padStart(4, "0")
+    : stripArabicAl(item.circuitNo || item.circuitName || "");
+  SORT_KEY_CACHE.set(item, key);
+  return key;
 }
 
 export function circuitDisplayLabel(item: CircuitSearchItem): string {
@@ -155,25 +162,25 @@ function hasStandaloneOrdinal(hay: string, n: number): boolean {
 }
 
 /**
- * رتبة البحث: أصغر = أفضل.
- * 0 تطابق رقمي/ترتيبي تام، 1 بادئة رقمية، 2 تطابق نصي، null لا يظهر.
+ * Search rank: lower = better.
+ * 0 exact numeric/ordinal, 1 numeric prefix, 2 text match, null = hidden.
  */
-export function circuitSearchRank(
-  query: string,
+/** Normalize the query once outside the loop — previously re-ran (5+ regex passes) per item. */
+function rankWithNormalizedQuery(
+  qDigits: string,
+  qText: string,
   item: CircuitSearchItem,
 ): number | null {
-  const q = query.trim();
-  if (!q) return 0;
-
-  const qDigits = digitsOnly(q);
-  const qText = stripArabicAl(q);
-  const hay = circuitHaystack(item);
   const noDigits = digitsOnly(item.circuitNo);
 
   if (qDigits) {
     if (noDigits && noDigits === qDigits) return 0;
     const n = Number(qDigits);
-    if (Number.isFinite(n) && n > 0 && hasStandaloneOrdinal(hay, n)) {
+    if (
+      Number.isFinite(n) &&
+      n > 0 &&
+      hasStandaloneOrdinal(circuitHaystack(item), n)
+    ) {
       return 0;
     }
     if (noDigits && noDigits.startsWith(qDigits)) return 1;
@@ -181,6 +188,8 @@ export function circuitSearchRank(
   }
 
   if (!qText) return null;
+
+  const hay = circuitHaystack(item);
 
   if (hay.includes(qText)) return 2;
 
@@ -195,23 +204,25 @@ export function circuitSearchRank(
   return null;
 }
 
-/** فلترة وترتيب الدوائر حسب الاستعلام. بدون q: ترتيب تصاعدي حسب الرقم. */
+/** Filter and sort circuits by query. Without q: ascending by number. */
 export function filterAndRankCircuits<T extends CircuitSearchItem>(
   circuits: readonly T[],
   query: string,
 ): T[] {
   const q = query.trim();
   if (!q) {
-    return [...circuits].sort((a, b) =>
-      circuitSortKey(a).localeCompare(circuitSortKey(b), "en", {
-        numeric: true,
-      }),
-    );
+    // decorate-sort-undecorate — comparator previously re-derived the key (regex) for both sides of every comparison.
+    return circuits
+      .map((item) => ({ item, key: circuitSortKey(item) }))
+      .sort((a, b) => a.key.localeCompare(b.key, "en", { numeric: true }))
+      .map((r) => r.item);
   }
 
+  const qDigits = digitsOnly(q);
+  const qText = stripArabicAl(q);
   const ranked: { item: T; rank: number; key: string }[] = [];
   for (const item of circuits) {
-    const rank = circuitSearchRank(q, item);
+    const rank = rankWithNormalizedQuery(qDigits, qText, item);
     if (rank === null) continue;
     ranked.push({ item, rank, key: circuitSortKey(item) });
   }

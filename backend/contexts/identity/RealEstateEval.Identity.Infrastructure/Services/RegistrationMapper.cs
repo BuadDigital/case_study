@@ -2,12 +2,12 @@ using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Identity.Infrastructure.Services;
 
 public static class RegistrationMapper
 {
     private const string SecAccount = "الحساب والصلاحيات";
-    private const string SecHr = "بيانات التوظيف";
+    private const string SecEmployment = "بيانات التوظيف";
     private const string SecProcIdentity = "بيانات المزود";
     private const string SecProcService = "الخدمة والموقع";
     private const string SecProcBilling = "الفوترة";
@@ -19,6 +19,7 @@ public static class RegistrationMapper
         new()
         {
             Id = user.Id,
+            ReferenceNumber = profile.ReferenceNumber,
             DisplayName = user.DisplayName,
             JobTitle = profile.JobTitle,
             Email = user.Email ?? string.Empty,
@@ -40,13 +41,16 @@ public static class RegistrationMapper
             ReviewerCityCoverage = ParseReviewerCityCoverage(profile.ReviewerCityCoverageJson),
             ContractType = profile.ContractType,
             Status = profile.Status,
-            RegistrationSource = profile.RegistrationSource,
             PhoneNumber = user.PhoneNumber,
             LastLoginAtUtc = profile.LastLoginAtUtc,
             CreatedAtUtc = profile.CreatedAtUtc,
             SystemRoles = systemRoles,
             Details = BuildDetails(user, profile),
         };
+
+    private static bool IsServiceProvider(UserProfile profile) =>
+        string.Equals(profile.RoleId, "engineering-office", StringComparison.OrdinalIgnoreCase)
+        || profile.ProcProvider is not null;
 
     private static IReadOnlyList<string> ParseReviewerCityCoverage(string? json)
     {
@@ -83,15 +87,6 @@ public static class RegistrationMapper
             }
         }
 
-        Add(
-            SecAccount,
-            "مسار التسجيل",
-            profile.RegistrationSource switch
-            {
-                RegistrationSource.Hr => "موارد بشرية",
-                RegistrationSource.Proc => "مقدم خدمة",
-                _ => null,
-            });
         Add(SecAccount, "المسمى الوظيفي", profile.JobTitle);
         Add(SecAccount, "الدور", profile.RoleId);
         Add(SecAccount, "مستوى الصلاحيات", profile.PermissionLevel);
@@ -106,30 +101,28 @@ public static class RegistrationMapper
         if (profile.FeeValueSar is { } fee)
             Add(SecProcBilling, "قيمة الأتعاب", $"{fee:0.##} ر.س");
         if (profile.JoinedAt is { } joinedAt)
-            Add(SecHr, "تاريخ الالتحاق", joinedAt.ToString("yyyy/MM/dd"));
+            Add(SecEmployment, "تاريخ الالتحاق", joinedAt.ToString("yyyy/MM/dd"));
 
-        switch (profile.RegistrationSource)
+        if (IsServiceProvider(profile) && profile.ProcProvider is { } proc)
         {
-            case RegistrationSource.Hr when profile.HrEmployee is { } hr:
-                Add(SecHr, "نوع التوظيف", hr.EmploymentType);
-                Add(SecHr, "القسم", hr.Section);
-                Add(SecHr, "رقم العضوية", hr.EmployeeNumber);
-                break;
-
-            case RegistrationSource.Proc when profile.ProcProvider is { } proc:
-                Add(
-                    SecProcIdentity,
-                    "نوع المزود",
-                    proc.ProviderKind == ProcProviderKind.Organization ? "جهة" : "فرد");
-                Add(SecProcIdentity, "الاسم", proc.FullName);
-                Add(SecProcIdentity, "اسم الجهة", proc.OrganizationName);
-                Add(SecProcIdentity, "المفوض", proc.DelegateName);
-                Add(SecProcService, "نوع الخدمة", proc.ServiceType);
-                Add(SecProcService, "القطاع", proc.Sector);
-                Add(SecProcService, "العنوان", proc.Address);
-                Add(SecProcBilling, "البنك", proc.BankName);
-                Add(SecProcBilling, "بريد الفوترة", proc.BillingEmail);
-                break;
+            Add(
+                SecProcIdentity,
+                "نوع المزود",
+                proc.ProviderKind == ProcProviderKind.Organization ? "جهة" : "فرد");
+            Add(SecProcIdentity, "الاسم", proc.FullName);
+            Add(SecProcIdentity, "اسم الجهة", proc.OrganizationName);
+            Add(SecProcIdentity, "المفوض", proc.DelegateName);
+            Add(SecProcService, "نوع الخدمة", proc.ServiceType);
+            Add(SecProcService, "القطاع", proc.Sector);
+            Add(SecProcService, "العنوان", proc.Address);
+            Add(SecProcBilling, "البنك", proc.BankName);
+            Add(SecProcBilling, "بريد الفوترة", proc.BillingEmail);
+        }
+        else if (profile.HrEmployee is { } employee)
+        {
+            Add(SecEmployment, "نوع التوظيف", employee.EmploymentType);
+            Add(SecEmployment, "القسم", employee.Section);
+            Add(SecEmployment, "رقم العضوية", employee.EmployeeNumber);
         }
 
         return fields;

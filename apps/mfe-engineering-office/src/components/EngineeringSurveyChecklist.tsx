@@ -1,18 +1,25 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
-  Table,
   TBody,
+  THead,
+  Table,
   Td,
   Textarea,
   Th,
-  THead,
   Tr,
   cn,
+  opsLetterCard,
 } from "@platform/ui-kit";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
-import { patchChecklistRow } from "../lib/engineering-survey-submission-storage";
+import { patchChecklistRow } from "../lib/engineering-survey-submission-model";
+
+const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
+  answer: null,
+  note: "",
+};
 
 function YesNoToggle({
   name,
@@ -65,6 +72,44 @@ function YesNoToggle({
   );
 }
 
+function ChecklistNoteField({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled?: boolean;
+  onChange: (note: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) setText(value);
+  }, [value]);
+
+  return (
+    <Textarea
+      rows={1}
+      disabled={disabled}
+      value={text}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        onChange(text);
+      }}
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        onChange(next);
+      }}
+      className="min-h-[38px] text-[12.5px]"
+    />
+  );
+}
+
 export function EngineeringSurveyChecklist({
   rows,
   disabled,
@@ -74,8 +119,11 @@ export function EngineeringSurveyChecklist({
   disabled?: boolean;
   onChange: (rows: EngineeringSurveyChecklistRow[]) => void;
 }) {
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-card">
+    <div className={opsLetterCard}>
       <Table wrapClassName="rounded-[var(--radius-lg)]">
         <THead>
           <Tr hoverable={false}>
@@ -87,7 +135,7 @@ export function EngineeringSurveyChecklist({
         </THead>
         <TBody>
           {ENGINEERING_SURVEY_CHECKLIST_ITEMS.map((label, index) => {
-            const row = rows[index] ?? { answer: null, note: "" };
+            const row = rows[index] ?? EMPTY_CHECKLIST_ROW;
             return (
               <Tr key={label} hoverable={!disabled}>
                 <Td className="w-12 text-center text-[12px] font-semibold text-text-3">
@@ -104,25 +152,23 @@ export function EngineeringSurveyChecklist({
                       disabled={disabled}
                       onChange={(value) =>
                         onChange(
-                          patchChecklistRow(rows, index, { answer: value }),
+                          patchChecklistRow(rowsRef.current, index, {
+                            answer: value,
+                          }),
                         )
                       }
                     />
                   </div>
                 </Td>
                 <Td>
-                  <Textarea
-                    rows={1}
-                    disabled={disabled}
+                  <ChecklistNoteField
                     value={row.note}
-                    onChange={(e) =>
+                    disabled={disabled}
+                    onChange={(note) =>
                       onChange(
-                        patchChecklistRow(rows, index, {
-                          note: e.target.value,
-                        }),
+                        patchChecklistRow(rowsRef.current, index, { note }),
                       )
                     }
-                    className="min-h-[38px] text-[12.5px]"
                   />
                 </Td>
               </Tr>

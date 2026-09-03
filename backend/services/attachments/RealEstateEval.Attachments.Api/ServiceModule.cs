@@ -6,6 +6,9 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Attachments.Infrastructure;
+using RealEstateEval.Attachments.Application.Validation;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Attachments.Api;
 

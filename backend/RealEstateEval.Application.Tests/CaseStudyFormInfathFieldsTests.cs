@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -12,7 +15,7 @@ public class CaseStudyFormInfathFieldsTests
     {
         var taskId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         await using var contexts = TestDatabases.Create("case-study-infath");
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
 
         var forms = CreateFormService(contexts);
         var form = new CaseStudyFormDto
@@ -44,8 +47,8 @@ public class CaseStudyFormInfathFieldsTests
 
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
-        var db = contexts.Legacy;
+        var db = contexts.CaseStudy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(TestInspectorFeeServiceFactory.ShareCaseStudy(db), workflow);
+        return new CaseStudyFormService(new CaseStudyFormRepository(db), workflow);
     }
 }

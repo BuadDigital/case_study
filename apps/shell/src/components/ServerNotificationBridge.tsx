@@ -10,8 +10,10 @@ import {
 } from "@platform/api-client/notifications";
 import { ApiAuthError } from "@platform/api-client";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   filterNotificationsForRole,
   shouldShowNotificationToast,
@@ -29,7 +31,8 @@ import {
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
 
-const SSE_RETRY_MS = 5_000;
+const SSE_RETRY_BASE_MS = 2_000;
+const SSE_RETRY_MAX_MS = 60_000;
 const LOCAL_SYNC_SUPPRESS_MS = 60_000;
 
 function isNetworkFailure(err: unknown): boolean {
@@ -41,10 +44,14 @@ function isNetworkFailure(err: unknown): boolean {
 
 /**
  * Server inbox sync — three independent delivery channels can each surface the
- * same notification (SSE stream, browser Web Push via the service worker, and
- * a tab-refocus catch-up pull), so `seenIdsRef` / `localSyncSourceEventsRef`
+ * same notification (SSE stream via fetch+Bearer — not EventSource, which cannot
+ * send Authorization — browser Web Push via the service worker, and a
+ * tab-refocus catch-up pull), so `seenIdsRef` / `localSyncSourceEventsRef`
  * are shared at component scope and every channel must check them before
  * showing a toast — otherwise the same event shows up more than once.
+ *
+ * SSE/push deliveries also trigger targeted React Query invalidations for live
+ * queues (not a full `appDataKeys.all` refetch).
  */
 export function ServerNotificationBridge() {
   const { token, authReady, isAuthenticated, role, user } = useAuth();
@@ -53,9 +60,14 @@ export function ServerNotificationBridge() {
   const initialLoadRef = useRef(true);
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
   const refreshDebounceRef = useRef<number | undefined>(undefined);
+  const visible = useDocumentVisible();
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const wasVisibleRef = useRef(visible);
+  const pullOnVisibleRef = useRef<() => void>(() => {});
 
   // Any server-pushed notification means something changed on the backend.
-  // Invalidate only live queues / sidebar feeds — NOT prototypeKeys.all
+  // Invalidate only live queues / sidebar feeds — NOT appDataKeys.all
   // (which also marks finance nav, inspector-fees badges, court visit fees,
   // property timelines, … and fights every page change with a mass refetch).
   const refreshTransactions = useCallback(() => {
@@ -65,25 +77,25 @@ export function ServerNotificationBridge() {
     refreshDebounceRef.current = window.setTimeout(() => {
       refreshDebounceRef.current = undefined;
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.workflowTasks(),
+        queryKey: appDataKeys.workflowTasks(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.poListRows(),
+        queryKey: appDataKeys.poListRows(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.propertyListItems(),
+        queryKey: appDataKeys.propertyListItems(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.operationsTasks(),
+        queryKey: appDataKeys.operationsTasks(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.failures(),
+        queryKey: appDataKeys.failures(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.pendingBourseItems(),
+        queryKey: appDataKeys.pendingBourseItems(),
       });
       void queryClient.invalidateQueries({
-        queryKey: prototypeKeys.suspendedTransactions(),
+        queryKey: appDataKeys.suspendedTransactions(),
       });
       void queryClient.invalidateQueries({
         queryKey: ["reporting", "dashboard"],
@@ -231,24 +243,18 @@ export function ServerNotificationBridge() {
     // (backend comment: "clients retain polling fallback").
     const POLL_FALLBACK_MS = 12_000;
     const pollTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
+      if (visibleRef.current) {
         void pull(true);
       }
     }, POLL_FALLBACK_MS);
 
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void pull(true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisible);
+    pullOnVisibleRef.current = () => void pull(true);
 
     const streamAbort = new AbortController();
     let retryTimer: number | undefined;
+    let retryAttempt = 0;
 
-    async function connectStream() {
-      const authToken = token;
+    async function connectStream(authToken: string) {
       if (!authToken || cancelled || stopSync) return;
 
       try {
@@ -257,24 +263,37 @@ export function ServerNotificationBridge() {
           handleServerDto,
           streamAbort.signal,
         );
-        // Resolved without throwing means the stream ended cleanly (e.g. a
-        // backend deploy/restart closed the connection) — reconnect just
-        // like a network failure would, or the tab goes stale silently.
+        // Clean close (deploy/restart) — reset backoff and reconnect.
+        retryAttempt = 0;
       } catch (err) {
         if (cancelled || streamAbort.signal.aborted || stopSync) return;
         if (err instanceof ApiAuthError) {
-          stopSync = true;
+          // fetch-based SSE supports Bearer; on 401 rotate access token and retry.
+          const session = await ensureFreshAuthSession({ force: true });
+          if (!session?.token || cancelled || stopSync) {
+            stopSync = true;
+            return;
+          }
+          retryAttempt = 0;
+          retryTimer = window.setTimeout(() => {
+            void connectStream(session.token);
+          }, SSE_RETRY_BASE_MS);
           return;
         }
       }
 
       if (cancelled || streamAbort.signal.aborted || stopSync) return;
+      const delay = Math.min(
+        SSE_RETRY_MAX_MS,
+        SSE_RETRY_BASE_MS * 2 ** retryAttempt,
+      );
+      retryAttempt += 1;
       retryTimer = window.setTimeout(() => {
-        void connectStream();
-      }, SSE_RETRY_MS);
+        void connectStream(authToken);
+      }, delay);
     }
 
-    void connectStream();
+    void connectStream(token);
 
     return () => {
       cancelled = true;
@@ -285,7 +304,7 @@ export function ServerNotificationBridge() {
         refreshDebounceRef.current = undefined;
       }
       streamAbort.abort();
-      document.removeEventListener("visibilitychange", onVisible);
+      pullOnVisibleRef.current = () => {};
     };
   }, [
     authReady,
@@ -297,6 +316,14 @@ export function ServerNotificationBridge() {
     shouldSuppressEchoToast,
     markSeenIfNew,
   ]);
+
+  // Hidden → visible only: pull on mount is done via pull(false) in the effect above,
+  // so reading visibility state here would fire an extra pull with its toasts.
+  useEffect(() => {
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (visible && !wasVisible) pullOnVisibleRef.current();
+  }, [visible]);
 
   useEffect(() => {
     if (!token) return;

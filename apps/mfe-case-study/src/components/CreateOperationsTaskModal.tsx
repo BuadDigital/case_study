@@ -1,34 +1,40 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Note, Spinner, cn } from "@platform/ui-kit";
+import {
+  AppModal,
+  cn,
+  Note,
+  Spinner,
+} from "@platform/ui-kit";
 import {
   fetchPartyFeePricingById,
   fetchPartyFeePricingTables,
   type CreateOperationsTaskRequest,
   type OperationsTaskLetterRowDto,
 } from "@platform/api-client";
-import type { StaffUser } from "@platform/app-shared/prototype/constants";
-import { prototypeModulesApiConfig } from "@platform/app-shared/prototype/prototype-modules-api-config";
-import { AppModal } from "./ui/AppModal";
+import { pad2 } from "@platform/app-shared/format/date";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
   type DistributionAssignee,
-} from "../lib/prototype/distribution-parties";
+} from "../lib/app-data/distribution-parties";
 import {
   assigneesForOperationsTaskType,
   groupAssigneesForSelect,
-} from "../lib/prototype/operations-task-assignees";
+} from "../lib/app-data/operations-task-assignees";
 import {
   formatPropertyDeedDisplay,
   showsCourtFields,
   type PoIntakeRecord,
-} from "../lib/prototype/po-intake-data";
+} from "../lib/app-data/po-intake-data";
 import {
   OPERATIONS_TASK_PRIORITY_LABELS,
   OPERATIONS_TASK_SCOPE_LABELS,
   OPERATIONS_TASK_TYPE_LABELS,
-} from "../lib/prototype/operations-task-display";
-import { createOperationsTaskRecord } from "../lib/prototype/operations-tasks-storage";
+} from "../lib/app-data/operations-task-display";
+import { createOperationsTaskRecord } from "../lib/app-data/operations-tasks-commands";
+import { LetterTable } from "../views/OperationsTasksViewParts";
 import {
   opsBtnGhost,
   opsBtnPrimary,
@@ -41,9 +47,7 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsLetterRow,
   opsFileSize,
-  opsThead,
   opsTfChip,
   opsTfChipActive,
   opsTfDeed,
@@ -54,20 +58,11 @@ import {
   opsTfSeg,
   opsTfSegActive,
   opsTfSegRow,
-} from "../lib/prototype/ops-tasks-tw";
-
-const LETTER_COLS =
-  "2.75rem minmax(5.75rem,0.9fr) minmax(9.5rem,1.35fr) minmax(7rem,1.05fr) minmax(5.5rem,0.85fr) minmax(11rem,1.55fr)";
-
-const letterTh =
-  "flex items-center justify-start px-3 py-3 text-start text-[11.5px] font-bold leading-snug text-heading";
-const letterTd =
-  "flex min-w-0 items-center justify-start overflow-hidden px-3 py-3 text-start text-[12.5px] leading-snug";
-const letterCellLtr = "inline-block max-w-full truncate tabular-nums tracking-tight";
+} from "../lib/app-data/ops-tasks-tw";
 
 const TASK_TYPES = ["general", "court_visit"] as const;
 
-/** نطاق الربط موحّد لزيارة محكمة والمهمة العامة (يشمل عامة). */
+/** Unified link scope for court visit and general task (includes general). */
 const LINK_SCOPES = ["work_order", "transaction", "multi", "general"] as const;
 
 const PRIORITY_OFFSET_MS: Record<string, number> = {
@@ -80,10 +75,6 @@ const DEFAULT_TITLES: Record<string, string> = {
   court_visit: "زيارة محكمة",
   general: "مهمة عامة",
 };
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
 
 function toLocalDateValue(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -210,6 +201,16 @@ type Props = {
   onCreated: (taskId: string) => void;
 };
 
+function prefillType(prefill: CreateOperationsTaskPrefill | null | undefined): string {
+  const raw = prefill?.type?.trim() || "general";
+  return (TASK_TYPES as readonly string[]).includes(raw) ? raw : "general";
+}
+
+function defaultDueFields(): { date: string; time: string } {
+  const due = new Date(Date.now() + PRIORITY_OFFSET_MS.medium);
+  return { date: toLocalDateValue(due), time: toLocalTimeValue(due) };
+}
+
 export function CreateOperationsTaskModal({
   open,
   poRecords,
@@ -220,19 +221,57 @@ export function CreateOperationsTaskModal({
   onClose,
   onCreated,
 }: Props) {
-  const [type, setType] = useState("general");
-  const [scope, setScope] = useState("work_order");
-  const [title, setTitle] = useState(DEFAULT_TITLES.general);
+  if (!open) return null;
+  const prefillKey = JSON.stringify([
+    prefill?.type,
+    prefill?.scope,
+    prefill?.poNumber,
+    prefill?.deed,
+    prefill?.title,
+  ]);
+  return (
+    <CreateOperationsTaskForm
+      key={prefillKey}
+      poRecords={poRecords}
+      staffUsers={staffUsers}
+      staffLoadError={staffLoadError}
+      prefill={prefill}
+      staffLoading={staffLoading}
+      onClose={onClose}
+      onCreated={onCreated}
+    />
+  );
+}
+
+function CreateOperationsTaskForm({
+  poRecords,
+  staffUsers,
+  staffLoadError,
+  prefill,
+  staffLoading,
+  onClose,
+  onCreated,
+}: Omit<Props, "open">) {
+  const [due] = useState(defaultDueFields);
+  const [type, setType] = useState(() => prefillType(prefill));
+  const [scope, setScope] = useState(() => prefill?.scope?.trim() || "work_order");
+  const [title, setTitle] = useState(
+    () =>
+      prefill?.title?.trim() || DEFAULT_TITLES[prefillType(prefill)] || "مهمة",
+  );
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [poNumber, setPoNumber] = useState("");
-  const [deed, setDeed] = useState("");
-  const [selectedDeeds, setSelectedDeeds] = useState<string[]>([]);
+  const [poNumber, setPoNumber] = useState(() => prefill?.poNumber?.trim() || "");
+  const [deed, setDeed] = useState(() => prefill?.deed?.trim() || "");
+  const [selectedDeeds, setSelectedDeeds] = useState<string[]>(() => {
+    const d = prefill?.deed?.trim();
+    return d ? [d] : [];
+  });
   const [assigneeId, setAssigneeId] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
   const [visitFeeAmountSar, setVisitFeeAmountSar] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [dueTime, setDueTime] = useState("12:00");
+  const [dueDate, setDueDate] = useState(due.date);
+  const [dueTime, setDueTime] = useState(due.time);
   const [dueChip, setDueChip] = useState<"today" | "tomorrow" | "after" | null>(
     null,
   );
@@ -290,31 +329,6 @@ export function CreateOperationsTaskModal({
     if (!selectedPo) return [];
     return buildLetterRowsForPo(selectedPo);
   }, [type, scope, selectedPo, selectedDeeds, poOptions, poNumber, deed]);
-
-  useEffect(() => {
-    if (!open) return;
-    const rawType = prefill?.type?.trim() || "general";
-    const nextType = (TASK_TYPES as readonly string[]).includes(rawType)
-      ? rawType
-      : "general";
-    const nextScope = prefill?.scope?.trim() || "work_order";
-    const nextPo = prefill?.poNumber?.trim() || "";
-    const nextDeed = prefill?.deed?.trim() || "";
-    setType(nextType);
-    setScope(nextScope);
-    setTitle(prefill?.title?.trim() || DEFAULT_TITLES[nextType] || "مهمة");
-    setDescription("");
-    setPriority("medium");
-    const due = new Date(Date.now() + PRIORITY_OFFSET_MS.medium);
-    setDueDate(toLocalDateValue(due));
-    setDueTime(toLocalTimeValue(due));
-    setDueChip(null);
-    setPoNumber(nextPo);
-    setDeed(nextDeed);
-    setSelectedDeeds(nextDeed ? [nextDeed] : []);
-    setError(null);
-    setBusy(false);
-  }, [open, prefill]);
 
   const applyPriorityDue = (prio: string) => {
     setPriority(prio);
@@ -508,7 +522,7 @@ export function CreateOperationsTaskModal({
 
   return (
     <AppModal
-      open={open}
+      open
       title="مهمة جديدة"
       subtitle="واجهة موحّدة للإنشاء والإسناد — «زيارة محكمة» يفعّل خطاب التفويض"
       onClose={onClose}
@@ -850,79 +864,7 @@ export function CreateOperationsTaskModal({
                   </span>
                 </div>
                 <div className="px-3.5 py-3">
-                  <div className="overflow-x-auto rounded-[12px] border border-border bg-surface">
-                    <div className="min-w-[760px]" dir="rtl">
-                      <div
-                        className={opsThead}
-                        style={{ gridTemplateColumns: LETTER_COLS }}
-                      >
-                        {[
-                          "م",
-                          "أمر العمل",
-                          "رقم الصك",
-                          "المالك",
-                          "رقم الطلب",
-                          "المحكمة / الدائرة",
-                        ].map((h, i) => (
-                          <div
-                            key={h}
-                            className={cn(
-                              letterTh,
-                              i === 0 && "justify-center text-center",
-                            )}
-                          >
-                            {h}
-                          </div>
-                        ))}
-                      </div>
-                      {letterPreview.map((row, i) => (
-                        <div
-                          key={`${row.po}-${row.deed}-${i}`}
-                          className={opsLetterRow}
-                          style={{ gridTemplateColumns: LETTER_COLS }}
-                        >
-                          <div
-                            className={cn(
-                              letterTd,
-                              "justify-center text-center text-text-2",
-                            )}
-                          >
-                            {i + 1}
-                          </div>
-                          <div className={cn(letterTd, "font-semibold text-text-2")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              {row.po}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-bold text-gold-d")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              صك {row.deed}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-medium text-heading")}>
-                            <span className="line-clamp-2 break-words">
-                              {row.owner}
-                            </span>
-                          </div>
-                          <div className={cn(letterTd, "font-semibold text-text-2")}>
-                            <span dir="ltr" className={letterCellLtr}>
-                              {row.request || "—"}
-                            </span>
-                          </div>
-                          <div className={letterTd}>
-                            <span className="line-clamp-2 break-words">
-                              <span className="font-semibold text-text">
-                                {row.court}
-                              </span>
-                              {row.circuit ? (
-                                <span className="text-text-3"> · {row.circuit}</span>
-                              ) : null}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <LetterTable rows={letterPreview} />
                   <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
                     لقطة (snapshot) لبيانات الصكوك والمحاكم وقت إنشاء المهمة — تُثبَّت على
                     الخطاب ولا تتأثر بتعديلات لاحقة على أمر العمل.

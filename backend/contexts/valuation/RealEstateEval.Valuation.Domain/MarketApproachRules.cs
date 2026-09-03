@@ -1,4 +1,6 @@
-﻿namespace RealEstateEval.Domain;
+﻿using RealEstateEval.Domain;
+
+namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// One sequential / difference-factor adjustment line on a selected comparable.
@@ -14,6 +16,8 @@ public class ValuationComparableAdjustmentLine
     public string LabelAr { get; set; } = "";
     public decimal Percent { get; set; }
     public string Rationale { get; set; } = "";
+ /// <summary>Comparable description for this factor (compSpec in interactive model) — descriptive text per cell.</summary>
+    public string? DescriptionAr { get; set; }
  /// <summary>Calc include switch — excluding keeps the row for audit.</summary>
     public bool IsIncluded { get; set; } = true;
     public int SortOrder { get; set; }
@@ -23,8 +27,16 @@ public class ValuationComparableAdjustmentLine
 
 public static class MarketApproachRules
 {
+    /// <summary>Interactive model spec: ±35% adjustments-sum breach — rationale required with comparable-validity review.</summary>
     public const decimal LargeAdjustmentThresholdPct = 35m;
-    private const decimal WeightEpsilon = 0.01m;
+    /// <summary>Adjustments logic: score = 1 / (|factorsSum| + 0.5).</summary>
+    public const decimal WeightEpsilon = 0.5m;
+    /// <summary>Default annual market-change rate (%) for suggesting the market-conditions adjustment.</summary>
+    public const decimal DefaultAnnualMarketRatePct = 4m;
+    /// <summary>Adjustments logic: round market value to nearest 10^n (default n=4 → 10,000).</summary>
+    public const int DefaultValueRoundDecimals = 4;
+    /// <summary>Average days per month in adjustments logic for deal-age calculation.</summary>
+    public const decimal DaysPerMonth = 30.44m;
 
  /// <summary>Sequential (multiplicative) application of included percents on a unit rate.</summary>
     public static decimal ApplySequential(decimal basePricePerSqm, IEnumerable<decimal> includedPercents)
@@ -51,8 +63,6 @@ public static class MarketApproachRules
         IEnumerable<decimal> differencePercents)
     {
         var afterSeq = ApplySequential(basePricePerSqm, sequentialPercents);
- // Re-apply without intermediate round for chain, then round once at end of each stage
- // (ApplySequential already rounds; ApplyDifferenceFactorSum rounds again — acceptable scaffold).
         var diffSum = SumIncludedPercents(differencePercents);
         var afterDiff = ApplyDifferenceFactorSum(afterSeq, diffSum);
         return (afterSeq, diffSum, afterDiff);
@@ -62,100 +72,112 @@ public static class MarketApproachRules
     public static decimal SumIncludedPercents(IEnumerable<decimal> includedPercents) =>
         includedPercents.Sum();
 
-    public static bool ExceedsLargeAdjustmentThreshold(decimal sumIncludedPct) =>
-        Math.Abs(sumIncludedPct) > LargeAdjustmentThresholdPct;
+    public static bool ExceedsLargeAdjustmentThreshold(decimal factorsSumPct) =>
+        Math.Abs(factorsSumPct) > LargeAdjustmentThresholdPct;
 
     public static int DealAgeMonths(DateOnly transactionDate, DateOnly valuationDate)
     {
-        var months = (valuationDate.Year - transactionDate.Year) * 12
-            + (valuationDate.Month - transactionDate.Month);
-        if (valuationDate.Day < transactionDate.Day) months--;
-        return Math.Max(0, months);
+        // Adjustments logic: months = (today − date) / 30.44
+        var days = valuationDate.DayNumber - transactionDate.DayNumber;
+        if (days <= 0) return 0;
+        return (int)Math.Round(days / (double)DaysPerMonth, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Adjustments logic: mktSug = round(mktRate × months / 12, 2).
+    /// Any value the valuer enters cancels the suggestion on save.
+    /// </summary>
+    public static decimal SuggestMarketConditionsPct(
+        int dealAgeMonths,
+        decimal annualMarketRatePct = DefaultAnnualMarketRatePct)
+    {
+        if (dealAgeMonths <= 0 || annualMarketRatePct == 0m) return 0m;
+        return Math.Round(
+            annualMarketRatePct * dealAgeMonths / 12m,
+            2,
+            MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Interactive model spec (KIND_DEFAULT): closed deal 0 · active listing −5 · ceiling −8 · som +6.
+    /// Value is suggested — any manual entry by the valuer cancels it.
+    /// </summary>
+    public static decimal SuggestTransactionTypePct(
+        string? transactionKind,
+        string? priceDescription)
+    {
+        if (string.Equals(transactionKind, ComparableTransactionKinds.Executed, StringComparison.Ordinal))
+            return 0m;
+        if (!string.Equals(transactionKind, ComparableTransactionKinds.Offer, StringComparison.Ordinal))
+            return 0m;
+        return (priceDescription ?? "").Trim().ToLowerInvariant() switch
+        {
+            ComparablePriceDescriptions.Asking => -8m,
+            ComparablePriceDescriptions.Som => 6m,
+            _ => -5m,
+        };
+    }
+
+    /// <summary>
+    /// Effective sequential %: market-conditions adjustment is fully manual (model shows deal age as a hint only);
+    /// unset comparable-kind adjustment takes the suggested default (KIND_DEFAULT) as "suggested until overridden".
+    /// </summary>
+    public static decimal EffectiveSequentialPercent(
+        string factorKey,
+        decimal storedPercent,
+        string? rationale,
+        bool isIncluded,
+        decimal suggestedMarketPct,
+        decimal suggestedKindPct)
+    {
+        if (!isIncluded) return 0m;
+        // "Suggested until overridden" applies to the entered % only — writing a rationale alone does not cancel the default.
+        var hasManual = storedPercent != 0m;
+        if (hasManual) return storedPercent;
+        if (factorKey == MarketAdjustmentFactorKeys.TransactionType) return suggestedKindPct;
+        _ = suggestedMarketPct;
+        _ = rationale;
+        return storedPercent;
     }
 
  /// <summary>
- // closer absolute sum-of-adjustments to zero → higher weight.
+ /// Q-8-1: row rationale is a "per-comparable override" — empty inherits the factor rationale.
  /// </summary>
-    public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> sumIncludedPercents)
+    public static string EffectiveRationale(string? lineOverride, string? factorRationale)
     {
-        if (sumIncludedPercents.Count == 0) return [];
-        if (sumIncludedPercents.Count == 1) return [100m];
+        var overrideText = lineOverride?.Trim() ?? "";
+        return overrideText.Length > 0 ? overrideText : factorRationale?.Trim() ?? "";
+    }
 
-        var raw = sumIncludedPercents
+ /// <summary>
+ /// Interactive model spec: score = 1 / (|fSum| + 0.5) then distribute 20 units × 5%
+ /// by largest remainder — sum is 100% by construction and weights are multiples of 5%.
+ /// Input must be difference-factor sums (areaAdj + Σ factors), not sequential.
+ /// </summary>
+    public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> factorsSums)
+    {
+        if (factorsSums.Count == 0) return [];
+        if (factorsSums.Count == 1) return [100m];
+
+        const int units = 20; // 20 × 5% = 100%
+        var raw = factorsSums
             .Select(s => 1m / (WeightEpsilon + Math.Abs(s)))
             .ToList();
         var total = raw.Sum();
         if (total <= 0m)
-            return Enumerable.Repeat(
-                    Math.Round(100m / sumIncludedPercents.Count, 2, MidpointRounding.AwayFromZero),
-                    sumIncludedPercents.Count)
-                .ToList();
+            total = raw.Count; // degenerate; equal split below
 
-        var weights = raw
-            .Select(r => Math.Round(100m * r / total, 2, MidpointRounding.AwayFromZero))
+        var exact = raw.Select(r => total <= 0m ? (decimal)units / raw.Count : units * r / total).ToList();
+        var floors = exact.Select(e => (int)Math.Floor(e)).ToList();
+        var leftover = units - floors.Sum();
+        var byRemainder = exact
+            .Select((e, i) => (Index: i, Frac: e - floors[i]))
+            .OrderByDescending(x => x.Frac)
+            .ThenBy(x => x.Index)
             .ToList();
-
-        var drift = 100m - weights.Sum();
-        weights[^1] = Math.Round(weights[^1] + drift, 2, MidpointRounding.AwayFromZero);
-        return weights;
-    }
-
- /// <summary>
- /// mixed manual + suggested weights: the non-manual comparables'
- /// suggestions rescale into the remainder (100 − Σmanual) so a partial override
- /// still sums to 100 instead of hard-blocking issuance.
- /// </summary>
-    public static IReadOnlyList<decimal> RenormalizeSuggestions(
-        IReadOnlyList<decimal> rawSuggestions,
-        IReadOnlyList<bool> isManual,
-        IReadOnlyList<decimal> manualWeights)
-    {
-        if (rawSuggestions.Count == 0) return [];
-
-        var manualSum = 0m;
-        var autoRawSum = 0m;
-        var autoCount = 0;
-        for (var i = 0; i < rawSuggestions.Count; i++)
-        {
-            if (i < isManual.Count && isManual[i])
-            {
-                manualSum += i < manualWeights.Count ? manualWeights[i] : 0m;
-            }
-            else
-            {
-                autoRawSum += rawSuggestions[i];
-                autoCount++;
-            }
-        }
-
-        var remainder = Math.Max(0m, 100m - manualSum);
-        var result = new decimal[rawSuggestions.Count];
-        var lastAutoIndex = -1;
-        for (var i = 0; i < rawSuggestions.Count; i++)
-        {
-            if (i < isManual.Count && isManual[i])
-            {
-                result[i] = i < manualWeights.Count ? manualWeights[i] : 0m;
-                continue;
-            }
-
-            result[i] = autoRawSum > 0m
-                ? Math.Round(remainder * rawSuggestions[i] / autoRawSum, 2, MidpointRounding.AwayFromZero)
-                : autoCount > 0
-                    ? Math.Round(remainder / autoCount, 2, MidpointRounding.AwayFromZero)
-                    : 0m;
-            lastAutoIndex = i;
-        }
-
- // Fold rounding drift into the last auto row so the total lands exactly.
-        if (lastAutoIndex >= 0)
-        {
-            var drift = manualSum + remainder - result.Sum();
-            result[lastAutoIndex] = Math.Round(
-                result[lastAutoIndex] + drift, 2, MidpointRounding.AwayFromZero);
-        }
-
-        return result;
+        for (var k = 0; k < leftover && k < byRemainder.Count; k++)
+            floors[byRemainder[k].Index] += 1;
+        return floors.Select(f => f * 5m).ToList();
     }
 
     public static bool WeightsSumTo100(IEnumerable<decimal> weights, decimal tolerance = 0.05m) =>
@@ -190,12 +212,12 @@ public static class MarketApproachRules
             .ToList();
     }
 
- /// <summary>Seed standard difference-factor rows (0%, included).</summary>
+ /// <summary>Seed default difference-factor rows (area + six logic-doc factors).</summary>
     public static IReadOnlyList<ValuationComparableAdjustmentLine> CreateStandardDifferenceFactorLines(
         Guid selectionId,
         int sortOrderStart = 10)
     {
-        return MarketAdjustmentFactorKeys.StandardDifferenceFactors
+        return MarketAdjustmentFactorKeys.DefaultDifferenceFactors
             .Select((key, i) => new ValuationComparableAdjustmentLine
             {
                 Id = Guid.NewGuid(),
@@ -221,7 +243,7 @@ public static class MarketApproachRules
     }
 }
 
-/// <summary>طريقة قياس تسوية المساحة.</summary>
+/// <summary>Area-adjustment measurement method.</summary>
 public static class AreaAdjustmentMethods
 {
     public const string Multiplier = "multiplier";
@@ -238,24 +260,69 @@ public static class AreaAdjustmentMethods
 }
 
 /// <summary>
-/// computed area-adjustment suggestion. Sign per the inventory note:
-/// smaller comparable → negative, larger → positive; excludes plot shape/regularity.
-/// Magnitude is a provisional scaffold (1% per 10% area difference, capped ±10%)
-/// until the v3 منطق-التسويات formulas arrive — the method key is stored so the
-/// real المضاعف/الأمثال curves can slot in without a data change.
+/// Area adjustment — adjustments logic / comparison-method spec.
+/// Method is unified across all table comparables (any ratio ≥ 2 ⟵ multiplier for all).
+/// Sign: smaller comparable negative, larger positive. Does not cover plot shape.
 /// </summary>
 public static class AreaAdjustmentRules
 {
-    public const decimal MaxAbsPct = 10m;
+    /// <summary>Default area factor 5% per multiple or multiplier step.</summary>
+    public const decimal DefaultAreaFactorPct = 5m;
+    /// <summary>Threshold to switch from multiples to multiplier at table level.</summary>
+    public const decimal MultiplierRatioThreshold = 2m;
 
-    public static decimal SuggestPct(string? method, decimal subjectAreaSqm, decimal comparableAreaSqm)
+    /// <summary>
+    /// Choose the method once per table: if any ratio reaches 2+ → multiplier, else multiples.
+    /// </summary>
+    public static string ChooseMethod(
+        decimal subjectAreaSqm,
+        IEnumerable<decimal> comparableAreas)
     {
-        _ = AreaAdjustmentMethods.Normalize(method);
-        if (subjectAreaSqm <= 0m || comparableAreaSqm <= 0m) return 0m;
+        var maxRatio = 1m;
+        foreach (var area in comparableAreas)
+        {
+            if (subjectAreaSqm <= 0m || area <= 0m) continue;
+            var ratio = Math.Max(subjectAreaSqm, area) / Math.Min(subjectAreaSqm, area);
+            if (ratio > maxRatio) maxRatio = ratio;
+        }
 
-        var raw = (comparableAreaSqm / subjectAreaSqm - 1m) * 10m;
-        return Math.Round(
-            Math.Clamp(raw, -MaxAbsPct, MaxAbsPct),
-            2, MidpointRounding.AwayFromZero);
+        return maxRatio >= MultiplierRatioThreshold
+            ? AreaAdjustmentMethods.Multiplier
+            : AreaAdjustmentMethods.Amthal;
+    }
+
+    public static decimal AreaRatio(decimal subjectAreaSqm, decimal comparableAreaSqm)
+    {
+        if (subjectAreaSqm <= 0m || comparableAreaSqm <= 0m) return 1m;
+        return Math.Max(subjectAreaSqm, comparableAreaSqm)
+            / Math.Min(subjectAreaSqm, comparableAreaSqm);
+    }
+
+    public static decimal SuggestPct(
+        string? method,
+        decimal subjectAreaSqm,
+        decimal comparableAreaSqm,
+        decimal areaFactorPct = DefaultAreaFactorPct)
+    {
+        if (subjectAreaSqm <= 0m || comparableAreaSqm <= 0m || areaFactorPct == 0m)
+            return 0m;
+        if (subjectAreaSqm == comparableAreaSqm) return 0m;
+
+        var ratio = AreaRatio(subjectAreaSqm, comparableAreaSqm);
+        decimal magnitude;
+        if (AreaAdjustmentMethods.Normalize(method) == AreaAdjustmentMethods.Amthal)
+        {
+            // Multiples: (larger − smaller) ÷ smaller × factor = (r − 1) × areaFactor
+            magnitude = (ratio - 1m) * areaFactorPct;
+        }
+        else
+        {
+            // Multiplier: round(log₂ r) × factor
+            var log2 = (decimal)(Math.Log((double)ratio) / Math.Log(2d));
+            magnitude = Math.Round(log2, MidpointRounding.AwayFromZero) * areaFactorPct;
+        }
+
+        var sign = comparableAreaSqm < subjectAreaSqm ? -1m : 1m;
+        return Math.Round(sign * magnitude, 2, MidpointRounding.AwayFromZero);
     }
 }

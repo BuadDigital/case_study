@@ -1,46 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { InlineLoadingSkeleton, Spinner, cn, useToast } from "@platform/ui-kit";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe";
-import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
 import {
-  emptyCaseStudyFormDraft,
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-} from "@case-study/mfe";
+  InlineLoadingSkeleton,
+  Spinner,
+  cn,
+  opsBtnPrimary,
+  opsWorkspaceCard,
+  useToast,
+  opsFldControl,
+  opsTfLbl,
+} from "@platform/ui-kit";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
+import { emptyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-model";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
 import {
   surveyWorkGate,
   declarationPhoneGate,
   hasAnyPartyPhone,
-} from "@case-study/mfe/lib/prototype/documentary-workflow-gates";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
+} from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useIdempotentAction } from "@platform/app-shared";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
-import {
-  FailureRaisePanel,
-  blockingFailureForProperty,
-  failureRecordTitle,
-} from "@failures/mfe";
+import { blockingFailureForProperty } from "@failures/mfe/lib/failure-property-match";
+import { failureRecordTitle } from "@failures/mfe/lib/failures-labels";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { isActiveFailureStatus } from "@failures/mfe/lib/failures-types";
+import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import {
   createEngineeringSurveyDraft,
   isEngineeringSurveyFormLocked,
   type EngineeringSurveySubmission,
 } from "../lib/engineering-survey-data";
+import { loadEngineeringSurveySubmission } from "../lib/engineering-survey-submission-model";
+import { fetchEngineeringSurveySubmission } from "../lib/engineering-survey-submission-reads";
 import {
-  fetchEngineeringSurveySubmission,
   getOrCreateEngineeringSurveyDraft,
-  loadEngineeringSurveySubmission,
   updateEngineeringSurveyDraft,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-commands";
 import {
   cacheEngineeringSurveyFile,
   clearEngineeringSurveyFile,
@@ -51,20 +57,16 @@ import {
   firstEngineeringSurveyError,
   firstEngineeringSurveyErrorTarget,
   validateEngineeringSurveySubmission,
+  isPlattedPropertyWithPlot,
   type EngineeringSurveyFieldErrors,
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 import {
-  extractSurveySketchFromPdf,
-  sketchExtractToEmptyFieldsPatch,
-  sketchNatureFieldsFromExtract,
-  sketchNatureFieldsFromDeedForm,
-  applyNatureSketchPatch,
-  type SurveySketchExtractResult,
-} from "../lib/engineering-survey-sketch-extract";
+  applyNatureBoundaryPatch,
+  natureFieldsFromDeedForm,
+} from "../lib/engineering-survey-nature-fields";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
-import { EngineeringSurveyMap } from "./EngineeringSurveyMap";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
   applyChecklistToCaseStudyAnswers,
@@ -72,108 +74,25 @@ import {
 } from "../lib/engineering-survey-checklist-sync";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
 import {
+  ENG_STATUS_COLORS,
   EngField,
   EngInfo,
   EngSection,
   EngStatusPill,
   EngTabBar,
   EngUploadBox,
-  ENG_STATUS_COLORS,
-  engCardClassName,
-  engChipClassName,
-  engInputClassName,
-  engLabelClassName,
-  engPpHeadClassName,
-  engPrimaryBtnClassName,
 } from "./EngineeringSurveyHtmlPrimitives";
-
-type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
-
-type LocalTextFields = {
-  latitude: string;
-  longitude: string;
-  onSiteAreaSqm: string;
-  northBoundary: string;
-  northBoundaryLengthM: string;
-  southBoundary: string;
-  southBoundaryLengthM: string;
-  eastBoundary: string;
-  eastBoundaryLengthM: string;
-  westBoundary: string;
-  westBoundaryLengthM: string;
-  natureOnSiteAreaSqm: string;
-  natureNorthBoundary: string;
-  natureNorthBoundaryLengthM: string;
-  natureSouthBoundary: string;
-  natureSouthBoundaryLengthM: string;
-  natureEastBoundary: string;
-  natureEastBoundaryLengthM: string;
-  natureWestBoundary: string;
-  natureWestBoundaryLengthM: string;
-  surveyNotes: string;
-};
-
-function localFieldsFromDraft(
-  draft: EngineeringSurveySubmission,
-): LocalTextFields {
-  return {
-    latitude: draft.latitude,
-    longitude: draft.longitude,
-    onSiteAreaSqm: draft.onSiteAreaSqm,
-    northBoundary: draft.northBoundary,
-    northBoundaryLengthM: draft.northBoundaryLengthM,
-    southBoundary: draft.southBoundary,
-    southBoundaryLengthM: draft.southBoundaryLengthM,
-    eastBoundary: draft.eastBoundary,
-    eastBoundaryLengthM: draft.eastBoundaryLengthM,
-    westBoundary: draft.westBoundary,
-    westBoundaryLengthM: draft.westBoundaryLengthM,
-    natureOnSiteAreaSqm: draft.natureOnSiteAreaSqm ?? "",
-    natureNorthBoundary: draft.natureNorthBoundary ?? "",
-    natureNorthBoundaryLengthM: draft.natureNorthBoundaryLengthM ?? "",
-    natureSouthBoundary: draft.natureSouthBoundary ?? "",
-    natureSouthBoundaryLengthM: draft.natureSouthBoundaryLengthM ?? "",
-    natureEastBoundary: draft.natureEastBoundary ?? "",
-    natureEastBoundaryLengthM: draft.natureEastBoundaryLengthM ?? "",
-    natureWestBoundary: draft.natureWestBoundary ?? "",
-    natureWestBoundaryLengthM: draft.natureWestBoundaryLengthM ?? "",
-    surveyNotes: draft.surveyNotes,
-  };
-}
-
-const BOUNDARY_ROWS = [
-  ["northBoundary", "northBoundaryLengthM", "الحد الشمالي", "طول الحد الشمالي (م)"],
-  ["southBoundary", "southBoundaryLengthM", "الحد الجنوبي", "طول الحد الجنوبي (م)"],
-  ["eastBoundary", "eastBoundaryLengthM", "الحد الشرقي", "طول الحد الشرقي (م)"],
-  ["westBoundary", "westBoundaryLengthM", "الحد الغربي", "طول الحد الغربي (م)"],
-] as const;
-
-const NATURE_BOUNDARY_ROWS = [
-  [
-    "natureNorthBoundary",
-    "natureNorthBoundaryLengthM",
-    "الحد الشمالي",
-    "طول الحد الشمالي (م)",
-  ],
-  [
-    "natureSouthBoundary",
-    "natureSouthBoundaryLengthM",
-    "الحد الجنوبي",
-    "طول الحد الجنوبي (م)",
-  ],
-  [
-    "natureEastBoundary",
-    "natureEastBoundaryLengthM",
-    "الحد الشرقي",
-    "طول الحد الشرقي (م)",
-  ],
-  [
-    "natureWestBoundary",
-    "natureWestBoundaryLengthM",
-    "الحد الغربي",
-    "طول الحد الغربي (م)",
-  ],
-] as const;
+import {
+  WorkTab,
+  EMPTY_FIELD_ERRORS,
+  EngineeringSurveyMap,
+  FailureRaisePanel,
+  LocalTextFields,
+  localFieldsFromDraft,
+  mergeRemoteSurveyDraft,
+  BOUNDARY_ROWS,
+  NATURE_BOUNDARY_ROWS,
+} from "./EngineeringSurveyWorkParts";
 
 export function EngineeringSurveyWorkPanel({
   def,
@@ -194,7 +113,7 @@ export function EngineeringSurveyWorkPanel({
   forceReadOnly?: boolean;
 }) {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const viewOnly = variant === "workspace";
   const propertyId = task.propertyId ?? "";
   const { showToast, runWithUploadToast } = useToast();
@@ -234,23 +153,30 @@ export function EngineeringSurveyWorkPanel({
   const [draft, setDraft] = useState<EngineeringSurveySubmission | null>(null);
   const [localFields, setLocalFields] = useState<LocalTextFields | null>(null);
   const [workTab, setWorkTab] = useState<WorkTab>("survey");
-  const [fieldErrors, setFieldErrors] = useState<EngineeringSurveyFieldErrors>(
-    {},
-  );
+  const [fieldErrors, setFieldErrors] =
+    useState<EngineeringSurveyFieldErrors>(EMPTY_FIELD_ERRORS);
   const [formError, setFormError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingLocal, setSavingLocal] = useState(false);
-  const [sketchExtractNote, setSketchExtractNote] = useState<string | null>(
-    null,
-  );
-  const [sketchExtracting, setSketchExtracting] = useState(false);
-  /** Last croquis length parse — seed nature lengths when مطابقة = لا */
-  const [lastSketchExtract, setLastSketchExtract] =
-    useState<SurveySketchExtractResult | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatchRef = useRef<Parameters<
     typeof updateEngineeringSurveyDraft
   >[1]>({});
+  const localFieldsRef = useRef(localFields);
+  localFieldsRef.current = localFields;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  const applyRemoteDraft = useCallback((next: EngineeringSurveySubmission) => {
+    setDraft(
+      mergeRemoteSurveyDraft(
+        next,
+        draftRef.current,
+        localFieldsRef.current,
+        pendingPatchRef.current.checklist,
+      ),
+    );
+  }, []);
 
   const liveSurveyTask = useMemo(
     () => workflowTasks.find((t) => t.id === task.id) ?? task,
@@ -352,6 +278,15 @@ export function EngineeringSurveyWorkPanel({
     forceReadOnly ||
     task.status === "completed";
   const formDisabled = locked || viewOnly || !documentaryGate.ready;
+
+  const { execute: executeSurveySubmit } = useIdempotentAction(
+    useCallback(
+      async (idempotencyKey: string) =>
+        finalizeEngineeringSurveySubmission(task.id, idempotencyKey),
+      [task.id],
+    ),
+  );
+
   const transactionActive = useMemo(
     () => isEngineeringSurveyTransactionActive(task.status, draft?.status),
     [draft?.status, task.status],
@@ -433,8 +368,7 @@ export function EngineeringSurveyWorkPanel({
       void updateEngineeringSurveyDraft(task.id, patch)
         .then((next) => {
           if (!next) return;
-          setDraft(next);
-          // Keep local text fields unless this patch came from file/checklist locks.
+          applyRemoteDraft(next);
         })
         .catch((err: unknown) => {
           showToast(
@@ -445,7 +379,7 @@ export function EngineeringSurveyWorkPanel({
           );
         });
     },
-    [task.id, showToast],
+    [task.id, showToast, applyRemoteDraft],
   );
 
   const flushPendingPersist = useCallback(async () => {
@@ -458,7 +392,7 @@ export function EngineeringSurveyWorkPanel({
     if (!task.id || Object.keys(patch).length === 0) return;
     try {
       const next = await updateEngineeringSurveyDraft(task.id, patch);
-      if (next) setDraft(next);
+      if (next) applyRemoteDraft(next);
     } catch (err: unknown) {
       showToast(
         err instanceof Error
@@ -467,7 +401,7 @@ export function EngineeringSurveyWorkPanel({
         "error",
       );
     }
-  }, [showToast, task.id]);
+  }, [showToast, task.id, applyRemoteDraft]);
 
   const schedulePersist = useCallback(
     (patch: Parameters<typeof updateEngineeringSurveyDraft>[1]) => {
@@ -520,11 +454,6 @@ export function EngineeringSurveyWorkPanel({
     };
   }, []);
 
-  useEffect(() => {
-    if (!draft || locked || viewOnly) return;
-    void syncCaseStudyFromChecklist(draft.checklist);
-  }, [draft, locked, syncCaseStudyFromChecklist, viewOnly]);
-
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked || viewOnly || !localFields) return false;
 
@@ -560,7 +489,10 @@ export function EngineeringSurveyWorkPanel({
       ...draft,
       ...localFields,
     };
-    const errors = validateEngineeringSurveySubmission(merged);
+    const siteLetterRequired = !isPlattedPropertyWithPlot(property);
+    const errors = validateEngineeringSurveySubmission(merged, {
+      siteLetterRequired,
+    });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const message = firstEngineeringSurveyError(errors);
@@ -575,9 +507,12 @@ export function EngineeringSurveyWorkPanel({
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
-    const result = await finalizeEngineeringSurveySubmission(task.id);
+    const outcome = await executeSurveySubmit();
     hostRef.current?.onSavingChange?.(false);
 
+    if (outcome.status === "skipped") return false;
+
+    const result = outcome.value;
     if (result) {
       setDraft(result.submission);
       setLocalFields(localFieldsFromDraft(result.submission));
@@ -603,6 +538,7 @@ export function EngineeringSurveyWorkPanel({
     task.id,
     hostRef,
     showToast,
+    executeSurveySubmit,
   ]);
 
   useEffect(() => {
@@ -626,6 +562,30 @@ export function EngineeringSurveyWorkPanel({
     [schedulePersist],
   );
 
+  const onWorkTabChange = useCallback((id: string) => {
+    setWorkTab(id as WorkTab);
+  }, []);
+
+  const handleChecklistChange = useCallback(
+    (checklist: EngineeringSurveySubmission["checklist"]) => {
+      const prevAnswers = (draftRef.current?.checklist ?? [])
+        .map((row) => row.answer)
+        .join("|");
+      const nextAnswers = checklist.map((row) => row.answer).join("|");
+      setDraft((prev) => (prev ? { ...prev, checklist } : prev));
+      schedulePersist({ checklist });
+      if (prevAnswers !== nextAnswers) {
+        void syncCaseStudyFromChecklist(checklist);
+      }
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.checklist;
+        return next;
+      });
+    },
+    [schedulePersist, syncCaseStudyFromChecklist],
+  );
+
   function onFilePick(
     field: "surveyReportFileName" | "siteLetterFileName",
     file: File | null,
@@ -636,10 +596,6 @@ export function EngineeringSurveyWorkPanel({
     const isSurveyReport = field === "surveyReportFileName";
 
     void runWithUploadToast(async () => {
-      if (isSurveyReport) {
-        setSketchExtracting(true);
-        setSketchExtractNote(null);
-      }
       try {
         const result = await cacheEngineeringSurveyFile(
           draft.taskId,
@@ -651,94 +607,14 @@ export function EngineeringSurveyWorkPanel({
           throw new Error(result.error);
         }
         const next = loadEngineeringSurveySubmission(draft.taskId);
-        if (next) setDraft(next);
+        if (next) applyRemoteDraft(next);
         setFieldErrors((prev) => {
           const nextErrors = { ...prev };
           delete nextErrors[isSurveyReport ? "survey_report" : "site_letter"];
           return nextErrors;
         });
-
-        if (!isSurveyReport) return;
-
-        // Extraction is best-effort only — never fail the upload after the PDF is saved.
-        try {
-          // Croquis PDF only — no property/بورصة mix-in
-          const extracted = await extractSurveySketchFromPdf(file);
-          setLastSketchExtract(extracted);
-          const currentFields = localFields ?? localFieldsFromDraft(draft);
-          // overwrite=true: re-upload must replace previous lengths
-          const { patch, appliedCount } = sketchExtractToEmptyFieldsPatch(
-            extracted,
-            {
-              ...currentFields,
-              deedMatchesNature: draft.deedMatchesNature,
-            },
-            true,
-          );
-
-          const lengthFilled = [
-            extracted.deed.north.lengthM,
-            extracted.deed.south.lengthM,
-            extracted.deed.east.lengthM,
-            extracted.deed.west.lengthM,
-          ].filter(Boolean).length;
-
-          if (appliedCount > 0) {
-            const { deedMatchesNature, ...textPatch } = patch;
-            if (Object.keys(textPatch).length > 0) {
-              setLocalFields((prev) => ({
-                ...(prev ?? localFieldsFromDraft(draft)),
-                ...textPatch,
-              }));
-              schedulePersist(textPatch);
-            }
-            if (deedMatchesNature != null) {
-              const saved = await updateEngineeringSurveyDraft(draft.taskId, {
-                deedMatchesNature,
-              });
-              if (saved) setDraft(saved);
-            }
-            setFieldErrors((prev) => {
-              const nextErrors = { ...prev };
-              delete nextErrors.on_site_area;
-              delete nextErrors.nature_on_site_area;
-              delete nextErrors.deed_matches_nature;
-              return nextErrors;
-            });
-          }
-
-          const msg =
-            extracted.warning ??
-            (lengthFilled > 0
-              ? `تُعبّأت ${lengthFilled} أطوال. وصف الحد يدوياً — المساحة يدوية.`
-              : "تم رفع التقرير. لم تُقرأ أرقام أطوال — عبّئ الحدود والأطوال يدوياً.");
-
-          setSketchExtractNote(msg);
-          showToast(
-            lengthFilled > 0
-              ? `أطوال: ${lengthFilled}/4 · وصف الحد يدوياً · المساحة يدوياً`
-              : "تم رفع التقرير — الأطوال ووصف الحد يدوياً",
-            lengthFilled === 0 ? "info" : "success",
-          );
-        } catch (extractErr) {
-          console.error("[survey-sketch-extract]", extractErr);
-          const detail =
-            extractErr instanceof Error
-              ? extractErr.message
-              : "تعذّر الاستخراج التلقائي";
-          setSketchExtractNote(
-            `تم رفع التقرير. ${detail} — عبّئ الأطوال ووصف الحد يدوياً.`,
-          );
-          showToast("تم رفع التقرير — راجع الحدود يدوياً", "info");
-        }
       } catch (err) {
-        // Actual upload/cache failure — surface to runWithUploadToast
-        if (isSurveyReport) {
-          setSketchExtractNote(null);
-        }
         throw err;
-      } finally {
-        if (isSurveyReport) setSketchExtracting(false);
       }
     });
   }
@@ -753,25 +629,13 @@ export function EngineeringSurveyWorkPanel({
         return;
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
-      if (next) setDraft(next);
-      if (field === "surveyReportFileName") setSketchExtractNote(null);
+      if (next) applyRemoteDraft(next);
     });
   }
 
   if (!draft || !localFields) {
     return <InlineLoadingSkeleton className="my-2" />;
   }
-
-  const statusPill =
-    task.status === "completed" ? (
-      <EngStatusPill label="مكتمل" color={ENG_STATUS_COLORS.completed} />
-    ) : locked ? (
-      <EngStatusPill label="مُرسل" color={ENG_STATUS_COLORS.submitted} />
-    ) : draft.status === "reopened" ? (
-      <EngStatusPill label="معادة للتصحيح" color={ENG_STATUS_COLORS.reopened} />
-    ) : (
-      <EngStatusPill label="مسودة" color={ENG_STATUS_COLORS.draft} />
-    );
 
   const surveyBody = (
     <>
@@ -805,14 +669,14 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
-          <label className={engLabelClassName} htmlFor="eng-lat">
+          <label className={opsTfLbl} htmlFor="eng-lat">
             خط العرض (Latitude) *
           </label>
           <input
             id="eng-lat"
             dir="ltr"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.latitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -826,14 +690,14 @@ export function EngineeringSurveyWorkPanel({
           ) : null}
         </div>
         <div>
-          <label className={engLabelClassName} htmlFor="eng-lng">
+          <label className={opsTfLbl} htmlFor="eng-lng">
             خط الطول (Longitude) *
           </label>
           <input
             id="eng-lng"
             dir="ltr"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.longitude && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -855,48 +719,28 @@ export function EngineeringSurveyWorkPanel({
       />
 
       <EngSection>التقرير المساحي</EngSection>
-      {!formDisabled ? (
-        <EngInfo>
-          ℹ بعد الرفع: تُعبَّأ **أطوال الحدود فقط** (الأرقام) عند توفرها في التقرير.
-          «وصف الحد» والمساحة يدوية.
-        </EngInfo>
-      ) : null}
       <EngUploadBox
         id="eng-survey-report"
         title="رفع التقرير المساحي"
         hint="PDF — الحجم الأقصى 20 ميجابايت"
         fileName={draft.surveyReportFileName}
-        disabled={formDisabled || sketchExtracting}
+        disabled={formDisabled}
         error={fieldErrors.survey_report}
         onPick={(file) => onFilePick("surveyReportFileName", file)}
         onClear={() => onFileClear("surveyReportFileName")}
       />
-      {sketchExtracting ? (
-        <div
-          className="mt-2 mb-3 flex items-center gap-2.5 rounded-[10px] border border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] px-3.5 py-3 text-[12.5px] font-semibold text-text-2"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <Spinner className="size-4 border-gold-d border-e-transparent text-gold-d" />
-          <span>جارٍ قراءة أطوال الحدود من التقرير…</span>
-        </div>
-      ) : null}
-      {sketchExtractNote && !sketchExtracting ? (
-        <EngInfo variant="amber">{sketchExtractNote}</EngInfo>
-      ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div>
-          <label className={engLabelClassName} htmlFor="eng-on-site-area">
+          <label className={opsTfLbl} htmlFor="eng-on-site-area">
             المساحة الإجمالية
           </label>
           <input
             id="eng-on-site-area"
             inputMode="decimal"
             className={cn(
-              engInputClassName,
+              opsFldControl,
               fieldErrors.on_site_area && engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
@@ -917,25 +761,25 @@ export function EngineeringSurveyWorkPanel({
           className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
         >
           <div>
-            <label className={engLabelClassName} htmlFor={`eng-${boundKey}`}>
+            <label className={opsTfLbl} htmlFor={`eng-${boundKey}`}>
               {boundLabel}
             </label>
             <input
               id={`eng-${boundKey}`}
-              className={engInputClassName}
+              className={opsFldControl}
               disabled={formDisabled}
               value={localFields[boundKey]}
               onChange={(e) => patchLocalField(boundKey, e.target.value)}
             />
           </div>
           <div>
-            <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+            <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
               {lenLabel}
             </label>
             <input
               id={`eng-${lenKey}`}
               inputMode="decimal"
-              className={engInputClassName}
+              className={opsFldControl}
               disabled={formDisabled}
               value={localFields[lenKey]}
               onChange={(e) => patchLocalField(lenKey, e.target.value)}
@@ -952,7 +796,7 @@ export function EngineeringSurveyWorkPanel({
           fieldErrors.deed_matches_nature && engineeringInvalidControlClass,
         )}
       >
-        <p className={cn(engLabelClassName, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
+        <p className={cn(opsTfLbl, "mb-2")}>هل الصك مطابق للطبيعة؟</p>
         <div className="flex flex-wrap gap-2">
           {(
             [
@@ -983,7 +827,7 @@ export function EngineeringSurveyWorkPanel({
                     void updateEngineeringSurveyDraft(task.id, {
                       deedMatchesNature: next,
                     }).then((saved) => {
-                      if (saved) setDraft(saved);
+                      if (saved) applyRemoteDraft(saved);
                     });
                     setFieldErrors((prev) => {
                       if (!prev.deed_matches_nature) return prev;
@@ -991,24 +835,18 @@ export function EngineeringSurveyWorkPanel({
                       return rest;
                     });
 
-                    // عند «لا»: عبّئ أوصاف/أطوال الطبيعة من الكروكي (بدون مساحة)
+                    // When «no»: copy nature fields from deed form values already entered
                     if (next === "no" && localFields) {
-                      const fromExtract = lastSketchExtract
-                        ? sketchNatureFieldsFromExtract(lastSketchExtract)
-                        : sketchNatureFieldsFromDeedForm(localFields);
-
+                      const fromDeed = natureFieldsFromDeedForm(localFields);
                       const { patch: naturePatch, appliedCount: natureN } =
-                        applyNatureSketchPatch(fromExtract, localFields, true);
+                        applyNatureBoundaryPatch(fromDeed, localFields, true);
                       if (natureN > 0) {
                         setLocalFields((prev) =>
                           prev ? { ...prev, ...naturePatch } : prev,
                         );
                         schedulePersist(naturePatch);
-                        setSketchExtractNote(
-                          `تم تعبئة ${natureN} حقلاً حسب الطبيعة — المساحة الإجمالية يدوياً.`,
-                        );
                         showToast(
-                          `طبيعة: ${natureN} حقل · المساحة يدوياً`,
+                          `تم نسخ ${natureN} حقلاً من حدود الصك إلى الطبيعة — راجعها والمساحة يدوياً`,
                           "success",
                         );
                       }
@@ -1037,8 +875,8 @@ export function EngineeringSurveyWorkPanel({
           </p>
         ) : (
           <p className="mt-1.5 text-[11px] text-text-3">
-            نعم: تُعتمد الحدود حسب الصك أعلاه · لا: تُفتح حقول الطبيعة وتُعبَّأ
-            تلقائياً من الكروكي عند الإمكان
+            نعم: تُعتمد الحدود حسب الصك أعلاه · لا: تُفتح حقول الطبيعة ويمكن
+            نسخ حدود الصك إليها للمراجعة
           </p>
         )}
       </div>
@@ -1049,7 +887,7 @@ export function EngineeringSurveyWorkPanel({
           <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div>
               <label
-                className={engLabelClassName}
+                className={opsTfLbl}
                 htmlFor="eng-nature-on-site-area"
               >
                 المساحة الإجمالية
@@ -1058,7 +896,7 @@ export function EngineeringSurveyWorkPanel({
                 id="eng-nature-on-site-area"
                 inputMode="decimal"
                 className={cn(
-                  engInputClassName,
+                  opsFldControl,
                   fieldErrors.nature_on_site_area &&
                     engineeringInvalidControlClass,
                 )}
@@ -1084,27 +922,27 @@ export function EngineeringSurveyWorkPanel({
               >
                 <div>
                   <label
-                    className={engLabelClassName}
+                    className={opsTfLbl}
                     htmlFor={`eng-${boundKey}`}
                   >
                     {boundLabel}
                   </label>
                   <input
                     id={`eng-${boundKey}`}
-                    className={engInputClassName}
+                    className={opsFldControl}
                     disabled={formDisabled}
                     value={localFields[boundKey]}
                     onChange={(e) => patchLocalField(boundKey, e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className={engLabelClassName} htmlFor={`eng-${lenKey}`}>
+                  <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
                     {lenLabel}
                   </label>
                   <input
                     id={`eng-${lenKey}`}
                     inputMode="decimal"
-                    className={engInputClassName}
+                    className={opsFldControl}
                     disabled={formDisabled}
                     value={localFields[lenKey]}
                     onChange={(e) => patchLocalField(lenKey, e.target.value)}
@@ -1117,13 +955,13 @@ export function EngineeringSurveyWorkPanel({
       ) : null}
 
       <div className="mb-1">
-        <label className={engLabelClassName} htmlFor="eng-survey-notes">
+        <label className={opsTfLbl} htmlFor="eng-survey-notes">
           ملاحظات الرفع المساحي
         </label>
         <textarea
           id="eng-survey-notes"
           rows={3}
-          className={cn(engInputClassName, "resize-y")}
+          className={cn(opsFldControl, "resize-y")}
           disabled={formDisabled}
           value={localFields.surveyNotes}
           onChange={(e) => patchLocalField("surveyNotes", e.target.value)}
@@ -1134,7 +972,11 @@ export function EngineeringSurveyWorkPanel({
       <EngUploadBox
         id="eng-site-letter"
         title="رفع خطاب الإقرار"
-        hint="PDF — الحجم الأقصى 10 ميجابايت"
+        hint={
+          isPlattedPropertyWithPlot(property)
+            ? "اختياري — العقار ضمن مخطط وله رقم قطعة · PDF — الحجم الأقصى 10 ميجابايت"
+            : "PDF — الحجم الأقصى 10 ميجابايت"
+        }
         fileName={draft.siteLetterFileName}
         disabled={formDisabled}
         error={fieldErrors.site_letter}
@@ -1192,15 +1034,7 @@ export function EngineeringSurveyWorkPanel({
         <EngineeringSurveyChecklist
           rows={draft.checklist}
           disabled={formDisabled}
-          onChange={(checklist) => {
-            persist({ checklist });
-            void syncCaseStudyFromChecklist(checklist);
-            setFieldErrors((prev) => {
-              const next = { ...prev };
-              delete next.checklist;
-              return next;
-            });
-          }}
+          onChange={handleChecklistChange}
         />
         {fieldErrors.checklist ? (
           <p className="mt-1 text-[11px] text-[#a5432e]">
@@ -1213,7 +1047,7 @@ export function EngineeringSurveyWorkPanel({
         <div className="mt-[18px] flex justify-start">
           <button
             type="button"
-            className={engPrimaryBtnClassName}
+            className={opsBtnPrimary}
             disabled={savingLocal}
             aria-busy={savingLocal || undefined}
             onClick={() => {
@@ -1244,28 +1078,10 @@ export function EngineeringSurveyWorkPanel({
   return (
     <>
       <div className="mx-auto w-full max-w-[1100px]">
-        <div className={engPpHeadClassName}>
-          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
-            <span>مساحة عمل الرفع المساحي</span>
-            <span className="text-[14px] font-bold text-gold-d [direction:ltr]">
-              صك {deedNumber}
-            </span>
-          </h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className={engChipClassName}>
-              {task.assigneeName?.trim() || def.assigneeSubtitle || "المكتب الهندسي"}
-            </span>
-            {statusPill}
-            {viewOnly ? (
-              <EngStatusPill label="استعراض" color={ENG_STATUS_COLORS.view} />
-            ) : null}
-          </div>
-        </div>
-
-        <div className={engCardClassName}>
+        <div className={opsWorkspaceCard}>
           <EngTabBar
             active={workTab}
-            onChange={(id) => setWorkTab(id as WorkTab)}
+            onChange={onWorkTabChange}
             tabs={[
               { id: "property", label: "بيانات العقار" },
               { id: "survey", label: "الرفع المساحي" },
@@ -1295,7 +1111,7 @@ export function EngineeringSurveyWorkPanel({
               {!locked ? (
                 <button
                   type="button"
-                  className={cn(engPrimaryBtnClassName, "!px-3.5 !py-1.5 !text-[11.5px]")}
+                  className={cn(opsBtnPrimary, "!px-3.5 !py-1.5 !text-[11.5px]")}
                   onClick={handleStartSurvey}
                 >
                   بدء الرفع المساحي
@@ -1370,7 +1186,7 @@ export function EngineeringSurveyWorkPanel({
                 <EngSection>ملاحظة على المعاملة</EngSection>
                 <textarea
                   id="eng-workspace-note"
-                  className={cn(engInputClassName, "min-h-[120px] resize-y")}
+                  className={cn(opsFldControl, "min-h-[120px] resize-y")}
                   rows={5}
                   disabled={!notesEditable}
                   value={noteDraft}
@@ -1382,7 +1198,7 @@ export function EngineeringSurveyWorkPanel({
                     <button
                       type="button"
                       className={cn(
-                        engPrimaryBtnClassName,
+                        opsBtnPrimary,
                         "!px-[18px] !py-[7px] !text-xs",
                       )}
                       onClick={saveNote}

@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Operations.Api.Controllers;
 
@@ -12,6 +15,7 @@ namespace RealEstateEval.Operations.Api.Controllers;
 [ApiController]
 [Route("api/key-envelope-dispatch")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class KeyEnvelopeDispatchController(
     IKeyEntitlementLookup entitlements,
     IPropertyKeyGateResolver gates) : ControllerBase

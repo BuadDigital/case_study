@@ -1,10 +1,8 @@
-import type { RowMoreMenuItem } from "@case-study/mfe/components/ui/RowMoreMenu";
-import type { WorkflowTask } from "@case-study/mfe/lib/prototype/tasks-storage";
-import {
-  getPartyTaskRecall,
-  requestPartyTaskRecall,
-} from "@platform/app-shared/prototype/party-task-recall-storage";
-import { loadEvaluatorSubmission } from "./evaluator-submission-storage";
+import type { RowMoreMenuItem } from "@platform/ui-kit";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
+import { requestPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-commands";
+import { loadEvaluatorSubmission } from "./evaluator-submission-model";
 
 export function buildAppraiserRecallMenuItems(
   task: WorkflowTask,

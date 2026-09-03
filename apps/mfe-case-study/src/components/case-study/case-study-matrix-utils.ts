@@ -1,6 +1,6 @@
-import type { CaseStudyFormAnswer } from "../../lib/prototype/case-study-form-data";
-import type { PartyQuestionContribution } from "../../lib/prototype/case-study-party-answers";
-import type { CaseStudyInfoPartyId } from "@settings/mfe";
+import type { CaseStudyFormAnswer } from "../../lib/app-data/case-study-form-data";
+import type { PartyQuestionContribution } from "../../lib/app-data/case-study-party-answers";
+import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 export type MatrixYn = "Y" | "N" | "NA";
 export type PartyMatrixKey = "MA" | "EN" | "EV" | "GR";
 export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV", "GR"];

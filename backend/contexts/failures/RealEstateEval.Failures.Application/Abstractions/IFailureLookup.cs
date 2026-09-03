@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Failures.Application.Contracts;
 
-namespace RealEstateEval.Application.Abstractions;
+namespace RealEstateEval.Failures.Application.Abstractions;
 
 /// <summary>
 /// Read-only failure gates and lists. Failures host uses EF; Case Study and Operations call HTTP.

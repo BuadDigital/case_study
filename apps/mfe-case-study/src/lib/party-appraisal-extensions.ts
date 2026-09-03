@@ -1,8 +1,8 @@
 import type { RefObject, ReactNode } from "react";
-import type { PartyTaskPageDef } from "@platform/app-shared/prototype/party-task-pages";
+import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { ActiveTransactionQueueConfig } from "../views/ActiveTransactionQueueView";
-import type { PoPropertyIntake } from "./prototype/po-intake-data";
-import type { WorkflowTask } from "./prototype/tasks-storage";
+import type { PoPropertyIntake } from "./app-data/po-intake-data";
+import type { WorkflowTask } from "./app-data/tasks-storage";
 
 export type PartyEvaluatorWorkHostRef = {
   submit?: () => Promise<boolean>;
@@ -25,7 +25,7 @@ export type PartyAppraisalPropertySummary = {
   appraisalTaskId?: string | null;
 };
 
-/** حقن من shell — قائمة المقيم ونموذج رفع التقييم يعتمدان على وحدة المُقيّم. */
+/** Injected from shell — appraiser menu and valuation upload form depend on the evaluator module. */
 export type PartyAppraisalExtensions = {
   patchQueueConfig: (
     base: ActiveTransactionQueueConfig,
@@ -38,6 +38,8 @@ export type PartyAppraisalExtensions = {
     propertySummary?: PartyAppraisalPropertySummary;
     deedLabel?: string;
     onBack?: () => void;
+    /** Same property chrome as the case-study specialist (hero; without the timeline column). */
+    embeddedInPropertyChrome?: boolean;
   }) => ReactNode;
   isEvaluatorLocked: (taskId: string, saving: boolean) => boolean;
 };

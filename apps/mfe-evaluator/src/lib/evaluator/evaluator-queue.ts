@@ -1,10 +1,10 @@
-import type { WorkflowTask } from "@case-study/mfe";
-import { isVisibleInAppraiserQueue } from "./evaluator-submission-storage";
+import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { isVisibleInAppraiserQueue } from "./evaluator-submission-model";
 import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 
 /**
- * قائمة المقيم — Case Study.html `renderValOrders`:
- * افتراضياً تُخفى المُرسَلة؛ «إظهار الكل» يعيدها.
+ * Appraiser queue — Case Study.html `renderValOrders`:
+ * submitted rows hidden by default; "Show all" restores them.
  */
 export function filterAppraiserListedTasks(
   tasks: WorkflowTask[],

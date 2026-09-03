@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
-import type { InspectorPhotoAttachment } from "../../lib/prototype/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
-} from "../../lib/prototype/inspector-photo-upload";
+} from "../../lib/app-data/inspector-photo-upload";
 
 export function InspectorStampedPhotoThumb({
   stamp,
@@ -16,6 +16,7 @@ export function InspectorStampedPhotoThumb({
   photoRef,
   attachment,
   dataUrl: dataUrlProp,
+  ownerBadge,
   onClear,
   onClick,
 }: {
@@ -26,6 +27,8 @@ export function InspectorStampedPhotoThumb({
   photoRef?: string;
   attachment?: InspectorPhotoAttachment | null;
   dataUrl?: string;
+  /** Shown when the photo belongs to another party (read-only for the current actor). */
+  ownerBadge?: string;
   onClear?: () => void;
   onClick?: () => void;
 }) {
@@ -70,8 +73,11 @@ export function InspectorStampedPhotoThumb({
       <button
         type="button"
         onClick={onClick}
+        title={onClick ? "معاينة الصورة" : undefined}
+        aria-label={onClick ? "معاينة الصورة" : undefined}
         className={cn(
           "relative overflow-hidden rounded-md border bg-cover bg-center",
+          onClick && dataUrl ? "cursor-zoom-in" : null,
           dataUrl
             ? "border-teal-light"
             : "border-teal-light bg-teal-light text-teal-text",
@@ -94,20 +100,23 @@ export function InspectorStampedPhotoThumb({
           </span>
         )}
       </button>
+      {ownerBadge ? (
+        <span className="pointer-events-none absolute start-0 top-0 z-10 max-w-[calc(100%-28px)] truncate rounded-br-md bg-black/65 px-1 py-0.5 text-[8px] font-semibold leading-tight text-white">
+          {ownerBadge}
+        </span>
+      ) : null}
       {onClear ? (
         <button
           type="button"
           title="إزالة"
           aria-label="إزالة الصورة"
-          className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
+          className="absolute end-1 top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-[13px] font-bold leading-none text-red-600 shadow-sm ring-1 ring-black/10 transition hover:bg-red-600 hover:text-white"
           onClick={(e) => {
             e.stopPropagation();
             onClear();
           }}
         >
-          <span className="text-sm font-bold leading-none" aria-hidden>
-            ×
-          </span>
+          ×
         </button>
       ) : null}
     </div>

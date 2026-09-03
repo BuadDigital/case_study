@@ -4,8 +4,12 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Domain;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Platform.Infrastructure.Services;
 
 /// <summary>
 /// factor definitions are admin-managed reference
@@ -74,7 +78,7 @@ public sealed class DifferenceFactorCatalogService(
 
         row.CatalogJson = DifferenceFactorCatalog.Serialize(entries);
 
- // سجل النسخ — the audit trail carries the before/after of every version.
+ // Version history — the audit trail carries the before/after of every version.
         db.AuditLogs.Add(audit.Create(
             string.IsNullOrWhiteSpace(actorId) ? "system" : actorId,
             "DIFFERENCE_FACTOR_CATALOG_SAVED",

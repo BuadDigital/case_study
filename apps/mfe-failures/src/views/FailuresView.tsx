@@ -2,19 +2,24 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, Fragment } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import {
   Button,
   cn,
   EmptyState,
   formControlClassName,
+  KpiAlertIcon,
   KpiBand,
   KpiCell,
+  KpiCheckIcon,
+  KpiClipboardIcon,
+  KpiClockIcon,
   MobileKpiStatCards,
   Note,
   OperationalPanel,
@@ -33,14 +38,17 @@ import {
   queueTableRowClassName,
   useToast,
 } from "@platform/ui-kit";
-import { formatPoDisplay, PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe";
-import { poPropertyPath } from "@case-study/mfe/lib/po-routes";
-import { suspendPropertyTransaction } from "@case-study/mfe/lib/prototype/suspend-property-transaction";
-import { usePoRecordsQuery } from "@case-study/mfe/query/case-study-queries";
+import { formatPoDisplay } from "@platform/ui-kit";
+import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@platform/app-shared/domain/property-labels";
+import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
+import {
+  getFailuresCaseStudyBridge,
+  usePoRecordsViaBridge,
+} from "@platform/app-shared/failures/case-study-bridge";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
-} from "@case-study/mfe/components/queue/ActiveQueueMobileCards";
+} from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   failuresForPartyRole,
   isPartyScopedFailuresRole,
@@ -60,48 +68,16 @@ import {
   failureRecordTitle,
 } from "../lib/failures-labels";
 import {
-  countOpenFailures,
   isActiveFailureStatus,
   type FailureRecord,
-} from "../lib/failures-types";
-import { useFailuresQuery } from "../query/failures-queries";
-
-function KpiAlertIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
-
-function KpiClockIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function KpiCheckIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </svg>
-  );
-}
-
-function KpiClipboardIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
-}
+  type FailureStatus,
+} from "@platform/app-shared/failures/failures-types";
+import {
+  invalidateFailuresRelated,
+  optimisticFailureStatus,
+  restoreFailuresSnapshot,
+  useFailuresQuery,
+} from "../query/failures-queries";
 
 function isCaseEditor(role: RoleId) {
   return isSuperAdmin(role) || role === "case-specialist";
@@ -138,7 +114,7 @@ export function FailuresView() {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight")?.trim() || null;
   const { showToast } = useToast();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const ce = isCaseEditor(role);
   const ca = isSupervisor(role);
   const { data: items = [], isFetched, isError, error, refetch } =
@@ -148,7 +124,7 @@ export function FailuresView() {
     if (scoped) return scoped;
     return items;
   }, [items, role]);
-  const { data: poRecords = [] } = usePoRecordsQuery();
+  const { data: poRecords = [] } = usePoRecordsViaBridge();
   const assignmentSpecialistByPo = useMemo(() => {
     const map = new Map<string, string>();
     for (const record of poRecords) {
@@ -158,6 +134,8 @@ export function FailuresView() {
     return map;
   }, [poRecords]);
   const [search, setSearch] = useState("");
+  // After hydration mount only one tree (table or cards) — both used to build together.
+  const isDesktopViewport = useViewportDesktop();
   const [expandedId, setExpandedId] = useState<string | null>(highlightId);
   const [supervisorNote, setSupervisorNote] = useState<Record<string, string>>(
     {},
@@ -166,8 +144,10 @@ export function FailuresView() {
     {},
   );
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
-  /** `failureId:action` — يظهر Spinner على الزر أثناء الشبكة. */
+  /** `failureId:action` — shows Spinner on the button during the network call. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  /** Sync guard — React state alone can miss two clicks in the same frame. */
+  const busyLockRef = useRef(false);
 
   useEffect(() => {
     if (!highlightId || !isFetched) return;
@@ -180,26 +160,65 @@ export function FailuresView() {
   const router = useRouter();
 
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: prototypeKeys.failures() });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.suspendedTransactions(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.workflowTasks(),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: prototypeKeys.pendingBourseItems(),
-    });
+    invalidateFailuresRelated(queryClient);
     void refetch();
   }, [queryClient, refetch]);
 
+  async function runOptimisticStatus(
+    id: string,
+    nextStatus: FailureStatus,
+    work: () => Promise<{ ok: true } | { ok: false; error: string }>,
+    opts: {
+      busyKey: string;
+      successToast: string;
+      errorToast: string;
+      extra?: Partial<FailureRecord>;
+      onOk?: () => void;
+    },
+  ): Promise<void> {
+    await runBusy(opts.busyKey, async () => {
+      await queryClient.cancelQueries({ queryKey: appDataKeys.failures() });
+      const snapshot = optimisticFailureStatus(
+        queryClient,
+        id,
+        nextStatus,
+        opts.extra,
+      );
+      try {
+        const result = await work();
+        if (!result.ok) {
+          restoreFailuresSnapshot(queryClient, snapshot);
+          showToast(result.error, "error");
+          return;
+        }
+        showToast(opts.successToast, "success");
+        opts.onOk?.();
+        refresh();
+      } catch {
+        restoreFailuresSnapshot(queryClient, snapshot);
+        showToast(opts.errorToast, "error");
+      }
+    });
+  }
+
   const stats = useMemo(() => {
-    const open = countOpenFailures(visibleItems);
-    const review = visibleItems.filter((f) => f.status === "review").length;
-    const approved = visibleItems.filter((f) => f.status === "approved").length;
-    const resolved = visibleItems.filter((f) => f.status === "resolved").length;
-    const closed = approved + resolved;
-    const total = visibleItems.filter((f) => f.status !== "suspended").length;
+    // One pass computes all four badges — countOpenFailures was a second full pass
+    // over the same array (js-combine-iterations).
+    let open = 0;
+    let review = 0;
+    let closed = 0;
+    let total = 0;
+    for (const f of visibleItems) {
+      if (
+        isActiveFailureStatus(f.status) &&
+        (f.status === "internal" || f.status === "review" || f.status === "returned")
+      ) {
+        open += 1;
+      }
+      if (f.status === "review") review += 1;
+      else if (f.status === "approved" || f.status === "resolved") closed += 1;
+      if (f.status !== "suspended") total += 1;
+    }
     return {
       open,
       review,
@@ -221,8 +240,11 @@ export function FailuresView() {
       });
   }, [visibleItems]);
 
+  // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
+
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     if (!q) return sortedItems;
     return sortedItems.filter((f) => {
       const hay = [
@@ -238,125 +260,125 @@ export function FailuresView() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [sortedItems, search]);
+  }, [sortedItems, deferredSearch]);
 
   async function runBusy(
     key: string,
     work: () => Promise<void>,
   ): Promise<void> {
+    // One in-flight mutation at a time — overlapping optimistic patches on the
+    // same list desync when an earlier request fails after a later one patched.
+    if (busyLockRef.current) return;
+    busyLockRef.current = true;
     setBusyKey(key);
     try {
       await work();
     } finally {
+      busyLockRef.current = false;
       setBusyKey(null);
     }
   }
 
   function handleSubmit(id: string) {
-    void runBusy(`${id}:submit`, async () => {
-      try {
-        const result = await submitFailureForReview(id);
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم تصعيد التعذر", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى", "error");
-      }
+    void runOptimisticStatus(id, "review", () => submitFailureForReview(id), {
+      busyKey: `${id}:submit`,
+      successToast: "تم تصعيد التعذر",
+      errorToast: "تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى",
     });
   }
 
   function handleUpgrade(id: string) {
-    void runBusy(`${id}:upgrade`, async () => {
-      try {
-        const result = await upgradeFailureToInternal(id);
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم تأكيد التعذر الداخلي", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر ترقية التعذر — حاول مرة أخرى", "error");
-      }
+    void runOptimisticStatus(id, "internal", () => upgradeFailureToInternal(id), {
+      busyKey: `${id}:upgrade`,
+      successToast: "تم تأكيد التعذر الداخلي",
+      errorToast: "تعذّر ترقية التعذر — حاول مرة أخرى",
+      extra: { severity: "internal" },
     });
   }
 
   function handleApprove(id: string) {
-    void runBusy(`${id}:approve`, async () => {
-      try {
-        const result = await approveFailure(id, supervisorNote[id] ?? "");
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("تم اعتماد التعذر", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر اعتماد التعذر — حاول مرة أخرى", "error");
-      }
-    });
+    const note = supervisorNote[id] ?? "";
+    void runOptimisticStatus(
+      id,
+      "approved",
+      () => approveFailure(id, note),
+      {
+        busyKey: `${id}:approve`,
+        successToast: "تم اعتماد التعذر",
+        errorToast: "تعذّر اعتماد التعذر — حاول مرة أخرى",
+        extra: { finalNote: note },
+      },
+    );
   }
 
   function handleReturn(id: string) {
-    void runBusy(`${id}:return`, async () => {
-      try {
-        const result = await returnFailure(id, supervisorNote[id] ?? "");
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        showToast("أُعيد التعذر للأخصائي", "success");
-        refresh();
-      } catch {
-        showToast("تعذّر إرجاع التعذر — حاول مرة أخرى", "error");
-      }
-    });
+    const note = supervisorNote[id] ?? "";
+    void runOptimisticStatus(
+      id,
+      "returned",
+      () => returnFailure(id, note),
+      {
+        busyKey: `${id}:return`,
+        successToast: "أُعيد التعذر للأخصائي",
+        errorToast: "تعذّر إرجاع التعذر — حاول مرة أخرى",
+        extra: { finalNote: note },
+      },
+    );
   }
 
   async function handleSuspend(id: string) {
     const failure = items.find((f) => f.id === id);
     if (!failure) return;
-    await runBusy(`${id}:suspend`, async () => {
-      const result = await suspendPropertyTransaction({
-        failure,
-        supervisorNote: supervisorNote[id] ?? "",
-      });
-      if (result.ok) {
-        showToast("تم تعليق المعاملة", "success");
-        refresh();
-        return;
-      }
-      showToast(result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى", "error");
-    });
+    await runOptimisticStatus(
+      id,
+      "suspended",
+      async () => {
+        const result = await getFailuresCaseStudyBridge().suspendPropertyTransaction({
+          failure,
+          supervisorNote: supervisorNote[id] ?? "",
+        });
+        if (result.ok) return { ok: true as const };
+        return {
+          ok: false as const,
+          error: result.error || "تعذّر إيقاف المعاملة — حاول مرة أخرى",
+        };
+      },
+      {
+        busyKey: `${id}:suspend`,
+        successToast: "تم تعليق المعاملة",
+        errorToast: "تعذّر إيقاف المعاملة — حاول مرة أخرى",
+      },
+    );
   }
 
   function handleResolve(id: string) {
     const draft = resolveDraft[id] ?? { reason: "", instructions: "" };
     if (!draft.reason.trim() || !draft.instructions.trim()) return;
     const failure = items.find((f) => f.id === id);
-    void runBusy(`${id}:resolve`, async () => {
-      try {
-        const result = await resolveFailure(id, {
+    void runOptimisticStatus(
+      id,
+      "resolved",
+      () =>
+        resolveFailure(id, {
           resolutionReason: draft.reason,
           continueInstructions: draft.instructions,
-        });
-        if (!result.ok) {
-          showToast(result.error, "error");
-          return;
-        }
-        setResolveOpen((o) => ({ ...o, [id]: false }));
-        showToast("تم حل التعذر", "success");
-        refresh();
-        if (failure?.problemTypeId === "unknown-boundaries") {
-          router.push("/bourse-inquiry");
-        }
-      } catch {
-        showToast("تعذّر حل التعذر — حاول مرة أخرى", "error");
-      }
-    });
+        }),
+      {
+        busyKey: `${id}:resolve`,
+        successToast: "تم حل التعذر",
+        errorToast: "تعذّر حل التعذر — حاول مرة أخرى",
+        extra: {
+          resolutionReason: draft.reason,
+          continueInstructions: draft.instructions,
+        },
+        onOk: () => {
+          setResolveOpen((o) => ({ ...o, [id]: false }));
+          if (failure?.problemTypeId === "unknown-boundaries") {
+            router.push("/bourse-inquiry");
+          }
+        },
+      },
+    );
   }
 
   function toggleResolve(id: string) {
@@ -615,6 +637,7 @@ export function FailuresView() {
   }
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    if (isDesktopViewport === true) return [];
     return filteredItems.map((f) => {
       const active = isActiveFailureStatus(f.status);
       const statusColor = failureListStatusColor(f.status, f.severity);
@@ -663,6 +686,7 @@ export function FailuresView() {
       };
     });
   }, [
+    isDesktopViewport,
     filteredItems,
     expandedId,
     highlightId,
@@ -810,8 +834,9 @@ export function FailuresView() {
       ) : null}
 
       <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
+        {isDesktopViewport === false ? null : (
         <div className="hidden lg:block">
-          <Table pending={!isFetched}>
+          <Table framed pending={!isFetched}>
             <THead>
               <Tr hoverable={false}>
                 <Th className="text-start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
@@ -902,17 +927,20 @@ export function FailuresView() {
             </TBody>
           </Table>
         </div>
+        )}
 
-        <div className="lg:hidden max-lg:px-0">
-          <ActiveQueueMobileCards
-            items={mobileCardItems}
-            pending={!isFetched}
-            emptyMessage={
-              partyScopedFailuresEmptyLine(role) ??
-              "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
-            }
-          />
-        </div>
+        {isDesktopViewport === true ? null : (
+          <div className="lg:hidden max-lg:px-0">
+            <ActiveQueueMobileCards
+              items={mobileCardItems}
+              pending={!isFetched}
+              emptyMessage={
+                partyScopedFailuresEmptyLine(role) ??
+                "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات."
+              }
+            />
+          </div>
+        )}
       </OperationalPanel>
 
       <QueueTableHint className="hidden lg:block">

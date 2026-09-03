@@ -1,8 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -114,7 +118,7 @@ public class FieldInspectionWorkspaceServiceTests
         Assert.Equal(2, summary.IncompleteRequiredPhotos);
     }
 
-    private static void Seed(ApplicationDbContext db)
+    private static void Seed(CaseStudyDbContext db)
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.AddRange(
@@ -169,8 +173,8 @@ public class FieldInspectionWorkspaceServiceTests
             UpdatedAtUtc = now,
         };
 
-    private static ApplicationDbContext CreateDb() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static CaseStudyDbContext CreateDb() =>
+        new(new DbContextOptionsBuilder<CaseStudyDbContext>()
             .UseInMemoryDatabase($"field-workspace-query-{Guid.NewGuid():N}")
             .Options);
 }

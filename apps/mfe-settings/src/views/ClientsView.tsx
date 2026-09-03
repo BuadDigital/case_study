@@ -14,9 +14,8 @@ import {
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import {
   Badge,
-  Button,
-  Input,
-  Label,
+  cn,
+  EmptyState,
   ModalBody,
   ModalCard,
   ModalClose,
@@ -24,20 +23,61 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
-  Note,
   PageShell,
   Spinner,
   Table,
   TBody,
   Td,
+  TdLtr,
   Th,
   THead,
   Tr,
   useToast,
 } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import {
+  opsBtnGhost,
+  opsBtnPrimary,
+  opsBtnSm,
+  opsBtnSmPrimary,
+  opsFld,
+  opsFldControl,
+  opsFldFull,
+  opsFilters,
+  opsFormGrid,
+  opsIconBoxGold,
+  opsLetterCard,
+  opsLetterHead,
+  opsLetterSub,
+  opsLetterTitle,
+  opsPpBadge,
+  opsTfLbl,
+  opsTfNote,
+} from "../lib/settings-ops-tw";
 
 type Draft = UpsertClientRequest & { id?: string };
+
+const USERS_ICON =
+  "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75";
+const PLUS_ICON = "M12 5v14M5 12h14";
+
+function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={path} />
+    </svg>
+  );
+}
 
 function emptyDraft(): Draft {
   return {
@@ -161,97 +201,134 @@ export function ClientsView() {
   }
 
   return (
-    <PageShell>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-lg font-bold text-text">سجل العملاء</h1>
-          <p className="m-0 mt-1 text-xs text-text-2">
-            العميل إلزامي عند فتح أمر عمل — ليس حساب دخول.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-xs text-text-2">
-            <input
-              type="checkbox"
-              checked={includeInactive}
-              onChange={(e) => setIncludeInactive(e.target.checked)}
-            />
-            إظهار المعطّلين
-          </label>
-          <Can capability="manage-work-orders">
-            <Button type="button" variant="primary" onClick={() => setModal(emptyDraft())}>
-              إضافة عميل
-            </Button>
-          </Can>
-        </div>
-      </div>
+    <PageShell
+      variant="canvas"
+      className="gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
+      dir="rtl"
+    >
+      <p className={cn(opsTfNote, "m-0 mb-3.5")}>
+        العميل إلزامي عند فتح أمر عمل — ليس حساب دخول للنظام.
+      </p>
 
-      {error ? <Note tone="warn">{error}</Note> : null}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Spinner />
+      <section className={opsLetterCard}>
+        <div className={opsLetterHead}>
+          <div className="flex items-center gap-[11px]">
+            <span className={opsIconBoxGold}>
+              <OpsIcon path={USERS_ICON} />
+            </span>
+            <div>
+              <div className={opsLetterTitle}>سجل العملاء</div>
+              <div className={opsLetterSub}>
+                جهات الطلب الرسمية المرتبطة بأوامر العمل
+              </div>
+            </div>
+          </div>
+          <div className={cn(opsFilters, "justify-end")}>
+            <label className="inline-flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-text-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-gold-d"
+                checked={includeInactive}
+                onChange={(e) => setIncludeInactive(e.target.checked)}
+              />
+              إظهار المعطّلين
+            </label>
+            <Can capability="manage-work-orders">
+              <button
+                type="button"
+                className={opsBtnPrimary}
+                onClick={() => setModal(emptyDraft())}
+              >
+                <OpsIcon path={PLUS_ICON} size={16} />
+                إضافة عميل
+              </button>
+            </Can>
+            <span className={opsPpBadge}>{sorted.length}</span>
+          </div>
         </div>
-      ) : (
-        <Table>
-          <THead>
-            <Tr>
-              <Th>الاسم</Th>
-              <Th>الهوية / السجل</Th>
-              <Th>الهاتف</Th>
-              <Th>الحالة</Th>
-              <Th />
-            </Tr>
-          </THead>
-          <TBody>
-            {sorted.map((row) => (
-              <Tr key={row.id}>
-                <Td>
-                  <div className="font-semibold text-text">{row.nameAr}</div>
-                  {row.nameEn ? (
-                    <div className="text-[11px] text-text-3" dir="ltr">
-                      {row.nameEn}
-                    </div>
-                  ) : null}
-                  {row.id === INFATH_SEED_CLIENT_ID ? (
-                    <Badge className="mt-1" tone="info">
-                      إنفاذ (بذرة)
-                    </Badge>
-                  ) : row.id === NABR_SEED_CLIENT_ID ? (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge tone="info">نبر (بذرة)</Badge>
-                      <Badge tone="info">فرعي لإنفاذ</Badge>
-                    </div>
-                  ) : null}
-                </Td>
-                <Td dir="ltr">{row.identityNumber || "—"}</Td>
-                <Td dir="ltr">{row.phone || "—"}</Td>
-                <Td>
-                  <Badge tone={row.isActive ? "success" : "default"}>
-                    {row.isActive ? "نشط" : "معطّل"}
-                  </Badge>
-                </Td>
-                <Td>
-                  <div className="flex flex-wrap gap-2">
-                    {canEdit ? (
-                      <Button type="button" size="sm" onClick={() => setModal(toDraft(row))}>
-                        تعديل
-                      </Button>
-                    ) : null}
-                    {canEdit &&
-                    row.isActive &&
-                    row.id !== INFATH_SEED_CLIENT_ID &&
-                    row.id !== NABR_SEED_CLIENT_ID ? (
-                      <Button type="button" size="sm" onClick={() => void onDeactivate(row)}>
-                        تعطيل
-                      </Button>
-                    ) : null}
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-          </TBody>
-        </Table>
-      )}
+
+        {error ? (
+          <p className="m-0 px-4 py-4 text-[12.5px] text-[#d9694f] sm:px-[18px]">
+            {error}
+          </p>
+        ) : null}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
+            <Spinner />
+            <span className="text-[13px]">جاري التحميل…</span>
+          </div>
+        ) : sorted.length === 0 && !error ? (
+          <EmptyState line="لا يوجد عملاء بعد." />
+        ) : !loading && !error ? (
+          <Table className="min-w-[720px] tabular-nums">
+            <THead>
+                <Tr hoverable={false}>
+                  <Th>الاسم</Th>
+                  <Th>الهوية / السجل</Th>
+                  <Th>الهاتف</Th>
+                  <Th>الحالة</Th>
+                  <Th />
+                </Tr>
+              </THead>
+              <TBody>
+                {sorted.map((row) => (
+                  <Tr key={row.id} hoverable={false}>
+                    <Td>
+                      <div className="font-semibold text-heading">{row.nameAr}</div>
+                      {row.nameEn ? (
+                        <div className="text-[11px] text-text-3" dir="ltr">
+                          {row.nameEn}
+                        </div>
+                      ) : null}
+                      {row.id === INFATH_SEED_CLIENT_ID ? (
+                        <Badge className="mt-1" tone="info">
+                          إنفاذ (بذرة)
+                        </Badge>
+                      ) : row.id === NABR_SEED_CLIENT_ID ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Badge tone="info">نبر (بذرة)</Badge>
+                          <Badge tone="info">فرعي لإنفاذ</Badge>
+                        </div>
+                      ) : null}
+                    </Td>
+                    <TdLtr bare>{row.identityNumber || "—"}</TdLtr>
+                    <TdLtr bare>{row.phone || "—"}</TdLtr>
+                    <Td>
+                      <Badge tone={row.isActive ? "success" : "default"}>
+                        {row.isActive ? "نشط" : "معطّل"}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <div className="flex flex-wrap gap-2">
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={opsBtnSmPrimary}
+                            onClick={() => setModal(toDraft(row))}
+                          >
+                            تعديل
+                          </button>
+                        ) : null}
+                        {canEdit &&
+                        row.isActive &&
+                        row.id !== INFATH_SEED_CLIENT_ID &&
+                        row.id !== NABR_SEED_CLIENT_ID ? (
+                          <button
+                            type="button"
+                            className={opsBtnSm}
+                            onClick={() => void onDeactivate(row)}
+                          >
+                            تعطيل
+                          </button>
+                        ) : null}
+                      </div>
+                    </Td>
+                  </Tr>
+                ))}
+              </TBody>
+            </Table>
+        ) : null}
+      </section>
 
       {modal ? (
         <ModalOverlay onClick={() => !saving && setModal(null)}>
@@ -261,11 +338,14 @@ export function ClientsView() {
               <ModalClose onClick={() => !saving && setModal(null)}>×</ModalClose>
             </ModalHeader>
             <ModalBody>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label htmlFor="client-name-ar">الاسم بالعربية *</Label>
-                  <Input
+              <div className={opsFormGrid}>
+                <div className={opsFldFull}>
+                  <label htmlFor="client-name-ar" className={opsTfLbl}>
+                    الاسم بالعربية *
+                  </label>
+                  <input
                     id="client-name-ar"
+                    className={opsFldControl}
                     value={modal.nameAr}
                     disabled={!canEdit}
                     onChange={(e) =>
@@ -273,10 +353,13 @@ export function ClientsView() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="client-name-en">الاسم بالإنجليزية</Label>
-                  <Input
+                <div className={opsFldFull}>
+                  <label htmlFor="client-name-en" className={opsTfLbl}>
+                    الاسم بالإنجليزية
+                  </label>
+                  <input
                     id="client-name-en"
+                    className={opsFldControl}
                     dir="ltr"
                     value={modal.nameEn ?? ""}
                     disabled={!canEdit}
@@ -285,10 +368,13 @@ export function ClientsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label htmlFor="client-id-no">هوية / سجل تجاري</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="client-id-no" className={opsTfLbl}>
+                    هوية / سجل تجاري
+                  </label>
+                  <input
                     id="client-id-no"
+                    className={opsFldControl}
                     dir="ltr"
                     value={modal.identityNumber ?? ""}
                     disabled={!canEdit}
@@ -299,10 +385,13 @@ export function ClientsView() {
                     }
                   />
                 </div>
-                <div>
-                  <Label htmlFor="client-phone">الهاتف</Label>
-                  <Input
+                <div className={opsFld}>
+                  <label htmlFor="client-phone" className={opsTfLbl}>
+                    الهاتف
+                  </label>
+                  <input
                     id="client-phone"
+                    className={opsFldControl}
                     dir="ltr"
                     value={modal.phone ?? ""}
                     disabled={!canEdit}
@@ -311,11 +400,14 @@ export function ClientsView() {
                     }
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="client-email">البريد</Label>
-                  <Input
+                <div className={opsFldFull}>
+                  <label htmlFor="client-email" className={opsTfLbl}>
+                    البريد
+                  </label>
+                  <input
                     id="client-email"
                     type="email"
+                    className={opsFldControl}
                     dir="ltr"
                     value={modal.email ?? ""}
                     disabled={!canEdit}
@@ -327,18 +419,23 @@ export function ClientsView() {
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button type="button" disabled={saving} onClick={() => setModal(null)}>
+              <button
+                type="button"
+                className={opsBtnGhost}
+                disabled={saving}
+                onClick={() => setModal(null)}
+              >
                 إلغاء
-              </Button>
+              </button>
               {canEdit ? (
-                <Button
+                <button
                   type="button"
-                  variant="primary"
-                  loading={saving}
+                  className={opsBtnPrimary}
+                  disabled={saving}
                   onClick={() => void persist()}
                 >
-                  حفظ
-                </Button>
+                  {saving ? "جاري الحفظ…" : "حفظ"}
+                </button>
               ) : null}
             </ModalFooter>
           </ModalCard>

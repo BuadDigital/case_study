@@ -6,8 +6,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Contracts;
+using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Attachments.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Attachments.Infrastructure.Services;
 
 public sealed class AttachmentService : IAttachmentService
 {
@@ -19,20 +24,17 @@ public sealed class AttachmentService : IAttachmentService
         (int)(AttachmentUploadRules.DefaultMaxBytes / 3 + 1) * 4 + 1024;
     private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
-    private readonly IAttachmentPrintDictionaryService? _printDictionary;
     private readonly TimeProvider _time;
 
     public AttachmentService(
         AttachmentsDbContext db,
         IBlobStorage blobs,
-        IAttachmentPrintDictionaryService? printDictionary = null,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _blobs = blobs;
-        _printDictionary = printDictionary;
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
@@ -171,50 +173,6 @@ public sealed class AttachmentService : IAttachmentService
         return ToMeta(row, photo);
     }
 
-    public async Task<(FileAttachmentMetaDto? Meta, string? Error)> ClassifyAsync(
-        Guid id,
-        ClassifyAttachmentRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return (null, null);
-
-        var typeKey = (request.DictionaryTypeKey ?? "").Trim().ToLowerInvariant();
-        if (typeKey.Length > 64)
-            return (null, "نوع المرفق غير صالح");
-
- // Library ≠ report: print requires a type; clearing type clears print.
-        if (string.IsNullOrWhiteSpace(typeKey))
-        {
-            row.DictionaryTypeKey = "";
-            row.PrintInReport = false;
-        }
-        else
-        {
- // the key must exist and be active in the admin dictionary; a typo
- // must not produce a "printable" attachment that can never route.
-            if (_printDictionary is not null)
-            {
-                var dictionary = await _printDictionary.GetAsync(cancellationToken);
-                var known = dictionary.Types.Any(t =>
-                    t.IsActive && string.Equals(t.Key, typeKey, StringComparison.OrdinalIgnoreCase));
-                if (!known)
-                    return (null, "نوع المرفق غير معرف في قاموس المرفقات");
-            }
-
-            row.DictionaryTypeKey = typeKey;
-            row.PrintInReport = AttachmentPrintRules.IsPrintable(
-                typeKey,
-                request.PrintInReport == true);
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        var photo = await _db.PhotoMetadata.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PhotoId == id, cancellationToken);
-        return (ToMeta(row, photo), null);
-    }
-
     public async Task<bool> DeleteAsync(
         Guid id,
         PermissionsDto? actor,
@@ -234,20 +192,8 @@ public sealed class AttachmentService : IAttachmentService
         return true;
     }
 
-    private static bool CanAccess(FileAttachment row, PermissionsDto? actor)
-    {
-        if (actor is null)
-            return false;
-
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
-            return true;
-
-        if (actor.Capabilities.Contains(PlatformCapabilities.ManageAttachments, StringComparer.Ordinal))
-            return true;
-
-        return !string.IsNullOrWhiteSpace(actor.UserId)
-            && string.Equals(row.UploadedByUserId, actor.UserId, StringComparison.Ordinal);
-    }
+    private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
+        AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
 
     private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct)
     {
@@ -269,8 +215,6 @@ public sealed class AttachmentService : IAttachmentService
         ContentType = contentTypeOverride ?? row.ContentType,
         SizeBytes = row.SizeBytes > 0 ? row.SizeBytes : row.Content?.LongLength ?? 0,
         CreatedAtUtc = row.CreatedAtUtc,
-        DictionaryTypeKey = row.DictionaryTypeKey ?? "",
-        PrintInReport = row.PrintInReport,
         PhotoMetadata = photo is null
             ? null
             : new PhotoMetadataDto

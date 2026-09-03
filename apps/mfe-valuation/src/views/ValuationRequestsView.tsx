@@ -1,34 +1,43 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { listWorkflowTasks } from "@platform/api-client";
-import { usePrototype } from "@platform/app-shared/contexts/PrototypeContext";
-import { isSuperAdmin } from "@platform/app-shared/prototype/prototype-role-access";
-import { loadPropertyListItems } from "@platform/app-shared/prototype/work-orders-read";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "@platform/app-shared/prototype/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
-  StatusBadge,
   Button,
+  KpiAlertIcon,
   KpiBand,
   KpiCell,
+  KpiCheckIcon,
+  KpiClipboardIcon,
+  KpiClockIcon,
   MobileKpiStatCards,
   Note,
   ReportPageBody,
+  SkeletonTableRows,
+  StatusBadge,
   SubpageHeader,
   SubpagePanel,
-  SkeletonTableRows,
-  Table,
   TBody,
-  Td,
-  Th,
   THead,
+  Table,
+  TableFrame,
+  Td,
+  TdLtr,
+  Th,
   Tr,
-  useToast,
   cn,
+  opsMobileCard,
+  opsSkeletonCard,
+  useToast,
 } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
@@ -36,43 +45,6 @@ import {
   useSubmitValuationReportMutation,
   useValuationRequestsQuery,
 } from "../query/valuation-queries";
-
-function KpiClipboardIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="8" y="2" width="8" height="4" rx="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
-}
-
-function KpiCheckIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </svg>
-  );
-}
-
-function KpiClockIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function KpiAlertIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  );
-}
 
 function SearchIcon() {
   return (
@@ -87,11 +59,22 @@ function isValuationMgr(role: RoleId) {
   return isSuperAdmin(role) || role === "general-manager";
 }
 
+const mobileLoadingSkeleton = (
+  <div className="flex flex-col gap-3">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div
+        key={i}
+        className={cn(opsSkeletonCard, "h-[100px]")}
+      />
+    ))}
+  </div>
+);
+
 type StatusFilter = "all" | "progress" | "done" | "fail";
 
 export function ValuationRequestsView() {
   const router = useRouter();
-  const { role } = usePrototype();
+  const { role } = useAppAccess();
   const { showToast } = useToast();
   const mgr = isValuationMgr(role);
   const isApp = role === "real-estate-appraiser";
@@ -101,24 +84,39 @@ export function ValuationRequestsView() {
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
+  const deferredSearch = useDeferredValue(search);
+  // After hydration mount only one tree (table or cards) — both used to build together.
+  const isDesktopViewport = useViewportDesktop();
 
-  const done = vr.filter((v) => v.status === "done").length;
-  const prog = vr.filter((v) => v.status === "progress").length;
-  const failed = vr.filter((v) => v.status === "fail").length;
+  const { done, prog, failed } = useMemo(() => {
+    let done = 0;
+    let prog = 0;
+    let failed = 0;
+    for (const v of vr) {
+      if (v.status === "done") done += 1;
+      else if (v.status === "progress") prog += 1;
+      else if (v.status === "fail") failed += 1;
+    }
+    return { done, prog, failed };
+  }, [vr]);
   const ready = !isPending;
 
   const rows = useMemo(() => {
-    const q = search.trim();
+    const q = deferredSearch.trim();
+    // Short-circuit predicates instead of join(" ") — was array + string per row per keystroke.
     return vr.filter((v) => {
       const okS = status === "all" || v.status === status;
       const okQ =
         !q ||
-        [v.id, v.propId, v.area, v.type, v.appraiser]
-          .join(" ")
-          .includes(q);
+        v.id.includes(q) ||
+        v.propId.includes(q) ||
+        v.area.includes(q) ||
+        v.type.includes(q) ||
+        v.appraiser.includes(q);
       return okS && okQ;
     });
-  }, [vr, search, status]);
+  }, [vr, deferredSearch, status]);
 
   const handleSubmitReport = async (recordId: string) => {
     const ok = window.confirm("تأكيد رفع تقرير التقييم وإرساله لدراسة الحالة؟");
@@ -301,7 +299,10 @@ export function ValuationRequestsView() {
           </div>
         </div>
 
-        <Table pending={!ready} wrapClassName="hidden lg:block">
+        {/* After hydration mount only one tree (table or cards) — both used to build together. */}
+        {isDesktopViewport === false ? null : (
+        <TableFrame className="hidden lg:block">
+        <Table pending={!ready}>
           <THead>
             <Tr hoverable={false}>
               <Th>رقم الطلب</Th>
@@ -354,7 +355,7 @@ export function ValuationRequestsView() {
                   <Td>
                     <StatusBadge status={v.status} />
                   </Td>
-                  <Td className="text-text-3">{v.date}</Td>
+                  <TdLtr className="text-text-3">{v.date}</TdLtr>
                   <Td>
                     <div className="flex flex-wrap gap-1">
                       {isApp && v.status === "progress" ? (
@@ -395,17 +396,13 @@ export function ValuationRequestsView() {
             )}
           </TBody>
         </Table>
+        </TableFrame>
+        )}
 
+        {isDesktopViewport === true ? null : (
         <div className="p-3 lg:hidden">
           {!ready ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[100px] animate-pulse rounded-[14px] border border-border bg-surface-2"
-                />
-              ))}
-            </div>
+            mobileLoadingSkeleton
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-[13px] text-text-3">
               لا توجد نتائج مطابقة
@@ -423,7 +420,10 @@ export function ValuationRequestsView() {
                   <li
                     key={v.recordId}
                     className={cn(
-                      "overflow-hidden rounded-[14px] border border-border border-s-[3px] bg-surface px-3.5 py-3.5 shadow-[0_2px_8px_rgba(15,52,96,0.06)]",
+                      cn(opsMobileCard, "overflow-hidden border-s-[3px]"),
+                      // Unbounded list — skip layout/paint for off-screen rows
+                      // (rendering-content-visibility; no gates or measurements).
+                      "[content-visibility:auto] [contain-intrinsic-size:auto_130px]",
                       tone,
                     )}
                   >
@@ -485,6 +485,7 @@ export function ValuationRequestsView() {
             </ul>
           )}
         </div>
+        )}
       </SubpagePanel>
     </ReportPageBody>
   );

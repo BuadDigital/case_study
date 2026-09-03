@@ -7,15 +7,12 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 
-namespace RealEstateEval.Infrastructure.Integration;
+namespace RealEstateEval.Platform.Infrastructure.Integration;
 
 /// <summary>Creates user notifications from cross-service integration events.</summary>
 public sealed class NotificationIntegrationEventHandler
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
     private readonly NotificationRecipientResolver _recipients;
     private readonly INotificationService _notifications;

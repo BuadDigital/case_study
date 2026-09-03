@@ -1,25 +1,27 @@
 "use client";
 
 import { EmptyState } from "./PropertyDetailFields";
-import { PartyRoleDetailPanel } from "./PartyRoleDetailPanel";
+import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import type { PropertyDetailPartyCard } from "../../lib/prototype/property-detail-parties";
-import type { PropertyDetailPartySubmission } from "../../lib/prototype/property-detail-party-submissions";
+import { PropertyDetailValuationFinalReport } from "./PropertyDetailValuationFinalReport";
+import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
+import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
 
 /**
- * Property-detail appraisal tab — package review + read-only payload.
+ * Property-detail appraisal tab — package review bar plus the valuation report itself
+ * (final issued copy, deposit copy, or live draft preview).
  */
 export function PropertyDetailAppraisalTab({
+  propertyId,
   appraisalTaskId,
   appraisalCard,
   submission,
-  loading,
   onReviewChanged,
 }: {
+  propertyId: string;
   appraisalTaskId?: string | null;
   appraisalCard: PropertyDetailPartyCard | null;
   submission: PropertyDetailPartySubmission | null;
-  loading?: boolean;
   onReviewChanged?: () => void;
 }) {
   if (!appraisalCard) {
@@ -42,22 +44,20 @@ export function PropertyDetailAppraisalTab({
         submissionStatus={submission?.packageStatus ?? "draft"}
         acceptedAtUtc={submission?.acceptedAtUtc}
         acceptedByName={submission?.acceptedByName}
-        acceptLabel="إقرار الاستلام"
+        acceptLabel="اعتماد تقرير التقييم"
+        acceptedLabel="معتمد"
+        returnLabel="إعادة للتصحيح"
+        returnAfterAcceptLabel="إلغاء الاعتماد وإعادة للتصحيح"
         returnPlaceholder="صف ما يجب تصحيحه في تقرير التقييم…"
-        acceptSuccessToast="تم استلام تقرير التقييم — هذا إقرار بالاستلام وليس اعتماداً للقيمة"
+        acceptSuccessToast="تم اعتماد تقرير التقييم"
         returnSuccessToast="أُعيد التقييم للتصحيح"
+        hint="اعتماد تقرير التقييم وإعادة للتصحيح من تبويب «تقييم العقار»."
         onChanged={onReviewChanged}
       />
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
-        <div className="mb-3 rounded-lg border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text">
-          <strong>معادة للتصحيح</strong> — {returnRemark.trim()}
-        </div>
+        <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
-      <PartyRoleDetailPanel
-        card={appraisalCard}
-        submission={submission}
-        loading={loading ?? false}
-      />
+      <PropertyDetailValuationFinalReport propertyId={propertyId} />
     </>
   );
 }

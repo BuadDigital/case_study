@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Note, PanelSkeleton } from "@platform/ui-kit";
 import { PoHeaderEdit } from "@case-study/mfe/components/po-intake/PoHeaderEdit";
-import { poListPath } from "../../lib/po-routes";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 
 export function PoHeaderEditRoute({ poNumber }: { poNumber: string }) {
@@ -30,10 +30,10 @@ export function PoHeaderEditRoute({ poNumber }: { poNumber: string }) {
   return (
     <PoHeaderEdit
       record={record}
-      onBackAction={() => router.push(poListPath())}
+      onBackAction={() => router.push(poPropertiesPath(poNumber))}
       onSavedAction={() => {
-        void queryClient.invalidateQueries({ queryKey: prototypeKeys.all });
-        router.push(poListPath());
+        void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
+        router.push(poPropertiesPath(poNumber));
       }}
     />
   );

@@ -11,7 +11,7 @@ import {
   type AssignmentPrimary,
   type AssignmentSecondary,
   type AssignmentType,
-} from "../../lib/prototype/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 type Props = {
   value: AssignmentType | "";

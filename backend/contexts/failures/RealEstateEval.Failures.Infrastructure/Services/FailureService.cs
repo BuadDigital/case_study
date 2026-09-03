@@ -1,13 +1,18 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Application.Rules;
+using RealEstateEval.Failures.Domain;
+using RealEstateEval.Infrastructure.Services;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Failures.Infrastructure.Services;
 
 public class FailureService : IFailureService
 {
@@ -86,20 +91,14 @@ public class FailureService : IFailureService
         if (actor is null)
             return new HashSet<string>(StringComparer.Ordinal);
 
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole)
-            || actor.Capabilities.Contains("manage-failures", StringComparer.OrdinalIgnoreCase)
-            || actor.Capabilities.Contains("manage-work-orders", StringComparer.OrdinalIgnoreCase))
-        {
+        if (FailureRules.SeesEveryFailure(actor))
             return null;
-        }
 
-        var assigneeId = actor.DistributionAssigneeId?.Trim() ?? "";
-        var userId = actor.UserId.Trim();
-        if (assigneeId.Length == 0 && userId.Length == 0)
+        if (FailureRules.HasNoVisibilityKey(actor))
             return new HashSet<string>(StringComparer.Ordinal);
 
         var pos = await _caseStudyLookup.ListPoNumbersByAssigneesAsync(
-            [assigneeId, userId],
+            FailureRules.VisibilityAssigneeKeys(actor),
             cancellationToken);
         return pos.ToHashSet(StringComparer.Ordinal);
     }
@@ -118,7 +117,7 @@ public class FailureService : IFailureService
         CreateFailureRequest request,
         CancellationToken cancellationToken = default)
     {
-        var errors = ValidateCreate(request);
+        var errors = FailureRules.ValidateCreate(request);
         if (errors.Count > 0) return (null, errors);
 
         if (Guid.TryParse(request.PropertyId.Trim(), out var createPropertyId))
@@ -133,20 +132,10 @@ public class FailureService : IFailureService
         }
 
         var now = _time.UtcNow();
-        var title = ResolveTitle(request);
-        var entity = PropertyFailure.Create(
-            Guid.NewGuid(),
-            request.PoNumber,
-            request.PropertyId,
-            request.DeedNumber,
-            title,
-            request.ProblemTypeId,
-            NormalizeSeverity(request.Severity),
+        var entity = FailureRules.NewFailure(
+            request,
             PersonLabelResolver.NormalizeSystemLabel(
-                string.IsNullOrWhiteSpace(request.RaisedByRole)
-                    ? "الأخصائي"
-                    : request.RaisedByRole.Trim()),
-            request.InternalNote?.Trim() ?? "",
+                FailureRules.RaisedByRoleOrDefault(request.RaisedByRole)),
             await _labels.ResolveAsync(request.Specialist, cancellationToken),
             now);
 
@@ -156,18 +145,11 @@ public class FailureService : IFailureService
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
             await _caseStudy.RecordPropertyTimelineEventAsync(
-                new PropertyTimelineRecordRequest(
-                    entity.PoNumber,
-                    propertyId,
-                    $"failure:{entity.Id}:created",
-                    "تسجيل تعذر",
-                    $"{entity.Title} — {FailureStatusLabel(entity.Status)}",
-                    "warn",
-                    now),
+                FailureRules.CreatedTimelineEntry(entity, propertyId, now),
                 cancellationToken);
         }
 
-        if (entity.Severity == "internal")
+        if (entity.Severity == PropertyFailureSeverity.Internal)
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
@@ -180,18 +162,9 @@ public class FailureService : IFailureService
         if (string.IsNullOrWhiteSpace(request.Reason))
             return (null, new Dictionary<string, string> { ["reason"] = "سبب التعذر مطلوب" });
 
-        var create = await CreateAsync(new CreateFailureRequest
-        {
-            PoNumber = request.PoNumber,
-            PropertyId = request.PropertyId,
-            DeedNumber = request.DeedNumber,
-            ProblemTypeId = "deed-inactive",
-            Severity = "internal",
-            RaisedByRole = "الأخصائي",
-            Title = "متعذر — الصك غير فعال",
-            InternalNote = request.Reason.Trim(),
-            Specialist = request.Specialist,
-        }, cancellationToken);
+        var create = await CreateAsync(
+            FailureRules.BourseObstructionCreateRequest(request),
+            cancellationToken);
 
         if (create.Result is null) return create;
 
@@ -217,27 +190,19 @@ public class FailureService : IFailureService
             return await ToDtoAsync(active, cancellationToken);
         }
 
-        var resolvedSpecialist = await _labels.ResolveAsync(
-            specialist,
-            cancellationToken);
-        if (string.IsNullOrWhiteSpace(resolvedSpecialist)
-            || string.Equals(resolvedSpecialist, "system", StringComparison.OrdinalIgnoreCase))
-        {
-            resolvedSpecialist = DocumentaryWorkflowRules.SystemRaiserRole;
-        }
+        var resolvedSpecialist = FailureRules.SpecialistOrSystem(
+            await _labels.ResolveAsync(specialist, cancellationToken));
 
-        var (result, _) = await CreateAsync(new CreateFailureRequest
-        {
-            PoNumber = poNumber,
-            PropertyId = propertyId,
-            DeedNumber = deedNumber,
-            ProblemTypeId = problemTypeId,
-            Severity = "internal",
-            RaisedByRole = DocumentaryWorkflowRules.SystemRaiserRole,
-            Title = title,
-            InternalNote = note,
-            Specialist = resolvedSpecialist,
-        }, cancellationToken);
+        var (result, _) = await CreateAsync(
+            FailureRules.SystemInternalCreateRequest(
+                poNumber,
+                propertyId,
+                deedNumber,
+                problemTypeId,
+                title,
+                note,
+                resolvedSpecialist),
+            cancellationToken);
 
         return result;
     }
@@ -246,6 +211,8 @@ public class FailureService : IFailureService
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        // Domain Try* + side effects (tasks/notifications/timeline) require a
+        // loaded entity — ExecuteUpdateAsync would skip rules and those writes.
         var entity = await _failures.PropertyFailures.FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         if (entity is null) return null;
         if (!entity.TryUpgradeToInternal(_time.UtcNow())) return null;
@@ -266,7 +233,7 @@ public class FailureService : IFailureService
         await _failures.SaveChangesAsync(cancellationToken);
         await EscalateTaskObstructionAsync(
             entity,
-            entity.Title.Trim().Length > 0 ? entity.Title : entity.InternalNote,
+            FailureRules.ObstructionReason(entity),
             cancellationToken);
         await NotifyFailureSubmittedAsync(entity, cancellationToken);
         return await ToDtoAsync(entity, cancellationToken);
@@ -287,14 +254,7 @@ public class FailureService : IFailureService
         if (Guid.TryParse(entity.PropertyId, out var propertyId))
         {
             await _caseStudy.RecordPropertyTimelineEventAsync(
-                new PropertyTimelineRecordRequest(
-                    entity.PoNumber,
-                    propertyId,
-                    $"failure:{entity.Id}:suspended",
-                    "تعليق المعاملة",
-                    entity.FinalNote,
-                    "warn",
-                    entity.SuspendedAtUtc!.Value),
+                FailureRules.SuspendedTimelineEntry(entity, propertyId),
                 cancellationToken);
         }
 
@@ -369,7 +329,6 @@ public class FailureService : IFailureService
         string specialist,
         CancellationToken cancellationToken = default)
     {
-        const string evictionProblemTypeId = "access-denied";
         var po = poNumber.Trim();
         var propertyKey = propertyId.Trim();
         var now = _time.UtcNow();
@@ -386,13 +345,11 @@ public class FailureService : IFailureService
         {
             if (existing.Status != PropertyFailureStatus.Suspended)
             {
-                existing.TryForceSuspend(
-                    "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
-                    now);
+                existing.TryForceSuspend(FailureRules.EvictionSuspendNote, now);
                 existing.RefreshOpenHold(
-                    evictionProblemTypeId,
-                    "محظر إخلاء — تعليق الدراسة",
-                    "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
+                    FailureRules.EvictionProblemTypeId,
+                    FailureRules.EvictionTitle,
+                    FailureRules.EvictionSuspendNote,
                     now);
                 await _failures.SaveChangesAsync(cancellationToken);
             }
@@ -402,28 +359,20 @@ public class FailureService : IFailureService
         }
 
         var resolvedSpecialist = await _labels.ResolveAsync(
-            string.IsNullOrWhiteSpace(specialist)
-                ? DocumentaryWorkflowRules.SystemRaiserRole
-                : specialist,
+            FailureRules.ActorOrSystem(specialist),
             cancellationToken);
-        _failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
-            Guid.NewGuid(),
+        _failures.PropertyFailures.Add(FailureRules.NewEvictionHold(
             po,
             propertyKey,
             deedNumber,
-            "محظر إخلاء — تعليق الدراسة",
-            evictionProblemTypeId,
-            "internal",
-            DocumentaryWorkflowRules.SystemRaiserRole,
-            "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.",
-            "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.",
-            PropertyFailureStatus.Suspended,
             resolvedSpecialist,
-            now,
-            now,
-            suspendedAtUtc: now));
+            now));
         await _failures.SaveChangesAsync(cancellationToken);
-        await BlockCaseStudyTaskForHoldAsync(po, propertyKey, "محظر إخلاء — تعليق الدراسة", cancellationToken);
+        await BlockCaseStudyTaskForHoldAsync(
+            po,
+            propertyKey,
+            FailureRules.EvictionTitle,
+            cancellationToken);
     }
 
     public async Task ResolveEvictionHoldsAsync(
@@ -432,7 +381,6 @@ public class FailureService : IFailureService
         string actor,
         CancellationToken cancellationToken = default)
     {
-        const string evictionProblemTypeId = "access-denied";
         var po = poNumber.Trim();
         var propertyKey = propertyId.Trim();
         var now = _time.UtcNow();
@@ -441,7 +389,7 @@ public class FailureService : IFailureService
             .Where(f =>
                 f.PoNumber == po
                 && f.PropertyId == propertyKey
-                && f.ProblemTypeId == evictionProblemTypeId
+                && f.ProblemTypeId == FailureRules.EvictionProblemTypeId
                 && f.Status != PropertyFailureStatus.Resolved
                 && f.Status != PropertyFailureStatus.Approved)
             .ToListAsync(cancellationToken);
@@ -452,17 +400,15 @@ public class FailureService : IFailureService
             return;
         }
 
-        var actorName = string.IsNullOrWhiteSpace(actor)
-            ? DocumentaryWorkflowRules.SystemRaiserRole
-            : actor.Trim();
+        var actorName = FailureRules.ActorOrSystem(actor);
 
         foreach (var failure in active)
         {
             failure.TrySystemResolve(
-                "رفع محظر الإخلاء من وحدة الظروف",
-                "أُزيل محظر الإخلاء — استئناف مسار الدراسة.",
+                FailureRules.EvictionResolutionReason,
+                FailureRules.EvictionContinueInstructions,
                 now,
-                finalNoteIfEmpty: $"رُفع التعليق بواسطة {actorName}.");
+                finalNoteIfEmpty: FailureRules.EvictionLiftedNote(actorName));
         }
 
         await _failures.SaveChangesAsync(cancellationToken);
@@ -476,7 +422,6 @@ public class FailureService : IFailureService
         string specialist,
         CancellationToken cancellationToken = default)
     {
-        const string keyUnmatchedProblemTypeId = "key-wont-open";
         var po = poNumber.Trim();
         var propertyKey = propertyId.Trim();
         var active = await _failures.PropertyFailures
@@ -490,24 +435,20 @@ public class FailureService : IFailureService
 
         var now = _time.UtcNow();
         var resolvedSpecialist = await _labels.ResolveAsync(
-            string.IsNullOrWhiteSpace(specialist)
-                ? DocumentaryWorkflowRules.SystemRaiserRole
-                : specialist,
+            FailureRules.ActorOrSystem(specialist),
             cancellationToken);
-        _failures.PropertyFailures.Add(PropertyFailure.Create(
-            Guid.NewGuid(),
+        _failures.PropertyFailures.Add(FailureRules.NewKeyUnmatchedFailure(
             po,
             propertyKey,
             deedNumber,
-            "مفتاح العقار غير مطابق",
-            keyUnmatchedProblemTypeId,
-            "internal",
-            DocumentaryWorkflowRules.SystemRaiserRole,
-            "تأكيد ميداني: المفتاح غير مطابق للصك.",
             resolvedSpecialist,
             now));
         await _failures.SaveChangesAsync(cancellationToken);
-        await BlockCaseStudyTaskForHoldAsync(po, propertyKey, "مفتاح العقار غير مطابق", cancellationToken);
+        await BlockCaseStudyTaskForHoldAsync(
+            po,
+            propertyKey,
+            FailureRules.KeyUnmatchedTitle,
+            cancellationToken);
     }
 
     private async Task ApplyInternalSideEffectsAsync(
@@ -517,7 +458,7 @@ public class FailureService : IFailureService
         await SetPropertyDeedStatusAsync(entity, "قيد التحقق", cancellationToken);
         await EscalateTaskObstructionAsync(
             entity,
-            entity.Title.Trim().Length > 0 ? entity.Title : entity.InternalNote.Trim(),
+            FailureRules.ObstructionReason(entity).Trim(),
             cancellationToken);
     }
 
@@ -526,55 +467,29 @@ public class FailureService : IFailureService
         string reason,
         CancellationToken cancellationToken) =>
         _caseStudy.EscalateObstructionAsync(
-            new EscalateCaseStudyObstructionRequest
-            {
-                PoNumber = failure.PoNumber,
-                PropertyId = failure.PropertyId,
-                Reason = reason,
-            },
+            FailureRules.EscalateRequest(failure, reason),
             cancellationToken);
 
     private Task ResolveTaskObstructionAsync(
         PropertyFailure failure,
         CancellationToken cancellationToken) =>
         _caseStudy.ResolveObstructionAsync(
-            new ResolveCaseStudyObstructionRequest
-            {
-                PoNumber = failure.PoNumber,
-                PropertyId = failure.PropertyId,
-            },
+            FailureRules.ResolveObstructionRequest(failure),
             cancellationToken);
 
     private Task BlockPropertyTasksForApprovedFailureAsync(
         PropertyFailure failure,
-        CancellationToken cancellationToken)
-    {
-        var reason = failure.FinalNote.Trim().Length > 0
-            ? failure.FinalNote.Trim()
-            : (failure.Title.Trim().Length > 0 ? failure.Title.Trim() : "تعذر معتمد");
-
-        return _caseStudy.BlockPropertyTasksForFailureAsync(
-            new BlockCaseStudyTasksForFailureRequest
-            {
-                PoNumber = failure.PoNumber,
-                PropertyId = failure.PropertyId,
-                Reason = reason,
-            },
+        CancellationToken cancellationToken) =>
+        _caseStudy.BlockPropertyTasksForFailureAsync(
+            FailureRules.BlockTasksRequest(failure),
             cancellationToken);
-    }
 
     private Task SetPropertyDeedStatusAsync(
         PropertyFailure failure,
         string deedStatus,
         CancellationToken cancellationToken) =>
         _caseStudy.SetFailureDeedStatusAsync(
-            new SetCaseStudyDeedStatusRequest
-            {
-                PoNumber = failure.PoNumber,
-                PropertyId = failure.PropertyId,
-                DeedNumber = failure.DeedNumber,
-                DeedStatus = deedStatus,
-            },
+            FailureRules.DeedStatusRequest(failure, deedStatus),
             cancellationToken);
 
     private async Task<PropertyFailure?> FindActiveForPropertyAsync(
@@ -594,43 +509,6 @@ public class FailureService : IFailureService
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private static bool IsActiveStatus(string status) =>
-        PropertyFailureStatus.IsActive(status);
-
-    private static string NormalizeSeverity(string severity) =>
-        severity.Trim().ToLowerInvariant() == "suspected" ? "suspected" : "internal";
-
-    private static string ResolveTitle(CreateFailureRequest request)
-    {
-        var custom = request.Title?.Trim();
-        if (!string.IsNullOrEmpty(custom)) return custom;
-        if (request.ProblemTypeId == "deed-inactive") return "متعذر — الصك غير فعال";
-        return request.ProblemTypeId.Trim();
-    }
-
-    private static Dictionary<string, string> ValidateCreate(CreateFailureRequest request)
-    {
-        var errors = new Dictionary<string, string>();
-        if (string.IsNullOrWhiteSpace(request.PoNumber))
-            errors["poNumber"] = "رقم أمر العمل مطلوب";
-        if (string.IsNullOrWhiteSpace(request.PropertyId))
-            errors["propertyId"] = "معرف العقار مطلوب";
-        if (string.IsNullOrWhiteSpace(request.Specialist))
-            errors["specialist"] = "اسم الأخصائي مطلوب";
-        return errors;
-    }
-
-    private static string FailureStatusLabel(string status) => status switch
-    {
-        PropertyFailureStatus.Internal => "داخلي",
-        PropertyFailureStatus.Review => "قيد المراجعة",
-        PropertyFailureStatus.Approved => "معتمد",
-        PropertyFailureStatus.Returned => "مُعاد",
-        PropertyFailureStatus.Resolved => "محلول",
-        PropertyFailureStatus.Suspended => "معلق",
-        _ => status,
-    };
-
     private async Task NotifyFailureSubmittedAsync(
         PropertyFailure entity,
         CancellationToken cancellationToken)
@@ -644,18 +522,7 @@ public class FailureService : IFailureService
 
         await _notifications.CreateForUsersAsync(
             recipientIds,
-            new CreateUserNotificationRequest
-            {
-                Title = "تعذر بانتظار المراجعة",
-                Body = $"رُفع تعذر للمراجعة على أمر العمل {entity.PoNumber}.",
-                Tone = "warn",
-                Href = "/failures",
-                Category = "failures",
-                EntityType = "failure",
-                EntityId = entity.Id.ToString(),
-                Actor = entity.Specialist,
-                SourceEvent = $"failure-submitted:{entity.Id}",
-            },
+            FailureRules.SubmittedNotification(entity),
             cancellationToken);
     }
 
@@ -672,17 +539,7 @@ public class FailureService : IFailureService
 
         await _notifications.CreateForUsersAsync(
             recipientIds,
-            new CreateUserNotificationRequest
-            {
-                Title = "اعتماد تعذر",
-                Body = $"اعتُمد تعذر على أمر العمل {entity.PoNumber}.",
-                Tone = "warn",
-                Href = "/failures",
-                Category = "failures",
-                EntityType = "failure",
-                EntityId = entity.Id.ToString(),
-                SourceEvent = $"failure-approved:{entity.Id}",
-            },
+            FailureRules.ApprovedNotification(entity),
             cancellationToken);
     }
 
@@ -741,12 +598,8 @@ public class FailureService : IFailureService
         if (task is null) return;
 
         await NotifyHoldSpecialistAsync(
-            task.TaskId,
             task.AssigneeId,
-            "تعليق دراسة الحالة",
-            reason,
-            "warn",
-            $"case-study-blocked:{task.TaskId}",
+            FailureRules.CaseStudyBlockedNotification(task.TaskId, reason),
             cancellationToken);
     }
 
@@ -767,22 +620,14 @@ public class FailureService : IFailureService
         if (task is null) return;
 
         await NotifyHoldSpecialistAsync(
-            task.TaskId,
             task.AssigneeId,
-            "استئناف دراسة الحالة",
-            "زال سبب التعليق — استؤنفت المعاملة.",
-            "success",
-            $"case-study-unblocked:{task.TaskId}",
+            FailureRules.CaseStudyUnblockedNotification(task.TaskId),
             cancellationToken);
     }
 
     private async Task NotifyHoldSpecialistAsync(
-        Guid taskId,
         string? assigneeId,
-        string title,
-        string body,
-        string tone,
-        string sourceEvent,
+        CreateUserNotificationRequest notification,
         CancellationToken cancellationToken)
     {
         var trimmedAssigneeId = assigneeId?.Trim();
@@ -793,19 +638,6 @@ public class FailureService : IFailureService
             cancellationToken);
         if (string.IsNullOrWhiteSpace(userId)) return;
 
-        await _notifications.CreateForUserAsync(
-            userId,
-            new CreateUserNotificationRequest
-            {
-                Title = title,
-                Body = body,
-                Tone = tone,
-                Href = $"/case-study/{Uri.EscapeDataString(taskId.ToString())}",
-                Category = "workflow",
-                EntityType = "task",
-                EntityId = taskId.ToString(),
-                SourceEvent = sourceEvent,
-            },
-            cancellationToken);
+        await _notifications.CreateForUserAsync(userId, notification, cancellationToken);
     }
 }

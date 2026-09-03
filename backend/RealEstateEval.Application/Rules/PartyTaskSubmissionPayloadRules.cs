@@ -1,5 +1,6 @@
 using System.Text.Json;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -8,11 +9,7 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class PartyTaskSubmissionPayloadRules
 {
-    private static readonly JsonSerializerOptions JsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCaseInsensitive;
 
     public static Dictionary<string, string> ValidateForSubmit(PartyTaskSubmission entity)
     {
@@ -24,28 +21,26 @@ public static class PartyTaskSubmissionPayloadRules
 
             switch (entity.Kind)
             {
-                case "engineering-survey":
+                case WorkflowTaskKindValues.EngineeringSurvey:
                     if (!HasNonEmpty(root, "latitude") || !HasNonEmpty(root, "longitude"))
                         errors["coordinates"] = "الإحداثيات مطلوبة";
                     if (!HasNonEmpty(root, "surveyReportFileName"))
                         errors["surveyReportFileName"] = "تقرير الرفع المساحي مطلوب";
-                    if (!HasNonEmpty(root, "siteLetterFileName"))
-                        errors["siteLetterFileName"] = "خطاب الموقع مطلوب";
                     if (!GetBool(root, "siteConfirmed"))
                         errors["siteConfirmed"] = "يجب تأكيد الموقع";
                     break;
 
-                case "property-appraisal":
+                case WorkflowTaskKindValues.PropertyAppraisal:
                     foreach (var (key, message) in PropertyAppraisalSubmissionValidator.Validate(root))
                         errors[key] = message;
                     break;
 
-                case "government-review":
+                case WorkflowTaskKindValues.GovernmentReview:
  // Legacy kind — product surface removed; reject new submits.
                     errors["_"] = "مسار المراجعة الحكومية لم يعد مدعوماً";
                     break;
 
-                case "field-inspection":
+                case WorkflowTaskKindValues.FieldInspection:
                     foreach (var (key, message) in FieldInspectionSubmissionValidator.Validate(root))
                         errors[key] = message;
                     break;
@@ -81,6 +76,28 @@ public static class PartyTaskSubmissionPayloadRules
     {
         if (!root.TryGetProperty(name, out var prop)) return null;
         return prop.ValueKind == JsonValueKind.String ? prop.GetString() : prop.ToString();
+    }
+
+    public static bool HasPlanAndPlot(string? planNumber, string? plotNumber)
+    {
+        return !string.IsNullOrWhiteSpace(planNumber)
+            && !string.IsNullOrWhiteSpace(plotNumber);
+    }
+
+    /// <summary>
+    /// Site-validity letter is optional when the property is on a subdivision plan
+    /// and has a plot number.
+    /// </summary>
+    public static void RequireSiteLetterUnlessPlatted(
+        Dictionary<string, string> errors,
+        JsonElement root,
+        string? planNumber,
+        string? plotNumber)
+    {
+        if (HasPlanAndPlot(planNumber, plotNumber))
+            return;
+        if (!HasNonEmpty(root, "siteLetterFileName"))
+            errors["siteLetterFileName"] = "خطاب الموقع مطلوب";
     }
 
     public static string? ExtractStatus(string payloadJson)

@@ -1,4 +1,4 @@
-namespace RealEstateEval.Application.Contracts;
+namespace RealEstateEval.Failures.Application.Contracts;
 
 public class FailureRecordDto
 {

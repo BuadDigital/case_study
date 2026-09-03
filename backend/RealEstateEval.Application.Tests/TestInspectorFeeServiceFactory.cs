@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Failures.Application.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Application.Abstractions;
@@ -7,6 +8,25 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Persistence;
+using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.Attachments.Infrastructure.Services;
+using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
+using RealEstateEval.CaseStudy.Application.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -24,20 +44,18 @@ internal static class TestInspectorFeeServiceFactory
         public Store(string prefix)
         {
             _name = $"{prefix}-{Guid.NewGuid():N}";
-            App = Create<ApplicationDbContext>(o => new ApplicationDbContext(o));
             Fin = Create<FinancialDbContext>(o => new FinancialDbContext(o));
             Identity = Create<IdentityDbContext>(o => new IdentityDbContext(o));
             CaseStudy = Create<CaseStudyDbContext>(o => new CaseStudyDbContext(o));
         }
 
-        public ApplicationDbContext App { get; }
         public FinancialDbContext Fin { get; }
         public IdentityDbContext Identity { get; }
         public CaseStudyDbContext CaseStudy { get; }
 
-        public PartyFeePricingService Pricing() => new(Fin);
+        public PartyFeePricingService Pricing() => TestPricing.Create(Fin);
 
-        public IncentiveSuspensionService IncentiveSuspensions() => new(Fin, Identity);
+        public IncentiveSuspensionService IncentiveSuspensions() => new(Fin, new IdentityDirectory(Identity));
 
         public DiscountFlagService DiscountFlags() => new(Fin, new CaseStudyLookup(CaseStudy));
 
@@ -49,7 +67,7 @@ internal static class TestInspectorFeeServiceFactory
                 Fin,
                 Identity,
                 notifications ?? new NullNotificationService(),
-                recipients ?? NotificationRecipientResolver.ForContexts(CaseStudy, Identity),
+                recipients ?? TestNotificationRecipients.ForContexts(CaseStudy, Identity),
                 Pricing());
 
         public async ValueTask DisposeAsync()
@@ -57,7 +75,6 @@ internal static class TestInspectorFeeServiceFactory
             await CaseStudy.DisposeAsync();
             await Identity.DisposeAsync();
             await Fin.DisposeAsync();
-            await App.DisposeAsync();
         }
 
         private TContext Create<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
@@ -67,23 +84,23 @@ internal static class TestInspectorFeeServiceFactory
                 .Options);
     }
 
-    public static InspectorFeeService Create(ApplicationDbContext db) =>
+    public static InspectorFeeService Create(DbContext db) =>
         Create(db, ShareFinancial(db));
 
-    public static InspectorFeeService Create(ApplicationDbContext db, FinancialDbContext fin)
+    public static InspectorFeeService Create(DbContext db, FinancialDbContext fin)
     {
-        var pricing = new PartyFeePricingService(fin);
+        var pricing = TestPricing.Create(fin);
         return Compose(db, new NullNotificationService(), CreateRecipients(db), pricing);
     }
 
-    public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db) =>
+    public static WorkflowTaskService CreateWorkflow(DbContext db) =>
         CreateWorkflow(db, ShareFinancial(db));
 
-    public static WorkflowTaskService CreateWorkflow(ApplicationDbContext db, FinancialDbContext fin)
+    public static WorkflowTaskService CreateWorkflow(DbContext db, FinancialDbContext fin)
     {
         var notifications = new NullNotificationService();
         var recipients = CreateRecipients(db);
-        var fees = Compose(db, notifications, recipients, new PartyFeePricingService(fin));
+        var fees = Compose(db, notifications, recipients, TestPricing.Create(fin));
         var timeline = CreateTimeline(db);
         return ComposeWorkflow(db, fees, notifications, recipients, timeline);
     }
@@ -118,7 +135,7 @@ internal static class TestInspectorFeeServiceFactory
         CreateSibling<FailuresDbContext>(db, options => new FailuresDbContext(options));
 
     public static NotificationRecipientResolver CreateRecipients(DbContext db) =>
-        NotificationRecipientResolver.ForContexts(ShareCaseStudy(db), ShareIdentity(db));
+        TestNotificationRecipients.ForContexts(ShareCaseStudy(db), ShareIdentity(db));
 
     public static PropertyTimelineService CreateTimeline(DbContext db) =>
         new(ShareCaseStudy(db), new FailureLookup(ShareFailures(db)));
@@ -134,6 +151,9 @@ internal static class TestInspectorFeeServiceFactory
 
     public static MessagingDbContext ShareMessaging(DbContext db) =>
         CreateSibling<MessagingDbContext>(db, options => new MessagingDbContext(options));
+
+    public static PlatformDbContext SharePlatform(DbContext db) =>
+        CreateSibling<PlatformDbContext>(db, options => new PlatformDbContext(options));
 
     private static TContext CreateSibling<TContext>(
         DbContext source,
@@ -202,7 +222,7 @@ internal static class TestInspectorFeeServiceFactory
     }
 
     public static WorkflowTaskService ComposeWorkflow(
-        ApplicationDbContext db,
+        DbContext db,
         IInspectorFeeService fees,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
@@ -211,28 +231,28 @@ internal static class TestInspectorFeeServiceFactory
         var caseStudy = ShareCaseStudy(db);
         var failures = ShareFailures(db);
         var query = new WorkflowTaskQueryService(caseStudy);
-        var slots = new WorkflowTaskSlotSynchronizer(caseStudy, query);
+        var slots = new WorkflowTaskSlotSynchronizer(new WorkflowTaskSlotRepository(caseStudy), query);
         var distribution = new WorkflowTaskDistributionCommands(
-            caseStudy,
-            new FailureLookup(failures),
+            new WorkflowTaskDistributionRepository(caseStudy),
+            new BlockingOnlyFailureGate(new FailureLookup(failures)),
             notifications,
             recipients,
             timeline,
             NoOpValuationDispatch.Instance);
         var cascade = new WorkflowTaskCascadeCleanup(caseStudy, fees);
         var lifecycle = new WorkflowTaskLifecycleCommands(
-            caseStudy, fees, timeline, cascade, slots, notifications, recipients);
+            new WorkflowTaskLifecycleRepository(caseStudy), fees, timeline, cascade, slots, notifications, recipients);
         return new WorkflowTaskService(query, slots, distribution, lifecycle);
     }
 
     public static (INotificationService Notifications, NotificationRecipientResolver Recipients)
-        CreateNotificationDeps(ApplicationDbContext db)
+        CreateNotificationDeps(DbContext db)
     {
         return (new NullNotificationService(), CreateRecipients(db));
     }
 
     public static InspectorFeeService Compose(
-        ApplicationDbContext db,
+        DbContext db,
         INotificationService notifications,
         NotificationRecipientResolver recipients,
         IPartyFeePricingService pricing)
@@ -254,12 +274,12 @@ internal static class TestInspectorFeeServiceFactory
         var lookup = new CaseStudyLookup(caseStudy);
         var resolver = new InspectorFeeLedgerResolver(lookup, new IdentityDirectory(identity));
         var writer = new InspectorFeeLedgerWriter(financial, lookup, pricing, resolver);
-        var summary = new InspectorFeeSummaryQuery(financial, lookup, new IdentityDirectory(identity), writer);
+        var summary = new InspectorFeeSummaryQuery(financial, lookup, new IdentityDirectory(identity));
         var transitions = new InspectorFeeTransitionApplier(financial, lookup, new AuditLogWriter());
         return new InspectorFeeService(
             lookup,
             new CaseStudyCommands(caseStudy),
-            financial,
+            new InspectorFeeLedgerStore(financial),
             notifications,
             recipients,
             pricing,
@@ -305,6 +325,41 @@ internal static class TestInspectorFeeServiceFactory
 
         public Task ClearForUserAsync(string userId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Distribution only asks the gate whether an active failure blocks the property; the
+    /// system-failure writes belong to the work-order property commands, which build their own
+    /// gate over the real <c>IFailureService</c>.
+    /// </summary>
+    private sealed class BlockingOnlyFailureGate(IFailureLookup lookup) : ICaseStudyFailureGate
+    {
+        public Task<bool> HasBlockingFailureAsync(
+            string poNumber,
+            string propertyId,
+            CancellationToken cancellationToken) =>
+            lookup.HasBlockingAsync(poNumber, propertyId, cancellationToken);
+
+        public Task EnsureSystemFailureAsync(
+            string poNumber,
+            string propertyId,
+            string? deedNumber,
+            string problemKey,
+            string problemLabel,
+            string detail,
+            string raisedByLabel,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException("Workflow distribution does not raise failures.");
+
+        public Task ResolveSystemFailuresAsync(
+            string poNumber,
+            string propertyId,
+            string problemKey,
+            string raiserRole,
+            string resolutionReason,
+            string continueInstructions,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException("Workflow distribution does not resolve failures.");
     }
 
     private sealed class NoOpValuationDispatch : ICaseStudyValuationDispatchService

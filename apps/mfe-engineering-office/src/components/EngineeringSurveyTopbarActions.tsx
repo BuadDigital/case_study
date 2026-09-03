@@ -5,13 +5,15 @@ import { Button } from "@platform/ui-kit";
 import {
   getSurveyWorkTopbarState,
   subscribeSurveyWorkTopbar,
-} from "@platform/app-shared/prototype/survey-work-topbar-bridge";
+} from "@platform/app-shared/app-data/survey-work-topbar-bridge";
+
+const getServerTopbarSnapshot = () => null;
 
 export function EngineeringSurveyTopbarActions() {
   const topbar = useSyncExternalStore(
     subscribeSurveyWorkTopbar,
     getSurveyWorkTopbarState,
-    () => null,
+    getServerTopbarSnapshot,
   );
 
   if (!topbar) return null;

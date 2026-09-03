@@ -126,18 +126,28 @@ export async function loginViaUi(page: Page, username: string) {
   if (!email) throw new Error(`No demo email mapped for "${username}"`);
   // Email mode is accepted in the identifier field until mobile login is wired.
   await page.locator("#mobile").fill(email);
-  await page.locator("#password").fill(PASSWORD);
+  await page.locator("form").evaluate((form) => {
+    (form as HTMLFormElement).requestSubmit();
+  });
+
+  await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
+    timeout: 15_000,
+  });
+  const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
+  await expect(otpBoxes).toHaveCount(6);
 
   const [response] = await Promise.all([
     page.waitForResponse(
       (res) =>
-        res.url().includes("/api/auth/login") &&
+        res.url().includes("/api/auth/login-username") &&
         res.request().method() === "POST",
       { timeout: 60_000 },
     ),
-    page.locator("form").evaluate((form) => {
-      (form as HTMLFormElement).requestSubmit();
-    }),
+    (async () => {
+      for (let i = 0; i < 6; i++) {
+        await otpBoxes.nth(i).fill(String(i + 1));
+      }
+    })(),
   ]);
 
   if (!response.ok()) {
@@ -152,14 +162,6 @@ export async function loginViaUi(page: Page, username: string) {
     );
   }
 
-  await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
-    timeout: 15_000,
-  });
-  const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
-  await expect(otpBoxes).toHaveCount(6);
-  for (let i = 0; i < 6; i++) {
-    await otpBoxes.nth(i).fill(String(i + 1));
-  }
   // Completing 6 digits auto-confirms and navigates; keep button as fallback.
   const confirmLogin = page.getByRole("button", { name: "تأكيد الدخول" });
   if (await confirmLogin.isVisible().catch(() => false)) {

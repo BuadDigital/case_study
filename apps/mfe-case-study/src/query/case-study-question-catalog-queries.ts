@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { prototypeKeys } from "@platform/app-shared/query/prototype-keys";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   loadCaseStudyQuestionCatalog,
-} from "../lib/prototype/case-study-question-catalog";
+} from "@platform/app-shared/domain/case-study/question-catalog";
 
 export const CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT =
   "field-dictionary-changed";
@@ -19,7 +19,7 @@ export function useCaseStudyQuestionCatalogQuery() {
   useEffect(() => {
     const refresh = () => {
       void queryClient.invalidateQueries({
-        queryKey: [...prototypeKeys.all, "case-study-question-catalog"],
+        queryKey: [...appDataKeys.all, "case-study-question-catalog"],
       });
     };
     window.addEventListener(CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT, refresh);
@@ -32,7 +32,7 @@ export function useCaseStudyQuestionCatalogQuery() {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: [...prototypeKeys.all, "case-study-question-catalog"],
+    queryKey: [...appDataKeys.all, "case-study-question-catalog"],
     queryFn: loadCaseStudyQuestionCatalog,
     staleTime: STALE_MS,
     placeholderData: DEFAULT_CASE_STUDY_QUESTION_CATALOG,
