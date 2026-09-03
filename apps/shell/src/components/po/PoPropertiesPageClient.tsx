@@ -9,8 +9,8 @@ import {
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { buildAppraiserRecallMenuItems } from "@evaluator/mfe/lib/evaluator/appraiser-recall-menu-items";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe/lib/evaluator/evaluator-submission-storage";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
+import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@evaluator/mfe/lib/evaluator/evaluator-submission-model";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 
 export function PoPropertiesPageClient({ poNumber }: { poNumber: string }) {

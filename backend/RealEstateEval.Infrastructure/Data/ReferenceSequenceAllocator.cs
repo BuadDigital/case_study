@@ -29,8 +29,8 @@ public static class ReferenceSequenceAllocator
 
  /// <summary>
  /// Assigns the next number to the prefix in the year “now” (Riyadh time) and returns it formatted.
- /// atomic upsert on npgsql; An alternative EF pathway for test providers. Primary facades ki
- /// It operates across facade repositories (ICaseStudyRepository) as well as across concrete contexts.
+ /// atomic upsert on npgsql; An alternative EF pathway for test providers. Callers pass the
+ /// owner context's database facade and its ReferenceSequences set.
  /// </summary>
     public static async Task<(string? Reference, string? Error)> AllocateYearlyAsync(
         DatabaseFacade database,

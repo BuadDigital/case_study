@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CaseStudyFormDraft } from "../case-study-form-storage";
+import type { CaseStudyFormDraft } from "../case-study-form-model";
 
 function markSpecialistPartyReviewOnAnswer(
   draft: CaseStudyFormDraft,

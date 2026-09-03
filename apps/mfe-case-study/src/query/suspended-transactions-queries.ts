@@ -3,10 +3,8 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
-  loadSuspendedTransactions,
-} from "../lib/app-data/suspended-transactions-storage";
+import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "../lib/app-data/suspended-transactions-model";
+import { loadSuspendedTransactions } from "../lib/app-data/suspended-transactions-reads";
 
 const STALE_MS = 30_000;
 const GC_MS = 10 * 60_000;

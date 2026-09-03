@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { failureTargetsForOperationsTask } from "../operations-task-failure-targets";
-import type { OperationsTask } from "../operations-tasks-storage";
+import type { OperationsTask } from "../operations-tasks-model";
 import type { PoIntakeRecord } from "../po-intake-data";
 
 function minimalTask(

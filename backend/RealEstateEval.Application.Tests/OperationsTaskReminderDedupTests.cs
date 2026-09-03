@@ -9,6 +9,7 @@ using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -149,7 +150,7 @@ public sealed class OperationsTaskReminderDedupTests
                 ops,
                 charges,
                 new IdentityDirectory(identity),
-                new PartyFeePricingService(financial)),
+                TestPricing.Create(financial)),
             time);
 
         return new Fixture(ops, messaging, notifications, notifier, commands, time);

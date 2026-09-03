@@ -116,6 +116,7 @@ public static class DependencyInjection
         }
 
         services.AddSingleton<ApiResponseCache>();
+        services.AddSingleton<IResponseCache>(sp => sp.GetRequiredService<ApiResponseCache>());
         return services;
     }
 

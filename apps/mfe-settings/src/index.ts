@@ -21,5 +21,7 @@ export * from "./lib/settings-api-config";
 export * from "./lib/users-api";
 export * from "./lib/app-data/courts-storage";
 export * from "./lib/app-data/case-study-info-roles-data";
-export * from "./lib/app-data/case-study-info-roles-storage";
+export * from "./lib/app-data/case-study-info-roles-model";
+export * from "./lib/app-data/case-study-info-roles-reads";
+export * from "./lib/app-data/case-study-info-roles-commands";
 export * from "./query/settings-queries";

@@ -4,7 +4,7 @@ import {
   isAnyPartyAssignedToQuestion,
   isCaseStudyQuestionVisibleToSpecialist,
   type CaseStudyInfoRolesMatrix,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { childTasksForCaseStudyParent } from "../case-study-party-answers";
 import type { WorkflowTask } from "../tasks-storage";
 

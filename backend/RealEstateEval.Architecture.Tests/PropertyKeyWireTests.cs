@@ -55,13 +55,13 @@ public class PropertyKeyWireTests
             (
                 RepoPaths.Combine(
                     "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure",
-                    "Services", "PropertyTimelineService.cs"),
+                    "Persistence", "PropertyTimelineService.cs"),
                 new Regex(@"""(done|active|warn|muted)""", RegexOptions.Compiled)
             ),
             (
                 // A8: the financial report service lives in the Financial context.
                 RepoPaths.Combine(
-                    "backend", "contexts", "financial", "RealEstateEval.Financial.Infrastructure",
+                    "backend", "contexts", "financial", "RealEstateEval.Financial.Application",
                     "Services", "FinancialReportService.cs"),
                 new Regex(@"""(done|progress)""", RegexOptions.Compiled)
             ),

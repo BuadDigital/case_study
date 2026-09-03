@@ -4,6 +4,7 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
@@ -32,7 +33,7 @@ public class PartyFeePricingServiceTests
     public async Task An_unknown_category_is_refused_rather_than_coerced(string category)
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
  // A blank filter means "every category", so only the create path rejects it.
         if (category.Length > 0)
@@ -58,7 +59,7 @@ public class PartyFeePricingServiceTests
     public async Task Copying_from_a_table_that_does_not_exist_is_refused()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.CreateAsync(new CreatePartyFeePricingTableRequest
@@ -79,7 +80,7 @@ public class PartyFeePricingServiceTests
     public async Task Copying_across_categories_is_refused()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -97,7 +98,7 @@ public class PartyFeePricingServiceTests
     public async Task Copying_from_a_flat_table_is_refused()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var flat = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
             Category = PartyFeePricingCategories.FieldInspector,
@@ -121,7 +122,7 @@ public class PartyFeePricingServiceTests
     public async Task Copying_inside_the_category_carries_the_rates_over()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var source = await SetGovernmentRateAsync(service, GovernmentRate);
 
         var copy = await service.CreateAsync(new CreatePartyFeePricingTableRequest
@@ -145,7 +146,7 @@ public class PartyFeePricingServiceTests
     public async Task The_placeholder_each_category_starts_with_carries_no_amounts()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         await service.ListAsync();
 
@@ -164,7 +165,7 @@ public class PartyFeePricingServiceTests
     public async Task A_new_table_with_nothing_to_copy_starts_unpriced()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         var created = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
@@ -192,7 +193,7 @@ public class PartyFeePricingServiceTests
         int? areaM2)
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         var fee = await service.ResolveDefaultFeeAsync(kind, partyType, areaM2);
 
@@ -208,7 +209,7 @@ public class PartyFeePricingServiceTests
     public async Task An_employee_inspector_is_never_priced_from_the_table()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetInspectorRatesAsync(service, individual: 400m, organization: OrganizationRate);
 
         var fee = await service.ResolveDefaultFeeAsync(
@@ -222,7 +223,7 @@ public class PartyFeePricingServiceTests
     public async Task A_rate_that_was_actually_set_resolves()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
         await SetInspectorRatesAsync(service, individual: 400m, organization: OrganizationRate);
 
@@ -246,7 +247,7 @@ public class PartyFeePricingServiceTests
     public async Task A_resolved_fee_names_the_table_it_came_from()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
 
         var fee = await service.ResolveDefaultFeeAsync(
@@ -261,7 +262,7 @@ public class PartyFeePricingServiceTests
     public async Task Saving_an_engineering_table_with_no_tiers_is_refused()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var table = await service.GetActiveAsync();
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -279,7 +280,7 @@ public class PartyFeePricingServiceTests
     public async Task Engineering_tiers_replace_the_previous_schedule_and_price_by_area()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var table = await service.GetActiveAsync();
         await SaveTiersAsync(service, table.Id, (500m, 800m), (null, 1500m));
 
@@ -306,7 +307,7 @@ public class PartyFeePricingServiceTests
     public async Task An_assigned_party_is_priced_by_their_own_table_not_the_default()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
 
         var special = await service.CreateAsync(new CreatePartyFeePricingTableRequest
@@ -345,7 +346,7 @@ public class PartyFeePricingServiceTests
     public async Task An_engineering_office_with_no_assignment_has_no_price()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var table = await service.GetActiveAsync();
         await SaveTiersAsync(service, table.Id, (null, 1200m));
 
@@ -370,7 +371,7 @@ public class PartyFeePricingServiceTests
     public async Task Assignments_are_trimmed_and_deduplicated()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var table = await service.GetActiveAsync();
 
         var saved = await service.SetAssignmentsAsync(
@@ -389,7 +390,7 @@ public class PartyFeePricingServiceTests
     public async Task Assigning_a_party_elsewhere_moves_them_off_their_previous_table()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var first = await service.GetActiveAsync();
         var second = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
@@ -412,7 +413,7 @@ public class PartyFeePricingServiceTests
     public async Task An_assignment_in_another_category_is_left_alone()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         await service.SetAssignmentsAsync(PartyFeePricingService.DefaultEngineeringTableId, ["p-1"]);
 
@@ -434,7 +435,7 @@ public class PartyFeePricingServiceTests
     public async Task An_assigned_table_refuses_direct_rate_changes()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
         var tableId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(tableId, ["reviewer-1"]);
@@ -461,7 +462,7 @@ public class PartyFeePricingServiceTests
     public async Task Revising_an_assigned_table_copies_it_and_relinks_parties_atomically()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await SetGovernmentRateAsync(service, GovernmentRate);
         var sourceId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(sourceId, ["reviewer-1", "reviewer-2"]);
@@ -495,7 +496,7 @@ public class PartyFeePricingServiceTests
     public async Task A_failed_revision_leaves_the_source_and_its_assignments_untouched()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         var source = await service.GetActiveAsync();
         await SaveTiersAsync(service, source.Id, (null, 1200m));
         await service.SetAssignmentsAsync(source.Id, ["office-1"]);
@@ -519,7 +520,7 @@ public class PartyFeePricingServiceTests
     public async Task An_assigned_table_cannot_be_deleted()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         var sourceId = PartyFeePricingService.DefaultCourtVisitTableId;
         await service.SetAssignmentsAsync(sourceId, ["reviewer-1"]);
@@ -542,7 +543,7 @@ public class PartyFeePricingServiceTests
     public async Task Activating_a_table_demotes_the_previous_default_of_its_category_only()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         var second = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
@@ -565,7 +566,7 @@ public class PartyFeePricingServiceTests
     public async Task The_only_table_left_in_a_category_cannot_be_deleted()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -580,7 +581,7 @@ public class PartyFeePricingServiceTests
     public async Task Deleting_the_default_promotes_another_table_in_its_category()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         await service.ListAsync();
         var second = await service.CreateAsync(new CreatePartyFeePricingTableRequest
         {
@@ -600,7 +601,7 @@ public class PartyFeePricingServiceTests
     public async Task Deleting_a_table_that_does_not_exist_reports_it_rather_than_throwing()
     {
         await using var db = CreateDb();
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
 
         Assert.False(await service.DeleteAsync(Guid.NewGuid()));
     }

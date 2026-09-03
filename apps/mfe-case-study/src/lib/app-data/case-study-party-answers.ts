@@ -9,10 +9,10 @@ import {
 import {
   partyRoleOnQuestion,
   type CaseStudyInfoRolesMatrix,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import { loadPartyCaseStudyFormDraft } from "./case-study-form-storage";
+import { loadPartyCaseStudyFormDraft } from "./case-study-form-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
 
 export type PartyQuestionContribution = {

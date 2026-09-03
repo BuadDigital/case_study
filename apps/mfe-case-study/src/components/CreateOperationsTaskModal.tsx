@@ -33,7 +33,7 @@ import {
   OPERATIONS_TASK_SCOPE_LABELS,
   OPERATIONS_TASK_TYPE_LABELS,
 } from "../lib/app-data/operations-task-display";
-import { createOperationsTaskRecord } from "../lib/app-data/operations-tasks-storage";
+import { createOperationsTaskRecord } from "../lib/app-data/operations-tasks-commands";
 import { LetterTable } from "../views/OperationsTasksViewParts";
 import {
   opsBtnGhost,

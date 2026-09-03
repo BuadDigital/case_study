@@ -46,10 +46,10 @@ import {
   computePartyCaseStudyProgress,
   loadPartyCaseStudyAnswersByParty,
 } from "../lib/app-data/case-study-party-progress";
-import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/app-data/case-study-form-storage";
+import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/app-data/case-study-form-model";
 import { getAuthSession } from "@platform/auth-client";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import {
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,
@@ -78,7 +78,7 @@ import {
   type ActiveQueueMobileCardItem,
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
-import { isListedQueueTask } from "../lib/app-data/suspended-transactions-storage";
+import { isListedQueueTask } from "../lib/app-data/suspended-transactions-model";
 import {
   TASKS_CHANGED_EVENT,
   type WorkflowTask,
@@ -87,8 +87,8 @@ import { resolveQueueTasksForViewer } from "../lib/app-data/viewer-task-access";
 import {
   buildRowAttentionFingerprint,
   rowHasAttentionDot,
-  useRowAttentionSeenMap,
-} from "../lib/app-data/row-attention-storage";
+} from "../lib/app-data/row-attention-model";
+import { useRowAttentionSeenMap } from "../lib/app-data/use-row-attention-seen-map";
 import {
   buildDistributionQueueRowMeta,
   buildPrimaryQueueRowMeta,

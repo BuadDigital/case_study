@@ -3,7 +3,7 @@ import type { FailureRecord } from "@platform/app-shared/failures/failures-types
 import {
   isPropertySuspended,
   notifySuspendedTransactionsChanged,
-} from "./suspended-transactions-storage";
+} from "./suspended-transactions-model";
 import { suspendWorkflowTasksForProperty } from "./tasks-storage";
 
 export type SuspendPropertyResult =

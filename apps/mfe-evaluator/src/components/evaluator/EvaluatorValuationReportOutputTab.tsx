@@ -28,6 +28,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
 import { loadInfathDeposit } from "@case-study/mfe/lib/app-data/infath-deposit-storage";
+import { loadSpecialistFinishingLevel } from "@case-study/mfe/lib/app-data/valuation-report-specialist-finishing";
 import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
 import { isLandInspectionContext } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
@@ -49,6 +50,19 @@ import type { ComparablesMapPin } from "../../lib/evaluator/valuation-report-com
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
+
+/** Old shortened defaults — replace with HTML v3 full copy when still stored in org settings. */
+const LEGACY_SHORT_FINISHING = new Set([
+  "واجهات حجر طبيعي أو دهان عالي الجودة، أرضيات مداخل ومجالس من رخام فاخر، عزل ونوافذ عالية، تكييف مركزي ومصعد.",
+  "واجهات حجر أو دهان، أرضيات سيراميك، تكييف منفصل (سبليت)، مكونات جدران مزدوجة.",
+  "واجهات دهان، أرضيات سيراميك عادي أو بلاط بلدي، شبابيك عادية، تكييف شباك، بدون جبس أسقف.",
+]);
+
+function finishingTextForReport(stored: string, htmlV3Default: string): string {
+  const t = (stored ?? "").trim();
+  if (!t || LEGACY_SHORT_FINISHING.has(t)) return htmlV3Default;
+  return t;
+}
 
 async function loadValuationApproaches(
   config: ValuationApiConfig,
@@ -329,6 +343,9 @@ export function EvaluatorValuationReportOutputTab({
     (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
       const ev = loaded?.evaluator ?? {};
       const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
+      const specialistFinishing = loadSpecialistFinishingLevel(
+        property?.id ?? draft.propertyId,
+      );
       return {
         reportNo: draft.reportNo,
         reportDate: draft.appraisalDate || draft.reportIssueDate,
@@ -387,9 +404,19 @@ export function EvaluatorValuationReportOutputTab({
             ? approachSettings.selectedAssumptions
             : undefined,
           externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
-          finishingLuxuryText: vr.finishingLuxury,
-          finishingMediumText: vr.finishingMedium,
-          finishingOrdinaryText: vr.finishingOrdinary,
+          finishingLuxuryText: finishingTextForReport(
+            vr.finishingLuxury,
+            REPORT_DEFAULTS.finishingLuxury,
+          ),
+          finishingMediumText: finishingTextForReport(
+            vr.finishingMedium,
+            REPORT_DEFAULTS.finishingMedium,
+          ),
+          finishingOrdinaryText: finishingTextForReport(
+            vr.finishingOrdinary,
+            REPORT_DEFAULTS.finishingOrdinary,
+          ),
+          finishingLevel: specialistFinishing,
           keyInputsText: vr.keyInputsText,
           professionalStandardsText: vr.professionalStandards,
           independenceText: vr.independence,

@@ -9,11 +9,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.CaseStudy.Domain\RealEstateEval.CaseStudy.Domain.csproj" />
+    <!-- Leaf Domain of another context: the case-study submit gate quotes
+         PropertyComparableLinkRules so the minimum stays single-sourced. -->
+    <ProjectReference Include="..\..\valuation\RealEstateEval.Valuation.Domain\RealEstateEval.Valuation.Domain.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <!-- Abstractions only. Use-case services carry [ActivatorUtilitiesConstructor] and log;
+         neither package pulls in hosting or EF. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

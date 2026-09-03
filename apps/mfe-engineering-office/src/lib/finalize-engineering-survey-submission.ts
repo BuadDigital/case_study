@@ -1,9 +1,7 @@
-import {
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-} from "@case-study/mfe/lib/app-data/case-study-form-storage";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
-import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-storage";
+import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-commands";
 
 export type FinalizeEngineeringSurveyResult = {
   submission: EngineeringSurveySubmission;

@@ -16,11 +16,9 @@ import {
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
-import {
-  emptyCaseStudyFormDraft,
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-} from "@case-study/mfe/lib/app-data/case-study-form-storage";
+import { emptyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-model";
+import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
 import {
   surveyWorkGate,
   declarationPhoneGate,
@@ -43,12 +41,12 @@ import {
   isEngineeringSurveyFormLocked,
   type EngineeringSurveySubmission,
 } from "../lib/engineering-survey-data";
+import { loadEngineeringSurveySubmission } from "../lib/engineering-survey-submission-model";
+import { fetchEngineeringSurveySubmission } from "../lib/engineering-survey-submission-reads";
 import {
-  fetchEngineeringSurveySubmission,
   getOrCreateEngineeringSurveyDraft,
-  loadEngineeringSurveySubmission,
   updateEngineeringSurveyDraft,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-commands";
 import {
   cacheEngineeringSurveyFile,
   clearEngineeringSurveyFile,

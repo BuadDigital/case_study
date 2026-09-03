@@ -12,7 +12,7 @@ import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   isActiveOperationsTask,
   type OperationsTask,
-} from "../lib/app-data/operations-tasks-storage";
+} from "../lib/app-data/operations-tasks-model";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   operationsTaskLinkLabel,

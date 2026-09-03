@@ -4,7 +4,7 @@ import {
   CASE_STUDY_INFO_SECTIONS,
   CASE_STUDY_QUESTION_CATALOG,
 } from "./case-study-info-roles-data";
-import type { CaseStudyInfoRolesConfig } from "./case-study-info-roles-storage";
+import type { CaseStudyInfoRolesConfig } from "./case-study-info-roles-model";
 
 function formatCaseStudyInfoRolesMarkdown(
   config: CaseStudyInfoRolesConfig,

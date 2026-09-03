@@ -2,7 +2,7 @@ import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
 import {
   isVisibleInEngineeringSurveyQueue,
   loadEngineeringSurveySubmission,
-} from "./engineering-survey-submission-storage";
+} from "./engineering-survey-submission-model";
 
 export function filterEngineeringSurveyListedTasks(
   tasks: WorkflowTask[],

@@ -1,5 +1,5 @@
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
-import { isVisibleInAppraiserQueue } from "./evaluator-submission-storage";
+import { isVisibleInAppraiserQueue } from "./evaluator-submission-model";
 import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 
 /**

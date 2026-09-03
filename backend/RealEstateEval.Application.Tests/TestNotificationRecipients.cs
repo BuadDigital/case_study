@@ -5,6 +5,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 

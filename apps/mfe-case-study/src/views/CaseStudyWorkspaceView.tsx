@@ -163,6 +163,12 @@ function CaseStudyAppraisalPanel({
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
+            submitFooterAfter={
+              <SpecialistValuationReportInputs
+                propertyId={property.id}
+                poNumber={poNumber}
+              />
+            }
           />
         ) : (
           <EmptyState
@@ -171,8 +177,6 @@ function CaseStudyAppraisalPanel({
           />
         )}
       </section>
-
-      <SpecialistValuationReportInputs propertyId={property.id} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;

@@ -11,7 +11,7 @@ import {
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
 } from "./case-study-form-data";
-import type { CaseStudyFormDraft } from "./case-study-form-storage";
+import type { CaseStudyFormDraft } from "./case-study-form-model";
 import {
   formatDateAr,
   formatPoDisplay,

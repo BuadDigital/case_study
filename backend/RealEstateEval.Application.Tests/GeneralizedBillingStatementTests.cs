@@ -6,6 +6,7 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
@@ -13,6 +14,7 @@ using RealEstateEval.Attachments.Domain;
 using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -416,7 +418,7 @@ public class GeneralizedBillingStatementTests
             db.Operations,
             new CourtVisitFeeChargeService(db.Financial),
             new IdentityDirectory(db.Identity),
-            new PartyFeePricingService(db.Financial));
+            TestPricing.Create(db.Financial));
         return new(
             db.Financial,
             new CaseStudyLookup(db.CaseStudy),

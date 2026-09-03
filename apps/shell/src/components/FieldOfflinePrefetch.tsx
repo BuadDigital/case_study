@@ -25,7 +25,7 @@ import {
   listAttachments,
 } from "@platform/api-client";
 import { getPoRecord } from "@case-study/mfe/lib/app-data/po-intake-reads";
-import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-storage";
+import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-reads";
 import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
 
 function scopeKeyForProperty(poNumber: string, propertyId: string): string {

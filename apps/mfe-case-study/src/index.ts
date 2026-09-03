@@ -55,12 +55,15 @@ export * from "./lib/app-data/active-transactions-situation";
 export * from "./lib/app-data/case-study-form-data";
 export * from "@platform/app-shared/domain/case-study/question-catalog";
 export * from "./query/case-study-question-catalog-queries";
-export * from "./lib/app-data/case-study-form-storage";
+export * from "./lib/app-data/case-study-form-model";
+export * from "./lib/app-data/case-study-form-reads";
+export * from "./lib/app-data/case-study-form-commands";
 export * from "./lib/app-data/case-study-tracks";
 export * from "./lib/app-data/case-study-party-answers";
 export * from "./lib/app-data/viewer-task-access";
 export * from "./lib/app-data/case-study-report-model";
-export * from "./lib/app-data/suspended-transactions-storage";
+export * from "./lib/app-data/suspended-transactions-model";
+export * from "./lib/app-data/suspended-transactions-reads";
 export { suspendPropertyTransaction } from "./lib/app-data/suspend-property-transaction";
 
 export { PoPropertyDetailTopbarActions } from "./components/po-intake/PoPropertyDetailTopbarActions";

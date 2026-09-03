@@ -7,10 +7,8 @@ import {
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { getAuthSession } from "@platform/auth-client";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import {
-  loadCaseStudyInfoRolesConfig,
-  type CaseStudyInfoRolesConfig,
-} from "../lib/app-data/case-study-info-roles-storage";
+import type { CaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-model";
+import { loadCaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-reads";
 import {
   fetchDistributionAssignees,
   fetchStaffUsers,

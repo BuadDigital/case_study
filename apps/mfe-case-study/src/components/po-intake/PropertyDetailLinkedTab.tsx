@@ -24,7 +24,7 @@ import {
   findPriorDeedFull,
   listPriorDeedsFull,
 } from "../../lib/app-data/po-intake-reads";
-import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-storage";
+import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
@@ -33,7 +33,7 @@ import {
   operationsTaskTypeLabel,
 } from "../../lib/app-data/operations-task-display";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
-import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
 import { deedsMatch, normalizeDeedNumber } from "../../lib/app-data/deed-number";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 

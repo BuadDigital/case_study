@@ -9,12 +9,14 @@ import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   engineeringSurveyStatusLabel,
-  loadEngineeringSurveySubmissionAsync,
+} from "../lib/engineering-survey-submission-model";
+import { loadEngineeringSurveySubmissionAsync } from "../lib/engineering-survey-submission-reads";
+import {
   acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-commands";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
-import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 
 function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();

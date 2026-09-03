@@ -1,4 +1,4 @@
-import type { OperationsTask } from "./operations-tasks-storage";
+import type { OperationsTask } from "./operations-tasks-model";
 import {
   formatPropertyDeedDisplay,
   type PoIntakeRecord,

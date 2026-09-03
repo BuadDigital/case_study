@@ -21,6 +21,7 @@ using RealEstateEval.Identity.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Valuation.Domain;

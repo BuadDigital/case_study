@@ -157,17 +157,18 @@ describe("search notes and comparable map live fill", () => {
     const headers = [
       ...dom.querySelectorAll("[data-sec=\"12\"] tr:first-child th"),
     ];
-    expect(headers[1]?.getAttribute("data-finishing-selected")).toBe("1");
-    expect(headers[1]?.textContent).toContain("✓");
-    expect(headers[0]?.getAttribute("style") ?? "").toContain("opacity");
+    expect((headers[0] as HTMLElement)?.style.display).toBe("none");
+    expect((headers[2] as HTMLElement)?.style.display).toBe("none");
+    expect((headers[1] as HTMLElement)?.style.display).not.toBe("none");
+    expect(headers[1]?.textContent).not.toContain("✓");
     const midCell = dom.querySelectorAll(
       "[data-sec=\"12\"] tr:nth-child(2) td",
     )[1];
-    expect(midCell?.getAttribute("data-finishing-selected")).toBe("1");
+    expect((midCell as HTMLElement)?.style.display).not.toBe("none");
     expect(midCell?.innerHTML).toContain("تشطيبات خارجية");
   });
 
-  it("highlights بدون تشطيب when finishingLevel is none", () => {
+  it("shows only بدون تشطيب when finishingLevel is none", () => {
     const d = draft();
     d.reportChoices = { ...d.reportChoices!, finishingLevel: "none" };
     const fill = buildValuationReportLiveFill({ draft: d });
@@ -187,7 +188,8 @@ describe("search notes and comparable map live fill", () => {
     const none = [...dom.querySelectorAll("[data-sec=\"12\"] th")].find((th) =>
       (th.textContent ?? "").includes("بدون"),
     );
-    expect(none?.getAttribute("data-finishing-selected")).toBe("1");
-    expect(none?.textContent).toContain("✓");
+    expect(none?.textContent).not.toContain("✓");
+    const headerRow = dom.querySelector("[data-sec=\"12\"] tr:first-child");
+    expect((headerRow as HTMLElement)?.style.display).toBe("none");
   });
 });

@@ -99,7 +99,7 @@ public class WorkOrderReadAuthorizationTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"wo-read-auth-{Guid.NewGuid():N}");
 
-    private static RealEstateEval.CaseStudy.Infrastructure.Services.WorkOrderService CreateService(
+    private static RealEstateEval.CaseStudy.Application.Services.WorkOrderService CreateService(
         TestBoundedContexts.Bundle bundle)
     {
         var db = bundle.CaseStudy;

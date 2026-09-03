@@ -9,7 +9,7 @@ vi.mock("@failures/mfe/lib/failures-repository", () => ({
   suspendFailure: (...args: unknown[]) => suspendFailure(...args),
 }));
 
-vi.mock("../suspended-transactions-storage", () => ({
+vi.mock("../suspended-transactions-model", () => ({
   isPropertySuspended: (...args: unknown[]) => isPropertySuspended(...args),
   notifySuspendedTransactionsChanged: (...args: unknown[]) =>
     notifySuspendedTransactionsChanged(...args),

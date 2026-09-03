@@ -397,6 +397,8 @@ export function buildValuationReportLiveFill(input: {
   restrictionsText?: string | null;
   /** IVS standards effective date — fills {{ivsDate}} in the standards text. */
   ivsEffectiveDate?: string | null;
+  /** Specialist case-study selection when not yet mirrored in reportChoices. */
+  finishingLevel?: "" | "luxury" | "medium" | "ordinary" | "none";
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
   const keys = assignmentValuationFromPo(record);
@@ -1128,7 +1130,8 @@ export function buildValuationReportLiveFill(input: {
       .filter(Boolean)
       .join(" - "),
     closeupMapSlot,
-    finishingLevel: choices.finishingLevel || "",
+    finishingLevel:
+      choices.finishingLevel || input.finishingLevel || "",
     finishingTexts: {
       luxury: (input.finishingLuxuryText ?? "").trim(),
       medium: (input.finishingMediumText ?? "").trim(),

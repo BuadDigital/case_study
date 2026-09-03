@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
-import { loadOperationsTasks, loadCourtVisitFees } from "../lib/app-data/operations-tasks-storage";
+import { loadOperationsTasks, loadCourtVisitFees } from "../lib/app-data/operations-tasks-reads";
 
 const STALE_MS = 30_000;
 

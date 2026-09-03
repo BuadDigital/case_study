@@ -7,7 +7,7 @@ import {
   Textarea,
   cn,
 } from "@platform/ui-kit";
-import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-storage";
+import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 import {
   INFATH_FIELD_LABELS,
   INFATH_YES_NO_OPTIONS,

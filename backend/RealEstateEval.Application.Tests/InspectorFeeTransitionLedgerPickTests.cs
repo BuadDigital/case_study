@@ -1,6 +1,7 @@
 ﻿using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Application.Rules;
 

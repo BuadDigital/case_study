@@ -17,8 +17,14 @@ const AppraiserUploadTab = dynamic(
 );
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
 import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
-import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT, hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-storage";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT, isEvaluatorFormLocked, loadEvaluatorSubmission, prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-storage";
+import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
+import {
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  isEvaluatorFormLocked,
+  loadEvaluatorSubmission,
+} from "../lib/evaluator/evaluator-submission-model";
+import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-reads";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
 /** Footer from Case Study.html `renderValOrders`. */

@@ -13,6 +13,8 @@ public class RepositoryBoundaryTests
         { "Client", "IClientRepository" },
         { "PoIntakeDraft", "IPoIntakeDraftRepository" },
         { "PartyTaskSubmission", "IPartyTaskSubmissionRepository" },
+        { "InspectionLimits", "IInspectionLimitsRepository" },
+        { "BuildingInventory", "IBuildingInventoryRepository" },
     };
 
     [Theory]
@@ -99,20 +101,6 @@ public class RepositoryBoundaryTests
             violations.Count == 0,
             "Case Study, Financial, and Operations use-cases must not take CaseStudyDbContext:\n  "
             + string.Join("\n  ", violations));
-    }
-
-    [Fact]
-    public void CaseStudyDbContext_implements_the_session()
-    {
-        // A8 physical move: the context lives in its context library.
-        var file = RepoPaths.Combine(
-            "backend",
-            "contexts",
-            "case-study",
-            "RealEstateEval.CaseStudy.Infrastructure",
-            "Data",
-            "CaseStudyDbContext.cs");
-        Assert.Contains("ICaseStudyRepository", File.ReadAllText(file), StringComparison.Ordinal);
     }
 
     private static string CaseStudyApplication(params string[] parts) =>

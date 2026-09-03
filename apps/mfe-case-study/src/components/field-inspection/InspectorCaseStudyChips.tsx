@@ -10,7 +10,7 @@ import { cn, InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import {
   emptyCaseStudyInfoRolesConfig,
   isPartyQuestionVisible,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { partyIdForRoleId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import {
@@ -25,11 +25,9 @@ import {
   type CaseStudyFormAnswer,
   type CaseStudyQuestionSection,
 } from "../../lib/app-data/case-study-form-data";
-import {
-  loadPartyCaseStudyFormDraft,
-  savePartyCaseStudyFormDraft,
-  type CaseStudyFormDraft,
-} from "../../lib/app-data/case-study-form-storage";
+import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
+import { loadPartyCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
+import { savePartyCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Abstractions;
 
 namespace RealEstateEval.Infrastructure.Caching;
 
@@ -14,7 +15,7 @@ public sealed class RedisCacheOptions
     public string InstanceName { get; set; } = "ree:";
 }
 
-public sealed class ApiResponseCache
+public sealed class ApiResponseCache : IResponseCache
 {
     private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CamelCase;
 

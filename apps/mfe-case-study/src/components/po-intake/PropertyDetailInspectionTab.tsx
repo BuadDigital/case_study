@@ -74,7 +74,10 @@ import {
   useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
 import { FieldComparableCaptureSection } from "../field-inspection/FieldComparableCaptureSection";
-import { InspectorWorkspaceWizard } from "../field-inspection/InspectorWorkspaceWizard";
+import {
+  InspectorWorkspaceSubmitFooter,
+  InspectorWorkspaceWizard,
+} from "../field-inspection/InspectorWorkspaceWizard";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
@@ -121,6 +124,8 @@ export function PropertyDetailInspectionTab({
   includeRetiredFeatureKeys,
   serviceProofFromTransactionPhotos = false,
   transactionPhotos = [],
+  /** Render after wizard; submit footer follows this block (case-study workspace). */
+  submitFooterAfter,
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -140,6 +145,7 @@ export function PropertyDetailInspectionTab({
   /** Case-study specialist: require كهرباء/ماء proof from transaction photos. */
   serviceProofFromTransactionPhotos?: boolean;
   transactionPhotos?: PropertyDetailDocumentEntry[];
+  submitFooterAfter?: ReactNode;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
@@ -680,6 +686,7 @@ export function PropertyDetailInspectionTab({
           saving={submitBusy}
           fieldErrors={fieldErrors}
           flat={!steps}
+          hideSubmitFooter={Boolean(submitFooterAfter)}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}
@@ -713,6 +720,18 @@ export function PropertyDetailInspectionTab({
           sub="يظهر التقرير التفصيلي بعد بدء المعاين بإدخال البيانات."
         />
       )}
+
+      {submitFooterAfter}
+
+      {submitFooterAfter && showEditFields && draft ? (
+        <InspectorWorkspaceSubmitFooter
+          draft={draft}
+          saving={submitBusy}
+          onPatch={(patch) => patchDraft(patch)}
+          onSubmit={() => void handleSaveAndSubmit()}
+          onCancel={() => void handleCancelEdit()}
+        />
+      ) : null}
 
       <AppModal
         open={Boolean(pendingMapMove)}

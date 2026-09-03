@@ -8,7 +8,7 @@ import {
   primaryCourtVisitTask,
   type PropertyOpsScopeInput,
 } from "../lib/app-data/operations-task-property-scope";
-import type { OperationsTask } from "../lib/app-data/operations-tasks-storage";
+import type { OperationsTask } from "../lib/app-data/operations-tasks-model";
 
 export function usePropertyOperationsTasks(
   scope: PropertyOpsScopeInput,

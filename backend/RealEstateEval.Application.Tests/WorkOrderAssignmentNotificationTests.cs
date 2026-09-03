@@ -10,6 +10,7 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Domain;
 

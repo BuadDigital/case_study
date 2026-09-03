@@ -15,18 +15,8 @@ public class InfrastructureServiceSizeTests
     /// <summary>Snapshot taken 2026-09-02 after PartyTaskSubmissionService moved to Application.</summary>
     private static readonly string[] FrozenOverCap =
     [
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/CaseStudyFormService.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/CaseStudyLookup.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyTimelineService.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderPropertyCommands.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkOrderService.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskDistributionCommands.cs",
-        "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/WorkflowTaskLifecycleCommands.cs",
         "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureService.cs",
-        "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/FinancialReportService.cs",
-        "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeService.cs",
         "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyBillingStatementService.cs",
-        "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyFeePricingService.cs",
         "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazBillingService.cs",
         "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.cs",
         "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs",

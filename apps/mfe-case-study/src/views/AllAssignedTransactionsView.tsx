@@ -12,7 +12,7 @@ import {
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
 import { filterOpenAssignedTransactions } from "../lib/app-data/assigned-transactions-filter";
-import { isTaskOnSuspendedProperty } from "../lib/app-data/suspended-transactions-storage";
+import { isTaskOnSuspendedProperty } from "../lib/app-data/suspended-transactions-model";
 import {
   reopenCompletedTransaction,
   type WorkflowTask,

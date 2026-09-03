@@ -6,13 +6,11 @@ import { loadPendingBourseItems } from "@case-study/mfe/lib/app-data/po-intake-r
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
-import {
-  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
-  loadCaseStudyInfoRolesConfig,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
+import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
 import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
-import { loadSuspendedTransactions } from "@case-study/mfe/lib/app-data/suspended-transactions-storage";
-import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-storage";
+import { loadSuspendedTransactions } from "@case-study/mfe/lib/app-data/suspended-transactions-reads";
+import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-reads";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
 import { loadKeyEnvelopes } from "@keys/mfe/lib/keys-envelope-api";
 import {

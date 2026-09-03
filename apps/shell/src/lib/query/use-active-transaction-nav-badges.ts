@@ -14,7 +14,7 @@ import {
   filterTasksForPrimaryData,
 } from "@case-study/mfe/lib/app-data/transaction-filters";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
-import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/app-data/suspended-transactions-storage";
+import { isTaskOnSuspendedProperty } from "@case-study/mfe/lib/app-data/suspended-transactions-model";
 import { listedTasksForPage } from "@case-study/mfe/lib/app-data/active-transaction-page-situation";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/app-data/party-task-pages";
 import { seesAllCaseStudyWorkflowTasks } from "@case-study/mfe/lib/app-data/viewer-task-access";

@@ -22,9 +22,9 @@ import {
 import { downloadCaseStudyInfoRolesMarkdown } from "../lib/app-data/case-study-info-roles-markdown";
 import {
   emptyCaseStudyInfoRolesConfig,
-  saveCaseStudyInfoRolesConfig,
   type CaseStudyInfoRolesConfig,
-} from "../lib/app-data/case-study-info-roles-storage";
+} from "../lib/app-data/case-study-info-roles-model";
+import { saveCaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-commands";
 import { apiErrorMessage } from "../lib/settings-api-config";
 import {
   setCaseStudyInfoRolesCache,

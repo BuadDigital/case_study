@@ -13,8 +13,8 @@ import {
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   loadEngineeringSurveySubmission,
-  prefetchEngineeringSurveySubmissions,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-model";
+import { prefetchEngineeringSurveySubmissions } from "../lib/engineering-survey-submission-reads";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 
 /** Footer from Case Study.html `renderEngOrders` — prerequisites to start the survey. */

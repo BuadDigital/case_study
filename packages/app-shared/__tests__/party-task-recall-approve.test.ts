@@ -31,12 +31,15 @@ vi.mock("../src/app-data/modules-api-config", () => ({
   prototypeModulesApiConfig: () => ({ baseUrl: "http://test", token: "t" }),
 }));
 
-const {
-  approvePartyTaskRecall,
-  hydratePartyTaskRecalls,
-  getPartyTaskRecall,
-  partyTaskRecallReturnNote,
-} = await import("../src/app-data/party-task-recall-storage");
+const { getPartyTaskRecall, partyTaskRecallReturnNote } = await import(
+  "../src/app-data/party-task-recall-model"
+);
+const { hydratePartyTaskRecalls } = await import(
+  "../src/app-data/party-task-recall-reads"
+);
+const { approvePartyTaskRecall } = await import(
+  "../src/app-data/party-task-recall-commands"
+);
 
 const TASK_ID = "11111111-1111-1111-1111-111111111111";
 

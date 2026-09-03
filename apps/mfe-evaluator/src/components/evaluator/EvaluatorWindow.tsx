@@ -14,19 +14,23 @@ import {
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { useIdempotentAction } from "@platform/app-shared";
+import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import dynamic from "next/dynamic";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import {
-  hydrateEvaluatorSubmission,
   isEvaluatorFormLocked,
-  updateEvaluatorDraft,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
-} from "../../lib/evaluator/evaluator-submission-storage";
+} from "../../lib/evaluator/evaluator-submission-model";
+import {
+  hydrateEvaluatorSubmission,
+  updateEvaluatorDraft,
+} from "../../lib/evaluator/evaluator-submission-commands";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   firstEvaluatorError,
@@ -122,6 +126,26 @@ export function EvaluatorWindow({
     [task, tasks],
   );
   const { showToast } = useToast();
+  const { data: staffResult } = useStaffUsersQuery();
+  const assignedAppraiserName = useMemo(() => {
+    const session = getAuthSession();
+    const selfFallback =
+      session?.user?.id &&
+      task.assigneeId?.trim() &&
+      session.user.id === task.assigneeId.trim()
+        ? session.user.displayName
+        : undefined;
+    return resolveAssigneeDisplayName({
+      assigneeName: task.assigneeName,
+      assigneeId: task.assigneeId,
+      staffUsers: staffResult?.users ?? [],
+      fallback: selfFallback,
+    });
+  }, [
+    task.assigneeName,
+    task.assigneeId,
+    staffResult?.users,
+  ]);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
@@ -651,7 +675,7 @@ export function EvaluatorWindow({
                   property={summary.property}
                   inspectionTaskId={summary.inspectionTaskId}
                   surveyTaskId={summary.surveyTaskId}
-                  assignedAppraiserName={task.assigneeName}
+                  assignedAppraiserName={assignedAppraiserName}
                 />
               </Activity>
             ) : null}

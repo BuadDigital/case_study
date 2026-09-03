@@ -1,9 +1,9 @@
 import { mergeEvaluatorChecklistFromCaseStudy } from "../evaluator-bridge";
-import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
 import {
   loadCaseStudyFormDraft,
   loadPartyCaseStudyFormDraft,
-} from "./case-study-form-storage";
+} from "./case-study-form-reads";
 import { loadInspectorWorkspaceSnapshot } from "./inspector-workspace-reads";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {

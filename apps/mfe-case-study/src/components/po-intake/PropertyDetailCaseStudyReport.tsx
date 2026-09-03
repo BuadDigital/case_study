@@ -24,10 +24,10 @@ import {
   type CaseStudyQuestionSection,
 } from "../../lib/app-data/case-study-form-data";
 import {
-  loadCaseStudyFormDraft,
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "../../lib/app-data/case-study-form-storage";
+} from "../../lib/app-data/case-study-form-model";
+import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";

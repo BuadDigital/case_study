@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { patchChecklistRow } from "../src/lib/engineering-survey-submission-storage";
+import { patchChecklistRow } from "../src/lib/engineering-survey-submission-model";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../src/lib/engineering-survey-data";
 
 describe("patchChecklistRow", () => {

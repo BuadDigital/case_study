@@ -5,8 +5,10 @@ import { SpecialistValuationReportFinishingEditor } from "./SpecialistValuationR
 /** Specialist fills finishing level on property valuation. */
 export function SpecialistValuationReportInputs({
   propertyId,
+  poNumber,
 }: {
   propertyId: string;
+  poNumber?: string;
 }) {
   // Filled here by the specialist (case study → property valuation); shown read-only to the appraiser.
   return (
@@ -22,7 +24,10 @@ export function SpecialistValuationReportInputs({
         يعبّئها الأخصائي من دراسة الحالة (تبويب تقييم العقار)، وتظهر للمقيّم للعرض
         فقط.
       </p>
-      <SpecialistValuationReportFinishingEditor propertyId={propertyId} />
+      <SpecialistValuationReportFinishingEditor
+        propertyId={propertyId}
+        poNumber={poNumber}
+      />
     </div>
   );
 }

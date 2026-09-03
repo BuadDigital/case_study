@@ -31,7 +31,7 @@ import {
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import {
   partyById,
   type CaseStudyInfoPartyId,
@@ -43,16 +43,20 @@ import {
 import { useCaseStudyInfoRolesQuery, useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyFormDraft,
+  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
+  type CaseStudyFormDraft,
+  type CaseStudyMeterType,
+} from "../../lib/app-data/case-study-form-model";
+import {
   loadCaseStudyFormDraft,
   loadCaseStudyFormDraftOrThrow,
   loadPartyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraftOrThrow,
-  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
+} from "../../lib/app-data/case-study-form-reads";
+import {
   saveCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
-  type CaseStudyFormDraft,
-  type CaseStudyMeterType,
-} from "../../lib/app-data/case-study-form-storage";
+} from "../../lib/app-data/case-study-form-commands";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import { scheduleScrollToCaseStudyQuestion } from "../../lib/app-data/case-study-form-ux";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";

@@ -1,5 +1,5 @@
-import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/app-data/party-task-recall-storage";
-import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/suspended-transactions-storage";
+import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
+import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/suspended-transactions-model";
 import { FAILURE_TYPES_CHANGED_EVENT } from "@failures/mfe/lib/failure-types-events";
 import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,

@@ -6,12 +6,14 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Valuation.Infrastructure.Services;
 using RealEstateEval.Valuation.Infrastructure.Integration;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -128,7 +130,7 @@ public class CaseStudyValuationDispatchTests
     private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(contexts.CaseStudy);
-        return new CaseStudyFormService(contexts.CaseStudy, workflow);
+        return new CaseStudyFormService(new CaseStudyFormRepository(contexts.CaseStudy), workflow);
     }
 
     private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)
@@ -141,7 +143,7 @@ public class CaseStudyValuationDispatchTests
                 NullLogger<ValuationOutboxPublisher>.Instance),
             new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
         return new CaseStudyValuationDispatchService(
-            contexts.CaseStudy,
+            new CaseStudyValuationDispatchRepository(contexts.CaseStudy),
             valuation,
             timeline,
             NullLogger<CaseStudyValuationDispatchService>.Instance);

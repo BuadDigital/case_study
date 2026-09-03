@@ -13,7 +13,9 @@ using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -179,7 +181,7 @@ internal static class TestBoundedContexts
             new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy)),
             new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy)),
             notifications ?? new NullNotificationService(),
-            pricing ?? new PartyFeePricingService(
+            pricing ?? TestPricing.Create(
                 TestInspectorFeeServiceFactory.ShareFinancial(bundle.CaseStudy)));
 
     private sealed class NullNotificationService : INotificationService

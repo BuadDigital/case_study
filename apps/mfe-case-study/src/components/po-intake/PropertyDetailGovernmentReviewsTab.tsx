@@ -28,7 +28,7 @@ import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
 } from "../../lib/app-data/operations-task-display";
-import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";

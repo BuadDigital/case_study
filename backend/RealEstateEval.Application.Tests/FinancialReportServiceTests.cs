@@ -9,6 +9,8 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Persistence;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
@@ -17,6 +19,7 @@ using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -119,7 +122,7 @@ public class FinancialReportServiceTests
             Options.Create(new RedisCacheOptions { Enabled = false }),
             NullLogger<ApiResponseCache>.Instance);
         return new FinancialReportService(
-            store.Fin,
+            new FinancialReportRepository(store.Fin),
             new CaseStudyLookup(store.CaseStudy),
             new IdentityDirectory(store.Identity),
             cache);

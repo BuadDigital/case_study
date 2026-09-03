@@ -1,4 +1,4 @@
-﻿using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
@@ -6,10 +6,13 @@ using RealEstateEval.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 internal static class TestWorkOrderServiceFactory
@@ -48,9 +51,9 @@ internal static class TestWorkOrderServiceFactory
         var loader = new WorkOrderLoader(caseStudy);
         var visibility = new WorkOrderVisibilityFilter(caseStudy);
         var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failuresCtx), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions);
-        var properties = new WorkOrderPropertyCommands(caseStudy, new FailureLookup(failuresCtx), new UserLabelLookup(identity), loader, timeline, failures);
+        var properties = new WorkOrderPropertyCommands(new WorkOrderPropertyRepository(caseStudy), new CaseStudyFailureGate(new FailureLookup(failuresCtx), failures), new UserLabelLookup(identity), loader, timeline);
         return new WorkOrderService(
-            caseStudy,
+            new WorkOrderRepository(caseStudy),
             timeline,
             notifications,
             recipients,

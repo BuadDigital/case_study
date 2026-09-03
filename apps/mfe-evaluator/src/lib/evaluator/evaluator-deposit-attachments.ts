@@ -7,10 +7,10 @@ import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-su
 import { MAX_EVALUATOR_PDF_BYTES } from "./evaluator-window-data";
 import {
   loadEvaluatorSubmission,
-  saveEvaluatorSubmission,
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
-} from "./evaluator-submission-storage";
+} from "./evaluator-submission-model";
+import { saveEvaluatorSubmission } from "./evaluator-submission-commands";
 
 const EVALUATOR_DEPOSIT_SCOPE = "evaluator-deposit-certificate";
 

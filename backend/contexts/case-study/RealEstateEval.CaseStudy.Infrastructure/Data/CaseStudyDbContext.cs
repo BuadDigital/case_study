@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
@@ -10,7 +9,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 /// Maps existing Case Study–owned tables in the <c>case_study</c> schema.
 /// </summary>
 public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> options)
-    : DbContext(options), ICaseStudyRepository
+    : DbContext(options)
 {
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();

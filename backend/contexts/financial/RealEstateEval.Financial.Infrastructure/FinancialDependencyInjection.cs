@@ -8,6 +8,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Persistence;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Application.Abstractions;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
@@ -52,7 +54,9 @@ public static class FinancialDependencyInjection
         services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddHostedService<PartyBillingMonthVendorHostedService>();
         services.AddHostedService<InspectorFeeLedgerMaintenanceHostedService>();
+        services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
         services.AddScoped<IFinancialReportService, FinancialReportService>();
+        services.AddScoped<IPartyFeePricingRepository, PartyFeePricingRepository>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
         services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
         services.AddScoped<IDiscountFlagService, DiscountFlagService>();
@@ -62,6 +66,7 @@ public static class FinancialDependencyInjection
     /// <summary>Inspector-fee façade + ledger/transition/summary collaborators.</summary>
     public static IServiceCollection AddInspectorFeeCollaborators(this IServiceCollection services)
     {
+        services.AddScoped<IInspectorFeeLedgerStore, InspectorFeeLedgerStore>();
         services.AddScoped<IInspectorFeeLedgerResolver, InspectorFeeLedgerResolver>();
         services.AddScoped<IInspectorFeeLedgerWriter, InspectorFeeLedgerWriter>();
         services.AddScoped<IInspectorFeeTransitionApplier, InspectorFeeTransitionApplier>();

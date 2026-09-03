@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Button, useToast } from "@platform/ui-kit";
 import {
-  approvePartyTaskRecall,
   getPartyTaskRecall,
   partyTaskRecallStatusLabel,
+} from "@platform/app-shared/app-data/party-task-recall-model";
+import {
+  approvePartyTaskRecall,
   rejectPartyTaskRecall,
-} from "@platform/app-shared/app-data/party-task-recall-storage";
+} from "@platform/app-shared/app-data/party-task-recall-commands";
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 
 const noteWarnClass =

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Infrastructure.Data;
 
@@ -19,18 +18,6 @@ public static class DbContextTransaction
 
     public static Task<T> ExecuteInTransactionAsync<T>(
         DbContext db,
-        Func<CancellationToken, Task<(bool Commit, T Result)>> action,
-        CancellationToken cancellationToken = default) =>
-        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
-
-    public static Task ExecuteInTransactionAsync(
-        ICaseStudyRepository db,
-        Func<CancellationToken, Task> action,
-        CancellationToken cancellationToken = default) =>
-        ExecuteInTransactionAsync(db.Database, action, cancellationToken);
-
-    public static Task<T> ExecuteInTransactionAsync<T>(
-        ICaseStudyRepository db,
         Func<CancellationToken, Task<(bool Commit, T Result)>> action,
         CancellationToken cancellationToken = default) =>
         ExecuteInTransactionAsync(db.Database, action, cancellationToken);

@@ -116,6 +116,8 @@ export function InspectorWorkspaceWizard({
   onRestoreInspectorMap,
   /** Property-detail review: show all design sections at once (no step filter). */
   flat = false,
+  /** Hide inline submit footer — parent renders it after extra sections. */
+  hideSubmitFooter = false,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -139,6 +141,7 @@ export function InspectorWorkspaceWizard({
   canRestoreInspectorMap?: boolean;
   onRestoreInspectorMap?: () => void;
   flat?: boolean;
+  hideSubmitFooter?: boolean;
 }) {
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const [doneSteps, setDoneSteps] = useState<Set<InspectorStepId>>(
@@ -1076,43 +1079,65 @@ export function InspectorWorkspaceWizard({
             </InsCard>
           ) : null}
 
-          {editable ? (
-            <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3">
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-2">
-                <input
-                  type="checkbox"
-                  className="size-[15px] accent-ink"
-                  checked={draft.inspectionConfirmed}
-                  onChange={(e) =>
-                    onPatch({ inspectionConfirmed: e.target.checked })
-                  }
-                />
-                أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني
-              </label>
-              <span className="flex-1" />
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={saving}
-                disabled={saving || !draft.inspectionConfirmed}
-                onClick={onSubmit}
-              >
-                حفظ وإرسال
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={saving}
-                onClick={onCancel}
-              >
-                رجوع
-              </Button>
-            </div>
+          {editable && !hideSubmitFooter ? (
+            <InspectorWorkspaceSubmitFooter
+              draft={draft}
+              saving={saving}
+              onPatch={onPatch}
+              onSubmit={onSubmit}
+              onCancel={onCancel}
+            />
           ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+export function InspectorWorkspaceSubmitFooter({
+  draft,
+  saving,
+  onPatch,
+  onSubmit,
+  onCancel,
+}: {
+  draft: InspectorWorkspaceDraft;
+  saving: boolean;
+  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3">
+      <label className="flex cursor-pointer items-center gap-2 text-xs text-text-2">
+        <input
+          type="checkbox"
+          className="size-[15px] accent-ink"
+          checked={draft.inspectionConfirmed}
+          onChange={(e) => onPatch({ inspectionConfirmed: e.target.checked })}
+        />
+        أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني
+      </label>
+      <span className="flex-1" />
+      <Button
+        type="button"
+        size="sm"
+        variant="primary"
+        loading={saving}
+        disabled={saving || !draft.inspectionConfirmed}
+        onClick={onSubmit}
+      >
+        حفظ وإرسال
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={saving}
+        onClick={onCancel}
+      >
+        رجوع
+      </Button>
     </div>
   );
 }

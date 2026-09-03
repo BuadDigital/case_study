@@ -12,7 +12,7 @@ import {
 import {
   type CaseStudyFormDraft,
   type CaseStudyFormStatus,
-} from "./case-study-form-storage";
+} from "./case-study-form-model";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   INSPECTOR_FEATURE_FIELDS,
@@ -39,7 +39,7 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   type EvaluatorChecklistBooleanKey,
 } from "../evaluator-bridge";
-import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import type {
   EngineeringSurveyChecklistAnswer,
   EngineeringSurveyChecklistRow,

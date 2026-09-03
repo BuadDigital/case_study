@@ -8,13 +8,17 @@
 
 import { registerEngineeringSurveyRuntimeBridge } from "@platform/app-shared/engineering-survey/runtime-bridge";
 import {
-  acceptEngineeringSurveySubmission,
-  fetchEngineeringSurveySubmission,
   isEngineeringSurveyOutputsAccepted,
   loadEngineeringSurveySubmission,
+} from "../lib/engineering-survey-submission-model";
+import {
+  fetchEngineeringSurveySubmission,
   prefetchEngineeringSurveySubmissions,
+} from "../lib/engineering-survey-submission-reads";
+import {
+  acceptEngineeringSurveySubmission,
   reopenEngineeringSurveySubmission,
-} from "../lib/engineering-survey-submission-storage";
+} from "../lib/engineering-survey-submission-commands";
 import {
   downloadEngineeringSurveyDocument,
   listEngineeringSurveyDocuments,

@@ -29,11 +29,9 @@ import {
 } from "../lib/evaluator/evaluator-queue";
 import { prefetchEvaluatorReport } from "../lib/evaluator/evaluator-report-attachments";
 import { getCachedEvaluatorReport } from "../lib/evaluator/evaluator-report-attachments";
-import {
-  fetchEvaluatorSubmission,
-  loadEvaluatorSubmission,
-  syncEvaluatorChecklistFromPartyCaseStudy,
-} from "../lib/evaluator/evaluator-submission-storage";
+import { loadEvaluatorSubmission } from "../lib/evaluator/evaluator-submission-model";
+import { fetchEvaluatorSubmission } from "../lib/evaluator/evaluator-submission-reads";
+import { syncEvaluatorChecklistFromPartyCaseStudy } from "../lib/evaluator/evaluator-submission-commands";
 import type { EvaluatorChecklistAnswers } from "../lib/evaluator/evaluator-window-data";
 
 let registered = false;

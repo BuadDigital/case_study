@@ -5,7 +5,7 @@ import {
   isOpsTaskFailurePauseReason,
   OPS_TASK_FAILURE_PAUSE_REASON,
 } from "../operations-task-failure-obstruction";
-import type { OperationsTask } from "../operations-tasks-storage";
+import type { OperationsTask } from "../operations-tasks-model";
 import type { PoIntakeRecord } from "../po-intake-data";
 
 describe("operations-task-failure-obstruction", () => {

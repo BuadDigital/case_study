@@ -29,24 +29,32 @@ public static class CaseStudyDependencyInjection
     {
         services.AddScoped<IWorkOrderLoader, WorkOrderLoader>();
         services.AddScoped<IWorkOrderQuery, WorkOrderQueryService>();
+        services.AddScoped<IWorkOrderPropertyRepository, WorkOrderPropertyRepository>();
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
+        services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();
+        services.AddScoped<IBuildingInventoryRepository, BuildingInventoryRepository>();
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
+        services.AddScoped<IPropertyGroupRepository, PropertyGroupRepository>();
         services.AddScoped<IPropertyGroupService, PropertyGroupService>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
+        services.AddScoped<ICaseStudyFormRepository, CaseStudyFormRepository>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
+        services.AddScoped<ICaseStudyValuationDispatchRepository, CaseStudyValuationDispatchRepository>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionRepository, PartyTaskSubmissionRepository>();
         services.AddScoped<IPartyTaskFailureGate, PartyTaskFailureGate>();
+        services.AddScoped<ICaseStudyFailureGate, CaseStudyFailureGate>();
         services.AddScoped<ICurrentPrototypeRoleResolver, HttpCurrentPrototypeRoleResolver>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
         // Q-9: derived transaction-state machine + comprehensive Enfaz upload.
+        services.AddScoped<ITransactionStateRepository, TransactionStateRepository>();
         services.AddScoped<ITransactionStateService, TransactionStateService>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
@@ -76,6 +84,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<ICaseStudyLookup, CaseStudyLookup>();
         services.AddScoped<ICaseStudyCommands, CaseStudyCommands>();
         services.AddScoped<ICaseStudyFailureCommands, CaseStudyFailureCommands>();
+        services.AddScoped<IInspectionLimitsRepository, InspectionLimitsRepository>();
         services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddRemoteAttachmentLookup(configuration);
         services.AddRemotePlatformCatalogs(configuration);
@@ -95,9 +104,12 @@ public static class CaseStudyDependencyInjection
     {
         services.AddScoped<IWorkflowTaskQuery, WorkflowTaskQueryService>();
         services.AddScoped<IDashboardOpsMetricsQuery, DashboardOpsMetricsQueryService>();
+        services.AddScoped<IWorkflowTaskSlotRepository, WorkflowTaskSlotRepository>();
         services.AddScoped<IWorkflowTaskSlotSynchronizer, WorkflowTaskSlotSynchronizer>();
+        services.AddScoped<IWorkflowTaskDistributionRepository, WorkflowTaskDistributionRepository>();
         services.AddScoped<IWorkflowTaskDistributionCommands, WorkflowTaskDistributionCommands>();
-        services.AddScoped<WorkflowTaskCascadeCleanup>();
+        services.AddScoped<IWorkflowTaskCascadeCleanup, WorkflowTaskCascadeCleanup>();
+        services.AddScoped<IWorkflowTaskLifecycleRepository, WorkflowTaskLifecycleRepository>();
         services.AddScoped<IWorkflowTaskLifecycleCommands, WorkflowTaskLifecycleCommands>();
         services.AddScoped<IWorkflowTaskService, WorkflowTaskService>();
         return services;
@@ -106,6 +118,7 @@ public static class CaseStudyDependencyInjection
     /// <summary>RabbitMQ event handlers for <c>ValuationIntegrationEventConsumer</c> (case-study).</summary>
     public static IServiceCollection AddValuationIntegrationHandlers(this IServiceCollection services)
     {
+        services.AddScoped<IValuationReportWorkflowTaskLookup, ValuationReportWorkflowTaskLookup>();
         services.AddScoped<ValuationReportWorkflowHandler>();
         return services;
     }
@@ -123,7 +136,6 @@ public static class CaseStudyDependencyInjection
         services.AddBoundedContextPersistence<CaseStudyDbContext>(
             configuration,
             caseStudyConnection);
-        services.AddScoped<ICaseStudyRepository>(sp => sp.GetRequiredService<CaseStudyDbContext>());
         return services;
     }
 

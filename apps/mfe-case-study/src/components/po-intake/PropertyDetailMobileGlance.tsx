@@ -11,7 +11,7 @@ import {
   operationsTaskStatusLabel,
   operationsTaskTypeLabel,
 } from "../../lib/app-data/operations-task-display";
-import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-storage";
+import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,

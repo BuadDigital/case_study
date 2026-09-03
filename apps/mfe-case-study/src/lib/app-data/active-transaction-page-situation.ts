@@ -25,7 +25,7 @@ import {
   filterTasksForPrimaryData,
 } from "./transaction-filters";
 import type { WorkflowTask } from "./tasks-storage";
-import { isListedQueueTask, isTaskOnSuspendedProperty } from "./suspended-transactions-storage";
+import { isListedQueueTask, isTaskOnSuspendedProperty } from "./suspended-transactions-model";
 
 export type SituationTone = "blue" | "warn" | "green" | "red";
 

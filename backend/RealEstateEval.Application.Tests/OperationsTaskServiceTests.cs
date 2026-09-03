@@ -13,6 +13,7 @@ using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
 
@@ -1009,7 +1010,7 @@ public class OperationsTaskServiceTests
             new IdentityDirectory(identity),
             new UserLabelLookup(identity),
             new NullNotificationService(),
-            new PartyFeePricingService(fin));
+            TestPricing.Create(fin));
 
  /// <summary>
  /// Visit fees have no built-in rate any more, so a test that expects a charge has to put one in

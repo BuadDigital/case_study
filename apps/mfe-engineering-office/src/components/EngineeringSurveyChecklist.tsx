@@ -14,7 +14,7 @@ import {
 } from "@platform/ui-kit";
 import { ENGINEERING_SURVEY_CHECKLIST_ITEMS } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyChecklistRow } from "../lib/engineering-survey-data";
-import { patchChecklistRow } from "../lib/engineering-survey-submission-storage";
+import { patchChecklistRow } from "../lib/engineering-survey-submission-model";
 
 const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
   answer: null,

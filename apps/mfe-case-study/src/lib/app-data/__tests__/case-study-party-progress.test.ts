@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { computePartyCaseStudyProgress } from "../case-study-party-progress";
 
 describe("computePartyCaseStudyProgress", () => {

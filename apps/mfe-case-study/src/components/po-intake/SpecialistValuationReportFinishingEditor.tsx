@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rememberPropertyPoNumber } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import {
   loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
@@ -18,8 +19,10 @@ const OPTIONS: { value: SpecialistFinishingLevel; label: string }[] = [
 /** Editable finishing level for case specialist — printed/highlighted in the report. */
 export function SpecialistValuationReportFinishingEditor({
   propertyId,
+  poNumber,
 }: {
   propertyId: string;
+  poNumber?: string;
 }) {
   const [level, setLevel] = useState(() =>
     loadSpecialistFinishingLevel(propertyId),
@@ -28,6 +31,12 @@ export function SpecialistValuationReportFinishingEditor({
   useEffect(() => {
     setLevel(loadSpecialistFinishingLevel(propertyId));
   }, [propertyId]);
+
+  useEffect(() => {
+    const id = propertyId.trim();
+    const po = (poNumber ?? "").trim();
+    if (id && po) rememberPropertyPoNumber(id, po);
+  }, [propertyId, poNumber]);
 
   return (
     <section className="mb-4 rounded-[var(--radius-lg)] border border-border bg-surface px-3.5 py-3.5">

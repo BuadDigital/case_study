@@ -423,7 +423,7 @@ public class CaseStudyFormReadAuthorizationTests
     {
         var db = contexts.CaseStudy;
         return new CaseStudyFormService(
-            db,
+            new CaseStudyFormRepository(db),
             TestInspectorFeeServiceFactory.CreateWorkflow(db));
     }
 }

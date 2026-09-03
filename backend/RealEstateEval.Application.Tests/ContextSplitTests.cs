@@ -11,6 +11,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 using RealEstateEval.Valuation.Infrastructure.Integration;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 

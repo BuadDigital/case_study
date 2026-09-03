@@ -12,7 +12,7 @@ import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data
 import {
   isActiveOperationsTask,
   type OperationsTask,
-} from "../lib/app-data/operations-tasks-storage";
+} from "../lib/app-data/operations-tasks-model";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
   OPERATIONS_TASK_PRIORITY_LABELS,

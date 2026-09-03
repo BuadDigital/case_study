@@ -57,7 +57,7 @@ import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po
 import {
   propertySuspensionKey,
   type SuspendedTransaction,
-} from "../lib/app-data/suspended-transactions-storage";
+} from "../lib/app-data/suspended-transactions-model";
 import { tasksForPartyAssignee } from "../lib/app-data/tasks-storage";
 import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { useSuspendedTransactionsQuery } from "../query/suspended-transactions-queries";

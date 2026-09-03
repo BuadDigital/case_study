@@ -854,61 +854,61 @@ export function fillFinishingLevelSection(
     htmlEl.style.color = "";
     htmlEl.style.boxShadow = "";
     htmlEl.style.opacity = "";
+    htmlEl.style.display = "";
+    htmlEl.style.width = "";
+  };
+
+  const hideEl = (el: Element) => {
+    (el as HTMLElement).style.display = "none";
   };
 
   headers.forEach(clearMark);
   cells.forEach(clearMark);
   if (noneRow) {
     [...noneRow.querySelectorAll("th, td")].forEach(clearMark);
+    (noneRow as HTMLElement).style.display = "";
   }
+  (header as HTMLElement).style.display = "";
+  (body as HTMLElement).style.display = "";
 
   if (!label) return;
 
-  const markSelected = (el: Element) => {
-    const htmlEl = el as HTMLElement;
-    htmlEl.setAttribute("data-finishing-selected", "1");
-    htmlEl.style.outline = "2px solid #102b4e";
-    htmlEl.style.outlineOffset = "-2px";
-    htmlEl.style.background = "#eef2f7";
-    htmlEl.style.boxShadow = "inset 0 0 0 1px #a4906f";
-  };
-  const dim = (el: Element) => {
-    (el as HTMLElement).style.opacity = "0.45";
-  };
-
   if (level === "none" && noneRow) {
-    headers.forEach(dim);
-    cells.forEach(dim);
-    [...noneRow.querySelectorAll("th, td")].forEach(markSelected);
+    hideEl(header);
+    hideEl(body);
     const th = noneRow.querySelector("th");
-    if (th && !th.textContent?.includes("✓")) {
-      th.textContent = `✓ ${normLabel(th.textContent ?? "بدون تشطيب")}`;
+    if (th) {
+      th.textContent = normLabel(th.textContent ?? "بدون تشطيب").replace(
+        /^✓\s*/,
+        "",
+      );
     }
     return;
   }
 
-  const idx = headers.findIndex(
-    (th) => normLabel(th.textContent ?? "") === normLabel(label),
-  );
+  const idx = headers.findIndex((th) => {
+    const text = normLabel(th.textContent ?? "").replace(/^✓\s*/, "");
+    return text === normLabel(label);
+  });
   if (idx < 0) return;
+
+  if (noneRow) hideEl(noneRow);
 
   headers.forEach((th, i) => {
     if (i === idx) {
-      markSelected(th);
-      if (!th.textContent?.includes("✓")) {
-        th.textContent = `✓ ${normLabel(th.textContent ?? "")}`;
-      }
+      (th as HTMLElement).style.width = "100%";
+      th.textContent = normLabel(th.textContent ?? "").replace(/^✓\s*/, "");
     } else {
-      dim(th);
+      hideEl(th);
     }
   });
   cells.forEach((td, i) => {
-    if (i === idx) markSelected(td);
-    else dim(td);
+    if (i === idx) {
+      (td as HTMLElement).style.width = "100%";
+    } else {
+      hideEl(td);
+    }
   });
-  if (noneRow) {
-    [...noneRow.querySelectorAll("th, td")].forEach(dim);
-  }
 }
 
 export function fillGoogleMapHostSlot(

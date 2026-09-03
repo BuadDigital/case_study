@@ -6,7 +6,7 @@ import {
 import {
   isPartyQuestionVisible,
   type CaseStudyInfoRolesMatrix,
-} from "@settings/mfe/lib/app-data/case-study-info-roles-storage";
+} from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
   type CaseStudyFormAnswer,
@@ -16,7 +16,7 @@ import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   loadCaseStudyFormDraft,
   loadPartyCaseStudyFormDraft,
-} from "./case-study-form-storage";
+} from "./case-study-form-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
 
 const FORM_SECTIONS: CaseStudyQuestionSection[] = [

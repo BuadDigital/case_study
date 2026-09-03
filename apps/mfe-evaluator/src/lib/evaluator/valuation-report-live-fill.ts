@@ -12,6 +12,7 @@ export {
 } from "./valuation-report-users";
 
 import type { OrganizationValuerRosterEntry } from "@platform/api-client";
+import { isUsableAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { EvaluatorReportWorker } from "./evaluator-window-data";
 import {
   SAMPLE_SECS,
@@ -114,7 +115,7 @@ export function resolveReportParticipants(
     participantFromRoster(name, roster, "مراجع"),
   );
   const assignee = (assignedAppraiserName ?? "").trim();
-  if (!assignee) return [...fixed];
+  if (!assignee || !isUsableAssigneeDisplayName(assignee)) return [...fixed];
   if (fixed.some((p) => peopleNameMatch(p.name, assignee))) return [...fixed];
   return [...fixed, participantFromRoster(assignee, roster, "معد")];
 }

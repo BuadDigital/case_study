@@ -10,6 +10,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Integration;
 using RealEstateEval.Valuation.Infrastructure.Integration;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -25,7 +26,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 
@@ -49,7 +50,7 @@ public class ValuationIntegrationHandlerTests
     SeedOpenAppraisalTask(db);
 
     var handler = new ValuationReportWorkflowHandler(
-      TestInspectorFeeServiceFactory.ShareCaseStudy(db),
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
       TestInspectorFeeServiceFactory.CreateWorkflow(db),
       NullLogger<ValuationReportWorkflowHandler>.Instance);
 

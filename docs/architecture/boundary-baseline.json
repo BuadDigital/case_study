@@ -403,7 +403,7 @@
       "case_study",
       "financial"
     ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/FinancialReportService.cs": [
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/FinancialReportRepository.cs": [
       "case_study",
       "financial"
     ],
@@ -415,7 +415,7 @@
       "case_study",
       "financial"
     ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeService.cs": [
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/InspectorFeeLedgerStore.cs": [
       "case_study"
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeSummaryQuery.cs": [
@@ -435,10 +435,7 @@
       "case_study",
       "financial"
     ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyFeePricingService.Seeding.cs": [
-      "financial"
-    ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyFeePricingService.cs": [
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/PartyFeePricingRepository.cs": [
       "audit",
       "financial"
     ],

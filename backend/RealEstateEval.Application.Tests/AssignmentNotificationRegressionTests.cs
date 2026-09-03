@@ -14,6 +14,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Services;
 
@@ -390,7 +391,7 @@ public sealed class AssignmentNotificationRegressionTests
             new IdentityDirectory(TestInspectorFeeServiceFactory.ShareIdentity(db)),
             new UserLabelLookup(TestInspectorFeeServiceFactory.ShareIdentity(db)),
             notifications,
-            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
+            TestPricing.Create(TestInspectorFeeServiceFactory.ShareFinancial(db)));
     }
 
     private static WorkflowTaskService CreateWorkflowService(CaseStudyDbContext db)
@@ -406,7 +407,7 @@ public sealed class AssignmentNotificationRegressionTests
             db,
             notifications,
             recipients,
-            new PartyFeePricingService(TestInspectorFeeServiceFactory.ShareFinancial(db)));
+            TestPricing.Create(TestInspectorFeeServiceFactory.ShareFinancial(db)));
         return TestInspectorFeeServiceFactory.ComposeWorkflow(
             db,
             fees,

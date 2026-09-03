@@ -33,7 +33,7 @@ import {
   addFailureProblemType,
   removeFailureProblemType,
   resetFailureTypesCatalog,
-} from "../lib/failure-types-storage";
+} from "../lib/failure-types-commands";
 import { useFailureTypesQuery } from "../query/failure-types-queries";
 
 function canManageFailureTypes(role: RoleId): boolean {

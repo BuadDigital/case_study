@@ -7,7 +7,7 @@ vi.mock("@failures/mfe/lib/failures-api", () => ({
 const {
   isListedQueueTask,
   isTaskOnSuspendedProperty,
-} = await import("../suspended-transactions-storage");
+} = await import("../suspended-transactions-model");
 
 // isPropertySuspended reads memoryList + failure cache; with empty memory and
 // mocked null failure, only status gating is exercised here.

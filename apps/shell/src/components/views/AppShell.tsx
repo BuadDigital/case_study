@@ -36,7 +36,7 @@ import {
   EngineeringSurveyTopbarActions,
 } from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
 import { useQuery } from "@tanstack/react-query";
-import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-storage";
+import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-reads";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   financeLeafForArea,

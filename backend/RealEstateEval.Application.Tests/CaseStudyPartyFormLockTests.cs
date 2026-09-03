@@ -3,10 +3,12 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -162,7 +164,7 @@ public class CaseStudyPartyFormLockTests
     {
         var db = contexts.CaseStudy;
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(db);
-        return new CaseStudyFormService(contexts.CaseStudy, workflow);
+        return new CaseStudyFormService(new CaseStudyFormRepository(contexts.CaseStudy), workflow);
     }
 
     private static TestDatabases.ContextSet CreateContexts() =>

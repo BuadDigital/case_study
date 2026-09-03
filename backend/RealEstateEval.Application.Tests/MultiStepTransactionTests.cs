@@ -5,6 +5,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -35,7 +36,7 @@ public class MultiStepTransactionTests
         db.PartyFeePricingTables.AddRange(active, standby);
         await db.SaveChangesAsync();
 
-        var service = new PartyFeePricingService(db);
+        var service = TestPricing.Create(db);
         Assert.True(await service.DeleteAsync(active.Id));
 
         Assert.False(await db.PartyFeePricingTables.AnyAsync(x => x.Id == active.Id));

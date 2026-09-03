@@ -3,7 +3,7 @@ import { getCachedFailuresList } from "@failures/mfe/lib/failures-cache";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import { formatInstantInRiyadh } from "./active-transactions-situation";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
-import { getSuspendedTransaction } from "./suspended-transactions-storage";
+import { getSuspendedTransaction } from "./suspended-transactions-model";
 import {
   caseStudyTaskForProperty,
   taskPhaseLabel,
