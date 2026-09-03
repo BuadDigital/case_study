@@ -13,7 +13,11 @@ const AppraiserUploadTab = dynamic(() =>
   { ssr: false },
 );
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
-import { canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
+import {
+  appraiserTaskStatusBadge,
+  canAppraiserOpenTask,
+  filterAppraiserListedTasks,
+} from "../lib/evaluator/evaluator-queue";
 import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
 import {

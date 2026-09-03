@@ -9,11 +9,9 @@ import {
   type SpecialistEsgGroup,
 } from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
 
-const thClass =
-  "border-b border-border bg-surface-2 px-2.5 py-2 text-start text-[11px] font-bold text-text-2";
+const thClass ="border-b border-border bg-surface-2 px-2.5 py-2 text-start text-[11px] font-bold text-text-2";
 const tdClass = "border-b border-border px-2.5 py-2.5 align-top text-[12.5px]";
-const inputClass =
-  "w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text outline-none focus:border-ink disabled:cursor-not-allowed disabled:opacity-60";
+const inputClass = "w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text outline-none focus:border-ink disabled:cursor-not-allowed disabled:opacity-60";
 
 function EsgEditorRow({
   label,
