@@ -563,14 +563,16 @@ export function FieldInspectionWorkBody({
           step={3}
           subtitle={mobile ? inspectorPhotosLabel(draft.freePhotos.length) : undefined}
         >
-          <InspectorPropertyPhotosSection
-            draft={liveDraft}
-            disabled={locked}
-            actor="inspector"
-            mobile={mobile}
-            onPatch={(patch) => persist(patch)}
-            onDirty={() => markDirty("photos")}
-          />
+          <div id="ins-property-photos">
+            <InspectorPropertyPhotosSection
+              draft={liveDraft}
+              disabled={locked}
+              actor="inspector"
+              mobile={mobile}
+              onPatch={(patch) => persist(patch)}
+              onDirty={() => markDirty("photos")}
+            />
+          </div>
         </InspectorCard>
 
 

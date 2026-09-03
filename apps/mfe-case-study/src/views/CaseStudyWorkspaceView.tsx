@@ -4,12 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Button,
+  Label,
   Note,
   PageShell,
   PanelSkeleton,
   Tab,
   TabBar,
+  cn,
+  formControlClassName,
   opsContentPanel,
+  useToast,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
@@ -17,6 +21,7 @@ import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDet
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
+import { ReturnedForCorrectionNote } from "../components/ui/ReturnedForCorrectionNote";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
@@ -25,6 +30,8 @@ import { canOpenCaseStudyWorkspace } from "../lib/app-data/viewer-task-access";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-answers";
 import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../lib/app-data/inspector-workspace-data";
+import { reopenInspectorWorkspace } from "../lib/app-data/inspector-workspace-commands";
+import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
 import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
@@ -37,6 +44,7 @@ import {
 import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
 
 export type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
@@ -76,8 +84,21 @@ function CaseStudyAppraisalPanel({
   tasks: WorkflowTask[];
   caseStudyTask: WorkflowTask;
 }) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnNote, setReturnNote] = useState("");
+  const [returnError, setReturnError] = useState<string | null>(null);
+  const [returning, setReturning] = useState(false);
+  const [inspectionPackageStatus, setInspectionPackageStatus] = useState<
+    string | null
+  >(null);
+  const [inspectionReturnNote, setInspectionReturnNote] = useState<string | null>(
+    null,
+  );
+  const [inspectionReloadKey, setInspectionReloadKey] = useState(0);
 
   const inspectionTask = useMemo(() => {
     const fromParent = childTasksForCaseStudyParent(caseStudyTask.id, tasks).find(
@@ -118,6 +139,32 @@ function CaseStudyAppraisalPanel({
     };
   }, [caseStudyTask, tasks, staffUsers, inspectionTask]);
 
+  useEffect(() => {
+    if (!inspectionTask) {
+      setInspectionPackageStatus(null);
+      setInspectionReturnNote(null);
+      return;
+    }
+    let cancelled = false;
+    const load = () => {
+      void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((draft) => {
+        if (cancelled) return;
+        setInspectionPackageStatus(draft?.status ?? null);
+        setInspectionReturnNote(draft?.returnNote?.trim() || null);
+      });
+    };
+    load();
+    const onChange = () => load();
+    window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+        onChange,
+      );
+    };
+  }, [inspectionTask, inspectionReloadKey]);
+
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
   const appraisalTaskId = relatedTaskId(
     tasks,
@@ -138,23 +185,113 @@ function CaseStudyAppraisalPanel({
     [propertyDocumentSections],
   );
 
+  const canReturnToInspector =
+    Boolean(inspectionTask) &&
+    (inspectionPackageStatus === "submitted" ||
+      inspectionTask?.status === "completed");
+
+  async function handleReturnToInspector() {
+    if (!inspectionTask || returning) return;
+    const trimmed = returnNote.trim();
+    if (!trimmed) {
+      setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
+      return;
+    }
+    setReturning(true);
+    setReturnError(null);
+    const reopened = await reopenInspectorWorkspace(inspectionTask.id, trimmed);
+    setReturning(false);
+    if (!reopened.ok) {
+      setReturnError(reopened.error);
+      return;
+    }
+    setReturnOpen(false);
+    setReturnNote("");
+    setInspectionReloadKey((n) => n + 1);
+    showToast("أُعيدت المعاينة للمعاين للتصحيح", "success");
+  }
+
   return (
     <div className="pt-5">
       <section className="mb-6">
-        <div className="mb-3 flex items-center gap-2.5">
+        <div className="mb-3 flex flex-wrap items-center gap-2.5">
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
           <h3 className="m-0 text-[14px] font-extrabold text-heading">
             معاينة العقار — إدخال البيانات
           </h3>
-          <span className="flex-1 border-t border-border" aria-hidden />
+          <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
+          {canReturnToInspector && !returnOpen ? (
+            <button
+              type="button"
+              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:rounded-[12px] max-lg:text-[13px]"
+              disabled={returning}
+              onClick={() => {
+                setReturnOpen(true);
+                setReturnError(null);
+              }}
+            >
+              إعادة للتصحيح
+            </button>
+          ) : null}
         </div>
         <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-          نفس حقول مساحة عمل المعاين الميدانية (الموقع والتصوير، بيانات العقار،
-          التجهيز والإكمال) — يعبّئها الأخصائي هنا قبل مدخلات تقرير التقييم.
-          التعديل يُحفظ تلقائياً في مسودة المعاينة.
+          راجع بيانات المعاين وعدّلها إن لزم. «حفظ وإرسال» يعتمد الحزمة ويفتح
+          التقييم للمقيم. «إعادة للتصحيح» ترجع المهمة للمعاين.
         </p>
+
+        {returnOpen ? (
+          <div className="mb-3.5 rounded-lg border border-border bg-surface px-3.5 py-3">
+            <Label htmlFor="cs-inspection-return-note" className="text-xs">
+              سبب الإرجاع للمعاين <span className="text-danger-text">*</span>
+            </Label>
+            <textarea
+              id="cs-inspection-return-note"
+              className={cn(formControlClassName, "mt-1 min-h-[72px] text-xs")}
+              value={returnNote}
+              onChange={(e) => setReturnNote(e.target.value)}
+              placeholder="صف ما يجب تصحيحه في تقرير المعاين…"
+            />
+            {returnError ? (
+              <p className="mt-1 mb-0 text-xs text-danger-text">{returnError}</p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                loading={returning}
+                showActionToast={false}
+                onClick={() => void handleReturnToInspector()}
+              >
+                تأكيد الإرجاع للمعاين
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={returning}
+                onClick={() => {
+                  setReturnOpen(false);
+                  setReturnError(null);
+                  setReturnNote("");
+                }}
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {inspectionPackageStatus === "reopened" && inspectionReturnNote ? (
+          <ReturnedForCorrectionNote
+            note={inspectionReturnNote}
+            className="mb-3"
+          />
+        ) : null}
+
         {inspectionTask && inspectionCard ? (
           <PropertyDetailInspectionTab
+            key={`${inspectionTask.id}:${inspectionReloadKey}`}
             property={property}
             inspectionTask={inspectionTask}
             inspectionCard={inspectionCard}
@@ -163,12 +300,20 @@ function CaseStudyAppraisalPanel({
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
+            submitSuccessToast="تم حفظ وإرسال المعاينة — يمكن للمقيم بدء التقييم"
             submitFooterAfter={
               <SpecialistValuationReportInputs
                 propertyId={property.id}
                 poNumber={poNumber}
               />
             }
+            onSubmitted={() => {
+              setInspectionReloadKey((n) => n + 1);
+              // Match party-task handoff: let the success toast paint, then leave.
+              window.setTimeout(() => {
+                router.push(poPropertyPath(poNumber, property.id));
+              }, 900);
+            }}
           />
         ) : (
           <EmptyState

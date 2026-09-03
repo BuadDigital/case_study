@@ -101,7 +101,7 @@ export function InspectorStampedPhotoThumb({
         )}
       </button>
       {ownerBadge ? (
-        <span className="pointer-events-none absolute end-0 top-0 z-10 max-w-[calc(100%-4px)] truncate rounded-bl-md bg-black/65 px-1 py-0.5 text-[8px] font-semibold leading-tight text-white">
+        <span className="pointer-events-none absolute start-0 top-0 z-10 max-w-[calc(100%-28px)] truncate rounded-br-md bg-black/65 px-1 py-0.5 text-[8px] font-semibold leading-tight text-white">
           {ownerBadge}
         </span>
       ) : null}
@@ -110,15 +110,13 @@ export function InspectorStampedPhotoThumb({
           type="button"
           title="إزالة"
           aria-label="إزالة الصورة"
-          className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
+          className="absolute end-1 top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-[13px] font-bold leading-none text-red-600 shadow-sm ring-1 ring-black/10 transition hover:bg-red-600 hover:text-white"
           onClick={(e) => {
             e.stopPropagation();
             onClear();
           }}
         >
-          <span className="text-sm font-bold leading-none" aria-hidden>
-            ×
-          </span>
+          ×
         </button>
       ) : null}
     </div>

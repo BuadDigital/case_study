@@ -450,7 +450,7 @@ function AttachmentPreview({
 
     >
 
-      {isPdf ? "PDF" : "📎"}
+      {isPdf ? "مستند" : "ملف"}
 
     </div>
 

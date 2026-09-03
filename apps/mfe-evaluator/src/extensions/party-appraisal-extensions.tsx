@@ -6,17 +6,14 @@ import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
 import dynamic from "next/dynamic";
 
-// Appraiser work window (~5.8k lines via ValuationWorkShell) mounts only when the appraiser opens
-// their task — static import put it in every party's task-page bundle (bundle-dynamic-imports).
-const AppraiserUploadTab = dynamic(
-  () =>
+const AppraiserUploadTab = dynamic(() =>
     import("../components/evaluator/AppraiserUploadTab").then(
       (m) => m.AppraiserUploadTab,
     ),
   { ssr: false },
 );
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
-import { appraiserTaskStatusBadge, canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
+import { canAppraiserOpenTask, filterAppraiserListedTasks } from "../lib/evaluator/evaluator-queue";
 import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
 import {
@@ -28,7 +25,7 @@ import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submiss
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
 /** Footer from Case Study.html `renderValOrders`. */
-const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اعتماد الأخصائي لبيانات معاينة العقار — المقيّم يعتمد القيمة، واستلام الأخصائي ليس اعتماداً للسعر.";
+const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اكتمال معاينة العقار — الأخصائي يعتمد تقرير التقييم لاحقاً داخل دراسة الحالة (أو يعيده للتصحيح).";
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {

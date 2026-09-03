@@ -30,14 +30,18 @@ function parseRows(ownersJson: string): OwnerRow[] {
   }
 }
 
+/** Keep empty draft rows in UI state — API submit filters via parseOwnersDraft. */
 function serializeRows(rows: OwnerRow[]): string {
-  const cleaned = rows
-    .filter((r) => r.name.trim() !== "")
-    .map((r) => ({
-      name: r.name.trim(),
-      sharePct: r.sharePct.trim() === "" ? null : Number(r.sharePct.replace(",", ".")) || 0,
-    }));
-  return cleaned.length === 0 ? "" : JSON.stringify(cleaned);
+  if (rows.length === 0) return "";
+  return JSON.stringify(
+    rows.map((r) => ({
+      name: r.name,
+      sharePct:
+        r.sharePct.trim() === ""
+          ? null
+          : Number(r.sharePct.replace(",", ".")) || 0,
+    })),
+  );
 }
 
 /**

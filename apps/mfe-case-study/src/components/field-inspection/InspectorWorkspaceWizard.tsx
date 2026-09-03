@@ -53,13 +53,13 @@ import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
+import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { ComponentCountWithPhotoField, InsCard, InsDualCalendarDateField, InsEditField, InsEditTextarea, InsFieldsGrid, ChipRow, EDIT_CONTROL_CLASS } from "../po-intake/PropertyDetailInspectionParts";
 import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
 import { INS_LABEL_CLASS, INS_TH_CLASS, INS_TD_CLASS, INS_WIZARD_PIN_BUTTON_CLASS } from "./FieldInspectionWorkParts";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
 import {
-  SpecialistServiceProofPhotoFields,
   withoutSpecialistProofSlots,
 } from "./SpecialistServiceProofPhotoFields";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
@@ -362,12 +362,14 @@ export function InspectorWorkspaceWizard({
           </InsCard>
 
           <InsCard title="تصوير العقار" step={3}>
-            <InspectorPropertyPhotosSection
-              draft={draft}
-              disabled={!editable}
-              actor={serviceProofFromTransactionPhotos ? "specialist" : "inspector"}
-              onPatch={onPatch}
-            />
+            <div id="ins-property-photos">
+              <InspectorPropertyPhotosSection
+                draft={draft}
+                disabled={!editable}
+                actor={serviceProofFromTransactionPhotos ? "specialist" : "inspector"}
+                onPatch={onPatch}
+              />
+            </div>
           </InsCard>
 
           {editable && !flat ? (
@@ -396,7 +398,6 @@ export function InspectorWorkspaceWizard({
               missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
               movablesDescriptionError={fieldErrors.movablesDescription}
               occupancyDescriptionError={fieldErrors.occupancyDescription}
-              hidePhotos
               disabled={!editable}
               onPatch={onPatch}
             />
@@ -822,15 +823,6 @@ export function InspectorWorkspaceWizard({
                   : undefined
               }
             />
-            {serviceProofFromTransactionPhotos ? (
-              <SpecialistServiceProofPhotoFields
-                draft={draft}
-                transactionPhotos={transactionPhotos}
-                disabled={!editable}
-                invalid={Boolean(fieldErrors.definedPhotos)}
-                onPatch={onPatch}
-              />
-            ) : null}
             <div className="mt-3">
               <span className={INS_LABEL_CLASS}>
                 المرافق المحيطة
@@ -859,6 +851,26 @@ export function InspectorWorkspaceWizard({
                 }
               />
             </div>
+            {draft.services.length > 0 || draft.amenities.length > 0 ? (
+              <div id="ins-defined-photos" className="mt-4 border-t border-border pt-3">
+                {fieldErrors.definedPhotos ? (
+                  <p className="mb-2 text-[10px] text-danger-text" role="alert">
+                    {fieldErrors.definedPhotos}
+                  </p>
+                ) : null}
+                <InspectorDefinedPhotosSection
+                  draft={draft}
+                  disabled={!editable}
+                  onPatch={onPatch}
+                  layout="desktop"
+                  transactionPhotos={
+                    serviceProofFromTransactionPhotos
+                      ? transactionPhotos
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
           </InsCard>
 
           {editable && !flat ? <StepContinue onContinue={advance} /> : null}

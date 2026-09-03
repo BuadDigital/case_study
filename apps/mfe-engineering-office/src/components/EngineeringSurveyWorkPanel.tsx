@@ -62,10 +62,10 @@ import {
 } from "../lib/engineering-survey-validation";
 import { finalizeEngineeringSurveySubmission } from "../lib/finalize-engineering-survey-submission";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
-// Croquis parser (~2300 lines + pdfjs loader) fetched only on PDF upload — static import
-// put it in the initial route chunk for both survey pages (bundle-conditional).
-import type { SurveySketchExtractResult } from "../lib/engineering-survey-sketch-extract";
-const loadSketchExtract = () => import("../lib/engineering-survey-sketch-extract");
+import {
+  applyNatureBoundaryPatch,
+  natureFieldsFromDeedForm,
+} from "../lib/engineering-survey-nature-fields";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
@@ -158,13 +158,6 @@ export function EngineeringSurveyWorkPanel({
   const [formError, setFormError] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [savingLocal, setSavingLocal] = useState(false);
-  const [sketchExtractNote, setSketchExtractNote] = useState<string | null>(
-    null,
-  );
-  const [sketchExtracting, setSketchExtracting] = useState(false);
-  /** Last croquis length parse — seed nature lengths when match = no */
-  const [lastSketchExtract, setLastSketchExtract] =
-    useState<SurveySketchExtractResult | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPatchRef = useRef<Parameters<
     typeof updateEngineeringSurveyDraft
@@ -603,10 +596,6 @@ export function EngineeringSurveyWorkPanel({
     const isSurveyReport = field === "surveyReportFileName";
 
     void runWithUploadToast(async () => {
-      if (isSurveyReport) {
-        setSketchExtracting(true);
-        setSketchExtractNote(null);
-      }
       try {
         const result = await cacheEngineeringSurveyFile(
           draft.taskId,
@@ -624,90 +613,8 @@ export function EngineeringSurveyWorkPanel({
           delete nextErrors[isSurveyReport ? "survey_report" : "site_letter"];
           return nextErrors;
         });
-
-        if (!isSurveyReport) return;
-
-        // Extraction is best-effort only — never fail the upload after the PDF is saved.
-        try {
-          const { extractSurveySketchFromPdf, sketchExtractToEmptyFieldsPatch } =
-            await loadSketchExtract();
-          // Croquis PDF only — no property/bourse mix-in
-          const extracted = await extractSurveySketchFromPdf(file);
-          setLastSketchExtract(extracted);
-          const currentFields = localFields ?? localFieldsFromDraft(draft);
-          // overwrite=true: re-upload must replace previous lengths
-          const { patch, appliedCount } = sketchExtractToEmptyFieldsPatch(
-            extracted,
-            {
-              ...currentFields,
-              deedMatchesNature: draft.deedMatchesNature,
-            },
-            true,
-          );
-
-          const lengthFilled = [
-            extracted.deed.north.lengthM,
-            extracted.deed.south.lengthM,
-            extracted.deed.east.lengthM,
-            extracted.deed.west.lengthM,
-          ].filter(Boolean).length;
-
-          if (appliedCount > 0) {
-            const { deedMatchesNature, ...textPatch } = patch;
-            if (Object.keys(textPatch).length > 0) {
-              setLocalFields((prev) => ({
-                ...(prev ?? localFieldsFromDraft(draft)),
-                ...textPatch,
-              }));
-              schedulePersist(textPatch);
-            }
-            if (deedMatchesNature != null) {
-              const saved = await updateEngineeringSurveyDraft(draft.taskId, {
-                deedMatchesNature,
-              });
-              if (saved) applyRemoteDraft(saved);
-            }
-            setFieldErrors((prev) => {
-              const nextErrors = { ...prev };
-              delete nextErrors.on_site_area;
-              delete nextErrors.nature_on_site_area;
-              delete nextErrors.deed_matches_nature;
-              return nextErrors;
-            });
-          }
-
-          const msg =
-            extracted.warning ??
-            (lengthFilled > 0
-              ? `تُعبّأت ${lengthFilled} أطوال. وصف الحد يدوياً — المساحة يدوية.`
-              : "تم رفع التقرير. لم تُقرأ أرقام أطوال — عبّئ الحدود والأطوال يدوياً.");
-
-          setSketchExtractNote(msg);
-          showToast(
-            lengthFilled > 0
-              ? `أطوال: ${lengthFilled}/4 · وصف الحد يدوياً · المساحة يدوياً`
-              : "تم رفع التقرير — الأطوال ووصف الحد يدوياً",
-            lengthFilled === 0 ? "info" : "success",
-          );
-        } catch (extractErr) {
-          console.error("[survey-sketch-extract]", extractErr);
-          const detail =
-            extractErr instanceof Error
-              ? extractErr.message
-              : "تعذّر الاستخراج التلقائي";
-          setSketchExtractNote(
-            `تم رفع التقرير. ${detail} — عبّئ الأطوال ووصف الحد يدوياً.`,
-          );
-          showToast("تم رفع التقرير — راجع الحدود يدوياً", "info");
-        }
       } catch (err) {
-        // Actual upload/cache failure — surface to runWithUploadToast
-        if (isSurveyReport) {
-          setSketchExtractNote(null);
-        }
         throw err;
-      } finally {
-        if (isSurveyReport) setSketchExtracting(false);
       }
     });
   }
@@ -723,7 +630,6 @@ export function EngineeringSurveyWorkPanel({
       }
       const next = loadEngineeringSurveySubmission(draft.taskId);
       if (next) applyRemoteDraft(next);
-      if (field === "surveyReportFileName") setSketchExtractNote(null);
     });
   }
 
@@ -813,36 +719,16 @@ export function EngineeringSurveyWorkPanel({
       />
 
       <EngSection>التقرير المساحي</EngSection>
-      {!formDisabled ? (
-        <EngInfo>
-          ℹ بعد الرفع: تُعبَّأ **أطوال الحدود فقط** (الأرقام) عند توفرها في التقرير.
-          «وصف الحد» والمساحة يدوية.
-        </EngInfo>
-      ) : null}
       <EngUploadBox
         id="eng-survey-report"
         title="رفع التقرير المساحي"
         hint="PDF — الحجم الأقصى 20 ميجابايت"
         fileName={draft.surveyReportFileName}
-        disabled={formDisabled || sketchExtracting}
+        disabled={formDisabled}
         error={fieldErrors.survey_report}
         onPick={(file) => onFilePick("surveyReportFileName", file)}
         onClear={() => onFileClear("surveyReportFileName")}
       />
-      {sketchExtracting ? (
-        <div
-          className="mt-2 mb-3 flex items-center gap-2.5 rounded-[10px] border border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] px-3.5 py-3 text-[12.5px] font-semibold text-text-2"
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-        >
-          <Spinner className="size-4 border-gold-d border-e-transparent text-gold-d" />
-          <span>جارٍ قراءة أطوال الحدود من التقرير…</span>
-        </div>
-      ) : null}
-      {sketchExtractNote && !sketchExtracting ? (
-        <EngInfo variant="amber">{sketchExtractNote}</EngInfo>
-      ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -949,35 +835,21 @@ export function EngineeringSurveyWorkPanel({
                       return rest;
                     });
 
-                    // When «no»: fill nature descriptions/lengths from croquis (no area)
+                    // When «no»: copy nature fields from deed form values already entered
                     if (next === "no" && localFields) {
-                      void loadSketchExtract().then(
-                        ({
-                          sketchNatureFieldsFromExtract,
-                          sketchNatureFieldsFromDeedForm,
-                          applyNatureSketchPatch,
-                        }) => {
-                          const fromExtract = lastSketchExtract
-                            ? sketchNatureFieldsFromExtract(lastSketchExtract)
-                            : sketchNatureFieldsFromDeedForm(localFields);
-
-                          const { patch: naturePatch, appliedCount: natureN } =
-                            applyNatureSketchPatch(fromExtract, localFields, true);
-                          if (natureN > 0) {
-                            setLocalFields((prev) =>
-                              prev ? { ...prev, ...naturePatch } : prev,
-                            );
-                            schedulePersist(naturePatch);
-                            setSketchExtractNote(
-                              `تم تعبئة ${natureN} حقلاً حسب الطبيعة — المساحة الإجمالية يدوياً.`,
-                            );
-                            showToast(
-                              `طبيعة: ${natureN} حقل · المساحة يدوياً`,
-                              "success",
-                            );
-                          }
-                        },
-                      );
+                      const fromDeed = natureFieldsFromDeedForm(localFields);
+                      const { patch: naturePatch, appliedCount: natureN } =
+                        applyNatureBoundaryPatch(fromDeed, localFields, true);
+                      if (natureN > 0) {
+                        setLocalFields((prev) =>
+                          prev ? { ...prev, ...naturePatch } : prev,
+                        );
+                        schedulePersist(naturePatch);
+                        showToast(
+                          `تم نسخ ${natureN} حقلاً من حدود الصك إلى الطبيعة — راجعها والمساحة يدوياً`,
+                          "success",
+                        );
+                      }
                     }
                   }}
                 />
@@ -1003,8 +875,8 @@ export function EngineeringSurveyWorkPanel({
           </p>
         ) : (
           <p className="mt-1.5 text-[11px] text-text-3">
-            نعم: تُعتمد الحدود حسب الصك أعلاه · لا: تُفتح حقول الطبيعة وتُعبَّأ
-            تلقائياً من الكروكي عند الإمكان
+            نعم: تُعتمد الحدود حسب الصك أعلاه · لا: تُفتح حقول الطبيعة ويمكن
+            نسخ حدود الصك إليها للمراجعة
           </p>
         )}
       </div>

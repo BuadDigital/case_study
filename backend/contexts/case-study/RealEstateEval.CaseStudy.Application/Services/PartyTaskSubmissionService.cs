@@ -277,7 +277,10 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         await NotifySpecialistAndSupervisorOnSubmitAsync(task, cancellationToken);
         if (task.Kind == WorkflowTaskKind.FieldInspection)
+        {
             await NotifySiblingSurveyInspectionSubmittedAsync(task, cancellationToken);
+            await NotifySiblingAppraiserInspectionSubmittedAsync(task, cancellationToken);
+        }
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
@@ -393,15 +396,16 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
-            // Field inspection: Enfaz package gate. Appraisal stamp is receive/acknowledge only.
+            // Appraisal accept = specialist اعتماد of تقرير التقييم in دراسة الحالة.
+            // Field inspection accept stamp is legacy/optional (no longer gates appraisal).
             _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
             await _repo.SaveChangesAsync(cancellationToken);
         }
 
         var timelineTitle = task.Kind switch
         {
-            WorkflowTaskKind.FieldInspection => "اعتماد بيانات المعاينة",
-            WorkflowTaskKind.PropertyAppraisal => "استلام تقرير التقييم",
+            WorkflowTaskKind.FieldInspection => "استلام بيانات المعاينة",
+            WorkflowTaskKind.PropertyAppraisal => "اعتماد تقرير التقييم",
             _ => "قبول مخرجات الرفع المساحي",
         };
 

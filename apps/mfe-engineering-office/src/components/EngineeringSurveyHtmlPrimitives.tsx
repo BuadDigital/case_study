@@ -175,7 +175,8 @@ export function EngUploadBox({
 
   return (
     <div id={id}>
-      {!disabled ? (
+      {/* Once a file is attached only the chip shows; removing it brings the dropzone back. */}
+      {!disabled && !fileName ? (
         <div
           role="button"
           tabIndex={0}
@@ -248,16 +249,31 @@ export function EngUploadBox({
         </div>
       ) : null}
       {fileName ? (
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#a9dfbf] bg-[#d5f5ef] px-3 py-2 text-xs">
-          <span>📎 {fileName}</span>
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-heading">
+          <span className="flex min-w-0 items-center gap-2">
+            <svg
+              className="h-4 w-4 shrink-0 text-gold-d"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+            <span className="truncate font-semibold" dir="ltr">{fileName}</span>
+          </span>
           {!disabled ? (
             <button
               type="button"
-              className="cursor-pointer border-none bg-transparent text-sm text-text-3"
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-surface text-[15px] font-bold leading-none text-red-600 transition hover:bg-red-600 hover:text-white"
               onClick={onClear}
               aria-label="حذف الملف"
+              title="حذف الملف"
             >
-              ✕
+              ×
             </button>
           ) : null}
         </div>
@@ -265,7 +281,7 @@ export function EngUploadBox({
         <div className="px-0.5 py-1.5 text-xs text-text-3">لم يُرفع أي ملف.</div>
       ) : null}
       {error ? (
-        <p className="mt-1 text-[11px] text-[#a5432e]">{error}</p>
+        <p className="mt-1 text-[11px] text-danger">{error}</p>
       ) : null}
     </div>
   );

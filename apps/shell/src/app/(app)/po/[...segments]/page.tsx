@@ -4,10 +4,7 @@ import { PoHeaderEditRoute } from "@case-study/mfe/views/po-routes/PoHeaderEditR
 import { PoPropertyDetailPage } from "@case-study/mfe/views/PoPropertyDetailPage";
 import { PoPropertyEditRoute } from "@case-study/mfe/views/po-routes/PoPropertyEditRoute";
 import { PoPropertyFailureRoute } from "@case-study/mfe/views/po-routes/PoPropertyFailureRoute";
-import {
-  PO_PROPERTY_SEGMENT,
-  decodePoParam,
-} from "@platform/app-shared/domain/po-routes";
+import { PO_PROPERTY_SEGMENT, decodePoParam } from "@platform/app-shared/domain/po-routes";
 
 function normalizeSegments(value: string | string[] | undefined): string[] {
   if (!value) return [];
@@ -76,6 +73,6 @@ export default async function PoNestedRoutePage({
       />
     );
   }
-
+  
   notFound();
 }

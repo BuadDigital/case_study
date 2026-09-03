@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
-  Badge,
   Button,
   ModalBody,
   ModalCard,
@@ -16,13 +15,11 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import {
-  INSPECTOR_FREE_PHOTO_CATEGORIES,
   inspectorPhotoStampText,
   listServiceAmenityPhotoSlots,
   nextInspectorPhotoId,
   isServiceAmenityPhotoSlotComplete,
   type InspectorDefinedPhotoSlot,
-  type InspectorFreePhoto,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -34,17 +31,16 @@ import {
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
+  inspectorPhotoAttachmentFromTransactionDoc,
   openInspectorPhotoPreview,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
+import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 
-type PreviewRef =
-  | { kind: "slot"; slotId: string; photoId: number }
-  | { kind: "free"; photoId: number };
-
-type Patch = Partial<Pick<InspectorWorkspaceDraft, "definedPhotos" | "freePhotos">>;
+type Patch = Partial<Pick<InspectorWorkspaceDraft, "definedPhotos">>;
+type PreviewRef = { kind: "slot"; slotId: string; photoId: number };
 
 function slotPhotoRef(slotId: string, photoId: number): string {
   return `slot:${slotId}:${photoId}`;
@@ -52,96 +48,6 @@ function slotPhotoRef(slotId: string, photoId: number): string {
 
 export function freePhotoRef(photoId: number): string {
   return `free:${photoId}`;
-}
-
-function MiniPhotoThumb({
-  taskId,
-  photoRef,
-  photo,
-  stamp,
-  icon,
-  onClick,
-  onDelete,
-}: {
-  taskId: string;
-  photoRef: string;
-  photo: InspectorSlotPhoto | InspectorFreePhoto;
-  stamp: string;
-  icon?: string;
-  onClick: () => void;
-  onDelete: () => void;
-}) {
-  const [dataUrl, setDataUrl] = useState(
-    () => getInspectorPhotoDataUrl(taskId, photoRef),
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
-    void prefetchInspectorPhoto(taskId, photoRef, photo).then((url) => {
-      if (!cancelled && url) setDataUrl(url);
-    }).catch(() => {
-      if (!cancelled) setDataUrl(undefined);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [taskId, photoRef, photo]);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative h-[60px] w-[84px] shrink-0 overflow-hidden rounded-md border bg-cover bg-center text-[10px]",
-        photo.approved
-          ? "border-success"
-          : "border-dashed border-amber",
-      )}
-      style={dataUrl ? { backgroundImage: `url(${dataUrl})` } : undefined}
-    >
-      {!dataUrl ? (
-        <span
-          className={cn(
-            "flex h-full flex-col items-center justify-center",
-            photo.approved
-              ? "bg-success-bg text-teal-text"
-              : "bg-amber-light text-amber-text",
-          )}
-        >
-          <i className={`ti ${icon ?? "ti-photo"} text-lg`} aria-hidden />
-        </span>
-      ) : null}
-      <span className="absolute bottom-0 left-0 right-0 bg-black/55 px-0.5 py-0.5 text-[8px] text-white">
-        {photo.approved ? "✓ " : "⏲ "}
-        {stamp}
-      </span>
-      <span
-        role="button"
-        tabIndex={0}
-        className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            e.stopPropagation();
-            onDelete();
-          }
-        }}
-      >
-        <span className="text-sm font-bold leading-none" aria-hidden>
-          ×
-        </span>
-      </span>
-    </button>
-  );
 }
 
 /**
@@ -153,40 +59,40 @@ export function InspectorDefinedPhotosSection({
   disabled,
   onPatch,
   layout = "desktop",
+  transactionPhotos,
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
   onPatch: (patch: Patch) => void;
   /** `desktop` = Case Study.html c9 tiles (100px); `mobile` = square photoTile grid. */
   layout?: "desktop" | "mobile";
+  /** When set (case-study specialist), empty slots can pick from transaction images. */
+  transactionPhotos?: PropertyDetailDocumentEntry[];
 }) {
   const { showToast } = useToast();
   const [previewRef, setPreviewRef] = useState<PreviewRef | null>(null);
-  const [pickerPhotoId, setPickerPhotoId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const stamp = inspectorPhotoStampText(draft);
-  const untaggedFree = draft.freePhotos.filter((photo) => !photo.category);
 
   const visibleSlots = useMemo(
     () => listServiceAmenityPhotoSlots(draft),
     [draft.services, draft.amenities],
   );
 
+  const canPickFromTransaction = Boolean(
+    transactionPhotos && transactionPhotos.length > 0,
+  );
+
   const previewPhoto = useMemo(() => {
     if (!previewRef) return null;
-    if (previewRef.kind === "slot") {
-      return draft.definedPhotos[previewRef.slotId]?.photos.find(
-        (photo) => photo.id === previewRef.photoId,
-      );
-    }
-    return draft.freePhotos.find((photo) => photo.id === previewRef.photoId);
+    return draft.definedPhotos[previewRef.slotId]?.photos.find(
+      (photo) => photo.id === previewRef.photoId,
+    );
   }, [draft, previewRef]);
 
   const previewRefKey = previewRef
-    ? previewRef.kind === "slot"
-      ? slotPhotoRef(previewRef.slotId, previewRef.photoId)
-      : freePhotoRef(previewRef.photoId)
+    ? slotPhotoRef(previewRef.slotId, previewRef.photoId)
     : null;
 
   const [previewDataUrl, setPreviewDataUrl] = useState<string | undefined>();
@@ -300,105 +206,46 @@ export function InspectorDefinedPhotosSection({
     );
   }
 
-  async function uploadFreePhotos(files: File[]) {
-    if (disabled || uploading) return false;
-    setUploading(true);
-    let workingDraft = draft;
-    let lastId: number | null = null;
-    let lastError: string | null = null;
-
-    try {
-      for (const file of files) {
-        const nextId = nextInspectorPhotoId(workingDraft);
-        const ref = freePhotoRef(nextId);
-        const result = await uploadInspectorPhotoFromFile(
-          draft.taskId,
-          ref,
-          file,
-          { draft: workingDraft },
-        );
-        if (!result.ok) {
-          lastError = result.error;
-          continue;
-        }
-
-        const nextPhoto: InspectorFreePhoto = {
+  function selectTransactionPhoto(
+    slotId: string,
+    doc: PropertyDetailDocumentEntry,
+  ) {
+    if (disabled) return;
+    const nextId = nextInspectorPhotoId(draft);
+    const attachment = inspectorPhotoAttachmentFromTransactionDoc(
+      draft.taskId,
+      slotPhotoRef(slotId, nextId),
+      doc,
+    );
+    patchDefinedPhotos(slotId, () => ({
+      none: false,
+      photos: [
+        {
           id: nextId,
-          category: null,
-          approved: false,
-          ...result.attachment,
-        };
-        workingDraft = {
-          ...workingDraft,
-          freePhotos: [...workingDraft.freePhotos, nextPhoto],
-        };
-        lastId = nextId;
-      }
-
-      if (lastId !== null) {
-        onPatch({ freePhotos: workingDraft.freePhotos });
-        setPickerPhotoId(lastId);
-      }
-      if (lastError) throw new Error(lastError);
-      return lastId !== null;
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function tagFreePhoto(photoId: number, category: string) {
-    onPatch({
-      freePhotos: draft.freePhotos.map((photo) =>
-        photo.id === photoId
-          ? { ...photo, category, approved: true }
-          : photo,
-      ),
-    });
-    const label =
-      INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === category)
-        ?.label ?? category;
-    showToast(`عُرّفت الصورة: ${label}`);
-    setPickerPhotoId(null);
-  }
-
-  function deleteFreePhoto(photoId: number) {
-    clearInspectorPhotoDataUrl(draft.taskId, freePhotoRef(photoId));
-    onPatch({
-      freePhotos: draft.freePhotos.filter((photo) => photo.id !== photoId),
-    });
+          approved: true,
+          ...attachment,
+        },
+      ],
+    }));
   }
 
   function approvePreviewPhoto() {
     if (!previewRef || !previewPhoto) return;
-    if (previewRef.kind === "slot") {
-      patchDefinedPhotos(previewRef.slotId, (slot) => ({
-        ...slot,
-        photos: slot.photos.map((photo) =>
-          photo.id === previewRef.photoId
-            ? { ...photo, approved: true }
-            : photo,
-        ),
-      }));
-    } else {
-      onPatch({
-        freePhotos: draft.freePhotos.map((photo) =>
-          photo.id === previewRef.photoId
-            ? { ...photo, approved: true }
-            : photo,
-        ),
-      });
-    }
+    patchDefinedPhotos(previewRef.slotId, (slot) => ({
+      ...slot,
+      photos: slot.photos.map((photo) =>
+        photo.id === previewRef.photoId
+          ? { ...photo, approved: true }
+          : photo,
+      ),
+    }));
     setPreviewRef(null);
     showToast("تم اعتماد الصورة");
   }
 
   function deletePreviewPhoto() {
     if (!previewRef) return;
-    if (previewRef.kind === "slot") {
-      deleteSlotPhoto(previewRef.slotId, previewRef.photoId);
-    } else {
-      deleteFreePhoto(previewRef.photoId);
-    }
+    deleteSlotPhoto(previewRef.slotId, previewRef.photoId);
     setPreviewRef(null);
     showToast("تم حذف الصورة");
   }
@@ -408,12 +255,15 @@ export function InspectorDefinedPhotosSection({
       <RegistrationFormCard>
         {layout === "desktop" ? (
           <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-            لكل خدمة/مرفق اخترته في القسم أعلاه: ارفع صورة توثيقية (كاميرا أو
-            ملف). بدون اختيار لا تظهر خانات.
+            {canPickFromTransaction
+              ? "لكل خدمة/مرفق اخترته أعلاه تظهر خانة صورة واحدة. يمكن رفع ملف أو اختيار صورة من مرفقات المعاملة (مثل إثبات الكهرباء والماء)."
+              : "لكل خدمة/مرفق اخترته في القسم أعلاه: ارفع صورة توثيقية (كاميرا أو ملف). بدون اختيار لا تظهر خانات."}
           </p>
         ) : (
           <p className="mb-2.5 text-[11px] leading-relaxed text-text-3">
-            وثّق كل خدمة/مرفق اخترته. اضغط الخانة للتصوير أو اختيار ملف.
+            {canPickFromTransaction
+              ? "وثّق كل خدمة/مرفق. ارفع صورة أو اختر من مرفقات المعاملة."
+              : "وثّق كل خدمة/مرفق اخترته. اضغط الخانة للتصوير أو اختيار ملف."}
           </p>
         )}
 
@@ -464,162 +314,53 @@ export function InspectorDefinedPhotosSection({
                 const first = slot.photos[0];
                 const done = isServiceAmenityPhotoSlotComplete(slot);
                 return (
-                  <DesktopHtmlPhotoTile
-                    key={def.id}
-                    label={def.label}
-                    required
-                    done={done}
-                    none={slot.none}
-                    taskId={draft.taskId}
-                    photoRef={
-                      first
-                        ? slotPhotoRef(def.id, first.id)
-                        : undefined
-                    }
-                    photo={first}
-                    disabled={Boolean(disabled || uploading)}
-                    onUpload={(files) => uploadSlotPhotos(def.id, files)}
-                    onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
-                    onOpen={
-                      first
-                        ? () =>
-                            setPreviewRef({
-                              kind: "slot",
-                              slotId: def.id,
-                              photoId: first.id,
-                            })
-                        : undefined
-                    }
-                  />
+                  <div key={def.id} className="flex flex-col gap-1">
+                    <DesktopHtmlPhotoTile
+                      label={def.label}
+                      required
+                      done={done}
+                      none={slot.none}
+                      taskId={draft.taskId}
+                      photoRef={
+                        first
+                          ? slotPhotoRef(def.id, first.id)
+                          : undefined
+                      }
+                      photo={first}
+                      disabled={Boolean(disabled || uploading)}
+                      onUpload={(files) => uploadSlotPhotos(def.id, files)}
+                      onToggleNone={() => toggleSlotNone(def.id, !slot.none)}
+                      onOpen={
+                        first
+                          ? () =>
+                              setPreviewRef({
+                                kind: "slot",
+                                slotId: def.id,
+                                photoId: first.id,
+                              })
+                          : undefined
+                      }
+                    />
+                    {canPickFromTransaction && !slot.none ? (
+                      <InspectorPhotoFilePicker
+                        label={done ? "تغيير من المعاملة" : "من صور المعاملة"}
+                        compact
+                        disabled={Boolean(disabled || uploading)}
+                        transactionPhotos={transactionPhotos}
+                        onTransactionPhotoSelected={(doc) =>
+                          selectTransactionPhoto(def.id, doc)
+                        }
+                        onFilesSelected={(files) =>
+                          uploadSlotPhotos(def.id, files)
+                        }
+                      />
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
         )}
-
-        <div
-          className={cn(
-            /* Keep mt-5 + mt-4 together as before — cn does not merge Tailwind spacing classes. */
-            "mb-2.5 mt-5 flex flex-wrap items-center justify-between gap-2",
-            "mt-4",
-            layout === "desktop" && "hidden",
-          )}
-        >
-          <InspectorPhotoFilePicker
-            label="صور إضافية"
-            disabled={disabled}
-            loading={uploading}
-            multiple
-            className="w-full [&_button]:min-h-11 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
-            onFilesSelected={uploadFreePhotos}
-          />
-        </div>
-
-        {untaggedFree.length > 0 ? (
-          <div className="mb-2.5 flex items-center gap-1.5 rounded-lg border border-orange bg-orange-bg px-3 py-2 text-[11px] font-semibold text-orange">
-            <i className="ti ti-alert-triangle" aria-hidden />
-            {untaggedFree.length} صورة بحاجة لتعريف — اضغط عليها لتحديد نوعها
-          </div>
-        ) : null}
-
-        {draft.freePhotos.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {draft.freePhotos.map((photo) => {
-            if (!photo.category) {
-              return (
-                <button
-                  key={photo.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setPickerPhotoId(photo.id)}
-                  className="relative flex h-[60px] w-[84px] shrink-0 flex-col items-center justify-center rounded-md border-2 border-dashed border-orange bg-orange-bg text-orange"
-                >
-                  <i className="ti ti-photo text-xl" aria-hidden />
-                  <span className="absolute bottom-0.5 left-0.5 right-0.5 truncate rounded bg-orange px-0.5 text-[9px] font-bold text-white">
-                    {photo.fileName}
-                  </span>
-                  <span className="absolute left-0.5 top-8 rounded bg-orange px-0.5 text-[8px] font-bold text-white">
-                    عرّفني
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="absolute -start-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-danger-text shadow-sm hover:bg-danger-surface"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteFreePhoto(photo.id);
-                    }}
-                  >
-                    <span className="text-sm font-bold leading-none" aria-hidden>
-                      ×
-                    </span>
-                  </span>
-                </button>
-              );
-            }
-
-            const category = INSPECTOR_FREE_PHOTO_CATEGORIES.find(
-              (cat) => cat.key === photo.category,
-            );
-            return (
-              <MiniPhotoThumb
-                key={photo.id}
-                taskId={draft.taskId}
-                photoRef={freePhotoRef(photo.id)}
-                photo={photo}
-                stamp={stamp}
-                icon={category?.icon}
-                onClick={() =>
-                  setPreviewRef({ kind: "free", photoId: photo.id })
-                }
-                onDelete={() => deleteFreePhoto(photo.id)}
-              />
-            );
-          })}
-        </div>
-        ) : null}
       </RegistrationFormCard>
-
-      {pickerPhotoId !== null ? (
-        <ModalOverlay onClick={() => setPickerPhotoId(null)}>
-          <ModalCard onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle className="flex items-center justify-center gap-2 text-right">
-                <i className="ti ti-tag text-primary" aria-hidden />
-                ما نوع هذه الصورة؟
-              </ModalTitle>
-              <ModalClose onClick={() => setPickerPhotoId(null)} aria-label="إغلاق">
-                ×
-              </ModalClose>
-            </ModalHeader>
-            <ModalBody>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {INSPECTOR_FREE_PHOTO_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    disabled={disabled}
-                    className="flex flex-col items-center gap-1 rounded-lg border border-border bg-surface-2 px-2 py-3 text-[11px] text-text-2 hover:border-primary hover:text-primary"
-                    onClick={() => tagFreePhoto(pickerPhotoId, cat.key)}
-                  >
-                    <i className={`ti ${cat.icon} text-lg text-primary`} aria-hidden />
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setPickerPhotoId(null)}
-              >
-                لاحقاً
-              </Button>
-            </ModalFooter>
-          </ModalCard>
-        </ModalOverlay>
-      ) : null}
 
       {previewRef && previewPhoto ? (
         <ModalOverlay onClick={() => setPreviewRef(null)}>
@@ -634,19 +375,6 @@ export function InspectorDefinedPhotosSection({
               </ModalClose>
             </ModalHeader>
             <ModalBody>
-              <div className="mb-3 flex justify-center">
-                <Badge tone={previewPhoto.approved ? "success" : "warning"}>
-                  {previewPhoto.approved ? (
-                    <>
-                      <i className="ti ti-circle-check" aria-hidden /> معتمدة
-                    </>
-                  ) : (
-                    <>
-                      <i className="ti ti-clock" aria-hidden /> بانتظار الاعتماد
-                    </>
-                  )}
-                </Badge>
-              </div>
               {previewDataUrl ? (
                 <button
                   type="button"

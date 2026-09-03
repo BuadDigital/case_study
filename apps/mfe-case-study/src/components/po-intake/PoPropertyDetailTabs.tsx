@@ -215,26 +215,34 @@ function isAllowedPropertyTab(
   return propertyDetailTabsForRole(role).some((t) => t.id === tabId);
 }
 
-function docExtLabel(doc: PropertyDetailDocumentEntry): string {
-  if (doc.kind === "pdf") return "PDF";
-  if (doc.kind === "image") return "IMG";
-  const parts = doc.fileName.trim().split(".");
-  const ext = parts.length > 1 ? parts[parts.length - 1]!.toUpperCase() : "DOC";
-  return ext.slice(0, 4) || "DOC";
+/** Arabic kind label for the row badge — no file extensions in the UI. */
+function docKindLabel(doc: PropertyDetailDocumentEntry): string {
+  if (doc.kind === "pdf") return "مستند";
+  if (doc.kind === "image") return "صورة";
+  return "ملف";
+}
+
+/** Generated storage names (UUIDs, hashes) carry no meaning for the specialist; hide them. */
+function isGeneratedFileName(fileName: string): boolean {
+  const stem = fileName.trim().replace(/\.[a-z0-9]+$/i, "");
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hash = /^[0-9a-f]{24,}$/i;
+  return uuid.test(stem) || hash.test(stem);
 }
 
 function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
-  const ext = docExtLabel(doc);
+  const kind = docKindLabel(doc);
+  const showFileName = doc.fileName.trim().length > 0 && !isGeneratedFileName(doc.fileName);
 
   return (
     <div className="rounded border border-border bg-surface-2 px-3 py-2.5">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className="inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] text-[9px] font-extrabold text-[#8c7857]"
+            className="inline-flex h-[30px] min-w-[30px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] px-1.5 text-[10px] font-extrabold text-[#8c7857]"
             aria-hidden
           >
-            {ext}
+            {kind}
           </span>
           <span className="inline-flex min-w-0 flex-col gap-px">
             <span className="truncate text-[12.5px] font-semibold text-text">
@@ -242,10 +250,14 @@ function DocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
             </span>
             <span className="truncate text-[10.5px] text-text-3">
               {doc.source}
-              {" · "}
-              <bdi dir="ltr" className={ltrValueClass}>
-                {doc.fileName}
-              </bdi>
+              {showFileName ? (
+                <>
+                  {" · "}
+                  <bdi dir="ltr" className={ltrValueClass}>
+                    {doc.fileName}
+                  </bdi>
+                </>
+              ) : null}
             </span>
           </span>
         </div>
@@ -920,13 +932,10 @@ export function PoPropertyDetailTabs({
           {visitedTabsRef.current.has("appraisal") ? (
             <Activity mode={tabMode("appraisal")}>
             <PropertyDetailAppraisalTab
+              propertyId={property.id}
               appraisalTaskId={appraisalTask?.id}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
               onReviewChanged={() => {
                 void partySubmissionsQuery.refetch();
               }}

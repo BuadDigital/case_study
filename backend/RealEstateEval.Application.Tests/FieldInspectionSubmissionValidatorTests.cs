@@ -165,9 +165,6 @@ public class FieldInspectionSubmissionValidatorTests
     {
         var json = MinimalValidPayload()
             .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرض", "kitchen": "نعم" } """)
-            .Replace(
-                "\"featurePhotoAttachments\": {}",
-                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """)
             .Replace("\"showroomCount\": \"\"", "\"showroomCount\": \"2\"")
             .Replace("\"inspectionConfirmed\": true", "\"inspectionConfirmed\": true, \"vacantLand\": true");
 
@@ -182,10 +179,7 @@ public class FieldInspectionSubmissionValidatorTests
     public void Validate_skips_leftover_facade_photo_when_subject_is_land()
     {
         var json = MinimalValidPayload()
-            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرض", "facade": "شمالية" } """)
-            .Replace(
-                "\"featurePhotoAttachments\": {}",
-                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """);
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرض", "facade": "شمالية" } """);
 
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
@@ -197,10 +191,21 @@ public class FieldInspectionSubmissionValidatorTests
     public void Validate_skips_leftover_facade_photo_when_subject_is_ardi()
     {
         var json = MinimalValidPayload()
-            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرضي", "facade": "شمالية" } """)
+            .Replace("\"featureValues\": {}", """ "featureValues": { "assetSubject": "أرضي", "facade": "شمالية" } """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_does_not_require_proof_photo_for_asset_subject_or_usage()
+    {
+        var json = MinimalValidPayload()
             .Replace(
-                "\"featurePhotoAttachments\": {}",
-                """ "featurePhotoAttachments": { "assetSubject": { "fileName": "land.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } } """);
+                "\"featureValues\": {}",
+                """ "featureValues": { "assetSubject": "أرض", "propertyUsage": "سكني" } """);
 
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);

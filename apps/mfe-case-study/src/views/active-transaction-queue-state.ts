@@ -29,7 +29,6 @@ import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
 export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "new", label: "جديدة" },
   { value: "wait_inspection", label: "تراقب تقدم الأطراف" },
-  { value: "wait_specialist", label: "بانتظار اعتماد بيانات المعاينة" },
   { value: "ready", label: "جاهزة للتقييم" },
   { value: "submitted", label: "مُرسَلة للأخصائي" },
   { value: "closed", label: "مكتملة على النظام" },

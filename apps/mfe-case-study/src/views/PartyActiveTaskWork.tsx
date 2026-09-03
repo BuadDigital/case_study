@@ -431,7 +431,9 @@ export function PartyActiveTaskWork({
               hideOpenCaseStudy
             />
             <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className={opsContentPanel}>
+              {/* The survey panel draws its own card; a second bordered panel here showed as
+                  a double edge line down both sides of the workspace. */}
+              <div className="min-w-0">
                 {surveyWork}
               </div>
               <PropertyTransactionTimeline record={record} property={surveyProperty} />

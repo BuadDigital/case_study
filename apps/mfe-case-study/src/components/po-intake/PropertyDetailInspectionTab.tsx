@@ -6,9 +6,7 @@ import {
   AppModal,
   Button,
   InlineLoadingSkeleton,
-  Label,
   cn,
-  formControlClassName,
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
@@ -27,9 +25,7 @@ import {
 } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import {
-  acceptInspectorWorkspace,
   getOrCreateInspectorWorkspace,
-  reopenInspectorWorkspace,
   saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
 } from "../../lib/app-data/inspector-workspace-commands";
@@ -44,7 +40,6 @@ import {
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   isCommercialShopInspectionContext,
-  isInspectorWorkspaceAccepted,
   isInspectorWorkspaceLocked,
   isLandInspectionContext,
   isMovablesPresent,
@@ -97,7 +92,6 @@ import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
   EDIT_CONTROL_CLASS,
-  formatAcceptedDate,
   SharedBadge,
   InsField,
   InsEditField,
@@ -126,6 +120,7 @@ export function PropertyDetailInspectionTab({
   transactionPhotos = [],
   /** Render after wizard; submit footer follows this block (case-study workspace). */
   submitFooterAfter,
+  submitSuccessToast,
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -146,6 +141,8 @@ export function PropertyDetailInspectionTab({
   serviceProofFromTransactionPhotos?: boolean;
   transactionPhotos?: PropertyDetailDocumentEntry[];
   submitFooterAfter?: ReactNode;
+  /** Override success toast after حفظ وإرسال (e.g. specialist → appraiser handoff). */
+  submitSuccessToast?: string;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
@@ -155,10 +152,6 @@ export function PropertyDetailInspectionTab({
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
     {},
   );
-  const [returnOpen, setReturnOpen] = useState(false);
-  const [returnNote, setReturnNote] = useState("");
-  const [returnError, setReturnError] = useState<string | null>(null);
-  const [returning, setReturning] = useState(false);
   const [mapPinned, setMapPinned] = useState(false);
   const mapPinnedRef = useRef(false);
   mapPinnedRef.current = mapPinned;
@@ -187,21 +180,7 @@ export function PropertyDetailInspectionTab({
       ),
     );
 
-  const { execute: executeAcceptInspection, loading: acceptSubmitting } =
-    useIdempotentAction(
-      useCallback(
-        async (idempotencyKey: string) => {
-          if (!inspectionTask) {
-            throw new Error("لا توجد مهمة معاينة");
-          }
-          return acceptInspectorWorkspace(inspectionTask.id, idempotencyKey);
-        },
-        [inspectionTask],
-      ),
-    );
-
   const submitBusy = saving || inspectorSubmitting;
-  const acceptBusy = acceptSubmitting;
 
   useEffect(() => {
     if (!inspectionTask) {
@@ -473,7 +452,7 @@ export function PropertyDetailInspectionTab({
       showToast(
         result.queued
           ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
-          : "تم حفظ بيانات المعاينة وإرسالها.",
+          : submitSuccessToast ?? "تم حفظ بيانات المعاينة وإرسالها.",
         result.queued ? "info" : "success",
       );
       if (!result.queued) {
@@ -492,49 +471,6 @@ export function PropertyDetailInspectionTab({
     }
   }
 
-  async function handleReturnForCorrection() {
-    if (!inspectionTask) return;
-    const trimmed = returnNote.trim();
-    if (!trimmed) {
-      setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
-      return;
-    }
-    setReturning(true);
-    setReturnError(null);
-    const reopened = await reopenInspectorWorkspace(inspectionTask.id, trimmed);
-    setReturning(false);
-    if (!reopened.ok) {
-      setReturnError(reopened.error);
-      return;
-    }
-    setDraft(reopened.data);
-    setReturnOpen(false);
-    setReturnNote("");
-    showToast("أُعيدت مهمة المعاينة للتصحيح", "success");
-    onSubmitted?.();
-  }
-
-  async function handleAcceptInspection() {
-    if (!inspectionTask || acceptBusy) return;
-    try {
-      const outcome = await executeAcceptInspection();
-      if (outcome.status === "skipped") return;
-      const accepted = outcome.value;
-      if (!accepted.ok) {
-        showToast(accepted.error, "error");
-        return;
-      }
-      setDraft(accepted.data);
-      showToast("تم اعتماد بيانات المعاينة — تظهر في حزمة إنفاذ", "success");
-      onSubmitted?.();
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "تعذّر اعتماد بيانات المعاينة",
-        "error",
-      );
-    }
-  }
-
   if (!inspectionCard) {
     return (
       <EmptyState
@@ -546,69 +482,8 @@ export function PropertyDetailInspectionTab({
 
   if (loading) return <InlineLoadingSkeleton />;
 
-  const canReviewPackage =
-    !editMode && Boolean(inspectionTask) && draft?.status === "submitted";
-  const inspectionAccepted = isInspectorWorkspaceAccepted(draft);
-  const canAccept = canReviewPackage && !inspectionAccepted;
-  const canReturn = canReviewPackage && !inspectionAccepted;
-
   return (
     <div id="pdInspection" className="pt-5">
-      {!showEditFields && canReviewPackage && !returnOpen ? (
-        <div className="mb-3.5 flex flex-wrap items-center justify-end gap-2">
-          {inspectionAccepted ? (
-            <div className="me-auto rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)] max-lg:w-full">
-              معتمد
-              {draft?.acceptedByName?.trim()
-                ? ` — ${draft.acceptedByName.trim()}`
-                : ""}
-              {draft?.acceptedAtUtc
-                ? ` · ${formatAcceptedDate(draft.acceptedAtUtc)}`
-                : ""}
-            </div>
-          ) : null}
-          {canAccept ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              loading={acceptBusy}
-              showActionToast={false}
-              className="max-lg:min-h-11 max-lg:flex-1"
-              onClick={() => void handleAcceptInspection()}
-            >
-              اعتماد البيانات
-            </Button>
-          ) : null}
-          {canReturn ? (
-            <button
-              type="button"
-              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-[12px] max-lg:text-[13px]"
-              disabled={acceptBusy}
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
-            >
-              إعادة للتصحيح
-            </button>
-          ) : null}
-          {inspectionAccepted ? (
-            <button
-              type="button"
-              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:w-full max-lg:rounded-[12px] max-lg:text-[13px]"
-              disabled={acceptBusy}
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
-            >
-              إلغاء الاعتماد وإعادة للتصحيح
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {formError ? (
         <div
           className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text"
@@ -623,49 +498,6 @@ export function PropertyDetailInspectionTab({
 
       {draft?.status === "reopened" && draft.returnNote?.trim() ? (
         <ReturnedForCorrectionNote note={draft.returnNote} className="mb-3" />
-      ) : null}
-
-      {!showEditFields && returnOpen ? (
-        <div className="mb-3.5 rounded-lg border border-border bg-surface px-3.5 py-3">
-          <Label htmlFor="pd-inspection-return-note" className="text-xs">
-            سبب الإرجاع للتصحيح <span className="text-danger-text">*</span>
-          </Label>
-          <textarea
-            id="pd-inspection-return-note"
-            className={cn(formControlClassName, "mt-1 min-h-[72px] text-xs")}
-            value={returnNote}
-            onChange={(e) => setReturnNote(e.target.value)}
-            placeholder="صف ما يجب تصحيحه في تقرير المعاين…"
-          />
-          {returnError ? (
-            <p className="mt-1 mb-0 text-xs text-danger-text">{returnError}</p>
-          ) : null}
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              loading={returning}
-              showActionToast={false}
-              onClick={() => void handleReturnForCorrection()}
-            >
-              تأكيد الإرجاع
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={returning}
-              onClick={() => {
-                setReturnOpen(false);
-                setReturnError(null);
-                setReturnNote("");
-              }}
-            >
-              إلغاء
-            </Button>
-          </div>
-        </div>
       ) : null}
 
       {!draft ? (

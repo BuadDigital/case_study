@@ -189,7 +189,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     key: "assetSubject",
     label: "الأصل محل التقييم",
     options: ["فيلا", "أرض", "شقة", "عمارة", "محل تجاري", "مستودع"],
-    photoOnYes: true,
+    photoOnYes: false,
   },
   {
     key: "facade",
@@ -210,7 +210,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     key: "propertyUsage",
     label: "استخدام العقار",
     options: ["سكني", "تجاري", "زراعي", "صناعي"],
-    photoOnYes: true,
+    photoOnYes: false,
     shared: true,
   },
   {

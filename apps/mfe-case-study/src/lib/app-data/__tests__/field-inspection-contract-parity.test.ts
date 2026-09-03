@@ -88,11 +88,6 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.vacantLand = true;
     draft.showroomCount = "2";
     draft.featureValues.kitchen = "نعم";
-    draft.featurePhotoAttachments.assetSubject = {
-      fileName: "land.jpg",
-      mimeType: "image/jpeg",
-      attachmentId: "att-land",
-    };
 
     const errors = validateInspectorWorkspace(draft, { classification: "أرض" });
     expect(errors.emptyFeatureKeys ?? []).not.toContain("facade");
@@ -106,11 +101,6 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.vacantLand = false;
     draft.featureValues.assetSubject = "أرض";
     draft.featureValues.facade = "شمالية";
-    draft.featurePhotoAttachments.assetSubject = {
-      fileName: "land.jpg",
-      mimeType: "image/jpeg",
-      attachmentId: "att-land",
-    };
 
     const errors = validateInspectorWorkspace(draft);
     expect(errors.featurePhotos).toBeUndefined();
@@ -122,15 +112,26 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.vacantLand = false;
     draft.featureValues.assetSubject = "أرضي";
     draft.featureValues.facade = "شمالية";
-    draft.featurePhotoAttachments.assetSubject = {
-      fileName: "land.jpg",
-      mimeType: "image/jpeg",
-      attachmentId: "att-land",
-    };
 
     const errors = validateInspectorWorkspace(draft);
     expect(errors.featurePhotos).toBeUndefined();
     expect(errors.emptyFeatureKeys ?? []).not.toContain("facade");
+  });
+
+  it("does not require proof photos for الأصل محل التقييم or استخدام العقار", () => {
+    const draft = completeDraft();
+    draft.featureValues.assetSubject = "أرض";
+    draft.featureValues.propertyUsage = "سكني";
+
+    expect(inspectorFeatureRequiresPhoto(
+      INSPECTOR_FEATURE_FIELDS.find((f) => f.key === "assetSubject")!,
+      "أرض",
+    )).toBe(false);
+    expect(inspectorFeatureRequiresPhoto(
+      INSPECTOR_FEATURE_FIELDS.find((f) => f.key === "propertyUsage")!,
+      "سكني",
+    )).toBe(false);
+    expect(validateInspectorWorkspace(draft, { classification: "أرض" }).featurePhotos).toBeUndefined();
   });
 
   it("skips well photo and shop-hidden leftover counts for محل تجاري", () => {

@@ -36,6 +36,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "inspectionConfirmed"
     | "observations"
     | "definedPhotos"
+    | "freePhotos"
     | "featurePhotos"
     | "componentPhotos"
     | "features"
@@ -92,6 +93,8 @@ export function inspectorFieldTargetId(
       return "ins-components-section";
     case "definedPhotos":
       return "ins-defined-photos";
+    case "freePhotos":
+      return "ins-property-photos";
     case "observations":
       return "ins-observations";
     case "inspectionConfirmed":
@@ -140,6 +143,7 @@ export function firstInspectorWorkspaceErrorTarget(
     return inspectorFieldTargetId("features");
   }
   if (errors.componentPhotos) return inspectorFieldTargetId("componentPhotos");
+  if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
   if (errors.definedPhotos) return inspectorFieldTargetId("definedPhotos");
   if (errors.observations) return inspectorFieldTargetId("observations");
   if (errors.inspectionConfirmed) {
@@ -269,10 +273,12 @@ export function validateInspectorWorkspace(
     );
     if (componentIssue) errors.componentPhotos = componentIssue;
 
+    const freeIssue = photoIssues.find((issue) => issue.includes("إضافية"));
+    if (freeIssue) errors.freePhotos = freeIssue;
+
     const definedIssue = photoIssues.find(
       (issue) =>
         issue.includes("بانتظار الاعتماد") ||
-        issue.includes("إضافية") ||
         issue.includes("الخادم") ||
         issue.includes("خدمة") ||
         issue.includes("مرفق"),
@@ -297,6 +303,7 @@ const INSPECTOR_ERROR_KEYS = [
   "occupancyDescription",
   "featurePhotos",
   "componentPhotos",
+  "freePhotos",
   "definedPhotos",
   "observations",
   "inspectionConfirmed",

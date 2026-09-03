@@ -268,9 +268,9 @@ public static class FieldInspectionSubmissionValidator
 
     private static readonly (string Key, string Label, bool PhotoOnYes, bool YesNo)[] FeaturePhotoFields =
     [
-        ("assetSubject", "الأصل محل التقييم", true, false),
+        ("assetSubject", "الأصل محل التقييم", false, false),
         ("facade", "الواجهة", true, false),
-        ("propertyUsage", "استخدام العقار", true, false),
+        ("propertyUsage", "استخدام العقار", false, false),
         ("zoneStatus", "حالة منطقة العقار", false, false),
         ("buildState", "حالة البناء", true, false),
         ("occupancyState", "حالة الإشغال", false, false),

@@ -19,6 +19,15 @@ import {
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
+import { INSPECTOR_FREE_PHOTO_CATEGORIES } from "./inspector-workspace-data";
+
+/** Free photos store the category key; the specialist sees its Arabic label. */
+function freePhotoCategoryLabel(category: string | null | undefined): string {
+  const key = category?.trim();
+  if (!key) return "صورة إضافية";
+  const known = INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key);
+  return known ? `صورة إضافية — ${known.label}` : key;
+}
 import { loadInspectorWorkspace } from "./inspector-workspace-model";
 
 const FEATURE_FIELD_LABEL_BY_KEY = Object.fromEntries(
@@ -346,7 +355,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       const photoRef = `free:${photo.id}`;
       pushEntry(docs, {
         id: `inspection-free-${photo.id}`,
-        name: photo.category?.trim() || "صورة إضافية",
+        name: freePhotoCategoryLabel(photo.category),
         fileName: photo.fileName,
         source,
         kind: fileKind(photo.fileName, photo.mimeType),

@@ -92,20 +92,19 @@ public partial class PartyTaskSubmissionService
             case WorkflowTaskKind.FieldInspection:
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "اعتماد بيانات المعاينة",
-                    body: "اعتمد الأخصائي بيانات المعاينة. تظهر البيانات المعتمدة في حزمة الرفع على إنفاذ، ويمكن للمقيّم بدء التقييم.",
+                    title: "استلام بيانات المعاينة",
+                    body: "استلم الأخصائي بيانات المعاينة. اعتماد تقرير التقييم يتم لاحقاً داخل دراسة الحالة.",
                     tone: "success",
                     sourceEvent: $"field-inspection-accepted:{task.Id}",
                     href: $"/active-inspection/{Uri.EscapeDataString(task.Id.ToString())}",
                     cancellationToken);
-                await NotifySiblingAppraiserInspectionAcceptedAsync(task, cancellationToken);
                 break;
 
             case WorkflowTaskKind.PropertyAppraisal:
                 await NotifyPartyAssigneeAsync(
                     task,
-                    title: "استلام تقرير التقييم",
-                    body: "استلم الأخصائي تقرير التقييم. هذا إقرار بالاستلام وليس اعتماداً للقيمة — حزمة إنفاذ تتغذى من التقرير المُرسل.",
+                    title: "اعتماد تقرير التقييم",
+                    body: "اعتمد الأخصائي تقرير التقييم داخل دراسة الحالة.",
                     tone: "success",
                     sourceEvent: $"property-appraisal-accepted:{task.Id}",
                     href: $"/property-appraisal/{Uri.EscapeDataString(task.Id.ToString())}",
@@ -206,19 +205,28 @@ public partial class PartyTaskSubmissionService
             cancellationToken);
     }
 
-    private async Task NotifySiblingAppraiserInspectionAcceptedAsync(
+    /// <summary>
+    /// When the inspector submits field inspection, tell the sibling appraiser
+    /// that valuation can begin (specialist اعتماد of the report is later).
+    /// </summary>
+    private async Task NotifySiblingAppraiserInspectionSubmittedAsync(
         WorkflowTask inspectionTask,
         CancellationToken cancellationToken)
     {
         var appraisal = await FindSiblingAsync(inspectionTask, WorkflowTaskKind.PropertyAppraisal, cancellationToken);
         if (appraisal is null) return;
 
+        var refLabel = inspectionTask.PoNumber?.Trim();
+        var body = string.IsNullOrEmpty(refLabel)
+            ? "اكتملت معاينة العقار. يمكنك الآن بدء التقييم داخل النظام."
+            : $"اكتملت معاينة العقار على {refLabel}. يمكنك الآن بدء التقييم داخل النظام.";
+
         await NotifyPartyAssigneeAsync(
             appraisal,
-            title: "بيانات المعاينة معتمدة — يمكن بدء التقييم",
-            body: "اعتمد الأخصائي بيانات الأطراف. يمكنك الآن حساب القيمة داخل النظام.",
+            title: "معاينة مكتملة — يمكن بدء التقييم",
+            body: body,
             tone: "success",
-            sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
+            sourceEvent: $"field-inspection-submitted-appraiser:{inspectionTask.Id}",
             href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
             cancellationToken);
     }
