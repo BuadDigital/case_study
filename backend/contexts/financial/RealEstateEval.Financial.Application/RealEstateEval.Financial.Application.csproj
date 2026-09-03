@@ -17,6 +17,7 @@
     <!-- Abstractions only. Use-case services carry [ActivatorUtilitiesConstructor];
          the package pulls in neither hosting nor EF. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

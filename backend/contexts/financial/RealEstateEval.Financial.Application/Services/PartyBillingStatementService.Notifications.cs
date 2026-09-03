@@ -1,10 +1,8 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Financial.Domain;
-using RealEstateEval.Infrastructure.Data;
-using RealEstateEval.Infrastructure.Notifications;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Services;
 
 public partial class PartyBillingStatementService
 {
@@ -14,12 +12,7 @@ public partial class PartyBillingStatementService
     {
  // Numbering workshop (decision items 1–2): disbursement slip DS-{year}-{5-digit seq} assigned locally —
  // references issued before go-live (FN-CS-…) stay as-is and are not reformatted.
-        var (reference, error) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
-            _db,
-            DatabaseSchemas.Financial,
-            ReferenceNumbering.DisbursementStatement,
-            nowUtc,
-            cancellationToken);
+        var (reference, error) = await _db.AllocateStatementReferenceAsync(nowUtc, cancellationToken);
         if (error is not null)
             throw new InvalidOperationException(error);
         if (string.IsNullOrWhiteSpace(reference))

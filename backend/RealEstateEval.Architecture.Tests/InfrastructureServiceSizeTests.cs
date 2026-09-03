@@ -16,8 +16,6 @@ public class InfrastructureServiceSizeTests
     private static readonly string[] FrozenOverCap =
     [
         "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureService.cs",
-        "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyBillingStatementService.cs",
-        "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazBillingService.cs",
         "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.cs",
         "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs",
         "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskCommands.cs",

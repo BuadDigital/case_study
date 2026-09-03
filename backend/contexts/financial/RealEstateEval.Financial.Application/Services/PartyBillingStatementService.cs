@@ -1,22 +1,22 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Notifications;
-using RealEstateEval.Financial.Domain;
-using RealEstateEval.Financial.Infrastructure.Data.Contexts;
-using RealEstateEval.Attachments.Application.Abstractions;
+using RealEstateEval.Financial.Application.Abstractions;
 using RealEstateEval.Financial.Application.Rules;
-using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Financial.Domain;
 using static RealEstateEval.Financial.Application.Rules.PartyBillingRowMapper;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Services;
 
+/// <summary>
+/// Party billing statement use case: ready dues, statement create / issue / close / cancel,
+/// deferral, and the monthly vendor run. Persistence is
+/// <see cref="IPartyBillingStatementRepository"/>, so this class never opens EF.
+/// </summary>
 public partial class PartyBillingStatementService : IPartyBillingStatementService
 {
     private const int MaxListRows = 500;
@@ -28,79 +28,38 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
  /// <summary>Ops court-visit fee charges — individual payee, same statement close path as individuals.</summary>
     public const string CourtVisitTaskKind = PartyBillingStatementRules.CourtVisitTaskKind;
 
-    private readonly FinancialDbContext _db;
+    private readonly IPartyBillingStatementRepository _db;
     private readonly ICaseStudyLookup _lookup;
-    private readonly ICaseStudyCommands _commands;
-    private readonly IAttachmentLookup _attachments;
+    private readonly IStatementAttachmentLookup _attachments;
     private readonly INotificationService _notifications;
-    private readonly NotificationRecipientResolver _recipients;
-    private readonly IOperationsTaskService? _opsTasks;
+    private readonly INotificationRecipientResolver _recipients;
     private readonly ICourtVisitFeeBackfill? _visitFees;
     private readonly ILogger<PartyBillingStatementService> _logger;
     private readonly TimeProvider _time;
 
-    public PartyBillingStatementService(
-        FinancialDbContext db,
-        ICaseStudyLookup lookup,
-        ICaseStudyCommands commands,
-        IAttachmentLookup attachments,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        ICourtVisitFeeBackfill visitFees,
-        ILogger<PartyBillingStatementService> logger,
-        TimeProvider? time = null)
-        : this(
-            db,
-            lookup,
-            commands,
-            attachments,
-            notifications,
-            recipients,
-            opsTasks: null,
-            visitFees,
-            logger,
-            time)
-    {
-    }
-
-    // DI path in Finance host: backfill passes through HTTP client for operations tasks (available since E6)
-    // — Null was passed, so compensation before “ready lines” does not work at all in production.
+    /// <remarks>
+    /// The court-visit backfill is optional: hosts that cannot reach Operations at all simply
+    /// skip the compensation before ready lines are listed. The Financial host does have it —
+    /// its adapter goes through the operations-task client.
+    /// </remarks>
     [ActivatorUtilitiesConstructor]
     public PartyBillingStatementService(
-        FinancialDbContext db,
+        IPartyBillingStatementRepository db,
         ICaseStudyLookup lookup,
-        ICaseStudyCommands commands,
-        IAttachmentLookup attachments,
+        IStatementAttachmentLookup attachments,
         INotificationService notifications,
-        NotificationRecipientResolver recipients,
+        INotificationRecipientResolver recipients,
         ILogger<PartyBillingStatementService> logger,
         TimeProvider? time = null,
-        IOperationsTaskService? opsTasks = null)
-        : this(db, lookup, commands, attachments, notifications, recipients, opsTasks, visitFees: null, logger, time)
-    {
-    }
-
-    private PartyBillingStatementService(
-        FinancialDbContext db,
-        ICaseStudyLookup lookup,
-        ICaseStudyCommands commands,
-        IAttachmentLookup attachments,
-        INotificationService notifications,
-        NotificationRecipientResolver recipients,
-        IOperationsTaskService? opsTasks,
-        ICourtVisitFeeBackfill? visitFees,
-        ILogger<PartyBillingStatementService> logger,
-        TimeProvider? time)
+        ICourtVisitFeeBackfill? visitFees = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _lookup = lookup;
-        _commands = commands;
         _attachments = attachments;
         _notifications = notifications;
         _recipients = recipients;
-        _opsTasks = opsTasks;
         _visitFees = visitFees;
         _logger = logger;
     }
@@ -112,9 +71,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
  // Cooperator visits that completed without a charge become ready on first costs load.
         try
         {
-            if (_opsTasks is not null)
-                await _opsTasks.BackfillMissingCourtVisitChargesAsync(cancellationToken);
-            else if (_visitFees is not null)
+            if (_visitFees is not null)
                 await _visitFees.BackfillMissingChargesForCompletedVisitsAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -125,11 +82,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
  // WorkflowTaskId is unique on statement lines — once billed (even paid/cancelled line),
  // twin reassignment ledgers must not reappear as dues.
  // Court-visit charges reuse the same column with charge.Id as the line key.
-        var claimedTaskIds = await _db.PartyBillingStatementLines.AsNoTracking()
-            .Select(l => l.WorkflowTaskId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        var claimed = claimedTaskIds.ToHashSet();
+        var claimed = await _db.ListClaimedLineKeysAsync(cancellationToken);
 
  // Cross-context: materialize statement-kind task ids from Case Study, then filter Financial ledgers.
         var statementTasks = (await _lookup.ListWorkflowTasksByKindsAsync(
@@ -141,21 +94,13 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         var kindByTaskId = statementTasks.ToDictionary(task => task.Id, task => task.Kind);
         var statementTaskIds = kindByTaskId.Keys.ToList();
 
-        var ledgerRows = statementTaskIds.Count == 0
-            ? []
-            : await _db.InspectorFeeLedgers.AsNoTracking()
-                .Where(ledger =>
-                    statementTaskIds.Contains(ledger.WorkflowTaskId)
-                    && !ledger.ExcludedFromBatch
-                    && (ledger.BillingStatus == InspectorFeeBillingStatus.AtFinance
-                        || ledger.BillingStatus == InspectorFeeBillingStatus.Deferred)
-                    && (assigneeId == null
-                        || ledger.AssigneeId == assigneeId))
-                .OrderByDescending(ledger => ledger.UpdatedAtUtc)
-                .Take(MaxListRows)
-                .ToListAsync(cancellationToken);
-
-        ledgerRows = ledgerRows.Where(ledger => !claimed.Contains(ledger.WorkflowTaskId)).ToList();
+        var ledgerRows = (await _db.ListBillableLedgersAsync(
+                statementTaskIds,
+                assigneeId,
+                MaxListRows,
+                cancellationToken))
+            .Where(ledger => !claimed.Contains(ledger.WorkflowTaskId))
+            .ToList();
 
  // Reassignment twins + multi-deed share one statement line (unique WorkflowTaskId).
  // Surface one ready row per task.
@@ -182,20 +127,11 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (remaining == 0)
             return ledgerReady;
 
-        var visitQuery = _db.CourtVisitFeeCharges.AsNoTracking()
-            .Where(c => c.Status == CourtVisitFeeStatuses.Open
-                && c.AmountSar > 0
-                && !claimed.Contains(c.Id));
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-        {
-            var aid = assigneeId.Trim();
-            visitQuery = visitQuery.Where(c => c.CreditAssigneeId == aid);
-        }
-
-        var visitCharges = await visitQuery
-            .OrderByDescending(c => c.UpdatedAtUtc)
-            .Take(remaining)
-            .ToListAsync(cancellationToken);
+        var visitCharges = await _db.ListOpenCourtVisitChargesAsync(
+            assigneeId,
+            claimed.ToList(),
+            remaining,
+            cancellationToken);
 
         var visitReady = visitCharges.Select(PartyBillingRowMapper.ToCourtVisitReadyDto).ToList();
         return PartyBillingStatementRules.OrderReadyLines(ledgerReady.Concat(visitReady));
@@ -207,33 +143,18 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         bool issuedOrLaterOnly = false,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.PartyBillingStatements.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-            query = query.Where(s => s.AssigneeId == assigneeId);
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(s => s.Status == status);
-
-        if (issuedOrLaterOnly)
-        {
-            query = query.Where(s =>
-                s.Status == PartyBillingStatementStatus.Issued
-                || s.Status == PartyBillingStatementStatus.InvoiceReceived
-                || s.Status == PartyBillingStatementStatus.Closed);
-        }
-
-        var statements = await query
-            .OrderByDescending(s => s.CreatedAtUtc)
-            .Take(MaxListRows)
-            .ToListAsync(cancellationToken);
+        var statements = await _db.ListStatementsAsync(
+            assigneeId,
+            status,
+            issuedOrLaterOnly,
+            MaxListRows,
+            cancellationToken);
 
         if (statements.Count == 0) return [];
 
-        var ids = statements.Select(s => s.Id).ToList();
-        var lines = await _db.PartyBillingStatementLines.AsNoTracking()
-            .Where(l => ids.Contains(l.StatementId))
-            .ToListAsync(cancellationToken);
+        var lines = await _db.ListLinesForStatementsAsync(
+            statements.Select(s => s.Id).ToList(),
+            cancellationToken);
 
         return await MapStatementsAsync(statements, lines, cancellationToken);
     }
@@ -242,13 +163,10 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         Guid statementId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: false, cancellationToken);
         if (statement is null) return null;
 
-        var lines = await _db.PartyBillingStatementLines.AsNoTracking()
-            .Where(l => l.StatementId == statementId)
-            .ToListAsync(cancellationToken);
+        var lines = await _db.ListLinesForStatementsAsync([statementId], cancellationToken);
 
         var mapped = await MapStatementsAsync([statement], lines, cancellationToken);
         return mapped.FirstOrDefault();
@@ -269,11 +187,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         }
 
  // Court-visit open charges use charge.Id as the ready-line key (same column as workflow task id).
-        var openCharges = await _db.CourtVisitFeeCharges
-            .Where(c => taskIds.Contains(c.Id)
-                && c.Status == CourtVisitFeeStatuses.Open
-                && c.AmountSar > 0)
-            .ToListAsync(cancellationToken);
+        var openCharges = await _db.ListOpenCourtVisitChargesByIdsAsync(taskIds, cancellationToken);
         var mixError = PartyBillingStatementRules.ValidateCourtVisitMix(openCharges.Count, taskIds.Count);
         if (mixError is not null)
             return new CreatePartyBillingStatementResponseDto { Error = mixError };
@@ -288,16 +202,10 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 cancellationToken);
         }
 
-        var candidates = await _db.InspectorFeeLedgers
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
+        var candidates = await _db.ListLedgersByTaskIdsAsync(taskIds, track: true, cancellationToken);
 
  // Unique IX on PartyBillingStatementLines.WorkflowTaskId — cannot re-bill a task.
-        var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .Select(l => l.WorkflowTaskId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var alreadyLined = await _db.ListClaimedLineKeysAsync(taskIds, cancellationToken);
 
         var kinds = await _lookup.GetWorkflowTaskKindsAsync(taskIds, cancellationToken);
         var plan = PartyBillingStatementRules.BuildLedgerStatementPlan(
@@ -348,7 +256,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 ledger.BillingStatus = InspectorFeeBillingStatus.InStatement;
                 ledger.PartyBillingStatementId = statementId;
                 ledger.UpdatedAtUtc = now;
-                _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                _db.AddTransition(PartyBillingStatementRules.Transition(
                     ledger,
                     fromStatus,
                     InspectorFeeBillingStatus.InStatement,
@@ -370,14 +278,10 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (request.DeferUnselectedForAssignee)
         {
             var selectedSet = taskIds.ToHashSet();
-            var unselected = await _db.InspectorFeeLedgers
-                .Where(l =>
-                    l.AssigneeId == assigneeId
-                    && l.BillingStatus == InspectorFeeBillingStatus.AtFinance
-                    && !l.ExcludedFromBatch
-                    && !selectedSet.Contains(l.WorkflowTaskId)
-                    && !l.PartyBillingStatementId.HasValue)
-                .ToListAsync(cancellationToken);
+            var unselected = await _db.ListUnselectedAtFinanceLedgersAsync(
+                assigneeId,
+                selectedSet.ToList(),
+                cancellationToken);
 
             var unselectedIds = unselected.Select(l => l.WorkflowTaskId).ToList();
             if (unselectedIds.Count > 0)
@@ -401,7 +305,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
                 {
                     ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
                     ledger.UpdatedAtUtc = now;
-                    _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+                    _db.AddTransition(PartyBillingStatementRules.Transition(
                         ledger,
                         InspectorFeeBillingStatus.AtFinance,
                         InspectorFeeBillingStatus.Deferred,
@@ -413,7 +317,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             }
         }
 
-        _db.PartyBillingStatements.Add(new PartyBillingStatement
+        _db.AddStatement(new PartyBillingStatement
         {
             Id = statementId,
             ReferenceNumber = reference,
@@ -443,13 +347,11 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
 
-        var lineCount = await _db.PartyBillingStatementLines
-            .CountAsync(l => l.StatementId == statementId, cancellationToken);
+        var lineCount = await _db.CountLinesAsync(statementId, cancellationToken);
         var issueError = PartyBillingStatementRules.ValidateIssue(statement.Status, lineCount);
         if (issueError is not null)
             return (null, issueError);
@@ -473,8 +375,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
 
@@ -494,30 +395,20 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         var transferRef = check.TransferReference;
         var receiptId = check.ReceiptAttachmentId;
 
-        var receiptExists = await _attachments.ExistsAsync(receiptId, actor: null, cancellationToken);
+        var receiptExists = await _attachments.ExistsAsync(receiptId, cancellationToken);
         if (!receiptExists)
             return (null, "مرفق إيصال التحويل غير موجود.");
 
-        var voucherTaken = await _db.PartyBillingStatements.AsNoTracking().AnyAsync(
-            s => s.Id != statementId
-                && s.DisbursementVoucher != null
-                && s.DisbursementVoucher == voucher,
-            cancellationToken);
+        var voucherTaken = await _db.IsVoucherTakenAsync(statementId, voucher, cancellationToken);
         if (voucherTaken)
             return (null, "رقم سند الصرف مُستخدم مسبقاً — لا صرف مزدوج.");
 
         var receiptRef = check.TransferReceiptRef;
 
-        var lines = await _db.PartyBillingStatementLines
-            .Where(l => l.StatementId == statementId)
-            .ToListAsync(cancellationToken);
+        var lines = await _db.ListLinesForStatementAsync(statementId, cancellationToken);
         var lineKeys = lines.Select(l => l.WorkflowTaskId).ToList();
-        var ledgers = await _db.InspectorFeeLedgers
-            .Where(l => lineKeys.Contains(l.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
-        var visitCharges = await _db.CourtVisitFeeCharges
-            .Where(c => lineKeys.Contains(c.Id) && c.Status == CourtVisitFeeStatuses.Open)
-            .ToListAsync(cancellationToken);
+        var ledgers = await _db.ListLedgersByTaskIdsAsync(lineKeys, track: true, cancellationToken);
+        var visitCharges = await _db.ListOpenCourtVisitChargesByIdsAsync(lineKeys, cancellationToken);
 
         var now = _time.UtcNow();
         var paidAt = request.PaidAtUtc?.ToUniversalTime() ?? now;
@@ -541,7 +432,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             ledger.BillingStatus = InspectorFeeBillingStatus.Disbursed;
             ledger.DisbursementVoucher = voucher;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+            _db.AddTransition(PartyBillingStatementRules.Transition(
                 ledger,
                 fromStatus,
                 InspectorFeeBillingStatus.Disbursed,
@@ -578,9 +469,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (taskIds.Count == 0)
             return new DeferPartyBillingLinesResponseDto { Deferred = succeeded, Failed = failed };
 
-        var ledgers = await _db.InspectorFeeLedgers
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
+        var ledgers = await _db.ListLedgersByTaskIdsAsync(taskIds, track: true, cancellationToken);
 
         var statementIds = (await _lookup.GetWorkflowTaskKindsAsync(taskIds, cancellationToken))
             .Where(kv => StatementKinds.Contains(kv.Value))
@@ -615,7 +504,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
 
             ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+            _db.AddTransition(PartyBillingStatementRules.Transition(
                 ledger,
                 InspectorFeeBillingStatus.AtFinance,
                 InspectorFeeBillingStatus.Deferred,
@@ -655,17 +544,8 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
 
  // One query for open pipelines this month instead of AnyAsync per vendor.
         var vendorIds = vendorReady.Select(g => g.Key).ToList();
-        var openThisMonth = (await _db.PartyBillingStatements.AsNoTracking()
-                .Where(s =>
-                    s.AssigneeId != null
-                    && vendorIds.Contains(s.AssigneeId)
-                    && s.PayeeType == PartyBillingPayeeType.Vendor
-                    && s.CreatedAtUtc >= monthStart
-                    && (s.Status == PartyBillingStatementStatus.Draft
-                        || s.Status == PartyBillingStatementStatus.Issued
-                        || s.Status == PartyBillingStatementStatus.InvoiceReceived))
-                .Select(s => s.AssigneeId!)
-                .ToListAsync(cancellationToken))
+        var openThisMonth = (await _db.ListVendorsWithOpenStatementsAsync(
+                vendorIds, monthStart, cancellationToken))
             .ToHashSet(StringComparer.Ordinal);
 
         foreach (var group in vendorReady)
@@ -712,8 +592,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
         var (cancelError, reason) = PartyBillingStatementRules.ValidateCancel(
@@ -723,13 +602,9 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         if (cancelError is not null)
             return (null, cancelError);
 
-        var lines = await _db.PartyBillingStatementLines
-            .Where(l => l.StatementId == statementId)
-            .ToListAsync(cancellationToken);
+        var lines = await _db.ListLinesForStatementAsync(statementId, cancellationToken);
         var taskIds = lines.Select(l => l.WorkflowTaskId).ToList();
-        var ledgers = await _db.InspectorFeeLedgers
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
+        var ledgers = await _db.ListLedgersByTaskIdsAsync(taskIds, track: true, cancellationToken);
 
         var now = _time.UtcNow();
         statement.Status = PartyBillingStatementStatus.Cancelled;
@@ -743,7 +618,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
             ledger.PartyBillingStatementId = null;
             ledger.UpdatedAtUtc = now;
-            _db.InspectorFeeTransitions.Add(PartyBillingStatementRules.Transition(
+            _db.AddTransition(PartyBillingStatementRules.Transition(
                 ledger,
                 from,
                 InspectorFeeBillingStatus.AtFinance,
@@ -762,12 +637,9 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         CancellationToken cancellationToken)
     {
         var taskIds = lines.Select(l => l.WorkflowTaskId).Distinct().ToList();
-        var ledgerRows = await _db.InspectorFeeLedgers.AsNoTracking()
-            .Where(l => taskIds.Contains(l.WorkflowTaskId))
-            .ToListAsync(cancellationToken);
-        var chargeRows = await _db.CourtVisitFeeCharges.AsNoTracking()
-            .Where(c => taskIds.Contains(c.Id))
-            .ToListAsync(cancellationToken);
+        var ledgerRows = await _db.ListLedgersByTaskIdsAsync(taskIds, track: false, cancellationToken);
+        var chargeRows = await _db.ListCourtVisitChargesByIdsAsync(
+            taskIds, track: false, cancellationToken);
 
         var propertyIds = ledgerRows
             .Where(l => l.PropertyId.HasValue)
@@ -801,11 +673,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         string actorUserId,
         CancellationToken cancellationToken)
     {
-        var alreadyLined = await _db.PartyBillingStatementLines.AsNoTracking()
-            .Where(l => chargeIds.Contains(l.WorkflowTaskId))
-            .Select(l => l.WorkflowTaskId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        var alreadyLined = await _db.ListClaimedLineKeysAsync(chargeIds, cancellationToken);
         var (selectionError, assigneeId) =
             PartyBillingStatementRules.ValidateCourtVisitSelection(charges, alreadyLined);
         if (selectionError is not null)
@@ -843,7 +711,7 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         foreach (var charge in charges)
             charge.UpdatedAtUtc = now;
 
-        _db.PartyBillingStatements.Add(new PartyBillingStatement
+        _db.AddStatement(new PartyBillingStatement
         {
             Id = statementId,
             ReferenceNumber = reference,

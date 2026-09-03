@@ -5,7 +5,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Rules;
 
 internal static class PoEnfazWorkStatusRules
 {

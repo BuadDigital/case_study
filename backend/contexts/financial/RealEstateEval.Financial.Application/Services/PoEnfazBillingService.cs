@@ -1,33 +1,39 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
-using RealEstateEval.Financial.Infrastructure.Data.Contexts;
-using RealEstateEval.Operations.Application.Abstractions;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Services;
 
+/// <summary>
+/// Enfaz PO billing use case: readiness, revenue lines, invoice issue and collection, aging,
+/// finance flags, and follow-ups. Persistence is <see cref="IPoEnfazBillingRepository"/>, so
+/// this class never opens EF.
+/// </summary>
 public sealed class PoEnfazBillingService : IPoEnfazBillingService
 {
     private const int MaxOrderRows = 500;
     private const int MaxTrackingRows = 2000;
-    private readonly FinancialDbContext _db;
+    private const int MaxFollowupRows = 100;
+    private readonly IPoEnfazBillingRepository _db;
     private readonly ICaseStudyLookup _lookup;
-    private readonly IKeyEntitlementLookup _keyEntitlements;
+    private readonly IPropertyKeyEntitlementLookup _keyEntitlements;
+    private readonly IEnfazInvoicePdfRenderer _pdf;
     private readonly IAuditLogWriter _audit;
     private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
     public PoEnfazBillingService(
-        FinancialDbContext db,
+        IPoEnfazBillingRepository db,
         ICaseStudyLookup lookup,
-        IKeyEntitlementLookup keyEntitlements,
+        IPropertyKeyEntitlementLookup keyEntitlements,
+        IEnfazInvoicePdfRenderer pdf,
         IAuditLogWriter audit,
         TimeProvider? time = null)
     {
@@ -36,6 +42,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         _db = db;
         _lookup = lookup;
         _keyEntitlements = keyEntitlements;
+        _pdf = pdf;
         _audit = audit;
     }
 
@@ -95,9 +102,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             .ToList();
 
         var propertyIds = order.Properties.Select(p => p.Id).ToList();
-        var existing = await _db.PoEnfazRevenueLines.AsNoTracking()
-            .Where(x => x.PoNumber == normalized && propertyIds.Contains(x.PropertyId))
-            .ToDictionaryAsync(x => x.PropertyId, cancellationToken);
+        var existing = (await _db.ListRevenueLinesAsync(
+                normalized, propertyIds, track: false, cancellationToken))
+            .ToDictionary(x => x.PropertyId);
 
         var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
@@ -146,8 +153,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             })
             .ToList();
 
-        var invoice = await _db.PoEnfazInvoices.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.PoNumber == normalized, cancellationToken);
+        var invoice = await _db.FindInvoiceAsync(normalized, track: false, cancellationToken);
 
         return PoEnfazBillingDtoBuilder.BuildDto(
             normalized,
@@ -175,9 +181,9 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var validPropertyIds = order.Properties.Select(p => p.Id).ToHashSet();
         var now = _time.UtcNow();
 
-        var existingRows = await _db.PoEnfazRevenueLines
-            .Where(x => x.PoNumber == normalized && validPropertyIds.Contains(x.PropertyId))
-            .ToDictionaryAsync(x => x.PropertyId, cancellationToken);
+        var existingRows = (await _db.ListRevenueLinesAsync(
+                normalized, validPropertyIds.ToList(), track: true, cancellationToken))
+            .ToDictionary(x => x.PropertyId);
 
         foreach (var input in request.Lines)
         {
@@ -194,7 +200,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                     PoNumber = normalized,
                     PropertyId = propertyId,
                 };
-                _db.PoEnfazRevenueLines.Add(row);
+                _db.AddRevenueLine(row);
                 existingRows[propertyId] = row;
             }
 
@@ -236,10 +242,8 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         Guid propertyId,
         CancellationToken cancellationToken = default)
     {
-        var row = await _db.PoEnfazRevenueLines.AsNoTracking()
-            .FirstOrDefaultAsync(
-                x => x.PoNumber == poNumber.Trim() && x.PropertyId == propertyId,
-                cancellationToken);
+        var row = await _db.FindRevenueLineAsync(
+            poNumber.Trim(), propertyId, cancellationToken);
 
         if (row is null || !row.IncludedInBilling || row.TotalFeeSar <= 0)
         {
@@ -269,29 +273,15 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         if (orders.Count == 0) return [];
 
         var poNumbers = orders.Select(o => o.PoNumber.Trim()).ToList();
-        var enfazLines = await _db.PoEnfazRevenueLines.AsNoTracking()
-            .Where(x => poNumbers.Contains(x.PoNumber))
-            .ToListAsync(cancellationToken);
+        var enfazLines = await _db.ListRevenueLinesForPosAsync(poNumbers, cancellationToken);
         var enfazByKey = enfazLines.ToDictionary(
             x => (x.PoNumber.Trim(), x.PropertyId),
             x => x);
 
-        var invoicesByPo = await _db.PoEnfazInvoices.AsNoTracking()
-            .Where(x => poNumbers.Contains(x.PoNumber))
-            .ToDictionaryAsync(x => x.PoNumber.Trim(), StringComparer.Ordinal, cancellationToken);
+        var invoicesByPo = await _db.ListInvoicesByPoAsync(poNumbers, cancellationToken);
 
-        var flags = await _db.PoEnfazFinanceFlags.AsNoTracking()
-            .Where(f => poNumbers.Contains(f.PoNumber))
-            .ToListAsync(cancellationToken);
-        var followupCounts = await _db.PoEnfazFollowups.AsNoTracking()
-            .Where(f => poNumbers.Contains(f.PoNumber))
-            .GroupBy(f => f.PoNumber)
-            .Select(g => new { PoNumber = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
-        var followupCountByPo = followupCounts.ToDictionary(
-            x => x.PoNumber.Trim(),
-            x => x.Count,
-            StringComparer.Ordinal);
+        var flags = await _db.ListFinanceFlagsAsync(poNumbers, cancellationToken);
+        var followupCountByPo = await _db.CountFollowupsByPoAsync(poNumbers, cancellationToken);
 
         var allPropertyIds = orders.SelectMany(o => o.Properties.Select(p => p.Id)).ToList();
         var allTasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync(poNumbers, cancellationToken))
@@ -387,11 +377,10 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
                 .SelectMany(l => l.KeyAttachmentIds)
                 .Concat(billing.AttachmentIds)
                 .Distinct(StringComparer.OrdinalIgnoreCase));
-        var existing = await _db.PoEnfazInvoices
-            .FirstOrDefaultAsync(x => x.PoNumber == normalized, cancellationToken);
+        var existing = await _db.FindInvoiceAsync(normalized, track: true, cancellationToken);
         if (existing is null)
         {
-            _db.PoEnfazInvoices.Add(new PoEnfazInvoice
+            _db.AddInvoice(new PoEnfazInvoice
             {
                 PoNumber = normalized,
                 InvoiceNumber = invoiceNumber,
@@ -428,8 +417,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
-        var invoice = await _db.PoEnfazInvoices
-            .FirstOrDefaultAsync(x => x.PoNumber == normalized, cancellationToken);
+        var invoice = await _db.FindInvoiceAsync(normalized, track: true, cancellationToken);
         if (invoice is null)
             return (null, "لا توجد فاتورة صادرة لهذا أمر العمل.");
 
@@ -452,7 +440,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             ? PoEnfazInvoiceStatus.Collected
             : PoEnfazInvoiceStatus.PartiallyCollected;
 
-        _db.AuditLogs.Add(_audit.Create(
+        _db.AddAuditLog(_audit.Create(
             string.IsNullOrWhiteSpace(actorUserId) ? "system" : actorUserId,
             "ENFAZ_INVOICE_COLLECTED",
             "po_enfaz_invoice",
@@ -473,12 +461,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         CancellationToken cancellationToken = default)
     {
         var asOf = _time.UtcNow();
-        var invoices = await _db.PoEnfazInvoices.AsNoTracking()
-            .Where(i => i.Status != PoEnfazInvoiceStatus.Collected
-                && i.CollectedAmountSar + 0.009m < i.TotalSar)
-            .OrderBy(i => i.IssuedAtUtc)
-            .ThenBy(i => i.PoNumber)
-            .ToListAsync(cancellationToken);
+        var invoices = await _db.ListOutstandingInvoicesAsync(cancellationToken);
 
         var rows = new List<EnfazAgingInvoiceRowDto>(invoices.Count);
         foreach (var invoice in invoices)
@@ -543,7 +526,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         if (billing is null || string.IsNullOrWhiteSpace(billing.InvoiceNumber))
             return null;
 
-        return EnfazInvoicePdfGenerator.Generate(billing);
+        return _pdf.Render(billing);
     }
 
     private async Task<Dictionary<Guid, (string Status, string Label)>> LoadPropertyWorkStatusesAsync(
@@ -589,12 +572,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         var po = poNumber.Trim();
         if (string.IsNullOrEmpty(po)) return [];
 
-        var rows = await _db.PoEnfazFollowups.AsNoTracking()
-            .Where(f => f.PoNumber == po)
-            .OrderByDescending(f => f.FollowedAtUtc)
-            .ThenByDescending(f => f.CreatedAtUtc)
-            .Take(100)
-            .ToListAsync(cancellationToken);
+        var rows = await _db.ListFollowupsAsync(po, MaxFollowupRows, cancellationToken);
 
         return rows.Select(PoEnfazFollowupRules.ToFollowupDto).ToList();
     }
@@ -625,7 +603,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             CreatedByUserId = actorUserId ?? "",
             CreatedAtUtc = now,
         };
-        _db.PoEnfazFollowups.Add(entity);
+        _db.AddFollowup(entity);
         await _db.SaveChangesAsync(cancellationToken);
         return (PoEnfazFollowupRules.ToFollowupDto(entity), null);
     }
@@ -652,9 +630,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             && Guid.TryParse(request.PropertyId.Trim(), out var parsed))
             propertyId = parsed;
 
-        var existing = await _db.PoEnfazFinanceFlags
-            .Where(f => f.PoNumber == po)
-            .ToListAsync(cancellationToken);
+        var existing = await _db.ListFinanceFlagsForPoAsync(po, cancellationToken);
 
         var match = existing.FirstOrDefault(f => f.PropertyId == propertyId)
             ?? existing.FirstOrDefault(f => propertyId is null && f.PropertyId is null);
@@ -667,7 +643,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
 
         if (match is null)
         {
-            _db.PoEnfazFinanceFlags.Add(new PoEnfazFinanceFlag
+            _db.AddFinanceFlag(new PoEnfazFinanceFlag
             {
                 Id = Guid.NewGuid(),
                 PoNumber = po,
@@ -704,8 +680,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             && Guid.TryParse(propertyId.Trim(), out var parsed))
             propGuid = parsed;
 
-        var q = _db.PoEnfazFinanceFlags.Where(f => f.PoNumber == po);
-        var list = await q.ToListAsync(cancellationToken);
+        var list = await _db.ListFinanceFlagsForPoAsync(po, cancellationToken);
         var toRemove = list.Where(f =>
             propGuid is null
                 ? f.PropertyId is null
@@ -714,7 +689,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
         if (toRemove.Count == 0)
             return (true, null);
 
-        _db.PoEnfazFinanceFlags.RemoveRange(toRemove);
+        _db.RemoveFinanceFlags(toRemove);
         await _db.SaveChangesAsync(cancellationToken);
         return (true, null);
     }

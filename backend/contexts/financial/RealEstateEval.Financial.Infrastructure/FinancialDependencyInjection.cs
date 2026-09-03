@@ -50,7 +50,15 @@ public static class FinancialDependencyInjection
         services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
         services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
         services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();
+        services.AddScoped<IPoEnfazBillingRepository, PoEnfazBillingRepository>();
+        services.AddScoped<IPropertyKeyEntitlementLookup, PropertyKeyEntitlementLookup>();
+        services.AddSingleton<IEnfazInvoicePdfRenderer, EnfazInvoicePdfRenderer>();
         services.AddScoped<IPoEnfazBillingService, PoEnfazBillingService>();
+        services.AddScoped<IPartyBillingStatementRepository, PartyBillingStatementRepository>();
+        services.AddScoped<IStatementAttachmentLookup, StatementAttachmentLookup>();
+ // The Financial host has no Operations DbContext: the visit-fee compensation before the
+ // ready-lines read goes through the operations-task HTTP client registered above.
+        services.AddScoped<ICourtVisitFeeBackfill, RemoteCourtVisitFeeBackfill>();
         services.AddScoped<IPartyBillingStatementService, PartyBillingStatementService>();
         services.AddHostedService<PartyBillingMonthVendorHostedService>();
         services.AddHostedService<InspectorFeeLedgerMaintenanceHostedService>();

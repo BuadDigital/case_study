@@ -7,6 +7,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Financial.Application.Services;
+using RealEstateEval.Financial.Infrastructure.Persistence;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.CaseStudy.Domain;
@@ -420,14 +421,14 @@ public class GeneralizedBillingStatementTests
             new IdentityDirectory(db.Identity),
             TestPricing.Create(db.Financial));
         return new(
-            db.Financial,
+            new PartyBillingStatementRepository(db.Financial),
             new CaseStudyLookup(db.CaseStudy),
-            new CaseStudyCommands(db.CaseStudy),
-            attachments,
+            new StatementAttachmentLookup(attachments),
             new NullNotificationService(),
             TestInspectorFeeServiceFactory.CreateRecipients(db.CaseStudy),
-            visitFees,
-            NullLogger<PartyBillingStatementService>.Instance);
+            NullLogger<PartyBillingStatementService>.Instance,
+            time: null,
+            visitFees);
     }
 
     private static TestDatabases.ContextSet CreateDb() =>

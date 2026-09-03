@@ -428,10 +428,7 @@
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/KeyReceiptFeeChargeService.cs": [
       "financial"
     ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyBillingStatementService.VendorInvoice.cs": [
-      "financial"
-    ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PartyBillingStatementService.cs": [
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/PartyBillingStatementRepository.cs": [
       "case_study",
       "financial"
     ],
@@ -439,7 +436,7 @@
       "audit",
       "financial"
     ],
-    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazBillingService.cs": [
+    "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/PoEnfazBillingRepository.cs": [
       "audit",
       "financial"
     ],

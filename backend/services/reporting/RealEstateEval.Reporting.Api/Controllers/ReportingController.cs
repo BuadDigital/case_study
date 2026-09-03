@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Reporting.Api.Services;
 using RealEstateEval.Shared.Web.Authorization;

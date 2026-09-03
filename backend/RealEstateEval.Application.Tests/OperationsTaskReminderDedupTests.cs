@@ -1,3 +1,4 @@
+using RealEstateEval.Operations.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;

@@ -1,7 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Financial.Domain;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Rules;
 
 internal static class PoEnfazFollowupRules
 {

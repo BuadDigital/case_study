@@ -1,3 +1,4 @@
+using RealEstateEval.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
-using RealEstateEval.Application.Rules;
 
-namespace RealEstateEval.Infrastructure.Services;
+namespace RealEstateEval.Application.Rules;
 
 /// <summary>
 /// Maps stored actor labels that may be user ids or the English "system" token

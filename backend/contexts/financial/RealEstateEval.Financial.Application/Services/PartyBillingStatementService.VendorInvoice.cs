@@ -1,10 +1,9 @@
-using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Application.Rules;
 
-namespace RealEstateEval.Financial.Infrastructure.Services;
+namespace RealEstateEval.Financial.Application.Services;
 
 public partial class PartyBillingStatementService
 {
@@ -14,8 +13,7 @@ public partial class PartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
         if (statement.PayeeType != PartyBillingPayeeType.Vendor)
@@ -29,7 +27,7 @@ public partial class PartyBillingStatementService
         if (!Guid.TryParse(request.AttachmentId, out var attachmentId))
             return (null, "مرفق PDF الفاتورة مطلوب.");
 
-        var exists = await _attachments.ExistsAsync(attachmentId, actor: null, cancellationToken);
+        var exists = await _attachments.ExistsAsync(attachmentId, cancellationToken);
         if (!exists)
             return (null, "مرفق الفاتورة غير موجود.");
 
@@ -78,8 +76,7 @@ public partial class PartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
         if (statement.PayeeType != PartyBillingPayeeType.Vendor)
@@ -102,8 +99,7 @@ public partial class PartyBillingStatementService
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var statement = await _db.PartyBillingStatements
-            .FirstOrDefaultAsync(s => s.Id == statementId, cancellationToken);
+        var statement = await _db.FindStatementAsync(statementId, track: true, cancellationToken);
         if (statement is null)
             return (null, "مسير الصرف غير موجود.");
         if (statement.PayeeType != PartyBillingPayeeType.Vendor)

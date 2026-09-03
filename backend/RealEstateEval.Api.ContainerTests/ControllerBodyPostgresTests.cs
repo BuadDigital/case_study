@@ -33,6 +33,7 @@ using RealEstateEval.Failures.Application.Contracts;
 using RealEstateEval.Attachments.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Services;
