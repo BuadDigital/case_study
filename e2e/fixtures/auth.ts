@@ -1,7 +1,11 @@
 import { expect, type Page } from "@playwright/test";
 
 const AUTH_STORAGE_KEY = "auth";
+/** Server-side auth gate cookie — mirrors packages/auth-client/src/session.ts. */
+const AUTH_COOKIE_NAME = "ree-auth";
 const API_HOST = process.env.API_HOST ?? "127.0.0.1";
+const SHELL_BASE = process.env.SHELL_BASE_URL ?? "http://127.0.0.1:3000";
+export const API_BASE = `http://${API_HOST}:5160`;
 
 /** Prototype users used in role-based module smoke tests. */
 export const RELEASE_USERS = {
@@ -14,7 +18,7 @@ export const RELEASE_USERS = {
   financialOfficer: "eman",
 } as const;
 
-const RELEASE_USER_EMAILS: Record<string, string> = {
+export const RELEASE_USER_EMAILS: Record<string, string> = {
   [RELEASE_USERS.cdo]: "s.salhy@gmail.com",
   [RELEASE_USERS.caseSpecialist]: "osama@ejadah.dev",
   [RELEASE_USERS.fieldInspector]: "ahmed@ejadah.dev",
@@ -24,7 +28,16 @@ const RELEASE_USER_EMAILS: Record<string, string> = {
   [RELEASE_USERS.financialOfficer]: "eman@ejadah.dev",
 };
 
-export const PASSWORD = "user1234";
+/** Seeded Saudi mobiles (9 digits after +966) — matches DataSeeder DemoMobileByLogin. */
+export const RELEASE_USER_PHONES: Record<string, string> = {
+  [RELEASE_USERS.cdo]: "500000001",
+  [RELEASE_USERS.caseSpecialist]: "500000004",
+  [RELEASE_USERS.fieldInspector]: "500000008",
+  [RELEASE_USERS.appraiser]: "500000007",
+  [RELEASE_USERS.governmentReviewer]: "500000005",
+  [RELEASE_USERS.engineeringOffice]: "500000011",
+  [RELEASE_USERS.financialOfficer]: "500000010",
+};
 
 type LoginResponse = {
   token: string;
@@ -46,13 +59,23 @@ function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
 }
 
 async function fetchLoginSession(username: string): Promise<LoginResponse> {
-  const email = RELEASE_USER_EMAILS[username];
-  if (!email) throw new Error(`No demo email mapped for "${username}"`);
-  const res = await fetch(`http://${API_HOST}:5160/api/auth/login`, {
+  const phone = RELEASE_USER_PHONES[username];
+  if (!phone) throw new Error(`No demo phone mapped for "${username}"`);
+  // `/api/auth/login` is the passwordless target shape; a gateway still running
+  // the password build rejects it, so fall back to `/api/auth/login-username`,
+  // which has always been passwordless. Works on either build.
+  let res = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: email, password: PASSWORD }),
+    body: JSON.stringify({ username: phone }),
   });
+  if (!res.ok) {
+    res = await fetch(`${API_BASE}/api/auth/login-username`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: phone }),
+    });
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
@@ -72,12 +95,24 @@ async function seedBrowserSession(
   session: LoginResponse,
 ): Promise<void> {
   const payload = JSON.stringify(session);
+  // getAuthSession() reads localStorage FIRST and only falls back to
+  // sessionStorage, so a journey that switches persona mid-test must overwrite
+  // both — otherwise the previous persona's localStorage session wins.
   await page.addInitScript(
     ([key, value]) => {
+      localStorage.setItem(key, value);
       sessionStorage.setItem(key, value);
     },
     [AUTH_STORAGE_KEY, payload] as const,
   );
+  // apps/shell/src/proxy.ts (Next 16 renamed middleware.ts → proxy.ts) redirects
+  // every non-prefetch navigation that carries no `ree-auth` cookie back to
+  // /login, which silently turns a deep link into the persona's landing page.
+  // sessionStorage alone is not enough — the cookie is what the server gate reads.
+  const { hostname } = new URL(SHELL_BASE);
+  await page.context().addCookies([
+    { name: AUTH_COOKIE_NAME, value: "1", domain: hostname, path: "/" },
+  ]);
 }
 
 /** Post-login landing per release test user (matches server page permissions). */
@@ -101,8 +136,10 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
     title: "المهام",
   },
   [RELEASE_USERS.financialOfficer]: {
+    // The finance workspace overrides the shell title with its current area,
+    // and it opens on «مهامي» — PAGE_TITLES.financial is never rendered here.
     path: "/financial",
-    title: "التقارير المالية",
+    title: "مهامي",
   },
 };
 
@@ -122,10 +159,9 @@ export async function loginAs(page: Page, username: string) {
 export async function loginViaUi(page: Page, username: string) {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "متابعة" })).toBeVisible();
-  const email = RELEASE_USER_EMAILS[username];
-  if (!email) throw new Error(`No demo email mapped for "${username}"`);
-  // Email mode is accepted in the identifier field until mobile login is wired.
-  await page.locator("#mobile").fill(email);
+  const phone = RELEASE_USER_PHONES[username];
+  if (!phone) throw new Error(`No demo phone mapped for "${username}"`);
+  await page.locator("#mobile").fill(phone);
   await page.locator("form").evaluate((form) => {
     (form as HTMLFormElement).requestSubmit();
   });
@@ -139,7 +175,7 @@ export async function loginViaUi(page: Page, username: string) {
   const [response] = await Promise.all([
     page.waitForResponse(
       (res) =>
-        res.url().includes("/api/auth/login-username") &&
+        res.url().includes("/api/auth/login") &&
         res.request().method() === "POST",
       { timeout: 60_000 },
     ),
@@ -210,7 +246,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "po", title: "أوامر العمل" },
   { id: "property-map", title: "خريطة العقارات" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
-  { id: "keys", title: "إدارة المفاتيح" },
+  { id: "keys", title: "محفظة المفاتيح" },
   { id: "failures", title: "إدارة التعذرات" },
   { id: "suspended-transactions", title: "المعاملات المعلقة" },
   { id: "valuation-requests", title: "طلبات التقييم" },
@@ -221,10 +257,10 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-survey", title: "الرفع المساحي" },
   { id: "system-fields-catalog", title: "قاموس الحقول المركزي" },
   { id: "system-screen-catalog", title: "دليل الشاشات" },
-  { id: "financial", title: "التقارير المالية" },
+  { id: "financial", title: "مهامي" },
   { id: "users", title: "المستخدمون" },
   { id: "fee-pricing", title: "التسعيرة" },
-  { id: "courts", title: "المحاكم و الدوائر" },
+  { id: "courts", title: "المحاكم والدوائر" },
   { id: "location-pending", title: "مراجعة المسميات" },
   { id: "failure-types", title: "أنواع التعذرات" },
   { id: "case-study-info-roles", title: "علاقة المستخدم بالمعلومة" },

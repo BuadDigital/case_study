@@ -175,17 +175,16 @@ public class HttpSecurityPipelineTests : IClassFixture<HardenedIdentityApiWebApp
     private static HttpRequestMessage LoginRequest() =>
         new(HttpMethod.Post, "/api/auth/login")
         {
-            Content = JsonContent.Create(new PasswordLoginRequest
+            Content = JsonContent.Create(new UsernameLoginRequest
             {
-                Username = "valid-user",
-                Password = "wrong-password",
+                Username = "missing-user",
             }),
         };
 
     private Task<HttpResponseMessage> PostLoginAsync(string clientIp) =>
         SendJsonAsync(
             "/api/auth/login",
-            new PasswordLoginRequest { Username = "valid-user", Password = "wrong-password" },
+            new UsernameLoginRequest { Username = "missing-user" },
             clientIp);
 
     private Task<HttpResponseMessage> PostRefreshAsync(string clientIp) =>
@@ -238,18 +237,18 @@ public sealed class HardenedIdentityApiWebApplicationFactory
         builder.UseSetting("RateLimiting:Auth:PermitLimit", "2");
         builder.UseSetting("RateLimiting:Global:PermitLimit", "500");
         builder.UseSetting("Cors:AllowedOrigins:0", AllowedOrigin);
+        builder.UseSetting("Auth:EnableDevLogin", "true");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Redis:Enabled"] = "false",
+                ["Auth:EnableDevLogin"] = "true",
             });
         });
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<IPasswordAuthenticationService>();
-            services.AddSingleton<IPasswordAuthenticationService, StubPasswordAuthenticationService>();
             services.RemoveAll<IAuthSessionService>();
             services.AddSingleton<IAuthSessionService, StubAuthSessionService>();
         });

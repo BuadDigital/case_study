@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import {
-  PASSWORD,
   loginAs,
   MODULE_PAGES,
+  RELEASE_USER_PHONES,
   RELEASE_USERS,
   pagePath,
   waitForPageTitle,
@@ -62,7 +62,7 @@ test.describe("Financial officer", () => {
   test("financial reports page loads", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.financialOfficer);
     await page.goto("/financial", { waitUntil: "commit" });
-    await waitForPageTitle(page, "التقارير المالية");
+    await waitForPageTitle(page, "مهامي");
   });
 });
 
@@ -80,8 +80,7 @@ test.describe("API field inspection reporting", () => {
   test("summary endpoint returns counts", async ({ request }) => {
     const login = await request.post("http://127.0.0.1:5160/api/auth/login", {
       data: {
-        username: "s.salhy@gmail.com",
-          password: PASSWORD,
+        username: RELEASE_USER_PHONES[RELEASE_USERS.cdo],
       },
     });
     expect(login.ok()).toBeTruthy();
@@ -101,8 +100,7 @@ test.describe("API field inspection reporting", () => {
   }) => {
     const login = await request.post("http://127.0.0.1:5160/api/auth/login", {
       data: {
-        username: "s.salhy@gmail.com",
-          password: PASSWORD,
+        username: RELEASE_USER_PHONES[RELEASE_USERS.cdo],
       },
     });
     const { token } = await login.json();

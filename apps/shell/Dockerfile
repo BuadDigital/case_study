@@ -81,6 +81,10 @@ COPY apps/shell/ ./apps/shell/
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# NEXT_PUBLIC_* is inlined at `next build` time — must be present here, not only at runtime.
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
 RUN npm run build -w @platform/shell
 
 # ── Stage 3: Production runner ──────────────────────────────────────────────────

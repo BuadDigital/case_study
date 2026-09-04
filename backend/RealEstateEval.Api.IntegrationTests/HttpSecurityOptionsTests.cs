@@ -22,7 +22,6 @@ public class RateLimitingOptionsTests
         Assert.Equal(60, options.Auth.WindowSeconds);
         Assert.Contains("/api/auth/login", options.AuthPathPrefixes);
         Assert.Contains("/api/auth/refresh", options.AuthPathPrefixes);
-        Assert.Contains("/api/auth/login-username", options.AuthPathPrefixes);
         Assert.Contains("/api/auth/dev-login-users", options.AuthPathPrefixes);
         Assert.Contains("/health", options.ExemptPathPrefixes);
         Assert.Contains("/ready", options.ExemptPathPrefixes);

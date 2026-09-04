@@ -34,7 +34,6 @@ public sealed class RateLimitingOptions
     private static readonly string[] DefaultAuthPathPrefixes =
     [
         "/api/auth/login",
-        "/api/auth/login-username",
         "/api/auth/refresh",
         "/api/auth/dev-login-users",
         "/api/auth/activate",
