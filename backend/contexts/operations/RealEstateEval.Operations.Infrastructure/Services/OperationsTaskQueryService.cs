@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -13,7 +13,7 @@ using RealEstateEval.Operations.Application.Rules;
 using RealEstateEval.Infrastructure.Data;
 using Microsoft.Extensions.Options;
 
-namespace RealEstateEval.Operations.Infrastructure.Persistence;
+namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 {
@@ -166,7 +166,14 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 
         var search = OperationsTaskListQueryRules.NormalizeSearch(query.Q);
         if (search is not null)
-            rows = WhereMatchesSearch(rows, search);
+        {
+            rows = rows.Where(t =>
+                t.Title.Contains(search)
+                || t.DisplayId.Contains(search)
+                || t.AssigneeName.Contains(search)
+                || (t.PoNumber != null && t.PoNumber.Contains(search))
+                || (t.Reference != null && t.Reference.Contains(search)));
+        }
 
         if (!OperationsTaskLifecycleRules.IsManager(actorRole))
         {
@@ -181,48 +188,6 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         }
 
         return rows;
-    }
-
- /// <summary>
- /// Free-text search, including deed numbers. <c>DeedsJson</c> is jsonb, so on PostgreSQL the deed
- /// half is two index-backed predicates: <c>@&gt;</c> containment for an exact deed number
- /// (<c>IX_OperationsTasks_DeedsJson</c>, <c>jsonb_path_ops</c>) and a trigram <c>LIKE</c> over the
- /// generated <c>DeedsText</c> projection for a partial one
- /// (<c>IX_OperationsTasks_DeedsText_Trgm</c>, <c>gin_trgm_ops</c>). Neither operator exists on the
- /// in-memory provider, which has no jsonb and no computed column, so it takes the plain LINQ
- /// substring over the raw column instead — same rows, no index. See
- /// docs/architecture/pagination-contract.md §3.
- /// </summary>
-    private IQueryable<OperationsTask> WhereMatchesSearch(
-        IQueryable<OperationsTask> rows,
-        string search)
-    {
-        if (!_ops.Database.IsNpgsql())
-        {
-            return rows.Where(t =>
-                t.Title.Contains(search)
-                || t.DisplayId.Contains(search)
-                || t.AssigneeName.Contains(search)
-                || (t.PoNumber != null && t.PoNumber.Contains(search))
-                || (t.Reference != null && t.Reference.Contains(search))
-                || (t.DeedsJson != null && t.DeedsJson.Contains(search)));
-        }
-
-        var deedArray = OperationsTaskDeedSearch.ContainmentJson(search);
-        var deedLike = OperationsTaskDeedSearch.SubstringPattern(search);
-
-        return rows.Where(t =>
-            t.Title.Contains(search)
-            || t.DisplayId.Contains(search)
-            || t.AssigneeName.Contains(search)
-            || (t.PoNumber != null && t.PoNumber.Contains(search))
-            || (t.Reference != null && t.Reference.Contains(search))
-            || (t.DeedsJson != null
-                && (EF.Functions.JsonContains(t.DeedsJson, deedArray)
-                    || EF.Functions.Like(
-                        EF.Property<string>(t, OperationsModel.OperationsTaskDeedsTextColumn),
-                        deedLike,
-                        OperationsTaskDeedSearch.LikeEscape))));
     }
 
  /// <summary>Allow-listed sort key plus a stable tiebreaker so pages never overlap.</summary>
@@ -251,7 +216,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
                     : rows.OrderBy(t => t.UpdatedAtUtc);
                 break;
             case OperationsTaskListSortKey.Priority:
- // High before medium before low — the stored string would sort alphabetically.
+ // High before medium before low ظ¤ the stored string would sort alphabetically.
                 ordered = descending
                     ? rows.OrderByDescending(t => t.Priority == OperationsTaskPriority.High
                         ? 0
