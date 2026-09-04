@@ -2,7 +2,12 @@ import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
-import { fetchAllListPages } from "./pagination";
+import {
+  fetchAllListPages,
+  fetchListPage,
+  type ListPageQuery,
+  type PagedResultDto,
+} from "./pagination";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 
 export type TaskDistributionDraftDto = {
@@ -62,12 +67,72 @@ async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** Allowed `sort` keys — pagination-contract §2. Unknown keys fall back to `created`. */
+export type WorkflowTaskListSort =
+  | "created"
+  | "updated"
+  | "po"
+  | "poReceived"
+  | "poCreated";
+
+/** `GET /api/workflow-tasks` query — pagination-contract §2. */
+export type WorkflowTaskListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: WorkflowTaskListSort;
+  /** CSV of task kinds; unrecognised tokens are dropped by the server. */
+  kind?: string | readonly string[];
+  /** CSV of `open` | `completed` | `cancelled` | `blocked`. */
+  status?: string | readonly string[];
+  /** CSV of `enfath` | `bourse` | `distribution` | `case-study` | `obstruction` | `done`. */
+  phase?: string | readonly string[];
+  assigneeId?: string;
+  assigneeRole?: string;
+  poNumber?: string;
+  assignmentType?: string;
+};
+
+/** Every filter of the list query except the page window. */
+export type WorkflowTaskListFilters = Omit<
+  WorkflowTaskListQuery,
+  "page" | "pageSize"
+>;
+
+function workflowTaskListParams(query?: WorkflowTaskListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    kind: query?.kind,
+    status: query?.status,
+    phase: query?.phase,
+    assigneeId: query?.assigneeId,
+    assigneeRole: query?.assigneeRole,
+    poNumber: query?.poNumber,
+    assignmentType: query?.assignmentType,
+  };
+}
+
 export async function listWorkflowTasks(
   config: WorkOrdersApiConfig,
+  query?: WorkflowTaskListFilters,
 ): Promise<ApiOk<WorkflowTaskDto[]> | ApiErr> {
   return fetchAllListPages<WorkflowTaskDto>(
     { ...config, baseUrl: config.baseUrl ?? getApiBase() },
     "/api/workflow-tasks",
+    { params: workflowTaskListParams(query) },
+  );
+}
+
+/** One server page of the workflow-task list — filters, sort and paging server-side. */
+export async function listWorkflowTasksPage(
+  config: WorkOrdersApiConfig,
+  query?: WorkflowTaskListQuery,
+): Promise<ApiOk<PagedResultDto<WorkflowTaskDto>> | ApiErr> {
+  return fetchListPage<WorkflowTaskDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/workflow-tasks",
+    workflowTaskListParams(query),
   );
 }
 

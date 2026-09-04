@@ -229,6 +229,8 @@ public sealed class CaseStudyDispatchPostgresTests : IAsyncLifetime
         var request = new HttpRequestMessage(method, path);
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", ContainerAuthHandler.Token);
+        // Owner-to-owner dispatch routes are gated by RequireUpstreamDispatch; UpstreamJson always sends this.
+        request.Headers.TryAddWithoutValidation("X-REE-Upstream", "1");
         return request;
     }
 

@@ -297,3 +297,60 @@ export function filterPoListRows(
   }
   return out;
 }
+
+/**
+ * Server page → display rows. The server already applied `q` over its own
+ * columns (`docs/architecture/pagination-contract.md` §1), so nothing is
+ * dropped here: this only expands a **deed query** into one row per matching
+ * deed and re-attaches the per-row deed metadata the table renders.
+ */
+export function buildPoListPageDisplay(
+  rows: PoRow[],
+  query: string,
+  deedIndex: PoDeedIndexEntry[],
+): PoListDisplayItem[] {
+  const q = query.trim();
+  if (!q) {
+    return rows.map((row) => ({
+      view: "po" as const,
+      item: { row, match: null, deeds: deedsForPo(row.id, deedIndex) },
+    }));
+  }
+
+  const mode = classifyPoListSearch(q);
+  if (mode === "deed") return buildPoListDisplay(rows, q, deedIndex);
+
+  const qLower = q.toLowerCase();
+  const qNorm = normalizeDeedQuery(q);
+  const qDigits = digitsOnly(q);
+  return rows.map((row) => {
+    const deeds = deedsForPo(row.id, deedIndex);
+    if (row.id.toLowerCase().includes(qLower)) {
+      return {
+        view: "po" as const,
+        item: { row, match: { mode: "po" as const }, deeds },
+      };
+    }
+    const hit = bestDeedMatch(row.id, deedIndex, qNorm, qDigits);
+    const match: PoListSearchMatch = hit
+      ? {
+          mode: "deed",
+          deedNumber: hit.deedNumber,
+          propertyId: hit.propertyId,
+          propertyArea: hit.area,
+        }
+      : { mode: "text" };
+    return { view: "po" as const, item: { row, match, deeds } };
+  });
+}
+
+/**
+ * The text the server should search for. A deed query is folded first
+ * (Arabic digits, `صك` / `رقم الصك` prefixes, separators) because the server
+ * `q` is a plain substring match; the exact deed rules stay on the client.
+ */
+export function poListServerSearchTerm(query: string): string {
+  const q = query.trim();
+  if (!q) return "";
+  return classifyPoListSearch(q) === "deed" ? normalizeDeedQuery(q) : q;
+}

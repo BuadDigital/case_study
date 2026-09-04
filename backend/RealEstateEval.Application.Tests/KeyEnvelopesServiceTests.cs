@@ -3,6 +3,8 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Services;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.CaseStudy.Domain;

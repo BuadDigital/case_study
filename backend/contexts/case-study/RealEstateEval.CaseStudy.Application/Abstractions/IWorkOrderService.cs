@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
@@ -12,6 +13,14 @@ public interface IWorkOrderService
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+    Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
         PermissionsDto? actor = null,

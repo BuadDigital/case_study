@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
@@ -13,6 +14,18 @@ public interface IWorkOrderQuery
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
+    Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>Filtered / sorted page. Visibility is applied before the count.</summary>
+    Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(

@@ -38,7 +38,7 @@ import {
 } from "@platform/app-shared/app-data/party-submission-api";
 import {
   usePoRecordsQuery,
-  useWorkflowTasksQuery,
+  useWorkflowTasksFilteredQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { buildActiveQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
 import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
@@ -81,6 +81,7 @@ import {
   buildListedQueue,
   buildPoByNumber,
   buildQueueFilterOptions,
+  buildQueueServerQuery,
   filterAppraisalRowMeta,
   resolveQueueLayoutFlags,
   type ActiveQueueApi,
@@ -135,26 +136,12 @@ export function useActiveTransactionQueueWorkflow({
     return map;
   }, [inspectionWorkspaces]);
   const {
-    data: tasks,
-    refetch: refetchTasks,
-    isFetched: tasksFetched,
-    isError: tasksError,
-    error: tasksQueryError,
-  } = useWorkflowTasksQuery({ live: true });
-  const {
     data: poRecords = EMPTY_PO_RECORDS,
     isFetched: poRecordsFetched,
     isError: poRecordsError,
     error: poRecordsQueryError,
     refetch: refetchPoRecords,
   } = usePoRecordsQuery();
-  const queueLoadError = tasksError || poRecordsError;
-  const queueErrorMessage =
-    (tasksQueryError instanceof Error ? tasksQueryError.message : null) ??
-    (poRecordsQueryError instanceof Error ? poRecordsQueryError.message : null) ??
-    "تعذّر تحميل قائمة المعاملات";
-  const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
-  const queuePending = !tasksFetched || !poRecordsFetched;
   // Minute precision is enough to build rows and filters — the per-second timer lives in
   // the timer cells themselves, so every row is not rebuilt each second (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
@@ -191,6 +178,39 @@ export function useActiveTransactionQueueWorkflow({
     isPartyQueueToggleTable,
     showPartyColumns,
   } = flags;
+
+  /*
+   * Sibling-reading tables cannot be narrowed: the distribution / case-study
+   * tables read a parent's children and the appraiser table reads the sibling
+   * field-inspection task, and both live outside this queue's kind/phase/role
+   * slice (pagination-contract §2, "still client-side" #1 and #3). Those three
+   * keep the full list; every other queue asks the server for its slice.
+   */
+  const needsSiblingTasks = isDistributionTable || isPropertyAppraisalTable;
+  const queueServerQuery = useMemo(
+    () =>
+      buildQueueServerQuery({
+        config,
+        role,
+        showCompleted,
+        narrow: !needsSiblingTasks,
+      }),
+    [config, role, showCompleted, needsSiblingTasks],
+  );
+  const {
+    data: tasks,
+    refetch: refetchTasks,
+    isFetched: tasksFetched,
+    isError: tasksError,
+    error: tasksQueryError,
+  } = useWorkflowTasksFilteredQuery(queueServerQuery, { live: true });
+  const queueLoadError = tasksError || poRecordsError;
+  const queueErrorMessage =
+    (tasksQueryError instanceof Error ? tasksQueryError.message : null) ??
+    (poRecordsQueryError instanceof Error ? poRecordsQueryError.message : null) ??
+    "تعذّر تحميل قائمة المعاملات";
+  const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
+  const queuePending = !tasksFetched || !poRecordsFetched;
 
   const retryQueueLoad = useCallback(() => {
     void refetchPoRecords();

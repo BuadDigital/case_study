@@ -41,6 +41,67 @@ public sealed class HttpOperationsTaskService(
         return list;
     }
 
+    public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default)
+    {
+        _ = (actorUserId, actorAssigneeId, actorRole);
+        return await GetAsync<List<OperationsTaskDto>>(
+            "/api/operations-tasks" + BuildQueryString(query, paged: false),
+            cancellationToken);
+    }
+
+    public Task<PagedResultDto<OperationsTaskDto>> ListPagedAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default)
+    {
+        _ = (actorUserId, actorAssigneeId, actorRole);
+        return GetAsync<PagedResultDto<OperationsTaskDto>>(
+            "/api/operations-tasks" + BuildQueryString(query, paged: true),
+            cancellationToken);
+    }
+
+ /// <summary>
+ /// Mirrors the query string documented in docs/architecture/pagination-contract.md so a remote
+ /// caller gets the same filtering the Operations host applies locally.
+ /// </summary>
+    private static string BuildQueryString(OperationsTaskListQuery query, bool paged)
+    {
+        var parts = new List<string>();
+
+        void Add(string name, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                parts.Add($"{name}={Uri.EscapeDataString(value.Trim())}");
+        }
+
+        if (paged)
+        {
+            parts.Add($"page={query.Page ?? 1}");
+            if (query.PageSize.HasValue)
+                parts.Add($"pageSize={query.PageSize.Value}");
+        }
+
+        Add("assigneeId", query.AssigneeId);
+        Add("createdBy", query.CreatedBy);
+        Add("status", query.Status);
+        Add("scope", query.Scope);
+        Add("type", query.Type);
+        Add("sort", query.Sort);
+        Add("dir", query.Dir);
+        Add("q", query.Q);
+        if (query.ActiveOnly == true) parts.Add("activeOnly=true");
+        if (query.ExcludeFailurePaused == true) parts.Add("excludeFailurePaused=true");
+
+        return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+    }
+
     public Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException("Get an operations task on the Operations API.");
 

@@ -1,5 +1,10 @@
 import type { RoleId } from "@platform/types";
-import { listWorkflowTasks } from "@platform/api-client";
+import {
+  listWorkflowTasks,
+  listWorkflowTasksPage,
+  type WorkflowTaskListFilters,
+  type WorkflowTaskListQuery,
+} from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { apiErrorMessage, workOrdersApiConfig } from "../work-orders-api-config";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
@@ -16,6 +21,7 @@ import {
   migrateDistribution,
   partyAssigneeIdFromDistribution,
 } from "./tasks-model";
+import { filterCachedWorkflowTasks } from "./workflow-task-list-query";
 
 export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
   const config = workOrdersApiConfig();
@@ -25,31 +31,71 @@ export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
   return result.data.map(dtoToTask);
 }
 
-/** React Query loader — surfaces API failures; fetches workflow tasks in paginated chunks. */
-export async function loadWorkflowTasksForQuery(): Promise<WorkflowTask[]> {
+/**
+ * React Query loader — surfaces API failures; fetches workflow tasks in
+ * paginated chunks. `filters` (kind / status / phase / assignee / sort) are
+ * applied by the server (`docs/architecture/pagination-contract.md` §2); the
+ * offline cache falls back to the equivalent client-side predicate.
+ */
+export async function loadWorkflowTasksForQuery(
+  filters?: WorkflowTaskListFilters,
+): Promise<WorkflowTask[]> {
+  const cachedRows = async () => {
+    const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
+    if (!cached?.length) return null;
+    return filterCachedWorkflowTasks(cached, filters);
+  };
+
   const config = workOrdersApiConfig();
   if (!config || isBrowserOffline()) {
-    const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
-    if (cached?.length) return cached;
+    const cached = await cachedRows();
+    if (cached) return cached;
     if (!config) throw new Error(apiErrorMessage("auth"));
     throw new Error("تعذّر تحميل مهام سير العمل");
   }
   try {
-    const result = await listWorkflowTasks(config);
+    const result = await listWorkflowTasks(config, filters);
     if (!result.ok) {
-      const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
-      if (cached?.length) return cached;
+      const cached = await cachedRows();
+      if (cached) return cached;
       throw new Error(
         apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
       );
     }
     return result.data.map(dtoToTask);
   } catch (err) {
-    const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
-    if (cached?.length) return cached;
+    const cached = await cachedRows();
+    if (cached) return cached;
     if (err instanceof Error) throw err;
     throw new Error("تعذّر تحميل مهام سير العمل");
   }
+}
+
+export type WorkflowTasksPage = {
+  rows: WorkflowTask[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/** One server page of workflow tasks — pagination-contract §2. */
+export async function loadWorkflowTasksPage(
+  query: WorkflowTaskListQuery,
+): Promise<WorkflowTasksPage> {
+  const config = workOrdersApiConfig();
+  if (!config) throw new Error(apiErrorMessage("auth"));
+  const result = await listWorkflowTasksPage(config, query);
+  if (!result.ok) {
+    throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"));
+  }
+  return {
+    rows: result.data.items.map(dtoToTask),
+    totalCount: result.data.totalCount,
+    page: result.data.page,
+    pageSize: result.data.pageSize,
+    totalPages: result.data.totalPages,
+  };
 }
 
 /** Case-study slots that belong to one PO. */

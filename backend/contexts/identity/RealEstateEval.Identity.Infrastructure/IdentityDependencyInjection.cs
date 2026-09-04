@@ -8,8 +8,10 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
+using RealEstateEval.Identity.Infrastructure.Persistence;
 using RealEstateEval.Identity.Infrastructure.Services;
 using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Application.Services;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
@@ -40,6 +42,10 @@ public static class IdentityDependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
         services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
+        // Staff registration is a use case in Identity.Application; the two adapters below are
+        // the only places it reaches IdentityDbContext and UserManager (solid-scorecard finding 1).
+        services.AddScoped<IStaffRegistrationRepository, StaffRegistrationRepository>();
+        services.AddScoped<IStaffIdentityStore, StaffIdentityStore>();
         services.AddScoped<IUserRegistrationService, UserRegistrationService>();
         services.AddScoped<IPermissionService, PermissionService>();
         return services;

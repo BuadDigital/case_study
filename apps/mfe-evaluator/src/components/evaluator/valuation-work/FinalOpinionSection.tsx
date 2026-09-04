@@ -1,22 +1,10 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
-import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
-import {
-  activeValuationListOptions,
-  getValuationReportDocument,
-  saveValuationReconciliation,
-  getReportIssuanceState,
-  issueDepositVersion,
-  registerDepositCertificate,
-  reopenReportIssuance,
-  getIssuancePdf,
-  type ValuationCostApproachDto,
-  type ValuationIssuanceGatesDto,
-  type ValuationReconciliationDto,
-  type ValuationReconciliationMethodDto,
-  type ValuationReportIssuanceStateDto,
+import { memo } from "react";
+import type {
+  ValuationCostApproachDto,
+  ValuationIssuanceGatesDto,
+  ValuationReconciliationDto,
 } from "@platform/api-client";
 import {
   TBody,
@@ -27,13 +15,8 @@ import {
   Tr,
   cn,
   opsFldControl,
-  useToast,
 } from "@platform/ui-kit";
 
-import {
-  VALUE_BASIS_OPTIONS,
-  basisOfValueKeyForAssignment,
-} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import {
   Card,
@@ -44,14 +27,19 @@ import {
   LedgerRow,
   PrimaryBtn,
 } from "./atoms";
-
-import { apiConfig, fmt, JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
+import { fmt } from "./lib/shell-utils";
+import {
+  FinalOpinionGatesCard,
+  FinalOpinionIssuanceCard,
+} from "./FinalOpinionParts";
+import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 
 /**
- * Final-opinion screen — owns reconciliation drafts (weights, rationales, value basis,
- * liquidation discount, alert dispositions) locally: typing here does not re-render the valuation shell.
- * Stays mounted (hidden) after first visit so unsaved drafts survive; hydrates from
- * the server batch via hydrateKey (full load); silent reload merges approach values only.
+ * Final-opinion screen — reconciliation table, the value-opinion card, the
+ * issuance gates and the Rule Q-6 issuance cycle. Drafts live in
+ * `useFinalOpinionWorkflow`, so typing here does not re-render the valuation
+ * shell; the section stays mounted (hidden) after first visit so unsaved
+ * drafts survive, and hydrates from the server batch via hydrateKey.
  */
 export const FinalOpinionSection = memo(function FinalOpinionSection({
   valuationRequestId,
@@ -80,422 +68,35 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   onSavingChange: (saving: boolean) => void;
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 }) {
-  const { showToast } = useToast();
-  const [reconMethods, setReconMethods] = useState<ValuationReconciliationMethodDto[]>(
-    [],
-  );
-  const [methodsRationale, setMethodsRationale] = useState("");
-  const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
-  // Pure derivation from assignment type — not user-controlled and not overwritten by saved state
-  // (rerender-derived-state-no-effect; was state written from five places with the same value).
-  const basisOfValueKey = useMemo(
-    () =>
-      assignmentType?.trim()
-        ? basisOfValueKeyForAssignment(assignmentType)
-        : "market",
-    [assignmentType],
-  );
-  const [valuePremiseKey, setValuePremiseKey] = useState("");
-  const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
-  const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
-    useState("");
-  const [alertOverrides, setAlertOverrides] = useState<
-    Record<string, { overrideRationale: string; acknowledged: boolean }>
-  >({});
-
-  /* ─── Rule Q-6: two-stage issuance + deposit certificate ─── */
-  const [issuance, setIssuance] = useState<ValuationReportIssuanceStateDto | null>(null);
-  const [issuanceBusy, setIssuanceBusy] = useState(false);
-  const [depositCodeDraft, setDepositCodeDraft] = useState("");
-  const [certificateFile, setCertificateFile] = useState<File | null>(null);
-  // Supplement Rule Q-9 (R2): reason for reopening the valuation cycle after deposit.
-  const [reopenReason, setReopenReason] = useState("");
-
-  const refreshIssuance = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const res = await getReportIssuanceState(config, valuationRequestId);
-    if (res.ok) {
-      setIssuance(res.data);
-      if (res.data.depositCode) setDepositCodeDraft(res.data.depositCode);
-    }
-  };
-
-  useEffect(() => {
-    void refreshIssuance();
-    // State is also refreshed after reconciliation save (gates may change).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valuationRequestId, gates?.allowsIssuance]);
-
-  const issueDeposit = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    setIssuanceBusy(true);
-    const res = await issueDepositVersion(config, valuationRequestId);
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر إصدار نسخة الإيداع", "error");
-      return;
-    }
-    setIssuance(res.data);
-    showToast("صدرت نسخة الإيداع — التقرير مجمّد (ق-6)", "success");
-  };
-
-  const registerCertificate = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const code = depositCodeDraft.trim();
-    if (!code) {
-      showToast("أدخل رمز الإيداع من شهادة منصة قيمة", "error");
-      return;
-    }
-    setIssuanceBusy(true);
-    let certificateContentBase64: string | null = null;
-    if (certificateFile) {
-      // Chunked encoding via the shared helper — a char-by-char loop used to freeze
-      // the tab for seconds on large certificate images (js-perf).
-      certificateContentBase64 = await fileToBase64(certificateFile);
-    }
-    const res = await registerDepositCertificate(config, valuationRequestId, {
-      depositCode: code,
-      certificateFileName: certificateFile?.name ?? null,
-      certificateContentType: certificateFile?.type ?? null,
-      certificateContentBase64,
-    });
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر تسجيل الشهادة", "error");
-      return;
-    }
-    setIssuance(res.data);
-    showToast("سُجِّلت الشهادة وصدرت النسخة النهائية (ق-6)", "success");
-  };
-
-  // R2: deposited version is not edited — marked “superseded — replaced by a newer version” and kept
-  // on file; a new valuation cycle opens ending in deposit version N+1 (section-supervisor approval is a server rule).
-  const reopenIssuance = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const reason = reopenReason.trim();
-    if (reason.length < JUSTIFICATION_MIN_LENGTH) {
-      showToast(
-        `سبب إعادة الفتح لا يقل عن ${JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)`,
-        "error",
-      );
-      return;
-    }
-    setIssuanceBusy(true);
-    const res = await reopenReportIssuance(config, valuationRequestId, reason);
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر إعادة فتح دور التقييم", "error");
-      return;
-    }
-    setIssuance(res.data);
-    setReopenReason("");
-    setDepositCodeDraft("");
-    setCertificateFile(null);
-    showToast("أُعيد فتح دور التقييم — النسخة السابقة ملغاة وتبقى بالملف (ر2)", "success");
-  };
-
-  const downloadIssuancePdf = async (kind: "deposit" | "final") => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const res = await getIssuancePdf(config, valuationRequestId, kind);
-    if (!res.ok) {
-      showToast("تعذّر تنزيل النسخة", "error");
-      return;
-    }
-    const url = URL.createObjectURL(res.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      kind === "deposit" ? "نسخة-الإيداع.pdf" : "النسخة-النهائية.pdf";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Valuation lists from the shared query — used to duplicate a GET with the final-review tab.
-  const { data: valuationLists } = useValuationListsQuery();
-  const basisOptions = useMemo(() => {
-    const bases = valuationLists
-      ? activeValuationListOptions(valuationLists.lists, "valueBases")
-      : [];
-    return bases.length ? bases : VALUE_BASIS_OPTIONS;
-  }, [valuationLists]);
-  const premiseOptions = useMemo<{ value: string; label: string }[]>(() => {
-    return valuationLists
-      ? activeValuationListOptions(valuationLists.lists, "premises")
-      : [];
-  }, [valuationLists]);
-
-  // Value basis always comes from the work order (PO) — do not force liquidation when type is absent.
-  useEffect(() => {
-    if (!assignmentType?.trim()) return;
-    const next = basisOfValueKeyForAssignment(assignmentType);
-    if (next === "liquidation") {
-      setValuePremiseKey((prev) =>
-        prev === "orderly" || prev === "forced" ? prev : "orderly",
-      );
-    } else {
-      setLiquidationDiscountPct("0");
-      setValuePremiseKey((prev) =>
-        prev === "orderly" || prev === "forced" ? "current" : prev,
-      );
-    }
-  }, [assignmentType]);
-
-  // Hydration: new key = full load (full reseed); same key with a new batch = silent
-  // reload that merges computed approach values and keeps user weights/rationales.
-  const hydratedKeyRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (hydratedKeyRef.current === hydrateKey) {
-      if (recon) {
-        const serverMethods = recon.methods;
-        setReconMethods((prev) =>
-          serverMethods.map((m) => {
-            const mine = prev.find((p) => p.approachKind === m.approachKind);
-            return mine
-              ? {
-                  ...m,
-                  weightPct: mine.weightPct,
-                  rationale: mine.rationale,
-                  isIncluded: mine.isIncluded,
-                }
-              : m;
-          }),
-        );
-      }
-      return;
-    }
-    hydratedKeyRef.current = hydrateKey;
-    if (!recon) {
-      setReconMethods([]);
-      setMethodsRationale("");
-      setFinalRoundDecimals("0");
-      if (assignmentType?.trim()) {
-        setValuePremiseKey(
-          basisOfValueKeyForAssignment(assignmentType) === "liquidation"
-            ? "orderly"
-            : "",
-        );
-      }
-      setLiquidationDiscountPct("0");
-      setLiquidationDiscountRationale("");
-      setAlertOverrides({});
-      return;
-    }
-    setReconMethods(recon.methods);
-    setMethodsRationale(recon.methodsRationale ?? "");
-    setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
-    // Value basis from the work order (PO) only — not overwritten by previously saved reconciliation.
-    if (assignmentType?.trim()) {
-      const nextBasis = basisOfValueKeyForAssignment(assignmentType);
-      let nextPremise = recon.valuePremiseKey || "";
-      if (nextBasis === "liquidation") {
-        if (nextPremise !== "orderly" && nextPremise !== "forced") {
-          nextPremise = "orderly";
-        }
-      }
-      setValuePremiseKey(nextPremise);
-    } else {
-      setValuePremiseKey(recon.valuePremiseKey || "");
-    }
-    setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
-    setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
-    const ovMap: Record<
-      string,
-      { overrideRationale: string; acknowledged: boolean }
-    > = {};
-    for (const o of recon.methodologyAlertOverrides ?? []) {
-      ovMap[o.code] = {
-        overrideRationale: o.overrideRationale ?? "",
-        acknowledged: o.acknowledged ?? false,
-      };
-    }
-    setAlertOverrides(ovMap);
-  }, [hydrateKey, recon, assignmentType]);
-
-  /* ─── Live value-opinion calc (interactive-form spec) ─── */
-  const finalComputed = useMemo(() => {
-    const weightSumLocal = reconMethods.reduce((s, m) => s + (m.weightPct || 0), 0);
-    const reconWeightsBad =
-      reconMethods.length >= 2 && Math.round(weightSumLocal) !== 100;
-    // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
-    const weightedLocal =
-      reconMethods.length === 0
-        ? 0
-        : reconMethods.length === 1
-          ? reconMethods[0].approachValue
-          : reconMethods.reduce(
-              (s, m) => s + m.approachValue * ((m.weightPct || 0) / 100),
-              0,
-            );
-
-    // Indicator completeness as in the form: market = adopted comparable; cost = lines + extended life (+ land unless building-only).
-    const costBuildReady =
-      (cost?.lines?.length ?? 0) > 0 &&
-      (cost?.directCostTotal ?? 0) > 0 &&
-      (cost?.extendedLifeYears ?? 0) > 0;
-    const costComplete = buildingOnly
-      ? costBuildReady
-      : costBuildReady && !!cost?.landEstimateComplete;
-    const methodComplete = (kind: string) =>
-      kind === "cost" ? costComplete : hasAdoptedMarket;
-    const isLiquidation = basisOfValueKey === "liquidation";
-    const discountPctNum = isLiquidation
-      ? Number(liquidationDiscountPct.replace(",", ".")) || 0
-      : 0;
-    const forcedCut = (weightedLocal * discountPctNum) / 100;
-    const decNum = Math.min(
-      Math.max(Number.parseInt(finalRoundDecimals, 10) || 0, 0),
-      6,
-    );
-    const roundPow = 10 ** decNum;
-    const finalLocal =
-      Math.round((weightedLocal - forcedCut) / roundPow) * roundPow;
-    const roundNote =
-      decNum === 0
-        ? "بلا تقريب — أقرب ريال"
-        : `مقرَّبة لأقرب ${fmt(roundPow)} ريال`;
-    const soleCost =
-      reconMethods.length === 1 && reconMethods[0]?.approachKind === "cost";
-
-    // buildOpinion — auto-generated final-opinion text.
-    const basisLabel =
-      basisOptions.find((o) => o.value === basisOfValueKey)?.label ??
-      basisOfValueKey;
-    const linesOut: string[] = [];
-    if (!reconMethods.length) {
-      linesOut.push("لم يُختَر أي أسلوب تقييم بعد.");
-    } else if (reconMethods.length === 1) {
-      if (soleCost && !buildingOnly) {
-        linesOut.push(
-          "اعتُمد أسلوب التكلفة. قُدّرت قيمة الأرض بطريقة المقارنات باعتبارها فضاء، وقُدّرت قيمة التحسينات بطريقة المقاول على أساس تكلفة الإحلال ناقصاً الإهلاك، والقيمة النهائية هي حاصل جمعهما. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
-        );
-      } else if (soleCost) {
-        linesOut.push(
-          "اعتُمد أسلوب التكلفة بنطاق «مبنى فقط»؛ القيمة = تكلفة الإحلال ناقصاً الإهلاك. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
-        );
-      } else {
-        linesOut.push(
-          "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
-        );
-      }
-      linesOut.push(
-        `مؤشر ${reconMethods[0].labelAr}: ${fmt(reconMethods[0].approachValue)} ر.س بوزن ١٠٠٪.`,
-      );
-    } else {
-      for (const m of reconMethods) {
-        linesOut.push(
-          `مؤشر ${m.labelAr}: ${fmt(m.approachValue)} ر.س بوزن ${m.weightPct}٪.`,
-        );
-        if ((m.rationale ?? "").trim())
-          linesOut.push(`مبرر وزن ${m.labelAr}: ${m.rationale.trim()}.`);
-      }
-    }
-    if (discountPctNum > 0)
-      linesOut.push(`طُبِّق خصم بيع قسري ${discountPctNum}٪.`);
-    linesOut.push(`أساس القيمة المستخدم: ${basisLabel}.`);
-    linesOut.push(`الرأي النهائي في قيمة العقار: ${fmt(finalLocal)} ر.س.`);
-
-    return {
-      weightSumLocal,
-      reconWeightsBad,
-      weightedLocal,
-      isLiquidation,
-      discountPctNum,
-      forcedCut,
-      finalLocal,
-      roundNote,
-      soleCost,
-      methodComplete,
-      opinionAuto: linesOut.join("\n"),
-    };
-  }, [
-    buildingOnly,
-    reconMethods,
-    basisOfValueKey,
-    liquidationDiscountPct,
-    finalRoundDecimals,
-    basisOptions,
+  const workflow = useFinalOpinionWorkflow({
+    valuationRequestId,
+    recon,
+    gates,
     cost,
+    hydrateKey,
+    buildingOnly,
     hasAdoptedMarket,
-  ]);
-
-  async function saveReconciliation() {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    onSavingChange(true);
-    const res = await saveValuationReconciliation(config, valuationRequestId, {
-      // Auto text is pinned on save unless the appraiser edited it (“auto until edited” model).
-      methodsRationale: methodsRationale.trim() || finalComputed.opinionAuto,
-      finalRoundDecimals: Number.parseInt(finalRoundDecimals, 10) || 0,
-      basisOfValueKey,
-      valuePremiseKey: valuePremiseKey || null,
-      liquidationDiscountPct:
-        Number(liquidationDiscountPct.replace(",", ".")) || 0,
-      liquidationDiscountRationale: liquidationDiscountRationale || null,
-      methodologyAlertOverrides: Object.entries(alertOverrides).map(
-        ([code, v]) => ({
-          code,
-          overrideRationale: v.overrideRationale || null,
-          acknowledged: v.acknowledged,
-        }),
-      ),
-      methods: reconMethods.map((m, i) => ({
-        id: m.id,
-        approachKind: m.approachKind,
-        weightPct: m.weightPct,
-        rationale: m.rationale,
-        isIncluded: m.isIncluded,
-        sortOrder: i,
-      })),
-    });
-    onSavingChange(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ الترجيح", "error");
-      return;
-    }
-    setReconMethods(res.data.methods);
-    setMethodsRationale(res.data.methodsRationale ?? "");
-    setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
-    setValuePremiseKey(res.data.valuePremiseKey || "");
-    setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
-    setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");
-    showToast(
-      res.data.liquidationDiscountApplied
-        ? "تم حفظ رأي القيمة مع خصم التصفية"
-        : "تم حفظ رأي القيمة النهائي",
-      "success",
-    );
-    // Refresh issuance gates and alerts after save (dispositions apply to evaluation immediately).
-    onReconSaved(res.data);
-  }
-
-  async function openReportPreview() {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    onSavingChange(true);
-    const res = await getValuationReportDocument(config, valuationRequestId);
-    onSavingChange(false);
-    if (!res.ok) {
-      showToast("تعذّر تحميل استعراض تقرير التقييم", "error");
-      return;
-    }
-    try {
-      // Lazy load — preview builder is fetched on first click, not with the screen bundle.
-      const { openValuationReportPreview } = await import(
-        "../../../lib/evaluator/valuation-report-preview"
-      );
-      await openValuationReportPreview(res.data);
-    } catch {
-      showToast("تعذّر فتح استعراض تقرير التقييم", "error");
-    }
-  }
-
-  const sole = recon && !recon.meetsMultiMethodGate;
+    assignmentType,
+    onSavingChange,
+    onReconSaved,
+  });
   const {
+    reconMethods,
+    setReconMethods,
+    methodsRationale,
+    setMethodsRationale,
+    finalRoundDecimals,
+    setFinalRoundDecimals,
+    basisOfValueKey,
+    basisOptions,
+    premiseOptions,
+    valuePremiseKey,
+    setValuePremiseKey,
+    liquidationDiscountPct,
+    setLiquidationDiscountPct,
+    liquidationDiscountRationale,
+    setLiquidationDiscountRationale,
+    sole,
     weightSumLocal,
     reconWeightsBad,
     weightedLocal,
@@ -506,16 +107,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     soleCost,
     methodComplete,
     opinionAuto,
-  } = finalComputed;
-  // Treated as manually edited only when it differs from auto text (save pins auto without counting as an edit).
-  const opinionDirty =
-    methodsRationale.trim().length > 0 &&
-    methodsRationale.trim() !== opinionAuto.trim();
-
-  // Single pass instead of filtering twice in the same render (js-combine-iterations).
-  const triggeredAlerts = gates
-    ? gates.methodologyAlerts.filter((a) => a.triggered)
-    : [];
+    opinionDirty,
+    issuance,
+    saveReconciliation,
+    openReportPreview,
+  } = workflow;
 
   return (
     <>
@@ -878,308 +474,20 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       </Card>
 
       {gates ? (
-        <Card>
-          <CardPad>
-            <CardTitle>اعتماد التقييم — شروط الإصدار</CardTitle>
-            <p className="mb-2.5 text-[11.5px] text-text-3">
-              المنع يقع عند الاعتماد فقط — الإدخال الجزئي محفوظ كمسوّدة.
-            </p>
-            <p className="mb-2.5 text-[13px] text-text">
-              الحالة:{" "}
-              <strong
-                className={cn(
-                  gates.allowsIssuance ? "text-[#2f7a4d]" : "text-red-text",
-                )}
-              >
-                {gates.allowsIssuance
-                  ? "كل شروط الاعتماد مستوفاة ✓"
-                  : "الاعتماد ممنوع ✗"}
-              </strong>
-            </p>
-            <ul className="m-0 list-none p-0">
-              {gates.gates.map((g) => (
-                <li
-                  key={g.code}
-                  className={cn(
-                    "mb-1.5 flex gap-2 text-[12.5px]",
-                    g.passed ? "text-text" : "text-red-text",
-                  )}
-                >
-                  <span>{g.passed ? "✓" : "✗"}</span>
-                  <span>{g.labelAr}</span>
-                  {g.detailAr ? (
-                    <span className="text-text-3">— {g.detailAr}</span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-
-            {/* Methodology alerts (21) — disposition via text rationale or acknowledgment by alert class */}
-            <div className="mt-4 border-t border-border pt-3.5">
-              <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2.5">
-                <span className="text-[13.5px] font-extrabold text-heading">
-                  التنبيهات المنهجية
-                </span>
-                <span className="text-[11px] text-text-3">
-                  {gates.methodologyAlertsNoteAr} · تُحفَظ المعالجات مع «حفظ
-                  التوفيق والرأي النهائي»
-                </span>
-              </div>
-              {triggeredAlerts.length === 0 ? (
-                <div className="text-[12.5px] font-bold text-[#2f7a4d]">
-                  ✓ لا تنبيهات منهجية مفعّلة
-                </div>
-              ) : (
-                triggeredAlerts
-                  .map((a) => {
-                    const ov = alertOverrides[a.code] ?? {
-                      overrideRationale: "",
-                      acknowledged: false,
-                    };
-                    const needsRationale = a.severityKind === "require_rationale";
-                    const needsAck = a.severityKind === "require_ack";
-                    return (
-                      <div
-                        key={a.code}
-                        className={cn(
-                          "mb-2 flex flex-col gap-1.5 rounded-[9px] border px-3 py-2.5",
-                          a.blocksIssuance
-                            ? "border-red bg-[var(--red-light)]"
-                            : "border-border bg-surface-2",
-                        )}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "size-[9px] shrink-0 rounded-full",
-                              a.isHard
-                                ? "bg-red"
-                                : a.blocksIssuance
-                                  ? "bg-[#d9a441]"
-                                  : "bg-[#3f8f5f]",
-                            )}
-                          />
-                          <span className="text-[12.5px] font-bold text-heading">
-                            {a.number}. {a.labelAr}
-                          </span>
-                          <span
-                            className={cn(
-                              "rounded-full border border-border bg-surface px-2 py-0.5 text-[10.5px] font-bold",
-                              a.isHard ? "text-red-text" : "text-gold-d",
-                            )}
-                          >
-                            {a.isHard
-                              ? "حاجب"
-                              : needsRationale
-                                ? "يتطلب مبرراً نصياً"
-                                : "يتطلب إقراراً"}
-                          </span>
-                          {a.detailAr ? (
-                            <span className="text-[11.5px] text-text-2">
-                              {a.detailAr}
-                            </span>
-                          ) : null}
-                        </div>
-                        {needsRationale ? (
-                          <>
-                            <input
-                              value={ov.overrideRationale}
-                              placeholder={`المبرر النصي لتجاوز التنبيه (${JUSTIFICATION_MIN_LENGTH} أحرف فأكثر)…`}
-                              onChange={(e) =>
-                                setAlertOverrides((prev) => ({
-                                  ...prev,
-                                  [a.code]: {
-                                    overrideRationale: e.target.value,
-                                    acknowledged: prev[a.code]?.acknowledged ?? false,
-                                  },
-                                }))
-                              }
-                              className={cn(
-                                "rounded-[7px] border border-dashed bg-surface px-2.5 py-[7px] text-xs",
-                                ov.overrideRationale.trim().length > 0 &&
-                                  ov.overrideRationale.trim().length <
-                                    JUSTIFICATION_MIN_LENGTH
-                                  ? "border-danger"
-                                  : "border-border-md",
-                              )}
-                            />
-                            {ov.overrideRationale.trim().length > 0 &&
-                            ov.overrideRationale.trim().length <
-                              JUSTIFICATION_MIN_LENGTH ? (
-                              <span className="text-[10.5px] font-semibold text-danger">
-                                المبرر الصوري لا يفك التنبيه — الحد الأدنى{" "}
-                                {JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)
-                              </span>
-                            ) : null}
-                          </>
-                        ) : null}
-                        {needsAck ? (
-                          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-text">
-                            <input
-                              type="checkbox"
-                              checked={ov.acknowledged}
-                              onChange={(e) =>
-                                setAlertOverrides((prev) => ({
-                                  ...prev,
-                                  [a.code]: {
-                                    overrideRationale:
-                                      prev[a.code]?.overrideRationale ?? "",
-                                    acknowledged: e.target.checked,
-                                  },
-                                }))
-                              }
-                              className="size-[15px]"
-                            />
-                            أقرّ بالاطلاع على هذا التنبيه والوعي بأثره
-                          </label>
-                        ) : null}
-                        {a.isHard ? (
-                          <span className="text-[11px] text-red-text">
-                            تنبيه حاجب — يُعالَج بتصحيح المدخلات نفسها لا
-                            بالتجاوز.
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  })
-              )}
-            </div>
-          </CardPad>
-        </Card>
+        <FinalOpinionGatesCard
+          gates={gates}
+          workflow={workflow}
+          saving={saving}
+        />
       ) : null}
 
       {/* Rule Q-6: two-stage issuance + deposit certificate */}
       {issuance ? (
-        <Card>
-          <CardPad>
-            <CardTitle>الإصدار ثنائي المرحلة — شهادة الإيداع (ق-6)</CardTitle>
-            <p className="mb-2.5 text-[11.5px] text-text-3">
-              نسخة الإيداع تُجمِّد التقرير كاملاً وتُرفع يدوياً في منصة قيمة؛ ثم تُسجَّل
-              شهادة الإيداع ورمزها فتصدر النسخة النهائية (صفحة الشهادة مرفقة والرمز في
-              الميتا). الرمز والشهادة وحدهما خارج نطاق التجميد.
-            </p>
-
-            {issuance.supersededCount > 0 ? (
-              <p className="mb-2 text-[11.5px] text-amber-text">
-                {issuance.supersededCount} نسخة إيداع ملغاة «حلّت محلها نسخة أحدث» تبقى
-                في ملف المعاملة (ر2) —{" "}
-                {issuance.stage === "draft"
-                  ? `الدور الجديد ${issuance.version} قيد العمل`
-                  : `الساري هو الدور ${issuance.version}`}
-                .
-              </p>
-            ) : null}
-
-            {issuance.stage === "draft" ? (
-              <div className="flex flex-col gap-2">
-                {!issuance.allowsDepositIssue && issuance.blockingReasonsAr.length > 0 ? (
-                  <ul className="m-0 list-disc ps-5 text-[11.5px] text-red-text">
-                    {issuance.blockingReasonsAr.slice(0, 5).map((r) => (
-                      <li key={r}>{r}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div>
-                  <PrimaryBtn
-                    disabled={issuanceBusy || !issuance.allowsDepositIssue}
-                    onClick={() => void issueDeposit()}
-                  >
-                    إصدار نسخة الإيداع (تجميد التقرير)
-                  </PrimaryBtn>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                <p className="m-0 text-[12.5px] text-text">
-                  الحالة:{" "}
-                  <strong className="text-[#2f7a4d]">
-                    {issuance.stage === "final_issued"
-                      ? "النسخة النهائية صادرة ✓"
-                      : "نسخة الإيداع صادرة — التقرير مجمّد بانتظار الشهادة"}
-                  </strong>
-                  {issuance.depositCode ? (
-                    <span className="ms-2 text-text-2" dir="ltr">
-                      {issuance.depositCode}
-                    </span>
-                  ) : null}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <GhostBtn
-                    disabled={!issuance.hasDepositPdf}
-                    onClick={() => void downloadIssuancePdf("deposit")}
-                  >
-                    تنزيل نسخة الإيداع (PDF)
-                  </GhostBtn>
-                  {issuance.hasFinalPdf ? (
-                    <GhostBtn onClick={() => void downloadIssuancePdf("final")}>
-                      تنزيل النسخة النهائية (PDF)
-                    </GhostBtn>
-                  ) : null}
-                </div>
-
-                <div className="mt-1 flex flex-wrap items-end gap-2 rounded-[9px] border border-dashed border-border-md bg-surface-2 p-3">
-                  <label className="flex flex-col gap-1 text-[11.5px] text-text-2">
-                    رمز الإيداع (من شهادة قيمة)
-                    <input
-                      dir="ltr"
-                      value={depositCodeDraft}
-                      onChange={(e) => setDepositCodeDraft(e.target.value)}
-                      className="w-52 rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-xs"
-                      placeholder="QYM-…"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-[11.5px] text-text-2">
-                    مستند الشهادة (صورة تدخل صفحةً في النسخة النهائية)
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setCertificateFile(e.target.files?.[0] ?? null)}
-                      className="text-[11px]"
-                    />
-                  </label>
-                  <PrimaryBtn
-                    disabled={issuanceBusy || !depositCodeDraft.trim()}
-                    onClick={() => void registerCertificate()}
-                  >
-                    {issuance.stage === "final_issued"
-                      ? "تحديث الشهادة/الرمز وإعادة إصدار النهائية"
-                      : "تسجيل الشهادة وإصدار النسخة النهائية"}
-                  </PrimaryBtn>
-                </div>
-                {issuance.certificateFileName ? (
-                  <p className="m-0 text-[11px] text-text-3">
-                    الشهادة المحفوظة: {issuance.certificateFileName}
-                  </p>
-                ) : null}
-
-                {/* Supplement Rule Q-9 (R2): reopen valuation cycle — section-supervisor approval */}
-                <div className="mt-1 flex flex-wrap items-end gap-2 rounded-[9px] border border-dashed border-red bg-surface-2 p-3">
-                  <label className="flex min-w-64 flex-1 flex-col gap-1 text-[11.5px] text-text-2">
-                    إعادة فتح دور التقييم (ر2) — سبب إلزامي (
-                    {JUSTIFICATION_MIN_LENGTH}+ أحرف)؛ النسخة المودعة تُعلَّم ملغاة وتبقى
-                    بالملف، ويصدر الدور {issuance.version + 1} بإيداع جديد في قيمة
-                    <input
-                      value={reopenReason}
-                      onChange={(e) => setReopenReason(e.target.value)}
-                      className="rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-xs"
-                      placeholder="مثال: صفقة مسجلة أحدث غيّرت قيمة المقارنات"
-                    />
-                  </label>
-                  <GhostBtn
-                    disabled={
-                      issuanceBusy ||
-                      reopenReason.trim().length < JUSTIFICATION_MIN_LENGTH
-                    }
-                    onClick={() => void reopenIssuance()}
-                  >
-                    إعادة فتح الدور (مشرف القسم)
-                  </GhostBtn>
-                </div>
-              </div>
-            )}
-          </CardPad>
-        </Card>
+        <FinalOpinionIssuanceCard
+          issuance={issuance}
+          workflow={workflow}
+          saving={saving}
+        />
       ) : null}
     </>
   );

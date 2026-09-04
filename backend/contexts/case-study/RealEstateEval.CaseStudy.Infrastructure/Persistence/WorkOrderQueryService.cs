@@ -9,6 +9,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Application.Rules;
@@ -49,30 +50,61 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
-    public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+    public Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(WorkOrderListQuery.Empty, actor, cancellationToken);
+
+    public async Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        return await BuildListItemsAsync(null, take, actor, cancellationToken);
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is { Count: 0 })
+            return [];
+
+        return await BuildListItemsAsync(query, visiblePos, null, take, cancellationToken);
     }
 
-    public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+    public Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        ListPagedAsync(
+            new WorkOrderListQuery { Page = page, PageSize = pageSize },
+            actor,
+            cancellationToken);
+
+ /// <summary>
+ /// Filters and sorts in the database, then pages. Party visibility narrows the query before the
+ /// count so TotalCount is the actor's total, not the table's.
+ /// </summary>
+    public async Task<PagedResultDto<WorkOrderListItemDto>> ListPagedAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
-            page,
-            pageSize,
+            query.Page,
+            query.PageSize,
             _dbOptions);
         var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        var totalQuery = _db.WorkOrders.AsNoTracking();
-        if (visiblePos is not null)
-            totalQuery = totalQuery.Where(w => visiblePos.Contains(w.PoNumber));
-        var total = await totalQuery.CountAsync(cancellationToken);
-        var items = await BuildListItemsAsync(skip, take, actor, cancellationToken);
+        if (visiblePos is { Count: 0 })
+        {
+            return new PagedResultDto<WorkOrderListItemDto>
+            {
+                Items = [],
+                TotalCount = 0,
+                Page = resolvedPage,
+                PageSize = take,
+            };
+        }
+
+        var total = await FilteredWorkOrders(query, visiblePos).CountAsync(cancellationToken);
+        var items = await BuildListItemsAsync(query, visiblePos, skip, take, cancellationToken);
 
         return new PagedResultDto<WorkOrderListItemDto>
         {
@@ -81,6 +113,118 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             Page = resolvedPage,
             PageSize = take,
         };
+    }
+
+ /// <summary>Visibility + filters as EF predicates; nothing is filtered after materialisation.</summary>
+    private IQueryable<WorkOrder> FilteredWorkOrders(
+        WorkOrderListQuery query,
+        HashSet<string>? visiblePos)
+    {
+        IQueryable<WorkOrder> rows = _db.WorkOrders.AsNoTracking();
+
+        if (visiblePos is not null)
+            rows = rows.Where(w => visiblePos.Contains(w.PoNumber));
+
+        var type = WorkOrderListQueryRules.ResolveAssignmentType(query.Type);
+        if (type is not null)
+            rows = rows.Where(w => w.AssignmentType == type.Value);
+
+        var status = WorkOrderListQueryRules.ResolveStatus(query.Status);
+        if (status is not null)
+            rows = WhereStatus(rows, status.Value);
+
+        var search = WorkOrderListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            var typeMatches = WorkOrderListQueryRules.AssignmentTypesMatching(search).ToList();
+            rows = rows.Where(w =>
+                w.PoNumber.Contains(search)
+                || (w.AssignmentSpecialist != null && w.AssignmentSpecialist.Contains(search))
+                || typeMatches.Contains(w.AssignmentType)
+                || w.Properties.Any(p =>
+                    !p.IsRemoved
+                    && (p.DeedNumber.Contains(search)
+                        || (p.RealEstateRegNumber != null
+                            && p.RealEstateRegNumber.Contains(search)))));
+        }
+
+        return rows;
+    }
+
+ /// <summary>
+ /// WorkOrderListStatus.Resolve expressed over Case Study columns only. The billed refinement
+ /// needs the Financial invoice set, so the two billing buckets are widened to their study
+ /// equivalent by WorkOrderListQueryRules.ResolveStatus.
+ /// </summary>
+    private IQueryable<WorkOrder> WhereStatus(
+        IQueryable<WorkOrder> rows,
+        WorkOrderListStatusFilter status)
+    {
+        if (status == WorkOrderListStatusFilter.Cancelled)
+            return rows.Where(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Cancelled);
+
+        if (status == WorkOrderListStatusFilter.Stopped)
+            return rows.Where(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Stopped);
+
+        rows = rows.Where(w =>
+            w.LifecycleStatus == null
+            || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
+                && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped));
+
+        return status switch
+        {
+            WorkOrderListStatusFilter.New =>
+                rows.Where(w => w.Properties.Count(p => !p.IsRemoved) == 0),
+            WorkOrderListStatusFilter.Completed =>
+                rows.Where(w =>
+                    w.Properties.Count(p => !p.IsRemoved) > 0
+                    && w.Properties.Count(p => !p.IsRemoved)
+                        >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
+                    && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
+                            t.Kind == CaseStudyPropertyKind
+                            && t.PoNumber == w.PoNumber
+                            && t.PropertyId == p.Id
+                            && (t.Status == WorkflowTaskStatus.Completed
+                                || t.Phase == WorkflowTaskPhase.Done)))
+                        >= w.Properties.Count(p => !p.IsRemoved)),
+            _ =>
+                rows.Where(w =>
+                    w.Properties.Count(p => !p.IsRemoved) > 0
+                    && !(w.Properties.Count(p => !p.IsRemoved)
+                            >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
+                        && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
+                                t.Kind == CaseStudyPropertyKind
+                                && t.PoNumber == w.PoNumber
+                                && t.PropertyId == p.Id
+                                && (t.Status == WorkflowTaskStatus.Completed
+                                    || t.Phase == WorkflowTaskPhase.Done)))
+                            >= w.Properties.Count(p => !p.IsRemoved))),
+        };
+    }
+
+ /// <summary>Allow-listed sort key plus a stable tiebreaker so pages never overlap.</summary>
+    private static IQueryable<WorkOrder> SortWorkOrders(
+        IQueryable<WorkOrder> rows,
+        WorkOrderListQuery query)
+    {
+        var descending = WorkOrderListQueryRules.ResolveDescending(query.Dir);
+        var ordered = WorkOrderListQueryRules.ResolveSort(query.Sort) switch
+        {
+            WorkOrderListSortKey.PoNumber => descending
+                ? rows.OrderByDescending(w => w.PoNumber)
+                : rows.OrderBy(w => w.PoNumber),
+            WorkOrderListSortKey.ReceivedFromEnfath => descending
+                ? rows.OrderByDescending(w => w.ReceivedFromEnfathAt)
+                : rows.OrderBy(w => w.ReceivedFromEnfathAt),
+            WorkOrderListSortKey.DueDate => descending
+                ? rows.OrderByDescending(w => w.DueDateAt)
+                : rows.OrderBy(w => w.DueDateAt),
+            _ => descending
+                ? rows.OrderByDescending(w => w.CreatedAtUtc)
+                : rows.OrderBy(w => w.CreatedAtUtc),
+        };
+
+        return ordered.ThenBy(w => w.PoNumber);
     }
 
     public async Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
@@ -269,22 +413,13 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     }
 
     private async Task<IReadOnlyList<WorkOrderListItemDto>> BuildListItemsAsync(
+        WorkOrderListQuery listQuery,
+        HashSet<string>? visiblePos,
         int? skip,
         int? take,
-        PermissionsDto? actor,
         CancellationToken cancellationToken)
     {
-        IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
-            .OrderByDescending(w => w.CreatedAtUtc);
-
-        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        if (visiblePos is not null)
-        {
-            if (visiblePos.Count == 0)
-                return [];
-            query = query.Where(w => visiblePos.Contains(w.PoNumber));
-        }
+        var query = SortWorkOrders(FilteredWorkOrders(listQuery, visiblePos), listQuery);
 
         if (skip is > 0)
             query = query.Skip(skip.Value);

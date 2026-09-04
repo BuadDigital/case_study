@@ -115,8 +115,14 @@ public static class OperationsTaskLifecycleRules
     public static bool IsFailureObstructionPauseReason(string? pauseReason)
     {
         var reason = pauseReason?.Trim() ?? "";
-        return reason.StartsWith("تعذر نشط", StringComparison.Ordinal);
+        return reason.StartsWith(FailurePauseReasonPrefix, StringComparison.Ordinal);
     }
+
+ /// <summary>
+ /// The prefix above as a constant so the list endpoint can push the same rule into SQL
+ /// (<c>excludeFailurePaused</c>) instead of filtering rows after they are read.
+ /// </summary>
+    public const string FailurePauseReasonPrefix = "تعذر نشط";
 
     public static DateTime DefaultDueAt(OperationsTaskPriority priority, DateTime now) =>
         priority switch

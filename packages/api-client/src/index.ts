@@ -1,6 +1,15 @@
 export { getApiBase } from "./api-base";
 
 export {
+  buildListQueryString,
+  fetchAllListPages,
+  fetchListPage,
+  type ListPageQuery,
+  type ListQueryParamValue,
+  type PagedResultDto,
+} from "./pagination";
+
+export {
   createIdempotencyKey,
   IDEMPOTENCY_HEADER,
   withIdempotencyKey,
@@ -56,6 +65,7 @@ export {
   getPropertyTimeline,
   listPendingBourseProperties,
   listWorkOrders,
+  listWorkOrdersPage,
   listWorkOrdersWithDetails,
   listPropertyListItems,
   stopWorkOrder,
@@ -74,6 +84,9 @@ export {
   type UpdateWorkOrderHeaderRequest,
   type WorkOrderDto,
   type WorkOrderListItemDto,
+  type WorkOrderListQuery,
+  type WorkOrderListSort,
+  type WorkOrderListStatusFilter,
   type PropertyListItemDto,
   type PropertyListRowDto,
   type WorkOrderPropertyDto,
@@ -141,6 +154,7 @@ export {
   deleteWorkflowTasksForPo,
   deleteWorkflowTasksForProperty,
   listWorkflowTasks,
+  listWorkflowTasksPage,
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
   redistributeWorkflowTaskParties,
@@ -150,6 +164,9 @@ export {
   type ConfirmTaskDistributionResponseDto,
   type TaskDistributionDraftDto,
   type WorkflowTaskDto,
+  type WorkflowTaskListFilters,
+  type WorkflowTaskListQuery,
+  type WorkflowTaskListSort,
 } from "./workflow-tasks";
 
 export {
@@ -157,6 +174,7 @@ export {
   createOperationsTask,
   listCourtVisitFees,
   listOperationsTasks,
+  listOperationsTasksPage,
   patchOperationsTask,
   reassignOperationsTask,
   remindOperationsTask,
@@ -169,6 +187,9 @@ export {
   type OperationsTaskCourtVisitResultDto,
   type OperationsTaskDto,
   type OperationsTaskLetterRowDto,
+  type OperationsTaskListFilters,
+  type OperationsTaskListQuery,
+  type OperationsTaskListSort,
   type PatchOperationsTaskRequest,
   type ReassignOperationsTaskRequest,
   type RemindOperationsTaskRequest,

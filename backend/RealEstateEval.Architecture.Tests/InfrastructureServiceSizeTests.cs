@@ -12,24 +12,13 @@ public class InfrastructureServiceSizeTests
 {
     private const int MaxLines = 400;
 
-    /// <summary>Snapshot taken 2026-09-02 after PartyTaskSubmissionService moved to Application.</summary>
-    private static readonly string[] FrozenOverCap =
-    [
-        "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureService.cs",
-        "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.cs",
-        "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs",
-        "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskCommands.cs",
-        "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskNotifier.cs",
-        "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/CourtsService.cs",
-        "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/OrganizationSettingsService.cs",
-        "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/RegionsService.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ComparablePropertyService.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationComparableSelectionService.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationCostApproachService.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReconciliationService.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReportFieldBuilder.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReportFieldInjectionService.cs",
-    ];
+    /// <summary>
+    /// Empty since 2026-09-03: UserRegistrationService, the last entry, moved to
+    /// Identity.Application/Services behind IStaffRegistrationRepository and IStaffIdentityStore.
+    /// The list stays so a service that grows past the cap has somewhere it must be recorded —
+    /// and the ratchet below keeps that record from going stale.
+    /// </summary>
+    private static readonly string[] FrozenOverCap = [];
 
     [Fact]
     public void No_new_infrastructure_service_exceeds_the_cap()

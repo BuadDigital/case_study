@@ -9,6 +9,8 @@ using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Services;
+using RealEstateEval.Platform.Infrastructure.Persistence;
 using RealEstateEval.Platform.Infrastructure.Services;
 using RealEstateEval.Platform.Application.Contracts;
 using RealEstateEval.Platform.Domain;
@@ -246,7 +248,7 @@ public class CourtsServiceAuditTests
             new NullDistributedCache(),
             Options.Create(new RedisCacheOptions { Enabled = false }),
             NullLogger<ApiResponseCache>.Instance);
-        return new CourtsService(db, cache, new AuditLogWriter());
+        return new CourtsService(new CourtsRepository(db), cache, new AuditLogWriter());
     }
 
     private static PlatformDbContext CreateDb() => TestDatabases.Platform("courts-audit");

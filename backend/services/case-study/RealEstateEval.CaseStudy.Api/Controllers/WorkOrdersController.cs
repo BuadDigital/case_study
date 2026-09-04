@@ -6,6 +6,7 @@ using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -28,17 +29,38 @@ public class WorkOrdersController : ControllerBase
         _permissions = permissions;
     }
 
+ /// <summary>
+ /// Work-order list. Sending page or pageSize returns PagedResultDto; without them the response
+ /// stays the plain array every existing caller expects. See
+ /// docs/architecture/pagination-contract.md.
+ /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] string? q,
+        [FromQuery] string? status,
+        [FromQuery] string? type,
         CancellationToken cancellationToken)
     {
         var actor = await ActorAsync(cancellationToken);
-        if (page.HasValue || pageSize.HasValue)
-            return Ok(await _workOrders.ListPagedAsync(page, pageSize, actor, cancellationToken));
+        var query = new WorkOrderListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Status = status,
+            Type = type,
+        };
 
-        return Ok(await _workOrders.ListAsync(actor, cancellationToken));
+        if (query.IsPaged)
+            return Ok(await _workOrders.ListPagedAsync(query, actor, cancellationToken));
+
+        return Ok(await _workOrders.ListAsync(query, actor, cancellationToken));
     }
 
     [HttpGet("details")]

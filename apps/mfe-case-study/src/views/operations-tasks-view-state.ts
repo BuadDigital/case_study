@@ -8,6 +8,7 @@ import type { FailureRecord } from "@platform/app-shared/failures/failures-types
 import {
   isActiveOperationsTask,
   type OperationsTask,
+  type OperationsTaskQuery,
 } from "../lib/app-data/operations-tasks-model";
 import { isTerminalOperationsTaskStatus } from "../lib/app-data/operations-task-display";
 import {
@@ -31,6 +32,99 @@ export type OperationsTaskFilters = {
   showAll: boolean;
 };
 
+/**
+ * The screen's query state. Status, scope, type, the "active only" toggle, the
+ * failure-pause exclusion, the search term and the sort are all sent to the
+ * server (`docs/architecture/pagination-contract.md` §3); what stays here is
+ * listed on `visibleOperationsTasks`.
+ */
+export type OperationsTaskQueryState = {
+  search: string;
+  statusFilter: string;
+  scopeFilter: string;
+  typeFilter: string;
+  showAll: boolean;
+};
+
+export const INITIAL_OPERATIONS_TASK_QUERY: OperationsTaskQueryState = {
+  search: "",
+  statusFilter: "",
+  scopeFilter: "",
+  typeFilter: "",
+  showAll: false,
+};
+
+export type OperationsTaskQueryAction =
+  | { type: "search"; value: string }
+  | { type: "status"; value: string }
+  | { type: "scope"; value: string }
+  | { type: "taskType"; value: string }
+  | { type: "showAll"; value: boolean };
+
+/** Pure reducer; an unchanged value returns the same object so the query key holds. */
+export function operationsTaskQueryReducer(
+  state: OperationsTaskQueryState,
+  action: OperationsTaskQueryAction,
+): OperationsTaskQueryState {
+  switch (action.type) {
+    case "search":
+      return action.value === state.search
+        ? state
+        : { ...state, search: action.value };
+    case "status":
+      return action.value === state.statusFilter
+        ? state
+        : { ...state, statusFilter: action.value };
+    case "scope":
+      return action.value === state.scopeFilter
+        ? state
+        : { ...state, scopeFilter: action.value };
+    case "taskType":
+      return action.value === state.typeFilter
+        ? state
+        : { ...state, typeFilter: action.value };
+    case "showAll":
+      return action.value === state.showAll
+        ? state
+        : { ...state, showAll: action.value };
+    default:
+      return state;
+  }
+}
+
+/**
+ * Query state → the `GET /api/operations-tasks` parameters. `sort: "queue"` is
+ * the screen's own `taskStatusRank` band order, so the rows arrive in the order
+ * the table renders them.
+ */
+export function toOperationsTaskListQuery(
+  state: OperationsTaskQueryState,
+  options: {
+    /** Executor queues are scoped to the viewer's distribution assignee id. */
+    assigneeId?: string;
+    /** Executor queues also hide rows parked on an active failure. */
+    excludeFailurePaused: boolean;
+    /** Debounced search term; falls back to the live one. */
+    search?: string;
+  },
+): OperationsTaskQuery {
+  const q = (options.search ?? state.search).trim();
+  return {
+    ...(options.assigneeId ? { assigneeId: options.assigneeId } : {}),
+    ...(state.statusFilter ? { status: state.statusFilter } : {}),
+    ...(state.scopeFilter ? { scope: state.scopeFilter } : {}),
+    ...(state.typeFilter ? { type: state.typeFilter } : {}),
+    // Mirrors the screen's "show all" toggle in its off position; an explicit
+    // status filter wins, exactly as `visibleOperationsTasks` had it.
+    ...(!state.showAll && !state.statusFilter ? { activeOnly: true } : {}),
+    ...(options.excludeFailurePaused ? { excludeFailurePaused: true } : {}),
+    ...(q ? { q } : {}),
+    sort: "queue",
+    dir: "desc",
+  };
+}
+
+/** The KPI band's shape — counted by the endpoint (`useOperationsTaskStatusCounts`). */
 export type OperationsTaskKpis = {
   active: number;
   created: number;
@@ -56,29 +150,25 @@ export function queueTasksForViewer(
 ): OperationsTask[] {
   if (!useIndependentQueue) return tasks;
   return tasks.filter((t) => {
+    // The pause-reason half also runs server-side (`excludeFailurePaused`);
+    // kept here because the offline cache and stale pages can still carry it.
     if (t.status === "paused" && isOpsTaskFailurePauseReason(t.pauseReason)) {
       return false;
     }
+    // The other half needs the Failures records and the PO → property map,
+    // neither of which is in the Operations database — pagination-contract §3,
+    // "still client-side" #1. `totalCount` can therefore overstate what this
+    // viewer sees.
     return !isOperationsTaskBlockedByFailure(t, failures, poRecords);
   });
 }
 
-export function operationsTaskKpis(
-  queueTasks: OperationsTask[],
-): OperationsTaskKpis {
-  const created = queueTasks.filter((t) => t.status === "created").length;
-  const inProgress = queueTasks.filter((t) => t.status === "in_progress").length;
-  const paused = queueTasks.filter((t) => t.status === "paused").length;
-  const completed = queueTasks.filter((t) => t.status === "completed").length;
-  return {
-    active: created + inProgress,
-    created,
-    paused,
-    inProgress,
-    completed,
-  };
-}
-
+/**
+ * Status, scope, the "active only" toggle and the free text are applied by the
+ * server. What is left here is the deed term — `DeedsJson` is a `jsonb` column
+ * the endpoint cannot substring-match (pagination-contract §3, "still
+ * client-side" #2) — and the deterministic band ordering the table renders.
+ */
 export function visibleOperationsTasks(
   queueTasks: OperationsTask[],
   filters: OperationsTaskFilters,

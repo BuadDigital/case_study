@@ -27,21 +27,54 @@ public class OperationsTasksController : ControllerBase
         _permissions = permissions;
     }
 
+ /// <summary>
+ /// Operations-task queue. Sending page or pageSize returns PagedResultDto; without them the
+ /// response stays the plain array every existing caller expects. See
+ /// docs/architecture/pagination-contract.md.
+ /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<OperationsTaskDto>>> List(
+    public async Task<IActionResult> List(
         [FromQuery] string? assigneeId,
         [FromQuery] string? createdBy,
         [FromQuery] string? status,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] string? q,
+        [FromQuery] string? scope,
+        [FromQuery] string? type,
+        [FromQuery] bool? activeOnly,
+        [FromQuery] bool? excludeFailurePaused,
         CancellationToken ct)
     {
-        return Ok(await _tasks.ListAsync(
-            assigneeId,
-            createdBy,
-            status,
-            ActorId(),
-            await ActorAssigneeIdAsync(ct),
-            await ActorPrototypeRoleAsync(ct),
-            ct));
+        var query = new OperationsTaskListQuery
+        {
+            AssigneeId = assigneeId,
+            CreatedBy = createdBy,
+            Status = status,
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Scope = scope,
+            Type = type,
+            ActiveOnly = activeOnly,
+            ExcludeFailurePaused = excludeFailurePaused,
+        };
+
+        var actorId = ActorId();
+        var actorAssigneeId = await ActorAssigneeIdAsync(ct);
+        var actorRole = await ActorPrototypeRoleAsync(ct);
+
+        if (query.IsPaged)
+        {
+            return Ok(await _tasks.ListPagedAsync(
+                query, actorId, actorAssigneeId, actorRole, ct));
+        }
+
+        return Ok(await _tasks.ListAsync(query, actorId, actorAssigneeId, actorRole, ct));
     }
 
     [HttpGet("court-visit-fees")]

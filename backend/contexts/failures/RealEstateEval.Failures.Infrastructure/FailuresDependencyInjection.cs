@@ -7,6 +7,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Failures.Application.Abstractions;
+using RealEstateEval.Failures.Application.Services;
+using RealEstateEval.Failures.Infrastructure.Persistence;
 using RealEstateEval.Failures.Infrastructure.Services;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
@@ -35,6 +37,7 @@ public static class FailuresDependencyInjection
         services.AddMessagingPersistence(configuration, connectionString);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IFailureLookup, FailureLookup>();
+        services.AddScoped<IFailureRepository, FailureRepository>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
         return services;

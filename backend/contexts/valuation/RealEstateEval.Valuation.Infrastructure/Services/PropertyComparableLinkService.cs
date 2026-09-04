@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;

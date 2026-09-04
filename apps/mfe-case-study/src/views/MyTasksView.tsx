@@ -34,6 +34,9 @@ const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
   queueSort: "distributed-newest-first",
   statusColumnLabel: "المدة المتبقية",
   filterListed: (mine, poByNumber) => filterTasksForPrimaryData(mine, poByNumber),
+  /* `taskMatchesPrimaryData` keeps case-study slots in the enfath phase — the
+     server narrows to exactly that, the removed-property check stays here. */
+  serverQuery: { kind: ["case-study-property"], phase: ["enfath"] },
   allowCopyFromPrior: true,
   allowDeleteTransaction: true,
 };

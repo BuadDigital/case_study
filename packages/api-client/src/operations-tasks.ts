@@ -1,6 +1,12 @@
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import {
+  buildListQueryString,
+  fetchListPage,
+  type ListPageQuery,
+  type PagedResultDto,
+} from "./pagination";
 
 export type OperationsTaskLetterRowDto = {
   po: string;
@@ -159,18 +165,64 @@ function buildQuery(params: Record<string, string | undefined>): string {
   return s ? `?${s}` : "";
 }
 
+/** Allowed `sort` keys — pagination-contract §3. Unknown keys fall back to `queue`. */
+export type OperationsTaskListSort =
+  | "queue"
+  | "created"
+  | "due"
+  | "updated"
+  | "priority";
+
+/** `GET /api/operations-tasks` query — pagination-contract §3. */
+export type OperationsTaskListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: OperationsTaskListSort;
+  assigneeId?: string;
+  createdBy?: string;
+  /** Single status; an unrecognised value returns an empty list. */
+  status?: string;
+  /** `general` | `transaction` | `work_order` | `multi`. */
+  scope?: string;
+  /** `general` | `court_visit` | `reshoot` | `field_visit` | `inquiry`. */
+  type?: string;
+  /** `true` keeps only `created` and `in_progress`. */
+  activeOnly?: boolean;
+  /** `true` drops rows parked on an active property failure. */
+  excludeFailurePaused?: boolean;
+};
+
+/** Every filter of the list query except the page window. */
+export type OperationsTaskListFilters = Omit<
+  OperationsTaskListQuery,
+  "page" | "pageSize"
+>;
+
+function operationsTaskListParams(query?: OperationsTaskListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    assigneeId: query?.assigneeId,
+    createdBy: query?.createdBy,
+    status: query?.status,
+    scope: query?.scope,
+    type: query?.type,
+    activeOnly: query?.activeOnly,
+    excludeFailurePaused: query?.excludeFailurePaused,
+  };
+}
+
 export async function listOperationsTasks(
   config: WorkOrdersApiConfig,
-  query?: { assigneeId?: string; createdBy?: string; status?: string },
+  query?: OperationsTaskListFilters,
 ): Promise<ApiOk<OperationsTaskDto[]> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/operations-tasks${buildQuery({
-        assigneeId: query?.assigneeId,
-        createdBy: query?.createdBy,
-        status: query?.status,
-      })}`,
+      `${base}/api/operations-tasks${buildListQueryString(
+        operationsTaskListParams(query),
+      )}`,
       { headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -180,6 +232,18 @@ export async function listOperationsTasks(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/** One server page of the operations-task list — filters, sort and paging server-side. */
+export async function listOperationsTasksPage(
+  config: WorkOrdersApiConfig,
+  query?: OperationsTaskListQuery,
+): Promise<ApiOk<PagedResultDto<OperationsTaskDto>> | ApiErr> {
+  return fetchListPage<OperationsTaskDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/operations-tasks",
+    operationsTaskListParams(query),
+  );
 }
 
 export async function listCourtVisitFees(

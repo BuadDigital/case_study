@@ -1545,6 +1545,21 @@
       "note": "Per-consumer (D5). Platform prefers MessagingDbContext when registered; Case Study residual uses ApplicationDbContext."
     },
     {
+      "table": "CommandIdempotencyRecords",
+      "schema": "messaging",
+      "dbSet": "CommandIdempotencyRecords",
+      "entity": "CommandIdempotencyRecord",
+      "owner": "per-producer",
+      "status": "approved",
+      "ownershipModel": "per-producer",
+      "contexts": [
+        "MessagingDbContext"
+      ],
+      "transactionGroup": "messaging.idempotency",
+      "decision": "D5",
+      "note": "ADR 0008 command idempotency. Shared messaging infrastructure on the same footing as the outbox: each producing service owns only the records it writes and inserts them in the same SaveChanges as the command they de-duplicate. Mapped by MessagingDbContext today; after the Phase 4 cutover each service keeps its own records on its own messaging database."
+    },
+    {
       "table": "UserNotifications",
       "schema": "messaging",
       "dbSet": "UserNotifications",

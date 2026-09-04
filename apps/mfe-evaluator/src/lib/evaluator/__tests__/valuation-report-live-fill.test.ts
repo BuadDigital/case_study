@@ -57,6 +57,7 @@ describe("valuation report live fill from intake", () => {
         ownerName: "احمد",
         ownershipType: "absolute",
         city: "جدة",
+        deedNumber: "",
       } as never,
       clients: [{ id: NABR_SEED_CLIENT_ID, nameAr: "شركة نبر العقارية" }],
     });
@@ -187,7 +188,7 @@ describe("valuation report live fill from intake", () => {
     const fill = buildValuationReportLiveFill({
       draft,
       record: poRecord({ clientNameAr: "عميل التجربة" }) as never,
-      property: { ownerName: "مالك حي", city: "الدمام" } as never,
+      property: { ownerName: "مالك حي", city: "الدمام", deedNumber: "" } as never,
     });
     const dom = new DOMParser().parseFromString(
       `<section data-sec="2">
@@ -335,6 +336,8 @@ describe("valuation report live fill from intake", () => {
       property: {
         northBoundary: "قطعة قديمة",
         northBoundaryLengthM: "10",
+        city: "",
+        deedNumber: "",
       } as never,
       survey: {
         northBoundary: "شارع 20م",
@@ -404,7 +407,7 @@ describe("valuation report live fill from intake", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
-      property: { area: "390" } as never,
+      property: { area: "390", city: "", deedNumber: "" } as never,
       cost: {
         landUnitRateFromMarket: 2000,
         landAreaSqm: 400,
@@ -1054,7 +1057,7 @@ describe("report org texts and frozen template artifacts", () => {
     draft.appraisalDate = "2026-08-27";
     const fill = buildValuationReportLiveFill({
       draft,
-      property: { city: "الجموم", district: "السنابل" } as never,
+      property: { city: "الجموم", district: "السنابل", deedNumber: "" } as never,
       keyInputsText: "مدخل أ\nمدخل ب",
       professionalStandardsText: "معايير سارية من {{ivsDate}}.",
       independenceText: "نص الاستقلالية من الإعدادات.",

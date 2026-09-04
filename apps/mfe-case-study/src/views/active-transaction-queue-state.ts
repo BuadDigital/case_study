@@ -7,6 +7,9 @@
 import type { ReactNode } from "react";
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { PageId, RoleId } from "@platform/types";
+import type { WorkflowTaskListFilters } from "@platform/api-client";
+import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import {
@@ -96,7 +99,104 @@ export type ActiveTransactionQueueConfig = {
   queueSort?: "oldest-first" | "newest-first" | "distributed-newest-first";
   /** When true, list open, blocked, and completed tasks (e.g. all-transactions). */
   includeAllStatuses?: boolean;
+  /**
+   * Server-side narrowing for this queue's list request
+   * (`docs/architecture/pagination-contract.md` §2). It must never be narrower
+   * than `filterListed`: the client only ever refines further.
+   */
+  serverQuery?: {
+    kind?: readonly string[];
+    phase?: readonly string[];
+    status?: readonly string[];
+    assignmentType?: string;
+  };
 };
+
+/** What `isListedQueueTask` keeps when the screen is not showing everything. */
+export const QUEUE_DEFAULT_STATUSES = ["open", "blocked"] as const;
+
+/** The queue sort modes, mapped onto the endpoint's sort keys. */
+export function queueServerSort(
+  queueSort: ActiveTransactionQueueConfig["queueSort"],
+): { sort: "updated" | "poReceived" | "poCreated"; dir: "asc" | "desc" } {
+  switch (queueSort) {
+    case "oldest-first":
+      return { sort: "poReceived", dir: "asc" };
+    case "newest-first":
+      return { sort: "poCreated", dir: "desc" };
+    default:
+      return { sort: "updated", dir: "desc" };
+  }
+}
+
+/**
+ * The `assigneeRole` the server may filter on. Mirrors
+ * `resolveQueueTasksForViewer`: both `tasksForRole` and `tasksForPartyAssignee`
+ * keep only `assigneeRole === role`, so this is always a superset of what the
+ * client keeps. `undefined` means "this viewer sees every role".
+ */
+export function resolveQueueServerAssigneeRole(input: {
+  role: RoleId;
+  pageId?: PageId;
+  partyAssignee?: boolean;
+  assigneeRole?: RoleId;
+}): string | undefined {
+  if (input.pageId && seesAllCaseStudyWorkflowTasks(input.role, input.pageId)) {
+    return undefined;
+  }
+  if (input.partyAssignee) {
+    if (isSuperAdmin(input.role)) return input.assigneeRole ?? undefined;
+    return input.role;
+  }
+  return isSuperAdmin(input.role) ? undefined : input.role;
+}
+
+/**
+ * The list parameters this queue sends to the server. Returns `{}` when the
+ * screen still needs rows the narrowing would drop (sibling tasks for the
+ * distribution / case-study / appraisal tables) — then the request is exactly
+ * the one the screen made before this contract.
+ */
+export function buildQueueServerQuery(input: {
+  config: ActiveTransactionQueueConfig;
+  role: RoleId;
+  showCompleted: boolean;
+  /** false → no narrowing at all; the screen reads sibling rows. */
+  narrow: boolean;
+}): WorkflowTaskListFilters {
+  const { config } = input;
+  if (!input.narrow) return {};
+
+  const showAllToggle =
+    config.tableLayout === "engineering-survey" ||
+    config.tableLayout === "property-appraisal";
+  const showAll =
+    Boolean(config.includeAllStatuses) || (showAllToggle && input.showCompleted);
+  const status =
+    config.serverQuery?.status ??
+    (showAll ? undefined : QUEUE_DEFAULT_STATUSES);
+  const assigneeRole = resolveQueueServerAssigneeRole({
+    role: input.role,
+    pageId: config.pageId,
+    partyAssignee: config.partyAssignee,
+    assigneeRole: config.assigneeRole,
+  });
+  const { sort, dir } = queueServerSort(config.queueSort);
+
+  return {
+    ...(config.serverQuery?.kind?.length ? { kind: config.serverQuery.kind } : {}),
+    ...(config.serverQuery?.phase?.length
+      ? { phase: config.serverQuery.phase }
+      : {}),
+    ...(status?.length ? { status } : {}),
+    ...(config.serverQuery?.assignmentType
+      ? { assignmentType: config.serverQuery.assignmentType }
+      : {}),
+    ...(assigneeRole ? { assigneeRole } : {}),
+    sort,
+    dir,
+  };
+}
 
 export type ActiveQueueRowMoreContext = {
   task: WorkflowTask;

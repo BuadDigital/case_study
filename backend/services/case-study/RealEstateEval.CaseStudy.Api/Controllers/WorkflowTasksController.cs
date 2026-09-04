@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -33,17 +34,48 @@ public class WorkflowTasksController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _opsMetrics.GetAsync(cancellationToken));
 
+ /// <summary>
+ /// Workflow-task queue. Sending page or pageSize returns PagedResultDto; without them the
+ /// response stays the plain array every existing caller expects. Party visibility is applied
+ /// before paging, so counts are the actor's. See docs/architecture/pagination-contract.md.
+ /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] string? q,
+        [FromQuery] string? kind,
+        [FromQuery] string? status,
+        [FromQuery] string? phase,
+        [FromQuery] string? assigneeId,
+        [FromQuery] string? assigneeRole,
+        [FromQuery] string? poNumber,
+        [FromQuery] string? assignmentType,
         CancellationToken cancellationToken)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorId(), cancellationToken);
-        if (page.HasValue || pageSize.HasValue)
-            return Ok(await _tasks.ListPagedAsync(page, pageSize, actor, cancellationToken));
+        var query = new WorkflowTaskListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Kind = kind,
+            Status = status,
+            Phase = phase,
+            AssigneeId = assigneeId,
+            AssigneeRole = assigneeRole,
+            PoNumber = poNumber,
+            AssignmentType = assignmentType,
+        };
 
-        return Ok(await _tasks.ListAsync(actor, cancellationToken));
+        if (query.IsPaged)
+            return Ok(await _tasks.ListPagedAsync(query, actor, cancellationToken));
+
+        return Ok(await _tasks.ListAsync(query, actor, cancellationToken));
     }
 
     [HttpPost("sync")]

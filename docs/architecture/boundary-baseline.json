@@ -171,7 +171,8 @@
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Application/RealEstateEval.Platform.Application.csproj": [
       "backend/RealEstateEval.Application/RealEstateEval.Application.csproj",
-      "backend/contexts/platform/RealEstateEval.Platform.Domain/RealEstateEval.Platform.Domain.csproj"
+      "backend/contexts/platform/RealEstateEval.Platform.Domain/RealEstateEval.Platform.Domain.csproj",
+      "backend/contexts/valuation/RealEstateEval.Valuation.Domain/RealEstateEval.Valuation.Domain.csproj"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Domain/RealEstateEval.Platform.Domain.csproj": [
       "backend/shared/RealEstateEval.Shared.Contracts/RealEstateEval.Shared.Contracts.csproj"
@@ -270,6 +271,7 @@
       "messaging"
     ],
     "identity": [
+      "audit",
       "identity"
     ],
     "operations": [
@@ -390,7 +392,7 @@
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureLookup.cs": [
       "failures"
     ],
-    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureService.cs": [
+    "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Persistence/FailureRepository.cs": [
       "failures"
     ],
     "backend/contexts/failures/RealEstateEval.Failures.Infrastructure/Services/FailureTypesCatalogService.cs": [
@@ -443,6 +445,10 @@
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/PoEnfazInvoiceLookup.cs": [
       "financial"
     ],
+    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Persistence/StaffRegistrationRepository.cs": [
+      "audit",
+      "identity"
+    ],
     "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/AuthSessionService.cs": [
       "identity"
     ],
@@ -455,24 +461,11 @@
     "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserLabelLookup.cs": [
       "identity"
     ],
-    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.Queries.cs": [
-      "identity"
-    ],
-    "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Services/UserRegistrationService.cs": [
-      "audit",
-      "identity"
-    ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.CourtAccess.cs": [
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/KeyEnvelopeRepository.cs": [
       "case_study",
       "operations"
     ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.Fees.cs": [
-      "operations"
-    ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/KeyEnvelopesService.cs": [
-      "operations"
-    ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskCommands.cs": [
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/OperationsTaskRepository.cs": [
       "case_study"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskQueryService.cs": [
@@ -505,7 +498,7 @@
       "audit",
       "platform"
     ],
-    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/CourtsService.cs": [
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Persistence/CourtsRepository.cs": [
       "audit",
       "platform"
     ],
@@ -523,7 +516,7 @@
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/NotificationService.cs": [
       "messaging"
     ],
-    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/OrganizationSettingsService.cs": [
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Persistence/OrganizationSettingsRepository.cs": [
       "audit",
       "platform"
     ],
@@ -533,7 +526,7 @@
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/PushSubscriptionService.cs": [
       "messaging"
     ],
-    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/RegionsService.cs": [
+    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Persistence/LocationCatalogRepository.cs": [
       "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/WebPushDeliveryHandler.cs": [
@@ -542,7 +535,7 @@
     "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Data/ComparableBankSeed.cs": [
       "valuation"
     ],
-    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ComparablePropertyService.cs": [
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Persistence/ComparablePropertyRepository.cs": [
       "valuation"
     ],
     "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/EvaluatorRecallsService.cs": [
@@ -557,13 +550,13 @@
     "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationComparableListBuilder.cs": [
       "valuation"
     ],
-    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationComparableSelectionService.cs": [
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Persistence/ValuationComparableSelectionRepository.cs": [
       "valuation"
     ],
-    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationCostApproachService.cs": [
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Persistence/ValuationCostApproachRepository.cs": [
       "valuation"
     ],
-    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReconciliationService.cs": [
+    "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Persistence/ValuationReconciliationRepository.cs": [
       "valuation"
     ],
     "backend/contexts/valuation/RealEstateEval.Valuation.Infrastructure/Services/ValuationReportIssuanceService.cs": [
@@ -630,6 +623,13 @@
     ],
     "DiscountFlagService": [
       "financial"
+    ],
+    "EfCommandIdempotencyStore": [
+      "case-study",
+      "failures",
+      "financial",
+      "operations",
+      "platform"
     ],
     "EvaluatorRecallsService": [
       "valuation"

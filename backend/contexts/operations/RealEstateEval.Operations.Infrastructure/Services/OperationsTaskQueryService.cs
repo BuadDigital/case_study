@@ -10,53 +10,169 @@ using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Infrastructure.Data;
+using Microsoft.Extensions.Options;
 
 namespace RealEstateEval.Operations.Infrastructure.Services;
 
 public sealed class OperationsTaskQueryService : IOperationsTaskQuery
 {
-    private const int MaxListRows = 500;
-
     private readonly OperationsDbContext _ops;
     private readonly ICourtVisitFeeChargeService _charges;
     private readonly IUserLabelLookup _labels;
+    private readonly DatabaseOptions _dbOptions;
 
     [ActivatorUtilitiesConstructor]
     public OperationsTaskQueryService(
         OperationsDbContext ops,
         ICourtVisitFeeChargeService charges,
-        IUserLabelLookup labels)
+        IUserLabelLookup labels,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _ops = ops;
         _charges = charges;
         _labels = labels;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
-    public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
+    public Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
         string? assigneeId,
         string? createdBy,
         string? status,
         string actorUserId,
         string? actorAssigneeId,
         string actorRole,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            new OperationsTaskListQuery
+            {
+                AssigneeId = assigneeId,
+                CreatedBy = createdBy,
+                Status = status,
+            },
+            actorUserId,
+            actorAssigneeId,
+            actorRole,
+            cancellationToken);
+
+    public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
         CancellationToken cancellationToken = default)
     {
-        var query = _ops.OperationsTasks.AsNoTracking();
+        var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
+        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorRole);
+        if (rows is null) return [];
 
-        var assignee = assigneeId?.Trim();
-        if (!string.IsNullOrEmpty(assignee))
-            query = query.Where(t => t.AssigneeId == assignee);
+        return await MapRowsAsync(
+            await SortTasks(rows, query).Take(take).ToListAsync(cancellationToken),
+            cancellationToken);
+    }
 
-        var creator = createdBy?.Trim();
-        if (!string.IsNullOrEmpty(creator))
-            query = query.Where(t => t.CreatedBy == creator);
+ /// <summary>
+ /// Filters and sorts in the database, then pages. The executor-queue narrowing is part of the
+ /// same query, so TotalCount is the actor's total, not the table's.
+ /// </summary>
+    public async Task<PagedResultDto<OperationsTaskDto>> ListPagedAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default)
+    {
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page,
+            query.PageSize,
+            _dbOptions);
 
- // An unrecognised status filter matches nothing rather than being ignored.
-        if (!string.IsNullOrWhiteSpace(status))
+        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorRole);
+        if (rows is null)
         {
-            if (!OperationsTaskStatusValues.TryParse(status, out var statusFilter))
-                return [];
-            query = query.Where(t => t.Status == statusFilter);
+            return new PagedResultDto<OperationsTaskDto>
+            {
+                Items = [],
+                TotalCount = 0,
+                Page = resolvedPage,
+                PageSize = take,
+            };
+        }
+
+        var total = await rows.CountAsync(cancellationToken);
+        var page = await SortTasks(rows, query)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<OperationsTaskDto>
+        {
+            Items = await MapRowsAsync(page, cancellationToken),
+            TotalCount = total,
+            Page = resolvedPage,
+            PageSize = take,
+        };
+    }
+
+ /// <summary>
+ /// Actor narrowing plus the allow-listed filters as EF predicates. Null means "an unrecognised
+ /// status / scope / type was asked for", which matches nothing rather than widening the list.
+ /// </summary>
+    private IQueryable<OperationsTask>? FilteredTasks(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole)
+    {
+        var rows = _ops.OperationsTasks.AsNoTracking();
+
+        var assignee = OperationsTaskListQueryRules.NormalizeExact(query.AssigneeId);
+        if (assignee is not null)
+            rows = rows.Where(t => t.AssigneeId == assignee);
+
+        var creator = OperationsTaskListQueryRules.NormalizeExact(query.CreatedBy);
+        if (creator is not null)
+            rows = rows.Where(t => t.CreatedBy == creator);
+
+ // An unrecognised status / scope / type filter matches nothing rather than being ignored.
+        var (statusOk, status) = OperationsTaskListQueryRules.ResolveStatus(query.Status);
+        if (!statusOk) return null;
+        if (status is not null)
+            rows = rows.Where(t => t.Status == status.Value);
+
+        var (scopeOk, scope) = OperationsTaskListQueryRules.ResolveScope(query.Scope);
+        if (!scopeOk) return null;
+        if (scope is not null)
+            rows = rows.Where(t => t.Scope == scope.Value);
+
+        var (typeOk, type) = OperationsTaskListQueryRules.ResolveType(query.Type);
+        if (!typeOk) return null;
+        if (type is not null)
+            rows = rows.Where(t => t.Type == type.Value);
+
+        if (query.ActiveOnly == true)
+        {
+            var active = OperationsTaskListQueryRules.ActiveStatuses.ToList();
+            rows = rows.Where(t => active.Contains(t.Status));
+        }
+
+        if (query.ExcludeFailurePaused == true)
+        {
+            rows = rows.Where(t =>
+                t.Status != OperationsTaskStatus.Paused
+                || t.PauseReason == null
+                || !t.PauseReason.StartsWith(OperationsTaskLifecycleRules.FailurePauseReasonPrefix));
+        }
+
+        var search = OperationsTaskListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            rows = rows.Where(t =>
+                t.Title.Contains(search)
+                || t.DisplayId.Contains(search)
+                || t.AssigneeName.Contains(search)
+                || (t.PoNumber != null && t.PoNumber.Contains(search))
+                || (t.Reference != null && t.Reference.Contains(search)));
         }
 
         if (!OperationsTaskLifecycleRules.IsManager(actorRole))
@@ -66,15 +182,72 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
  // assignees' tasks that merely share a PO.
             var userId = actorUserId.Trim();
             var myAssignee = actorAssigneeId?.Trim() ?? "";
-            query = query.Where(t =>
+            rows = rows.Where(t =>
                 (myAssignee.Length > 0 && t.AssigneeId == myAssignee)
                 || (userId.Length > 0 && t.CreatedBy == userId));
         }
 
-        var rows = await query
-            .OrderByDescending(t => t.CreatedAtUtc)
-            .Take(MaxListRows)
-            .ToListAsync(cancellationToken);
+        return rows;
+    }
+
+ /// <summary>Allow-listed sort key plus a stable tiebreaker so pages never overlap.</summary>
+    private static IQueryable<OperationsTask> SortTasks(
+        IQueryable<OperationsTask> rows,
+        OperationsTaskListQuery query)
+    {
+        var descending = OperationsTaskListQueryRules.ResolveDescending(query.Dir);
+        IOrderedQueryable<OperationsTask> ordered;
+
+        switch (OperationsTaskListQueryRules.ResolveSort(query.Sort))
+        {
+            case OperationsTaskListSortKey.Created:
+                ordered = descending
+                    ? rows.OrderByDescending(t => t.CreatedAtUtc)
+                    : rows.OrderBy(t => t.CreatedAtUtc);
+                break;
+            case OperationsTaskListSortKey.Due:
+                ordered = descending
+                    ? rows.OrderByDescending(t => t.DueAtUtc)
+                    : rows.OrderBy(t => t.DueAtUtc);
+                break;
+            case OperationsTaskListSortKey.Updated:
+                ordered = descending
+                    ? rows.OrderByDescending(t => t.UpdatedAtUtc)
+                    : rows.OrderBy(t => t.UpdatedAtUtc);
+                break;
+            case OperationsTaskListSortKey.Priority:
+ // High before medium before low — the stored string would sort alphabetically.
+                ordered = descending
+                    ? rows.OrderByDescending(t => t.Priority == OperationsTaskPriority.High
+                        ? 0
+                        : t.Priority == OperationsTaskPriority.Medium ? 1 : 2)
+                    : rows.OrderBy(t => t.Priority == OperationsTaskPriority.High
+                        ? 0
+                        : t.Priority == OperationsTaskPriority.Medium ? 1 : 2);
+                break;
+            default:
+ // Queue order is the screen's: band first (always ascending, mirroring taskStatusRank),
+ // then newest in the band. The CASE is inline so the database does the ordering.
+                ordered = rows.OrderBy(t => t.Status == OperationsTaskStatus.Paused
+                    ? 1
+                    : t.Status == OperationsTaskStatus.Completed
+                        || t.Status == OperationsTaskStatus.Cancelled
+                        ? 2
+                        : 0);
+                ordered = descending
+                    ? ordered.ThenByDescending(t => t.CreatedAtUtc)
+                    : ordered.ThenBy(t => t.CreatedAtUtc);
+                break;
+        }
+
+        return ordered.ThenBy(t => t.DisplayId).ThenBy(t => t.Id);
+    }
+
+    private async Task<IReadOnlyList<OperationsTaskDto>> MapRowsAsync(
+        IReadOnlyList<OperationsTask> rows,
+        CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0) return [];
 
         var links = await LoadLinkedEnvelopeIdsAsync(rows.Select(r => r.Id), cancellationToken);
         var visitFees = await LoadVisitFeeAmountsAsync(rows.Select(r => r.Id), cancellationToken);

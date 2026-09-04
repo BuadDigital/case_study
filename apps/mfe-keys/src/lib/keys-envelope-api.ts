@@ -586,7 +586,7 @@ export async function savePropertyCourtAccess(
 ): Promise<MutationResult<PropertyCourtAccessRow>> {
   const config = prototypeModulesApiConfig();
   const userId = currentOfflineUserId();
-  const targetId = String(body.propertyId ?? body.deedNumber ?? "").trim();
+  const targetId = String(body.propertyId ?? "").trim();
 
   if ((!config || isBrowserOffline()) && userId) {
     await enqueueOutbox({

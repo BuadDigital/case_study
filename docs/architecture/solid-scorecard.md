@@ -86,6 +86,63 @@ All four slices below were started the same day. Verification at close: full bac
 | 3. Rules out of the fat services | Five services lost 20-43% each: billing statements 1,142 to 871, work-order property commands 745 to 422, fee pricing 854 to 661, failures 805 to 643, inspector fees 739 to 470. Rules modules under each context's `Application/Rules`, 113 new unit tests. Identity registration was skipped because it had uncommitted edits. | All five are still above the 400-line cap; `FailureService.ToDto` stays put because it needs a remote-client label resolver. |
 | 4. Split the prototype storage facades | PO intake, tasks, and inspector workspace each split into `-model` / `-reads` / `-commands` under `lib/app-data`. Seven barrels deleted with about 90 importers moved to deep imports; the tasks barrel kept as named re-exports (95 importers). `OperationsTasksView` 2,170 to 1,310 and `FieldInspectionWorkBody` 2,796 to 1,233 lines, workflow moved into `useOperationsTasksWorkflow` / `useFieldInspectionWorkflow` plus pure state modules. | The 33-line Infath deposit facade (not worth splitting), the four `*-storage.ts` files in other MFEs, and the next tier of components (`KeyEnvelopeDetailModal`, `ValuationWorkShell`, `ActiveTransactionQueueView`). |
 
+## Status after the second pass (2026-09-03)
+
+Verification at close: `RealEstateEval.Application.Tests` 1,124 passed, `RealEstateEval.Architecture.Tests` 67 passed / 0 failed (the four idempotency failures were closed by cataloguing `messaging.CommandIdempotencyRecords` as per-producer shared infrastructure and recording the store's five-API registration, same as the outbox). Frontend: every micro-frontend and the shell typecheck clean individually (the combined script still stops at the in-flight `mfe-keys` deed-number error); vitest 277 passed / 5 pre-existing failures.
+
+| Principle | Score now | Evidence |
+| --- | --- | --- |
+| **S** Single responsibility | Strong on the backend, good on the frontend | No Infrastructure service is over 400 lines: `Identity/UserRegistrationService`, the last one, moved to `Identity.Application/Services` on 2026-09-03 and the frozen list is now empty. Fourteen frontend components were halved or better; the largest entry files are now under 700 lines. |
+| **O** Open/closed | Strong | Rules modules in every context: shared, Case Study, Financial, Operations, Platform, Valuation, Failures. |
+| **L** Liskov | Strong | Unchanged. |
+| **I** Interface segregation | Strong | Per-aggregate ports in every context; no Application abstraction exposes a query type. |
+| **D** Dependency inversion | Strong | 40 use cases in `<Ctx>.Application/Services` across seven contexts; EF only in `Infrastructure/Persistence`; Application projects reference no EF or Infrastructure package. |
+
+| Context | Use cases in Application | Infrastructure services left over the cap |
+| --- | --- | --- |
+| Case Study | 17 | 0 |
+| Financial | 8 | 0 |
+| Operations | 5 | 0 |
+| Platform | 3 | 0 |
+| Valuation | 5 (+ report field builder as a rule) | 0 |
+| Failures | 1 | 0 |
+| Identity | 1 | 0 |
+
+Still open after this pass:
+
+- Two large new hooks that split cleanly into data and commands halves: `useEngineeringSurveyWorkflow` (657) and `useCaseStudyFormWorkflow` (670).
+- The `mfe-keys` typecheck error and the vitest count drop from 303 to 282 between the morning and afternoon commits, both in your in-flight work.
+- `BoundedContextBoundaryTests.ExtractedTablesAreNoLongerWrittenThroughTheLegacyContext` now scans `Infrastructure/Services`, `Infrastructure/Persistence` and `Application/Services` per context instead of a hard-coded folder list, so future moves do not need a hand edit there.
+
+## Identity slice (2026-09-03)
+
+`UserRegistrationService` was the last transaction script in an `Infrastructure/Services` folder. It now lives in `Identity.Application/Services` (805 lines across the command and query partials) behind two ports in `Identity.Application/Abstractions`:
+
+- `IStaffRegistrationRepository` — profile rows, uniqueness guards, refresh-token revocation, the yearly user reference, the audit rows, and the transaction. EF adapter: `Identity.Infrastructure/Persistence/StaffRegistrationRepository.cs`.
+- `IStaffIdentityStore` — account lookups, role membership, lockout, activation ticket and password reset. `UserManager<ApplicationUser>` adapter: `Identity.Infrastructure/Persistence/StaffIdentityStore.cs`. Every result is a plain value (`StaffIdentityUser`, `StaffIdentityError`), so `Identity.Application` still references neither EF nor ASP.NET Identity.
+
+`StaffUserRules`, `StaffRoleDefaults` and the new pure `StaffRoleCatalog` moved to `Identity.Application/Rules`; `PrototypeRoleResolver` now forwards to the catalog and keeps only the profile-reading `Resolve`. `RegistrationMapper` stayed in Infrastructure — it maps `ApplicationUser`/`UserProfile`, which are compiled into the shared Infrastructure assembly and cannot cross into Application.
+
+One baseline line moved with real meaning: `apiSchemaAccess.identity` now records `audit` beside `identity`. The identity host has appended audit rows through `IdentityDbContext` since D7 approved the per-producer ledger (`audit.AuditLogs` lists `IdentityDbContext` as a writer); the old measurement missed it because `UserRegistrationService` was a partial class and the type-to-file map resolved to the query half. Splitting the adapter out made the catalogued fact visible. No new coupling was introduced.
+
+## Status after the third pass (2026-09-04)
+
+Backend: `InfrastructureServiceSizeTests.FrozenOverCap` is empty — no Infrastructure service in any context exceeds 400 lines. Identity joined the other six contexts (`UserRegistrationService` in `Identity.Application/Services` behind `IStaffRegistrationRepository` and `IStaffIdentityStore`; ASP.NET Identity stays behind the store adapter). `RealEstateEval.Application.Tests` 1,124 passed; `RealEstateEval.Architecture.Tests` 67 passed / 0 failed.
+
+Frontend: seven more components split (inspector wizard 1,170→348, PO list 1,138→523, party fees 1,083→593, engineering fees 1,063→231, property detail tabs 1,047→516, comparables view 1,008→343, professional report view 1,006→209); the two large workflow hooks from the second pass split into data / commands halves. The Tabler icon font is now loaded once in the shell layout. The five long-standing live-fill test failures were fixture bugs and are fixed. All ten micro-frontends and the shell typecheck clean; vitest 58 files / 282 tests, 0 failed; barrel-import lint clean.
+
+Only four `.tsx` files remain over 1,000 lines, and each is a deliberate non-target: two are pure table / parts collections (`active-transaction-queue-tables.tsx`, `OperationsTasksViewParts.tsx`) and two are already-split shells that are mostly JSX (`OperationsTasksView.tsx`, `FieldInspectionWorkBody.tsx`).
+
+Follow-up worth a look: `dtoToProperty` in `po-intake-model.ts` maps `deedNumber` without the `?? ""` its neighbours have, so a malformed payload could still write `undefined` over the default.
+
+## Pagination slice (2026-09-04)
+
+Contract: `docs/architecture/pagination-contract.md`. Server-side paging, filtering and sorting on `GET /api/work-orders`, `GET /api/workflow-tasks`, `GET /api/operations-tasks` (`page`, `pageSize`, `sort`, `dir`, `q`, endpoint filters; `PagedResultDto` envelope only when a page is requested, so every existing caller keeps the plain array). Filtering and sorting are EF expressions in the Persistence query services; the allow-lists and sort maps are pure rules in `<Ctx>.Application/Rules` (`WorkOrderListQueryRules`, `WorkflowTaskListQueryRules`, `OperationsTaskListQueryRules`). Party visibility is applied before paging so counts belong to the actor. 99 backend tests added (rules + in-memory query services) and the three Postgres container list tests now cover every filter/sort combination; `Application.Tests` 1,223 passed, `Architecture.Tests` 67 / 0, `Api.IntegrationTests` 214 / 0.
+
+Client: `packages/api-client/src/pagination.ts` gained `fetchListPage` + `buildListQueryString`; typed list queries and paged fetchers for the three resources; paged TanStack hooks with `keepPreviousData`; a shared `useDebouncedValue`. `PoListView` is fully server-paged (pager shows real totals). The active transaction queue and operations tasks send their filters and sort to the server but keep no row window, because the rules the contract lists as client-side (PO-record joins, computed status badges, blocked-by-failure hiding) run after the cut and would make totals wrong. Vitest 63 files / 338 tests, 0 failed (+56 tests).
+
+Known gaps, all documented in the contract's "still client-side" lists: Enfaz billing buckets widen server-side and narrow in the browser; the queue's search covers PO-record columns the task endpoint does not have, so `q` is plumbed but not sent for that screen; deed-number search on operations tasks is not available server-side (`DeedsJson` is jsonb). Container tests: the eight long-standing 403 failures on dispatch routes were a test gap (the upstream header required since 2026-08-30 was never sent); fixed in the two test helpers.
+
 ## Recommended next slices
 
 Ordered by value over cost. Each needs its own decision.

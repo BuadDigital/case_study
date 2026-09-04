@@ -1,13 +1,28 @@
 export const appDataKeys = {
   all: ["app-data"] as const,
   poListRows: () => [...appDataKeys.all, "po-list-rows"] as const,
+  /** One server page of the PO list — see docs/architecture/pagination-contract.md §1. */
+  poListRowsPage: (query: Record<string, unknown>) =>
+    [...appDataKeys.poListRows(), "page", query] as const,
   workOrderDtos: () => [...appDataKeys.all, "work-order-dtos"] as const,
   poRecords: () => [...appDataKeys.all, "po-records"] as const,
   propertyListItems: () => [...appDataKeys.all, "property-list-items"] as const,
   poRecord: (poNumber: string) =>
     [...appDataKeys.all, "po-record", poNumber] as const,
   workflowTasks: () => [...appDataKeys.all, "workflow-tasks"] as const,
+  /** Server-filtered workflow tasks (all matching rows) — pagination-contract §2. */
+  workflowTasksFiltered: (query: Record<string, unknown>) =>
+    [...appDataKeys.workflowTasks(), "filtered", query] as const,
+  /** One server page of workflow tasks — pagination-contract §2. */
+  workflowTasksPage: (query: Record<string, unknown>) =>
+    [...appDataKeys.workflowTasks(), "page", query] as const,
   operationsTasks: () => [...appDataKeys.all, "operations-tasks"] as const,
+  /** Server-filtered operations tasks (all matching rows) — pagination-contract §3. */
+  operationsTasksFiltered: (query: Record<string, unknown>) =>
+    [...appDataKeys.operationsTasks(), "filtered", query] as const,
+  /** One server page of operations tasks — pagination-contract §3. */
+  operationsTasksPage: (query: Record<string, unknown>) =>
+    [...appDataKeys.operationsTasks(), "page", query] as const,
   courtVisitFees: (query?: { creditAssigneeId?: string }) =>
     [...appDataKeys.all, "court-visit-fees", query ?? {}] as const,
   pendingBourseItems: () =>

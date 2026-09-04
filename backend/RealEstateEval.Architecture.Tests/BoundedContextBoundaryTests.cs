@@ -153,25 +153,16 @@ public class BoundedContextBoundaryTests
             "PermissionService",
         };
 
-        // A8: extracted bounded-context services live under backend/contexts.
-        var serviceRoots = new[]
-        {
-            new[] { "backend", "RealEstateEval.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "attachments", "RealEstateEval.Attachments.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "failures", "RealEstateEval.Failures.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "financial", "RealEstateEval.Financial.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "identity", "RealEstateEval.Identity.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "operations", "RealEstateEval.Operations.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "platform", "RealEstateEval.Platform.Infrastructure", "Services" },
-            new[] { "backend", "contexts", "valuation", "RealEstateEval.Valuation.Infrastructure", "Services" },
-        };
+        // A8: extracted bounded-context services live under backend/contexts. The solid-scorecard
+        // slice then moves a use case to <Ctx>.Application/Services with its EF adapter in
+        // <Ctx>.Infrastructure/Persistence, so every folder a service may sit in is searched.
+        var serviceRoots = OwningServiceRoots();
 
         var failures = new List<string>();
         foreach (var service in owningServices)
         {
             var file = serviceRoots
-                .Select(parts => RepoPaths.Combine(parts.Append(service + ".cs").ToArray()))
+                .Select(root => Path.Combine(root, service + ".cs"))
                 .FirstOrDefault(File.Exists);
 
             Assert.True(file is not null, $"{service} moved; update this guardrail.");
@@ -185,6 +176,34 @@ public class BoundedContextBoundaryTests
             "Services that own an extracted schema must resolve their own context:\n  "
             + string.Join("\n  ", failures)
             + $"\nExtracted schemas: {string.Join(", ", extractedSchemas.Order(StringComparer.Ordinal))}.");
+    }
+
+    /// <summary>
+    /// Every folder an owner service may live in: the shared Infrastructure services plus, per
+    /// bounded context, <c>Infrastructure/Services</c>, <c>Infrastructure/Persistence</c> and
+    /// <c>Application/Services</c>. Discovered rather than listed so a context or a slice that
+    /// moves a use case out of Infrastructure does not silently drop the guardrail.
+    /// </summary>
+    private static IReadOnlyList<string> OwningServiceRoots()
+    {
+        var roots = new List<string>
+        {
+            RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "Services"),
+        };
+
+        foreach (var context in Directory.EnumerateDirectories(RepoPaths.Combine("backend", "contexts")))
+        {
+            foreach (var library in Directory.EnumerateDirectories(context, "*.Infrastructure"))
+            {
+                roots.Add(Path.Combine(library, "Services"));
+                roots.Add(Path.Combine(library, "Persistence"));
+            }
+
+            foreach (var library in Directory.EnumerateDirectories(context, "*.Application"))
+                roots.Add(Path.Combine(library, "Services"));
+        }
+
+        return roots;
     }
 
  /// <summary>

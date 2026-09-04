@@ -19,8 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The geography seed ships with RegionsService: its embedded-resource fallback reads
-         from typeof(RegionsService).Assembly, so the json must live in this assembly. -->
+    <!-- The geography seed ships with LocationCatalogSeedSource: its embedded-resource
+         fallback reads from typeof(LocationCatalogSeedSource).Assembly, so the json must
+         live in this assembly. -->
     <None Include="Data\Seed\regions_cities.json" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="Data\Seed\regions_cities.json" />
   </ItemGroup>

@@ -10,6 +10,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useTransition,
@@ -27,11 +28,15 @@ import {
   useStaffUsersQuery,
   useDistributionAssigneesQuery,
 } from "@settings/mfe/query/settings-queries";
+import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
-import { useOperationsTasksQuery } from "../query/operations-tasks-queries";
+import {
+  useOperationsTasksFilteredQuery,
+  useOperationsTaskStatusCounts,
+} from "../query/operations-tasks-queries";
 import {
   isActiveOperationsTask,
   type OperationsTask,
@@ -73,7 +78,9 @@ import {
   dueDateFromLocalParts,
   matchesOperationsTaskAssignee,
   operationsTaskHiddenByFailure,
-  operationsTaskKpis,
+  INITIAL_OPERATIONS_TASK_QUERY,
+  operationsTaskQueryReducer,
+  toOperationsTaskListQuery,
   operationsTasksToResumeAfterFailure,
   queueTasksForViewer,
   reviewerStaffForAccount,
@@ -127,22 +134,57 @@ export function useOperationsTasksWorkflow() {
     ? partyAccount?.assigneeId?.trim() || undefined
     : undefined;
 
-  const { data: tasks = [], isFetched, refetch, isFetching } = useOperationsTasksQuery({
-    live: true,
-    assigneeId: assigneeScopeId,
-  });
-  const { data: failures = [] } = useFailuresQuery();
-  const failureResumeBusyRef = useRef(false);
-
-  const [search, setSearch] = useState("");
-  // Typing in search stays immediate while list filtering is deferred one frame
-  // (rerender-use-deferred-value) — local filtering only, no network.
-  const deferredSearch = useDeferredValue(search);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [scopeFilter, setScopeFilter] = useState("");
-  const [showAll, setShowAll] = useState(false);
+  const [query, dispatchQuery] = useReducer(
+    operationsTaskQueryReducer,
+    INITIAL_OPERATIONS_TASK_QUERY,
+  );
+  const { search, statusFilter, scopeFilter, showAll } = query;
+  const setSearch = (value: string) => dispatchQuery({ type: "search", value });
+  const setStatusFilter = (value: string) =>
+    dispatchQuery({ type: "status", value });
+  const setScopeFilter = (value: string) =>
+    dispatchQuery({ type: "scope", value });
+  const setShowAll = (value: boolean | ((prev: boolean) => boolean)) =>
+    dispatchQuery({
+      type: "showAll",
+      value: typeof value === "function" ? value(query.showAll) : value,
+    });
   const { blink: showAllEyeBlink, toggleOpen: toggleShowAll, triggerBlink } =
     useShowAllEyeBlink();
+
+  // The search box drives a server request now — debounce it instead of
+  // deferring a local pass, so typing does not fire one GET per keystroke.
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const serverQuery = useMemo(
+    () =>
+      toOperationsTaskListQuery(query, {
+        assigneeId: assigneeScopeId,
+        // The pause-reason half of the hidden-by-failure rule is a column the
+        // endpoint can answer; the rest stays in `queueTasksForViewer`.
+        excludeFailurePaused: useIndependentQueue,
+        search: debouncedSearch,
+      }),
+    [query, assigneeScopeId, useIndependentQueue, debouncedSearch],
+  );
+
+  const { data: tasks = [], isFetched, refetch, isFetching } =
+    useOperationsTasksFilteredQuery(serverQuery, { live: true });
+  /*
+   * The auto-resume sweep needs the paused rows, which the queue's own filters
+   * hide (`activeOnly`, `excludeFailurePaused`) — pagination-contract §3,
+   * "still client-side" #4. One narrow `status=paused` request instead of
+   * re-loading the whole queue.
+   */
+  const { data: pausedTasks = [], refetch: refetchPaused } =
+    useOperationsTasksFilteredQuery({
+      ...(assigneeScopeId ? { assigneeId: assigneeScopeId } : {}),
+      status: "paused",
+    });
+  const { data: failures = [] } = useFailuresQuery();
+  const failureResumeBusyRef = useRef(false);
+  // The list is already narrowed server-side; the client pass only adds the
+  // deed term, so defer it one frame rather than blocking the keystroke.
+  const deferredSearch = useDeferredValue(search);
   const [selectedId, setSelectedId] = useState<string | null>(deepLinkTaskId);
   const [detailId, setDetailId] = useState<string | null>(deepLinkTaskId);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -227,7 +269,13 @@ export function useOperationsTasksWorkflow() {
     [tasks, useIndependentQueue, failures, poRecords],
   );
 
-  const kpis = useMemo(() => operationsTaskKpis(queueTasks), [queueTasks]);
+  // Counted by the endpoint, not over the loaded rows — the list is narrowed
+  // server-side now, so `operationsTaskKpis(queueTasks)` would count a slice.
+  const kpis = useOperationsTaskStatusCounts({
+    assigneeId: assigneeScopeId,
+    excludeFailurePaused: useIndependentQueue,
+    live: true,
+  });
 
   const visibleTasks = useMemo(
     () =>
@@ -245,7 +293,7 @@ export function useOperationsTasksWorkflow() {
   useEffect(() => {
     if (failureResumeBusyRef.current) return;
     const toReopen = operationsTasksToResumeAfterFailure(
-      tasks,
+      pausedTasks,
       failures,
       poRecords,
     );
@@ -257,12 +305,12 @@ export function useOperationsTasksWorkflow() {
         await Promise.allSettled(
           toReopen.map((task) => patchOperationsTaskRecord(task.id, { status: "created" })),
         );
-        await refetch();
+        await Promise.all([refetch(), refetchPaused()]);
       } finally {
         failureResumeBusyRef.current = false;
       }
     })();
-  }, [tasks, failures, poRecords, refetch]);
+  }, [pausedTasks, failures, poRecords, refetch, refetchPaused]);
 
   const detail = useMemo(
     () => (detailId ? tasks.find((t) => t.id === detailId) ?? null : null),

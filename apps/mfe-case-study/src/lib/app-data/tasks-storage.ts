@@ -46,6 +46,7 @@ export {
   compareWorkflowTasks,
   loadWorkflowTasks,
   loadWorkflowTasksForQuery,
+  loadWorkflowTasksPage,
   poCaseTasks,
   tasksForPartyAssignee,
   tasksForRole,

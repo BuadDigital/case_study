@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using RealEstateEval.Infrastructure.Data;
@@ -8,7 +8,11 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Application.Services;
+using RealEstateEval.Failures.Infrastructure.Persistence;
 using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Services;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
@@ -98,7 +102,7 @@ internal static class TestBoundedContexts
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
-            bundle.Failures,
+            new FailureRepository(bundle.Failures),
             new CaseStudyLookup(cs),
             new CaseStudyFailureCommands(cs, tasks, timeline),
             notifications,
@@ -123,7 +127,7 @@ internal static class TestBoundedContexts
         tasks ??= new WorkflowTaskShellPatcher(cs);
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
-            failures,
+            new FailureRepository(failures),
             new CaseStudyLookup(cs),
             new CaseStudyFailureCommands(cs, tasks, timeline),
             notifications,
@@ -152,10 +156,10 @@ internal static class TestBoundedContexts
         var cs = TestInspectorFeeServiceFactory.ShareCaseStudy(app);
         var identity = TestInspectorFeeServiceFactory.ShareIdentity(app);
         return new(
-            ops,
+            new KeyEnvelopeRepository(ops),
             new CaseStudyLookup(cs),
             new KeyReceiptFeeChargeService(TestInspectorFeeServiceFactory.ShareFinancial(app)),
-            TestInspectorFeeServiceFactory.ShareAttachmentLookup(app),
+            new KeyAttachmentLookup(TestInspectorFeeServiceFactory.ShareAttachmentLookup(app)),
             CreateAccessHolds(app, failures),
             new KeyEnvelopePeopleResolver(new UserLabelLookup(identity)),
             new NullNotificationService(),

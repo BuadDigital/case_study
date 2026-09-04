@@ -224,7 +224,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const { data: workspaceTasks } = useQuery({
     queryKey: appDataKeys.workflowTasks(),
-    queryFn: loadWorkflowTasksForQuery,
+    queryFn: () => loadWorkflowTasksForQuery(),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
     select: selectWorkspaceTasks,

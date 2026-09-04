@@ -2,60 +2,12 @@
 
 /** Party billing statement parts — module-level helpers, moved literally (SRP). */
 
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  loadPartyBillingReadyLines,
-  loadPartyBillingStatements,
-  openPartyBillingAttachment,
-  runCancelPartyBillingStatement,
-  runClosePartyBillingStatement,
-  runCreatePartyBillingStatement,
-  runIssuePartyBillingStatement,
-  runMatchVendorInvoice,
-  runRejectVendorInvoice,
-  uploadPartyBillingTransferReceipt,
-} from "@platform/app-shared/app-data/party-billing-statements-api";
-import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import {
-  Input,
-  cn,
-  opsBtnGhost,
-  opsBtnPrimary,
-  opsCheckInput,
-  opsFld,
-  opsLetterCard,
-  opsSearchInput,
-  useToast,
-} from "@platform/ui-kit";
+import { cn } from "@platform/ui-kit";
 import type {
   PartyBillingReadyLineDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import { pushNotification } from "@platform/app-shared/notifications/notification-store";
-import {
-  applyCostTax,
-  daysSinceIsoCost,
-  lineRefMain,
-  lineRefSub,
-  partyBillingWorkflowLabel,
-  partyBillingWorkflowTone,
-  statementDisplayTotal,
-} from "../lib/finance-cost-parties";
-import {
-  finGroupHead,
-  finMuted,
-  finSearch,
-  finSearchIcon,
-  finSectionTitle,
-  finWorkFlush,
-  finWorkHead,
-  finWorkTitle,
-} from "../lib/finance-tw";
-import { FinanceReceiptUploadField } from "./FinanceReceiptUploadField";
 
 export const EMPTY_READY_LINES: PartyBillingReadyLineDto[] = [];
 export const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
@@ -104,4 +56,3 @@ export function MetaCell({
   );
 }
 
-export type PartyBillingMode = "all" | "dues" | "statements" | "paid";

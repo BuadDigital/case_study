@@ -4,6 +4,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Application.Services;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Application.Contracts;
 
@@ -48,10 +50,11 @@ public sealed class OperationsTaskService : IOperationsTaskService
     {
         var clock = time ?? TimeProvider.System;
         var query = new OperationsTaskQueryService(ops, charges, labels);
-        var notifier = new OperationsTaskNotifier(ops, identityDirectory, notifications, labels, clock);
+        var notifier = new OperationsTaskNotifier(identityDirectory, notifications, labels, clock);
         var visitFees = new OperationsTaskVisitFeeHelper(
             ops, charges, identityDirectory, pricing, clock);
-        var commands = new OperationsTaskCommands(ops, query, notifier, visitFees, clock);
+        var commands = new OperationsTaskCommands(
+            new OperationsTaskRepository(ops), query, notifier, visitFees, clock);
         return new OperationsTaskService(query, commands, visitFees);
     }
 
@@ -71,6 +74,22 @@ public sealed class OperationsTaskService : IOperationsTaskService
             actorAssigneeId,
             actorRole,
             cancellationToken);
+
+    public Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default) =>
+        _query.ListAsync(query, actorUserId, actorAssigneeId, actorRole, cancellationToken);
+
+    public Task<PagedResultDto<OperationsTaskDto>> ListPagedAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default) =>
+        _query.ListPagedAsync(query, actorUserId, actorAssigneeId, actorRole, cancellationToken);
 
     public Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         _query.GetAsync(id, cancellationToken);

@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
@@ -12,6 +13,14 @@ public interface IWorkflowTaskService
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
+        WorkflowTaskListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+    Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
+        WorkflowTaskListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
     Task<bool> IsAssignedToAsync(
         Guid id,

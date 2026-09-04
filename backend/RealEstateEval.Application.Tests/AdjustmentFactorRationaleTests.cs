@@ -2,6 +2,8 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Application.Services;
+using RealEstateEval.Valuation.Infrastructure.Persistence;
 using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -72,7 +74,9 @@ public class AdjustmentFactorRationaleTests
         await db.SaveChangesAsync();
 
         var service = new ValuationComparableSelectionService(
-            db, new StubOrganizationSettings());
+            new ValuationComparableSelectionRepository(db),
+            new ValuationReportFreezeGate(db),
+            new StubOrganizationSettings());
 
         // Too short — rejected (Q-8-2).
         var (_, shortErrors) = await service.SaveFactorRationaleAsync(
@@ -148,7 +152,9 @@ public class AdjustmentFactorRationaleTests
         await db.SaveChangesAsync();
 
         var service = new ValuationComparableSelectionService(
-            db, new StubOrganizationSettings());
+            new ValuationComparableSelectionRepository(db),
+            new ValuationReportFreezeGate(db),
+            new StubOrganizationSettings());
         var list = await service.ListAsync(id, "market");
 
         Assert.NotNull(list);

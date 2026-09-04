@@ -4,6 +4,8 @@ import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { ToastRootProvider } from "@/providers/ToastRootProvider";
 import "@platform/ui-kit/document-reports.css";
+// Tabler icon font: the MFEs use `ti ti-*` classes (field inspection, photo pickers, modals).
+import "@tabler/icons-webfont/dist/tabler-icons.min.css";
 import "./globals.css";
 
 const arabic = Tajawal({

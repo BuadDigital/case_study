@@ -181,6 +181,24 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var workflowRequest = AuthorizedGet("/api/workflow-tasks");
         var workflow = await client.SendAsync(workflowRequest);
         Assert.Equal(HttpStatusCode.OK, workflow.StatusCode);
+
+ // Every filter and sort of the paging contract, so the generated SQL is exercised on
+ // Postgres and not only on the in-memory provider (docs/architecture/pagination-contract.md).
+        foreach (var suffix in new[]
+                 {
+                     "?page=1&pageSize=5&sort=updated&dir=asc",
+                     "?page=1&pageSize=5&sort=poReceived&dir=asc",
+                     "?page=1&pageSize=5&sort=poCreated",
+                     "?page=1&pageSize=5&sort=po&kind=field-inspection,engineering-survey",
+                     "?page=1&pageSize=5&status=open,blocked&phase=bourse,distribution",
+                     "?page=1&pageSize=5&q=PO&assigneeRole=field-inspector&poNumber=PO-1",
+                     "?page=1&pageSize=5&sort=not-a-column&dir=sideways&assignmentType=%D8%AA%D9%86%D9%81%D9%8A%D8%B0",
+                 })
+        {
+            using var filtered = AuthorizedGet("/api/workflow-tasks" + suffix);
+            var response = await client.SendAsync(filtered);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
     }
 
     [DockerFact]
@@ -192,6 +210,22 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var operationsRequest = AuthorizedGet("/api/operations-tasks");
         var operations = await client.SendAsync(operationsRequest);
         Assert.Equal(HttpStatusCode.OK, operations.StatusCode);
+
+        foreach (var suffix in new[]
+                 {
+                     "?page=1&pageSize=5",
+                     "?page=1&pageSize=5&sort=queue&dir=asc",
+                     "?page=1&pageSize=5&sort=priority&dir=asc",
+                     "?page=1&pageSize=5&sort=due&activeOnly=true",
+                     "?page=1&pageSize=5&sort=updated&excludeFailurePaused=true",
+                     "?page=1&pageSize=5&scope=work_order&type=court_visit&status=created",
+                     "?page=1&pageSize=5&q=T-&sort=not-a-column&dir=sideways",
+                 })
+        {
+            using var filtered = AuthorizedGet("/api/operations-tasks" + suffix);
+            var response = await client.SendAsync(filtered);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
     }
 
     [DockerFact]
@@ -203,6 +237,28 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var listRequest = AuthorizedGet("/api/work-orders?page=1&pageSize=20");
         var list = await client.SendAsync(listRequest);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+
+ // The status buckets are correlated sub-queries over properties and workflow tasks; run each
+ // one against Postgres so a translation break cannot hide behind the in-memory provider.
+        foreach (var suffix in new[]
+                 {
+                     "?page=1&pageSize=5&sort=po&dir=asc",
+                     "?page=1&pageSize=5&sort=received&dir=asc",
+                     "?page=1&pageSize=5&sort=due",
+                     "?page=1&pageSize=5&status=new",
+                     "?page=1&pageSize=5&status=under_study",
+                     "?page=1&pageSize=5&status=completed",
+                     "?page=1&pageSize=5&status=stopped",
+                     "?page=1&pageSize=5&status=cancelled",
+                     "?page=1&pageSize=5&status=fully_billed",
+                     "?page=1&pageSize=5&q=PO&type=%D8%AA%D9%86%D9%81%D9%8A%D8%B0",
+                     "?page=1&pageSize=5&sort=not-a-column&dir=sideways&q=001",
+                 })
+        {
+            using var filtered = AuthorizedGet("/api/work-orders" + suffix);
+            var response = await client.SendAsync(filtered);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
     }
 
     [DockerFact]
@@ -728,9 +784,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         return request;
     }
 
-    private static void Authorize(HttpRequestMessage request) =>
+    private static void Authorize(HttpRequestMessage request)
+    {
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", ContainerAuthHandler.Token);
+        // Owner-to-owner dispatch routes are gated by RequireUpstreamDispatch; UpstreamJson always sends this.
+        request.Headers.TryAddWithoutValidation("X-REE-Upstream", "1");
+    }
 }
 
 internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TMarker>

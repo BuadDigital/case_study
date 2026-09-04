@@ -5,10 +5,12 @@ import type {
   PropertyListItemDto,
   WorkOrderDto,
   WorkOrderListItemDto,
+  WorkOrderListQuery,
 } from "@platform/api-client";
 import {
   listPropertyListItems,
   listWorkOrders,
+  listWorkOrdersPage,
   listWorkOrdersWithDetails,
   PropertyListRowStatuses,
 } from "@platform/api-client";
@@ -91,6 +93,34 @@ export async function loadPoListRows(): Promise<PoRow[]> {
   return unwrapApiResult(result, "تعذّر تحميل قائمة أوامر العمل").map(
     listItemToPoRow,
   );
+}
+
+export type PoListRowsPage = {
+  rows: PoRow[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/**
+ * One server page of the PO list: paging, status/type filtering, free-text
+ * search and sorting all happen in the query
+ * (`docs/architecture/pagination-contract.md` §1).
+ */
+export async function loadPoListRowsPage(
+  query: WorkOrderListQuery,
+): Promise<PoListRowsPage> {
+  const config = requireWorkOrdersApiConfig();
+  const result = await listWorkOrdersPage(config, query);
+  const paged = unwrapApiResult(result, "تعذّر تحميل قائمة أوامر العمل");
+  return {
+    rows: paged.items.map(listItemToPoRow),
+    totalCount: paged.totalCount,
+    page: paged.page,
+    pageSize: paged.pageSize,
+    totalPages: paged.totalPages,
+  };
 }
 
 export type PropertyListItem = {

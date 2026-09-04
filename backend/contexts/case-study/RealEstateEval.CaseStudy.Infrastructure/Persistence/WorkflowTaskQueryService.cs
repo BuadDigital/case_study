@@ -8,6 +8,7 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
@@ -26,12 +27,18 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
-    public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
+    public Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(WorkflowTaskListQuery.Empty, actor, cancellationToken);
+
+    public async Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
+        WorkflowTaskListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await VisibleOrderedTasks(actor)
+        var list = await VisibleOrderedTasks(query, actor)
             .Take(take)
             .ToListAsync(cancellationToken);
         var dtos = list.Select(WorkflowTaskMapper.ToDto).ToList();
@@ -39,19 +46,32 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         return dtos;
     }
 
-    public async Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
+    public Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
         int? page,
         int? pageSize,
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        ListPagedAsync(
+            new WorkflowTaskListQuery { Page = page, PageSize = pageSize },
+            actor,
+            cancellationToken);
+
+ /// <summary>
+ /// Filters and sorts in the database, then pages. The visibility predicate is part of the same
+ /// query, so TotalCount is the actor's total.
+ /// </summary>
+    public async Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
+        WorkflowTaskListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
-            page,
-            pageSize,
+            query.Page,
+            query.PageSize,
             _dbOptions);
-        var query = VisibleOrderedTasks(actor);
-        var total = await query.CountAsync(cancellationToken);
-        var list = await query
+        var rows = VisibleOrderedTasks(query, actor);
+        var total = await rows.CountAsync(cancellationToken);
+        var list = await rows
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
@@ -68,14 +88,108 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         };
     }
 
-    /// <summary>Visibility rule from Application applied to the tracked set, in list order.</summary>
-    private IQueryable<WorkflowTask> VisibleOrderedTasks(PermissionsDto? actor) =>
-        _caseStudy.WorkflowTasks
+ /// <summary>
+ /// Visibility rule from Application, then the allow-listed filters, then the sort. Everything is
+ /// an EF expression: no row is dropped after materialisation, so paging and counts agree.
+ /// </summary>
+    private IQueryable<WorkflowTask> VisibleOrderedTasks(
+        WorkflowTaskListQuery query,
+        PermissionsDto? actor)
+    {
+        IQueryable<WorkflowTask> rows = _caseStudy.WorkflowTasks
             .AsNoTracking()
-            .OrderByDescending(t => t.CreatedAtUtc)
+            .Where(WorkflowTaskVisibilityRules.VisibleTo(actor));
+
+        var kinds = WorkflowTaskListQueryRules.ResolveKinds(query.Kind).ToList();
+        if (kinds.Count > 0)
+            rows = rows.Where(t => kinds.Contains(t.Kind));
+
+        var statuses = WorkflowTaskListQueryRules.ResolveStatuses(query.Status).ToList();
+        if (statuses.Count > 0)
+            rows = rows.Where(t => statuses.Contains(t.Status));
+
+        var phases = WorkflowTaskListQueryRules.ResolvePhases(query.Phase).ToList();
+        if (phases.Count > 0)
+            rows = rows.Where(t => phases.Contains(t.Phase));
+
+        var assigneeId = WorkflowTaskListQueryRules.NormalizeExact(query.AssigneeId);
+        if (assigneeId is not null)
+            rows = rows.Where(t => t.AssigneeId == assigneeId);
+
+        var assigneeRole = WorkflowTaskListQueryRules.NormalizeExact(query.AssigneeRole);
+        if (assigneeRole is not null)
+        {
+            var lowered = assigneeRole.ToLowerInvariant();
+            rows = rows.Where(t => t.AssigneeRole.ToLower() == lowered);
+        }
+
+        var poNumber = WorkflowTaskListQueryRules.NormalizeExact(query.PoNumber);
+        if (poNumber is not null)
+            rows = rows.Where(t => t.PoNumber == poNumber);
+
+        var assignmentType = WorkflowTaskListQueryRules.NormalizeExact(query.AssignmentType);
+        if (assignmentType is not null)
+            rows = rows.Where(t => t.AssignmentType == assignmentType);
+
+        var search = WorkflowTaskListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            rows = rows.Where(t =>
+                t.PoNumber.Contains(search)
+                || t.Title.Contains(search)
+                || t.AssigneeName.Contains(search)
+                || (t.AssignmentType != null && t.AssignmentType.Contains(search)));
+        }
+
+        return SortTasks(rows, query);
+    }
+
+ /// <summary>
+ /// Allow-listed sort key plus the queue tiebreakers (PO, then property slot) so pages are stable.
+ /// The two PO-derived keys read the work order the task belongs to, which lives in the same
+ /// context, so the ordering still happens in the database.
+ /// </summary>
+    private IQueryable<WorkflowTask> SortTasks(
+        IQueryable<WorkflowTask> rows,
+        WorkflowTaskListQuery query)
+    {
+        var descending = WorkflowTaskListQueryRules.ResolveDescending(query.Dir);
+        var ordered = WorkflowTaskListQueryRules.ResolveSort(query.Sort) switch
+        {
+            WorkflowTaskListSortKey.Updated => descending
+                ? rows.OrderByDescending(t => t.UpdatedAtUtc)
+                : rows.OrderBy(t => t.UpdatedAtUtc),
+            WorkflowTaskListSortKey.PoNumber => descending
+                ? rows.OrderByDescending(t => t.PoNumber)
+                : rows.OrderBy(t => t.PoNumber),
+            WorkflowTaskListSortKey.PoReceived => descending
+                ? rows.OrderByDescending(t => _caseStudy.WorkOrders
+                    .Where(w => w.PoNumber == t.PoNumber)
+                    .Select(w => (DateOnly?)w.ReceivedFromEnfathAt)
+                    .FirstOrDefault())
+                : rows.OrderBy(t => _caseStudy.WorkOrders
+                    .Where(w => w.PoNumber == t.PoNumber)
+                    .Select(w => (DateOnly?)w.ReceivedFromEnfathAt)
+                    .FirstOrDefault()),
+            WorkflowTaskListSortKey.PoCreated => descending
+                ? rows.OrderByDescending(t => _caseStudy.WorkOrders
+                    .Where(w => w.PoNumber == t.PoNumber)
+                    .Select(w => (DateTime?)w.CreatedAtUtc)
+                    .FirstOrDefault())
+                : rows.OrderBy(t => _caseStudy.WorkOrders
+                    .Where(w => w.PoNumber == t.PoNumber)
+                    .Select(w => (DateTime?)w.CreatedAtUtc)
+                    .FirstOrDefault()),
+            _ => descending
+                ? rows.OrderByDescending(t => t.CreatedAtUtc)
+                : rows.OrderBy(t => t.CreatedAtUtc),
+        };
+
+        return ordered
             .ThenBy(t => t.PoNumber)
             .ThenBy(t => t.PropertyOrdinal)
-            .Where(WorkflowTaskVisibilityRules.VisibleTo(actor));
+            .ThenBy(t => t.Id);
+    }
 
     public Task<bool> IsAssignedToAsync(
         Guid id,

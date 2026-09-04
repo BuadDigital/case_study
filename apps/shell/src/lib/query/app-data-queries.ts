@@ -42,7 +42,7 @@ export function prefetchPrototypePage(
     });
     void queryClient.prefetchQuery({
       queryKey: appDataKeys.workflowTasks(),
-      queryFn: loadWorkflowTasksForQuery,
+      queryFn: () => loadWorkflowTasksForQuery(),
       ...opts,
     });
   };
@@ -185,7 +185,7 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
   void queryClient.prefetchQuery({ queryKey: appDataKeys.poListRows(), queryFn: loadPoListRows, ...opts });
   void queryClient.prefetchQuery({ queryKey: appDataKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
   void queryClient.prefetchQuery({ queryKey: appDataKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
-  void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: loadWorkflowTasksForQuery, ...opts });
+  void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: () => loadWorkflowTasksForQuery(), ...opts });
   void queryClient.prefetchQuery({ queryKey: appDataKeys.failures(), queryFn: loadFailuresQuery, ...opts });
 
   // Tier 2 — secondary data that can wait until the UI has settled.

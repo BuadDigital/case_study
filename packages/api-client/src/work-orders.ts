@@ -2,7 +2,12 @@ import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
-import { fetchAllListPages } from "./pagination";
+import {
+  fetchAllListPages,
+  fetchListPage,
+  type ListPageQuery,
+  type PagedResultDto,
+} from "./pagination";
 
 export type WorkOrdersApiConfig = {
   baseUrl?: string;
@@ -328,12 +333,59 @@ async function parseFieldErrors(res: Response): Promise<Record<string, string>> 
   return parseFieldErrorsFromResponse(res);
 }
 
+/** Allowed `sort` keys — pagination-contract §1. Unknown keys fall back to `created`. */
+export type WorkOrderListSort = "created" | "po" | "received" | "due";
+
+/** PO list status buckets the server can compute — pagination-contract §1. */
+export type WorkOrderListStatusFilter =
+  | "new"
+  | "under_study"
+  | "completed"
+  | "stopped"
+  | "cancelled"
+  | "partially_billed"
+  | "fully_billed";
+
+/** `GET /api/work-orders` query — pagination-contract §1. */
+export type WorkOrderListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: WorkOrderListSort;
+  status?: WorkOrderListStatusFilter;
+  /** Assignment-type Arabic label: تنفيذ | تركات | قطاع خاص. */
+  type?: string;
+};
+
+function workOrderListParams(query?: WorkOrderListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    status: query?.status,
+    type: query?.type,
+  };
+}
+
 export async function listWorkOrders(
   config: WorkOrdersApiConfig,
+  query?: Omit<WorkOrderListQuery, "page" | "pageSize">,
 ): Promise<ApiOk<WorkOrderListItemDto[]> | ApiErr> {
   return fetchAllListPages<WorkOrderListItemDto>(
     { ...config, baseUrl: config.baseUrl ?? getApiBase() },
     "/api/work-orders",
+    { params: workOrderListParams(query) },
+  );
+}
+
+/** One server page of the PO list — filters, sort and paging all server-side. */
+export async function listWorkOrdersPage(
+  config: WorkOrdersApiConfig,
+  query?: WorkOrderListQuery,
+): Promise<ApiOk<PagedResultDto<WorkOrderListItemDto>> | ApiErr> {
+  return fetchListPage<WorkOrderListItemDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/work-orders",
+    workOrderListParams(query),
   );
 }
 

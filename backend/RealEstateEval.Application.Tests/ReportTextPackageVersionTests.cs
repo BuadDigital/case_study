@@ -1,5 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Services;
+using RealEstateEval.Platform.Application.Services;
+using RealEstateEval.Platform.Infrastructure.Persistence;
 using RealEstateEval.Platform.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -14,7 +16,8 @@ public class ReportTextPackageVersionTests
     public async Task Shipped_defaults_read_as_package_version_one_without_writes()
     {
         await using var contexts = TestDatabases.Create("text-package-fresh");
-        var service = new OrganizationSettingsService(contexts.Platform, new AuditLogWriter());
+        var service = new OrganizationSettingsService(
+            new OrganizationSettingsRepository(contexts.Platform), new AuditLogWriter());
 
         var dto = await service.GetInternalAsync();
         Assert.Equal(1, dto.ValuationReport.TextPackageVersion);
@@ -25,7 +28,8 @@ public class ReportTextPackageVersionTests
     public async Task Editing_any_paragraph_issues_a_whole_new_package()
     {
         await using var contexts = TestDatabases.Create("text-package-edit");
-        var service = new OrganizationSettingsService(contexts.Platform, new AuditLogWriter());
+        var service = new OrganizationSettingsService(
+            new OrganizationSettingsRepository(contexts.Platform), new AuditLogWriter());
 
         // Save does not touch the block: Seed Package records only copy 1.
         await service.SaveAsync(new SaveOrganizationSettingsRequest(), "cdo-1");

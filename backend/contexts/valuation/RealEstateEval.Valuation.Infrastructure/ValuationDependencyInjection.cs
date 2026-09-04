@@ -7,6 +7,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Valuation.Infrastructure.Integration;
+using RealEstateEval.Valuation.Application.Services;
+using RealEstateEval.Valuation.Infrastructure.Persistence;
 using RealEstateEval.Valuation.Infrastructure.Services;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
@@ -38,20 +40,27 @@ public static class ValuationDependencyInjection
         services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
+        services.AddScoped<IComparablePropertyRepository, ComparablePropertyRepository>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<PropertyComparableLinkService>();
         services.AddScoped<IPropertyComparableLinkService>(sp =>
             sp.GetRequiredService<PropertyComparableLinkService>());
         services.AddScoped<IPropertyComparableLinkLookup>(sp =>
             sp.GetRequiredService<PropertyComparableLinkService>());
+        services.AddScoped<IValuationComparableSelectionRepository, ValuationComparableSelectionRepository>();
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
         services.AddScoped<IValuationApproachSettingsService, ValuationApproachSettingsService>();
+        services.AddScoped<IValuationReportFreezeGate, ValuationReportFreezeGate>();
+        services.AddScoped<IValuationCostApproachRepository, ValuationCostApproachRepository>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
+        services.AddScoped<IValuationReconciliationRepository, ValuationReconciliationRepository>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // Q-6: two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
+        services.AddScoped<IValuationRequestLookup, ValuationRequestLookup>();
+        services.AddScoped<IValuationPrintableAttachmentLookup, ValuationPrintableAttachmentLookup>();
         services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
         services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;

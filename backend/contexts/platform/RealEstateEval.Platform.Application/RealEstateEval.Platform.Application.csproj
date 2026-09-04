@@ -10,10 +10,17 @@
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Platform.Domain\RealEstateEval.Platform.Domain.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
+    <!-- Organization settings own the valuation-report text defaults (قرار 23); the
+         defaults live in the Valuation Domain leaf, which carries no dependencies. -->
+    <ProjectReference Include="..\..\valuation\RealEstateEval.Valuation.Domain\RealEstateEval.Valuation.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <!-- Abstractions only. Use-case services carry [ActivatorUtilitiesConstructor];
+         the package pulls in neither hosting nor EF. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

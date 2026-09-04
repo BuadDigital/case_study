@@ -7,6 +7,9 @@ using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Services;
+using RealEstateEval.Platform.Infrastructure.Locations;
+using RealEstateEval.Platform.Infrastructure.Persistence;
 using RealEstateEval.Platform.Infrastructure.Services;
 using RealEstateEval.Platform.Application.Abstractions;
 using RealEstateEval.Infrastructure;
@@ -38,10 +41,14 @@ public static class PlatformDependencyInjection
         services.AddScoped<IValuationListsService>(sp =>
             sp.GetRequiredService<AttachmentPrintDictionaryService>());
         services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
+        services.AddScoped<ICourtsRepository, CourtsRepository>();
         services.AddScoped<ICourtsService, CourtsService>();
         services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
+        services.AddScoped<ILocationCatalogRepository, LocationCatalogRepository>();
+        services.AddSingleton<ILocationCatalogSeedSource, LocationCatalogSeedSource>();
         services.AddScoped<IRegionsService, RegionsService>();
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
+        services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IOtpDeliveryService, OtpDeliveryService>();
         services.AddScoped<IFieldSyncStatusService, FieldSyncStatusService>();

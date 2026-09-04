@@ -7,12 +7,13 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Application.Abstractions;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Operations.Infrastructure.Services;
 
-public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill
+public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill, IOperationsTaskVisitFees
 {
     private readonly OperationsDbContext _ops;
     private readonly ICourtVisitFeeChargeService _charges;

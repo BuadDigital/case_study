@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
@@ -336,8 +337,7 @@ public sealed class ValuationReportIssuanceService(
 /// <summary>Q-6: freeze guard — after deposit copy, nothing is editable except code and certificate.</summary>
 public static class ValuationReportFreeze
 {
-    public const string FrozenMessageAr =
-        "التقرير مجمّد — صدرت نسخة الإيداع (ق-6)؛ الرمز والشهادة وحدهما قابلان للتسجيل";
+    public const string FrozenMessageAr = ValuationReportFreezeRules.FrozenMessageAr;
 
     // R2: freeze follows the current copy only — reopen (superseding) lifts the
     // Q-6 layer only; freeze of adopted party outputs is a lower layer untouched (2-C).

@@ -6,7 +6,9 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.Platform.Infrastructure.Services;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Services;
+using RealEstateEval.Operations.Application.Services;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Services;
@@ -138,13 +140,12 @@ public sealed class OperationsTaskReminderDedupTests
         var time = new FakeTime(SundayMorningUtc);
         var financial = TestInspectorFeeServiceFactory.ShareFinancial(identity);
         var notifier = new OperationsTaskNotifier(
-            ops,
             new IdentityDirectory(identity),
             notifications,
             new UserLabelLookup(identity));
         var charges = new CourtVisitFeeChargeService(financial);
         var commands = new OperationsTaskCommands(
-            ops,
+            new OperationsTaskRepository(ops),
             new OperationsTaskQueryService(ops, charges, new UserLabelLookup(identity)),
             notifier,
             new OperationsTaskVisitFeeHelper(

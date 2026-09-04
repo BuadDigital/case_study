@@ -14,6 +14,22 @@ public interface IOperationsTaskService
         string actorRole,
         CancellationToken cancellationToken = default);
 
+ /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
+    Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>Filtered / sorted page. The executor-queue narrowing is applied before the count.</summary>
+    Task<PagedResultDto<OperationsTaskDto>> ListPagedAsync(
+        OperationsTaskListQuery query,
+        string actorUserId,
+        string? actorAssigneeId,
+        string actorRole,
+        CancellationToken cancellationToken = default);
+
     Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<(OperationsTaskDto? Result, string? Error)> CreateAsync(

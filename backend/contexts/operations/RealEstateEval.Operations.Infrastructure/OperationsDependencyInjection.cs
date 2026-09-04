@@ -8,6 +8,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Operations.Application.Services;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
@@ -42,6 +44,8 @@ public static class OperationsDependencyInjection
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         services.AddScoped<IKeyEnvelopePeopleResolver, KeyEnvelopePeopleResolver>();
+        services.AddScoped<IKeyAttachmentLookup, KeyAttachmentLookup>();
+        services.AddScoped<IKeyEnvelopeRepository, KeyEnvelopeRepository>();
         services.AddScoped<IKeyEnvelopesService, KeyEnvelopesService>();
         services.AddOperationsTaskCollaborators();
         // After collaborators so HTTP court-visit charges win over the EF helper.
@@ -54,6 +58,9 @@ public static class OperationsDependencyInjection
     {
         services.AddScoped<OperationsTaskNotifier>();
         services.AddScoped<OperationsTaskVisitFeeHelper>();
+        services.AddScoped<IOperationsTaskVisitFees>(sp =>
+            sp.GetRequiredService<OperationsTaskVisitFeeHelper>());
+        services.AddScoped<IOperationsTaskRepository, OperationsTaskRepository>();
         services.AddScoped<IOperationsTaskQuery, OperationsTaskQueryService>();
         services.AddScoped<IOperationsTaskCommands, OperationsTaskCommands>();
         services.AddScoped<IOperationsTaskService, OperationsTaskService>();

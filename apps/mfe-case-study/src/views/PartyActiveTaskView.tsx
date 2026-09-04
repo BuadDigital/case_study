@@ -51,6 +51,9 @@ function queueConfig(
     getBasePath: () => partyTaskPath(def.pageId),
     getTaskPath: (taskId) => partyTaskTaskPath(def.pageId, taskId),
     filterListed: baseFilter,
+    /* `filterTasksForPartyKind` keeps this page's kind only — the server does
+       that narrowing plus the assignee-role one. */
+    serverQuery: { kind: [def.kind] },
   };
 
   if (def.kind === "property-appraisal" && appraisalExtensions) {

@@ -1,26 +1,12 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useDeferredValue,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
-import type { PoRow } from "@platform/app-shared/app-data/constants";
-import {
-  isPoListStatusTerminal,
-  PO_LIST_STATUS_OPTIONS,
-  poListStatusMeta,
-  poProgressPct,
-  type PoListStatus,
-} from "@platform/app-shared/app-data/po-list-status";
+/**
+ * PO list screen — KPI band, search/filter toolbar, the desktop queue table and
+ * its mobile cards. Queries, filters and writes live in `usePoListWorkflow`;
+ * pure rules in `po-list-view-state.ts`; sub-components in `PoListViewParts`.
+ */
+
+import { PO_LIST_STATUS_OPTIONS } from "@platform/app-shared/app-data/po-list-status";
 import {
   Button,
   cn,
@@ -41,7 +27,6 @@ import {
   queueTableRowClassName,
   RowMoreMenu,
   SkeletonTableRows,
-  StatusPill,
   Table,
   TableEmptyRow,
   TBody,
@@ -52,636 +37,67 @@ import {
   ThAction,
   THead,
   Tr,
-  useToast,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
-import {
-  ActiveQueueMobileCards,
-  type ActiveQueueMobileCardItem,
-} from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import {
-  formatDateAr,
-  formatPoDisplay,
-  isPastDue,
-} from "../lib/app-data/po-intake-data";
-import {
-  cancelPoRecord,
-  deletePoRecord,
-  stopPoRecord,
-} from "../lib/app-data/po-intake-commands";
-import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
-import {
-  buildPoDeedIndex,
-  buildPoListDisplay,
-  classifyPoListSearch,
-  poListSearchModeLabel,
-} from "../lib/app-data/po-list-search";
+import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
+import { formatDateAr } from "../lib/app-data/po-intake-data";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
-  usePoListRowsQuery,
-  usePropertyListItemsQuery,
-  useWorkflowTasksQuery,
-} from "@case-study/mfe/query/case-study-queries";
+  poListRowView,
+  progFill,
+  teamMembersForRow,
+  type StatusFilter,
+} from "./po-list-view-state";
 import {
-  canDeletePo,
-  canEditPoHeader,
-  canReceivePo,
-  isPoViewOnly,
-} from "../lib/app-data/po-roles";
-import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
-
-type SortKey = "created" | "po" | "received" | "due";
-type SortDir = "asc" | "desc";
-type StatusFilter = PoListStatus | "";
-
-const TEAM_COLORS = ["#12284C", "#a4906f", "#22406e", "#8c7857", "#3f8f5f"];
-const PO_TOOLTIP_GAP = 8;
-const PO_TOOLTIP_VIEWPORT_MARGIN = 8;
-
-function computeHoverCardStyle(
-  trigger: HTMLElement,
-  card: HTMLElement,
-  align: "start" | "end" = "start",
-): CSSProperties {
-  const rect = trigger.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const cardWidth = card.offsetWidth;
-  const cardHeight = card.offsetHeight;
-
-  let left = align === "end" ? rect.right - cardWidth : rect.left;
-  left = Math.max(
-    PO_TOOLTIP_VIEWPORT_MARGIN,
-    Math.min(left, vw - cardWidth - PO_TOOLTIP_VIEWPORT_MARGIN),
-  );
-
-  let top = rect.bottom + PO_TOOLTIP_GAP;
-  if (top + cardHeight > vh - PO_TOOLTIP_VIEWPORT_MARGIN) {
-    const above = rect.top - cardHeight - PO_TOOLTIP_GAP;
-    if (above >= PO_TOOLTIP_VIEWPORT_MARGIN) top = above;
-  }
-
-  return {
-    position: "fixed",
-    top,
-    left,
-    zIndex: 1200,
-  };
-}
-
-function HoverPortalCard({
-  children,
-  content,
-  align = "start",
-  panelClassName,
-  triggerClassName,
-}: {
-  children: ReactNode;
-  content: ReactNode;
-  align?: "start" | "end";
-  panelClassName: string;
-  triggerClassName?: string;
-}) {
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [cardStyle, setCardStyle] = useState<CSSProperties>({});
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current || !cardRef.current) return;
-
-    let raf = 0;
-    const placeCard = () => {
-      if (!triggerRef.current || !cardRef.current) return;
-      setCardStyle(
-        computeHoverCardStyle(triggerRef.current, cardRef.current, align),
-      );
-    };
-
-    placeCard();
-    raf = requestAnimationFrame(placeCard);
-    window.addEventListener("resize", placeCard);
-    // passive: listener does not block scroll — lets the browser skip waiting on it (client-passive-event-listeners).
-    window.addEventListener("scroll", placeCard, { capture: true, passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", placeCard);
-      window.removeEventListener("scroll", placeCard, { capture: true });
-    };
-  }, [align, content, open]);
-
-  const card = open ? (
-    <div
-      ref={cardRef}
-      className={panelClassName}
-      style={cardStyle}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {content}
-    </div>
-  ) : null;
-
-  return (
-    <>
-      <span
-        ref={triggerRef}
-        className={cn("inline-block w-fit", triggerClassName)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-      >
-        {children}
-      </span>
-      {mounted && card ? createPortal(card, document.body) : null}
-    </>
-  );
-}
-
-function teamInitial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0) : "?";
-}
-
-function TeamStack({ members }: { members: string[] }) {
-  if (members.length === 0) {
-    return <span className="font-normal text-text-3">—</span>;
-  }
-  const shown = members.slice(0, 3);
-  const extra = members.length - shown.length;
-  return (
-    <HoverPortalCard
-      align="end"
-      panelClassName="min-w-[190px] rounded-[10px] border border-border-md bg-surface p-2 shadow-[0_8px_24px_-8px_rgba(18,40,76,.28)]"
-      content={
-        <>
-          <div className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold text-text-3">
-            فريق المعاملة ({members.length})
-          </div>
-          {members.map((name, i) => (
-            <div
-              key={`pop-${name}-${i}`}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
-            >
-              <span
-                className="grid size-[26px] shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
-              >
-                {teamInitial(name)}
-              </span>
-              <span className="whitespace-nowrap text-[13px] font-semibold text-heading">
-                {name}
-              </span>
-            </div>
-          ))}
-        </>
-      }
-    >
-      <span className="inline-flex w-fit items-center">
-      {shown.map((name, i) => (
-        <span
-          key={`${name}-${i}`}
-          className={cn(
-            "grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white",
-            i > 0 && "-ms-2",
-          )}
-          style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
-          title={name}
-        >
-          {teamInitial(name)}
-        </span>
-      ))}
-      {extra > 0 ? (
-        <span className="-ms-2 grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface bg-surface-2 text-[11px] font-bold text-heading">
-          +{extra}
-        </span>
-      ) : null}
-      </span>
-    </HoverPortalCard>
-  );
-}
-
-function isDueSoon(iso: string): boolean {
-  if (!iso) return false;
-  const due = new Date(iso.slice(0, 10));
-  const now = new Date();
-  const diff = due.getTime() - now.getTime();
-  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
-}
-
-function isDueUrgent(dueIso: string, status: PoRow["status"]): boolean {
-  if (!dueIso || isPoListStatusTerminal(status)) return false;
-  return isPastDue(dueIso) || isDueSoon(dueIso);
-}
-
-function isDueWithin48(iso: string): boolean {
-  if (!iso) return false;
-  const due = new Date(iso.slice(0, 10)).getTime();
-  const now = Date.now();
-  return due >= now && due <= now + 2 * 24 * 60 * 60 * 1000;
-}
-
-/** Progress-bar fill — green at ≥60%, gold when any progress, transparent at zero. */
-function progFill(pct: number): string {
-  if (pct >= 60) return "linear-gradient(90deg, var(--ink), var(--navy-3))";
-  if (pct > 0) return "linear-gradient(90deg, var(--gold-d), var(--gold))";
-  return "transparent";
-}
-
-function poStatusStyle(status: PoRow["status"]): {
-  base: string;
-  fg: string;
-  live: boolean;
-} {
-  switch (status) {
-    case "under_study":
-      return { base: "var(--gold)", fg: "var(--gold-d)", live: true };
-    case "completed":
-    case "fully_billed":
-      return { base: "#3f8f5f", fg: "#2f7a4d", live: false };
-    case "partially_billed":
-      return { base: "#d9a441", fg: "#b8791a", live: false };
-    case "stopped":
-      return { base: "#8a8d96", fg: "#696c75", live: false };
-    case "cancelled":
-      return { base: "var(--red)", fg: "var(--red-text)", live: false };
-    default:
-      return { base: "var(--heading)", fg: "var(--heading)", live: false };
-  }
-}
-
-function PoStatusPill({ status }: { status: PoRow["status"] }) {
-  const { label } = poListStatusMeta(status);
-  return <StatusPill label={label} style={poStatusStyle(status)} />;
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function SortIcon() {
-  return (
-    <svg
-      className="ms-0.5 opacity-70"
-      width="11"
-      height="11"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M8 9l4-4 4 4M8 15l4 4 4-4" />
-    </svg>
-  );
-}
-
-function InboxIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      aria-hidden
-    >
-      <path d="M4 4h16v12H4zM4 12l4 4h8l4-4" />
-    </svg>
-  );
-}
+  HoverPortalCard,
+  InboxIcon,
+  PlusIcon,
+  PoStatusPill,
+  SortIcon,
+  TeamStack,
+} from "./PoListViewParts";
+import { usePoListWorkflow } from "./usePoListWorkflow";
 
 export function PoListView() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const { role } = useAppAccess();
-  const viewOnly = isPoViewOnly(role);
-  const showIntake = canReceivePo(role);
-  const showEdit = canEditPoHeader(role);
-  const showDelete = canDeletePo(role);
-  const showCreateOperationsTask = canManageOperationsTasks(role);
-  const { showToast } = useToast();
-  const [deletingPo, setDeletingPo] = useState<string | null>(null);
-  const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
-  const [intakeOpen, setIntakeOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("created");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  useEffect(() => {
-    if (!showIntake) return;
-    if (searchParams.get("intake") !== "1") return;
-    setIntakeOpen(true);
-    router.replace("/po", { scroll: false });
-  }, [showIntake, searchParams, router]);
-
-  const { data: rows, isPending: rowsPending } = usePoListRowsQuery();
-  const { data: propertyItems } = usePropertyListItemsQuery();
-  const { data: workflowTasks } = useWorkflowTasksQuery();
-  const list = useMemo(() => rows ?? [], [rows]);
-  const teamByPo = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const task of workflowTasks ?? []) {
-      const po = task.poNumber?.trim();
-      const name = task.assigneeName?.trim();
-      if (!po || !name || name === "—" || name === "-") continue;
-      const current = map.get(po) ?? [];
-      if (!current.includes(name)) current.push(name);
-      map.set(po, current);
-    }
-    return map;
-  }, [workflowTasks]);
-  const deedIndex = useMemo(
-    () => buildPoDeedIndex(propertyItems ?? []),
-    [propertyItems],
-  );
-  const registeredByPo = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const entry of deedIndex) {
-      counts.set(entry.poNumber, (counts.get(entry.poNumber) ?? 0) + 1);
-    }
-    return counts;
-  }, [deedIndex]);
-  // Input is immediate; filtering is deferred one frame — local only (rerender-use-deferred-value).
-  const deferredSearch = useDeferredValue(search);
-  const searchMode = useMemo(() => classifyPoListSearch(search), [search]);
-  const deferredSearchMode = useMemo(
-    () => classifyPoListSearch(deferredSearch),
-    [deferredSearch],
-  );
-  const searchModeLabel = poListSearchModeLabel(searchMode);
-  const statsReady = rows !== undefined && !rowsPending;
-
-  const kpi = useMemo(() => {
-    if (!statsReady) return undefined;
-    // One pass over the list computes the four counters (js-combine-iterations).
-    let active = 0;
-    let overdue = 0;
-    let dueSoon = 0;
-    let doneProps = 0;
-    for (const p of list) {
-      doneProps += p.done ?? 0;
-      if (isPoListStatusTerminal(p.status)) continue;
-      active += 1;
-      if (p.dueDate && isPastDue(p.dueDate)) overdue += 1;
-      if (p.dueDate && isDueWithin48(p.dueDate)) dueSoon += 1;
-    }
-    return { active, overdue, dueSoon, doneProps };
-  }, [list, statsReady]);
-
-  const assignmentTypes = useMemo(() => {
-    const types = new Set<string>();
-    for (const p of list) {
-      if (p.type && p.type !== "—") types.add(p.type);
-    }
-    return [...types].sort((a, b) => a.localeCompare(b, "ar"));
-  }, [list]);
-
-  const filtered = useMemo(() => {
-    const q = deferredSearch.trim();
-    let result = buildPoListDisplay(list, q, deedIndex).filter((entry) => {
-      const row = entry.view === "po" ? entry.item.row : entry.item.row;
-      const matchStatus = !statusFilter || row.status === statusFilter;
-      const matchType = !typeFilter || row.type === typeFilter;
-      return matchStatus && matchType;
-    });
-
-    // One order index instead of findIndex inside the comparator — was O(n²·log n) (js-index-maps).
-    const orderById = new Map(list.map((r, i) => [r.id, i]));
-    result = [...result].sort((a, b) => {
-      const rowA = a.view === "po" ? a.item.row : a.item.row;
-      const rowB = b.view === "po" ? b.item.row : b.item.row;
-      let cmp = 0;
-      if (sortKey === "created") {
-        const createdA = rowA.createdAtUtc || "";
-        const createdB = rowB.createdAtUtc || "";
-        if (createdA && createdB) {
-          cmp = createdA.localeCompare(createdB);
-        } else {
-          cmp = (orderById.get(rowA.id) ?? -1) - (orderById.get(rowB.id) ?? -1);
-        }
-        if (cmp === 0) {
-          cmp = rowA.id.localeCompare(rowB.id);
-        }
-      } else if (sortKey === "po") {
-        cmp = rowA.id.localeCompare(rowB.id);
-        if (cmp === 0 && a.view === "property" && b.view === "property") {
-          cmp = a.item.deed.deedNumber.localeCompare(
-            b.item.deed.deedNumber,
-            "ar",
-          );
-        }
-      } else if (sortKey === "received") {
-        cmp = (rowA.date || "").localeCompare(rowB.date || "");
-      } else {
-        cmp = (rowA.dueDate || "").localeCompare(rowB.dueDate || "");
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-
-    return result;
-  }, [list, deferredSearch, deedIndex, statusFilter, typeFilter, sortKey, sortDir]);
-
-  const propertyDeedView =
-    deferredSearchMode === "deed" && deferredSearch.trim().length > 0;
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
-  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const rangeEnd = Math.min(safePage * pageSize, filtered.length);
-
-  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
-    return pageRows.map((entry) => {
-      const p = entry.view === "po" ? entry.item.row : entry.item.row;
-      const deedEntry =
-        entry.view === "property" ? entry.item.deed : null;
-      const match =
-        entry.view === "po" ? entry.item.match : entry.item.match;
-      const registered = p.registered ?? registeredByPo.get(p.id) ?? 0;
-      const studied = p.done ?? 0;
-      const expected = p.count ?? 0;
-      const pct = poProgressPct(registered, studied, expected);
-      const urgent = isDueUrgent(p.dueDate, p.status);
-      const target =
-        deedEntry || match?.propertyId
-          ? poPropertyPath(
-              p.id,
-              deedEntry?.propertyId ?? match!.propertyId!,
-            )
-          : poPropertiesPath(p.id);
-      const rowKey =
-        entry.view === "property"
-          ? `${p.id}-${deedEntry!.propertyId}`
-          : p.id;
-      const deedLabel = deedEntry?.deedNumber?.trim();
-      const statusMeta = poListStatusMeta(p.status);
-      const statusStyle = poStatusStyle(p.status);
-      const tone: ActiveQueueMobileCardItem["tone"] = isPoListStatusTerminal(
-        p.status,
-      )
-        ? "done"
-        : urgent
-          ? "returned"
-          : p.status === "under_study" || pct > 0
-            ? "pending"
-            : "new";
-      const specialist =
-        p.specialist && p.specialist !== "—" ? p.specialist.trim() : "";
-
-      return {
-        id: rowKey,
-        title: deedLabel
-          ? deedLabel.startsWith("صك")
-            ? deedLabel
-            : `صك ${deedLabel}`
-          : formatPoDisplay(p.id),
-        meta: [
-          ...(deedLabel
-            ? [{ text: formatPoDisplay(p.id), kind: "po" as const }]
-            : []),
-          { text: p.type || "—", kind: "type" as const },
-          specialist
-            ? { text: specialist, kind: "place" as const }
-            : {
-                text: `${studied}/${expected || p.count || 0} مكتمل`,
-                kind: "plain" as const,
-              },
-        ],
-        statusLabel: statusMeta.label,
-        statusStyle: {
-          base: statusStyle.base,
-          fg: statusStyle.fg,
-        },
-        tone,
-        timerLabel: `${pct}%`,
-        timerRatio: Math.min(1, Math.max(0, pct / 100)),
-        timerOverdue: urgent,
-        moreItems: buildPoListRowMoreItems({
-          poNumber: p.id,
-          status: p.status,
-          showEdit,
-          showDelete,
-          showLifecycleActions: showEdit,
-          showCreateOperationsTask,
-          deleting: deletingPo === p.id,
-          lifecycleBusy: lifecyclePo === p.id,
-          router,
-          onDelete: () => void handleDeletePo(p.id),
-          onCancel: () => void handleCancelPo(p.id),
-          onStop: () => void handleStopPo(p.id),
-        }),
-        onOpen: () => router.push(target),
-      };
-    });
-  }, [
-    pageRows,
-    registeredByPo,
+  const {
+    router,
+    showIntake,
     showEdit,
     showDelete,
     showCreateOperationsTask,
+    intakeOpen,
+    setIntakeOpen,
     deletingPo,
     lifecyclePo,
-    router,
-  ]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, typeFilter]);
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      return;
-    }
-    setSortKey(key);
-    setSortDir(key === "po" || key === "created" ? "desc" : "asc");
-  }
-
-  async function handleCancelPo(poNumber: string) {
-    if (
-      !window.confirm(
-        `إلغاء أمر العمل «${poNumber}»؟ سيُعرض كملغى في القائمة.`,
-      )
-    ) {
-      return;
-    }
-    setLifecyclePo(poNumber);
-    const result = await cancelPoRecord(poNumber);
-    setLifecyclePo(null);
-    if (!result.ok) {
-      showToast(result.error, "error");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
-    showToast(`تم إلغاء أمر العمل «${poNumber}».`, "success");
-  }
-
-  async function handleStopPo(poNumber: string) {
-    if (
-      !window.confirm(
-        `إيقاف أمر العمل «${poNumber}»؟ سيُعرض كمتوقف في القائمة.`,
-      )
-    ) {
-      return;
-    }
-    setLifecyclePo(poNumber);
-    const result = await stopPoRecord(poNumber);
-    setLifecyclePo(null);
-    if (!result.ok) {
-      showToast(result.error, "error");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
-    showToast(`تم إيقاف أمر العمل «${poNumber}».`, "success");
-  }
-
-  async function handleDeletePo(poNumber: string) {
-    if (
-      !window.confirm(
-        `حذف أمر العمل «${poNumber}» وجميع عقاراته؟ لا يمكن التراجع.`,
-      )
-    ) {
-      return;
-    }
-    setDeletingPo(poNumber);
-    const result = await deletePoRecord(poNumber);
-    setDeletingPo(null);
-    if (!result.ok) {
-      showToast(result.error, "error");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
-    showToast(`تم حذف أمر العمل «${poNumber}» وعقاراته.`, "success");
-  }
+    search,
+    setSearch,
+    searchModeLabel,
+    statusFilter,
+    setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    assignmentTypes,
+    list,
+    totalCount,
+    pageRows,
+    teamByPo,
+    registeredByPo,
+    propertyDeedView,
+    statsReady,
+    kpi,
+    mobileCardItems,
+    setPage,
+    safePage,
+    totalPages,
+    rangeStart,
+    rangeEnd,
+    toggleSort,
+    handleCancelPo,
+    handleStopPo,
+    handleDeletePo,
+    onIntakeComplete,
+  } = usePoListWorkflow();
 
   return (
     <>
@@ -689,10 +105,7 @@ export function PoListView() {
         <PoIntakeModal
           open={intakeOpen}
           onClose={() => setIntakeOpen(false)}
-          onComplete={(record) => {
-            setIntakeOpen(false);
-            router.push(poPropertiesPath(record.poNumber));
-          }}
+          onComplete={(record) => onIntakeComplete(record.poNumber)}
         />
       ) : null}
 
@@ -886,7 +299,7 @@ export function PoListView() {
                 <TBody>
                   {!statsReady ? (
                     <SkeletonTableRows rows={10} cols={11} />
-                  ) : filtered.length === 0 ? (
+                  ) : pageRows.length === 0 ? (
                     <TableEmptyRow colSpan={11}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <InboxIcon />
@@ -899,38 +312,10 @@ export function PoListView() {
                     </TableEmptyRow>
                   ) : (
                     pageRows.map((entry) => {
-                      const p = entry.view === "po" ? entry.item.row : entry.item.row;
-                      const deedEntry =
-                        entry.view === "property" ? entry.item.deed : null;
-                      const match =
-                        entry.view === "po" ? entry.item.match : entry.item.match;
-                      const registered =
-                        p.registered ?? registeredByPo.get(p.id) ?? 0;
-                      const studied = p.done ?? 0;
-                      const expected = p.count ?? 0;
-                      const pct = poProgressPct(registered, studied, expected);
-                      const urgent = isDueUrgent(p.dueDate, p.status);
-                      const target =
-                        deedEntry || match?.propertyId
-                          ? poPropertyPath(
-                              p.id,
-                              deedEntry?.propertyId ?? match!.propertyId!,
-                            )
-                          : poPropertiesPath(p.id);
-                      const rowKey =
-                        entry.view === "property"
-                          ? `${p.id}-${deedEntry!.propertyId}`
-                          : p.id;
+                      const { row: p, studied, pct, urgent, target, rowKey } =
+                        poListRowView(entry, registeredByPo);
                       const projectTip = p.project?.trim() || "";
-                      const teamMembers = (() => {
-                        const fromTasks = teamByPo.get(p.id) ?? [];
-                        if (fromTasks.length > 0) return fromTasks;
-                        const specialist =
-                          p.specialist?.trim() && p.specialist !== "—"
-                            ? [p.specialist.trim()]
-                            : [];
-                        return specialist;
-                      })();
+                      const teamMembers = teamMembersForRow(teamByPo, p);
 
                       return (
                         <Tr
@@ -1073,7 +458,7 @@ export function PoListView() {
                         </b>{" "}
                         من{" "}
                         <b className="font-bold text-heading">
-                          {filtered.length}
+                          {totalCount}
                         </b>{" "}
                         نتيجة
                       </>
@@ -1087,7 +472,7 @@ export function PoListView() {
                   variant="default"
                   className="h-[30px] w-[30px] p-0 disabled:opacity-40"
                   disabled={safePage <= 1}
-                  onClick={() => setPage((n) => Math.max(1, n - 1))}
+                  onClick={() => setPage(safePage - 1)}
                   aria-label="الصفحة السابقة"
                 >
                   ‹
@@ -1125,7 +510,7 @@ export function PoListView() {
                   variant="default"
                   className="h-[30px] w-[30px] p-0 disabled:opacity-40"
                   disabled={safePage >= totalPages}
-                  onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
+                  onClick={() => setPage(safePage + 1)}
                   aria-label="الصفحة التالية"
                 >
                   ›
