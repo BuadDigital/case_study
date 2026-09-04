@@ -503,7 +503,13 @@ jobs:
             # Pull images, apply EF migrations (one-shot), then bring the stack up.
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml run --rm migrate
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
+              echo "::error::compose up failed — dumping unhealthy service logs"
+              docker compose -f docker-compose.prod.yml ps -a || true
+              docker compose -f docker-compose.prod.yml logs --tail=200 financial failures valuation operations case-study identity || true
+              rollback_to_previous || true
+              exit 1
+            fi
 
             # Verify critical services from inside the Compose network.
             # wget exits non-zero for connection failures and non-2xx responses.
