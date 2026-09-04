@@ -359,6 +359,7 @@ services:
       UpstreamServices__OperationsBaseUrl: http://operations:8080
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL: Host=postgres;Port=5432;Database=realestate_eval_financial;Username=postgres;Password=Admin
+      REAL_ESTATE_EVAL_PG_CONNECTION_STRING_MESSAGING: Host=postgres;Port=5432;Database=realestate_eval_messaging;Username=postgres;Password=Admin
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
