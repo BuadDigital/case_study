@@ -6,6 +6,7 @@ COPY backend/RealEstateEval.Application/ backend/RealEstateEval.Application/
 COPY backend/RealEstateEval.Infrastructure/ backend/RealEstateEval.Infrastructure/
 COPY backend/contexts/ backend/contexts/
 COPY backend/shared/ backend/shared/
+COPY backend/tools/DevSeed/ backend/tools/DevSeed/
 COPY backend/tools/DbMigrate/ backend/tools/DbMigrate/
 
 RUN dotnet restore backend/tools/DbMigrate/DbMigrate.csproj

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
@@ -26,6 +27,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 // RealEstateEval.DbMigrate apply all pending migrations, all streams
 // RealEstateEval.DbMigrate update same as above
 // RealEstateEval.DbMigrate list show applied and pending, all streams
+// RealEstateEval.DbMigrate seed migrate (if needed) then run DataSeeder
 // RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
 // RealEstateEval.DbMigrate rollback 0 <stream> remove all migrations (empty DB schema target)
 
@@ -102,13 +104,20 @@ var streams = streamTypes.Select(type =>
         Connection: streamConnections[type])).ToList();
 
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "update";
+var seedDemoData = configuration.GetValue("Database:SeedDemoData", false)
+    || string.Equals(command, "seed", StringComparison.OrdinalIgnoreCase)
+    || args.Any(a => string.Equals(a, "--seed", StringComparison.OrdinalIgnoreCase));
 
 switch (command)
 {
     case "update":
     case "migrate":
+    case "seed":
         foreach (var (name, db, connection) in streams)
             await ApplyPendingAsync(name, connection, db);
+
+        if (seedDemoData)
+            await SeedDemoUsersAsync();
 
         Console.WriteLine("[migrate] done.");
         break;
@@ -150,11 +159,22 @@ switch (command)
         break;
 
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | rollback.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | seed | rollback.");
         return 1;
 }
 
 return 0;
+
+async Task SeedDemoUsersAsync()
+{
+    var identityConnection = streamConnections[typeof(IdentityDbContext)];
+    Console.WriteLine("[migrate] seeding demo users (DataSeeder)…");
+    await using var seedProvider = DevSeedProvider.CreateIdentityMaintenanceProvider(
+        configuration,
+        identityConnection);
+    await DataSeeder.SeedAsync(seedProvider);
+    Console.WriteLine("[migrate] demo seed complete.");
+}
 
 async Task ApplyPendingAsync(string name, string connection, DbContext db)
 {

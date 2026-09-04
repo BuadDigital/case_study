@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\DevSeed\RealEstateEval.DevSeed.csproj" />
     <ProjectReference Include="..\..\contexts\attachments\RealEstateEval.Attachments.Infrastructure\RealEstateEval.Attachments.Infrastructure.csproj" />
     <ProjectReference Include="..\..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />
     <ProjectReference Include="..\..\contexts\operations\RealEstateEval.Operations.Infrastructure\RealEstateEval.Operations.Infrastructure.csproj" />

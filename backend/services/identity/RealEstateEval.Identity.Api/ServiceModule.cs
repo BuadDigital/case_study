@@ -20,13 +20,6 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
 
     public void ConfigureBuilder(WebApplicationBuilder builder, string? connectionString)
     {
-        var enableDevLogin = builder.Configuration.GetValue("Auth:EnableDevLogin", false);
-        if (enableDevLogin && !builder.Environment.IsDevelopment())
-        {
-            throw new InvalidOperationException(
-                "Auth:EnableDevLogin is only allowed in Development.");
-        }
-
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddIdentityInfrastructure(builder.Configuration, connectionString!);
     }
