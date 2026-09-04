@@ -4,10 +4,13 @@ import { normalizePoListStatus } from "./po-list-status";
 import type {
   PropertyListItemDto,
   WorkOrderDto,
+  WorkOrderListCountsDto,
+  WorkOrderListCountsQuery,
   WorkOrderListItemDto,
   WorkOrderListQuery,
 } from "@platform/api-client";
 import {
+  getWorkOrderListCounts,
   listPropertyListItems,
   listWorkOrders,
   listWorkOrdersPage,
@@ -121,6 +124,19 @@ export async function loadPoListRowsPage(
     pageSize: paged.pageSize,
     totalPages: paged.totalPages,
   };
+}
+
+/**
+ * The PO list KPI band and empty-state totals in one `COUNT` call — no rows are
+ * materialised (`docs/architecture/pagination-contract.md` §1.1). Takes the
+ * list's filters only; the page window and the sort are meaningless here.
+ */
+export async function loadPoListCounts(
+  query: WorkOrderListCountsQuery,
+): Promise<WorkOrderListCountsDto> {
+  const config = requireWorkOrdersApiConfig();
+  const result = await getWorkOrderListCounts(config, query);
+  return unwrapApiResult(result, "تعذّر تحميل إحصاءات أوامر العمل");
 }
 
 export type PropertyListItem = {

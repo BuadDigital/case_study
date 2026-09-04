@@ -114,6 +114,16 @@ public static class WorkOrderListQueryRules
             .ToList();
     }
 
+    /// <summary>
+    /// «تستحق خلال 48 ساعة» window, in whole days after today. The screen compares a due date
+    /// parsed at UTC midnight against <c>now</c> and <c>now + 48h</c>, which at date granularity is
+    /// always exactly tomorrow and the day after — never today, never day + 3.
+    /// </summary>
+    public const int DueSoonWindowDays = 2;
+
+    /// <summary>Inclusive upper bound of the due-soon window; the lower bound is <c>today</c> exclusive.</summary>
+    public static DateOnly DueSoonUpperBound(DateOnly today) => today.AddDays(DueSoonWindowDays);
+
     public static string? NormalizeSearch(string? q) =>
         string.IsNullOrWhiteSpace(q) ? null : q.Trim();
 

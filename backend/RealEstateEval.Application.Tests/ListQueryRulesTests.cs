@@ -124,6 +124,8 @@ public class WorkflowTaskListQueryRulesTests
     [InlineData("po", WorkflowTaskListSortKey.PoNumber)]
     [InlineData("poReceived", WorkflowTaskListSortKey.PoReceived)]
     [InlineData("poCreated", WorkflowTaskListSortKey.PoCreated)]
+    [InlineData("deed", WorkflowTaskListSortKey.Deed)]
+    [InlineData("city", WorkflowTaskListSortKey.City)]
     public void Allowed_sort_keys_map_to_columns(string sort, WorkflowTaskListSortKey expected)
     {
         Assert.Equal(expected, WorkflowTaskListQueryRules.ResolveSort(sort));
@@ -131,7 +133,7 @@ public class WorkflowTaskListQueryRulesTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("deed")]
+    [InlineData("district")]
     public void Unknown_sort_falls_back_to_the_default(string? sort)
     {
         Assert.Equal(WorkflowTaskListSortKey.Created, WorkflowTaskListQueryRules.ResolveSort(sort));

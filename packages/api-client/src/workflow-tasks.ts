@@ -48,6 +48,16 @@ export type WorkflowTaskDto = {
   fieldInspectionAccepted?: boolean | null;
   /** Completed sibling field-inspection task id (server; for loading facts without list visibility). */
   fieldInspectionTaskId?: string | null;
+  /*
+   * The five PO-record columns of the task's property, joined server-side
+   * (pagination-contract §2, "The PO-record columns on the row"). All optional
+   * and null when the task has no property yet, so no existing consumer changes.
+   */
+  deedNumber?: string | null;
+  city?: string | null;
+  district?: string | null;
+  propertyType?: string | null;
+  classification?: string | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {
@@ -73,7 +83,11 @@ export type WorkflowTaskListSort =
   | "updated"
   | "po"
   | "poReceived"
-  | "poCreated";
+  | "poCreated"
+  /** `DeedNumber` of the task's property; null-property rows sort first with `asc`. */
+  | "deed"
+  /** `City` of the task's property; same null handling. */
+  | "city";
 
 /** `GET /api/workflow-tasks` query — pagination-contract §2. */
 export type WorkflowTaskListQuery = Omit<ListPageQuery, "sort"> & {

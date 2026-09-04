@@ -5,6 +5,21 @@ namespace RealEstateEval.Failures.Application.Abstractions;
 
 public interface IFailureService
 {
+    /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
+    Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Filtered / sorted page. Visibility is applied before the count.</summary>
+    Task<PagedResultDto<FailureRecordDto>> ListPagedAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<FailureRecordDto>> ListAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default);

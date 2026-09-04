@@ -2,6 +2,8 @@ import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 import type { FinancialRevenueRowStatus } from "./property-list-wire";
+import { fetchListPage, type PagedResultDto } from "./pagination";
+import type { ApiErr, ApiOk } from "./work-orders";
 
 type FinancialRevenueRowDto = {
   po: string;
@@ -257,4 +259,120 @@ export async function deletePartyFeePricing(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/* ------------------------------------------------------------------------- *
+ * Financial ledgers — pagination-contract §7.
+ *
+ * Two lists on `FinancialController` with the same row shape and one rules
+ * module, reached through `CapabilityPolicyNames.ManageOperations`. No screen
+ * pages them today; the typed fetchers exist so a supervisor screen can, with
+ * no server change. Both routes are also served under the `api/financial/v1`
+ * alias, which is the one used here.
+ * ------------------------------------------------------------------------- */
+
+/** Allowed `sort` keys on both ledgers. Unknown keys fall back to `created`. */
+export type FinancialLedgerListSort = "created" | "transaction";
+
+type FinancialLedgerPageQuery = {
+  /** 1-based page; presence switches the endpoint to the paged envelope. */
+  page?: number;
+  pageSize?: number;
+  sort?: FinancialLedgerListSort;
+  /** Default `desc`. */
+  dir?: "asc" | "desc";
+};
+
+export type IncentiveSuspensionDto = {
+  id: string;
+  userId: string;
+  assigneeId: string;
+  transactionKey: string;
+  reason: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  liftedAtUtc?: string | null;
+};
+
+/** `GET /api/financial/incentive-suspensions` query — pagination-contract §7.1. */
+export type IncentiveSuspensionListQuery = FinancialLedgerPageQuery & {
+  /** Free text over `TransactionKey`, `AssigneeId`, `Reason`. */
+  q?: string;
+  transactionKey?: string;
+  assigneeId?: string;
+  /** Server default `true` — only suspensions that have not been lifted. */
+  activeOnly?: boolean;
+};
+
+export type DiscountFlagDto = {
+  id: string;
+  transactionKey: string;
+  workflowTaskId?: string | null;
+  targetAssigneeId: string;
+  flaggedByUserId: string;
+  reason: string;
+  proposedDiscountSar: number;
+  status: string;
+  approvedByUserId?: string | null;
+  resolvedAtUtc?: string | null;
+  resolutionNote?: string | null;
+  createdAtUtc: string;
+};
+
+/** `GET /api/financial/discount-flags` query — pagination-contract §7.2. */
+export type DiscountFlagListQuery = FinancialLedgerPageQuery & {
+  /** Free text over `TransactionKey`, `TargetAssigneeId`, `Reason`. */
+  q?: string;
+  transactionKey?: string;
+  /** Exact `pending` | `approved` | `rejected`; anything else matches no row. */
+  status?: string;
+};
+
+function incentiveSuspensionListParams(query?: IncentiveSuspensionListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    transactionKey: query?.transactionKey,
+    assigneeId: query?.assigneeId,
+    activeOnly: query?.activeOnly,
+  };
+}
+
+function discountFlagListParams(query?: DiscountFlagListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    transactionKey: query?.transactionKey,
+    status: query?.status,
+  };
+}
+
+/** One server page of the incentive-suspension ledger — pagination-contract §7.1. */
+export async function listIncentiveSuspensionsPage(
+  config: PrototypeModulesApiConfig,
+  query?: IncentiveSuspensionListQuery,
+): Promise<ApiOk<PagedResultDto<IncentiveSuspensionDto>> | ApiErr> {
+  return fetchListPage<IncentiveSuspensionDto>(
+    { ...config, baseUrl: baseUrl(config) },
+    "/api/financial/v1/incentive-suspensions",
+    incentiveSuspensionListParams(query),
+  );
+}
+
+/** One server page of the discount-flag ledger — pagination-contract §7.2. */
+export async function listDiscountFlagsPage(
+  config: PrototypeModulesApiConfig,
+  query?: DiscountFlagListQuery,
+): Promise<ApiOk<PagedResultDto<DiscountFlagDto>> | ApiErr> {
+  return fetchListPage<DiscountFlagDto>(
+    { ...config, baseUrl: baseUrl(config) },
+    "/api/financial/v1/discount-flags",
+    discountFlagListParams(query),
+  );
 }

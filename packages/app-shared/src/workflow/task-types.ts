@@ -67,6 +67,16 @@ export type WorkflowTask = {
   fieldInspectionAccepted?: boolean;
   /** Completed sibling field-inspection task id (server). */
   fieldInspectionTaskId?: string;
+  /*
+   * The task's property, as the server joined it onto the row
+   * (`docs/architecture/pagination-contract.md` §2). Undefined when the task has
+   * no property yet — queues fall back to the PO record for display.
+   */
+  deedNumber?: string;
+  city?: string;
+  district?: string;
+  propertyType?: string;
+  classification?: string;
 };
 
 export function notifyTasksChanged(): void {

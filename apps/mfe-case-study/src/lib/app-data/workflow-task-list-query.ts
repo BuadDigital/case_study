@@ -18,6 +18,13 @@ export type WorkflowTaskFilterRow = {
   assigneeRole: string;
   assigneeId?: string;
   assignmentType?: string;
+  /* The five PO-record columns the endpoint joins onto every row and searches
+     with `q` (pagination-contract §2). Absent on a task with no property. */
+  deedNumber?: string;
+  city?: string;
+  district?: string;
+  propertyType?: string;
+  classification?: string;
 };
 
 /** Splits a CSV filter into its tokens; blanks are dropped, as on the server. */
@@ -63,7 +70,19 @@ export function matchesWorkflowTaskFilters(
 
   const q = filters.q?.trim();
   if (q) {
-    const hay = `${task.poNumber} ${task.title} ${task.assigneeName} ${task.assignmentType ?? ""}`;
+    // The endpoint's haystack: the task's own columns plus the five PO-record
+    // columns of its property (pagination-contract §2, "`q`").
+    const hay = [
+      task.poNumber,
+      task.title,
+      task.assigneeName,
+      task.assignmentType ?? "",
+      task.deedNumber ?? "",
+      task.city ?? "",
+      task.district ?? "",
+      task.propertyType ?? "",
+      task.classification ?? "",
+    ].join(" ");
     if (!hay.includes(q)) return false;
   }
   return true;

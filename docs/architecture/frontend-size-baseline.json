@@ -1,0 +1,136 @@
+{
+  "$comment": "Frozen lists for the frontend architecture ratchet (tests/architecture). The lists may only shrink: see docs/architecture/solid-scorecard.md, section \"Frontend architecture ratchet\".",
+  "generated": "2026-09-04",
+  "components": {
+    "cap": 700,
+    "note": "apps/*/src/**/*.tsx over the cap at freeze time. Excludes node_modules, .next, dist/build and test files. Line counts are lines of text (equal to `wc -l` for newline-terminated files).",
+    "frozen": [
+      {
+        "path": "apps/mfe-case-study/src/views/active-transaction-queue-tables.tsx",
+        "lines": 1378
+      },
+      {
+        "path": "apps/mfe-case-study/src/views/OperationsTasksViewParts.tsx",
+        "lines": 1336
+      },
+      {
+        "path": "apps/mfe-case-study/src/views/OperationsTasksView.tsx",
+        "lines": 1310
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/field-inspection/FieldInspectionWorkBody.tsx",
+        "lines": 1235
+      },
+      {
+        "path": "apps/mfe-settings/src/views/BrandIdentityView.tsx",
+        "lines": 989
+      },
+      {
+        "path": "apps/mfe-settings/src/views/users/UsersOrganizationView.tsx",
+        "lines": 989
+      },
+      {
+        "path": "apps/shell/src/components/views/AppShellNavParts.tsx",
+        "lines": 982
+      },
+      {
+        "path": "apps/mfe-financial/src/components/FinanceRevenueTables.tsx",
+        "lines": 972
+      },
+      {
+        "path": "apps/mfe-keys/src/components/KeyEnvelopeDetailDialogs.tsx",
+        "lines": 968
+      },
+      {
+        "path": "apps/mfe-case-study/src/views/MyTaskWorkView.tsx",
+        "lines": 965
+      },
+      {
+        "path": "apps/mfe-failures/src/views/FailuresView.tsx",
+        "lines": 952
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/po-intake/PropertyDetailInspectionParts.tsx",
+        "lines": 941
+      },
+      {
+        "path": "apps/mfe-keys/src/components/RegisterKeyEnvelopeModal.tsx",
+        "lines": 928
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/CreateOperationsTaskModal.tsx",
+        "lines": 879
+      },
+      {
+        "path": "apps/mfe-settings/src/views/ValuersRosterView.tsx",
+        "lines": 872
+      },
+      {
+        "path": "apps/shell/src/components/views/AppShell.tsx",
+        "lines": 870
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/po-intake/PoPropertyEnfathForm.tsx",
+        "lines": 866
+      },
+      {
+        "path": "apps/mfe-settings/src/views/OrganizationSettingsView.tsx",
+        "lines": 845
+      },
+      {
+        "path": "apps/mfe-keys/src/views/KeysView.tsx",
+        "lines": 791
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/po-intake/PropertyDetailEnfathUpload.tsx",
+        "lines": 769
+      },
+      {
+        "path": "apps/mfe-financial/src/components/FinanceEnfazPoBilling.tsx",
+        "lines": 743
+      },
+      {
+        "path": "apps/shell/src/app/login/page.tsx",
+        "lines": 742
+      },
+      {
+        "path": "apps/shell/src/components/OfflineSyncCoordinator.tsx",
+        "lines": 733
+      },
+      {
+        "path": "apps/mfe-case-study/src/components/field-inspection/InspectorDefinedPhotosSection.tsx",
+        "lines": 716
+      }
+    ]
+  },
+  "hooks": {
+    "cap": 500,
+    "note": "use*.ts modules under apps/*/src and packages/*/src over the cap at freeze time.",
+    "frozen": [
+      {
+        "path": "apps/mfe-case-study/src/views/useOperationsTasksWorkflow.ts",
+        "lines": 1132
+      },
+      {
+        "path": "apps/mfe-case-study/src/views/useActiveTransactionQueueWorkflow.ts",
+        "lines": 951
+      },
+      {
+        "path": "apps/mfe-evaluator/src/components/evaluator/valuation-work/useValuationWorkCommands.ts",
+        "lines": 779
+      },
+      {
+        "path": "apps/mfe-evaluator/src/components/evaluator/valuation-work/useValuationWorkData.ts",
+        "lines": 733
+      }
+    ]
+  },
+  "storageModules": {
+    "note": "The only *-storage.ts facades left after the lib/prototype split. No new ones may appear; these may only be removed.",
+    "frozen": [
+      "apps/mfe-case-study/src/lib/app-data/infath-deposit-storage.ts",
+      "apps/mfe-case-study/src/lib/app-data/tasks-storage.ts",
+      "apps/mfe-settings/src/lib/app-data/courts-storage.ts"
+    ]
+  }
+}

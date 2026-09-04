@@ -10,6 +10,19 @@ public interface IDiscountFlagService
         string? status = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
+    Task<IReadOnlyList<DiscountFlagDto>> ListAsync(
+        DiscountFlagListQuery query,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Filtered / sorted page. See docs/architecture/pagination-contract.md §7.</summary>
+    Task<PagedResultDto<DiscountFlagDto>> ListPagedAsync(
+        DiscountFlagListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default);
+
     Task<(DiscountFlagDto? Row, string? Error)> CreateAsync(
         CreateDiscountFlagRequest request,
         string actorUserId,

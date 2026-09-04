@@ -22,6 +22,10 @@ public interface IWorkOrderService
         WorkOrderListQuery query,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
+    Task<WorkOrderListCountsDto> CountsAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default);

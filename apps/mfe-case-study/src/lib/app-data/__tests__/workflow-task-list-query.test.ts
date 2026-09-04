@@ -75,9 +75,27 @@ describe("matchesWorkflowTaskFilters", () => {
     );
   });
 
-  it("searches the task's own columns only", () => {
+  it("searches the task's own columns", () => {
     expect(matchesWorkflowTaskFilters(row(), { q: "سالم" })).toBe(true);
     expect(matchesWorkflowTaskFilters(row(), { q: "PO-2026" })).toBe(true);
+    expect(matchesWorkflowTaskFilters(row(), { q: "الرياض" })).toBe(false);
+  });
+
+  it("also searches the five PO-record columns the server joins on", () => {
+    const withProperty = row({
+      deedNumber: "310107029844",
+      city: "الرياض",
+      district: "النرجس",
+      propertyType: "فيلا",
+      classification: "سكني",
+    });
+    for (const q of ["029844", "الرياض", "النرجس", "فيلا", "سكني"]) {
+      expect(matchesWorkflowTaskFilters(withProperty, { q })).toBe(true);
+    }
+    expect(matchesWorkflowTaskFilters(withProperty, { q: "جدة" })).toBe(false);
+  });
+
+  it("matches nothing on those columns for a task with no property", () => {
     expect(matchesWorkflowTaskFilters(row(), { q: "الرياض" })).toBe(false);
   });
 });

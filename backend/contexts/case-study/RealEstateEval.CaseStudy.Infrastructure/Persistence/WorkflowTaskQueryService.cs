@@ -38,10 +38,11 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var list = await VisibleOrderedTasks(query, actor)
-            .Take(take)
-            .ToListAsync(cancellationToken);
-        var dtos = list.Select(WorkflowTaskMapper.ToDto).ToList();
+        var dtos = await MaterializeAsync(
+            VisibleOrderedTasks(query, actor),
+            null,
+            take,
+            cancellationToken);
         await EnrichFieldInspectionCompletedAsync(dtos, cancellationToken);
         return dtos;
     }
@@ -71,12 +72,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             _dbOptions);
         var rows = VisibleOrderedTasks(query, actor);
         var total = await rows.CountAsync(cancellationToken);
-        var list = await rows
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
-
-        var items = list.Select(WorkflowTaskMapper.ToDto).ToList();
+        var items = await MaterializeAsync(rows, skip, take, cancellationToken);
         await EnrichFieldInspectionCompletedAsync(items, cancellationToken);
 
         return new PagedResultDto<WorkflowTaskDto>
@@ -138,7 +134,14 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                 t.PoNumber.Contains(search)
                 || t.Title.Contains(search)
                 || t.AssigneeName.Contains(search)
-                || (t.AssignmentType != null && t.AssignmentType.Contains(search)));
+                || (t.AssignmentType != null && t.AssignmentType.Contains(search))
+                || _caseStudy.WorkOrderProperties.Any(p =>
+                    p.Id == t.PropertyId
+                    && (p.DeedNumber.Contains(search)
+                        || p.City.Contains(search)
+                        || p.District.Contains(search)
+                        || p.PropertyType.Contains(search)
+                        || p.Classification.Contains(search))));
         }
 
         return SortTasks(rows, query);
@@ -180,6 +183,24 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                     .Where(w => w.PoNumber == t.PoNumber)
                     .Select(w => (DateTime?)w.CreatedAtUtc)
                     .FirstOrDefault()),
+            WorkflowTaskListSortKey.Deed => descending
+                ? rows.OrderByDescending(t => _caseStudy.WorkOrderProperties
+                    .Where(p => p.Id == t.PropertyId)
+                    .Select(p => p.DeedNumber)
+                    .FirstOrDefault())
+                : rows.OrderBy(t => _caseStudy.WorkOrderProperties
+                    .Where(p => p.Id == t.PropertyId)
+                    .Select(p => p.DeedNumber)
+                    .FirstOrDefault()),
+            WorkflowTaskListSortKey.City => descending
+                ? rows.OrderByDescending(t => _caseStudy.WorkOrderProperties
+                    .Where(p => p.Id == t.PropertyId)
+                    .Select(p => p.City)
+                    .FirstOrDefault())
+                : rows.OrderBy(t => _caseStudy.WorkOrderProperties
+                    .Where(p => p.Id == t.PropertyId)
+                    .Select(p => p.City)
+                    .FirstOrDefault()),
             _ => descending
                 ? rows.OrderByDescending(t => t.CreatedAtUtc)
                 : rows.OrderBy(t => t.CreatedAtUtc),
@@ -189,6 +210,55 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .ThenBy(t => t.PoNumber)
             .ThenBy(t => t.PropertyOrdinal)
             .ThenBy(t => t.Id);
+    }
+
+ /// <summary>
+ /// Pages, then reads the row plus the PO-record columns of its property in one round trip. The
+ /// property lives in the same case_study schema, so the join stays in SQL and the queue no longer
+ /// needs the PO-intake fetch to render deed / city / district / type / classification.
+ /// </summary>
+    private async Task<List<WorkflowTaskDto>> MaterializeAsync(
+        IQueryable<WorkflowTask> rows,
+        int? skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        if (skip is > 0)
+            rows = rows.Skip(skip.Value);
+        if (take > 0)
+            rows = rows.Take(take);
+
+        var projected = await rows
+            .Select(t => new
+            {
+                Task = t,
+                Property = _caseStudy.WorkOrderProperties
+                    .Where(p => p.Id == t.PropertyId)
+                    .Select(p => new
+                    {
+                        p.DeedNumber,
+                        p.City,
+                        p.District,
+                        p.PropertyType,
+                        p.Classification,
+                    })
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return projected
+            .Select(row =>
+            {
+                var dto = WorkflowTaskMapper.ToDto(row.Task);
+                if (row.Property is null) return dto;
+                dto.DeedNumber = row.Property.DeedNumber;
+                dto.City = row.Property.City;
+                dto.District = row.Property.District;
+                dto.PropertyType = row.Property.PropertyType;
+                dto.Classification = row.Property.Classification;
+                return dto;
+            })
+            .ToList();
     }
 
     public Task<bool> IsAssignedToAsync(

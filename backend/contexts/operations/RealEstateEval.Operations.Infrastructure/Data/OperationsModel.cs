@@ -14,8 +14,26 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 // global beside the frozen legacy context (drift guard).
 public static class OperationsModel
 {
+ /// <summary>
+ /// Stored generated column holding <c>DeedsJson</c> as text (<c>"DeedsJson" #&gt;&gt; '{}'</c>, which
+ /// is immutable so PostgreSQL accepts it in a generated column). It exists only so a deed-number
+ /// substring search is index-backed: a GIN <c>gin_trgm_ops</c> index over this column answers
+ /// <c>LIKE '%…%'</c>, which no jsonb operator class can do. See
+ /// docs/architecture/pagination-contract.md §3.
+ /// </summary>
+    public const string OperationsTaskDeedsTextColumn = "DeedsText";
+
+ /// <summary>Trigram index behind the deed substring search.</summary>
+    public const string OperationsTaskDeedsTextIndex = "IX_OperationsTasks_DeedsText_Trgm";
+
+ /// <summary>Containment index behind the exact deed-number match (<c>@&gt;</c>).</summary>
+    public const string OperationsTaskDeedsJsonIndex = "IX_OperationsTasks_DeedsJson";
+
     public static ModelBuilder ApplyOperationsModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
+        if (ownsMigrations)
+            builder.HasPostgresExtension("pg_trgm");
+
  // Numbering workshop: annual KE counters local to the operations schema.
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.Operations);
@@ -184,6 +202,20 @@ public static class OperationsModel
             e.HasIndex(x => x.DueAtUtc);
             e.HasIndex(x => x.CreatedBy);
             e.HasIndex(x => x.PoNumber);
+
+ // Deed search. jsonb_path_ops answers `DeedsJson @> '["<deed>"]'` (exact element); the
+ // trigram index over the text projection answers the substring half. Both are GIN.
+            e.HasIndex(x => x.DeedsJson)
+                .HasDatabaseName(OperationsTaskDeedsJsonIndex)
+                .HasMethod("gin")
+                .HasOperators("jsonb_path_ops");
+            e.Property<string>(OperationsTaskDeedsTextColumn)
+                .HasColumnType("text")
+                .HasComputedColumnSql("\"DeedsJson\" #>> '{}'", stored: true);
+            e.HasIndex(OperationsTaskDeedsTextColumn)
+                .HasDatabaseName(OperationsTaskDeedsTextIndex)
+                .HasMethod("gin")
+                .HasOperators("gin_trgm_ops");
         });
 
         builder.Entity<OperationsTaskSequence>(e =>

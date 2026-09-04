@@ -48,12 +48,55 @@ public class FailureService : IFailureService
         _labels = labels;
     }
 
-    public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+    public Task<IReadOnlyList<FailureRecordDto>> ListAsync(
         PermissionsDto? actor = null,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(FailureListQuery.Empty, actor, cancellationToken);
+
+    public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
-        var list = await _failures.ListRecentAsync(visiblePos, MaxListRows, cancellationToken);
+        var list = await _failures.ListPageAsync(
+            visiblePos,
+            query,
+            0,
+            MaxListRows,
+            cancellationToken);
+        return await ToDtosAsync(list, cancellationToken);
+    }
+
+ /// <summary>
+ /// Filtered / sorted page. Visibility narrows the query before the count, so TotalCount is the
+ /// actor's total. See docs/architecture/pagination-contract.md §5.
+ /// </summary>
+    public async Task<PagedResultDto<FailureRecordDto>> ListPagedAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default)
+    {
+        var visiblePos = await ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        var total = await _failures.CountAsync(visiblePos, query, cancellationToken);
+        var list = await _failures.ListPageAsync(visiblePos, query, skip, take, cancellationToken);
+
+        return new PagedResultDto<FailureRecordDto>
+        {
+            Items = await ToDtosAsync(list, cancellationToken),
+            TotalCount = total,
+            Page = page,
+            PageSize = take,
+        };
+    }
+
+    private async Task<IReadOnlyList<FailureRecordDto>> ToDtosAsync(
+        IReadOnlyList<PropertyFailure> list,
+        CancellationToken cancellationToken)
+    {
         var names = await _labels.ResolveManyAsync(
             list.Select(f => f.Specialist),
             cancellationToken);

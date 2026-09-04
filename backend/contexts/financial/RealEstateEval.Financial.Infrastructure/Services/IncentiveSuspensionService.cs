@@ -6,6 +6,8 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Domain;
 
@@ -13,6 +15,8 @@ namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
 {
+    private const int MaxListRows = 200;
+
     private readonly FinancialDbContext _db;
     private readonly IIdentityDirectory _identity;
     private readonly TimeProvider _time;
@@ -29,25 +33,101 @@ public sealed class IncentiveSuspensionService : IIncentiveSuspensionService
         _identity = identity;
     }
 
-    public async Task<IReadOnlyList<IncentiveSuspensionDto>> ListAsync(
+    public Task<IReadOnlyList<IncentiveSuspensionDto>> ListAsync(
         string? transactionKey = null,
         string? assigneeId = null,
         bool activeOnly = true,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            new IncentiveSuspensionListQuery
+            {
+                TransactionKey = transactionKey,
+                AssigneeId = assigneeId,
+                ActiveOnly = activeOnly,
+            },
+            cancellationToken);
+
+    public async Task<IReadOnlyList<IncentiveSuspensionDto>> ListAsync(
+        IncentiveSuspensionListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.IncentiveSuspensions.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(transactionKey))
-            query = query.Where(x => x.TransactionKey == transactionKey.Trim());
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-            query = query.Where(x => x.AssigneeId == assigneeId.Trim());
-        if (activeOnly)
-            query = query.Where(x => x.LiftedAtUtc == null);
-
-        var rows = await query
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(200)
+        var rows = await Sorted(Filtered(query), query)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
+    }
+
+ /// <summary>
+ /// Filters and sorts in the database, then pages. Every filter is an EF predicate, so the page
+ /// and TotalCount agree. See docs/architecture/pagination-contract.md §7.
+ /// </summary>
+    public async Task<PagedResultDto<IncentiveSuspensionDto>> ListPagedAsync(
+        IncentiveSuspensionListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default)
+    {
+        var filtered = Filtered(query);
+        var total = await filtered.CountAsync(cancellationToken);
+        var rows = await Sorted(filtered, query)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<IncentiveSuspensionDto>
+        {
+            Items = rows.Select(ToDto).ToList(),
+            TotalCount = total,
+            Page = page,
+            PageSize = take,
+        };
+    }
+
+    private IQueryable<IncentiveSuspension> Filtered(IncentiveSuspensionListQuery query)
+    {
+        var rows = _db.IncentiveSuspensions.AsNoTracking().AsQueryable();
+
+        var transactionKey = FinancialLedgerListQueryRules.NormalizeExact(query.TransactionKey);
+        if (transactionKey is not null)
+            rows = rows.Where(x => x.TransactionKey == transactionKey);
+
+        var assigneeId = FinancialLedgerListQueryRules.NormalizeExact(query.AssigneeId);
+        if (assigneeId is not null)
+            rows = rows.Where(x => x.AssigneeId == assigneeId);
+
+        if (query.ActiveOnly)
+            rows = rows.Where(x => x.LiftedAtUtc == null);
+
+        var search = FinancialLedgerListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            rows = rows.Where(x =>
+                x.TransactionKey.Contains(search)
+                || x.AssigneeId.Contains(search)
+                || x.Reason.Contains(search));
+        }
+
+        return rows;
+    }
+
+ /// <summary>Allow-listed sort plus the id tiebreaker so consecutive pages never overlap.</summary>
+    private static IQueryable<IncentiveSuspension> Sorted(
+        IQueryable<IncentiveSuspension> rows,
+        IncentiveSuspensionListQuery query)
+    {
+        var descending = FinancialLedgerListQueryRules.ResolveDescending(query.Dir);
+        IOrderedQueryable<IncentiveSuspension> ordered =
+            FinancialLedgerListQueryRules.ResolveSort(query.Sort)
+                == FinancialLedgerListSortKey.TransactionKey
+                ? descending
+                    ? rows.OrderByDescending(x => x.TransactionKey)
+                    : rows.OrderBy(x => x.TransactionKey)
+                : descending
+                    ? rows.OrderByDescending(x => x.CreatedAtUtc)
+                    : rows.OrderBy(x => x.CreatedAtUtc);
+
+        return ordered.ThenBy(x => x.Id);
     }
 
     public async Task<(IncentiveSuspensionDto? Row, string? Error)> CreateAsync(

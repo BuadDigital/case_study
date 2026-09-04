@@ -14,6 +14,10 @@ public enum WorkflowTaskListSortKey
     PoReceived,
  /// <summary>Creation date of the task's work order (queue "newest first").</summary>
     PoCreated,
+ /// <summary>Deed number of the task's property, joined from the PO record.</summary>
+    Deed,
+ /// <summary>City of the task's property, joined from the PO record.</summary>
+    City,
 }
 
 /// <summary>
@@ -28,6 +32,10 @@ public static class WorkflowTaskListQueryRules
     public const string SortPo = "po";
     public const string SortPoReceived = "poReceived";
     public const string SortPoCreated = "poCreated";
+ /// <summary>Deed number of the linked property (PO-record column, joined in SQL).</summary>
+    public const string SortDeed = "deed";
+ /// <summary>City of the linked property (PO-record column, joined in SQL).</summary>
+    public const string SortCity = "city";
 
     public const string DirAscending = "asc";
     public const string DirDescending = "desc";
@@ -36,7 +44,7 @@ public static class WorkflowTaskListQueryRules
     public const bool DefaultDescending = true;
 
     public static IReadOnlyList<string> AllowedSortKeys { get; } =
-        [SortCreated, SortUpdated, SortPo, SortPoReceived, SortPoCreated];
+        [SortCreated, SortUpdated, SortPo, SortPoReceived, SortPoCreated, SortDeed, SortCity];
 
     public static WorkflowTaskListSortKey ResolveSort(string? sort) =>
         Normalize(sort) switch
@@ -45,6 +53,8 @@ public static class WorkflowTaskListQueryRules
             "po" => WorkflowTaskListSortKey.PoNumber,
             "poreceived" => WorkflowTaskListSortKey.PoReceived,
             "pocreated" => WorkflowTaskListSortKey.PoCreated,
+            "deed" => WorkflowTaskListSortKey.Deed,
+            "city" => WorkflowTaskListSortKey.City,
             _ => WorkflowTaskListSortKey.Created,
         };
 

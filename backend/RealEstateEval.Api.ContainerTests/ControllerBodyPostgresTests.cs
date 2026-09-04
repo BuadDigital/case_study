@@ -32,6 +32,8 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Failures.Application.Contracts;
 using RealEstateEval.Attachments.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Operations.Domain;
+using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
@@ -40,6 +42,8 @@ using RealEstateEval.Identity.Infrastructure.Services;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.Failures.Infrastructure.Services;
+using RealEstateEval.Financial.Infrastructure.Data.Contexts;
+using RealEstateEval.Financial.Infrastructure.Services;
 
 using AttachmentsMarker = AttachmentsApi::RealEstateEval.Attachments.Api.Controllers.AttachmentsController;
 using CaseStudyMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Controllers.WorkflowTasksController;
@@ -143,6 +147,27 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(
             await canonical.Content.ReadAsStringAsync(),
             await alias.Content.ReadAsStringAsync());
+
+ // The two ledger lists, plain and paged (docs/architecture/pagination-contract.md).
+        foreach (var path in new[]
+                 {
+                     "/api/financial/incentive-suspensions",
+                     "/api/financial/discount-flags",
+                 })
+        {
+            foreach (var suffix in new[]
+                     {
+                         "",
+                         "?page=1&pageSize=5",
+                         "?page=1&pageSize=5&sort=transaction&dir=asc&q=PO",
+                         "?page=1&pageSize=5&sort=not-a-column&dir=sideways&transactionKey=PO-1",
+                     })
+            {
+                using var ledgerRequest = AuthorizedGet(path + suffix);
+                var ledger = await client.SendAsync(ledgerRequest);
+                Assert.Equal(HttpStatusCode.OK, ledger.StatusCode);
+            }
+        }
     }
 
     [DockerFact]
@@ -170,6 +195,23 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+ // Every filter and sort of the paging contract, so the generated SQL is exercised on
+ // Postgres and not only on the in-memory provider (docs/architecture/pagination-contract.md).
+        foreach (var suffix in new[]
+                 {
+                     "?page=1&pageSize=5",
+                     "?page=1&pageSize=5&sort=created&dir=asc",
+                     "?page=1&pageSize=5&sort=po&dir=desc",
+                     "?page=1&pageSize=5&sort=deed&status=internal,review",
+                     "?page=1&pageSize=5&q=PO&poNumber=PO-1&problemTypeId=problem-1",
+                     "?page=1&pageSize=5&sort=not-a-column&dir=sideways&status=exploded",
+                 })
+        {
+            using var filtered = AuthorizedGet("/api/failures" + suffix);
+            var paged = await client.SendAsync(filtered);
+            Assert.Equal(HttpStatusCode.OK, paged.StatusCode);
+        }
     }
 
     [DockerFact]
@@ -228,6 +270,68 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// Deed search on the real jsonb column. The in-memory provider takes a LINQ fallback, so this
+    /// is the only place the <c>@&gt;</c> containment and the trigram <c>LIKE</c> over the generated
+    /// <c>DeedsText</c> column are actually translated and executed — the index shapes are created
+    /// by <c>AddOperationsTaskDeedSearchIndex</c>.
+    /// See docs/architecture/pagination-contract.md §3.
+    /// </summary>
+    [DockerFact]
+    public async Task Operations_task_deed_search_executes_against_postgres()
+    {
+        using var factory = Factory<OperationsMarker>("Operations");
+        using var client = factory.CreateClient();
+
+        var displayId = $"T-DEED-{Guid.NewGuid():N}"[..24];
+        const string deed = "310107029844";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var ops = scope.ServiceProvider.GetRequiredService<OperationsDbContext>();
+            ops.OperationsTasks.Add(OperationsTask.Create(
+                Guid.NewGuid(),
+                displayId,
+                OperationsTaskType.CourtVisit,
+                "بحث الصك",
+                OperationsTaskScope.General,
+                "container-test-user",
+                "container-test-user",
+                OperationsTaskPriority.Medium,
+                DateTime.UtcNow.AddDays(1),
+                DateTime.UtcNow,
+                deedsJson: $"[\"{deed}\",\"440001\"]",
+                assigneeName: "منفّذ"));
+            await ops.SaveChangesAsync();
+        }
+
+        // Whole deed number (jsonb containment), a substring of it (trigram LIKE), a second deed on
+        // the same row, and a deed that matches nothing.
+        foreach (var (q, expected) in new[]
+                 {
+                     (deed, true),
+                     ("029844", true),
+                     ("440001", true),
+                     ("000000000000", false),
+                 })
+        {
+            using var request = AuthorizedGet($"/api/operations-tasks?page=1&pageSize=50&q={q}");
+            var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(expected, body.Contains(displayId, StringComparison.Ordinal));
+        }
+
+        // A LIKE metacharacter must not widen the search to everything.
+        using var wildcard = AuthorizedGet("/api/operations-tasks?page=1&pageSize=50&q=%25");
+        var wildcardResponse = await client.SendAsync(wildcard);
+        Assert.Equal(HttpStatusCode.OK, wildcardResponse.StatusCode);
+        Assert.DoesNotContain(
+            displayId,
+            await wildcardResponse.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
     [DockerFact]
     public async Task Case_study_work_order_list_executes_against_postgres()
     {
@@ -237,6 +341,21 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var listRequest = AuthorizedGet("/api/work-orders?page=1&pageSize=20");
         var list = await client.SendAsync(listRequest);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+
+ // The KPI counters are correlated COUNTs over the same filtered set; run them on Postgres
+ // too (docs/architecture/pagination-contract.md).
+        foreach (var suffix in new[]
+                 {
+                     "",
+                     "?status=under_study",
+                     "?status=completed&type=%D8%AA%D9%86%D9%81%D9%8A%D8%B0",
+                     "?q=001",
+                 })
+        {
+            using var countsRequest = AuthorizedGet("/api/work-orders/counts" + suffix);
+            var counts = await client.SendAsync(countsRequest);
+            Assert.Equal(HttpStatusCode.OK, counts.StatusCode);
+        }
 
  // The status buckets are correlated sub-queries over properties and workflow tasks; run each
  // one against Postgres so a translation break cannot hide behind the in-memory provider.
@@ -471,6 +590,19 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         var rows = await list.Content.ReadFromJsonAsync<UserNotificationDto[]>();
         Assert.Contains(rows ?? [], row => row.Id == createdBody!.Id);
 
+ // Paged envelope and the feed filters (docs/architecture/pagination-contract.md).
+        foreach (var suffix in new[]
+                 {
+                     "?page=1&pageSize=5",
+                     "?page=1&pageSize=5&dir=asc&unread=true",
+                     "?page=1&pageSize=5&category=workflow&q=notice&sort=not-a-column",
+                 })
+        {
+            using var pagedRequest = AuthorizedGet("/api/notifications" + suffix);
+            var paged = await client.SendAsync(pagedRequest);
+            Assert.Equal(HttpStatusCode.OK, paged.StatusCode);
+        }
+
         using var missingDelete = AuthorizedDelete($"/api/notifications/{Guid.NewGuid():D}");
         var missing = await client.SendAsync(missingDelete);
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
@@ -489,6 +621,28 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var listRequest = AuthorizedGet("/api/valuation-requests");
         var list = await client.SendAsync(listRequest);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+
+ // Comparable bank: plain array, paged envelope, every sort key, and the field-first
+ // priority now pushed into SQL (docs/architecture/pagination-contract.md).
+        foreach (var suffix in new[]
+                 {
+                     "",
+                     "?take=5",
+                     "?page=1&pageSize=5",
+                     "?page=1&pageSize=5&sort=price&dir=asc",
+                     "?page=1&pageSize=5&sort=pricePerSqm",
+                     "?page=1&pageSize=5&sort=area&dir=asc",
+                     "?page=1&pageSize=5&sort=district",
+                     "?page=1&pageSize=5&sort=created&includeInactive=true",
+                     "?page=1&pageSize=5&q=C-&district=%D8%A7%D9%84%D8%B1%D9%88%D8%B6%D8%A9",
+                     "?page=1&pageSize=5&sort=not-a-column&dir=sideways&forPropertyId="
+                         + Guid.NewGuid().ToString("D"),
+                 })
+        {
+            using var bankRequest = AuthorizedGet("/api/comparable-properties" + suffix);
+            var bank = await client.SendAsync(bankRequest);
+            Assert.Equal(HttpStatusCode.OK, bank.StatusCode);
+        }
 
         using var missingRequest = AuthorizedGet($"/api/valuation-requests/{Guid.NewGuid():D}");
         var missing = await client.SendAsync(missingRequest);
@@ -878,6 +1032,19 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
                     (_, _) => new FailuresDbContext(StreamOptions<FailuresDbContext>()));
                 services.AddScoped<IFailureLookup>(sp =>
                     new FailureLookup(sp.GetRequiredKeyedService<FailuresDbContext>(testKey)));
+            }
+
+ // Operations rows carry a court-visit fee, which the Operations host reads over HTTP from
+ // Financial. Without this the list body 500s as soon as the table is not empty, which is
+ // why the paging tests only ever saw the empty-table path.
+            if (_serviceName != "Financial")
+            {
+                services.AddKeyedScoped(
+                    testKey,
+                    (_, _) => new FinancialDbContext(StreamOptions<FinancialDbContext>()));
+                services.AddScoped<ICourtVisitFeeChargeService>(sp =>
+                    new CourtVisitFeeChargeService(
+                        sp.GetRequiredKeyedService<FinancialDbContext>(testKey)));
             }
 
             if (_serviceName == "Reporting")

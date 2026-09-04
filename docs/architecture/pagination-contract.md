@@ -1,24 +1,25 @@
 # List pagination, filtering and sorting contract
 
 **Date:** 2026-09-04 · **Branch:** dev
-**Scope:** the three list endpoints behind the heaviest screens — work orders, workflow tasks,
-operations tasks. This file is the contract the front-end implements against; it is exact, and any
-change to a parameter name, an allowed sort key, or a filter's meaning belongs here first.
+**Scope:** every list endpoint that a screen pages, sorts or searches — work orders (plus their KPI
+counts), workflow tasks, operations tasks, comparable properties, failures, notifications, and the
+two financial ledgers. This file is the contract the front-end implements against; it is exact, and
+any change to a parameter name, an allowed sort key, or a filter's meaning belongs here first.
 
 Companion documents: [`solid-scorecard.md`](./solid-scorecard.md), [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ## Shared rules
 
-These hold on all three endpoints.
+These hold on every endpoint below.
 
 | Rule | Behaviour |
 | --- | --- |
 | Response shape | `page` **or** `pageSize` present → `PagedResultDto<T>`. Neither present → the plain JSON array the endpoint has always returned. Every existing caller keeps working untouched. |
 | `page` | 1-based. Values below 1 clamp to 1. |
 | `pageSize` | Clamped to `Database:MaxPageSize` (500). Omitted with `page` present → `Database:DefaultPageSize` (100). |
-| Unpaged cap | Without `page`/`pageSize` the row count is still capped at `Database:UnpaginatedListCap` (500). Filters and sort still apply. |
+| Unpaged cap | Without `page`/`pageSize` the row count is still capped (`Database:UnpaginatedListCap`, 500, or the endpoint's own cap where noted). Filters and sort still apply. |
 | `sort` | A key from the endpoint's allow-list. **An unknown key falls back to the endpoint default — never a 400.** |
-| `dir` | `asc` or `desc`. Anything else (including omitted) falls back to the endpoint default, which is `desc` on all three. |
+| `dir` | `asc` or `desc`. Anything else (including omitted) falls back to the endpoint default, which is `desc` everywhere. |
 | `q` | Free text, trimmed. Blank/whitespace means "no search". Substring, case-sensitive as the database collation decides; matched columns are listed per endpoint. |
 | Visibility | The actor's visibility rule is applied **inside** the query, before `COUNT` and before `OFFSET/LIMIT`. `TotalCount` is therefore the actor's total, never the table's. |
 | Ordering stability | Every sort ends with a deterministic tiebreaker so consecutive pages never overlap or drop a row. |
@@ -104,7 +105,52 @@ unrecognised value is ignored (no filter).
 
 Paged: `PagedResultDto<WorkOrderListItemDto>`. Unpaged: `WorkOrderListItemDto[]`.
 
-### Still client-side
+---
+
+## 1.1 Work-order KPI counts
+
+**Route:** `GET /api/work-orders/counts`
+**Item type:** `WorkOrderListCountsDto` (`CaseStudy.Application/Contracts/WorkOrderListCountsDto.cs`)
+**Query service:** `WorkOrderQueryService.CountsAsync`
+**Screen it replaces:** `poListKpi` and the empty-state copy in `po-list-view-state.ts` / `PoListView.tsx`
+
+Takes **the same parameters as the list except the page window and the sort** — `q`, `status`, `type`
+only. `page`, `pageSize`, `sort` and `dir` are not accepted and would be meaningless. Visibility is
+applied exactly as on the list, before every count, so the numbers are the actor's.
+
+Every field is a SQL `COUNT`; no row is materialised.
+
+```json
+{
+  "total": 137,
+  "totalUnfiltered": 240,
+  "active": 88,
+  "overdue": 12,
+  "dueSoon": 5,
+  "doneProperties": 310
+}
+```
+
+| Field | Screen | Definition |
+| --- | --- | --- |
+| `total` | — | Rows matching `q` / `status` / `type`. **Always equals `PagedResultDto.TotalCount` for the same filters**, so the pager can be driven from either. |
+| `totalUnfiltered` | empty state | Rows visible to the actor with `q` / `status` / `type` ignored. Show «لا توجد أوامر عمل.» when this is `0`, «لا توجد نتائج مطابقة» when it is non-zero but `total` is `0`. |
+| `active` | «أوامر نشطة» | Rows whose PO list status is **not terminal** — i.e. the `new` and `under_study` buckets. Terminal is `cancelled`, `stopped`, `completed` and therefore `fully_billed`, which only refines `completed`. Mirrors `!isPoListStatusTerminal(status)`. |
+| `overdue` | «متأخرة عن الاستحقاق» | `active` rows with `DueDateAt < today`. |
+| `dueSoon` | «تستحق خلال 48 ساعة» | `active` rows with `today < DueDateAt ≤ today + 2 days`. |
+| `doneProperties` | «عقارات أُنجزت» | Live properties across **all** matched rows (terminal ones included) whose case-study task is `completed` or in phase `done`. This is the sum of the list's `completedCount`, matching the screen, which adds `p.done` before the terminal `continue`. |
+
+**Clock.** `today` is the UTC date from the injected `TimeProvider`. The screen's `isPastDue` uses the
+browser's local midnight and `isDueWithin48` parses the due date at UTC midnight and compares against
+`now` / `now + 48h`; at date granularity that window is always exactly *tomorrow and the day after*,
+which is what `dueSoon` implements. Expect at most a one-day difference for a viewer whose timezone
+has already rolled over.
+
+**Note for the caller.** The client previously computed the KPI band by loading the whole list. It no
+longer needs to: one `/counts` call replaces `usePoListRowsQuery()` for the band and the empty-state
+copy. Send it the same filter values as the list (and re-fetch it when they change), but not the page.
+
+### Still client-side (work orders)
 
 1. **The billing refinement.** `partially_billed` / `fully_billed` depend on whether Finance issued
    an Enfaz invoice for the PO. That fact lives in the Financial context behind
@@ -112,14 +158,16 @@ Paged: `PagedResultDto<WorkOrderListItemDto>`. Unpaged: `WorkOrderListItemDto[]`
    supplied list of PO numbers — it cannot be a SQL predicate. The server therefore returns the
    study bucket the billing label refines, and the client still narrows on `row.status`. **Paging is
    approximate for those two buckets**: request them with a generous `pageSize`, or filter them
-   client-side over a `status=under_study` / `status=completed` page.
+   client-side over a `status=under_study` / `status=completed` page. The same caveat applies to
+   `/counts` with those two `status` values — it answers for the widened bucket.
 2. **Deed-mode search expansion.** `buildPoListDisplay` turns a deed query into one row *per matching
    deed* (`view: "property"`) using `classifyPoListSearch`, `normalizeDeedQuery` and the deed index
    from `/api/work-orders/property-rows` — Arabic-digit folding, leading-zero folding, and the
    `صك` / `رقم الصك` prefixes. The server `q` is a plain substring match and always returns PO rows.
    Keep `buildPoDeedIndex`, the deed-row view, and the search-mode badge on the client.
-3. **KPI counters and per-row derivations.** `poListKpi`, `isDueUrgent` / `isDueSoon` /
-   `isDueWithin48`, `poProgressPct`, `progFill`, `poStatusStyle`.
+3. **Per-row derivations only.** `isDueUrgent` / `isDueSoon` / `isDueWithin48`, `poProgressPct`,
+   `progFill`, `poStatusStyle` still run per row. **`poListKpi` is retired** — the four counters and
+   the empty-state totals now come from `/api/work-orders/counts` (§1.1).
 4. **Team stack.** `teamNamesByPo` reads workflow-task assignees; `registeredCountsByPo` reads the
    deed index. Both come from other endpoints.
 5. **The type dropdown's options.** `assignmentTypesFromRows` derives them from the loaded rows; with
@@ -143,9 +191,9 @@ Paged: `PagedResultDto<WorkOrderListItemDto>`. Unpaged: `WorkOrderListItemDto[]`
 | --- | --- | --- |
 | `page` | int | 1-based page. Presence switches to the paged envelope. |
 | `pageSize` | int | Rows per page (clamped). |
-| `sort` | string | `created` \| `updated` \| `po` \| `poReceived` \| `poCreated`. |
+| `sort` | string | `created` \| `updated` \| `po` \| `poReceived` \| `poCreated` \| `deed` \| `city`. |
 | `dir` | string | `asc` \| `desc`. Default `desc`. |
-| `q` | string | Free text (columns below). |
+| `q` | string | Free text (columns below — **now includes the PO-record columns**). |
 | `kind` | string | Comma-separated task kinds. |
 | `status` | string | Comma-separated task statuses. |
 | `phase` | string | Comma-separated case-study phases. |
@@ -153,6 +201,24 @@ Paged: `PagedResultDto<WorkOrderListItemDto>`. Unpaged: `WorkOrderListItemDto[]`
 | `assigneeRole` | string | Exact `AssigneeRole`, case-insensitive. |
 | `poNumber` | string | Exact `PoNumber`. |
 | `assignmentType` | string | Exact `WorkflowTasks.AssignmentType` label carried on the task row. |
+
+### The PO-record columns on the row (new)
+
+Every `WorkflowTaskDto` now carries the five columns the queue used to join client-side from the PO
+intake record. They come from the task's `WorkOrderProperty` (`PropertyId`), joined in the same
+`case_study` schema by a correlated sub-query, filled per page:
+
+| Field | Source column | Null when |
+| --- | --- | --- |
+| `deedNumber` | `WorkOrderProperties.DeedNumber` | the task has no `propertyId` (an unfilled slot), or the property row is gone |
+| `city` | `WorkOrderProperties.City` | ditto |
+| `district` | `WorkOrderProperties.District` | ditto |
+| `propertyType` | `WorkOrderProperties.PropertyType` | ditto |
+| `classification` | `WorkOrderProperties.Classification` | ditto |
+
+**Additive.** All five are optional and absent-as-null; no existing consumer of `WorkflowTaskDto`
+changes behaviour, and the enrichment fields `fieldInspectionCompleted`, `fieldInspectionAccepted`
+and `fieldInspectionTaskId` are unaffected.
 
 ### Sort keys
 
@@ -163,6 +229,8 @@ Paged: `PagedResultDto<WorkOrderListItemDto>`. Unpaged: `WorkOrderListItemDto[]`
 | `po` | `WorkflowTasks.PoNumber`. |
 | `poReceived` | `ReceivedFromEnfathAt` of the task's work order — the queue's `oldest-first` with `dir=asc`. |
 | `poCreated` | `CreatedAtUtc` of the task's work order — the queue's `newest-first` with `dir=desc`. |
+| `deed` | **New.** `DeedNumber` of the task's property. Tasks with no property sort as null (first with `dir=asc`). |
+| `city` | **New.** `City` of the task's property. Same null handling. |
 
 Tiebreakers, in order: `PoNumber` ascending, `PropertyOrdinal` ascending, `Id` ascending. That
 matches the queue comparators, which all fall back to PO then property slot.
@@ -184,8 +252,15 @@ Same drop-unknown rule.
 **`assigneeId` / `assigneeRole` / `poNumber` / `assignmentType`** — trimmed exact matches; blank
 means no filter. `assigneeRole` compares lower-cased on both sides.
 
-**`q`** — a row matches when any of these contains the text: `PoNumber`, `Title`, `AssigneeName`,
-`AssignmentType`.
+**`q`** — a row matches when any of these contains the text:
+
+- the task's own columns: `PoNumber`, `Title`, `AssigneeName`, `AssignmentType`;
+- **the PO-record columns of its property: `DeedNumber`, `City`, `District`, `PropertyType`,
+  `Classification`.**
+
+That is exactly the haystack `filterPrimaryQueueRowMeta` builds (`deed`, `assignmentType`, `city`,
+`district`) plus the two extra columns `filterDistributionQueueRows` adds (`propertyType`,
+`classification`) — so both queue searches can now be sent to the server.
 
 ### Visibility
 
@@ -201,26 +276,35 @@ It runs before `COUNT`, so `totalCount` is the actor's.
 ### Response
 
 Paged: `PagedResultDto<WorkflowTaskDto>`. Unpaged: `WorkflowTaskDto[]`.
-Both shapes still carry the enrichment fields `fieldInspectionCompleted`, `fieldInspectionAccepted`
-and `fieldInspectionTaskId`, which are filled per page.
 
-### Still client-side
+### Retired client-side rules (the queue can now page)
 
-1. **Everything joined from the PO intake record.** Deed label, city, district, property type,
-   classification, and the `record.assignmentType ?? task.assignmentType` fallback are produced by
-   `buildPrimaryQueueRowMeta` / `buildDistributionQueueRowMeta` from a *different* endpoint's data.
-   So `filterPrimaryQueueRowMeta`'s and `filterDistributionQueueRows`'s search over deed / city /
-   district / property type / classification stays on the client, as does the `typeFilter` when it is
-   driven by the PO record rather than the task column. Server `q` covers the task's own columns only.
-2. **The status-label filter.** The queue filters on a *badge label*
+These were the reason the active transaction queue kept every row in the browser. They are gone:
+
+- **the PO-record search.** `filterPrimaryQueueRowMeta`'s and `filterDistributionQueueRows`'s
+  `hay.includes(q)` over deed / city / district / property type / classification — server `q` covers
+  all five. Send the search term instead of filtering the page.
+- **the PO-record joins for display.** `deedNumber`, `city`, `district`, `propertyType` and
+  `classification` are on the row; `buildPrimaryQueueRowMeta` / `buildDistributionQueueRowMeta` no
+  longer need `poByNumber` for them. The `record.assignmentType ?? task.assignmentType` fallback
+  still applies where the PO record carries a different label than the task row.
+- **deed / city sorting.** `sort=deed` and `sort=city` replace the client comparators.
+
+### Still client-side (workflow tasks)
+
+1. **The status-label filter.** The queue filters on a *badge label*
    (`resolveQueueTaskStatusFilterLabel` → `fieldInspectionTaskStatusBadge`, or the remaining-time
    state «متأخرة» / «ضمن المهلة»), which is computed from the field-inspection workspace and the SLA
    clock, not from a column. Server `status` is the persisted `WorkflowTaskStatus`.
-3. **Appraisal status groups.** `APPRAISAL_STATUS_FILTERS` and `appraiserQueueStatusGroup` read
+2. **Appraisal status groups.** `APPRAISAL_STATUS_FILTERS` and `appraiserQueueStatusGroup` read
    sibling tasks and valuation state per row.
-4. **The suspended-property exclusion** inside `isListedQueueTask` (`isTaskOnSuspendedProperty`),
+3. **The suspended-property exclusion** inside `isListedQueueTask` (`isTaskOnSuspendedProperty`),
    which reads the Failures context cache.
-5. **Per-page `config.filterListed` predicates** and the PO grouping (`buildAllTxPoGroups`).
+4. **Per-page `config.filterListed` predicates** and the PO grouping (`buildAllTxPoGroups`).
+
+Rules 1-4 still run after the page is cut, so a viewer using one of them sees fewer rows than
+`totalCount` promises. A queue that only uses search, `kind`/`status`/`phase`/assignee filters and
+one of the seven sort keys is fully server-paged.
 
 ---
 
@@ -229,8 +313,10 @@ and `fieldInspectionTaskId`, which are filled per page.
 **Route:** `GET /api/operations-tasks`
 **Item type:** `OperationsTaskDto`
 **Request type:** `OperationsTaskListQuery` (`Operations.Application/Contracts/OperationsTaskListQuery.cs`)
-**Rules module:** `OperationsTaskListQueryRules` (`Operations.Application/Rules/OperationsTaskListQueryRules.cs`)
-**Query service:** `Operations.Infrastructure/Services/OperationsTaskQueryService.cs`
+**Rules modules:** `OperationsTaskListQueryRules` and `OperationsTaskDeedSearch`
+(`Operations.Application/Rules/`)
+**Query service:** `Operations.Infrastructure/Persistence/OperationsTaskQueryService.cs`
+(moved out of `Infrastructure/Services` — it is a persistence adapter, like every other `*QueryService`)
 **Screen it replaces:** `apps/mfe-case-study/src/views/operations-tasks-view-state.ts`
 
 ### Query parameters
@@ -241,7 +327,7 @@ and `fieldInspectionTaskId`, which are filled per page.
 | `pageSize` | int | Rows per page (clamped). |
 | `sort` | string | `queue` \| `created` \| `due` \| `updated` \| `priority`. |
 | `dir` | string | `asc` \| `desc`. Default `desc`. |
-| `q` | string | Free text (columns below). |
+| `q` | string | Free text (columns below — **now includes deed numbers**). |
 | `assigneeId` | string | Exact `AssigneeId`. **Unchanged from before this contract.** |
 | `createdBy` | string | Exact `CreatedBy` user id. **Unchanged.** |
 | `status` | string | Single status. **Unchanged**, including the "unknown matches nothing" rule. |
@@ -280,7 +366,45 @@ its off position. Combine freely with `status`; the two intersect.
 the half of `queueTasksForViewer` that the task row can answer on its own.
 
 **`q`** — a row matches when any of these contains the text: `Title`, `DisplayId`, `AssigneeName`,
-`PoNumber`, `Reference`.
+`PoNumber`, `Reference`, **or any deed number in `DeedsJson`**.
+
+#### Deed search (new)
+
+`OperationsTasks.DeedsJson` is a `jsonb` array of deed numbers. On PostgreSQL the deed half of `q` is
+two index-backed predicates OR-ed together:
+
+```sql
+"DeedsJson" @> '["<q>"]'          -- exact deed number
+OR "DeedsText" LIKE '%<q>%' ESCAPE '\'   -- partial deed number
+```
+
+Both are created by migration **`20260904093334_AddOperationsTaskDeedSearchIndex`** (Operations
+stream, raw SQL because the D2 task tables are Operations-owned but still physically named in the
+`case_study` schema):
+
+| Object | Why |
+| --- | --- |
+| `CREATE EXTENSION IF NOT EXISTS pg_trgm` | prerequisite for the trigram index |
+| `"DeedsText" text GENERATED ALWAYS AS ("DeedsJson" #>> '{}') STORED` | a text projection of the jsonb array. `#>> '{}'` is immutable (a plain `::text` cast is not), so PostgreSQL accepts it in a generated column, and EF can translate a `LIKE` against a mapped column. Declared as a shadow property with `HasComputedColumnSql(..., stored: true)`, so EF never writes it. |
+| `GIN ("DeedsJson" jsonb_path_ops)` — `IX_OperationsTasks_DeedsJson` | accelerates `@>` containment, i.e. the exact-deed-number case |
+| `GIN ("DeedsText" gin_trgm_ops)` — `IX_OperationsTasks_DeedsText_Trgm` | accelerates the substring case |
+
+**Why not `jsonb_path_ops` alone, and why not a generated tsvector.** `jsonb_path_ops` only indexes
+hashed whole values, so it answers `@>` (element equality) and nothing else — a *partial* deed number
+cannot use it. A generated `tsvector` matches whole lexemes, or prefixes with `:*`, but never an
+infix, so `q=029844` against deed `310107029844` would miss. The only index shape that serves a
+substring on this data is a trigram GIN, which needs a `text` operand — hence the generated column.
+`jsonb_path_ops` is kept anyway because it gives the planner a cheap exact-match path, which is the
+common case when a user pastes a full deed number.
+
+Escaping: `q` is escaped for both sides — JSON-serialised for `@>`, and `\`, `%`, `_` prefixed with a
+backslash for the `LIKE` (passed as the explicit `ESCAPE` character). A user typing `%` matches a
+literal percent sign, not every row.
+
+**In-memory provider.** Neither operator exists there, and there is no computed column, so the query
+service checks `Database.IsNpgsql()` and falls back to a plain `DeedsJson.Contains(q)` LINQ
+substring. Same rows, no index. The SQL path is proved by the container test
+`Operations_task_deed_search_executes_against_postgres`.
 
 ### Actor narrowing
 
@@ -293,19 +417,19 @@ Unchanged from before this contract, and applied inside the query so counts are 
 
 Paged: `PagedResultDto<OperationsTaskDto>`. Unpaged: `OperationsTaskDto[]`.
 
-### Still client-side
+### Still client-side (operations tasks)
 
 1. **`isOperationsTaskBlockedByFailure`.** The other half of the hidden-by-failure rule needs the
    Failures records and the PO → property mapping (`failureTargetsForOperationsTask` +
    `blockingFailureForProperty`), neither of which is in the Operations database. Only the
    pause-reason half moved (`excludeFailurePaused`). A viewer whose queue hides blocked rows must
    still filter the page it received — so `totalCount` can overstate what that viewer sees.
-2. **Deed-number search.** `OperationsTasks.DeedsJson` is a `jsonb` column, so a substring match
-   would need a cast (and a matching index) to be safe in Postgres. `q` therefore does not search
-   deeds; the screen's `t.deeds.join(" ")` term stays on the client. Search by PO number instead
-   where possible.
+2. ~~**Deed-number search.**~~ **Retired** — `q` now matches deed numbers server-side (above). The
+   screen's `t.deeds.join(" ")` term can be dropped from the client filter.
 3. **KPI counters.** `operationsTaskKpis` (active / created / paused / in-progress / completed) is
    computed over the loaded rows; with server paging it needs its own call or a metrics endpoint.
+   There is no `/api/operations-tasks/counts` yet — the work-order one (§1.1) is the pattern to copy
+   when a screen needs it.
 4. **`operationsTasksToResumeAfterFailure`** — the auto-resume sweep the view performs.
 5. **`matchesOperationsTaskAssignee`'s display-name fallback.** The server matches an actor by
    distribution assignee id or creator id only; the client's "is this row mine" check also falls back
@@ -313,14 +437,302 @@ Paged: `PagedResultDto<OperationsTaskDto>`. Unpaged: `OperationsTaskDto[]`.
 
 ---
 
+## 4. Comparable properties
+
+**Route:** `GET /api/comparable-properties`
+**Item type:** `ComparablePropertyDto`
+**Request type:** `ComparablePropertyListQuery` (`Valuation.Application/Contracts/ComparablePropertyDtos.cs`)
+**Rules module:** `ComparablePropertyListQueryRules` (`Valuation.Application/Rules/`)
+**Use case:** `Valuation.Application/Services/ComparablePropertyService.cs`
+**Repository:** `Valuation.Infrastructure/Persistence/ComparablePropertyRepository.cs`
+**Screen:** `apps/mfe-valuation/src/views/ComparablePropertiesView.tsx`
+
+### Query parameters
+
+Every pre-existing filter is unchanged. The paging four are new.
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page` | int | **New.** 1-based page. Presence switches to the paged envelope. |
+| `pageSize` | int | **New.** Rows per page (clamped). Takes precedence over `take` when paging. |
+| `sort` | string | **New.** `transaction` \| `created` \| `price` \| `pricePerSqm` \| `area` \| `district`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `take` | int | **Legacy, unchanged.** Row cap for the *unpaged* array (default 100, max 200). Ignored when `page`/`pageSize` is sent. |
+| `q` | string | Free text (columns below). **Unchanged.** |
+| `district`, `city` | string | Substring match. **Unchanged.** |
+| `transactionKind`, `source`, `intakeChannel` | string | Exact match. **Unchanged.** |
+| `propertyType` | string | Substring on `ComparablePropertyType`. **Unchanged.** |
+| `fromDate`, `toDate` | date | `TransactionDate` range, inclusive. Unparsable values are ignored. **Unchanged.** |
+| `includeInactive` | bool | `false` (default) hides `IsActive = false`. **Unchanged.** |
+| `forPropertyId` | guid | Comparison-method §2 display priority (below). A blank or unparsable value means "no priority" — never a 400. **Unchanged on the wire.** |
+
+### Sort keys
+
+| `sort` | Column |
+| --- | --- |
+| `transaction` | `TransactionDate`. **Default** — with `dir=desc` this is the order the endpoint always returned. |
+| `created` | `CreatedAtUtc`. |
+| `price` | `Price`. |
+| `pricePerSqm` | `PricePerSqm`. |
+| `area` | `AreaSqm`. |
+| `district` | `District`. |
+
+Tiebreakers: `CreatedAtUtc` descending, then `Id`.
+
+### `forPropertyId` and paging
+
+Comparison-method spec §2 wants the subject property's own field comparables first, then any other
+field comparable, then the rest of the bank. That ranking **used to be applied in memory after an
+over-fetch**, which made a page and a count disagree. It is now an EF `OrderByDescending` over a
+`CASE` expression, applied *before* the chosen sort key:
+
+```
+2 → SourcePropertyId = <forPropertyId> AND (Source = field OR IntakeChannel = field)
+1 → Source = field OR IntakeChannel = field
+0 → everything else
+```
+
+So the priority survives paging: page 1 holds the subject's field rows whatever `sort` says, and
+`totalCount` is exact.
+
+### Filter semantics
+
+**`q`** — a row matches when any of these contains the text: `ReferenceCode`,
+`ComparablePropertyType`, `District`, `ListingNumber`, `Description`.
+
+### Response
+
+Paged: `PagedResultDto<ComparablePropertyDto>`. Unpaged: `ComparablePropertyDto[]`.
+
+Both shapes still carry the `duplicateSuspect` advisory, computed per page from the bank's duplicate
+coordinate set.
+
+### Still client-side (comparables)
+
+1. **`duplicateSuspect` costs a second query per call.** `DuplicateSuspectCoordsAsync` scans the
+   active bank for shared coordinates on every list call. It does not affect the row count, but a
+   caller paging quickly through a large bank pays for it each page.
+2. **Ranking for the evaluator.** `apps/mfe-evaluator/.../bank-ranking.ts` loads the bank in bulk and
+   ranks it against a subject property; that is a different computation from `forPropertyId` and
+   stays a bulk (`take`) load.
+3. **The map view** (`usePropertyMapWorkflow`) also loads in bulk with `take: 200`. Both bulk callers
+   keep working untouched because they send no `page`/`pageSize`.
+
+---
+
+## 5. Failures
+
+**Route:** `GET /api/failures`
+**Item type:** `FailureRecordDto`
+**Request type:** `FailureListQuery` (`Failures.Application/Contracts/FailureListQuery.cs`)
+**Rules module:** `FailureListQueryRules` (`Failures.Application/Rules/`)
+**Use case:** `Failures.Application/Services/FailureService.cs`
+**Repository:** `Failures.Infrastructure/Persistence/FailureRepository.cs`
+**Screens:** `apps/mfe-failures` queue, `apps/mfe-dashboard` counters
+
+### Query parameters
+
+All new — the endpoint took no parameters at all before.
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page` | int | 1-based page. Presence switches to the paged envelope. |
+| `pageSize` | int | Rows per page (clamped). |
+| `sort` | string | `updated` \| `created` \| `po` \| `deed`. |
+| `dir` | string | `asc` \| `desc`. Default `desc`. |
+| `q` | string | Free text (columns below). |
+| `status` | string | Comma-separated persisted statuses. |
+| `poNumber` | string | Exact `PoNumber`. |
+| `problemTypeId` | string | Exact `ProblemTypeId`. |
+
+### Sort keys
+
+| `sort` | Column |
+| --- | --- |
+| `updated` | `UpdatedAtUtc`. **Default** — with `dir=desc` this is the order the endpoint always returned. |
+| `created` | `CreatedAtUtc`. |
+| `po` | `PoNumber`. |
+| `deed` | `DeedNumber`. |
+
+Tiebreaker: `Id`.
+
+### Filter semantics
+
+**`status`** — CSV of `internal`, `review`, `approved`, `returned`, `suspended`, `resolved`.
+Unrecognised tokens are dropped; an all-unknown list applies no filter (the queue is never narrowed
+to nothing by a typo). Same rule as the workflow-task queue, deliberately *not* the operations-task
+"unknown matches nothing" rule — this endpoint had no status filter before, so there is no prior
+behaviour to preserve.
+
+**`poNumber` / `problemTypeId`** — trimmed exact matches; blank means no filter.
+
+**`q`** — a row matches when any of these contains the text: `PoNumber`, `DeedNumber`, `Title`,
+`Specialist`.
+
+### Visibility
+
+`FailureService.ResolveVisiblePoNumbersAsync` decides the PO set:
+
+- an actor with `FailureRules.SeesEveryFailure` sees every row (no narrowing);
+- a null actor, or one with no visibility key, sees nothing — `totalCount: 0`, `items: []`;
+- otherwise the actor's PO numbers come from `ICaseStudyLookup.ListPoNumbersByAssigneesAsync` and
+  become a `Contains` inside the query, before the count.
+
+Note this is one cross-context call per request, unchanged from before.
+
+### Response
+
+Paged: `PagedResultDto<FailureRecordDto>`. Unpaged: `FailureRecordDto[]`, still capped at 500.
+
+Specialist display names are resolved per page after materialisation (a label lookup, not a filter),
+so the page contents and `totalCount` still agree.
+
+### Dispatch route, unchanged
+
+`HttpFailureService.ListAsync` (the Case Study and Operations hosts' client for this route) forwards
+the filters and the sort on the query string and lets the upstream re-derive the actor from the
+bearer header. The genuinely internal failure lists live on `api/failure-dispatch/*`
+(`FailureDispatchController`, `[RequireUpstreamDispatch]`) — those are owner-to-owner routes no
+screen pages, and they are **not** part of this contract.
+
+---
+
+## 6. Notifications
+
+**Route:** `GET /api/notifications`
+**Item type:** `UserNotificationDto`
+**Request type:** `NotificationListQuery` (`RealEstateEval.Application/Contracts/NotificationListQuery.cs`)
+**Rules module:** `NotificationListQueryRules` (`Platform.Application/Rules/`)
+**Service:** `Platform.Infrastructure/Services/NotificationService.cs`
+**Screen:** `apps/shell/src/components/ServerNotificationBridge.tsx` (the bell feed)
+
+### Query parameters
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page` | int | 1-based page. Presence switches to the paged envelope. |
+| `pageSize` | int | Rows per page (clamped). |
+| `sort` | string | `created` only — the feed has one meaningful order. Any other value resolves to it. |
+| `dir` | string | `asc` \| `desc`. Default `desc` (newest first). |
+| `q` | string | Free text over `Title` and `Body`. |
+| `category` | string | Exact `Category`. |
+| `unread` | bool | `true` → unread only (`ReadAtUtc IS NULL`); `false` → read only; omitted → both. |
+
+Tiebreaker: `Id`.
+
+### Visibility
+
+The signed-in user's id (`ActorClaims.Id`) is the first `Where`; an unauthenticated caller gets 401.
+`totalCount` is that user's total.
+
+### Response
+
+Paged: `PagedResultDto<UserNotificationDto>`. Unpaged: `UserNotificationDto[]`, still capped at the
+feed's own **50** rows (`NotificationService.MaxItemsPerUser`), not the 500 shared cap.
+
+**The SSE stream is untouched.** `GET /api/notifications/stream` keeps its frame format and its 25s
+keep-alive; the bell still pairs the two.
+
+**Owner-only.** `PlatformNotificationRequestService` (the write-only facade non-Platform hosts get)
+throws `OwnerOnly()` for all three read overloads. This route is only served by the Platform host.
+
+---
+
+## 7. Financial ledgers
+
+Two lists on `FinancialController`, sharing one rules module because their rows have the same shape.
+
+**Rules module:** `FinancialLedgerListQueryRules` (`Financial.Application/Rules/`)
+**Request types:** `IncentiveSuspensionListQuery`, `DiscountFlagListQuery`
+(`Financial.Application/Contracts/FinancialLedgerListQueries.cs`)
+**Services:** `Financial.Infrastructure/Services/IncentiveSuspensionService.cs`,
+`Financial.Infrastructure/Services/DiscountFlagService.cs`
+**Routes are also served under the `api/financial/v1` alias.**
+
+### 7.1 `GET /api/financial/incentive-suspensions`
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped). |
+| `sort` | string | **New.** `created` \| `transaction`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `TransactionKey`, `AssigneeId`, `Reason`. |
+| `transactionKey` | string | Exact match. **Unchanged.** |
+| `assigneeId` | string | Exact match. **Unchanged.** |
+| `activeOnly` | bool | Default **`true`** — only suspensions with `LiftedAtUtc IS NULL`. **Unchanged.** |
+
+Item type `IncentiveSuspensionDto`. Unpaged cap 200 (unchanged).
+
+### 7.2 `GET /api/financial/discount-flags`
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped). |
+| `sort` | string | **New.** `created` \| `transaction`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `TransactionKey`, `TargetAssigneeId`, `Reason`. |
+| `transactionKey` | string | Exact match. **Unchanged.** |
+| `status` | string | Exact match on `pending` \| `approved` \| `rejected`. **Unchanged** — an unrecognised value simply matches no row. |
+
+Item type `DiscountFlagDto`. Unpaged cap 200 (unchanged).
+
+### Sort keys (both)
+
+| `sort` | Column |
+| --- | --- |
+| `created` | `CreatedAtUtc`. **Default** — with `dir=desc` this is the order both endpoints always returned. |
+| `transaction` | `TransactionKey`, for grouping a PO's entries together. |
+
+Tiebreaker: `Id`.
+
+### Note for the caller
+
+Neither ledger has a front-end consumer today (they are reached through
+`CapabilityPolicyNames.ManageOperations` and no screen calls them). They are in the contract because
+they are ordinary EF lists whose only cap was a hard-coded `Take(200)`; a future supervisor screen
+can page them without a server change.
+
+---
+
+## 8. Endpoints deliberately **not** extended
+
+Each of these was examined and left as a plain array. The reason matters, because it is what would
+have to change first.
+
+| Route | Host | Why not |
+| --- | --- | --- |
+| `GET /api/party-billing-statements` (alias `…/eng-billing-statements`) | Case Study API | The Case Study host holds only `HttpPartyBillingStatementService`, an HTTP passthrough to `api/financial-dispatch/party-billing-statements` on the Financial host. The underlying repository query *is* paginable, but `page`/`pageSize` and a `PagedResultDto` would have to be threaded through the interface, the client's query-string builder, the dispatch controller and the repository — a two-hop envelope change that deserves its own slice. Actor narrowing also happens **in the controller** (a non-finance actor is forced onto its own `assigneeId` with `issuedOrLaterOnly: true`), which is countable but has to move with it. |
+| `GET /api/party-billing-statements/ready-lines` | Case Study API | **Not paginable as written.** It fans out to `ICaseStudyLookup.ListWorkflowTasksByKindsAsync`, drops already-claimed rows in memory, then collapses with `PartyBillingStatementRules.PickOneLedgerPerTask`. Rows are removed after materialisation, so a `COUNT` cannot agree with the page — that breaks the Filtering invariant at the top of this file. |
+| `GET /api/enfaz-billing/ready-pos-summary`, `GET /api/enfaz-billing/tracking` | Case Study API | **Not paginable as written**, same reason: both start from `ListWorkOrdersForBillingAsync` (a cross-context call) and then expand or `continue` per property in a `foreach`. The row set is synthesised, not queried. |
+| `GET /api/enfaz-billing/{poNumber}/followups` | Case Study API | A per-PO detail list bounded at 100 rows, rendered whole in a panel. No screen pages it; adding the envelope would be surface with no caller. |
+| `GET /api/financial/party-fee-pricing/tables` | Financial API | A pricing **catalogue**, not a ledger: a handful of admin-managed rows, also used as a dropdown source. It additionally returns **400 on an unrecognised `category`** (deliberate — a typo used to silently return another category's tables), which is the opposite of this contract's fall-back rule for `sort`. Left alone rather than blurring the two behaviours. |
+| `GET /api/failure-dispatch/*` (`gates`, `approved-keys`, `property`, `suspended`, `active-ids`) | Failures API | **Owner-to-owner dispatch routes** (`[RequireUpstreamDispatch]`), called by other backend hosts, never paged by a screen. Skipped, as the brief allows. |
+| `GET /api/financial-dispatch/*` | Financial API | Same — internal mirrors of the party-billing and Enfaz routes. |
+
+---
+
 ## Verification
 
 - `cd backend && dotnet build RealEstateEval.slnx -nologo -v q` — clean.
-- `dotnet test RealEstateEval.Application.Tests/...` — includes `WorkOrderListQueryRulesTests`,
-  `WorkflowTaskListQueryRulesTests`, `OperationsTaskListQueryRulesTests` (pure allow-list / sort-map
-  coverage) and `WorkOrderListQueryTests`, `WorkflowTaskListQueryTests`,
-  `OperationsTaskListQueryTests` (filter + sort + paging + visibility over the in-memory provider).
+- `dotnet test RealEstateEval.Application.Tests/...` — the rules modules
+  (`WorkOrderListQueryRulesTests`, `WorkflowTaskListQueryRulesTests`,
+  `OperationsTaskListQueryRulesTests`, `ComparablePropertyListQueryRulesTests`,
+  `FailureListQueryRulesTests`, `NotificationListQueryRulesTests`,
+  `FinancialLedgerListQueryRulesTests`, `OperationsTaskDeedSearchTests`) and the query services over
+  the in-memory provider (`WorkOrderListQueryTests`, `WorkOrderListCountsTests`,
+  `WorkflowTaskListQueryTests`, `WorkflowTaskListPoRecordTests`, `OperationsTaskListQueryTests`,
+  `ComparablePropertyListQueryTests`, `FailureListQueryTests`, `NotificationListQueryTests`,
+  `FinancialLedgerListQueryTests`).
 - `dotnet test RealEstateEval.Architecture.Tests/...` — `ListPagingSafetyTests`,
-  `RepositoryBoundaryTests`, `CaseStudySessionFacadeTests` and `InfrastructureServiceSizeTests` all
-  still green: the request types are plain records in `Application/Contracts`, the allow-lists are
-  pure modules in `Application/Rules`, and EF stays inside the query services.
+  `RepositoryBoundaryTests`, `CaseStudySessionFacadeTests`, `InfrastructureServiceSizeTests`,
+  `MigrationStreamTests` and `TimeProviderUsageTests` all still green: the request types are plain
+  records in `Application/Contracts`, the allow-lists are pure modules in `Application/Rules`, EF
+  stays inside the query services and repositories, the new migration belongs to the Operations
+  stream, and the counts endpoint takes its clock from an injected `TimeProvider`.
+- `dotnet test RealEstateEval.Api.IntegrationTests/...`
+- `dotnet test RealEstateEval.Api.ContainerTests/...` (needs Docker) — every filter and sort of every
+  endpoint above is exercised against Postgres, including the jsonb deed search, which has no
+  in-memory equivalent.
+- The Operations migration is applied with
+  `dotnet run --project backend/tools/DbMigrate -- update` and the nine
+  `REAL_ESTATE_EVAL_PG_CONNECTION_STRING_{SERVICE}` environment variables.

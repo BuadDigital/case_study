@@ -20,7 +20,37 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                 .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_operations_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("OperationsReferenceSequences", "operations");
+                });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelope", b =>
                 {
@@ -132,35 +162,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasIndex("Status");
 
                     b.ToTable("KeyEnvelopes", "operations");
-                });
-
-            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("LastValue")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Prefix")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Prefix", "Year")
-                        .IsUnique()
-                        .HasDatabaseName("UX_operations_ReferenceSequences_Prefix_Year");
-
-                    b.ToTable("OperationsReferenceSequences", "operations");
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
@@ -394,6 +395,11 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.Property<string>("DeedsJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("DeedsText")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("\"DeedsJson\" #>> '{}'", true);
+
                     b.Property<string>("Description")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -487,6 +493,18 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasIndex("AssigneeId");
 
                     b.HasIndex("CreatedBy");
+
+                    b.HasIndex("DeedsJson")
+                        .HasDatabaseName("IX_OperationsTasks_DeedsJson");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DeedsJson"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("DeedsJson"), new[] { "jsonb_path_ops" });
+
+                    b.HasIndex("DeedsText")
+                        .HasDatabaseName("IX_OperationsTasks_DeedsText_Trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DeedsText"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("DeedsText"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("DisplayId")
                         .IsUnique();

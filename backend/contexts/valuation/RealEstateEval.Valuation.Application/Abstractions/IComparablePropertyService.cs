@@ -9,6 +9,14 @@ public interface IComparablePropertyService
         ComparablePropertyListQuery query,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Filtered / sorted page. See docs/architecture/pagination-contract.md §4.</summary>
+    Task<PagedResultDto<ComparablePropertyDto>> ListPagedAsync(
+        ComparablePropertyListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default);
+
     Task<ComparablePropertyDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> CreateAsync(

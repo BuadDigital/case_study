@@ -143,6 +143,77 @@ Client: `packages/api-client/src/pagination.ts` gained `fetchListPage` + `buildL
 
 Known gaps, all documented in the contract's "still client-side" lists: Enfaz billing buckets widen server-side and narrow in the browser; the queue's search covers PO-record columns the task endpoint does not have, so `q` is plumbed but not sent for that screen; deed-number search on operations tasks is not available server-side (`DeedsJson` is jsonb). Container tests: the eight long-standing 403 failures on dispatch routes were a test gap (the upstream header required since 2026-08-30 was never sent); fixed in the two test helpers.
 
+## Frontend architecture ratchet (2026-09-04)
+
+The backend has frozen its layering in `RealEstateEval.Architecture.Tests`. The frontend now has the
+equivalent under **`tests/architecture/`**, running inside the existing `npx vitest run`
+(`vitest.config.ts` gained `tests/**/*.{test,spec}.{ts,tsx}` to its `include`). Three suites plus a
+shared scanner in `tests/architecture/support/frontend-tree.ts`; no AST, no new dependency, just
+`node:fs` walks and a handful of regexes. Every failure message names the fix and points back here.
+
+The frozen lists live in [`frontend-size-baseline.json`](frontend-size-baseline.json) and **may only
+shrink**. Each size suite asserts both directions, the same pair as `InfrastructureServiceSizeTests`:
+nothing over the cap may be missing from the list, and every listed file must still exist and still be
+over the cap. So a file that gets split has to be removed from the baseline, which is what stops it
+regrowing unnoticed.
+
+| Suite | Scope | Cap | Frozen at freeze time |
+| --- | --- | --- | --- |
+| `component-size.test.ts` | `apps/*/src/**/*.tsx` (excludes `node_modules`, `.next`, `dist`/`build`, `__tests__`, `*.test.tsx`) | 700 lines | 24 of 336 components |
+| `hook-size.test.ts` | `use*.ts` under `apps/*/src` and `packages/*/src` | 500 lines | 4 of 50 hooks |
+| `storage-module-purity.test.ts` | `apps/*/src/lib/app-data`, `packages/app-shared/src/app-data`, plus a repo-wide `*-storage.ts` sweep | n/a | 3 storage facades |
+
+Finding 4 above is what these cap. The 24 frozen components are the tail the third pass did not reach;
+the four frozen hooks are the workflow hooks that absorbed orchestration when the big views were split
+(`useOperationsTasksWorkflow`, `useActiveTransactionQueueWorkflow`, and the two `useValuationWork*`
+halves). Splitting any of them means deleting its baseline row in the same commit.
+
+Storage purity encodes the shape slice 4 moved to — `-model` / `-reads` / `-commands` triples under
+`lib/app-data`:
+
+- a `*-reads.ts` module may not carry `method: "POST" | "PUT" | "PATCH" | "DELETE"`, may not call
+  `repositoryFetch` with a `method` option, and may not import runtime code from a `*-commands`
+  sibling (`import type` is fine);
+- a `*-commands.ts` module may not own a TanStack `useQuery` / `useInfiniteQuery` / `useSuspenseQuery`;
+- no new `*-storage.ts` facade anywhere in `apps/*/src` or `packages/*/src`. The three left are
+  `apps/mfe-case-study/src/lib/app-data/{tasks,infath-deposit}-storage.ts` and
+  `apps/mfe-settings/src/lib/app-data/courts-storage.ts`.
+
+All three rules pass on the current tree with no exemptions, and each was verified to fail when
+deliberately broken (a component pushed to 703 lines, a hook to 506, a `POST` literal added to
+`tasks-reads.ts`, a `useQuery` to `tasks-commands.ts`, a stray `probe-storage.ts`, and a stale baseline
+row for the already-split `PoListView.tsx`).
+
+Also closed in this pass: the third-pass follow-up on `dtoToProperty`. `deedNumber` now falls back to
+`""` like its neighbours, covered by
+`apps/mfe-case-study/src/lib/app-data/__tests__/po-intake-model-deed-number.test.ts`.
+
+## Pagination slice, second pass (2026-09-04)
+
+The contract (`docs/architecture/pagination-contract.md`) now covers seven endpoints plus a counts
+route, and two of the three original endpoints lost the client-side rules that were keeping their
+screens un-pageable.
+
+| Endpoint | What landed |
+| --- | --- |
+| `GET /api/work-orders/counts` | New. The PO screen's whole KPI band (`poListKpi`) and its empty-state copy as six SQL `COUNT`s over the same filtered, visibility-narrowed set the list pages. `WorkOrderListCountsDto` in `CaseStudy.Application/Contracts`; `WorkOrderQueryService` now takes an injected `TimeProvider` for the due-date window. |
+| `GET /api/workflow-tasks` | `WorkflowTaskDto` carries `deedNumber`, `city`, `district`, `propertyType`, `classification` joined from `WorkOrderProperty` (additive, null for unlinked slots); `q` covers all five; `sort=deed` and `sort=city` added. The active-transaction queue's PO-record search and joins are retired, so it can page. |
+| `GET /api/operations-tasks` | `q` matches deed numbers server-side. Migration `AddOperationsTaskDeedSearchIndex` adds a stored generated `DeedsText` projection plus GIN `jsonb_path_ops` (exact `@>`) and GIN `gin_trgm_ops` (substring `LIKE`) indexes; the in-memory provider takes a LINQ fallback behind `Database.IsNpgsql()`. `OperationsTaskQueryService` moved from `Infrastructure/Services` to `Infrastructure/Persistence`. |
+| `GET /api/comparable-properties` | Paged envelope, six sort keys, and the comparison-method §2 field-first priority pushed from an in-memory re-truncation into the SQL ordering — so a page and its count now agree. |
+| `GET /api/failures` | Went from no parameters at all to the full contract; visibility still narrows before the count. The HTTP client forwards the filters upstream. |
+| `GET /api/notifications` | Paged envelope plus `q` / `category` / `unread`; the SSE stream is untouched and the feed keeps its own 50-row unpaged cap. |
+| `GET /api/financial/{incentive-suspensions,discount-flags}` | Paged envelope, shared `FinancialLedgerListQueryRules`, hard-coded `Take(200)` kept as the unpaged cap. |
+
+Four endpoint families were examined and deliberately left as plain arrays — party billing statements
+and Enfaz billing (cross-host HTTP passthroughs, and two of them compose rows in memory so a `COUNT`
+cannot agree with the page), party-fee-pricing tables (a catalogue that answers 400 on a bad
+`category`), and the `*-dispatch` routes (owner-to-owner, never paged by a screen). The contract's §8
+records each reason.
+
+Verification at close: build clean; `Application.Tests` 1,324 passed, `Architecture.Tests` 67 / 0,
+`Api.IntegrationTests` 214 / 0, `Api.ContainerTests` 42 / 0. The Operations migration was applied to
+the local dev database.
+
 ## Recommended next slices
 
 Ordered by value over cost. Each needs its own decision.

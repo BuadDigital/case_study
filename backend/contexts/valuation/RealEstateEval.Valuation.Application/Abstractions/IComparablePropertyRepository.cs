@@ -1,3 +1,4 @@
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;
@@ -13,7 +14,15 @@ public sealed record ComparableBankFilter(
     string? PropertyType,
     string? Search,
     DateOnly? FromDate,
-    DateOnly? ToDate);
+    DateOnly? ToDate,
+ /// <summary>
+ /// Comparison-method §2 display priority. When set, rows sourced from this property's field
+ /// work sort first, then any other field row, then the rest of the bank — in SQL, so a page
+ /// and its count agree. Null means the plain sort below.
+ /// </summary>
+    Guid? ForPropertyId = null,
+    ComparablePropertyListSortKey Sort = ComparablePropertyListSortKey.TransactionDate,
+    bool Descending = true);
 
 /// <summary>Proximity-suggestion filter; tagged and inactive records are always excluded.</summary>
 public sealed record ComparableProximityFilter(
@@ -36,6 +45,16 @@ public interface IComparablePropertyRepository
         ComparableBankFilter filter,
         int take,
         CancellationToken cancellationToken);
+
+    /// <summary>Untracked window of the same filtered, sorted set.</summary>
+    Task<IReadOnlyList<ComparableProperty>> ListPageAsync(
+        ComparableBankFilter filter,
+        int skip,
+        int take,
+        CancellationToken cancellationToken);
+
+    /// <summary>Rows matching the filter, counted before the window.</summary>
+    Task<int> CountAsync(ComparableBankFilter filter, CancellationToken cancellationToken);
 
     /// <summary>
     /// Coordinate pairs carried by more than one active record — location is the duplicate

@@ -39,6 +39,7 @@ import {
 import {
   usePoRecordsQuery,
   useWorkflowTasksFilteredQuery,
+  useWorkflowTasksPageQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { buildActiveQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
 import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
@@ -72,6 +73,7 @@ import {
   filterAllTransactionsQueueRows,
 } from "../lib/app-data/all-transactions-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
+import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import type {
   PartyProgressByTask,
   QueueRowContext,
@@ -81,8 +83,12 @@ import {
   buildListedQueue,
   buildPoByNumber,
   buildQueueFilterOptions,
+  buildQueuePageQuery,
   buildQueueServerQuery,
   filterAppraisalRowMeta,
+  queueLayoutSupportsPaging,
+  queuePagination,
+  QUEUE_PAGE_SIZE,
   resolveQueueLayoutFlags,
   type ActiveQueueApi,
   type ActiveQueueRowMoreContext,
@@ -153,6 +159,7 @@ export function useActiveTransactionQueueWorkflow({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [showCompleted, setShowCompleted] = useState(false);
   const [groupByPo, setGroupByPo] = useState(false);
   const [groupGatherAnim, setGroupGatherAnim] = useState(false);
@@ -187,6 +194,15 @@ export function useActiveTransactionQueueWorkflow({
    * keep the full list; every other queue asks the server for its slice.
    */
   const needsSiblingTasks = isDistributionTable || isPropertyAppraisalTable;
+  /*
+   * A queue pages only when its rows are 1:1 with the endpoint's — see
+   * `queueLayoutSupportsPaging`. The rest keep the request they made before this
+   * contract: the whole narrowed (or, for the sibling readers, unnarrowed) list.
+   */
+  const paged = queueLayoutSupportsPaging(config.tableLayout);
+  // The search box now drives a server request on a paged queue — debounce it
+  // instead of deferring a local pass, or every keystroke would be a GET.
+  const debouncedSearch = useDebouncedValue(search, 300);
   const queueServerQuery = useMemo(
     () =>
       buildQueueServerQuery({
@@ -194,16 +210,43 @@ export function useActiveTransactionQueueWorkflow({
         role,
         showCompleted,
         narrow: !needsSiblingTasks,
+        search: paged ? debouncedSearch : undefined,
       }),
-    [config, role, showCompleted, needsSiblingTasks],
+    [config, role, showCompleted, needsSiblingTasks, paged, debouncedSearch],
   );
+  const queuePageQuery = useMemo(
+    () => buildQueuePageQuery({ filters: queueServerQuery, page }),
+    [queueServerQuery, page],
+  );
+  // Any change to the filters or the search resets to page 1 — page 3 of the old
+  // query is never page 3 of the new one.
+  const serverQueryKey = JSON.stringify(queueServerQuery);
+  useEffect(() => {
+    setPage(1);
+  }, [serverQueryKey]);
+  const listQuery = useWorkflowTasksFilteredQuery(queueServerQuery, {
+    live: true,
+    enabled: !paged,
+  });
+  const pageQuery = useWorkflowTasksPageQuery(queuePageQuery, {
+    live: true,
+    enabled: paged,
+  });
   const {
     data: tasks,
     refetch: refetchTasks,
     isFetched: tasksFetched,
     isError: tasksError,
     error: tasksQueryError,
-  } = useWorkflowTasksFilteredQuery(queueServerQuery, { live: true });
+  } = paged
+    ? {
+        data: pageQuery.data?.rows,
+        refetch: pageQuery.refetch,
+        isFetched: pageQuery.isFetched,
+        isError: pageQuery.isError,
+        error: pageQuery.error,
+      }
+    : listQuery;
   const queueLoadError = tasksError || poRecordsError;
   const queueErrorMessage =
     (tasksQueryError instanceof Error ? tasksQueryError.message : null) ??
@@ -608,8 +651,9 @@ export function useActiveTransactionQueueWorkflow({
         allTransactionsRowMeta,
         distributionRowMeta,
         primaryRowMeta,
+        paged,
       }),
-    [flags, allTransactionsRowMeta, distributionRowMeta, primaryRowMeta],
+    [flags, allTransactionsRowMeta, distributionRowMeta, primaryRowMeta, paged],
   );
 
   // Typing in search stays immediate while filtering unbounded lists is deferred one frame
@@ -628,8 +672,9 @@ export function useActiveTransactionQueueWorkflow({
         tasks: tasks ?? EMPTY_TASKS,
       });
     }
+    // No search pass: this queue pages, and the server already matched `q`
+    // against the deed / city / district haystack (pagination-contract §2).
     return filterPrimaryQueueRowMeta(primaryRowMeta, {
-      search: deferredSearch,
       statusFilter,
       typeFilter,
     });
@@ -884,10 +929,34 @@ export function useActiveTransactionQueueWorkflow({
     config.disableRowOpen,
   ]);
 
+  /*
+   * Pager numbers straight off the envelope. `totalCount` is the actor's total
+   * for the filters and the search; the four rules §2 keeps in the browser run
+   * after the page is cut, so the range is reported from what actually rendered.
+   */
+  const pagination = useMemo(
+    () =>
+      paged
+        ? queuePagination({
+            totalCount: pageQuery.data?.totalCount ?? 0,
+            page,
+            pageSize: pageQuery.data?.pageSize ?? QUEUE_PAGE_SIZE,
+            totalPages: pageQuery.data?.totalPages ?? 1,
+            shownOnPage: filteredListed.length,
+          })
+        : null,
+    [paged, pageQuery.data, page, filteredListed.length],
+  );
+
   return {
     router,
     tasks,
     staffUsers,
+    paged,
+    pagination,
+    page,
+    setPage,
+    isPagePlaceholder: paged && pageQuery.isPlaceholderData,
     now,
     isDesktopViewport,
     queueLoadError,

@@ -7,6 +7,8 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
 
+using RealEstateEval.Platform.Application.Rules;
+
 namespace RealEstateEval.Platform.Infrastructure.Services;
 
 public sealed class NotificationService : INotificationService
@@ -31,17 +33,85 @@ public sealed class NotificationService : INotificationService
         _realtime = realtime;
     }
 
+    public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
+        string userId,
+        CancellationToken cancellationToken = default) =>
+        ListForUserAsync(userId, NotificationListQuery.Empty, cancellationToken);
+
     public async Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
         string userId,
+        NotificationListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _db.UserNotifications.AsNoTracking()
-            .Where(n => n.UserId == userId)
-            .OrderByDescending(n => n.CreatedAtUtc)
+        var rows = await Sorted(Filtered(userId, query), query)
             .Take(MaxItemsPerUser)
             .ToListAsync(cancellationToken);
 
         return rows.Select(ToDto).ToList();
+    }
+
+ /// <summary>
+ /// Filters and sorts in the database, then pages. The user narrowing is the first Where, so
+ /// TotalCount is that user's total. See docs/architecture/pagination-contract.md §6.
+ /// </summary>
+    public async Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
+        string userId,
+        NotificationListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default)
+    {
+        var filtered = Filtered(userId, query);
+        var total = await filtered.CountAsync(cancellationToken);
+        var rows = await Sorted(filtered, query)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<UserNotificationDto>
+        {
+            Items = rows.Select(ToDto).ToList(),
+            TotalCount = total,
+            Page = page,
+            PageSize = take,
+        };
+    }
+
+    private IQueryable<UserNotification> Filtered(string userId, NotificationListQuery query)
+    {
+        var rows = _db.UserNotifications.AsNoTracking().Where(n => n.UserId == userId);
+
+        var category = NotificationListQueryRules.NormalizeExact(query.Category);
+        if (category is not null)
+            rows = rows.Where(n => n.Category == category);
+
+        if (NotificationListQueryRules.ResolveUnread(query.Unread) is { } unread)
+        {
+            rows = unread
+                ? rows.Where(n => n.ReadAtUtc == null)
+                : rows.Where(n => n.ReadAtUtc != null);
+        }
+
+        var search = NotificationListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            rows = rows.Where(n =>
+                n.Title.Contains(search) || (n.Body != null && n.Body.Contains(search)));
+        }
+
+        return rows;
+    }
+
+ /// <summary>One order, plus the id tiebreaker so consecutive pages never overlap.</summary>
+    private static IQueryable<UserNotification> Sorted(
+        IQueryable<UserNotification> rows,
+        NotificationListQuery query)
+    {
+        var ordered = NotificationListQueryRules.ResolveDescending(query.Dir)
+            ? rows.OrderByDescending(n => n.CreatedAtUtc)
+            : rows.OrderBy(n => n.CreatedAtUtc);
+        return ordered.ThenBy(n => n.Id);
     }
 
     public async Task<UserNotificationDto> CreateForUserAsync(

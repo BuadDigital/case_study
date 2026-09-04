@@ -63,6 +63,23 @@ public class WorkOrdersController : ControllerBase
         return Ok(await _workOrders.ListAsync(query, actor, cancellationToken));
     }
 
+    /// <summary>
+    /// KPI counters for the PO list over the same filters as <see cref="List"/> (the page window
+    /// and the sort are the only list parameters this route ignores). See
+    /// docs/architecture/pagination-contract.md §1.1.
+    /// </summary>
+    [HttpGet("counts")]
+    public async Task<ActionResult<WorkOrderListCountsDto>> Counts(
+        [FromQuery] string? q,
+        [FromQuery] string? status,
+        [FromQuery] string? type,
+        CancellationToken cancellationToken)
+    {
+        var actor = await ActorAsync(cancellationToken);
+        var query = new WorkOrderListQuery { Q = q, Status = status, Type = type };
+        return Ok(await _workOrders.CountsAsync(query, actor, cancellationToken));
+    }
+
     [HttpGet("details")]
     public async Task<ActionResult<IReadOnlyList<WorkOrderDto>>> ListDetails(
         CancellationToken cancellationToken)

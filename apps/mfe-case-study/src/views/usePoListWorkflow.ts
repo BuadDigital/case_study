@@ -28,9 +28,9 @@ import {
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
   usePoListRowsPageQuery,
-  usePoListRowsQuery,
   usePropertyListItemsQuery,
   useWorkflowTasksQuery,
+  useWorkOrderListCountsQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import {
@@ -44,7 +44,8 @@ import {
   INITIAL_PO_LIST_QUERY,
   isPoListBillingBucket,
   poListBillingWindow,
-  poListKpi,
+  poListEmptyMessage,
+  poListKpiFromCounts,
   poListQueryReducer,
   poListRowView,
   poListServerPagination,
@@ -53,6 +54,7 @@ import {
   PO_LIST_PAGE_SIZE,
   registeredCountsByPo,
   teamNamesByPo,
+  toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
   type SortKey,
   type StatusFilter,
@@ -99,17 +101,21 @@ export function usePoListWorkflow() {
     [query, debouncedSearch],
   );
 
+  const countsQuery = useMemo(
+    () => toWorkOrderListCountsQuery(query, { search: debouncedSearch }),
+    [query, debouncedSearch],
+  );
+
   const {
     data: pageResult,
     isPending: pagePending,
     isPlaceholderData,
   } = usePoListRowsPageQuery(serverQuery);
-  // KPI counters and the empty-state copy read the whole list, which the server
-  // cannot fold into the page (pagination-contract §1, "still client-side" #3).
-  const { data: rows, isPending: rowsPending } = usePoListRowsQuery();
+  // The KPI band and the empty-state copy are SQL COUNTs on the same filters —
+  // no list is loaded for them any more (pagination-contract §1.1).
+  const { data: counts } = useWorkOrderListCountsQuery(countsQuery);
   const { data: propertyItems } = usePropertyListItemsQuery();
   const { data: workflowTasks } = useWorkflowTasksQuery();
-  const list = useMemo(() => rows ?? [], [rows]);
   const teamByPo = useMemo(() => teamNamesByPo(workflowTasks), [workflowTasks]);
   const deedIndex = useMemo(
     () => buildPoDeedIndex(propertyItems ?? []),
@@ -127,10 +133,8 @@ export function usePoListWorkflow() {
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = pageResult !== undefined && !pagePending;
 
-  const kpi = useMemo(
-    () => (rows !== undefined && !rowsPending ? poListKpi(list) : undefined),
-    [list, rows, rowsPending],
-  );
+  const kpi = useMemo(() => poListKpiFromCounts(counts), [counts]);
+  const emptyMessage = poListEmptyMessage(counts);
 
   const assignmentTypes = PO_ASSIGNMENT_TYPE_OPTIONS;
 
@@ -324,7 +328,7 @@ export function usePoListWorkflow() {
     typeFilter,
     setTypeFilter,
     assignmentTypes,
-    list,
+    emptyMessage,
     totalCount,
     pageRows,
     teamByPo,

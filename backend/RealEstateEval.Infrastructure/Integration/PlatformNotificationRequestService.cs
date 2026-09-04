@@ -40,6 +40,23 @@ public sealed class PlatformNotificationRequestService : INotificationService
         CancellationToken cancellationToken = default) =>
         throw OwnerOnly();
 
+ /// <summary>Read path is Platform-host only; this facade is write-only.</summary>
+    public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
+        string userId,
+        NotificationListQuery query,
+        CancellationToken cancellationToken = default) =>
+        throw OwnerOnly();
+
+ /// <inheritdoc cref="ListForUserAsync(string, NotificationListQuery, CancellationToken)"/>
+    public Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
+        string userId,
+        NotificationListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        throw OwnerOnly();
+
     public async Task<UserNotificationDto> CreateForUserAsync(
         string userId,
         CreateUserNotificationRequest request,

@@ -24,7 +24,11 @@ export type OperationsTaskQuery = {
   activeOnly?: boolean;
   /** `true` drops rows parked on an active property failure. */
   excludeFailurePaused?: boolean;
-  /** Free text over Title / DisplayId / AssigneeName / PoNumber / Reference. */
+  /**
+   * Free text over Title / DisplayId / AssigneeName / PoNumber / Reference,
+   * **and any deed number in `DeedsJson`** (pagination-contract §3, "Deed
+   * search") — so a deed-only term is a server search, not a client one.
+   */
   q?: string;
   sort?: "queue" | "created" | "due" | "updated" | "priority";
   dir?: "asc" | "desc";

@@ -4,6 +4,9 @@ export const appDataKeys = {
   /** One server page of the PO list — see docs/architecture/pagination-contract.md §1. */
   poListRowsPage: (query: Record<string, unknown>) =>
     [...appDataKeys.poListRows(), "page", query] as const,
+  /** The PO list KPI counts for one filter set — pagination-contract §1.1. */
+  poListCounts: (query: Record<string, unknown>) =>
+    [...appDataKeys.all, "po-list-counts", query] as const,
   workOrderDtos: () => [...appDataKeys.all, "work-order-dtos"] as const,
   poRecords: () => [...appDataKeys.all, "po-records"] as const,
   propertyListItems: () => [...appDataKeys.all, "property-list-items"] as const,

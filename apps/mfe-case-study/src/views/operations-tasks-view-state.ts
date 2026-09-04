@@ -26,7 +26,6 @@ export type OperationsQueueAccount =
   | undefined;
 
 export type OperationsTaskFilters = {
-  search: string;
   statusFilter: string;
   scopeFilter: string;
   showAll: boolean;
@@ -104,7 +103,10 @@ export function toOperationsTaskListQuery(
     assigneeId?: string;
     /** Executor queues also hide rows parked on an active failure. */
     excludeFailurePaused: boolean;
-    /** Debounced search term; falls back to the live one. */
+    /**
+     * Debounced search term; falls back to the live one. Deed numbers belong in
+     * here — `q` matches `DeedsJson` server-side (pagination-contract §3).
+     */
     search?: string;
   },
 ): OperationsTaskQuery {
@@ -164,26 +166,26 @@ export function queueTasksForViewer(
 }
 
 /**
- * Status, scope, the "active only" toggle and the free text are applied by the
- * server. What is left here is the deed term — `DeedsJson` is a `jsonb` column
- * the endpoint cannot substring-match (pagination-contract §3, "still
- * client-side" #2) — and the deterministic band ordering the table renders.
+ * Status, scope, the "active only" toggle and the whole of the free text are
+ * applied by the server. **The deed term is gone from here**: `q` now matches
+ * `DeedsJson` through the jsonb containment / trigram pair the endpoint grew
+ * (pagination-contract §3, "Deed search"), so a deed-only search no longer
+ * comes back empty and the client no longer re-filters what it asked for. The
+ * status / scope / active predicates stay only because a stale or offline page
+ * can still hold rows the current filters exclude; what is genuinely left is
+ * the deterministic band ordering the table renders.
  */
 export function visibleOperationsTasks(
   queueTasks: OperationsTask[],
   filters: OperationsTaskFilters,
 ): OperationsTask[] {
-  const q = filters.search.trim();
   const list = queueTasks.filter((t) => {
-    // Cheap comparisons first — build the search string only for survivors and when text exists.
     if (filters.statusFilter && t.status !== filters.statusFilter) return false;
     if (filters.scopeFilter && t.scope !== filters.scopeFilter) return false;
     if (!filters.showAll && !filters.statusFilter && !isActiveOperationsTask(t)) {
       return false;
     }
-    if (!q) return true;
-    const hay = `${t.title} ${t.assigneeName} ${t.displayId} ${t.poNumber ?? ""} ${t.deeds.join(" ")}`;
-    return hay.includes(q);
+    return true;
   });
   // Decorate once per task — instead of parsing the date on every comparison.
   return list

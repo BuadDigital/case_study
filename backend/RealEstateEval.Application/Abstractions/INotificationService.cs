@@ -8,6 +8,21 @@ public interface INotificationService
         string userId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
+    Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
+        string userId,
+        NotificationListQuery query,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Filtered / sorted page for one user. See docs/architecture/pagination-contract.md §6.</summary>
+    Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
+        string userId,
+        NotificationListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default);
+
     Task<UserNotificationDto> CreateForUserAsync(
         string userId,
         CreateUserNotificationRequest request,

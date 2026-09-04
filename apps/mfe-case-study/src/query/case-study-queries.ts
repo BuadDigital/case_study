@@ -10,7 +10,7 @@ import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-que
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
-  loadPoListRows,
+  loadPoListCounts,
   loadPoListRowsPage,
 } from "@platform/app-shared/app-data/work-orders-read";
 import { loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
@@ -28,6 +28,7 @@ import {
 import type {
   WorkflowTaskListFilters,
   WorkflowTaskListQuery,
+  WorkOrderListCountsQuery,
   WorkOrderListQuery,
 } from "@platform/api-client";
 
@@ -102,14 +103,6 @@ export function usePendingBourseItemsQuery() {
   });
 }
 
-export function usePoListRowsQuery() {
-  return useQuery({
-    queryKey: appDataKeys.poListRows(),
-    queryFn: loadPoListRows,
-    ...queryDefaults,
-  });
-}
-
 /**
  * One server page of the PO list: paging, status/type filters, search and sort
  * are all query parameters (pagination-contract §1).
@@ -118,6 +111,19 @@ export function usePoListRowsPageQuery(query: WorkOrderListQuery) {
   return useQuery({
     queryKey: appDataKeys.poListRowsPage(query),
     queryFn: () => loadPoListRowsPage(query),
+    ...listPageDefaults,
+  });
+}
+
+/**
+ * The PO list KPI band and empty-state totals — one `COUNT` request keyed by
+ * the same filters as the page query (pagination-contract §1.1). Deliberately
+ * not keyed by `page`/`sort`/`dir`: flipping a page must not refetch it.
+ */
+export function useWorkOrderListCountsQuery(query: WorkOrderListCountsQuery) {
+  return useQuery({
+    queryKey: appDataKeys.poListCounts(query),
+    queryFn: () => loadPoListCounts(query),
     ...listPageDefaults,
   });
 }

@@ -162,7 +162,7 @@ public class WorkflowTaskListQueryTests
         var query = CreateQuery(db);
 
         var rows = await query.ListAsync(
-            new WorkflowTaskListQuery { Sort = "deed", Dir = "elsewhere" },
+            new WorkflowTaskListQuery { Sort = "district", Dir = "elsewhere" },
             Staff());
 
         Assert.Equal("survey-b", rows[0].Title);

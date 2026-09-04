@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
@@ -19,15 +21,36 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 public class ComparablePropertiesController : ControllerBase
 {
     private readonly IComparablePropertyService _bank;
+    private readonly DatabaseOptions _dbOptions;
 
-    public ComparablePropertiesController(IComparablePropertyService bank) => _bank = bank;
+    public ComparablePropertiesController(
+        IComparablePropertyService bank,
+        IOptions<DatabaseOptions>? dbOptions = null)
+    {
+        _bank = bank;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+    }
 
+ /// <summary>
+ /// Comparable bank list. Sending page or pageSize returns PagedResultDto; without them the
+ /// response stays the plain array every existing caller expects (the legacy <c>take</c> still
+ /// caps it). See docs/architecture/pagination-contract.md §4.
+ /// </summary>
         [HttpGet]
         [Authorize(Policy = CapabilityPolicyNames.ReadComparableBank)]
-        public async Task<ActionResult<IReadOnlyList<ComparablePropertyDto>>> List(
+        public async Task<IActionResult> List(
         [FromQuery] ComparablePropertyListQuery query,
         CancellationToken ct)
-        => Ok(await _bank.ListAsync(query, ct));
+    {
+        if (!query.IsPaged)
+            return Ok(await _bank.ListAsync(query, ct));
+
+        var (skip, take, page, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page,
+            query.PageSize,
+            _dbOptions);
+        return Ok(await _bank.ListPagedAsync(query, skip, take, page, ct));
+    }
 
  /// <summary>System proximity stream — nearest active bank comps to subject coords.</summary>
         [HttpGet("proximity-suggestions")]

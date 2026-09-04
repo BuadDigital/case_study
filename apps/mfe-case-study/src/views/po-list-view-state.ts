@@ -20,7 +20,11 @@ import {
   type PoDeedIndexEntry,
   type PoListDisplayItem,
 } from "../lib/app-data/po-list-search";
-import type { WorkOrderListQuery } from "@platform/api-client";
+import type {
+  WorkOrderListCountsDto,
+  WorkOrderListCountsQuery,
+  WorkOrderListQuery,
+} from "@platform/api-client";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 
 export type SortKey = "created" | "po" | "received" | "due";
@@ -54,13 +58,6 @@ export function isDueSoon(iso: string): boolean {
 export function isDueUrgent(dueIso: string, status: PoRow["status"]): boolean {
   if (!dueIso || isPoListStatusTerminal(status)) return false;
   return isPastDue(dueIso) || isDueSoon(dueIso);
-}
-
-export function isDueWithin48(iso: string): boolean {
-  if (!iso) return false;
-  const due = new Date(iso.slice(0, 10)).getTime();
-  const now = Date.now();
-  return due >= now && due <= now + 2 * 24 * 60 * 60 * 1000;
 }
 
 /** Progress-bar fill — green at ≥60%, gold when any progress, transparent at zero. */
@@ -99,20 +96,37 @@ export type PoListKpi = {
   doneProps: number;
 };
 
-/** One pass over the list computes the four counters (js-combine-iterations). */
-export function poListKpi(list: PoRow[]): PoListKpi {
-  let active = 0;
-  let overdue = 0;
-  let dueSoon = 0;
-  let doneProps = 0;
-  for (const p of list) {
-    doneProps += p.done ?? 0;
-    if (isPoListStatusTerminal(p.status)) continue;
-    active += 1;
-    if (p.dueDate && isPastDue(p.dueDate)) overdue += 1;
-    if (p.dueDate && isDueWithin48(p.dueDate)) dueSoon += 1;
-  }
-  return { active, overdue, dueSoon, doneProps };
+/**
+ * The four counters, straight from `GET /api/work-orders/counts` — no rows are
+ * loaded to compute them (pagination-contract §1.1). `poListKpi`, the old pass
+ * over every loaded row, is retired with the fetch-all query that fed it.
+ */
+export function poListKpiFromCounts(
+  counts: WorkOrderListCountsDto | undefined,
+): PoListKpi | undefined {
+  if (!counts) return undefined;
+  return {
+    active: counts.active,
+    overdue: counts.overdue,
+    dueSoon: counts.dueSoon,
+    doneProps: counts.doneProperties,
+  };
+}
+
+export const PO_LIST_EMPTY_NO_ROWS = "لا توجد أوامر عمل.";
+export const PO_LIST_EMPTY_NO_MATCH = "لا توجد نتائج مطابقة";
+
+/**
+ * Empty-state copy from the counts envelope (pagination-contract §1.1):
+ * `totalUnfiltered === 0` means the actor has no work orders at all; anything
+ * else with `total === 0` means the filters matched nothing. While the counts
+ * are still loading, assume filters — the neutral wording.
+ */
+export function poListEmptyMessage(
+  counts: WorkOrderListCountsDto | undefined,
+): string {
+  if (counts && counts.totalUnfiltered === 0) return PO_LIST_EMPTY_NO_ROWS;
+  return PO_LIST_EMPTY_NO_MATCH;
 }
 
 /**
@@ -275,6 +289,23 @@ export function toWorkOrderListQuery(
     pageSize: billing ? PO_LIST_BILLING_PAGE_SIZE : PO_LIST_PAGE_SIZE,
     sort: state.sortKey,
     dir: state.sortDir,
+    ...(q ? { q } : {}),
+    ...(state.statusFilter ? { status: state.statusFilter } : {}),
+    ...(state.typeFilter ? { type: state.typeFilter } : {}),
+  };
+}
+
+/**
+ * Query state → the `GET /api/work-orders/counts` parameters: the same filters
+ * as the list, without the page window and the sort, so a page flip reuses the
+ * cached counts (pagination-contract §1.1).
+ */
+export function toWorkOrderListCountsQuery(
+  state: PoListQueryState,
+  options?: { search?: string },
+): WorkOrderListCountsQuery {
+  const q = poListServerSearchTerm(options?.search ?? state.search);
+  return {
     ...(q ? { q } : {}),
     ...(state.statusFilter ? { status: state.statusFilter } : {}),
     ...(state.typeFilter ? { type: state.typeFilter } : {}),

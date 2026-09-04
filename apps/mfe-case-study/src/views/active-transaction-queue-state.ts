@@ -7,7 +7,11 @@
 import type { ReactNode } from "react";
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { PageId, RoleId } from "@platform/types";
-import type { WorkflowTaskListFilters } from "@platform/api-client";
+import type {
+  WorkflowTaskListFilters,
+  WorkflowTaskListQuery,
+  WorkflowTaskListSort,
+} from "@platform/api-client";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
@@ -96,7 +100,7 @@ export type ActiveTransactionQueueConfig = {
   /** Stats / filters above the queue table (e.g. engineering office dashboard). */
   renderQueueHeader?: (listed: WorkflowTask[]) => ReactNode;
   /** Default: most recently updated / distributed task first. */
-  queueSort?: "oldest-first" | "newest-first" | "distributed-newest-first";
+  queueSort?: QueueSortMode;
   /** When true, list open, blocked, and completed tasks (e.g. all-transactions). */
   includeAllStatuses?: boolean;
   /**
@@ -115,15 +119,35 @@ export type ActiveTransactionQueueConfig = {
 /** What `isListedQueueTask` keeps when the screen is not showing everything. */
 export const QUEUE_DEFAULT_STATUSES = ["open", "blocked"] as const;
 
+/**
+ * Every order a queue can ask for. `deed-first` / `city-first` are the two the
+ * server grew in pagination-contract §2 — the queue no longer has to load the
+ * PO records to order by a deed number or a city.
+ */
+export type QueueSortMode =
+  | "oldest-first"
+  | "newest-first"
+  | "distributed-newest-first"
+  | "deed-first"
+  | "city-first";
+
+/** Rows per server page for the queues that page (pagination-contract §2). */
+export const QUEUE_PAGE_SIZE = 25;
+
 /** The queue sort modes, mapped onto the endpoint's sort keys. */
-export function queueServerSort(
-  queueSort: ActiveTransactionQueueConfig["queueSort"],
-): { sort: "updated" | "poReceived" | "poCreated"; dir: "asc" | "desc" } {
+export function queueServerSort(queueSort: QueueSortMode | undefined): {
+  sort: WorkflowTaskListSort;
+  dir: "asc" | "desc";
+} {
   switch (queueSort) {
     case "oldest-first":
       return { sort: "poReceived", dir: "asc" };
     case "newest-first":
       return { sort: "poCreated", dir: "desc" };
+    case "deed-first":
+      return { sort: "deed", dir: "asc" };
+    case "city-first":
+      return { sort: "city", dir: "asc" };
     default:
       return { sort: "updated", dir: "desc" };
   }
@@ -163,9 +187,18 @@ export function buildQueueServerQuery(input: {
   showCompleted: boolean;
   /** false → no narrowing at all; the screen reads sibling rows. */
   narrow: boolean;
+  /**
+   * The search box, sent as `q`. Only the paged layouts pass it: the server
+   * matches the task's own columns plus the five PO-record columns
+   * (pagination-contract §2), which is exactly what the queue used to filter
+   * on. A sibling-reading layout must leave it out, or `q` would drop the
+   * children its party columns read.
+   */
+  search?: string;
 }): WorkflowTaskListFilters {
   const { config } = input;
   if (!input.narrow) return {};
+  const q = input.search?.trim() ?? "";
 
   const showAllToggle =
     config.tableLayout === "engineering-survey" ||
@@ -193,8 +226,74 @@ export function buildQueueServerQuery(input: {
       ? { assignmentType: config.serverQuery.assignmentType }
       : {}),
     ...(assigneeRole ? { assigneeRole } : {}),
+    ...(q ? { q } : {}),
     sort,
     dir,
+  };
+}
+
+/**
+ * Which layouts can be driven off one server page.
+ *
+ * A layout may page only when its rows are 1:1 with the tasks the endpoint
+ * returns. Three read a *parent's children* out of the same list — distribution
+ * and case-study build the party columns from sibling tasks, and the appraiser
+ * table reads the sibling field-inspection row (pagination-contract §2, "still
+ * client-side" #2) — and all-transactions collapses every sibling task of a
+ * property down to its furthest stage (`collapseAllTransactionsToLatestPhase`),
+ * which removes rows after materialisation and would make `totalCount` disagree
+ * with the page. Those four keep the request they made before this contract.
+ */
+export function queueLayoutSupportsPaging(
+  layout: ActiveTransactionQueueTableLayout | undefined,
+): boolean {
+  return (
+    layout !== "distribution" &&
+    layout !== "case-study" &&
+    layout !== "property-appraisal" &&
+    layout !== "all-transactions"
+  );
+}
+
+/** The page window a paged queue sends on top of its filters. */
+export function buildQueuePageQuery(input: {
+  filters: WorkflowTaskListFilters;
+  page: number;
+  pageSize?: number;
+}): WorkflowTaskListQuery {
+  return {
+    ...input.filters,
+    page: Math.max(1, Math.trunc(input.page) || 1),
+    pageSize: input.pageSize ?? QUEUE_PAGE_SIZE,
+  };
+}
+
+/**
+ * Pager numbers from the server envelope. `totalCount` is the actor's total, but
+ * the four rules §2 keeps in the browser (badge-label status, appraisal groups,
+ * the suspended-property exclusion and `config.filterListed`) still run after
+ * the page is cut, so `shownOnPage` is what the viewer actually sees.
+ */
+export function queuePagination(input: {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  shownOnPage: number;
+}) {
+  const pageSize = input.pageSize > 0 ? input.pageSize : QUEUE_PAGE_SIZE;
+  const totalPages = Math.max(1, input.totalPages);
+  const safePage = Math.min(Math.max(1, input.page), totalPages);
+  const rangeStart = input.totalCount === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  return {
+    totalCount: input.totalCount,
+    totalPages,
+    safePage,
+    rangeStart,
+    rangeEnd:
+      input.totalCount === 0 ? 0 : rangeStart + Math.max(0, input.shownOnPage) - 1,
+    hasPrev: safePage > 1,
+    hasNext: safePage < totalPages,
   };
 }
 
@@ -266,6 +365,55 @@ export function buildPoByNumber(
   return map;
 }
 
+/**
+ * Client twin of `queueServerSort`, so an unpaged layout lists rows in the same
+ * order the endpoint would have returned them. `deed-first` / `city-first` read
+ * the columns the server now puts on the row (pagination-contract §2), with the
+ * endpoint's null handling: a task with no property sorts first ascending.
+ */
+export function queueSortComparator(
+  sortMode: QueueSortMode,
+): (
+  a: WorkflowTask,
+  b: WorkflowTask,
+  poByNumber: Map<string, PoIntakeRecord>,
+) => number {
+  switch (sortMode) {
+    case "oldest-first":
+      return compareQueueTasksOldestFirst;
+    case "newest-first":
+      return compareQueueTasksNewestFirst;
+    case "deed-first":
+      return (a, b) => compareQueueTasksByColumn(a, b, (t) => t.deedNumber);
+    case "city-first":
+      return (a, b) => compareQueueTasksByColumn(a, b, (t) => t.city);
+    default:
+      return compareQueueTasksByUpdatedNewestFirst;
+  }
+}
+
+/** Ascending by a PO-record column, nulls first, then the endpoint's tiebreakers. */
+function compareQueueTasksByColumn(
+  a: WorkflowTask,
+  b: WorkflowTask,
+  pick: (task: WorkflowTask) => string | undefined,
+): number {
+  const left = pick(a)?.trim() ?? "";
+  const right = pick(b)?.trim() ?? "";
+  if (left !== right) {
+    if (!left) return -1;
+    if (!right) return 1;
+    const cmp = left.localeCompare(right, "ar");
+    if (cmp !== 0) return cmp;
+  }
+  const poCmp = a.poNumber.trim().localeCompare(b.poNumber.trim(), "ar");
+  if (poCmp !== 0) return poCmp;
+  if (a.propertyOrdinal !== b.propertyOrdinal) {
+    return a.propertyOrdinal - b.propertyOrdinal;
+  }
+  return a.id.localeCompare(b.id);
+}
+
 /** The queue rows this page lists: config filter, listable statuses, then the page sort. */
 export function buildListedQueue({
   config,
@@ -279,12 +427,7 @@ export function buildListedQueue({
   showCompleted: boolean;
 }): WorkflowTask[] {
   const sortMode = config.queueSort ?? "distributed-newest-first";
-  const compare =
-    sortMode === "oldest-first"
-      ? compareQueueTasksOldestFirst
-      : sortMode === "newest-first"
-        ? compareQueueTasksNewestFirst
-        : compareQueueTasksByUpdatedNewestFirst;
+  const compare = queueSortComparator(sortMode);
   const isSurveyLayout = config.tableLayout === "engineering-survey";
   const isAppraisalLayout = config.tableLayout === "property-appraisal";
   const showAllToggle = isSurveyLayout || isAppraisalLayout;
@@ -301,6 +444,13 @@ export function buildListedQueue({
     .sort((a, b) => compare(a, b, poByNumber));
 }
 
+/** The three assignment-type labels the data ever carries (pagination-contract §1). */
+export const QUEUE_ASSIGNMENT_TYPE_OPTIONS: readonly string[] = [
+  "تنفيذ",
+  "تركات",
+  "قطاع خاص",
+];
+
 /* Hide city/district columns when none carry data at this stage — «—» in every row is noise.
    One pass over rows gathers type/status options and location checks together (js-combine-iterations). */
 export function buildQueueFilterOptions({
@@ -308,11 +458,20 @@ export function buildQueueFilterOptions({
   allTransactionsRowMeta,
   distributionRowMeta,
   primaryRowMeta,
+  paged = false,
 }: {
   flags: QueueLayoutFlags;
   allTransactionsRowMeta: AllTransactionsRowMeta[];
   distributionRowMeta: DistributionRowMeta[];
   primaryRowMeta: PrimaryRowMeta[];
+  /**
+   * A paged queue holds one page, so the assignment-type dropdown cannot be
+   * derived from it — it lists the three labels the data ever carries instead
+   * (the same move as pagination-contract §1, "still client-side" #5). The
+   * status dropdown has no closed vocabulary (its labels come from the
+   * field-inspection workspace and the SLA clock), so it stays page-derived.
+   */
+  paged?: boolean;
 }): {
   primaryHasLocation: boolean;
   assignmentTypes: string[];
@@ -342,7 +501,9 @@ export function buildQueueFilterOptions({
   }
   return {
     primaryHasLocation: hasLocation,
-    assignmentTypes: uniqueSortedLabels(types),
+    assignmentTypes: paged
+      ? [...QUEUE_ASSIGNMENT_TYPE_OPTIONS]
+      : uniqueSortedLabels(types),
     statusOptions: flags.isPropertyAppraisalTable
       ? APPRAISAL_STATUS_FILTERS.map((o) => o.label)
       : uniqueSortedLabels(statuses),

@@ -465,12 +465,12 @@
       "case_study",
       "operations"
     ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/OperationsTaskRepository.cs": [
-      "case_study"
-    ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskQueryService.cs": [
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/OperationsTaskQueryService.cs": [
       "case_study",
       "operations"
+    ],
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/OperationsTaskRepository.cs": [
+      "case_study"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskVisitFeeHelper.cs": [
       "case_study"

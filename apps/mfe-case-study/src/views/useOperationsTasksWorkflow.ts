@@ -7,7 +7,6 @@
  */
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useReducer,
@@ -182,9 +181,6 @@ export function useOperationsTasksWorkflow() {
     });
   const { data: failures = [] } = useFailuresQuery();
   const failureResumeBusyRef = useRef(false);
-  // The list is already narrowed server-side; the client pass only adds the
-  // deed term, so defer it one frame rather than blocking the keystroke.
-  const deferredSearch = useDeferredValue(search);
   const [selectedId, setSelectedId] = useState<string | null>(deepLinkTaskId);
   const [detailId, setDetailId] = useState<string | null>(deepLinkTaskId);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
@@ -277,15 +273,16 @@ export function useOperationsTasksWorkflow() {
     live: true,
   });
 
+  // No search argument: `q` — deed numbers included — is answered in the query
+  // (pagination-contract §3), so the page is rendered as it arrived.
   const visibleTasks = useMemo(
     () =>
       visibleOperationsTasks(queueTasks, {
-        search: deferredSearch,
         statusFilter,
         scopeFilter,
         showAll,
       }),
-    [queueTasks, deferredSearch, statusFilter, scopeFilter, showAll],
+    [queueTasks, statusFilter, scopeFilter, showAll],
   );
 
   // When staff resolves a blocking failure, reopen paused-for-failure tasks as

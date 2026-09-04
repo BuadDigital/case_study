@@ -3,6 +3,7 @@ import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import {
+  buildListQueryString,
   fetchAllListPages,
   fetchListPage,
   type ListPageQuery,
@@ -387,6 +388,88 @@ export async function listWorkOrdersPage(
     "/api/work-orders",
     workOrderListParams(query),
   );
+}
+
+/**
+ * `GET /api/work-orders/counts` response — pagination-contract §1.1. Every field
+ * is a SQL `COUNT` computed with the actor's visibility applied first.
+ */
+export type WorkOrderListCountsDto = {
+  /** Rows matching `q` / `status` / `type` — equals `PagedResultDto.totalCount`. */
+  total: number;
+  /** Rows visible to the actor with `q` / `status` / `type` ignored. */
+  totalUnfiltered: number;
+  /** Rows whose PO list status is not terminal (the `new` + `under_study` buckets). */
+  active: number;
+  /** `active` rows past their due date. */
+  overdue: number;
+  /** `active` rows due within the next two days. */
+  dueSoon: number;
+  /** Live properties across all matched rows whose case study is done. */
+  doneProperties: number;
+};
+
+/**
+ * The counts endpoint takes the list's filters and nothing else — no page
+ * window and no sort (pagination-contract §1.1).
+ */
+export type WorkOrderListCountsQuery = Pick<WorkOrderListQuery, "q" | "status" | "type">;
+
+const EMPTY_WORK_ORDER_LIST_COUNTS: WorkOrderListCountsDto = {
+  total: 0,
+  totalUnfiltered: 0,
+  active: 0,
+  overdue: 0,
+  dueSoon: 0,
+  doneProperties: 0,
+};
+
+function toCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/** Narrows an unknown body into the DTO — a missing field counts as 0, never NaN. */
+export function normalizeWorkOrderListCounts(
+  data: unknown,
+): WorkOrderListCountsDto {
+  if (typeof data !== "object" || data === null) {
+    return EMPTY_WORK_ORDER_LIST_COUNTS;
+  }
+  const raw = data as Record<string, unknown>;
+  return {
+    total: toCount(raw.total),
+    totalUnfiltered: toCount(raw.totalUnfiltered),
+    active: toCount(raw.active),
+    overdue: toCount(raw.overdue),
+    dueSoon: toCount(raw.dueSoon),
+    doneProperties: toCount(raw.doneProperties),
+  };
+}
+
+/**
+ * The PO list KPI band and empty-state copy in one call — pagination-contract
+ * §1.1. Send it the same filters as the list, never the page window.
+ */
+export async function getWorkOrderListCounts(
+  config: WorkOrdersApiConfig,
+  query?: WorkOrderListCountsQuery,
+): Promise<ApiOk<WorkOrderListCountsDto> | ApiErr> {
+  const base = (config.baseUrl ?? getApiBase()).replace(/\/$/, "");
+  const qs = buildListQueryString({
+    q: query?.q,
+    status: query?.status,
+    type: query?.type,
+  });
+  try {
+    const res = await fetch(`${base}/api/work-orders/counts${qs}`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: normalizeWorkOrderListCounts(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
 }
 
 /** Full work orders with properties — one round-trip (replaces N+1 getWorkOrder calls). */

@@ -3,7 +3,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Web;
@@ -25,21 +27,57 @@ public sealed class NotificationsController : ControllerBase
 
     private readonly INotificationService _notifications;
     private readonly NotificationRealtimeHub _realtime;
+    private readonly DatabaseOptions _dbOptions;
 
     public NotificationsController(
         INotificationService notifications,
-        NotificationRealtimeHub realtime)
+        NotificationRealtimeHub realtime,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _notifications = notifications;
         _realtime = realtime;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
+ /// <summary>
+ /// The signed-in user's notifications. Sending page or pageSize returns PagedResultDto; without
+ /// them the response stays the plain array the bell has always read, capped at 50 rows. The SSE
+ /// stream below is untouched. See docs/architecture/pagination-contract.md §6.
+ /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<UserNotificationDto>>> List(CancellationToken ct)
+    public async Task<IActionResult> List(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] string? q,
+        [FromQuery] string? category,
+        [FromQuery] bool? unread,
+        CancellationToken ct)
     {
         var userId = CurrentUserId();
         if (userId is null) return Unauthorized();
-        return Ok(await _notifications.ListForUserAsync(userId, ct));
+
+        var query = new NotificationListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Category = category,
+            Unread = unread,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _notifications.ListForUserAsync(userId, query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page,
+            query.PageSize,
+            _dbOptions);
+        return Ok(await _notifications.ListPagedForUserAsync(
+            userId, query, skip, take, resolvedPage, ct));
     }
 
     [HttpGet("stream")]

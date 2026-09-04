@@ -66,7 +66,7 @@ export function dtoToProperty(
     id: String(dto.id ?? ""),
     referenceNumber: dto.referenceNumber ?? null,
     identifierType: parsePropertyIdentifierType(dto.identifierType),
-    deedNumber: dto.deedNumber,
+    deedNumber: dto.deedNumber ?? "",
     requestNumber: dto.requestNumber ?? "",
     hasRequestNumber: dto.hasRequestNumber !== false,
     assignmentMandateNumber: dto.assignmentMandateNumber ?? "",

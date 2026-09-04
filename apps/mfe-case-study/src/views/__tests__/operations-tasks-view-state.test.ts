@@ -3,8 +3,10 @@ import {
   INITIAL_OPERATIONS_TASK_QUERY,
   operationsTaskQueryReducer,
   toOperationsTaskListQuery,
+  visibleOperationsTasks,
   type OperationsTaskQueryState,
 } from "../operations-tasks-view-state";
+import type { OperationsTask } from "../../lib/app-data/operations-tasks-model";
 
 describe("operationsTaskQueryReducer", () => {
   it("stores each filter and keeps identity when the value is unchanged", () => {
@@ -108,5 +110,67 @@ describe("toOperationsTaskListQuery", () => {
     expect(
       toOperationsTaskListQuery(base, { excludeFailurePaused: false }),
     ).toMatchObject({ sort: "queue", dir: "desc" });
+  });
+});
+
+describe("visibleOperationsTasks", () => {
+  function task(over: Partial<OperationsTask> = {}): OperationsTask {
+    return {
+      id: "1",
+      displayId: "OPS-1",
+      title: "زيارة محكمة",
+      type: "court_visit",
+      scope: "transaction",
+      status: "created",
+      assigneeId: "a1",
+      assigneeName: "سالم",
+      deeds: ["310107029844"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      ...over,
+    } as OperationsTask;
+  }
+
+  it("no longer re-filters the page by the search term — `q` matched deeds server-side", () => {
+    // Before pagination-contract §3 this row was dropped unless the client
+    // re-matched `t.deeds.join(" ")`; the endpoint answers the deed term now.
+    const rows = [task()];
+    expect(
+      visibleOperationsTasks(rows, {
+        statusFilter: "",
+        scopeFilter: "",
+        showAll: true,
+      }),
+    ).toEqual(rows);
+  });
+
+  it("still applies status, scope and the active-only toggle to a stale page", () => {
+    const rows = [
+      task({ id: "1", status: "created" }),
+      task({ id: "2", status: "completed" }),
+      task({ id: "3", status: "created", scope: "general" }),
+    ];
+    expect(
+      visibleOperationsTasks(rows, {
+        statusFilter: "",
+        scopeFilter: "transaction",
+        showAll: false,
+      }).map((t) => t.id),
+    ).toEqual(["1"]);
+  });
+
+  it("orders by the status band, newest first inside a band", () => {
+    const rows = [
+      task({ id: "paused", status: "paused" }),
+      task({ id: "old", createdAt: "2026-01-01T00:00:00.000Z" }),
+      task({ id: "new", createdAt: "2026-02-01T00:00:00.000Z" }),
+      task({ id: "done", status: "completed" }),
+    ];
+    expect(
+      visibleOperationsTasks(rows, {
+        statusFilter: "",
+        scopeFilter: "",
+        showAll: true,
+      }).map((t) => t.id),
+    ).toEqual(["new", "old", "paused", "done"]);
   });
 });

@@ -5,10 +5,15 @@ import {
   INITIAL_PO_LIST_QUERY,
   isPoListBillingBucket,
   poListBillingWindow,
+  poListEmptyMessage,
+  poListKpiFromCounts,
   poListQueryReducer,
   poListServerPagination,
   PO_LIST_BILLING_PAGE_SIZE,
+  PO_LIST_EMPTY_NO_MATCH,
+  PO_LIST_EMPTY_NO_ROWS,
   PO_LIST_PAGE_SIZE,
+  toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
   type PoListQueryState,
 } from "../po-list-view-state";
@@ -223,5 +228,106 @@ describe("billing bucket refinement", () => {
       rangeEnd: 23,
     });
     expect(window.rows).toEqual([20, 21, 22]);
+  });
+});
+
+describe("poListKpiFromCounts", () => {
+  const counts = {
+    total: 137,
+    totalUnfiltered: 240,
+    active: 88,
+    overdue: 12,
+    dueSoon: 5,
+    doneProperties: 310,
+  };
+
+  it("maps the counts envelope onto the four KPI tiles", () => {
+    expect(poListKpiFromCounts(counts)).toEqual({
+      active: 88,
+      overdue: 12,
+      dueSoon: 5,
+      doneProps: 310,
+    });
+  });
+
+  it("stays undefined while the counts are loading, so the band shows «—»", () => {
+    expect(poListKpiFromCounts(undefined)).toBeUndefined();
+  });
+
+  it("keeps zeros as zeros rather than falling back to «—»", () => {
+    expect(
+      poListKpiFromCounts({
+        total: 0,
+        totalUnfiltered: 0,
+        active: 0,
+        overdue: 0,
+        dueSoon: 0,
+        doneProperties: 0,
+      }),
+    ).toEqual({ active: 0, overdue: 0, dueSoon: 0, doneProps: 0 });
+  });
+});
+
+describe("poListEmptyMessage", () => {
+  it("says «no work orders» only when the actor has none at all", () => {
+    expect(
+      poListEmptyMessage({
+        total: 0,
+        totalUnfiltered: 0,
+        active: 0,
+        overdue: 0,
+        dueSoon: 0,
+        doneProperties: 0,
+      }),
+    ).toBe(PO_LIST_EMPTY_NO_ROWS);
+  });
+
+  it("says «no matches» when filters emptied a non-empty list", () => {
+    expect(
+      poListEmptyMessage({
+        total: 0,
+        totalUnfiltered: 240,
+        active: 0,
+        overdue: 0,
+        dueSoon: 0,
+        doneProperties: 0,
+      }),
+    ).toBe(PO_LIST_EMPTY_NO_MATCH);
+  });
+
+  it("assumes filters while the counts are still loading", () => {
+    expect(poListEmptyMessage(undefined)).toBe(PO_LIST_EMPTY_NO_MATCH);
+  });
+});
+
+describe("toWorkOrderListCountsQuery", () => {
+  it("sends the list filters and never the page window or the sort", () => {
+    const state: PoListQueryState = {
+      ...INITIAL_PO_LIST_QUERY,
+      page: 4,
+      statusFilter: "under_study",
+      typeFilter: "تنفيذ",
+      sortKey: "due",
+      sortDir: "asc",
+      search: "PO-1",
+    };
+    expect(toWorkOrderListCountsQuery(state)).toEqual({
+      q: "PO-1",
+      status: "under_study",
+      type: "تنفيذ",
+    });
+  });
+
+  it("omits blank filters so the key stays stable across keystrokes", () => {
+    expect(
+      toWorkOrderListCountsQuery(INITIAL_PO_LIST_QUERY, { search: "   " }),
+    ).toEqual({});
+  });
+
+  it("uses the debounced search the caller passes, not the live box", () => {
+    const state = { ...INITIAL_PO_LIST_QUERY, search: "PO-99" };
+    expect(toWorkOrderListCountsQuery(state, { search: "PO-1" })).toEqual({
+      q: "PO-1",
+    });
   });
 });
