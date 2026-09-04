@@ -10,9 +10,9 @@ test.describe("login journey", () => {
   });
 
   test("login page shows error when API is unreachable", async ({ page }) => {
-    await page.route("**/api/auth/login-username", (route) => route.abort());
+    await page.route("**/api/auth/login", (route) => route.abort());
     await page.goto("/login", { waitUntil: "domcontentloaded" });
-    await page.locator("#mobile").fill("s.salhy@gmail.com");
+    await page.locator("#mobile").fill("500000001");
     await page.locator("form").evaluate((form) => {
       (form as HTMLFormElement).requestSubmit();
     });

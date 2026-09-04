@@ -18,10 +18,10 @@ using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Identity.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Identity bounded context (A8): auth sessions, password
-/// login, JWT issuance, user registration, and database-backed permission resolution. The
-/// ASP.NET Identity stores, seed graph, and directory/label plumbing stay global — other
-/// contexts construct them directly.
+/// Context-local registration for the Identity bounded context (A8): auth sessions,
+/// passwordless login, JWT issuance, user registration, and database-backed permission
+/// resolution. The ASP.NET Identity stores, seed graph, and directory/label plumbing stay
+/// global — other contexts construct them directly.
 /// </summary>
 public static class IdentityDependencyInjection
 {
@@ -41,7 +41,6 @@ public static class IdentityDependencyInjection
         services.AddScoped<IUserLabelLookup>(sp => sp.GetRequiredService<IIdentityDirectory>());
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
-        services.AddScoped<IPasswordAuthenticationService, PasswordAuthenticationService>();
         // Staff registration is a use case in Identity.Application; the two adapters below are
         // the only places it reaches IdentityDbContext and UserManager (solid-scorecard finding 1).
         services.AddScoped<IStaffRegistrationRepository, StaffRegistrationRepository>();

@@ -85,16 +85,14 @@ public class StaffAccountActivationTests
 
         Assert.NotNull(user);
         Assert.False(await userManager.HasPasswordAsync(user));
-
-        var auth = provider.GetRequiredService<IPasswordAuthenticationService>();
-        Assert.Null(await auth.AuthenticateAsync(result.UserName, "AnythingAtAll123!"));
     }
 
     [Fact]
-    public async Task Activation_ticket_lets_the_holder_set_a_password_and_sign_in()
+    public async Task Activation_ticket_lets_the_holder_set_a_password()
     {
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
         var (created, _) = await users.CreateStaffAsync(SampleRequest, "admin");
         var (ticket, ticketError) = await users.IssueActivationTicketAsync(
@@ -115,9 +113,9 @@ public class StaffAccountActivationTests
 
         Assert.True(ok, error);
 
-        var auth = provider.GetRequiredService<IPasswordAuthenticationService>();
-        var session = await auth.AuthenticateAsync(created.UserName, "ChosenByHolder1!");
-        Assert.NotNull(session);
+        var user = await userManager.FindByNameAsync(created.UserName);
+        Assert.NotNull(user);
+        Assert.True(await userManager.HasPasswordAsync(user));
         var db = provider.GetRequiredService<IdentityDbContext>();
         Assert.Equal(
             UserStatus.Active,

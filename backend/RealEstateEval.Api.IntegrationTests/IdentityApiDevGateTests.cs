@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Identity.Application.Abstractions;
@@ -25,7 +24,7 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
-    public void Startup_allows_dev_login_when_enabled_in_production()
+    public void Startup_allows_passwordless_login_when_enabled_in_production()
     {
         using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
         using var client = factory.CreateClient();
@@ -33,45 +32,23 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
-    public async Task Login_username_returns_404_when_dev_login_disabled()
+    public async Task Login_returns_404_when_passwordless_login_disabled()
     {
         var response = await _client.PostAsJsonAsync(
-            "/api/auth/login-username",
+            "/api/auth/login",
             new UsernameLoginRequest { Username = "cdo" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task Login_username_is_reachable_when_dev_login_enabled_in_production()
+    public async Task Login_returns_token_when_passwordless_login_enabled()
     {
         using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
         using var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync(
-            "/api/auth/login-username",
-            new UsernameLoginRequest { Username = "cdo" });
-
-        // Stub session returns null → unauthorized, not 404 (endpoint is open).
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Dev_login_users_returns_404_when_dev_login_disabled()
-    {
-        var response = await _client.GetAsync("/api/auth/dev-login-users");
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Password_login_returns_token_for_valid_credentials()
-    {
-        var response = await _client.PostAsJsonAsync(
             "/api/auth/login",
-            new PasswordLoginRequest
-            {
-                Username = "valid-user",
-                Password = "valid-password",
-            });
+            new UsernameLoginRequest { Username = "valid-user" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
@@ -79,27 +56,34 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
-    public async Task Password_login_returns_unauthorized_for_invalid_credentials()
+    public async Task Login_returns_unauthorized_for_unknown_user_when_enabled()
     {
-        var response = await _client.PostAsJsonAsync(
+        using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
             "/api/auth/login",
-            new PasswordLoginRequest
-            {
-                Username = "valid-user",
-                Password = "wrong-password",
-            });
+            new UsernameLoginRequest { Username = "missing-user" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task Password_login_rejects_missing_password()
+    public async Task Login_rejects_blank_username()
     {
-        var response = await _client.PostAsJsonAsync(
+        using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
             "/api/auth/login",
-            new { username = "valid-user", password = "" });
+            new { username = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dev_login_users_returns_404_when_passwordless_login_disabled()
+    {
+        var response = await _client.GetAsync("/api/auth/dev-login-users");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -203,36 +187,8 @@ public sealed class IdentityApiWebApplicationFactory
         });
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<IPasswordAuthenticationService>();
-            services.AddSingleton<IPasswordAuthenticationService, StubPasswordAuthenticationService>();
             services.RemoveAll<IAuthSessionService>();
             services.AddSingleton<IAuthSessionService, StubAuthSessionService>();
-        });
-    }
-}
-
-internal sealed class StubPasswordAuthenticationService : IPasswordAuthenticationService
-{
-    public Task<LoginResponseDto?> AuthenticateAsync(
-        string username,
-        string password,
-        CancellationToken cancellationToken = default)
-    {
-        if (username != "valid-user" || password != "valid-password")
-            return Task.FromResult<LoginResponseDto?>(null);
-
-        return Task.FromResult<LoginResponseDto?>(new LoginResponseDto
-        {
-            Token = "integration-test-token",
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5),
-            RefreshToken = StubAuthSessionService.ValidToken,
-            RefreshTokenExpiresAtUtc = DateTime.UtcNow.AddHours(12),
-            User = new UserInfoDto
-            {
-                Id = "integration-user",
-                Email = "integration@example.test",
-                DisplayName = "Integration User",
-            },
         });
     }
 }
@@ -248,8 +204,25 @@ internal sealed class StubAuthSessionService : IAuthSessionService
 
     public Task<LoginResponseDto?> IssueForUsernameAsync(
         string username,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<LoginResponseDto?>(null);
+        CancellationToken cancellationToken = default)
+    {
+        if (username != "valid-user")
+            return Task.FromResult<LoginResponseDto?>(null);
+
+        return Task.FromResult<LoginResponseDto?>(new LoginResponseDto
+        {
+            Token = "integration-test-token",
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(5),
+            RefreshToken = ValidToken,
+            RefreshTokenExpiresAtUtc = DateTime.UtcNow.AddHours(12),
+            User = new UserInfoDto
+            {
+                Id = "integration-user",
+                Email = "integration@example.test",
+                DisplayName = "Integration User",
+            },
+        });
+    }
 
     public Task<LoginResponseDto?> RefreshAsync(
         string refreshToken,

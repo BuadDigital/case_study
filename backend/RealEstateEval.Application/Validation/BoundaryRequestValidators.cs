@@ -32,17 +32,6 @@ public static class FieldFormats
         Regex.IsMatch(value.Replace(" ", ""), @"^SA\d{22}$", RegexOptions.IgnoreCase);
 }
 
-public sealed class PasswordLoginRequestValidator : AbstractValidator<PasswordLoginRequest>
-{
-    public PasswordLoginRequestValidator()
-    {
-        RuleFor(x => x.Username).NotEmpty().MinimumLength(2).MaximumLength(64)
-            .OverridePropertyName("username");
-        RuleFor(x => x.Password).NotEmpty().MaximumLength(256)
-            .OverridePropertyName("password");
-    }
-}
-
 public sealed class UsernameLoginRequestValidator : AbstractValidator<UsernameLoginRequest>
 {
     public UsernameLoginRequestValidator() =>

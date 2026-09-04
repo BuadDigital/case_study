@@ -36,23 +36,13 @@ type LoginResponse = {
 type Step = "creds" | "otp";
 
 const fieldInput = "w-full rounded-[11px] border border-[#ddd8cc] bg-surface-2 px-[15px] py-[13px] text-[15px] text-text outline-none transition-[border-color,box-shadow,background] duration-150 placeholder:tracking-[0.02em] placeholder:text-text-3 focus:border-gold focus:bg-surface focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--gold)_16%,transparent)]";
-
 const fieldInputBad = "border-danger shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)] focus:border-danger focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_12%,transparent)]";
-
 const stepAnim = "animate-[login-rise_0.35s_ease]";
-
 const primaryBtn = "flex w-full cursor-pointer items-center justify-center gap-[9px] rounded-[11px] border-0 bg-ink py-3.5 text-[15.5px] font-bold text-white shadow-[0_12px_26px_-14px_rgba(16,43,78,.7)] transition-[background,transform,box-shadow] duration-150 hover:enabled:-translate-y-px hover:enabled:bg-navy-3 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0";
-
 const ghostBtn = "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[11px] border border-[#ddd8cc] bg-surface py-[13px] text-[14.5px] font-bold text-heading transition-[border-color,background,transform] duration-150 hover:-translate-y-px hover:border-gold hover:bg-surface-2";
-
 const linkSm = "cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-gold-d hover:text-ink disabled:cursor-not-allowed disabled:opacity-45";
-
 const stepTag = "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-soft px-3 py-[5px] text-xs font-bold text-gold-d";
-
 const footNote = "mt-6 flex items-center justify-center gap-2 text-center text-xs leading-relaxed text-text-3";
-
-// Hoisted: these run on every keystroke of the identifier field.
-const EMAIL_LIKE_RE = /[a-zA-Z@]/;
 const NON_DIGIT_RE = /\D/g;
 
 // Static watermark — hoisted so keystroke re-renders reuse the same element.
@@ -155,11 +145,8 @@ export default function LoginPage() {
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const mobileRef = useRef<HTMLInputElement | null>(null);
   const otpConfirmingRef = useRef(false);
-  const isEmailMode = EMAIL_LIKE_RE.test(identifier);
   const mobileDigits = identifier.replace(NON_DIGIT_RE, "");
-  const credsReady = isEmailMode
-    ? identifier.trim().length > 3
-    : mobileDigits.length >= 9;
+  const credsReady = mobileDigits.length >= 9;
   const otpValue = otp.join("");
 
   useEffect(() => {
@@ -200,25 +187,18 @@ export default function LoginPage() {
   function onIdentifierChange(raw: string) {
     setError(null);
     setMobileBad(false);
-    // Any letter means the user is entering an email, not a mobile number —
-    // keep it verbatim so characters before the "@" are not stripped away.
-    if (EMAIL_LIKE_RE.test(raw)) {
-      setIdentifier(raw.slice(0, 120));
-      return;
-    }
     const digits = raw.replace(NON_DIGIT_RE, "").slice(0, 9);
     setIdentifier(formatPhoneDisplay(digits));
   }
 
   async function authenticate(): Promise<AuthSession | null> {
-    const value = isEmailMode ? identifier.trim() : mobileDigits;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login-username`, {
+      const res = await fetch(`${getApiBase()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: value }),
+        body: JSON.stringify({ username: mobileDigits }),
         signal: controller.signal,
       });
       const data = (await res.json().catch(() => null)) as
@@ -230,9 +210,7 @@ export default function LoginPage() {
         const msg =
           data && "message" in data && typeof data.message === "string"
             ? data.message
-            : isEmailMode
-              ? "تعذّر تسجيل الدخول. تأكد من البريد الإلكتروني."
-              : "تعذّر تسجيل الدخول. تأكد من رقم الجوال.";
+            : "تعذّر تسجيل الدخول. تأكد من رقم الجوال.";
         setOtpError(msg);
         return null;
       }
@@ -271,22 +249,16 @@ export default function LoginPage() {
     setError(null);
     setMobileBad(false);
 
-    if (!isEmailMode) {
-      if (mobileDigits.length < 9) {
-        setError("أدخل رقم جوال صحيح مكوّناً من ٩ أرقام بعد +966");
-        setMobileBad(true);
-        mobileRef.current?.focus();
-        return;
-      }
-      if (!/^5/.test(mobileDigits)) {
-        setError("رقم الجوال السعودي يبدأ بالرقم ٥");
-        setMobileBad(true);
-        mobileRef.current?.focus();
-        return;
-      }
-    } else if (!identifier.trim()) {
-      setError("اكتب البريد الإلكتروني أو رقم الجوال");
+    if (mobileDigits.length < 9) {
+      setError("أدخل رقم جوال صحيح مكوّناً من ٩ أرقام بعد +966");
       setMobileBad(true);
+      mobileRef.current?.focus();
+      return;
+    }
+    if (!/^5/.test(mobileDigits)) {
+      setError("رقم الجوال السعودي يبدأ بالرقم ٥");
+      setMobileBad(true);
+      mobileRef.current?.focus();
       return;
     }
 
@@ -369,10 +341,6 @@ export default function LoginPage() {
     }
   }
 
-  function onForgot() {
-    setError("للمساعدة في الدخول تواصل مع مدير النظام.");
-  }
-
   function onBiometric() {
     showToast("الدخول بالبصمة غير مفعّل على هذا الجهاز بعد.", "info");
   }
@@ -389,9 +357,7 @@ export default function LoginPage() {
     resendLeft % 60,
   ).padStart(2, "0")}`;
 
-  const otpTarget = isEmailMode
-    ? identifier.trim()
-    : formatPhoneTarget(mobileDigits);
+  const otpTarget = formatPhoneTarget(mobileDigits);
 
   return (
     <div className="grid min-h-svh grid-cols-1 min-[900px]:grid-cols-[0.92fr_1.08fr]">
@@ -442,37 +408,29 @@ export default function LoginPage() {
                     htmlFor="mobile"
                     className="mb-2 block text-[13px] font-bold text-text-2"
                   >
-                    {isEmailMode ? "البريد الإلكتروني" : "رقم الجوال"}
+                    رقم الجوال
                   </label>
                   <div className="relative flex items-center" dir="ltr">
-                    {!isEmailMode ? (
-                      <span
-                        dir="ltr"
-                        className="pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-[#ddd8cc] px-[13px] text-sm font-bold tracking-[0.02em] text-text-2"
-                      >
-                        +966
-                      </span>
-                    ) : null}
+                    <span
+                      dir="ltr"
+                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-[#ddd8cc] px-[13px] text-sm font-bold tracking-[0.02em] text-text-2"
+                    >
+                      +966
+                    </span>
                     <input
                       ref={mobileRef}
                       id="mobile"
-                      type={isEmailMode ? "email" : "tel"}
-                      inputMode={isEmailMode ? "email" : "numeric"}
-                      autoComplete={isEmailMode ? "email" : "tel"}
-                      placeholder={
-                        isEmailMode ? "name@example.com" : "5X XXX XXXX"
-                      }
-                      // No DOM clamp: phone digits are limited in
-                      // onIdentifierChange, and a pasted email must not be
-                      // truncated by the phone-mode length before mode flips.
-                      maxLength={120}
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      placeholder="5X XXX XXXX"
+                      maxLength={11}
                       value={identifier}
                       onChange={(e) => onIdentifierChange(e.target.value)}
                       dir="ltr"
                       className={cn(
                         fieldInput,
-                        "text-left",
-                        !isEmailMode && "pl-[72px]",
+                        "pl-[72px] text-left",
                         mobileBad && fieldInputBad,
                       )}
                     />
@@ -502,9 +460,6 @@ export default function LoginPage() {
                     </span>
                     إبقائي مسجّلاً
                   </label>
-                  <button type="button" className={linkSm} onClick={onForgot}>
-                    تعذّر الدخول؟
-                  </button>
                 </div>
 
                 <button
@@ -596,7 +551,7 @@ export default function LoginPage() {
                     window.setTimeout(() => mobileRef.current?.focus(), 50);
                   }}
                 >
-                  تغيير {isEmailMode ? "البريد" : "رقم الجوال"}
+                  تغيير رقم الجوال
                   <svg
                     className="size-4"
                     viewBox="0 0 24 24"

@@ -84,12 +84,11 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var factory = Factory<IdentityMarker>("Identity");
         using var client = factory.CreateClient();
 
-        var login = await client.PostAsJsonAsync("/api/auth/login", new PasswordLoginRequest
+        var login = await client.PostAsJsonAsync("/api/auth/login", new UsernameLoginRequest
         {
             Username = "missing-user",
-            Password = "not-the-password",
         });
-        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, login.StatusCode);
 
         var refresh = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshTokenRequest
         {

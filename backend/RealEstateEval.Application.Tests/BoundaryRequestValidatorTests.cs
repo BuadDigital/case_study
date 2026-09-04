@@ -18,12 +18,11 @@ namespace RealEstateEval.Application.Tests;
 public class BoundaryRequestValidatorTests
 {
     [Fact]
-    public void Login_rejects_blank_credentials()
+    public void Login_rejects_blank_username()
     {
-        var result = new PasswordLoginRequestValidator().Validate(new PasswordLoginRequest());
+        var result = new UsernameLoginRequestValidator().Validate(new UsernameLoginRequest());
 
         Assert.Contains(result.Errors, error => error.PropertyName == "username");
-        Assert.Contains(result.Errors, error => error.PropertyName == "password");
     }
 
     [Fact]

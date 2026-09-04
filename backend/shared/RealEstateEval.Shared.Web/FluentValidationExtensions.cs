@@ -17,7 +17,7 @@ public static class FluentValidationExtensions
  /// </summary>
     public static IMvcBuilder AddRealEstateEvalValidation(this IMvcBuilder mvc)
     {
-        mvc.Services.AddValidatorsFromAssemblyContaining<PasswordLoginRequestValidator>();
+        mvc.Services.AddValidatorsFromAssemblyContaining<UsernameLoginRequestValidator>();
         mvc.Services.AddScoped<FluentValidationActionFilter>();
         mvc.AddMvcOptions(options => options.Filters.AddService<FluentValidationActionFilter>());
         return mvc;

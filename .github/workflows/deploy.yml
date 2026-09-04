@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, master]
-    # Documentation cannot change a running system, and a full run costs 12 image builds.
+    # Documentation cannot change a running system. Image builds run in parallel.
     paths-ignore:
       - "**.md"
       - "docs/**"
@@ -122,37 +122,56 @@ jobs:
           if-no-files-found: error
 
   # ----------------------------------------------------
-  # Job 2: Build & Push Docker Images to GHCR
+  # Job 2: Build & Push Docker Images to GHCR (parallel)
   # ----------------------------------------------------
   build-and-push:
     if: github.event_name != 'pull_request'
     needs: test
     runs-on: ubuntu-latest
-    # A newer commit makes these images pointless; drop them and let the new run build.
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: frontend
+            file: apps/shell/Dockerfile
+          - image: gateway
+            file: backend/gateway/RealEstateEval.Gateway/Dockerfile
+          - image: identity
+            file: backend/services/identity/RealEstateEval.Identity.Api/Dockerfile
+          - image: case-study
+            file: backend/services/case-study/RealEstateEval.CaseStudy.Api/Dockerfile
+          - image: operations
+            file: backend/services/operations/RealEstateEval.Operations.Api/Dockerfile
+          - image: reporting
+            file: backend/services/reporting/RealEstateEval.Reporting.Api/Dockerfile
+          - image: financial
+            file: backend/services/financial/RealEstateEval.Financial.Api/Dockerfile
+          - image: valuation
+            file: backend/services/valuation/RealEstateEval.Valuation.Api/Dockerfile
+          - image: failures
+            file: backend/services/failures/RealEstateEval.Failures.Api/Dockerfile
+          - image: platform
+            file: backend/services/platform/RealEstateEval.Platform.Api/Dockerfile
+          - image: attachments
+            file: backend/services/attachments/RealEstateEval.Attachments.Api/Dockerfile
+          - image: db-migrate
+            file: backend/tools/DbMigrate/Dockerfile
+    # Per-image group so matrix siblings do not cancel each other; a newer
+    # commit still cancels the matching in-flight image builds.
     concurrency:
-      group: build-${{ github.ref }}
+      group: build-${{ github.ref }}-${{ matrix.image }}
       cancel-in-progress: true
     permissions:
       contents: read
       packages: write
-    outputs:
-      image_owner: ${{ steps.prep.outputs.image_owner }}
-      tag: ${{ steps.prep.outputs.tag }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Prepare Registry Variables
-        id: prep
         run: |
-          # Lowercase the owner name for docker registry compatibility
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "image_owner=$OWNER_LOWER" >> $GITHUB_OUTPUT
-          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "IMAGE_OWNER=$OWNER_LOWER" >> $GITHUB_ENV
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+          echo "IMAGE_OWNER=$OWNER_LOWER" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -164,150 +183,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build and push each microservice image
-      - name: Build & Push Frontend (Next.js)
+      - name: Build & Push ${{ matrix.image }}
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/shell/Dockerfile
+          file: ${{ matrix.file }}
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/frontend:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Gateway
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/gateway/RealEstateEval.Gateway/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/gateway:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/gateway:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Identity
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/identity/RealEstateEval.Identity.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/identity:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/identity:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Case Study Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/case-study/RealEstateEval.CaseStudy.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/case-study:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/case-study:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Operations Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/operations/RealEstateEval.Operations.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/operations:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/operations:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Reporting Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/reporting/RealEstateEval.Reporting.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/reporting:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/reporting:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Financial Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/financial/RealEstateEval.Financial.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/financial:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/financial:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Valuation Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/valuation/RealEstateEval.Valuation.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/valuation:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/valuation:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Failures Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/failures/RealEstateEval.Failures.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/failures:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/failures:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Platform Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/platform/RealEstateEval.Platform.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/platform:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/platform:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Attachments Service
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/services/attachments/RealEstateEval.Attachments.Api/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/attachments:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/attachments:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push DbMigrate
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/tools/DbMigrate/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/db-migrate:latest
-            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/db-migrate:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/${{ matrix.image }}:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/case_study/${{ matrix.image }}:${{ github.sha }}
+          # Only the frontend Dockerfile declares this ARG; other images ignore it.
+          build-args: |
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   # ----------------------------------------------------
   # Job 3: Deploy to Hetzner Cloud
@@ -328,6 +217,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Prepare Registry Variables
+        id: prep
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_owner=$OWNER_LOWER" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Create Deploy Directory on Hetzner VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -355,8 +251,8 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
-          IMAGE_OWNER: ${{ needs.build-and-push.outputs.image_owner }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.tag }}
+          IMAGE_OWNER: ${{ steps.prep.outputs.image_owner }}
+          IMAGE_TAG: ${{ steps.prep.outputs.tag }}
           TLS_CERTIFICATE_PATH: ${{ secrets.TLS_CERTIFICATE_PATH }}
           TLS_PRIVATE_KEY_PATH: ${{ secrets.TLS_PRIVATE_KEY_PATH }}
           PUBLIC_APP_URL: ${{ secrets.PUBLIC_APP_URL }}
