@@ -604,7 +604,8 @@ public static class DataSeeder
 
  /// <summary>
  /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
- /// SeedDemoData is forbidden in Production; local seed passwords are intentionally
+ /// SeedDemoData is applied by the DbMigrate deploy job (not by Production app hosts);
+ /// local seed passwords are intentionally
  /// simple, so validators are suspended only for this call.
  /// </summary>
     private static async Task EnsureSeedPasswordAsync(

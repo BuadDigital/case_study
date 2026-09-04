@@ -25,15 +25,15 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
-    public void Startup_fails_in_production_when_dev_login_is_enabled()
+    public void Startup_allows_dev_login_when_enabled_in_production()
     {
         using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
-        var ex = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
-        Assert.Contains("Auth:EnableDevLogin is only allowed in Development.", ex.Message);
+        using var client = factory.CreateClient();
+        Assert.NotNull(client);
     }
 
     [Fact]
-    public async Task Login_username_returns_404_in_production()
+    public async Task Login_username_returns_404_when_dev_login_disabled()
     {
         var response = await _client.PostAsJsonAsync(
             "/api/auth/login-username",
@@ -43,7 +43,20 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
-    public async Task Dev_login_users_returns_404_in_production()
+    public async Task Login_username_is_reachable_when_dev_login_enabled_in_production()
+    {
+        using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login-username",
+            new UsernameLoginRequest { Username = "cdo" });
+
+        // Stub session returns null → unauthorized, not 404 (endpoint is open).
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dev_login_users_returns_404_when_dev_login_disabled()
     {
         var response = await _client.GetAsync("/api/auth/dev-login-users");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

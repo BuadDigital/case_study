@@ -176,6 +176,8 @@ services:
     container_name: ree-prod-migrate
     restart: "no"
     environment:
+      # Demo users for the passwordless login UI (idempotent DataSeeder).
+      Database__SeedDemoData: "true"
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_prod_platform;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
@@ -197,6 +199,8 @@ services:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
+      # Passwordless OTP login UI posts to /api/auth/login-username.
+      Auth__EnableDevLogin: "true"
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval

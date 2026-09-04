@@ -15,7 +15,6 @@ public class AuthController : ControllerBase
     private readonly IAuthSessionService _sessions;
     private readonly IPermissionService _permissions;
     private readonly IUserRegistrationService _users;
-    private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
 
     public AuthController(
@@ -23,14 +22,12 @@ public class AuthController : ControllerBase
         IAuthSessionService sessions,
         IPermissionService permissions,
         IUserRegistrationService users,
-        IWebHostEnvironment environment,
         IConfiguration configuration)
     {
         _passwordAuthentication = passwordAuthentication;
         _sessions = sessions;
         _permissions = permissions;
         _users = users;
-        _environment = environment;
         _configuration = configuration;
     }
 
@@ -135,9 +132,9 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    // Case-study demo hosts enable this in Production so the passwordless OTP UI works.
     private bool IsDevLoginEnabled() =>
-        _environment.IsDevelopment()
-        && _configuration.GetValue("Auth:EnableDevLogin", false);
+        _configuration.GetValue("Auth:EnableDevLogin", false);
 
     [HttpGet("me")]
     [Authorize]
