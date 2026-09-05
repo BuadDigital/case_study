@@ -465,7 +465,7 @@
       "case_study",
       "operations"
     ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Persistence/OperationsTaskQueryService.cs": [
+    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskQueryService.cs": [
       "case_study",
       "operations"
     ],

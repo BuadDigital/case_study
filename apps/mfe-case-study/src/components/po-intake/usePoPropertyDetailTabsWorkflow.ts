@@ -34,6 +34,7 @@ import {
   pickPrimaryPropertyDetailPhoto,
 } from "../../lib/app-data/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
+import { usePropertyPrimaryPhoto } from "../../query/property-primary-photo-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { usePropertyDetailPartySubmissionsQuery } from "../../query/property-detail-party-submissions-queries";
@@ -52,6 +53,9 @@ import {
   type TabId,
 } from "./po-property-detail-tabs-state";
 import type { PoPropertyDetailInspectorWorkspace } from "./PoPropertyDetailTabs";
+
+/** Tabs that render property documents or photos; opening one starts the attachment load. */
+const PROPERTY_MEDIA_TABS: readonly TabId[] = ["documents", "photos", "enfath-upload"];
 
 export function usePoPropertyDetailTabsWorkflow({
   record,
@@ -131,6 +135,15 @@ export function usePoPropertyDetailTabsWorkflow({
   const visitedTabsRef = useRef<Set<TabId>>(new Set());
   visitedTabsRef.current.add(effectiveTab);
   const tabMode = (id: TabId) => (effectiveTab === id ? "visible" : "hidden");
+  /**
+   * Documents and photos load only once a tab that shows them has been opened —
+   * the overview, appraisal and every other tab never trigger the attachment
+   * fan-out (fanout doc, 2026-09-04). Visited tabs stay mounted, so this never
+   * flips back.
+   */
+  const propertyMediaVisited = PROPERTY_MEDIA_TABS.some((id) =>
+    visitedTabsRef.current.has(id),
+  );
 
   useEffect(() => {
     setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
@@ -194,15 +207,27 @@ export function usePoPropertyDetailTabsWorkflow({
     surveyTaskId: surveyTask?.id ?? null,
     appraisalTaskId: appraisalTask?.id ?? null,
     inspectionTaskId: inspectionTask?.id ?? null,
+    enabled: propertyMediaVisited,
   });
 
   const propertyPhotos = useMemo(
     () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
   );
+  /** Overview photo on a cold load: metadata + one blob, no documents fan-out. */
+  const primaryPhotoOnly = usePropertyPrimaryPhoto({
+    property,
+    showDecree,
+    poNumber,
+    inspectionTaskId: inspectionTask?.id ?? null,
+    enabled: !propertyMediaVisited,
+  });
   const primaryPhoto = useMemo(() => {
-    return pickPrimaryPropertyDetailPhoto(propertyPhotos);
-  }, [propertyPhotos]);
+    const fromSections = pickPrimaryPropertyDetailPhoto(propertyPhotos);
+    return fromSections?.dataUrl
+      ? fromSections
+      : (primaryPhotoOnly ?? fromSections);
+  }, [propertyPhotos, primaryPhotoOnly]);
   const partyCards = buildPropertyDetailPartyCards({
     task: task ?? null,
     allTasks: tasks,

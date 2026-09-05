@@ -167,12 +167,35 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         var search = OperationsTaskListQueryRules.NormalizeSearch(query.Q);
         if (search is not null)
         {
-            rows = rows.Where(t =>
-                t.Title.Contains(search)
-                || t.DisplayId.Contains(search)
-                || t.AssigneeName.Contains(search)
-                || (t.PoNumber != null && t.PoNumber.Contains(search))
-                || (t.Reference != null && t.Reference.Contains(search)));
+            if (_ops.Database.IsNpgsql())
+            {
+                // Deed search is index-backed: jsonb containment (exact deed number) plus a trigram
+                // LIKE over the generated DeedsText column. See pagination-contract.md §3.
+                var containment = OperationsTaskDeedSearch.ContainmentJson(search);
+                var pattern = OperationsTaskDeedSearch.SubstringPattern(search);
+                rows = rows.Where(t =>
+                    t.Title.Contains(search)
+                    || t.DisplayId.Contains(search)
+                    || t.AssigneeName.Contains(search)
+                    || (t.PoNumber != null && t.PoNumber.Contains(search))
+                    || (t.Reference != null && t.Reference.Contains(search))
+                    || (t.DeedsJson != null && EF.Functions.JsonContains(t.DeedsJson, containment))
+                    || EF.Functions.Like(
+                        EF.Property<string>(t, OperationsModel.OperationsTaskDeedsTextColumn),
+                        pattern,
+                        OperationsTaskDeedSearch.LikeEscape));
+            }
+            else
+            {
+                // In-memory provider (tests): no jsonb or generated columns — plain substring.
+                rows = rows.Where(t =>
+                    t.Title.Contains(search)
+                    || t.DisplayId.Contains(search)
+                    || t.AssigneeName.Contains(search)
+                    || (t.PoNumber != null && t.PoNumber.Contains(search))
+                    || (t.Reference != null && t.Reference.Contains(search))
+                    || (t.DeedsJson != null && t.DeedsJson.Contains(search)));
+            }
         }
 
         if (!OperationsTaskLifecycleRules.IsManager(actorRole))

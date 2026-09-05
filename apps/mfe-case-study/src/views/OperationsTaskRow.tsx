@@ -34,7 +34,7 @@ import {
   DueCell,
   TaskStatusPill,
   TypeIcon,
-} from "./OperationsTasksViewParts";
+} from "./OperationsTasksViewShared";
 
 type OperationsTaskRowProps = {
   task: OperationsTask;

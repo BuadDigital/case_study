@@ -7,7 +7,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Permissions;
 using RealEstateEval.Infrastructure.Services;
@@ -72,6 +75,7 @@ public static class DataSeeder
                 financial,
                 userManager,
                 cancellationToken);
+            await EnsureEngineeringSurveyPricingTiersAsync(financial, logger, cancellationToken);
             try
             {
                 await BackfillPartyChildAssigneeIdsAsync(caseStudy, logger, cancellationToken);
@@ -113,6 +117,7 @@ public static class DataSeeder
             cancellationToken);
 
         await EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
+        await EnsureEngineeringSurveyPricingTiersAsync(financial, logger, cancellationToken);
         await ComparableBankSeed.EnsureAsync(valuation, cancellationToken);
     }
 
@@ -902,6 +907,113 @@ public static class DataSeeder
         }
 
         await financial.SaveChangesAsync(cancellationToken);
+    }
+
+ /// <summary>
+ /// Demo engineering-survey schedule by surveyed land area (m² → SAR). Sized next to the
+ /// field-inspector cooperator rates seeded above (400 / 500 SAR per inspection).
+ /// </summary>
+    private static readonly EngineeringSurveyFeeRules.AreaFeeTier[] DemoSurveyAreaTiers =
+    [
+        new(500m, 600m),
+        new(1_000m, 800m),
+        new(2_500m, 1_000m),
+        new(5_000m, 1_500m),
+        new(null, 2_000m),
+    ];
+
+ /// <summary>
+ /// Survey fees resolve only from the active tiered engineering-survey table, and the
+ /// placeholder the pricing service creates lazily carries no tiers by design — so a demo
+ /// database could never accrue one and accepting a survey failed with the pricing error.
+ /// Gives the active table the demo schedule while it is still empty (creating or reactivating
+ /// the category default when no table is active); a table finance has priced is left alone.
+ /// Runs on every seed pass, so an environment seeded before this backfill is repaired too.
+ /// </summary>
+    private static async Task EnsureEngineeringSurveyPricingTiersAsync(
+        FinancialDbContext financial,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var table = await financial.PartyFeePricingTables
+                .Include(t => t.AreaTiers)
+                .FirstOrDefaultAsync(
+                    t => t.Category == PartyFeePricingCategories.EngineeringSurvey
+                        && t.IsActive
+                        && t.PricingKind != PartyFeePricingKinds.Flat,
+                    cancellationToken);
+
+            if (table is null)
+            {
+                table = await financial.PartyFeePricingTables
+                    .Include(t => t.AreaTiers)
+                    .Where(t => t.Category == PartyFeePricingCategories.EngineeringSurvey
+                        && t.PricingKind != PartyFeePricingKinds.Flat)
+                    .OrderByDescending(t => t.Id == PartyFeePricingService.DefaultEngineeringTableId)
+                    .ThenByDescending(t => t.UpdatedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (table is null)
+                {
+ // The same row PartyFeePricingService seeds on first use, so its own seeding then
+ // finds the category active and leaves this one in place.
+                    table = new PartyFeePricingTable
+                    {
+                        Id = PartyFeePricingService.DefaultEngineeringTableId,
+                        Category = PartyFeePricingCategories.EngineeringSurvey,
+                        Name = "افتراضي",
+                        PricingKind = PartyFeePricingKinds.Tiered,
+                        ManagedBy = PartyFeePricingManagers.SystemAdmin,
+                        UpdatedAtUtc = DateTime.UtcNow,
+                    };
+                    financial.PartyFeePricingTables.Add(table);
+                }
+
+                table.IsActive = true;
+            }
+
+            if (table.AreaTiers.Count == 0)
+            {
+                // Add through the DbSet, not the tracked navigation: rows with preset GUID keys
+                // added via a navigation are marked Modified, UPDATE hits 0 rows and the whole
+                // backfill is swallowed as a concurrency warning (the silent failure seen 2026-09-04).
+                financial.PartyFeePricingTiers.AddRange(
+                    PartyFeePricingRules.BuildTierRows(table.Id, DemoSurveyAreaTiers));
+            }
+
+            // Engineering-survey pricing never falls back to the category default
+            // (PartyFeePricingRules.AllowsCategoryDefaultFallback): every office is priced by
+            // an explicit assignment, so the demo office must be assigned or its surveys can
+            // never accrue a fee.
+            var demoOfficeAssigneeId = DistributionAssigneeIdsByEmail[JeddahSurveyOfficeSeed.Email];
+            var hasAssignment = await financial.PartyFeePricingAssignments.AnyAsync(
+                a => a.Category == PartyFeePricingCategories.EngineeringSurvey
+                    && a.AssigneeId == demoOfficeAssigneeId,
+                cancellationToken);
+            if (!hasAssignment)
+            {
+                financial.PartyFeePricingAssignments.Add(new PartyFeePricingAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    TableId = table.Id,
+                    Category = PartyFeePricingCategories.EngineeringSurvey,
+                    AssigneeId = demoOfficeAssigneeId,
+                    UpdatedAtUtc = DateTime.UtcNow,
+                });
+            }
+
+            if (financial.ChangeTracker.HasChanges())
+            {
+                table.UpdatedAtUtc = DateTime.UtcNow;
+                await financial.SaveChangesAsync(cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "EnsureEngineeringSurveyPricingTiers skipped.");
+        }
     }
 
  /// <summary>

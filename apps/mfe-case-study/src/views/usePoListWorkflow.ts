@@ -5,7 +5,7 @@
  * state, the derived queue, and the cancel/stop/delete writes. The view consumes
  * the returned bag and keeps JSX plus event wiring only.
  */
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
@@ -72,7 +72,9 @@ export function usePoListWorkflow() {
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
-  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [intakeOpen, setIntakeOpenState] = useState(false);
+  /** `/po/intake` redirects here as `?intake=1` — the deep link into the modal. */
+  const intakeFromQuery = searchParams.get("intake") === "1";
   const [query, dispatchQuery] = useReducer(
     poListQueryReducer,
     INITIAL_PO_LIST_QUERY,
@@ -87,11 +89,24 @@ export function usePoListWorkflow() {
   const setPage = (value: number) => dispatchQuery({ type: "page", page: value });
 
   useEffect(() => {
-    if (!showIntake) return;
-    if (searchParams.get("intake") !== "1") return;
-    setIntakeOpen(true);
-    router.replace("/po", { scroll: false });
-  }, [showIntake, searchParams, router]);
+    if (!showIntake || !intakeFromQuery) return;
+    setIntakeOpenState(true);
+  }, [showIntake, intakeFromQuery]);
+
+  /**
+   * The query param stays on the URL while the modal is open and is dropped
+   * only when it closes — replacing the URL during the opening render raced
+   * the navigation that brought it here (`/po/intake` → `/po?intake=1`).
+   */
+  const setIntakeOpen = useCallback(
+    (open: boolean) => {
+      setIntakeOpenState(open);
+      if (!open && intakeFromQuery) {
+        router.replace("/po", { scroll: false });
+      }
+    },
+    [intakeFromQuery, router],
+  );
 
   // The search box drives a server request — debounce it, do not just defer a
   // local filter pass (the deferred value would fire a request per keystroke).

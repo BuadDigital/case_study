@@ -1,3 +1,5 @@
+using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Financial.Application.Abstractions;
@@ -53,12 +55,22 @@ public interface IPartyBillingStatementRepository
         bool track,
         CancellationToken cancellationToken);
 
-    /// <summary>Untracked statements filtered by assignee, status, and the issued-or-later gate.</summary>
+    /// <summary>
+    /// Untracked statements matching <paramref name="filter"/>, sorted, then windowed with
+    /// <paramref name="skip"/> / <paramref name="take"/>. Every filter is an EF predicate and the
+    /// sort ends with the id as tiebreaker, so a page and <see cref="CountStatementsAsync"/> agree.
+    /// </summary>
     Task<IReadOnlyList<PartyBillingStatement>> ListStatementsAsync(
-        string? assigneeId,
-        string? status,
-        bool issuedOrLaterOnly,
-        int max,
+        PartyBillingStatementListFilterQuery filter,
+        PartyBillingStatementListSortKey sort,
+        bool descending,
+        int skip,
+        int take,
+        CancellationToken cancellationToken);
+
+    /// <summary>Statements matching <paramref name="filter"/> — the paged envelope's total.</summary>
+    Task<int> CountStatementsAsync(
+        PartyBillingStatementListFilterQuery filter,
         CancellationToken cancellationToken);
 
     Task<PartyBillingStatement?> FindStatementAsync(

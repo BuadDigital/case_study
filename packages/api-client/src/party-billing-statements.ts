@@ -3,6 +3,11 @@
  */
 import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
+import {
+  fetchListPage,
+  type ListPageQuery,
+  type PagedResultDto,
+} from "./pagination";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -362,6 +367,120 @@ export async function listPartyBillingStatements(
       ok: true,
       data: raw.map((r) => normalizeStatement(asRecord(r))),
     };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type PartyBillingStatementListSort =
+  | "created"
+  | "issued"
+  | "closed"
+  | "reference"
+  | "total";
+
+/**
+ * `GET /api/party-billing-statements` — pagination-contract §9.1. `status`
+ * takes one status or a list (sent as CSV); the actor narrowing (an office
+ * sees only its own issued-or-later statements) happens on the server.
+ */
+export type PartyBillingStatementListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: PartyBillingStatementListSort;
+  assigneeId?: string;
+  status?: PartyBillingStatementStatus | readonly PartyBillingStatementStatus[];
+  issuedOrLaterOnly?: boolean;
+};
+
+function statementListParams(query?: PartyBillingStatementListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    assigneeId: query?.assigneeId,
+    status: query?.status,
+    // Only restate the gate when it is on; `false` is the endpoint default.
+    issuedOrLaterOnly: query?.issuedOrLaterOnly ? true : undefined,
+  };
+}
+
+/** One server page of statements — filters, sort and paging all server-side. */
+export async function listPartyBillingStatementsPage(
+  config: PartyBillingStatementsApiConfig,
+  query?: PartyBillingStatementListQuery,
+): Promise<ApiOk<PagedResultDto<PartyBillingStatementDto>> | ApiErr> {
+  const result = await fetchListPage<unknown>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/party-billing-statements",
+    statementListParams(query),
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      ...result.data,
+      items: result.data.items.map((r) => normalizeStatement(asRecord(r))),
+    },
+  };
+}
+
+export type PartyBillingReadyLineListSort = "updated" | "accrued" | "net" | "po";
+
+/**
+ * `GET /api/party-billing-statements/ready-lines` — pagination-contract §9.2.
+ * `sort=accrued&dir=asc` is the dues screen's oldest-first order; `q` covers
+ * the property label, PO number and workflow task id.
+ */
+export type PartyBillingReadyLineListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: PartyBillingReadyLineListSort;
+  assigneeId?: string;
+};
+
+/** One server page of ready dues — cut over the synthesised list, count exact. */
+export async function listPartyBillingReadyLinesPage(
+  config: PartyBillingStatementsApiConfig,
+  query?: PartyBillingReadyLineListQuery,
+): Promise<ApiOk<PagedResultDto<PartyBillingReadyLineDto>> | ApiErr> {
+  const result = await fetchListPage<unknown>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/party-billing-statements/ready-lines",
+    {
+      page: query?.page,
+      pageSize: query?.pageSize,
+      sort: query?.sort,
+      dir: query?.dir,
+      q: query?.q,
+      assigneeId: query?.assigneeId,
+    },
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      ...result.data,
+      items: result.data.items.map((r) => normalizeReadyLine(asRecord(r))),
+    },
+  };
+}
+
+/**
+ * One statement by id, under the list's visibility rule (404 for a payee's
+ * unissued or foreign statement). Lets a deep-linked statement open when it
+ * is not on the page the list is showing.
+ */
+export async function getPartyBillingStatement(
+  config: PartyBillingStatementsApiConfig,
+  statementId: string,
+): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}`,
+      { headers: headers(config.token) },
+    );
+    if (!res.ok) return httpErr(res);
+    return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
   } catch {
     return { ok: false, kind: "network" };
   }

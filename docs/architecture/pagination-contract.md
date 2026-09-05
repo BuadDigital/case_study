@@ -2,9 +2,10 @@
 
 **Date:** 2026-09-04 · **Branch:** dev
 **Scope:** every list endpoint that a screen pages, sorts or searches — work orders (plus their KPI
-counts), workflow tasks, operations tasks, comparable properties, failures, notifications, and the
-two financial ledgers. This file is the contract the front-end implements against; it is exact, and
-any change to a parameter name, an allowed sort key, or a filter's meaning belongs here first.
+counts), workflow tasks, operations tasks, comparable properties, failures, notifications, the two
+financial ledgers, the party billing lists and the Enfaz billing lists. This file is the contract the
+front-end implements against; it is exact, and any change to a parameter name, an allowed sort key,
+or a filter's meaning belongs here first.
 
 Companion documents: [`solid-scorecard.md`](./solid-scorecard.md), [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
@@ -701,13 +702,189 @@ have to change first.
 
 | Route | Host | Why not |
 | --- | --- | --- |
-| `GET /api/party-billing-statements` (alias `…/eng-billing-statements`) | Case Study API | The Case Study host holds only `HttpPartyBillingStatementService`, an HTTP passthrough to `api/financial-dispatch/party-billing-statements` on the Financial host. The underlying repository query *is* paginable, but `page`/`pageSize` and a `PagedResultDto` would have to be threaded through the interface, the client's query-string builder, the dispatch controller and the repository — a two-hop envelope change that deserves its own slice. Actor narrowing also happens **in the controller** (a non-finance actor is forced onto its own `assigneeId` with `issuedOrLaterOnly: true`), which is countable but has to move with it. |
-| `GET /api/party-billing-statements/ready-lines` | Case Study API | **Not paginable as written.** It fans out to `ICaseStudyLookup.ListWorkflowTasksByKindsAsync`, drops already-claimed rows in memory, then collapses with `PartyBillingStatementRules.PickOneLedgerPerTask`. Rows are removed after materialisation, so a `COUNT` cannot agree with the page — that breaks the Filtering invariant at the top of this file. |
-| `GET /api/enfaz-billing/ready-pos-summary`, `GET /api/enfaz-billing/tracking` | Case Study API | **Not paginable as written**, same reason: both start from `ListWorkOrdersForBillingAsync` (a cross-context call) and then expand or `continue` per property in a `foreach`. The row set is synthesised, not queried. |
 | `GET /api/enfaz-billing/{poNumber}/followups` | Case Study API | A per-PO detail list bounded at 100 rows, rendered whole in a panel. No screen pages it; adding the envelope would be surface with no caller. |
 | `GET /api/financial/party-fee-pricing/tables` | Financial API | A pricing **catalogue**, not a ledger: a handful of admin-managed rows, also used as a dropdown source. It additionally returns **400 on an unrecognised `category`** (deliberate — a typo used to silently return another category's tables), which is the opposite of this contract's fall-back rule for `sort`. Left alone rather than blurring the two behaviours. |
 | `GET /api/failure-dispatch/*` (`gates`, `approved-keys`, `property`, `suspended`, `active-ids`) | Failures API | **Owner-to-owner dispatch routes** (`[RequireUpstreamDispatch]`), called by other backend hosts, never paged by a screen. Skipped, as the brief allows. |
-| `GET /api/financial-dispatch/*` | Financial API | Same — internal mirrors of the party-billing and Enfaz routes. |
+| `GET /api/case-study-forms/batch?parentTaskIds=a,b,…` | Case Study API | **A decorator for a row window the caller already holds**, not a list of its own: the active queue passes the parent ids of the rows it is rendering and gets back, per parent, the case-study form plus the party forms of its children keyed by child task id (`CaseStudyFormBatchDto`). Capped at 100 distinct ids (400 above it); the client chunks. Visibility is the single-item rule (`CaseStudyFormReadRules`) applied per parent and per child, and a hidden or unknown id is absent rather than an error, so the batch cannot probe. Replaces the `1 + N` single GETs per row — see `property-detail-fanout-2026-09-04.md`. |
+| `GET /api/financial-dispatch/*` other than the four billing lists of §9–§10 | Financial API | Internal mirrors of single-item and write routes; nothing to page. The four list mirrors **do** carry the envelope — see "Dispatch route" under §9 and §10. |
+
+The party billing statement list, its ready lines and the two Enfaz billing lists used to sit in
+this table (a two-hop envelope change, and rows synthesised in memory). They are now §9 and §10;
+the "materialised list" rule those sections introduce is how the synthesised lists keep the
+Filtering invariant.
+
+---
+
+## 9. Party billing statements
+
+Two lists on `PartyBillingStatementsController` (Case Study host, alias route
+`api/eng-billing-statements`). The Case Study host holds only `HttpPartyBillingStatementService`,
+an HTTP passthrough to `api/financial-dispatch/party-billing-statements` on the Financial host,
+so the contract is served in two hops — the same parameters go upstream and the same envelope
+comes back.
+
+**Request types:** `PartyBillingStatementListQuery`, `PartyBillingReadyLineListQuery`
+(`RealEstateEval.Application/Contracts/BillingListQueries.cs` — the shared assembly, because the
+Case Study host forwards them)
+**Rules modules:** `PartyBillingStatementListQueryRules`, `PartyBillingReadyLineListQueryRules`,
+`MaterialisedListPage` (`Financial.Application/Rules/`)
+**Use case:** `Financial.Application/Services/PartyBillingStatementService.Lists.cs`
+**Repository:** `Financial.Infrastructure/Persistence/PartyBillingStatementRepository.cs`
+(`ListStatementsAsync` / `CountStatementsAsync` over `PartyBillingStatementListFilterQuery`)
+**Remote client:** `Shared.RemoteClients/HttpPartyBillingStatementService.cs`
+**Screens:** `apps/mfe-financial` — the payee account's «المستحقات» / «مسيرات وأوامر صرف» /
+«مدفوعة» tabs (`usePartyBillingStatementsWorkflow`)
+
+### The materialised-list rule (new, shared with §10)
+
+A list whose rows are **synthesised** — composed from cross-context reads and then filtered in
+memory — cannot count in SQL. Instead of dropping the envelope, the use case builds the full row
+set exactly as the plain array always did, applies the contract's `q` and `sort` over that list
+(the rules module does both, so they are unit-tested), and then cuts `skip`/`take` from it with
+`MaterialisedListPage.Cut`. `totalCount` is the length of the list the page was cut from, so a page
+and its count always agree — the Filtering invariant holds, at the cost of the full synthesis on
+every call. The unpaged array keeps its historical cap; the paged envelope counts past it.
+
+### 9.1 `GET /api/party-billing-statements`
+
+Counted and cut **in the database** — this one is an ordinary EF list.
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped). |
+| `sort` | string | **New.** `created` \| `issued` \| `closed` \| `reference` \| `total`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `ReferenceNumber`, `VendorInvoiceNumber`, `DisbursementVoucher`, `TransferReference`. |
+| `assigneeId` | string | Exact payee. **Unchanged.** |
+| `status` | string | **Widened to CSV** of `draft`, `issued`, `invoice_received`, `closed`, `cancelled`. A single value is the exact match it always was. Unknown tokens are dropped; **an all-unknown value still matches no row** (the endpoint's historical answer to a typo — a bad value must never widen a payee's view). Blank = no filter. |
+| `issuedOrLaterOnly` | bool | `issued` / `invoice_received` / `closed` only. **Unchanged.** |
+
+| `sort` | Column |
+| --- | --- |
+| `created` | `CreatedAtUtc`. **Default** — with `dir=desc` the order the endpoint always returned. |
+| `issued` | `IssuedAtUtc`. |
+| `closed` | `ClosedAtUtc`. |
+| `reference` | `ReferenceNumber`. |
+| `total` | `TotalNetSar`. |
+
+Tiebreaker: `Id`.
+
+**Visibility.** Unchanged, and now folded into the query *before* it is forwarded
+(`NarrowStatementList` in the controller): an office actor is forced onto its own `assigneeId`
+with `issuedOrLaterOnly=true` (403 when it has no assignee id at all); an operations manager who
+is not finance gets `issuedOrLaterOnly=true`; finance gets what it asked for. Because the
+narrowing is part of the filter, `totalCount` is the actor's.
+
+**Item.** `PartyBillingStatementDto`, lines included per page (one lines query for the page's ids).
+Unpaged cap 500 (unchanged).
+
+**New companion route.** `GET /api/party-billing-statements/{statementId}` returns one statement
+under the same visibility rule (404 for a payee's unissued or foreign statement). A screen that
+pages needs it to open a deep-linked statement that is not on the page it shows.
+
+### 9.2 `GET /api/party-billing-statements/ready-lines`
+
+A **materialised list** (rule above): the ledgers minus claimed line keys, one per task, plus open
+court-visit charges — synthesised exactly as before, then searched, sorted and cut.
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped) over the materialised list. |
+| `sort` | string | **New.** `updated` \| `accrued` \| `net` \| `po`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `PropertyLabel`, `PoNumber`, `WorkflowTaskId` (case-insensitive) — the dues screen's haystack. |
+| `assigneeId` | string | Exact payee. **Unchanged.** |
+
+| `sort` | Order |
+| --- | --- |
+| `updated` | `UpdatedAtUtc ?? AccruedAtUtc`. **Default** — with `dir=desc` this is `OrderReadyLines`, the order the endpoint always returned. |
+| `accrued` | `AccruedAtUtc ?? UpdatedAtUtc`. `dir=asc` is the dues screen's oldest-first order. |
+| `net` | `NetFeeSar`. |
+| `po` | `PoNumber`. |
+
+Tiebreakers: `PropertyLabel` then `WorkflowTaskId`, ordinal.
+
+Item `PartyBillingReadyLineDto`. Unpaged cap 500 (unchanged). Requires `ManageFinancial`.
+
+### Dispatch route (both lists)
+
+`api/financial-dispatch/party-billing-statements` and `…/ready-lines` on the Financial host accept
+the identical parameter set and apply the identical envelope rule — the "billing-statements
+dispatch envelope" gap is closed. The Financial host re-resolves the page window from its own
+`Database` options (the same clamp), so the skip/take the Case Study host computed are
+informational; the remote client sends `page`/`pageSize` only when the caller paged.
+
+### Still client-side (party billing)
+
+1. **The payees list** («المستحقون المسجّلون لدى المالية», `FinanceCostPartiesList`) is an aggregate:
+   one row per payee summing every ready line and every statement of that payee. There is no
+   group-by-payee endpoint, so it loads both lists whole and windows the aggregate client-side with
+   the shared pager. The account header and tab badges (`FinanceCostsView`) read the same whole
+   lists for the same reason.
+2. **The selection total** on the dues tab sums lines ticked across pages; the workflow keeps the
+   net of every ticked id alongside the id set, since an earlier page's rows are gone.
+
+---
+
+## 10. Enfaz billing
+
+Two lists on `EnfazBillingController` (Case Study host), each a **materialised list** (§9 rule):
+both start from `ICaseStudyLookup.ListWorkOrdersForBillingAsync` (newest work order first, capped at
+500 orders) and expand per property. Served in two hops through `HttpPoEnfazBillingService` →
+`api/financial-dispatch/enfaz-billing/*`, same envelope both ends.
+
+**Request types:** `EnfazReadyPoListQuery`, `EnfazTrackingListQuery`
+(`RealEstateEval.Application/Contracts/BillingListQueries.cs`)
+**Rules modules:** `EnfazReadyPoListQueryRules`, `EnfazTrackingListQueryRules`
+(`Financial.Application/Rules/`)
+**Use case:** `Financial.Application/Services/PoEnfazBillingService.Lists.cs`
+**Screens:** `apps/mfe-financial` — the Enfaz billing side list (`FinanceEnfazReadyPoList`); the
+revenue stages read `tracking` whole (below)
+
+### 10.1 `GET /api/enfaz-billing/ready-pos-summary`
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped) over the readiness scan. |
+| `sort` | string | **New.** `created` \| `po`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `PoNumber`. |
+
+| `sort` | Order |
+| --- | --- |
+| `created` | **Default.** The scan's own order — work orders newest first. The DTO carries no date, so `dir=asc` simply reverses the scan. |
+| `po` | `PoNumber`, ordinal. |
+
+Item `EnfazReadyPoSummaryDto`. Requires `ReadFinancialData`.
+
+### 10.2 `GET /api/enfaz-billing/tracking`
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `page`, `pageSize` | int | **New.** Paging (clamped) over the materialised rows. |
+| `sort` | string | **New.** `created` \| `po` \| `completed` \| `invoiceIssued`. |
+| `dir` | string | **New.** `asc` \| `desc`. Default `desc`. |
+| `q` | string | **New.** Free text over `PoNumber`, `DeedNumber`, `PropertyLabel`, `City`, `InvoiceNumber`. |
+
+| `sort` | Order |
+| --- | --- |
+| `created` | **Default.** The scan's order — newest work order first, properties in request/deed order inside it. `dir=asc` reverses the scan. |
+| `po` | `PoNumber`. |
+| `completed` | `CompletedAtUtc` (null sorts as min). |
+| `invoiceIssued` | `InvoiceIssuedAtUtc` (null sorts as min). |
+
+Tiebreakers on the explicit sorts: `PoNumber` then `PropertyId`, ordinal.
+
+Item `EnfazTrackingRowDto`. Unpaged cap **2000** (unchanged); the paged envelope counts past it.
+
+### Still client-side (Enfaz)
+
+1. **The revenue stages** (`FinanceRevenueView`) keep loading `tracking` whole: the stage tabs are
+   client-side buckets (`bucketRevenueRows`) whose badges count every row, the study table shows
+   «X of Y» properties per work order from its siblings, and the collection table groups rows by
+   invoice. A server page would cut across those groups. Moving the stage rule server-side is what
+   would have to change first.
+2. **Aging** (`GET /api/enfaz-billing/aging`) is a report, not a list; untouched.
 
 ---
 
@@ -718,7 +895,10 @@ have to change first.
   (`WorkOrderListQueryRulesTests`, `WorkflowTaskListQueryRulesTests`,
   `OperationsTaskListQueryRulesTests`, `ComparablePropertyListQueryRulesTests`,
   `FailureListQueryRulesTests`, `NotificationListQueryRulesTests`,
-  `FinancialLedgerListQueryRulesTests`, `OperationsTaskDeedSearchTests`) and the query services over
+  `FinancialLedgerListQueryRulesTests`, `OperationsTaskDeedSearchTests`, and for §9–§10
+  `PartyBillingStatementListQueryRulesTests`, `PartyBillingReadyLineListQueryRulesTests`,
+  `EnfazBillingReadyPoListQueryRulesTests`, `EnfazBillingTrackingListQueryRulesTests`,
+  `MaterialisedListPageTests` in `BillingListQueryRulesTests.cs`) and the query services over
   the in-memory provider (`WorkOrderListQueryTests`, `WorkOrderListCountsTests`,
   `WorkflowTaskListQueryTests`, `WorkflowTaskListPoRecordTests`, `OperationsTaskListQueryTests`,
   `ComparablePropertyListQueryTests`, `FailureListQueryTests`, `NotificationListQueryTests`,

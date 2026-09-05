@@ -23,18 +23,94 @@ public sealed class HttpPartyBillingStatementService(
         return await GetAsync<List<PartyBillingReadyLineDto>>(path, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
+    public Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
         string? assigneeId = null,
         string? status = null,
         bool issuedOrLaterOnly = false,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ListStatementsAsync(
+            new PartyBillingStatementListQuery
+            {
+                AssigneeId = assigneeId,
+                Status = status,
+                IssuedOrLaterOnly = issuedOrLaterOnly,
+            },
+            cancellationToken);
+
+    /// <summary>
+    /// The list parameters go upstream on the query string, paged or not; the owner re-resolves
+    /// the page window from its own <c>Database</c> options, so the skip / take this host computed
+    /// are informational only (pagination-contract §9).
+    /// </summary>
+    public async Task<IReadOnlyList<PartyBillingReadyLineDto>> ListReadyLinesAsync(
+        PartyBillingReadyLineListQuery query,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<PartyBillingReadyLineDto>>(
+            $"{Root}/ready-lines" + ReadyLinesQueryString(query, paged: false),
+            cancellationToken);
+
+    public Task<PagedResultDto<PartyBillingReadyLineDto>> ListReadyLinesPagedAsync(
+        PartyBillingReadyLineListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PagedResultDto<PartyBillingReadyLineDto>>(
+            $"{Root}/ready-lines" + ReadyLinesQueryString(query, paged: true),
+            cancellationToken);
+
+    public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
+        PartyBillingStatementListQuery query,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<PartyBillingStatementDto>>(
+            Root + StatementsQueryString(query, paged: false),
+            cancellationToken);
+
+    public Task<PagedResultDto<PartyBillingStatementDto>> ListStatementsPagedAsync(
+        PartyBillingStatementListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PagedResultDto<PartyBillingStatementDto>>(
+            Root + StatementsQueryString(query, paged: true),
+            cancellationToken);
+
+    private static string StatementsQueryString(PartyBillingStatementListQuery query, bool paged)
     {
-        var path = $"{Root}?issuedOrLaterOnly={issuedOrLaterOnly}";
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-            path += $"&assigneeId={Uri.EscapeDataString(assigneeId)}";
-        if (!string.IsNullOrWhiteSpace(status))
-            path += $"&status={Uri.EscapeDataString(status)}";
-        return await GetAsync<List<PartyBillingStatementDto>>(path, cancellationToken);
+        var parts = new List<string> { $"issuedOrLaterOnly={query.IssuedOrLaterOnly}" };
+        if (paged)
+        {
+            parts.Add($"page={query.Page ?? 1}");
+            if (query.PageSize is { } size) parts.Add($"pageSize={size}");
+        }
+        AddIfSet(parts, "assigneeId", query.AssigneeId);
+        AddIfSet(parts, "status", query.Status);
+        AddIfSet(parts, "sort", query.Sort);
+        AddIfSet(parts, "dir", query.Dir);
+        AddIfSet(parts, "q", query.Q);
+        return "?" + string.Join("&", parts);
+    }
+
+    private static string ReadyLinesQueryString(PartyBillingReadyLineListQuery query, bool paged)
+    {
+        var parts = new List<string>();
+        if (paged)
+        {
+            parts.Add($"page={query.Page ?? 1}");
+            if (query.PageSize is { } size) parts.Add($"pageSize={size}");
+        }
+        AddIfSet(parts, "assigneeId", query.AssigneeId);
+        AddIfSet(parts, "sort", query.Sort);
+        AddIfSet(parts, "dir", query.Dir);
+        AddIfSet(parts, "q", query.Q);
+        return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
+
+    private static void AddIfSet(List<string> parts, string name, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            parts.Add($"{name}={Uri.EscapeDataString(value.Trim())}");
     }
 
     public Task<PartyBillingStatementDto?> GetStatementAsync(

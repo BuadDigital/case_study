@@ -50,6 +50,9 @@ import {
   SAVE_CHIP_SECTION_BY_FIELD,
 } from "./field-inspection-work-state";
 
+/** The bag the body and its section cards consume; sections `Pick` from it. */
+export type FieldInspectionWorkflow = ReturnType<typeof useFieldInspectionWorkflow>;
+
 export function useFieldInspectionWorkflow({
   task,
   hostRef,

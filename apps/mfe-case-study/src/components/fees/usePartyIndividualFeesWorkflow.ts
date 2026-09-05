@@ -8,11 +8,13 @@
  */
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listKeyEnvelopeFeeReport } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
 import type {
   InspectorFeeAction,
   InspectorFeeRowDto,
 } from "@platform/api-client";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
@@ -65,6 +67,18 @@ export function usePartyIndividualFeesWorkflow(
   const { data: visitFees = [] } = useCourtVisitFeesQuery({
     creditAssigneeId: assigneeId,
     enabled: Boolean(assigneeId) && isCourtVisit,
+  });
+
+  const { data: keyFeesCount = 0 } = useQuery({
+    queryKey: [...appDataKeys.keyEnvelopeFees(), "nav-count", "individual"],
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config) return 0;
+      const result = await listKeyEnvelopeFeeReport(config);
+      return result.ok ? result.data.length : 0;
+    },
+    enabled: showVisitKey,
+    staleTime: 30_000,
   });
 
   const rows = useMemo(
@@ -189,7 +203,11 @@ export function usePartyIndividualFeesWorkflow(
           label: copy.statementsLabel,
           count: statements.length,
         },
-        { id: "key-fees" as const, label: "أتعاب استلام المفاتيح" },
+        {
+          id: "key-fees" as const,
+          label: "أتعاب استلام المفاتيح",
+          count: keyFeesCount,
+        },
       ]
     : [
         {

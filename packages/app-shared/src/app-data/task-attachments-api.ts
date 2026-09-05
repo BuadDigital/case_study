@@ -1,9 +1,9 @@
 import {
   deleteAttachment,
-  downloadAttachmentBlob,
   listAttachments,
   uploadAttachment,
 } from "@platform/api-client";
+import { downloadAttachmentBlobOnce } from "./attachment-blob-cache";
 import { prototypeModulesApiConfig } from "./modules-api-config";
 import {
   blobToDataUrl,
@@ -25,6 +25,8 @@ export type TaskAttachmentPreview = {
 };
 
 const previewCache = new Map<string, TaskAttachmentPreview>();
+/** Callers re-run while a scope is still listing — share the promise, not the request. */
+const inFlightPrefetch = new Map<string, Promise<TaskAttachmentPreview | null>>();
 
 function cacheKey(scope: string, taskId: string): string {
   return `${scope}:${taskId}`;
@@ -52,23 +54,34 @@ export function getCachedTaskAttachment(
   return previewCache.get(cacheKey(scope, taskId)) ?? null;
 }
 
-export async function prefetchTaskAttachment(
+export function prefetchTaskAttachment(
   scope: string,
   taskId: string,
 ): Promise<TaskAttachmentPreview | null> {
   const config = prototypeModulesApiConfig();
-  if (!config || !taskId) return null;
+  if (!config || !taskId) return Promise.resolve(null);
 
-  const listed = await listAttachments(config, scope, taskId);
-  if (!listed.ok || listed.data.length === 0) return null;
+  const key = cacheKey(scope, taskId);
+  const pending = inFlightPrefetch.get(key);
+  if (pending) return pending;
 
-  const meta = listed.data[0]!;
-  return hydrateAttachmentPreview({
-    fileName: meta.fileName,
-    mimeType: meta.contentType,
-    attachmentId: meta.id,
-    sizeBytes: meta.sizeBytes,
-  }, scope, taskId);
+  const run = (async () => {
+    const listed = await listAttachments(config, scope, taskId);
+    if (!listed.ok || listed.data.length === 0) return null;
+
+    const meta = listed.data[0]!;
+    return hydrateAttachmentPreview({
+      fileName: meta.fileName,
+      mimeType: meta.contentType,
+      attachmentId: meta.id,
+      sizeBytes: meta.sizeBytes,
+    }, scope, taskId);
+  })();
+  inFlightPrefetch.set(key, run);
+  void run.finally(() => {
+    if (inFlightPrefetch.get(key) === run) inFlightPrefetch.delete(key);
+  });
+  return run;
 }
 
 /** Resolve preview bytes from attachmentId (or reuse in-memory cache). */
@@ -110,7 +123,7 @@ async function hydrateAttachmentPreview(
     sizeBytes: base.sizeBytes,
   };
 
-  const blobResult = await downloadAttachmentBlob(config, base.attachmentId);
+  const blobResult = await downloadAttachmentBlobOnce(config, base.attachmentId);
   if (blobResult.ok) {
     try {
       preview.dataUrl = await blobToDataUrl(blobResult.data);

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Financial.Api.Controllers;
@@ -10,21 +12,83 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [Route("api/financial-dispatch/party-billing-statements")]
 [Authorize]
 [RequireUpstreamDispatch]
-public sealed class PartyBillingDispatchController(IPartyBillingStatementService statements) : ControllerBase
+public sealed class PartyBillingDispatchController(
+    IPartyBillingStatementService statements,
+    IOptions<DatabaseOptions>? dbOptions = null) : ControllerBase
 {
-    [HttpGet("ready-lines")]
-    public async Task<ActionResult<IReadOnlyList<PartyBillingReadyLineDto>>> ReadyLines(
-        [FromQuery] string? assigneeId,
-        CancellationToken cancellationToken) =>
-        Ok(await statements.ListReadyLinesAsync(assigneeId, cancellationToken));
+    private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
 
+    /// <summary>
+    /// Same envelope rule as the public route on the Case Study host: page or pageSize present
+    /// returns <see cref="PagedResultDto{T}"/>, otherwise the plain array. The page window is
+    /// resolved here from the owner's options. See docs/architecture/pagination-contract.md §9.2.
+    /// </summary>
+    [HttpGet("ready-lines")]
+    public async Task<IActionResult> ReadyLines(
+        [FromQuery] string? assigneeId,
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new PartyBillingReadyLineListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            AssigneeId = assigneeId,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await statements.ListReadyLinesAsync(query, cancellationToken));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await statements.ListReadyLinesPagedAsync(
+            query, skip, take, resolvedPage, cancellationToken));
+    }
+
+    /// <summary>
+    /// Mirrors <c>GET /api/party-billing-statements</c> exactly — the "dispatch envelope" gap of
+    /// pagination-contract §9.1: paged in, paged out. Actor narrowing already happened on the
+    /// calling host; this route trusts the forwarded <c>assigneeId</c> / <c>issuedOrLaterOnly</c>.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<PartyBillingStatementDto>>> List(
+    public async Task<IActionResult> List(
         [FromQuery] string? assigneeId,
         [FromQuery] string? status,
         [FromQuery] bool issuedOrLaterOnly = false,
-        CancellationToken cancellationToken = default) =>
-        Ok(await statements.ListStatementsAsync(assigneeId, status, issuedOrLaterOnly, cancellationToken));
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new PartyBillingStatementListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            AssigneeId = assigneeId,
+            Status = status,
+            IssuedOrLaterOnly = issuedOrLaterOnly,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await statements.ListStatementsAsync(query, cancellationToken));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await statements.ListStatementsPagedAsync(
+            query, skip, take, resolvedPage, cancellationToken));
+    }
 
     [HttpGet("{statementId:guid}")]
     public async Task<ActionResult<PartyBillingStatementDto>> Get(

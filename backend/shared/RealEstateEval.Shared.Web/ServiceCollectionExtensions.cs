@@ -70,6 +70,16 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageValuationRequests,
                     PlatformCapabilities.SubmitValuationReport)));
 
+ // The property's «تقييم العقار» tab: case staff (manage-work-orders) read the report of a
+ // transaction they run; the queue itself and every write stay on the two policies above.
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadValuationReport,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageWorkOrders)));
+
  // 11H-2 feed — field inspector captures listings and deals during inspection, so the
  // party-work capability also writes to the shared bank.
             options.AddPolicy(

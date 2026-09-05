@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { listKeyEnvelopeFeeReport } from "@platform/api-client";
 import { QueueTableHint } from "@platform/ui-kit";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -24,6 +26,7 @@ import {
 } from "./SupervisorEngSurveyFeeAcceptPanel";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
 type PartyFeesTab =
@@ -122,6 +125,26 @@ export function PartyFeesWorkspace({
     enabled: isSupervisor || Boolean(assigneeId),
   });
 
+  const { data: visitFees = [] } = useCourtVisitFeesQuery({
+    enabled: isSupervisor,
+  });
+  const visitFeesOpen = useMemo(
+    () => visitFees.filter((r) => r.status !== "settled").length,
+    [visitFees],
+  );
+
+  const { data: keyFeesCount = 0 } = useQuery({
+    queryKey: [...appDataKeys.keyEnvelopeFees(), "nav-count"],
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config) return 0;
+      const result = await listKeyEnvelopeFeeReport(config);
+      return result.ok ? result.data.length : 0;
+    },
+    enabled: isSupervisor,
+    staleTime: 30_000,
+  });
+
   /*
    * One fees module, three party slots — never mix lanes:
    *   engineering-survey  → vendor (accept/dispute + invoice)
@@ -162,14 +185,18 @@ export function PartyFeesWorkspace({
               count: supervisorAttentionCount,
               countWarnWhenActive: true,
             },
-            { id: "fees", label: "الحسم والمراجعة" },
+            { id: "fees", label: "الحسم والمراجعة", count: rows.length },
             {
               id: "statements",
               label: "كشوف الفوترة",
               count: issuedStatements.length,
             },
-            { id: "visit-fees", label: "أتعاب الزيارة" },
-            { id: "key-fees", label: "أتعاب استلام المفاتيح" },
+            { id: "visit-fees", label: "أتعاب الزيارة", count: visitFeesOpen },
+            {
+              id: "key-fees",
+              label: "أتعاب استلام المفاتيح",
+              count: keyFeesCount,
+            },
           ]}
         />
 

@@ -1,7 +1,5 @@
-import {
-  downloadAttachmentBlob,
-  uploadAttachment,
-} from "@platform/api-client";
+import { uploadAttachment } from "@platform/api-client";
+import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import {
   apiErrorMessage,
@@ -37,6 +35,8 @@ const SCOPE = "field-inspection-photo";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const previewCache = new Map<string, string>();
+/** A photo asked for twice before its first fetch settles shares that fetch. */
+const inFlightPreviews = new Map<string, Promise<string | undefined>>();
 
 export function inspectorPhotoCacheKey(
   taskId: string,
@@ -67,15 +67,30 @@ export function clearInspectorPhotoDataUrl(
   previewCache.delete(inspectorPhotoCacheKey(taskId, photoRef));
 }
 
-export async function prefetchInspectorPhoto(
+export function prefetchInspectorPhoto(
   taskId: string,
   photoRef: string,
   attachment: InspectorPhotoAttachment,
 ): Promise<string | undefined> {
   const key = inspectorPhotoCacheKey(taskId, photoRef);
   const cached = previewCache.get(key);
-  if (cached) return cached;
+  if (cached) return Promise.resolve(cached);
 
+  const pending = inFlightPreviews.get(key);
+  if (pending) return pending;
+
+  const run = loadInspectorPhotoPreview(key, attachment);
+  inFlightPreviews.set(key, run);
+  void run.finally(() => {
+    if (inFlightPreviews.get(key) === run) inFlightPreviews.delete(key);
+  });
+  return run;
+}
+
+async function loadInspectorPhotoPreview(
+  key: string,
+  attachment: InspectorPhotoAttachment,
+): Promise<string | undefined> {
   const attachmentId = attachment.attachmentId?.trim();
   if (attachmentId?.startsWith("local:")) {
     const userId = currentOfflineUserId();
@@ -99,7 +114,7 @@ export async function prefetchInspectorPhoto(
   const config = prototypeModulesApiConfig();
   if (!config || !attachmentId) return undefined;
 
-  const blobResult = await downloadAttachmentBlob(config, attachmentId);
+  const blobResult = await downloadAttachmentBlobOnce(config, attachmentId);
   if (!blobResult.ok) {
     const userId = currentOfflineUserId();
     if (userId && attachmentId) {

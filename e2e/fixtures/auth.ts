@@ -158,13 +158,9 @@ export async function loginAs(page: Page, username: string) {
 /** Exercises the real login form — used only by login.spec.ts. */
 export async function loginViaUi(page: Page, username: string) {
   await page.goto("/login", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "متابعة" })).toBeVisible();
   const phone = RELEASE_USER_PHONES[username];
   if (!phone) throw new Error(`No demo phone mapped for "${username}"`);
-  await page.locator("#mobile").fill(phone);
-  await page.locator("form").evaluate((form) => {
-    (form as HTMLFormElement).requestSubmit();
-  });
+  await submitMobileStep(page, phone);
 
   await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
     timeout: 15_000,
@@ -172,19 +168,32 @@ export async function loginViaUi(page: Page, username: string) {
   const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
   await expect(otpBoxes).toHaveCount(6);
 
-  const [response] = await Promise.all([
-    page.waitForResponse(
-      (res) =>
-        res.url().includes("/api/auth/login") &&
-        res.request().method() === "POST",
-      { timeout: 60_000 },
-    ),
-    (async () => {
-      for (let i = 0; i < 6; i++) {
-        await otpBoxes.nth(i).fill(String(i + 1));
-      }
-    })(),
-  ]);
+  const responsePromise = page.waitForResponse(
+    (res) =>
+      res.url().includes("/api/auth/login") &&
+      res.request().method() === "POST",
+    { timeout: 60_000 },
+  );
+  // Pace the digits like a person: each box's onChange derives the code from
+  // the previous render, so six back-to-back fills under load can leave the
+  // last digit unseen and the auto-confirm never fires.
+  for (let i = 0; i < 6; i++) {
+    await otpBoxes.nth(i).fill(String(i + 1));
+    await page.waitForTimeout(40);
+  }
+  // Fallback: if auto-confirm did not fire within a few seconds, press the
+  // confirm button (a no-op once the request is already in flight).
+  const confirmFallback = (async () => {
+    try {
+      await page.waitForTimeout(5_000);
+      const confirm = page.getByRole("button", { name: "تأكيد الدخول" });
+      if (await confirm.isEnabled()) await confirm.click({ timeout: 2_000 });
+    } catch {
+      // Normal: the request was already in flight, or the test/page ended first.
+    }
+  })();
+  const response = await responsePromise;
+  void confirmFallback;
 
   if (!response.ok()) {
     const alertText =
@@ -199,9 +208,14 @@ export async function loginViaUi(page: Page, username: string) {
   }
 
   // Completing 6 digits auto-confirms and navigates; keep button as fallback.
+  // While auto-confirm is in flight the button is disabled/aria-busy and then
+  // detaches on navigation — only click it when it is actually actionable.
   const confirmLogin = page.getByRole("button", { name: "تأكيد الدخول" });
-  if (await confirmLogin.isVisible().catch(() => false)) {
-    await confirmLogin.click();
+  if (
+    (await confirmLogin.isVisible().catch(() => false)) &&
+    (await confirmLogin.isEnabled().catch(() => false))
+  ) {
+    await confirmLogin.click({ timeout: 5_000 }).catch(() => undefined);
   }
 
   const landing = POST_LOGIN_LANDING[username] ?? {
@@ -215,6 +229,34 @@ export async function loginViaUi(page: Page, username: string) {
     { timeout: 60_000 },
   );
   await waitForPageTitle(page, landing.title);
+}
+
+/**
+ * Fill the mobile number and continue to the OTP step. A fill that lands before
+ * React hydrates is discarded on hydration (the «متابعة» button stays disabled),
+ * so re-fill until the button reports enabled, then click it.
+ */
+export async function submitMobileStep(page: Page, phone: string) {
+  const mobile = page.locator("#mobile");
+  const next = page.getByRole("button", { name: "متابعة" });
+  await expect(next).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        // Clear first: React's value tracker treats a re-fill of the same
+        // string as "no change" and never fires onChange, so a fill that
+        // landed pre-hydration would otherwise stick forever.
+        await mobile.fill("");
+        await mobile.fill(phone);
+        return next.isEnabled();
+      },
+      { timeout: 15_000, message: "mobile step never became submittable" },
+    )
+    .toBe(true);
+  await next.click();
+  await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 export function pagePath(pageId: string): string {

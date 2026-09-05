@@ -8,6 +8,7 @@ import type { PageId } from "@platform/types";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   filterTasksForCaseStudy,
+  filterTasksForSystemUpload,
 } from "@platform/app-shared/app-data/active-transactions";
 import {
   filterTasksForDistribution,
@@ -32,6 +33,7 @@ import {
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/app-data/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
+import { loadSupervisorEngSurveyPendingAcceptRows } from "@case-study/mfe/components/fees/SupervisorEngSurveyFeeAcceptPanel";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
 
@@ -63,20 +65,24 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     [staffResult?.users],
   );
 
+  const isPartyFeesRole =
+    role === "field-inspector" ||
+    role === "engineering-office" ||
+    role === "government-reviewer";
+  const isFeesSupervisor =
+    hasCapability("manage-operations") && !isPartyFeesRole;
+
   const selectFeeCount = useCallback(
     (summary: InspectorFeesSummary) => {
       const feeRows = summary.rows ?? [];
       if (feeRows.length === 0) return 0;
-      const isPartyFeesRole =
-        role === "field-inspector" ||
-        role === "engineering-office" ||
-        role === "government-reviewer";
-      const isSupervisor = hasCapability("manage-operations") && !isPartyFeesRole;
-      return isSupervisor
+      return isFeesSupervisor
         ? feeRows.filter(
             (r) =>
               r.billingStatus === "sup-review" ||
-              (r.billingStatus === "returned" && r.returnTo === "supervisor"),
+              (r.billingStatus === "returned" && r.returnTo === "supervisor") ||
+              r.billingStatus === "disputed" ||
+              r.billingStatus === "suspended",
           ).length
         : feeRows.filter(
             (r) =>
@@ -86,7 +92,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
                 r.returnTo === "office"),
           ).length;
     },
-    [role, hasCapability],
+    [isFeesSupervisor],
   );
 
   const { data: feeCount } = useQuery({
@@ -100,6 +106,15 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       }),
     staleTime: 30_000,
     select: selectFeeCount,
+  });
+
+  const { data: engAcceptPendingCount = 0 } = useQuery({
+    // Share cache with PartyFeesWorkspace (SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY).
+    queryKey: [...appDataKeys.all, "eng-survey-fee-accept-pending"],
+    queryFn: () => loadSupervisorEngSurveyPendingAcceptRows(tasks ?? []),
+    enabled: isFeesSupervisor && Boolean(tasks && tasks.length > 0),
+    staleTime: 15_000,
+    select: (rows) => rows.length,
   });
 
   const badgeSignature = useMemo(() => {
@@ -135,6 +150,8 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       (t) => t.status === "open" || t.status === "blocked",
     );
 
+    const systemUploadOpen = filterTasksForSystemUpload(mine).length;
+
     const parts: string[] = [];
     const setPage = (pageId: PageId, count: number) => {
       if (count > 0) parts.push(`${pageId}:${count}`);
@@ -144,6 +161,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     setPage("bourse-inquiry", bourseOpen.length);
     setPage("active-distribution", distributionOpen.length);
     setPage("active-case-study", caseStudyOpen.length);
+    setPage("system-upload", systemUploadOpen);
 
     for (const def of Object.values(PARTY_TASK_PAGES)) {
       if (def.roleId !== role) continue;
@@ -153,7 +171,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       );
     }
 
-    setPage("party-fees", feeCount ?? 0);
+    setPage("party-fees", (feeCount ?? 0) + engAcceptPendingCount);
 
     return parts.join("|");
   }, [
@@ -166,6 +184,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     failures,
     staffUsers,
     feeCount,
+    engAcceptPendingCount,
   ]);
 
   const badges = useMemo(() => {

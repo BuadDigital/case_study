@@ -208,9 +208,27 @@ export function collectInspectorPhotoAttachmentIds(
   return out;
 }
 
+/**
+ * The needle for `GET /api/attachments/for-property`. The endpoint matches
+ * `scopeKey == needle` or `scopeKey startsWith needle + ":"`, and property
+ * documents (deed, decree, registry, boundaries…) are keyed
+ * `<poNumber>:<propertyId>` by the property library
+ * (`assignment-doc-attachments.ts`), so the bare property id sees none of
+ * them. Without a PO number the bare id is all there is.
+ */
+export function propertyAttachmentScopeKey(
+  poNumber: string | null | undefined,
+  propertyId: string,
+): string {
+  const id = propertyId.trim();
+  const po = (poNumber ?? "").trim();
+  if (!id) return "";
+  return po ? `${po}:${id}` : id;
+}
+
 export async function loadValuationReportPrintAttachments(
   config: PrototypeModulesApiConfig,
-  propertyId: string,
+  target: { poNumber: string | null | undefined; propertyId: string },
   hasStructures: boolean,
   extras?: {
     /** Inspection photo ids from the inspector draft — complete the §34 slot budget. */
@@ -228,10 +246,10 @@ export async function loadValuationReportPrintAttachments(
     deed: null as ValuationReportSlotAttachment | null,
     siteMap: null as ValuationReportSlotAttachment | null,
   };
-  const id = propertyId.trim();
-  if (!id) return empty;
+  const scopeKey = propertyAttachmentScopeKey(target.poNumber, target.propertyId);
+  if (!scopeKey) return empty;
 
-  const listed = await listAttachmentsForProperty(config, id);
+  const listed = await listAttachmentsForProperty(config, scopeKey);
   if (!listed.ok) return empty;
 
   const { photos, survey, deed, siteMaps } = classifyRows(

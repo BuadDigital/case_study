@@ -164,3 +164,80 @@ describe("financial ledgers (§7)", () => {
     );
   });
 });
+
+describe("party billing pages (§9)", () => {
+  it("statements: sends the filters, the CSV status, the sort and the page window", async () => {
+    const calls = stubFetch();
+    const { listPartyBillingStatementsPage } = await import(
+      "./party-billing-statements"
+    );
+    await listPartyBillingStatementsPage(CONFIG, {
+      assigneeId: "office-1",
+      status: ["draft", "issued", "invoice_received", "cancelled"],
+      sort: "issued",
+      dir: "asc",
+      page: 2,
+      pageSize: 10,
+    });
+    expect(calls[0]).toContain("https://api.test/api/party-billing-statements?");
+    expect(params(calls[0]!)).toBe(
+      "page=2&pageSize=10&sort=issued&dir=asc&assigneeId=office-1&status=draft%2Cissued%2Cinvoice_received%2Ccancelled",
+    );
+  });
+
+  it("statements: restates issuedOrLaterOnly only when it is on", async () => {
+    const calls = stubFetch();
+    const { listPartyBillingStatementsPage } = await import(
+      "./party-billing-statements"
+    );
+    await listPartyBillingStatementsPage(CONFIG, { issuedOrLaterOnly: false });
+    expect(calls[0]).not.toContain("issuedOrLaterOnly");
+    await listPartyBillingStatementsPage(CONFIG, { issuedOrLaterOnly: true });
+    expect(calls[1]).toContain("issuedOrLaterOnly=true");
+  });
+
+  it("ready lines: sends the payee, the search and the accrued-ascending sort", async () => {
+    const calls = stubFetch();
+    const { listPartyBillingReadyLinesPage } = await import(
+      "./party-billing-statements"
+    );
+    await listPartyBillingReadyLinesPage(CONFIG, {
+      assigneeId: "office-1",
+      q: "  310107 ",
+      sort: "accrued",
+      dir: "asc",
+      pageSize: 10,
+    });
+    expect(calls[0]).toContain(
+      "https://api.test/api/party-billing-statements/ready-lines?",
+    );
+    expect(params(calls[0]!)).toBe(
+      "page=1&pageSize=10&sort=accrued&dir=asc&q=310107&assigneeId=office-1",
+    );
+  });
+});
+
+describe("Enfaz billing pages (§10)", () => {
+  it("ready POs: sends the page window and the sort", async () => {
+    const calls = stubFetch();
+    const { listReadyEnfazPoSummariesPage } = await import("./enfaz-billing");
+    await listReadyEnfazPoSummariesPage(CONFIG, {
+      page: 3,
+      pageSize: 10,
+      sort: "po",
+      dir: "asc",
+    });
+    expect(calls[0]).toContain(
+      "https://api.test/api/enfaz-billing/ready-pos-summary?",
+    );
+    expect(params(calls[0]!)).toBe("page=3&pageSize=10&sort=po&dir=asc");
+  });
+
+  it("tracking: defaults to page 1 and forwards the search", async () => {
+    const calls = stubFetch();
+    const { listEnfazTrackingPage } = await import("./enfaz-billing");
+    await listEnfazTrackingPage(CONFIG, { q: "INV-9", sort: "invoiceIssued" });
+    expect(calls[0]).toContain("https://api.test/api/enfaz-billing/tracking?");
+    expect(params(calls[0]!)).toBe("page=1&pageSize=500&sort=invoiceIssued&q=INV-9");
+  });
+});

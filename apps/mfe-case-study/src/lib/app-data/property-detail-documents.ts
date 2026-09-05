@@ -16,6 +16,7 @@ import type { PoPropertyIntake } from "./po-intake-data";
 import {
   INSPECTOR_FEATURE_FIELDS,
   listServiceAmenityPhotoSlots,
+  type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
@@ -63,6 +64,17 @@ export type PropertyDetailDocumentEntry = {
   /** Engineering survey field — used to resolve blob via attachments API. */
   engineeringField?: "surveyReport" | "siteLetter";
   engineeringTaskId?: string;
+  /**
+   * Field-inspection source — lets a caller hydrate this one photo through
+   * `prefetchInspectorPhoto` without the whole-workspace prefetch. Deliberately
+   * not `attachmentId`: that field marks an entry available, and an inspection
+   * photo is available only once its preview is cached.
+   */
+  inspectionPhoto?: {
+    taskId: string;
+    photoRef: string;
+    attachment: InspectorPhotoAttachment;
+  };
 };
 
 function fileKind(fileName: string, mimeType?: string): "pdf" | "file" | "image" {
@@ -342,6 +354,16 @@ export function collectFieldInspectionDocumentsFromSubmission(
           source,
           kind: fileKind(photo.fileName, photo.mimeType),
           dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+          inspectionPhoto: {
+            taskId,
+            photoRef,
+            attachment: {
+              fileName: photo.fileName,
+              mimeType: photo.mimeType,
+              attachmentId: photo.attachmentId,
+              sizeBytes: photo.sizeBytes,
+            },
+          },
         });
       });
   }
@@ -360,6 +382,16 @@ export function collectFieldInspectionDocumentsFromSubmission(
         source,
         kind: fileKind(photo.fileName, photo.mimeType),
         dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+        inspectionPhoto: {
+          taskId,
+          photoRef,
+          attachment: {
+            fileName: photo.fileName,
+            mimeType: photo.mimeType,
+            attachmentId: photo.attachmentId,
+            sizeBytes: photo.sizeBytes,
+          },
+        },
       });
     });
 
@@ -375,6 +407,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),
       dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+      inspectionPhoto: { taskId, photoRef, attachment },
     });
   }
 
@@ -390,6 +423,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),
       dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+      inspectionPhoto: { taskId, photoRef, attachment },
     });
   }
 
@@ -403,6 +437,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       source,
       kind: fileKind(obs.photo.fileName, obs.photo.mimeType),
       dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+      inspectionPhoto: { taskId, photoRef, attachment: obs.photo },
     });
   });
 
@@ -466,6 +501,34 @@ export function collectPropertyDetailDocumentSections(input: {
     title: def.title,
     documents: bySectionId.get(def.id) ?? [],
   })).filter((section) => section.documents.length > 0);
+}
+
+/**
+ * Every image the property could show, in the order the full sections use
+ * (intake first, then field inspection), *before* any blob is downloaded — so
+ * the primary-photo path can pick the same entry `pickPrimaryPropertyDetailPhoto`
+ * would pick once everything is hydrated, and fetch only that one.
+ */
+export function collectPrimaryPhotoCandidates(input: {
+  property: PoPropertyIntake;
+  showDecree: boolean;
+  poNumber: string;
+  inspectionTaskId?: string | null;
+}): PropertyDetailDocumentEntry[] {
+  return [
+    ...collectIntakeDocuments(input),
+    ...collectFieldInspectionDocuments(input.inspectionTaskId),
+  ].filter(
+    (doc) =>
+      doc.kind === "image" &&
+      // Only what the full path would show once hydrated: an entry that has a
+      // preview already or a blob it can fetch. A name-only row never wins.
+      Boolean(
+        doc.dataUrl ||
+          doc.attachmentId ||
+          doc.inspectionPhoto?.attachment.attachmentId,
+      ),
+  );
 }
 
 export function listPropertyDetailPhotos(

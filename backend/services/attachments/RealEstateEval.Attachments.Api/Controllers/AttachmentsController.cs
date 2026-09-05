@@ -1,9 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Attachments.Application.Contracts;
@@ -20,7 +17,6 @@ public class AttachmentsController : ControllerBase
     private readonly IAttachmentLookup _lookup;
     private readonly IPermissionService _permissions;
     private readonly ILogger<AttachmentsController> _logger;
-
     public AttachmentsController(
         IAttachmentService attachments,
         IAttachmentLookup lookup,

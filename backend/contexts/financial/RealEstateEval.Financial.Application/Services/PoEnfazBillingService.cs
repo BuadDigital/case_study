@@ -16,7 +16,7 @@ namespace RealEstateEval.Financial.Application.Services;
 /// finance flags, and follow-ups. Persistence is <see cref="IPoEnfazBillingRepository"/>, so
 /// this class never opens EF.
 /// </summary>
-public sealed class PoEnfazBillingService : IPoEnfazBillingService
+public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
 {
     private const int MaxOrderRows = 500;
     private const int MaxTrackingRows = 2000;
@@ -268,6 +268,17 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
     public async Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
         CancellationToken cancellationToken = default)
     {
+        var rows = await ScanTrackingRowsAsync(cancellationToken);
+        return rows.Take(MaxTrackingRows).ToList();
+    }
+
+    /// <summary>
+    /// Every tracking row the scan yields, uncapped — the list the contract's search, sort and
+    /// page window are applied to (pagination-contract §10.2).
+    /// </summary>
+    private async Task<List<EnfazTrackingRowDto>> ScanTrackingRowsAsync(
+        CancellationToken cancellationToken)
+    {
         var orders = await _lookup.ListWorkOrdersForBillingAsync(MaxOrderRows, cancellationToken);
 
         if (orders.Count == 0) return [];
@@ -357,7 +368,7 @@ public sealed class PoEnfazBillingService : IPoEnfazBillingService
             }
         }
 
-        return rows.Take(MaxTrackingRows).ToList();
+        return rows;
     }
 
     public async Task<PoEnfazBillingDto?> IssueInvoiceAsync(

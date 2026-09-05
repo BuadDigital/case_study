@@ -127,13 +127,17 @@ export function FinanceCostsView({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
+  // Deliberately unpaged: the account header sums the payee's whole ledger
+  // (due / in statements / paid / balance) and the tab badges count it, and a
+  // deep-linked statement resolves its payee from the whole statement list.
+  // The paged reads live in the tabs below (usePartyBillingStatementsWorkflow).
   const readyQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "account"],
+    queryKey: [...appDataKeys.partyBilling(), "ready-lines", "account"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "statements", "account"],
+    queryKey: [...appDataKeys.partyBilling(), "statements", "account"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });

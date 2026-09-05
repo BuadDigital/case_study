@@ -8,6 +8,7 @@ using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Application.Abstractions;
+using RealEstateEval.Identity.Domain;
 using RealEstateEval.Identity.Infrastructure;
 
 namespace RealEstateEval.Application.Tests;
@@ -39,6 +40,73 @@ public class AuthSessionServiceTests
         Assert.NotNull(login);
         Assert.Equal("test-user", login.User.Email.Split('@')[0]);
         Assert.Null(await sessions.IssueForUsernameAsync("missing-user"));
+    }
+
+    /// <summary>
+    /// Two logins for one user at the same moment (two tabs, a test runner) both stamp
+    /// LastLoginAtUtc on the row-versioned profile. The one that commits second used to fail
+    /// its whole issue with a concurrency conflict (surfaced as 409) although nothing of value
+    /// was lost: both stamps mean "now".
+    /// </summary>
+    [Fact]
+    public async Task Login_succeeds_when_a_concurrent_login_stamped_the_profile_first()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        using var first = provider.CreateScope();
+        using var second = provider.CreateScope();
+        var secondLogin = await LoginAsync(second.ServiceProvider);
+
+ // The first login read the profile before the second one committed: its snapshot of the
+ // row version is stale. (The in-memory store keeps the version it was created with, so the
+ // staleness is written onto the tracked snapshot instead of coming from a real bump.)
+        var firstDb = first.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var version = firstDb.Entry(await firstDb.UserProfiles.SingleAsync()).Property<uint>("Version");
+        version.OriginalValue = version.OriginalValue + 1;
+
+        var firstLogin = await LoginAsync(first.ServiceProvider);
+
+        Assert.NotEqual(secondLogin.RefreshToken, firstLogin.RefreshToken);
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        Assert.Equal(2, await db.RefreshTokens.AsNoTracking().CountAsync());
+        Assert.NotNull((await db.UserProfiles.AsNoTracking().SingleAsync()).LastLoginAtUtc);
+    }
+
+    /// <summary>
+    /// Both concurrent logins also prune the same stale tokens; the second delete finds the
+    /// row gone. That is the other flavour of the same 409.
+    /// </summary>
+    [Fact]
+    public async Task Login_succeeds_when_a_concurrent_login_pruned_the_same_stale_token()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        var userId = (await db.UserProfiles.AsNoTracking().SingleAsync()).UserId;
+        var stale = new RefreshToken
+        {
+            UserId = userId,
+            SessionId = Guid.NewGuid(),
+            TokenHash = new string('0', 64),
+            CreatedAtUtc = DateTime.UtcNow.AddDays(-30),
+            ExpiresAtUtc = DateTime.UtcNow.AddDays(-20),
+        };
+        db.RefreshTokens.Add(stale);
+        await db.SaveChangesAsync();
+
+ // The losing login has already marked the stale row for deletion (its prune ran) when
+ // the other login's prune removes it from the store.
+        using var loser = provider.CreateScope();
+        var loserDb = loser.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        loserDb.RefreshTokens.Remove(await loserDb.RefreshTokens.SingleAsync(t => t.Id == stale.Id));
+        using (var winner = provider.CreateScope())
+        {
+            await LoginAsync(winner.ServiceProvider);
+        }
+
+        Assert.Equal(1, await db.RefreshTokens.AsNoTracking().CountAsync());
+        var login = await LoginAsync(loser.ServiceProvider);
+
+        Assert.False(string.IsNullOrWhiteSpace(login.RefreshToken));
+        Assert.Equal(2, await db.RefreshTokens.AsNoTracking().CountAsync());
     }
 
     [Fact]

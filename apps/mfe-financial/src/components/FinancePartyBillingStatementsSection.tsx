@@ -2,6 +2,7 @@
 
 import {
   EmptyState,
+  ListPager,
   StatusPill,
   TBody,
   THead,
@@ -37,8 +38,9 @@ import { FinancePartyBillingStatementDetail } from "./FinancePartyBillingStateme
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
 
 /**
- * Statement list, plus either the full detail panel (focused modes) or the
- * side summary that the “all” overview shows next to the table.
+ * Statement list — one server page (pagination-contract §9.1) with the shared
+ * pager — plus either the full detail panel (focused modes) or the side
+ * summary that the “all” overview shows next to the table.
  */
 export function FinancePartyBillingStatementsSection({
   mode,
@@ -56,6 +58,11 @@ export function FinancePartyBillingStatementsSection({
     selectedStatementId,
     selectStatement,
     staffUsers,
+    pageSize,
+    statementsPage,
+    setStatementsPage,
+    statementsTotalCount,
+    statementsTotalPages,
   } = workflow;
 
   return (
@@ -93,6 +100,7 @@ export function FinancePartyBillingStatementsSection({
               : undefined
           }
         >
+          <div className="min-w-0">
           <TableFrame>
             <Table>
               <THead>
@@ -163,6 +171,14 @@ export function FinancePartyBillingStatementsSection({
               </TBody>
             </Table>
           </TableFrame>
+          <ListPager
+            page={statementsPage}
+            pageSize={pageSize}
+            totalCount={statementsTotalCount}
+            totalPages={statementsTotalPages}
+            onPageChange={setStatementsPage}
+          />
+          </div>
 
           {mode === "all" ? (
             <div className={finWorkFlush}>

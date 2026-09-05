@@ -31,14 +31,12 @@ import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQu
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import {
-  AllTransactionsQueueTable,
-  DistributionQueueTable,
-  EngineeringSurveyQueueTable,
-  PrimaryQueueTable,
-  PropertyAppraisalQueueTable,
-  QueueFiltersToolbar,
-} from "./active-transaction-queue-tables";
+import { AllTransactionsQueueTable } from "./active-transaction-queue-all-transactions-table";
+import { DistributionQueueTable } from "./active-transaction-queue-distribution-table";
+import { EngineeringSurveyQueueTable } from "./active-transaction-queue-engineering-survey-table";
+import { PrimaryQueueTable } from "./active-transaction-queue-primary-table";
+import { PropertyAppraisalQueueTable } from "./active-transaction-queue-property-appraisal-table";
+import { QueueFiltersToolbar } from "./active-transaction-queue-filters-toolbar";
 import type {
   ActiveQueueApi,
   ActiveTransactionQueueConfig,

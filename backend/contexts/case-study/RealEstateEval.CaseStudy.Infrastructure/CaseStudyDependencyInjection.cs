@@ -43,6 +43,8 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyFormRepository, CaseStudyFormRepository>();
         services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
+        services.AddScoped<ICaseStudyFormBatchQuery, CaseStudyFormBatchQueryService>();
+        services.AddScoped<ICaseStudyFormBatchReadService, CaseStudyFormBatchReadService>();
         services.AddScoped<ICaseStudyValuationDispatchRepository, CaseStudyValuationDispatchRepository>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionRepository, PartyTaskSubmissionRepository>();

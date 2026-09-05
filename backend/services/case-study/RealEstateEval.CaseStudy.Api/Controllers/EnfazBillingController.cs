@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
@@ -13,14 +15,47 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class EnfazBillingController : ControllerBase
 {
     private readonly IPoEnfazBillingService _billing;
+    private readonly DatabaseOptions _dbOptions;
 
-    public EnfazBillingController(IPoEnfazBillingService billing) => _billing = billing;
+    public EnfazBillingController(
+        IPoEnfazBillingService billing,
+        IOptions<DatabaseOptions>? dbOptions = null)
+    {
+        _billing = billing;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+    }
 
+ /// <summary>
+ /// Work orders ready for an Enfaz invoice. Sending page or pageSize returns PagedResultDto;
+ /// without them the response stays the plain array. See
+ /// docs/architecture/pagination-contract.md §10.1.
+ /// </summary>
     [HttpGet("ready-pos-summary")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
-    public async Task<ActionResult<IReadOnlyList<EnfazReadyPoSummaryDto>>> ListReadyPosSummary(
-        CancellationToken ct) =>
-        Ok(await _billing.ListReadyPoSummariesAsync(ct));
+    public async Task<IActionResult> ListReadyPosSummary(
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        var query = new EnfazReadyPoListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _billing.ListReadyPoSummariesAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _billing.ListReadyPoSummariesPagedAsync(query, skip, take, resolvedPage, ct));
+    }
 
     [HttpGet("{poNumber}")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
@@ -43,11 +78,37 @@ public class EnfazBillingController : ControllerBase
             : Ok(dto);
     }
 
+ /// <summary>
+ /// Per-property tracking rows. Sending page or pageSize returns PagedResultDto; without them the
+ /// response stays the plain array (capped at 2000 as before). See
+ /// docs/architecture/pagination-contract.md §10.2.
+ /// </summary>
     [HttpGet("tracking")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
-    public async Task<ActionResult<IReadOnlyList<EnfazTrackingRowDto>>> Tracking(
-        CancellationToken ct) =>
-        Ok(await _billing.ListTrackingAsync(ct));
+    public async Task<IActionResult> Tracking(
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        var query = new EnfazTrackingListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _billing.ListTrackingAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _billing.ListTrackingPagedAsync(query, skip, take, resolvedPage, ct));
+    }
 
     [HttpGet("aging")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]

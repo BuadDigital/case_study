@@ -42,7 +42,7 @@ public class ValuationRequestsController : ControllerBase
     }
 
     [HttpGet("open-by-property/{propertyId}")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationRequestDto>> GetOpenByProperty(
         string propertyId,
         CancellationToken ct)

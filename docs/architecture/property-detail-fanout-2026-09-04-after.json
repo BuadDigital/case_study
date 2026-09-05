@@ -1,0 +1,6275 @@
+{
+  "measuredAtUtc": "2026-09-04T17:41:58.648Z",
+  "measuredRunsAtUtc": [
+    "2026-09-04T17:35:54.301Z",
+    "2026-09-04T17:39:07.687Z",
+    "2026-09-04T17:41:58.648Z"
+  ],
+  "base": "http://127.0.0.1:3000",
+  "gateway": "http://127.0.0.1:5160",
+  "user": "osama@ejadah.dev",
+  "runs": 3,
+  "fixture": {
+    "po": "036680",
+    "propertyId": "1fcdff4b-28c3-4602-a67a-21e9531f0393"
+  },
+  "notes": [],
+  "mergedFrom": [
+    "docs/architecture/.fanout-after2-run1.json",
+    "docs/architecture/.fanout-after2-run2.json",
+    "docs/architecture/.fanout-after2-run3.json"
+  ],
+  "summary": [
+    {
+      "phase": "property-detail:initial",
+      "perRunTotals": [
+        29,
+        29,
+        29
+      ],
+      "medianRequests": 29,
+      "perRunNewEndpointRequests": [
+        29,
+        29,
+        29
+      ],
+      "medianNewEndpointRequests": 29,
+      "newEndpoints": [
+        "GET /api/attachments/for-property",
+        "GET /api/attachments/{id}",
+        "GET /api/case-study-forms/party/{id}",
+        "GET /api/case-study-forms/{id}",
+        "GET /api/case-study-info-roles",
+        "GET /api/failure-types-catalog",
+        "GET /api/failures",
+        "GET /api/inspector-fees",
+        "GET /api/key-envelopes/gate",
+        "GET /api/notifications",
+        "GET /api/operations-tasks",
+        "GET /api/organization-settings",
+        "GET /api/party-task-submissions/{id}",
+        "GET /api/permissions",
+        "GET /api/reporting/v1/dashboard",
+        "GET /api/users/distribution-assignees",
+        "GET /api/work-orders",
+        "GET /api/work-orders/details",
+        "GET /api/work-orders/properties/pending-bourse",
+        "GET /api/work-orders/property-rows",
+        "GET /api/work-orders/{n}",
+        "GET /api/work-orders/{n}/properties/{id}/timeline",
+        "GET /api/workflow-tasks",
+        "POST /api/workflow-tasks/sync"
+      ],
+      "medianDistinctEndpoints": 24,
+      "medianBytes": 184849,
+      "perService": {
+        "attachments": {
+          "port": 5169,
+          "medianCount": 2
+        },
+        "case-study": {
+          "port": 5162,
+          "medianCount": 15
+        },
+        "failures": {
+          "port": 5167,
+          "medianCount": 2
+        },
+        "identity": {
+          "port": 5161,
+          "medianCount": 2
+        },
+        "operations": {
+          "port": 5163,
+          "medianCount": 2
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 5
+        },
+        "reporting": {
+          "port": 5164,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/key-envelopes/gate",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 107,
+          "medianBytes": 270,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 80,
+          "medianBytes": 127,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/case-study-info-roles",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 78,
+          "medianBytes": 371,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/case-study-forms/party/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 71,
+          "medianBytes": 381,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/party-task-submissions/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 67,
+          "medianBytes": 1819,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/failures",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 59,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "POST /api/workflow-tasks/sync",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 57,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/attachments/for-property",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 57,
+          "medianBytes": 264,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 56,
+          "medianBytes": 3285,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/property-rows",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 56,
+          "medianBytes": 3786,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/users/distribution-assignees",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 52,
+          "medianBytes": 4373,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/details",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 50,
+          "medianBytes": 58197,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/properties/pending-bourse",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 49,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/workflow-tasks",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 48,
+          "medianBytes": 17025,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/{n}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 47,
+          "medianBytes": 1655,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/{n}/properties/{id}/timeline",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 47,
+          "medianBytes": 856,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/organization-settings",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 44,
+          "medianBytes": 7379,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/permissions",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 44,
+          "medianBytes": 441,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/reporting/v1/dashboard",
+          "service": "reporting",
+          "port": 5164,
+          "medianMs": 43,
+          "medianBytes": 1055,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/case-study-forms/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 36,
+          "medianBytes": 418,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 35,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 24,
+          "medianBytes": 6793,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/failure-types-catalog",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 16,
+          "medianBytes": 1015,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/attachments/{id}",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 13,
+          "medianBytes": 57034,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/key-envelopes/gate",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 107,
+          "medianBytes": 270,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 80,
+          "medianBytes": 127,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/case-study-info-roles",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 78,
+          "medianBytes": 371,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:basic",
+      "perRunTotals": [
+        1,
+        1,
+        1
+      ],
+      "medianRequests": 1,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 1,
+      "medianBytes": 16,
+      "perService": {
+        "operations": {
+          "port": 5163,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 15,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 15,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:documents",
+      "perRunTotals": [
+        23,
+        23,
+        23
+      ],
+      "medianRequests": 23,
+      "perRunNewEndpointRequests": [
+        1,
+        1,
+        1
+      ],
+      "medianNewEndpointRequests": 1,
+      "newEndpoints": [
+        "GET /api/attachments"
+      ],
+      "medianDistinctEndpoints": 4,
+      "medianBytes": 8221383,
+      "perService": {
+        "attachments": {
+          "port": 5169,
+          "medianCount": 19
+        },
+        "case-study": {
+          "port": 5162,
+          "medianCount": 3
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/attachments",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 142,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/attachments/{id}",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 78,
+          "medianBytes": 326008,
+          "observations": 54
+        },
+        {
+          "endpoint": "GET /api/party-task-submissions/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 61,
+          "medianBytes": 1814,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 15,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/attachments",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 142,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/attachments/{id}",
+          "service": "attachments",
+          "port": 5169,
+          "medianMs": 78,
+          "medianBytes": 326008,
+          "observations": 54
+        },
+        {
+          "endpoint": "GET /api/party-task-submissions/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 61,
+          "medianBytes": 1814,
+          "observations": 9
+        }
+      ]
+    },
+    {
+      "phase": "tab:linked",
+      "perRunTotals": [
+        7,
+        7,
+        7
+      ],
+      "medianRequests": 7,
+      "perRunNewEndpointRequests": [
+        4,
+        4,
+        4
+      ],
+      "medianNewEndpointRequests": 4,
+      "newEndpoints": [
+        "GET /api/property-groups/by-property/{id}",
+        "GET /api/work-orders/deeds/prior/history"
+      ],
+      "medianDistinctEndpoints": 4,
+      "medianBytes": 7712,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 6
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/work-orders/deeds/prior/history",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 50,
+          "medianBytes": 19,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/property-groups/by-property/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 47,
+          "medianBytes": 23,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/case-study-forms/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 44,
+          "medianBytes": 418,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 14,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/work-orders/deeds/prior/history",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 50,
+          "medianBytes": 19,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/property-groups/by-property/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 47,
+          "medianBytes": 23,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/case-study-forms/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 44,
+          "medianBytes": 418,
+          "observations": 6
+        }
+      ]
+    },
+    {
+      "phase": "tab:survey",
+      "perRunTotals": [
+        2,
+        2,
+        2
+      ],
+      "medianRequests": 2,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 2,
+      "medianBytes": 6809,
+      "perService": {
+        "operations": {
+          "port": 5163,
+          "medianCount": 1
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 16,
+          "medianBytes": 6793,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 14,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 16,
+          "medianBytes": 6793,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 14,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:inspection",
+      "perRunTotals": [
+        6,
+        6,
+        6
+      ],
+      "medianRequests": 6,
+      "perRunNewEndpointRequests": [
+        5,
+        5,
+        5
+      ],
+      "medianNewEndpointRequests": 5,
+      "newEndpoints": [
+        "GET /api/property-comparable-links",
+        "GET /api/valuation-lists"
+      ],
+      "medianDistinctEndpoints": 3,
+      "medianBytes": 44993,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 1
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 3
+        },
+        "valuation": {
+          "port": 5166,
+          "medianCount": 2
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/valuation-lists",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 63,
+          "medianBytes": 13830,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/property-comparable-links",
+          "service": "valuation",
+          "port": 5166,
+          "medianMs": 33,
+          "medianBytes": 157,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/party-task-submissions/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 17,
+          "medianBytes": 3174,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/valuation-lists",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 63,
+          "medianBytes": 13830,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/property-comparable-links",
+          "service": "valuation",
+          "port": 5166,
+          "medianMs": 33,
+          "medianBytes": 157,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/party-task-submissions/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 17,
+          "medianBytes": 3174,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:photos",
+      "perRunTotals": [
+        1,
+        1,
+        1
+      ],
+      "medianRequests": 1,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 1,
+      "medianBytes": 6793,
+      "perService": {
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 15,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 15,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:government",
+      "perRunTotals": [
+        1,
+        1,
+        1
+      ],
+      "medianRequests": 1,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 1,
+      "medianBytes": 6793,
+      "perService": {
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 13,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 13,
+          "medianBytes": 6793,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:keys",
+      "perRunTotals": [
+        3,
+        3,
+        3
+      ],
+      "medianRequests": 3,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 3,
+      "medianBytes": 7079,
+      "perService": {
+        "operations": {
+          "port": 5163,
+          "medianCount": 2
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/key-envelopes/gate",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 24,
+          "medianBytes": 270,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 14,
+          "medianBytes": 6793,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 13,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/key-envelopes/gate",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 24,
+          "medianBytes": 270,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 14,
+          "medianBytes": 6793,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/operations-tasks",
+          "service": "operations",
+          "port": 5163,
+          "medianMs": 13,
+          "medianBytes": 16,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:appraisal",
+      "perRunTotals": [
+        2,
+        2,
+        2
+      ],
+      "medianRequests": 2,
+      "perRunNewEndpointRequests": [
+        2,
+        2,
+        2
+      ],
+      "medianNewEndpointRequests": 2,
+      "newEndpoints": [
+        "GET /api/notifications/stream",
+        "GET /api/valuation-requests/open-by-property/{id}"
+      ],
+      "medianDistinctEndpoints": 2,
+      "medianBytes": 0,
+      "perService": {
+        "platform": {
+          "port": 5168,
+          "medianCount": 1
+        },
+        "valuation": {
+          "port": 5166,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/valuation-requests/open-by-property/{id}",
+          "service": "valuation",
+          "port": 5166,
+          "medianMs": 0,
+          "medianBytes": 0,
+          "observations": 0
+        },
+        {
+          "endpoint": "GET /api/notifications/stream",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 0,
+          "medianBytes": 0,
+          "observations": 0
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/valuation-requests/open-by-property/{id}",
+          "service": "valuation",
+          "port": 5166,
+          "medianMs": 0,
+          "medianBytes": 0,
+          "observations": 0
+        },
+        {
+          "endpoint": "GET /api/notifications/stream",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 0,
+          "medianBytes": 0,
+          "observations": 0
+        }
+      ]
+    },
+    {
+      "phase": "tab:failures",
+      "perRunTotals": [
+        0,
+        0,
+        0
+      ],
+      "medianRequests": 0,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 0,
+      "medianBytes": 0,
+      "perService": {},
+      "endpoints": [],
+      "slowestThree": []
+    },
+    {
+      "phase": "tab:report",
+      "perRunTotals": [
+        3,
+        3,
+        3
+      ],
+      "medianRequests": 3,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 2,
+      "medianBytes": 17870,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 3
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/case-study-forms/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 45,
+          "medianBytes": 413,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/workflow-tasks",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 37,
+          "medianBytes": 17044,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/case-study-forms/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 45,
+          "medianBytes": 413,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/workflow-tasks",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 37,
+          "medianBytes": 17044,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:enfath-upload",
+      "perRunTotals": [
+        0,
+        0,
+        0
+      ],
+      "medianRequests": 0,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 0,
+      "medianBytes": 0,
+      "perService": {},
+      "endpoints": [],
+      "slowestThree": []
+    },
+    {
+      "phase": "tab:finance",
+      "perRunTotals": [
+        2,
+        2,
+        2
+      ],
+      "medianRequests": 2,
+      "perRunNewEndpointRequests": [
+        1,
+        1,
+        1
+      ],
+      "medianNewEndpointRequests": 1,
+      "newEndpoints": [
+        "GET /api/enfaz-billing/{n}/properties/{id}"
+      ],
+      "medianDistinctEndpoints": 2,
+      "medianBytes": 227,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 2
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/enfaz-billing/{n}/properties/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 93,
+          "medianBytes": 100,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 20,
+          "medianBytes": 127,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/enfaz-billing/{n}/properties/{id}",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 93,
+          "medianBytes": 100,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 20,
+          "medianBytes": 127,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "tab:log",
+      "perRunTotals": [
+        0,
+        0,
+        0
+      ],
+      "medianRequests": 0,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 0,
+      "medianBytes": 0,
+      "perService": {},
+      "endpoints": [],
+      "slowestThree": []
+    },
+    {
+      "phase": "tab:survey-notes",
+      "perRunTotals": [
+        0,
+        0,
+        0
+      ],
+      "medianRequests": 0,
+      "perRunNewEndpointRequests": [
+        0,
+        0,
+        0
+      ],
+      "medianNewEndpointRequests": 0,
+      "newEndpoints": [],
+      "medianDistinctEndpoints": 0,
+      "medianBytes": 0,
+      "perService": {},
+      "endpoints": [],
+      "slowestThree": []
+    },
+    {
+      "phase": "active-case-study:initial",
+      "perRunTotals": [
+        18,
+        18,
+        18
+      ],
+      "medianRequests": 18,
+      "perRunNewEndpointRequests": [
+        1,
+        1,
+        1
+      ],
+      "medianNewEndpointRequests": 1,
+      "newEndpoints": [
+        "GET /api/case-study-forms/batch"
+      ],
+      "medianDistinctEndpoints": 16,
+      "medianBytes": 117542,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 8
+        },
+        "failures": {
+          "port": 5167,
+          "medianCount": 2
+        },
+        "identity": {
+          "port": 5161,
+          "medianCount": 2
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 5
+        },
+        "reporting": {
+          "port": 5164,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 102,
+          "medianBytes": 127,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/failures",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 91,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/users/distribution-assignees",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 88,
+          "medianBytes": 4373,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/property-rows",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 81,
+          "medianBytes": 3786,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/properties/pending-bourse",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 79,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "POST /api/workflow-tasks/sync",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 79,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 64,
+          "medianBytes": 3285,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/permissions",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 62,
+          "medianBytes": 441,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/details",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 58,
+          "medianBytes": 58195,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/workflow-tasks",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 52,
+          "medianBytes": 17072,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/reporting/v1/dashboard",
+          "service": "reporting",
+          "port": 5164,
+          "medianMs": 52,
+          "medianBytes": 1060,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/organization-settings",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 51,
+          "medianBytes": 7392,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 18,
+          "medianBytes": 6793,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/case-study-info-roles",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 18,
+          "medianBytes": 376,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/failure-types-catalog",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 17,
+          "medianBytes": 1015,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/case-study-forms/batch",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 0,
+          "medianBytes": 0,
+          "observations": 0
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 102,
+          "medianBytes": 127,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/failures",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 91,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/users/distribution-assignees",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 88,
+          "medianBytes": 4373,
+          "observations": 3
+        }
+      ]
+    },
+    {
+      "phase": "po-list:initial",
+      "perRunTotals": [
+        22,
+        22,
+        23
+      ],
+      "medianRequests": 22,
+      "perRunNewEndpointRequests": [
+        5,
+        5,
+        5
+      ],
+      "medianNewEndpointRequests": 5,
+      "newEndpoints": [
+        "GET /api/clients",
+        "GET /api/po-intake-draft/mine",
+        "GET /api/work-orders/counts",
+        "PUT /api/po-intake-draft"
+      ],
+      "medianDistinctEndpoints": 18,
+      "medianBytes": 114571,
+      "perService": {
+        "case-study": {
+          "port": 5162,
+          "medianCount": 13
+        },
+        "failures": {
+          "port": 5167,
+          "medianCount": 2
+        },
+        "identity": {
+          "port": 5161,
+          "medianCount": 2
+        },
+        "platform": {
+          "port": 5168,
+          "medianCount": 4
+        },
+        "reporting": {
+          "port": 5164,
+          "medianCount": 1
+        }
+      },
+      "endpoints": [
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 90,
+          "medianBytes": 127,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/users/distribution-assignees",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 86,
+          "medianBytes": 4375,
+          "observations": 3
+        },
+        {
+          "endpoint": "POST /api/workflow-tasks/sync",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 81,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/properties/pending-bourse",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 78,
+          "medianBytes": 21,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/clients",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 67,
+          "medianBytes": 348,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/work-orders/counts",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 60,
+          "medianBytes": 103,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 52,
+          "medianBytes": 1917,
+          "observations": 6
+        },
+        {
+          "endpoint": "GET /api/permissions",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 46,
+          "medianBytes": 441,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/details",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 45,
+          "medianBytes": 58236,
+          "observations": 4
+        },
+        {
+          "endpoint": "GET /api/workflow-tasks",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 39,
+          "medianBytes": 17046,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/po-intake-draft/mine",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 37,
+          "medianBytes": 203,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/organization-settings",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 36,
+          "medianBytes": 7384,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/failures",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 35,
+          "medianBytes": 16,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/notifications",
+          "service": "platform",
+          "port": 5168,
+          "medianMs": 19,
+          "medianBytes": 6800,
+          "observations": 9
+        },
+        {
+          "endpoint": "GET /api/failure-types-catalog",
+          "service": "failures",
+          "port": 5167,
+          "medianMs": 17,
+          "medianBytes": 1020,
+          "observations": 3
+        },
+        {
+          "endpoint": "PUT /api/po-intake-draft",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 16,
+          "medianBytes": 204,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/reporting/v1/dashboard",
+          "service": "reporting",
+          "port": 5164,
+          "medianMs": 15,
+          "medianBytes": 1055,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/work-orders/property-rows",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 1,
+          "medianBytes": -610,
+          "observations": 3
+        }
+      ],
+      "slowestThree": [
+        {
+          "endpoint": "GET /api/inspector-fees",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 90,
+          "medianBytes": 127,
+          "observations": 3
+        },
+        {
+          "endpoint": "GET /api/users/distribution-assignees",
+          "service": "identity",
+          "port": 5161,
+          "medianMs": 86,
+          "medianBytes": 4375,
+          "observations": 3
+        },
+        {
+          "endpoint": "POST /api/workflow-tasks/sync",
+          "service": "case-study",
+          "port": 5162,
+          "medianMs": 81,
+          "medianBytes": 21,
+          "observations": 3
+        }
+      ]
+    }
+  ],
+  "raw": [
+    {
+      "run": 1,
+      "notes": [],
+      "records": [
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 52.92,
+          "responseBytes": 7385,
+          "transferBytes": 8006,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 60.67,
+          "responseBytes": 17031,
+          "transferBytes": 17652,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 55.58,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 88.03,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 93.35,
+          "responseBytes": 58141,
+          "transferBytes": 58762,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 100.56,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 105.31,
+          "responseBytes": 3786,
+          "transferBytes": 4443,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 44.4,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}",
+          "status": 200,
+          "durationMs": 57.53,
+          "responseBytes": 1655,
+          "transferBytes": 2276,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 63.23,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 64.92,
+          "responseBytes": 4373,
+          "transferBytes": 4994,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 68.22,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 74.52,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 30.46,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393/timeline",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}/properties/{id}/timeline",
+          "status": 200,
+          "durationMs": 47.29,
+          "responseBytes": 851,
+          "transferBytes": 1472,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 46.75,
+          "responseBytes": 3186,
+          "transferBytes": 3807,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 46.19,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/for-property",
+          "query": "propertyId=036680%3A1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/attachments/for-property",
+          "status": 200,
+          "durationMs": 57.07,
+          "responseBytes": 259,
+          "transferBytes": 880,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 80.33,
+          "responseBytes": 1819,
+          "transferBytes": 2440,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 86.88,
+          "responseBytes": 376,
+          "transferBytes": 997,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 95.01,
+          "responseBytes": 1355,
+          "transferBytes": 1976,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/party/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/case-study-forms/party/{id}",
+          "status": 200,
+          "durationMs": 96.02,
+          "responseBytes": 381,
+          "transferBytes": 1002,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 93.82,
+          "responseBytes": 122,
+          "transferBytes": 743,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 107.23,
+          "responseBytes": 275,
+          "transferBytes": 896,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/4113e9d2-af0a-4148-94bc-dd9e6a510e3a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 13.25,
+          "responseBytes": 57034,
+          "transferBytes": 57698,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 15.25,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 16.56,
+          "responseBytes": 1015,
+          "transferBytes": 1636,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 15.05,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 24.3,
+          "responseBytes": 6807,
+          "transferBytes": 7428,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:basic",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 25.84,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 96.97,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 105.09,
+          "responseBytes": 1814,
+          "transferBytes": 2435,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 114.05,
+          "responseBytes": 1350,
+          "transferBytes": 1971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/2bbfbdf2-3855-49ff-82d3-f869bacb4e7c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 128.66,
+          "responseBytes": 325743,
+          "transferBytes": 326437,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/e499794f-ce27-4782-9d1c-d83da989ef68",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 138.82,
+          "responseBytes": 326273,
+          "transferBytes": 326967,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a5edfe85-22fd-42d7-85b9-c6435d2fccf2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 145.79,
+          "responseBytes": 501166,
+          "transferBytes": 501860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/5337ab5e-28a4-44cf-b6b6-b5d5bc6811be",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 197.31,
+          "responseBytes": 15209,
+          "transferBytes": 15858,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/31b18df1-79af-412e-bf28-2876f888e2bf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 207.9,
+          "responseBytes": 81963,
+          "transferBytes": 82656,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/23e05eeb-72b7-41b4-be85-8e6d438b7d61",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 228.36,
+          "responseBytes": 2023006,
+          "transferBytes": 2023706,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1f3833be-e7bc-4f59-9846-67b7236acbf7",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 236.35,
+          "responseBytes": 2027109,
+          "transferBytes": 2027761,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments",
+          "query": "scope=evaluator-report&scopeKey=62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "endpoint": "/api/attachments",
+          "status": 200,
+          "durationMs": 228.25,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/10c1a15e-fb00-4a88-a21a-0203e1d2e0cf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 143.04,
+          "responseBytes": 14314,
+          "transferBytes": 14947,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/00952819-433d-4113-b303-812ef77b6d1c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 144.32,
+          "responseBytes": 407160,
+          "transferBytes": 407854,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/df6a3c08-e108-4f98-b86b-eca87ed3853d",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 130.48,
+          "responseBytes": 369166,
+          "transferBytes": 369860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/58877168-6ba3-41d1-a87a-950e92e306a2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 117.09,
+          "responseBytes": 276489,
+          "transferBytes": 277183,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a680b80c-45f9-4bc9-af37-141d03f73364",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 117.12,
+          "responseBytes": 243057,
+          "transferBytes": 243751,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 157.32,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1287fb42-47e4-4320-807f-5272d7d6dda4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 85.91,
+          "responseBytes": 226063,
+          "transferBytes": 226757,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/6dbadecb-28eb-4d12-8f97-a488dff4b4c6",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 77.55,
+          "responseBytes": 329996,
+          "transferBytes": 330690,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/dd0b0941-13ad-4ce7-86ce-5d2eb92757c4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 77.9,
+          "responseBytes": 196868,
+          "transferBytes": 197562,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/68eac10b-ab85-4f7d-b288-e34466535bd2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 77.11,
+          "responseBytes": 110021,
+          "transferBytes": 110715,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/71d93457-a4d7-4f16-912d-cd82d1472fb9",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 99.3,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/ed6af69c-ad7d-480e-99b8-2d0251a7f29a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 41.01,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 42.5,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 49.06,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 46.52,
+          "responseBytes": 18,
+          "transferBytes": 639,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 77.46,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 81.8,
+          "responseBytes": 23,
+          "transferBytes": 644,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 85.7,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 21.77,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 29.57,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 18.79,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 25.48,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 38.05,
+          "responseBytes": 13817,
+          "transferBytes": 14438,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 62.57,
+          "responseBytes": 13840,
+          "transferBytes": 14461,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 81.49,
+          "responseBytes": 13824,
+          "transferBytes": 14445,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 40.69,
+          "responseBytes": 152,
+          "transferBytes": 773,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 44.8,
+          "responseBytes": 157,
+          "transferBytes": 778,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:photos",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 19.79,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:government",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 95.39,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 23.25,
+          "responseBytes": 270,
+          "transferBytes": 891,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 12.49,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.89,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/valuation-requests/open-by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/valuation-requests/open-by-property/{id}",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "valuation",
+          "port": 5166,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/notifications/stream",
+          "query": "",
+          "endpoint": "/api/notifications/stream",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "platform",
+          "port": 5168,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 29.42,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 37.11,
+          "responseBytes": 17044,
+          "transferBytes": 17665,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 44.86,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 31.46,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/enfaz-billing/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/enfaz-billing/{n}/properties/{id}",
+          "status": 200,
+          "durationMs": 97.63,
+          "responseBytes": 100,
+          "transferBytes": 721,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 41.94,
+          "responseBytes": 7391,
+          "transferBytes": 8012,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 50.48,
+          "responseBytes": 17072,
+          "transferBytes": 17693,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 47.18,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 53.98,
+          "responseBytes": 58202,
+          "transferBytes": 58823,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 59.13,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 59.44,
+          "responseBytes": 3786,
+          "transferBytes": 4443,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 64.14,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 31.45,
+          "responseBytes": 6805,
+          "transferBytes": 7426,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 67.1,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 71.11,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 75.68,
+          "responseBytes": 4373,
+          "transferBytes": 4994,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 95.48,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/batch",
+          "query": "parentTaskIds=20a6a2d3-7e13-4190-be4b-229910121186%2Cbe65b47c-4cdb-483e-a529-1c4be52e68e7",
+          "endpoint": "/api/case-study-forms/batch",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "case-study",
+          "port": 5162,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 19.66,
+          "responseBytes": 376,
+          "transferBytes": 997,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 20.92,
+          "responseBytes": 1015,
+          "transferBytes": 1636,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 54.99,
+          "responseBytes": 1060,
+          "transferBytes": 1681,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 18.15,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 13.88,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 0.97,
+          "responseBytes": -610,
+          "transferBytes": 0,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 39.09,
+          "responseBytes": 7396,
+          "transferBytes": 8017,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 45.48,
+          "responseBytes": 17037,
+          "transferBytes": 17658,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 45.89,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 41.08,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 46.53,
+          "responseBytes": 58242,
+          "transferBytes": 58863,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 53.46,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 36.54,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/po-intake-draft/mine",
+          "query": "",
+          "endpoint": "/api/po-intake-draft/mine",
+          "status": 200,
+          "durationMs": 35.96,
+          "responseBytes": 204,
+          "transferBytes": 825,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 47.2,
+          "responseBytes": 350,
+          "transferBytes": 971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=10&sort=created&dir=desc",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 49.04,
+          "responseBytes": 544,
+          "transferBytes": 1165,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/counts",
+          "query": "",
+          "endpoint": "/api/work-orders/counts",
+          "status": 200,
+          "durationMs": 60.39,
+          "responseBytes": 103,
+          "transferBytes": 724,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 76.67,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 79.07,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 86.49,
+          "responseBytes": 4373,
+          "transferBytes": 4994,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 90.32,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 91.39,
+          "responseBytes": 345,
+          "transferBytes": 966,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "PUT",
+          "path": "/api/po-intake-draft",
+          "query": "",
+          "endpoint": "/api/po-intake-draft",
+          "status": 200,
+          "durationMs": 17.27,
+          "responseBytes": 204,
+          "transferBytes": 893,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 14.29,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 15.39,
+          "responseBytes": 1020,
+          "transferBytes": 1641,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 15.08,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 19.12,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "notes": [],
+      "records": [
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 46.28,
+          "responseBytes": 17025,
+          "transferBytes": 17646,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 44.24,
+          "responseBytes": 7379,
+          "transferBytes": 8000,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 44.38,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 49.65,
+          "responseBytes": 58197,
+          "transferBytes": 58818,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 55.65,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 55.62,
+          "responseBytes": 3786,
+          "transferBytes": 4443,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 58.74,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 45.45,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}",
+          "status": 200,
+          "durationMs": 47.32,
+          "responseBytes": 1655,
+          "transferBytes": 2276,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 49.03,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 51,
+          "responseBytes": 4373,
+          "transferBytes": 4994,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 57.42,
+          "responseBytes": 16,
+          "transferBytes": 705,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 64.44,
+          "responseBytes": 122,
+          "transferBytes": 743,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 36.37,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 39.01,
+          "responseBytes": 3181,
+          "transferBytes": 3802,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393/timeline",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}/properties/{id}/timeline",
+          "status": 200,
+          "durationMs": 44.51,
+          "responseBytes": 856,
+          "transferBytes": 1477,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/for-property",
+          "query": "propertyId=036680%3A1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/attachments/for-property",
+          "status": 200,
+          "durationMs": 50.68,
+          "responseBytes": 264,
+          "transferBytes": 885,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/party/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/case-study-forms/party/{id}",
+          "status": 200,
+          "durationMs": 70.91,
+          "responseBytes": 376,
+          "transferBytes": 997,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 77.18,
+          "responseBytes": 1814,
+          "transferBytes": 2435,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 77.29,
+          "responseBytes": 1355,
+          "transferBytes": 1976,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 78.16,
+          "responseBytes": 371,
+          "transferBytes": 992,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 105.7,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 105.06,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 120.8,
+          "responseBytes": 270,
+          "transferBytes": 891,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/4113e9d2-af0a-4148-94bc-dd9e6a510e3a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 11.64,
+          "responseBytes": 57034,
+          "transferBytes": 57698,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 15.75,
+          "responseBytes": 1015,
+          "transferBytes": 1636,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 43.2,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 16.29,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.9,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:basic",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 13.06,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 60.88,
+          "responseBytes": 1814,
+          "transferBytes": 2435,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 59.8,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 61.09,
+          "responseBytes": 1350,
+          "transferBytes": 1971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1f3833be-e7bc-4f59-9846-67b7236acbf7",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 50.93,
+          "responseBytes": 2027109,
+          "transferBytes": 2027761,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/23e05eeb-72b7-41b4-be85-8e6d438b7d61",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 55.62,
+          "responseBytes": 2023006,
+          "transferBytes": 2023706,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/2bbfbdf2-3855-49ff-82d3-f869bacb4e7c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 52.42,
+          "responseBytes": 325743,
+          "transferBytes": 326437,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/31b18df1-79af-412e-bf28-2876f888e2bf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 53.65,
+          "responseBytes": 81963,
+          "transferBytes": 82656,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/e499794f-ce27-4782-9d1c-d83da989ef68",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 57.22,
+          "responseBytes": 326273,
+          "transferBytes": 326967,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/5337ab5e-28a4-44cf-b6b6-b5d5bc6811be",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 92.61,
+          "responseBytes": 15209,
+          "transferBytes": 15858,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a5edfe85-22fd-42d7-85b9-c6435d2fccf2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 98.76,
+          "responseBytes": 501166,
+          "transferBytes": 501860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments",
+          "query": "scope=evaluator-report&scopeKey=62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "endpoint": "/api/attachments",
+          "status": 200,
+          "durationMs": 98.96,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/10c1a15e-fb00-4a88-a21a-0203e1d2e0cf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 46.09,
+          "responseBytes": 14314,
+          "transferBytes": 14947,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/00952819-433d-4113-b303-812ef77b6d1c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 46.06,
+          "responseBytes": 407160,
+          "transferBytes": 407854,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/df6a3c08-e108-4f98-b86b-eca87ed3853d",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 72.82,
+          "responseBytes": 369166,
+          "transferBytes": 369860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/58877168-6ba3-41d1-a87a-950e92e306a2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 45.91,
+          "responseBytes": 276489,
+          "transferBytes": 277183,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a680b80c-45f9-4bc9-af37-141d03f73364",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 44.57,
+          "responseBytes": 243057,
+          "transferBytes": 243751,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/6dbadecb-28eb-4d12-8f97-a488dff4b4c6",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 41.4,
+          "responseBytes": 329996,
+          "transferBytes": 330690,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1287fb42-47e4-4320-807f-5272d7d6dda4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 45.33,
+          "responseBytes": 226063,
+          "transferBytes": 226757,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/68eac10b-ab85-4f7d-b288-e34466535bd2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 33.35,
+          "responseBytes": 110021,
+          "transferBytes": 110715,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/dd0b0941-13ad-4ce7-86ce-5d2eb92757c4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 37.29,
+          "responseBytes": 196868,
+          "transferBytes": 197562,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/71d93457-a4d7-4f16-912d-cd82d1472fb9",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 32.99,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/ed6af69c-ad7d-480e-99b8-2d0251a7f29a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 28.27,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.57,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 28.63,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 30.83,
+          "responseBytes": 18,
+          "transferBytes": 639,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 33.75,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 45.23,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 47.61,
+          "responseBytes": 23,
+          "transferBytes": 644,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 51.06,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 14.07,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 15.73,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 12.25,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 15.48,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 96.92,
+          "responseBytes": 13837,
+          "transferBytes": 14458,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 107.71,
+          "responseBytes": 13828,
+          "transferBytes": 14449,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 119.22,
+          "responseBytes": 13840,
+          "transferBytes": 14461,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 17.2,
+          "responseBytes": 157,
+          "transferBytes": 778,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 15.42,
+          "responseBytes": 157,
+          "transferBytes": 778,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:photos",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 14.98,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:government",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.65,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 28.07,
+          "responseBytes": 270,
+          "transferBytes": 891,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 12.83,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 13.91,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/valuation-requests/open-by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/valuation-requests/open-by-property/{id}",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "valuation",
+          "port": 5166,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/notifications/stream",
+          "query": "",
+          "endpoint": "/api/notifications/stream",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "platform",
+          "port": 5168,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 32.29,
+          "responseBytes": 17037,
+          "transferBytes": 17658,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 95.36,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 111.96,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 20.43,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/enfaz-billing/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/enfaz-billing/{n}/properties/{id}",
+          "status": 200,
+          "durationMs": 92.52,
+          "responseBytes": 100,
+          "transferBytes": 721,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 51.76,
+          "responseBytes": 17032,
+          "transferBytes": 17653,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 50.7,
+          "responseBytes": 7393,
+          "transferBytes": 8014,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 61.67,
+          "responseBytes": 436,
+          "transferBytes": 1057,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 58.49,
+          "responseBytes": 58195,
+          "transferBytes": 58816,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 64.47,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 36.16,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 157.52,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 79.1,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 79.11,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 87.76,
+          "responseBytes": 4373,
+          "transferBytes": 4994,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 102.48,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 224.61,
+          "responseBytes": 3793,
+          "transferBytes": 4450,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/batch",
+          "query": "parentTaskIds=20a6a2d3-7e13-4190-be4b-229910121186%2Cbe65b47c-4cdb-483e-a529-1c4be52e68e7",
+          "endpoint": "/api/case-study-forms/batch",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "case-study",
+          "port": 5162,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 14.24,
+          "responseBytes": 371,
+          "transferBytes": 992,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 17.22,
+          "responseBytes": 1015,
+          "transferBytes": 1636,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 51.58,
+          "responseBytes": 1060,
+          "transferBytes": 1681,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 13.79,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 14.59,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 1.06,
+          "responseBytes": -610,
+          "transferBytes": 0,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 31.15,
+          "responseBytes": 7379,
+          "transferBytes": 8000,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 36.03,
+          "responseBytes": 17046,
+          "transferBytes": 17667,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 38.57,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 35.46,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 43.27,
+          "responseBytes": 58242,
+          "transferBytes": 58863,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 50.44,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 34.27,
+          "responseBytes": 6807,
+          "transferBytes": 7428,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/po-intake-draft/mine",
+          "query": "",
+          "endpoint": "/api/po-intake-draft/mine",
+          "status": 200,
+          "durationMs": 37.11,
+          "responseBytes": 203,
+          "transferBytes": 824,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 45.91,
+          "responseBytes": 345,
+          "transferBytes": 966,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=10&sort=created&dir=desc",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 51.14,
+          "responseBytes": 549,
+          "transferBytes": 1170,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/counts",
+          "query": "",
+          "endpoint": "/api/work-orders/counts",
+          "status": 200,
+          "durationMs": 60.07,
+          "responseBytes": 103,
+          "transferBytes": 724,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 77.88,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 81.57,
+          "responseBytes": 16,
+          "transferBytes": 705,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 82.19,
+          "responseBytes": 4378,
+          "transferBytes": 4999,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 84.7,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 86.59,
+          "responseBytes": 350,
+          "transferBytes": 971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "PUT",
+          "path": "/api/po-intake-draft",
+          "query": "",
+          "endpoint": "/api/po-intake-draft",
+          "status": 200,
+          "durationMs": 16.22,
+          "responseBytes": 205,
+          "transferBytes": 894,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 15.1,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 17.04,
+          "responseBytes": 1020,
+          "transferBytes": 1641,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.18,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 14.81,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "notes": [],
+      "records": [
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 41.9,
+          "responseBytes": 7379,
+          "transferBytes": 8000,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 47.58,
+          "responseBytes": 17025,
+          "transferBytes": 17646,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 44.25,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 48.75,
+          "responseBytes": 58202,
+          "transferBytes": 58823,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 54.33,
+          "responseBytes": 3290,
+          "transferBytes": 3911,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 53.91,
+          "responseBytes": 3786,
+          "transferBytes": 4443,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 55.99,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 40.58,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}",
+          "status": 200,
+          "durationMs": 45.89,
+          "responseBytes": 1650,
+          "transferBytes": 2271,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 46.89,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 51.69,
+          "responseBytes": 4375,
+          "transferBytes": 4996,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 56.62,
+          "responseBytes": 16,
+          "transferBytes": 705,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 60.83,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 34.93,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 35.43,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 39.41,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/work-orders/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393/timeline",
+          "query": "",
+          "endpoint": "/api/work-orders/{n}/properties/{id}/timeline",
+          "status": 200,
+          "durationMs": 47.44,
+          "responseBytes": 856,
+          "transferBytes": 1477,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 58.6,
+          "responseBytes": 1819,
+          "transferBytes": 2440,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/party/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/case-study-forms/party/{id}",
+          "status": 200,
+          "durationMs": 62.07,
+          "responseBytes": 381,
+          "transferBytes": 1002,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 63.71,
+          "responseBytes": 371,
+          "transferBytes": 992,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 66.62,
+          "responseBytes": 1355,
+          "transferBytes": 1976,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 86.33,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 101.69,
+          "responseBytes": 270,
+          "transferBytes": 891,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/for-property",
+          "query": "propertyId=036680%3A1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/attachments/for-property",
+          "status": 200,
+          "durationMs": 112.45,
+          "responseBytes": 264,
+          "transferBytes": 885,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/attachments/4113e9d2-af0a-4148-94bc-dd9e6a510e3a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 16.09,
+          "responseBytes": 57034,
+          "transferBytes": 57698,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 15.33,
+          "responseBytes": 1020,
+          "transferBytes": 1641,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 57.54,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 11.3,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "property-detail:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 104.73,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:basic",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 15.14,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 56.67,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/2a25f910-de89-43c4-9b9b-f68e27bb3eef",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 58.09,
+          "responseBytes": 1819,
+          "transferBytes": 2440,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/party-task-submissions/62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 58.12,
+          "responseBytes": 1350,
+          "transferBytes": 1971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/31b18df1-79af-412e-bf28-2876f888e2bf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 55.71,
+          "responseBytes": 81963,
+          "transferBytes": 82656,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1f3833be-e7bc-4f59-9846-67b7236acbf7",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 75.69,
+          "responseBytes": 2027109,
+          "transferBytes": 2027761,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/23e05eeb-72b7-41b4-be85-8e6d438b7d61",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 105.15,
+          "responseBytes": 2023006,
+          "transferBytes": 2023706,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/2bbfbdf2-3855-49ff-82d3-f869bacb4e7c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 137.28,
+          "responseBytes": 325743,
+          "transferBytes": 326437,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/e499794f-ce27-4782-9d1c-d83da989ef68",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 138.95,
+          "responseBytes": 326273,
+          "transferBytes": 326967,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a5edfe85-22fd-42d7-85b9-c6435d2fccf2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 141.45,
+          "responseBytes": 501166,
+          "transferBytes": 501860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments",
+          "query": "scope=evaluator-report&scopeKey=62fb83e7-5ff5-45b9-859c-461f99aab392",
+          "endpoint": "/api/attachments",
+          "status": 200,
+          "durationMs": 142,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/5337ab5e-28a4-44cf-b6b6-b5d5bc6811be",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 153.38,
+          "responseBytes": 15209,
+          "transferBytes": 15858,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/10c1a15e-fb00-4a88-a21a-0203e1d2e0cf",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 189.68,
+          "responseBytes": 14314,
+          "transferBytes": 14947,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/df6a3c08-e108-4f98-b86b-eca87ed3853d",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 112.6,
+          "responseBytes": 369166,
+          "transferBytes": 369860,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/58877168-6ba3-41d1-a87a-950e92e306a2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 113.1,
+          "responseBytes": 276489,
+          "transferBytes": 277183,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/a680b80c-45f9-4bc9-af37-141d03f73364",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 114.62,
+          "responseBytes": 243057,
+          "transferBytes": 243751,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/00952819-433d-4113-b303-812ef77b6d1c",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 128.1,
+          "responseBytes": 407160,
+          "transferBytes": 407854,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/1287fb42-47e4-4320-807f-5272d7d6dda4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 45.41,
+          "responseBytes": 226063,
+          "transferBytes": 226757,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/6dbadecb-28eb-4d12-8f97-a488dff4b4c6",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 44.22,
+          "responseBytes": 329996,
+          "transferBytes": 330690,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/dd0b0941-13ad-4ce7-86ce-5d2eb92757c4",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 41.94,
+          "responseBytes": 196868,
+          "transferBytes": 197562,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/68eac10b-ab85-4f7d-b288-e34466535bd2",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 40.37,
+          "responseBytes": 110021,
+          "transferBytes": 110715,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/71d93457-a4d7-4f16-912d-cd82d1472fb9",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 40.08,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/attachments/ed6af69c-ad7d-480e-99b8-2d0251a7f29a",
+          "query": "",
+          "endpoint": "/api/attachments/{id}",
+          "status": 200,
+          "durationMs": 27.18,
+          "responseBytes": 367314,
+          "transferBytes": 368008,
+          "service": "attachments",
+          "port": 5169
+        },
+        {
+          "phase": "tab:documents",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 14.94,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 29.26,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 33.46,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 33.07,
+          "responseBytes": 23,
+          "transferBytes": 644,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 48.96,
+          "responseBytes": 418,
+          "transferBytes": 1039,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/property-groups/by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/property-groups/by-property/{id}",
+          "status": 200,
+          "durationMs": 53.21,
+          "responseBytes": 23,
+          "transferBytes": 644,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/work-orders/deeds/prior/history",
+          "query": "deedNumber=940115012717&take=20&excludePo=036680&excludePropertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/work-orders/deeds/prior/history",
+          "status": 200,
+          "durationMs": 55.13,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:linked",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 13.1,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 11.7,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:survey",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 14.22,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/party-task-submissions/a14b3dbb-27c2-4914-b266-89c71593a004",
+          "query": "",
+          "endpoint": "/api/party-task-submissions/{id}",
+          "status": 200,
+          "durationMs": 17.15,
+          "responseBytes": 3174,
+          "transferBytes": 3795,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 27.52,
+          "responseBytes": 13857,
+          "transferBytes": 14478,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 41.04,
+          "responseBytes": 13830,
+          "transferBytes": 14451,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/valuation-lists",
+          "query": "",
+          "endpoint": "/api/valuation-lists",
+          "status": 200,
+          "durationMs": 55.41,
+          "responseBytes": 13827,
+          "transferBytes": 14448,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 26.73,
+          "responseBytes": 157,
+          "transferBytes": 778,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:inspection",
+          "method": "GET",
+          "path": "/api/property-comparable-links",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "endpoint": "/api/property-comparable-links",
+          "status": 200,
+          "durationMs": 38.45,
+          "responseBytes": 157,
+          "transferBytes": 778,
+          "service": "valuation",
+          "port": 5166
+        },
+        {
+          "phase": "tab:photos",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 11.87,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:government",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.97,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/key-envelopes/gate",
+          "query": "propertyId=1fcdff4b-28c3-4602-a67a-21e9531f0393&poNumber=036680&deedNumber=940115012717&requestNumber=403094700074487",
+          "endpoint": "/api/key-envelopes/gate",
+          "status": 200,
+          "durationMs": 23.88,
+          "responseBytes": 270,
+          "transferBytes": 891,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/operations-tasks",
+          "query": "",
+          "endpoint": "/api/operations-tasks",
+          "status": 200,
+          "durationMs": 31.43,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "operations",
+          "port": 5163
+        },
+        {
+          "phase": "tab:keys",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 16.44,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/valuation-requests/open-by-property/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/valuation-requests/open-by-property/{id}",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "valuation",
+          "port": 5166,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:appraisal",
+          "method": "GET",
+          "path": "/api/notifications/stream",
+          "query": "",
+          "endpoint": "/api/notifications/stream",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "platform",
+          "port": 5168,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 26.35,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 41.24,
+          "responseBytes": 17077,
+          "transferBytes": 17698,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:report",
+          "method": "GET",
+          "path": "/api/case-study-forms/20a6a2d3-7e13-4190-be4b-229910121186",
+          "query": "",
+          "endpoint": "/api/case-study-forms/{id}",
+          "status": 200,
+          "durationMs": 44.43,
+          "responseBytes": 413,
+          "transferBytes": 1034,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 20.4,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "tab:finance",
+          "method": "GET",
+          "path": "/api/enfaz-billing/036680/properties/1fcdff4b-28c3-4602-a67a-21e9531f0393",
+          "query": "",
+          "endpoint": "/api/enfaz-billing/{n}/properties/{id}",
+          "status": 200,
+          "durationMs": 20.32,
+          "responseBytes": 95,
+          "transferBytes": 716,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 64.01,
+          "responseBytes": 17079,
+          "transferBytes": 17700,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 63.12,
+          "responseBytes": 7392,
+          "transferBytes": 8013,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 63.41,
+          "responseBytes": 441,
+          "transferBytes": 1062,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 73.19,
+          "responseBytes": 58162,
+          "transferBytes": 58783,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 79.09,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 81.14,
+          "responseBytes": 3786,
+          "transferBytes": 4443,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 91.15,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 66.32,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 135.67,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 154.63,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 161.28,
+          "responseBytes": 4375,
+          "transferBytes": 4996,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 164.82,
+          "responseBytes": 122,
+          "transferBytes": 743,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-forms/batch",
+          "query": "parentTaskIds=20a6a2d3-7e13-4190-be4b-229910121186%2Cbe65b47c-4cdb-483e-a529-1c4be52e68e7",
+          "endpoint": "/api/case-study-forms/batch",
+          "status": -1,
+          "durationMs": null,
+          "responseBytes": null,
+          "transferBytes": null,
+          "service": "case-study",
+          "port": 5162,
+          "failed": "net::ERR_ABORTED"
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/case-study-info-roles",
+          "query": "",
+          "endpoint": "/api/case-study-info-roles",
+          "status": 200,
+          "durationMs": 18.09,
+          "responseBytes": 376,
+          "transferBytes": 997,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 13.95,
+          "responseBytes": 1020,
+          "transferBytes": 1641,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 44.3,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 24.93,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "active-case-study:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 12.34,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/property-rows",
+          "query": "",
+          "endpoint": "/api/work-orders/property-rows",
+          "status": 200,
+          "durationMs": 1.18,
+          "responseBytes": -610,
+          "transferBytes": 0,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/workflow-tasks",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/workflow-tasks",
+          "status": 200,
+          "durationMs": 39.05,
+          "responseBytes": 17046,
+          "transferBytes": 17667,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/organization-settings",
+          "query": "",
+          "endpoint": "/api/organization-settings",
+          "status": 200,
+          "durationMs": 35.99,
+          "responseBytes": 7384,
+          "transferBytes": 8005,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failures",
+          "query": "",
+          "endpoint": "/api/failures",
+          "status": 200,
+          "durationMs": 32.7,
+          "responseBytes": 21,
+          "transferBytes": 642,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 38.83,
+          "responseBytes": 58230,
+          "transferBytes": 58851,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/permissions",
+          "query": "",
+          "endpoint": "/api/permissions",
+          "status": 200,
+          "durationMs": 95.24,
+          "responseBytes": 436,
+          "transferBytes": 1057,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=500",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 106.48,
+          "responseBytes": 3285,
+          "transferBytes": 3906,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 33.67,
+          "responseBytes": 6812,
+          "transferBytes": 7433,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/po-intake-draft/mine",
+          "query": "",
+          "endpoint": "/api/po-intake-draft/mine",
+          "status": 200,
+          "durationMs": 38.45,
+          "responseBytes": 198,
+          "transferBytes": 819,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 41.06,
+          "responseBytes": 350,
+          "transferBytes": 971,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders",
+          "query": "page=1&pageSize=10&sort=created&dir=desc",
+          "endpoint": "/api/work-orders",
+          "status": 200,
+          "durationMs": 52.71,
+          "responseBytes": 544,
+          "transferBytes": 1165,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/counts",
+          "query": "",
+          "endpoint": "/api/work-orders/counts",
+          "status": 200,
+          "durationMs": 60.62,
+          "responseBytes": 103,
+          "transferBytes": 724,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/details",
+          "query": "",
+          "endpoint": "/api/work-orders/details",
+          "status": 200,
+          "durationMs": 76.46,
+          "responseBytes": 58216,
+          "transferBytes": 58837,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/work-orders/properties/pending-bourse",
+          "query": "",
+          "endpoint": "/api/work-orders/properties/pending-bourse",
+          "status": 200,
+          "durationMs": 77.92,
+          "responseBytes": 16,
+          "transferBytes": 637,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "POST",
+          "path": "/api/workflow-tasks/sync",
+          "query": "",
+          "endpoint": "/api/workflow-tasks/sync",
+          "status": 200,
+          "durationMs": 80.73,
+          "responseBytes": 21,
+          "transferBytes": 710,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/users/distribution-assignees",
+          "query": "",
+          "endpoint": "/api/users/distribution-assignees",
+          "status": 200,
+          "durationMs": 89.78,
+          "responseBytes": 4375,
+          "transferBytes": 4996,
+          "service": "identity",
+          "port": 5161
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/inspector-fees",
+          "query": "assigneeId=cs-osama&submittedOnly=false",
+          "endpoint": "/api/inspector-fees",
+          "status": 200,
+          "durationMs": 97.48,
+          "responseBytes": 127,
+          "transferBytes": 748,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/clients",
+          "query": "",
+          "endpoint": "/api/clients",
+          "status": 200,
+          "durationMs": 97.09,
+          "responseBytes": 345,
+          "transferBytes": 966,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "PUT",
+          "path": "/api/po-intake-draft",
+          "query": "",
+          "endpoint": "/api/po-intake-draft",
+          "status": 200,
+          "durationMs": 16.4,
+          "responseBytes": 200,
+          "transferBytes": 889,
+          "service": "case-study",
+          "port": 5162
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/reporting/v1/dashboard",
+          "query": "",
+          "endpoint": "/api/reporting/v1/dashboard",
+          "status": 200,
+          "durationMs": 17.18,
+          "responseBytes": 1055,
+          "transferBytes": 1676,
+          "service": "reporting",
+          "port": 5164
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/failure-types-catalog",
+          "query": "",
+          "endpoint": "/api/failure-types-catalog",
+          "status": 200,
+          "durationMs": 18.34,
+          "responseBytes": 1020,
+          "transferBytes": 1641,
+          "service": "failures",
+          "port": 5167
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 18.87,
+          "responseBytes": 6793,
+          "transferBytes": 7414,
+          "service": "platform",
+          "port": 5168
+        },
+        {
+          "phase": "po-list:initial",
+          "method": "GET",
+          "path": "/api/notifications",
+          "query": "",
+          "endpoint": "/api/notifications",
+          "status": 200,
+          "durationMs": 15.87,
+          "responseBytes": 6800,
+          "transferBytes": 7421,
+          "service": "platform",
+          "port": 5168
+        }
+      ]
+    }
+  ]
+}

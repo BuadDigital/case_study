@@ -8,7 +8,7 @@ using RealEstateEval.Shared.Web;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// Authenticated lookups used by Financial and Operations. Operator work-order and
+/// Authenticated lookups used by Financial and Operations, Operator work-order and
 /// workflow-task routes keep their capability policies.
 /// </summary>
 

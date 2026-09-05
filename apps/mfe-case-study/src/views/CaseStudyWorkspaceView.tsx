@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
   Label,
@@ -78,11 +78,14 @@ function CaseStudyAppraisalPanel({
   poNumber,
   tasks,
   caseStudyTask,
+  documentsEnabled,
 }: {
   property: NonNullable<ReturnType<typeof findPropertyForTask>>;
   poNumber: string;
   tasks: WorkflowTask[];
   caseStudyTask: WorkflowTask;
+  /** True once a tab that shows transaction photos has been visited (fanout gate). */
+  documentsEnabled: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -172,6 +175,11 @@ function CaseStudyAppraisalPanel({
     "property-appraisal",
   );
   const inspectionTaskId = inspectionTask?.id ?? null;
+  /**
+   * Transaction photos feed only the inspection input section below — the
+   * attachment fan-out waits for that section to be reachable (same gate as
+   * `usePoPropertyDetailTabsWorkflow`: a media tab visited, and something to show).
+   */
   const propertyDocumentSections = usePropertyDetailDocuments({
     property,
     showDecree: true,
@@ -179,6 +187,7 @@ function CaseStudyAppraisalPanel({
     surveyTaskId,
     appraisalTaskId,
     inspectionTaskId,
+    enabled: documentsEnabled && Boolean(inspectionTask && inspectionCard),
   });
   const transactionPhotos = useMemo(
     () => listPropertyDetailPhotos(propertyDocumentSections),
@@ -338,6 +347,14 @@ export function CaseStudyWorkspaceView({
   const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">(
     "study",
   );
+  /**
+   * Documents and photos load only once a tab that shows them has been opened —
+   * the study form never triggers the attachment fan-out. A visited tab stays
+   * recorded, so the gate never flips back (same pattern as the property tabs).
+   */
+  const visitedTabsRef = useRef<Set<"study" | "appraisal">>(new Set());
+  visitedTabsRef.current.add(workspaceTab);
+  const propertyMediaVisited = visitedTabsRef.current.has("appraisal");
   const router = useRouter();
   const { role } = useAppAccess();
   const {
@@ -495,6 +512,7 @@ export function CaseStudyWorkspaceView({
                 poNumber={record.poNumber}
                 tasks={tasks ?? []}
                 caseStudyTask={task}
+                documentsEnabled={propertyMediaVisited}
               />
             )}
             {renderPartiesExtras ? (

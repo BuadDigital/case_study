@@ -13,9 +13,12 @@ import {
   type CaseStudyQuestionSection,
 } from "./case-study-form-data";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
+import type { CaseStudyFormDraft } from "./case-study-form-model";
 import {
   loadCaseStudyFormDraft,
+  loadCaseStudyFormDraftsForParents,
   loadPartyCaseStudyFormDraft,
+  type CaseStudyFormDraftsForParent,
 } from "./case-study-form-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
 
@@ -130,27 +133,55 @@ export function computePartyCaseStudyProgress(
   return sortPartyCaseStudyProgress(rows);
 }
 
+export type PartyCaseStudyAnswersByParty = Partial<
+  Record<
+    CaseStudyInfoPartyId,
+    Record<string, CaseStudyFormAnswer | null | undefined>
+  >
+>;
+
+type PartyChild = { child: WorkflowTask; partyId: CaseStudyInfoPartyId | null };
+
+function partyChildrenOf(
+  parentTask: WorkflowTask,
+  tasks: WorkflowTask[],
+): PartyChild[] {
+  return childTasksForCaseStudyParent(parentTask.id, tasks).map((child) => ({
+    child,
+    partyId: partyIdForChildTask(child),
+  }));
+}
+
+/** Fold the parent's draft and each child's party draft into answers per party. */
+function foldPartyAnswers(
+  parentDraft: CaseStudyFormDraft | null | undefined,
+  children: PartyChild[],
+  childDraftFor: (child: WorkflowTask) => CaseStudyFormDraft | null | undefined,
+): PartyCaseStudyAnswersByParty {
+  const byParty: PartyCaseStudyAnswersByParty = {};
+  byParty.specA = parentDraft?.answers ?? {};
+
+  for (const { child, partyId } of children) {
+    if (!partyId || partyId === "specA") continue;
+
+    const draft = childDraftFor(child);
+    if (!draft) continue;
+
+    byParty[partyId] = {
+      ...(byParty[partyId] ?? {}),
+      ...draft.answers,
+    };
+  }
+
+  return byParty;
+}
+
+/** Single-parent read: `1 + N` requests. Prefer the batch variants for lists. */
 export async function loadPartyCaseStudyAnswersByParty(
   parentTask: WorkflowTask,
   tasks: WorkflowTask[],
-): Promise<
-  Partial<
-    Record<
-      CaseStudyInfoPartyId,
-      Record<string, CaseStudyFormAnswer | null | undefined>
-    >
-  >
-> {
-  const byParty: Partial<
-    Record<
-      CaseStudyInfoPartyId,
-      Record<string, CaseStudyFormAnswer | null | undefined>
-    >
-  > = {};
-
-  const children = childTasksForCaseStudyParent(parentTask.id, tasks).map(
-    (child) => ({ child, partyId: partyIdForChildTask(child) }),
-  );
+): Promise<PartyCaseStudyAnswersByParty> {
+  const children = partyChildrenOf(parentTask, tasks);
   const [parentDraft, ...childDrafts] = await Promise.all([
     loadCaseStudyFormDraft(parentTask.id),
     ...children.map(({ child, partyId }) =>
@@ -159,19 +190,47 @@ export async function loadPartyCaseStudyAnswersByParty(
         : null,
     ),
   ]);
-  byParty.specA = parentDraft?.answers ?? {};
+  const draftByChildId = new Map(
+    children.map(({ child }, index) => [child.id, childDrafts[index]]),
+  );
+  return foldPartyAnswers(parentDraft, children, (child) =>
+    draftByChildId.get(child.id),
+  );
+}
 
-  children.forEach(({ partyId }, index) => {
-    if (!partyId || partyId === "specA") return;
+/**
+ * Pure projection of one batch row (`loadCaseStudyFormDraftsForParents`) onto the
+ * party map. `drafts` undefined means the parent was not in the batch — not visible
+ * or not found — and reads as "no answers", exactly like a `null` single-item draft.
+ */
+export function partyCaseStudyAnswersFromBatch(
+  parentTask: WorkflowTask,
+  tasks: WorkflowTask[],
+  drafts: CaseStudyFormDraftsForParent | undefined,
+): PartyCaseStudyAnswersByParty {
+  return foldPartyAnswers(
+    drafts?.parent,
+    partyChildrenOf(parentTask, tasks),
+    (child) => drafts?.partyByChildTaskId.get(child.id.toLowerCase()),
+  );
+}
 
-    const draft = childDrafts[index];
-    if (!draft) return;
-
-    byParty[partyId] = {
-      ...(byParty[partyId] ?? {}),
-      ...draft.answers,
-    };
-  });
-
-  return byParty;
+/** Many parents in one batch request (chunked at the server cap) — the queue's read. */
+export async function loadPartyCaseStudyAnswersForParents(
+  parentTasks: readonly WorkflowTask[],
+  tasks: WorkflowTask[],
+): Promise<Map<string, PartyCaseStudyAnswersByParty>> {
+  const drafts = await loadCaseStudyFormDraftsForParents(
+    parentTasks.map((parent) => parent.id),
+  );
+  return new Map(
+    parentTasks.map((parent) => [
+      parent.id,
+      partyCaseStudyAnswersFromBatch(
+        parent,
+        tasks,
+        drafts.get(parent.id.toLowerCase()),
+      ),
+    ]),
+  );
 }

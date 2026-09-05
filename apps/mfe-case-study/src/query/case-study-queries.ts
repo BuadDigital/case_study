@@ -25,6 +25,7 @@ import {
   loadWorkflowTasksPage,
   syncTasksFromPoRecords,
 } from "../lib/app-data/tasks-storage";
+import { loadCaseStudyFormDraftsForParents } from "../lib/app-data/case-study-form-reads";
 import type {
   WorkflowTaskListFilters,
   WorkflowTaskListQuery,
@@ -182,6 +183,30 @@ export function usePoRecordQuery(poNumber: string | null) {
     queryFn: () => getPoRecord(poNumber!),
     enabled: Boolean(poNumber),
     ...queryDefaults,
+  });
+}
+
+/**
+ * Case-study + party form drafts for a set of listed parents in one request
+ * (`GET /api/case-study-forms/batch`). Keyed on the sorted, `\0`-joined parent id
+ * set — a fresh `tasks` array identity does not refetch; only a different row set,
+ * the stale window, the live poll or an explicit invalidation
+ * (`appDataKeys.caseStudyFormBatches()`) does.
+ */
+export function useCaseStudyFormBatchQuery(
+  parentTaskIdsKey: string,
+  options?: { live?: boolean; enabled?: boolean },
+) {
+  const live = options?.live === true && isFeatureEnabled("liveQueuePolling");
+  return useQuery({
+    queryKey: appDataKeys.caseStudyFormBatch(parentTaskIdsKey),
+    queryFn: () =>
+      loadCaseStudyFormDraftsForParents(parentTaskIdsKey.split("\0")),
+    enabled: (options?.enabled ?? true) && parentTaskIdsKey.length > 0,
+    ...queryDefaults,
+    // Rows keep their last progress while the next id set loads.
+    placeholderData: keepPreviousData,
+    refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
   });
 }
 

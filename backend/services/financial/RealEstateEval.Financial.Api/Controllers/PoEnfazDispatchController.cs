@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Financial.Api.Controllers;
@@ -10,17 +12,67 @@ namespace RealEstateEval.Financial.Api.Controllers;
 [Route("api/financial-dispatch/enfaz-billing")]
 [Authorize]
 [RequireUpstreamDispatch]
-public sealed class PoEnfazDispatchController(IPoEnfazBillingService billing) : ControllerBase
+public sealed class PoEnfazDispatchController(
+    IPoEnfazBillingService billing,
+    IOptions<DatabaseOptions>? dbOptions = null) : ControllerBase
 {
-    [HttpGet("ready-pos-summary")]
-    public async Task<ActionResult<IReadOnlyList<EnfazReadyPoSummaryDto>>> ReadyPos(
-        CancellationToken cancellationToken) =>
-        Ok(await billing.ListReadyPoSummariesAsync(cancellationToken));
+    private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
 
+    /// <summary>Same envelope rule as the public route — pagination-contract §10.1.</summary>
+    [HttpGet("ready-pos-summary")]
+    public async Task<IActionResult> ReadyPos(
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new EnfazReadyPoListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await billing.ListReadyPoSummariesAsync(query, cancellationToken));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await billing.ListReadyPoSummariesPagedAsync(
+            query, skip, take, resolvedPage, cancellationToken));
+    }
+
+    /// <summary>Same envelope rule as the public route — pagination-contract §10.2.</summary>
     [HttpGet("tracking")]
-    public async Task<ActionResult<IReadOnlyList<EnfazTrackingRowDto>>> Tracking(
-        CancellationToken cancellationToken) =>
-        Ok(await billing.ListTrackingAsync(cancellationToken));
+    public async Task<IActionResult> Tracking(
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new EnfazTrackingListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await billing.ListTrackingAsync(query, cancellationToken));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await billing.ListTrackingPagedAsync(
+            query, skip, take, resolvedPage, cancellationToken));
+    }
 
     [HttpGet("aging")]
     public async Task<ActionResult<EnfazAgingReportDto>> Aging(

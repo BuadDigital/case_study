@@ -17,7 +17,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
-// A10: the frozen legacy god-context stream is archived — every database is
+// the frozen legacy god-context stream is archived — every database is
 // provisioned and migrated from its own bounded-context stream (each stream carries an
 // Ensure*TablesForStandalone baseline). To migrate a restored pre-split database, check
 // out the git tag `a10-legacy-stream-final`, which still carries the legacy stream.
@@ -31,9 +31,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 // RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
 // RealEstateEval.DbMigrate rollback 0 <stream> remove all migrations (empty DB schema target)
 
-var configuration = new ConfigurationBuilder()
-    .AddEnvironmentVariables()
-    .Build();
+var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
 
 // A8: the catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
 // This migrator keeps the concrete list and fails loudly if it drifts from the catalog —
@@ -75,24 +73,15 @@ foreach (var (type, connection) in streamConnections)
 
 var services = new ServiceCollection();
 services.AddLogging();
-services.AddDbContext<AttachmentsDbContext>(options =>
-    UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
-services.AddDbContext<PlatformDbContext>(options =>
-    UseStream<PlatformDbContext>(options, streamConnections[typeof(PlatformDbContext)]));
-services.AddDbContext<ValuationDbContext>(options =>
-    UseStream<ValuationDbContext>(options, streamConnections[typeof(ValuationDbContext)]));
-services.AddDbContext<IdentityDbContext>(options =>
-    UseStream<IdentityDbContext>(options, streamConnections[typeof(IdentityDbContext)]));
-services.AddDbContext<FailuresDbContext>(options =>
-    UseStream<FailuresDbContext>(options, streamConnections[typeof(FailuresDbContext)]));
-services.AddDbContext<OperationsDbContext>(options =>
-    UseStream<OperationsDbContext>(options, streamConnections[typeof(OperationsDbContext)]));
-services.AddDbContext<FinancialDbContext>(options =>
-    UseStream<FinancialDbContext>(options, streamConnections[typeof(FinancialDbContext)]));
-services.AddDbContext<CaseStudyDbContext>(options =>
-    UseStream<CaseStudyDbContext>(options, streamConnections[typeof(CaseStudyDbContext)]));
-services.AddDbContext<MessagingDbContext>(options =>
-    UseStream<MessagingDbContext>(options, streamConnections[typeof(MessagingDbContext)]));
+services.AddDbContext<AttachmentsDbContext>(options => UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
+services.AddDbContext<PlatformDbContext>(options => UseStream<PlatformDbContext>(options, streamConnections[typeof(PlatformDbContext)]));
+services.AddDbContext<ValuationDbContext>(options => UseStream<ValuationDbContext>(options, streamConnections[typeof(ValuationDbContext)]));
+services.AddDbContext<IdentityDbContext>(options => UseStream<IdentityDbContext>(options, streamConnections[typeof(IdentityDbContext)]));
+services.AddDbContext<FailuresDbContext>(options => UseStream<FailuresDbContext>(options, streamConnections[typeof(FailuresDbContext)]));
+services.AddDbContext<OperationsDbContext>(options => UseStream<OperationsDbContext>(options, streamConnections[typeof(OperationsDbContext)]));
+services.AddDbContext<FinancialDbContext>(options => UseStream<FinancialDbContext>(options, streamConnections[typeof(FinancialDbContext)]));
+services.AddDbContext<CaseStudyDbContext>(options => UseStream<CaseStudyDbContext>(options, streamConnections[typeof(CaseStudyDbContext)]));
+services.AddDbContext<MessagingDbContext>(options => UseStream<MessagingDbContext>(options, streamConnections[typeof(MessagingDbContext)]));
 
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
@@ -104,9 +93,7 @@ var streams = streamTypes.Select(type =>
         Connection: streamConnections[type])).ToList();
 
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "update";
-var seedDemoData = configuration.GetValue("Database:SeedDemoData", false)
-    || string.Equals(command, "seed", StringComparison.OrdinalIgnoreCase)
-    || args.Any(a => string.Equals(a, "--seed", StringComparison.OrdinalIgnoreCase));
+var seedDemoData = configuration.GetValue("Database:SeedDemoData", false) || string.Equals(command, "seed", StringComparison.OrdinalIgnoreCase) || args.Any(a => string.Equals(a, "--seed", StringComparison.OrdinalIgnoreCase));
 
 switch (command)
 {

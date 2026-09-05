@@ -558,3 +558,73 @@ export function buildAllTxPoGroups(
     rows: byPo.get(po) ?? [],
   }));
 }
+
+/** Every PO group starts collapsed when grouping is switched on. */
+export function collapseAllPoGroups(
+  rows: readonly { poNumber: string }[],
+): Record<string, boolean> {
+  const collapsed: Record<string, boolean> = {};
+  for (const row of rows) {
+    collapsed[row.poNumber] = true;
+  }
+  return collapsed;
+}
+
+/** The all-transactions meta rows narrowed to the tasks the filters kept. */
+export function filterAllTxMetaToListed(
+  rows: AllTransactionsRowMeta[],
+  listed: readonly Pick<WorkflowTask, "id">[],
+): AllTransactionsRowMeta[] {
+  const ids = new Set(listed.map((t) => t.id));
+  return rows.filter((row) => ids.has(row.task.id));
+}
+
+/**
+ * Full-page target for a row: the per-task resolver wins, then the id-based
+ * path; `undefined` means the row opens in the side panel.
+ */
+export function resolveQueueTaskFullPagePath(
+  config: Pick<
+    ActiveTransactionQueueConfig,
+    "fullPageTaskPath" | "resolveFullPageTaskPath"
+  >,
+  task: WorkflowTask,
+): string | undefined {
+  const perTask = config.resolveFullPageTaskPath?.(task);
+  if (perTask) return perTask;
+  if (config.fullPageTaskPath) return config.fullPageTaskPath(task.id);
+  return undefined;
+}
+
+/** The first real error message from the two queue loads, else the generic one. */
+export function queueLoadErrorMessage(
+  tasksError: unknown,
+  poRecordsError: unknown,
+): string {
+  return (
+    (tasksError instanceof Error ? tasksError.message : null) ??
+    (poRecordsError instanceof Error ? poRecordsError.message : null) ??
+    "تعذّر تحميل قائمة المعاملات"
+  );
+}
+
+/** Copy-from-prior target: the property when known, else the task's own slot. */
+export function copyPriorTargetKey(
+  propertyId: string | undefined,
+  taskId: string,
+): string {
+  return propertyId?.trim() ? `property:${propertyId.trim()}` : `slot:${taskId}`;
+}
+
+/**
+ * The open panel points at a task that is gone from the fetched list or that
+ * the viewer scoping / listing pass dropped — the panel should close.
+ */
+export function queueSelectionIsStale(input: {
+  selectedId: string;
+  tasks: readonly Pick<WorkflowTask, "id">[];
+  listed: readonly Pick<WorkflowTask, "id">[];
+}): boolean {
+  const stillExists = input.tasks.some((t) => t.id === input.selectedId);
+  return !stillExists || input.listed.every((t) => t.id !== input.selectedId);
+}

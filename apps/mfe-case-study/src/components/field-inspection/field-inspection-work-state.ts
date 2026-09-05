@@ -1,9 +1,17 @@
 /**
- * Pure rules behind `FieldInspectionWorkBody` — save-chip routing, the error
- * summary links, and the last-write-wins draft merge. No React, no I/O.
+ * Pure rules behind `FieldInspectionWorkBody` and its section cards —
+ * save-chip routing, the error summary links, the last-write-wins draft
+ * merge, and the small per-card decisions (boundary patches, meter
+ * visibility, map-pin gating). No React, no I/O.
  */
-import { MOVABLES_DESCRIPTION_KEY, OCCUPANCY_DESCRIPTION_KEY } from "../../lib/app-data/inspector-workspace-data";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import {
+  MOVABLES_DESCRIPTION_KEY,
+  OCCUPANCY_DESCRIPTION_KEY,
+  type InspectorBoundaryKey,
+  type InspectorWorkspaceDraft,
+  type isLandInspectionContext,
+} from "../../lib/app-data/inspector-workspace-data";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 
 export type InspectorSaveChipSection = "location" | "access" | "photos";
@@ -109,4 +117,71 @@ export function newerInspectorDraft(
     return prev;
   }
   return next;
+}
+
+/** The four draft/property facts every land-vs-building rule keys off. */
+export function inspectionContextOf(
+  draft: Pick<InspectorWorkspaceDraft, "vacantLand" | "featureValues">,
+  property: Pick<PoPropertyIntake, "classification" | "propertyType"> | undefined,
+): Parameters<typeof isLandInspectionContext>[0] {
+  return {
+    vacantLand: draft.vacantLand,
+    assetSubject: draft.featureValues.assetSubject,
+    classification: property?.classification,
+    propertyType: property?.propertyType,
+  };
+}
+
+export type InspectorBoundaryMatch =
+  InspectorWorkspaceDraft["boundaryMatches"][InspectorBoundaryKey];
+
+/** Patch that changes one boundary row and leaves the other rows untouched. */
+export function boundaryMatchPatch(
+  draft: Pick<InspectorWorkspaceDraft, "boundaryMatches">,
+  key: InspectorBoundaryKey,
+  change: Partial<InspectorBoundaryMatch>,
+): Pick<InspectorWorkspaceDraft, "boundaryMatches"> {
+  return {
+    boundaryMatches: {
+      ...draft.boundaryMatches,
+      [key]: { ...draft.boundaryMatches[key], ...change },
+    },
+  };
+}
+
+/** Deed side of a boundary row as the card prints it: blank → «—», length in metres. */
+export function boundaryDeedDisplay(
+  description: string | undefined,
+  length: string | undefined,
+): { desc: string; length: string } {
+  const len = length?.trim() || "—";
+  return {
+    desc: description?.trim() || "—",
+    length: len !== "—" ? `${len} م` : "—",
+  };
+}
+
+/** Which utility-meter fields the services selection unlocks. */
+export function inspectorServiceMeters(services: readonly string[]): {
+  electricity: boolean;
+  water: boolean;
+  any: boolean;
+} {
+  const electricity = services.includes("كهرباء");
+  const water = services.includes("ماء");
+  return { electricity, water, any: electricity || water };
+}
+
+/** «lat, lng» under the mobile map, or «—» until both halves exist. */
+export function inspectorMapCoordsLabel(latitude: string, longitude: string): string {
+  return latitude && longitude ? `${latitude}, ${longitude}` : "—";
+}
+
+/** The «تثبيت الموقع» button shows once both coordinates are filled and nothing is pinned yet. */
+export function canPinInspectorMap(
+  latitude: string,
+  longitude: string,
+  pinned: boolean,
+): boolean {
+  return Boolean(latitude.trim() && longitude.trim()) && !pinned;
 }
