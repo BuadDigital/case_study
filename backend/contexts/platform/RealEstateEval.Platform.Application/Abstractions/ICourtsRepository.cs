@@ -16,12 +16,6 @@ public sealed record CourtWithCircuitCount(Court Court, int CircuitsCount);
 /// </summary>
 public interface ICourtsRepository
 {
-    /// <summary>True once the catalog holds at least one court — the seed short-circuit.</summary>
-    Task<bool> AnyCourtsAsync(CancellationToken cancellationToken);
-
-    /// <summary>Untracked legacy catalog rows, read once by the seeding path.</summary>
-    Task<IReadOnlyList<CourtCatalogEntry>> ListLegacyCatalogAsync(CancellationToken cancellationToken);
-
     /// <summary>Tracked courts with their circuits — the seed reconciliation working set.</summary>
     Task<IReadOnlyList<Court>> ListCourtsWithCircuitsAsync(CancellationToken cancellationToken);
 

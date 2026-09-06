@@ -8,7 +8,7 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// Q-9: transaction state derived from party states (distribution network and dependencies — the Inspector is the key
+/// transaction state derived from party states (distribution network and dependencies — the Inspector is the key
 /// key) + second conclusion: Upload the Transaction on Enfaz.
 /// </summary>
 [ApiController]

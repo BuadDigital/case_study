@@ -38,6 +38,14 @@ public static class CapabilityPolicyNames
     public const string ReadValuationQueue = "Capability:read-valuation-queue";
 
  /// <summary>
+ /// Read one property's valuation report as it stands (open request, issuance state, the
+ /// deposit / final / preview PDFs). The queue owners and appraisers above, plus case staff:
+ /// the specialist reviews the report on the property she owns without seeing the queue and
+ /// without any write into it.
+ /// </summary>
+    public const string ReadValuationReport = "Capability:read-valuation-report";
+
+ /// <summary>
  /// Comparable bank writes — office appraisers and valuation coordinators.
  /// </summary>
     public const string WriteComparableBank = "Capability:write-comparable-bank";

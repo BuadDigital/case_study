@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Platform.Domain;
 
 /// <summary>Status of approval of the title in the site directory.</summary>
@@ -6,6 +7,8 @@ public static class LocationCatalogStatuses
     public const string Approved = "approved";
     public const string Pending = "pending";
     public const string Merged = "merged";
+
+    public static readonly IReadOnlyList<string> All = [Approved, Pending, Merged];
 }
 
 /// <summary>Administrative area — system directory (not permanently deleted; disabled via IsActive).</summary>
@@ -27,8 +30,9 @@ public class Region
 }
 
 /// <summary>District city/village — system directory.</summary>
-public class City
+public class City : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
  /// <summary>Official identifier as in the national title — null for initial titles.</summary>
     public int? OfficialId { get; set; }
@@ -57,8 +61,9 @@ public class City
 }
 
 /// <summary>City neighborhood — starts empty and builds from user input.</summary>
-public class District
+public class District : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public Guid CityId { get; set; }
     public string NameAr { get; set; } = "";

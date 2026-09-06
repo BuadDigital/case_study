@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Configuration;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -181,17 +182,9 @@ public sealed class AuthSessionService(
             userPermissions?.Department);
 
         var nowUtc = _time.UtcNow();
-        var refreshToken = CreateTokenValue();
-        var refreshExpiresAtUtc = sessionExpiresAtUtc ?? nowUtc.AddHours(RefreshTokenHours());
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UserId = user.Id,
-            SessionId = sessionId,
-            TokenHash = HashToken(refreshToken),
-            CreatedAtUtc = nowUtc,
-            ExpiresAtUtc = refreshExpiresAtUtc,
-        });
 
+ // Housekeeping goes first and commits on its own: it is best-effort (see
+ // SaveHousekeepingAsync) and must never take the token below down with it.
  // Stamp last login on fresh session issue only — refresh rotation keeps the family window.
         if (sessionExpiresAtUtc is null)
         {
@@ -202,6 +195,18 @@ public sealed class AuthSessionService(
         }
 
         await PruneAsync(user.Id, nowUtc, cancellationToken);
+        await SaveHousekeepingAsync(cancellationToken);
+
+        var refreshToken = CreateTokenValue();
+        var refreshExpiresAtUtc = sessionExpiresAtUtc ?? nowUtc.AddHours(RefreshTokenHours());
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = user.Id,
+            SessionId = sessionId,
+            TokenHash = HashToken(refreshToken),
+            CreatedAtUtc = nowUtc,
+            ExpiresAtUtc = refreshExpiresAtUtc,
+        });
         await db.SaveChangesAsync(cancellationToken);
 
         return new LoginResponseDto
@@ -218,6 +223,43 @@ public sealed class AuthSessionService(
             },
         };
     }
+
+ /// <summary>
+ /// Two logins for one user at the same moment (two tabs, a test runner) touch the same rows
+ /// beside their own new token: both stamp <see cref="UserProfile.LastLoginAtUtc"/> on the
+ /// row-versioned profile and both prune the same stale tokens. Neither write is worth failing
+ /// a login over — the other stamp also says "now" and the other prune already removed the row
+ /// — so the side that loses the race drops the writes that lost and keeps the rest.
+ /// </summary>
+    private async Task SaveHousekeepingAsync(CancellationToken cancellationToken)
+    {
+ // Every pass detaches at least one of the pending entries, so the loop ends once nothing
+ // is left to save; the cap only guards against a provider reporting an entry it does not
+ // track.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+                when (attempt < MaxHousekeepingRetries && ex.Entries.All(IsHousekeeping))
+            {
+                foreach (var entry in ex.Entries)
+                    entry.State = EntityState.Detached;
+            }
+        }
+    }
+
+    private const int MaxHousekeepingRetries = 16;
+
+    private static bool IsHousekeeping(EntityEntry entry) => entry.Entity switch
+    {
+        UserProfile => entry.State == EntityState.Modified,
+        RefreshToken => entry.State == EntityState.Deleted,
+        _ => false,
+    };
 
     private async Task RevokeSessionAsync(
         Guid sessionId,

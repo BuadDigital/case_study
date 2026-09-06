@@ -26,7 +26,6 @@ public sealed class OperationsDbContext(DbContextOptions<OperationsDbContext> op
         Set<KeyEnvelopeTimelineEntry>();
     public DbSet<PropertyCourtAccess> PropertyCourtAccesses => Set<PropertyCourtAccess>();
     public DbSet<OperationsTask> OperationsTasks => Set<OperationsTask>();
-    public DbSet<OperationsTaskSequence> OperationsTaskSequences => Set<OperationsTaskSequence>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder.ApplyOperationsModel();

@@ -79,10 +79,8 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<string>("PropertyId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("RaisedByRole")
                         .IsRequired()
@@ -113,8 +111,8 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SuspendedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -134,11 +132,18 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
 
                     b.HasIndex("PoNumber");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_PropertyFailures_Suspended")
+                        .HasFilter("\"Status\" = 'suspended'");
 
                     b.HasIndex("PoNumber", "PropertyId");
 
-                    b.ToTable("PropertyFailures", "failures");
+                    b.ToTable("PropertyFailures", "failures", t =>
+                        {
+                            t.HasCheckConstraint("CK_PropertyFailures_Severity", "\"Severity\" IS NULL OR \"Severity\" IN ('suspected', 'internal')");
+
+                            t.HasCheckConstraint("CK_PropertyFailures_Status", "\"Status\" IS NULL OR \"Status\" IN ('internal', 'review', 'approved', 'returned', 'suspended', 'resolved')");
+                        });
                 });
 #pragma warning restore 612, 618
         }

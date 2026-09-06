@@ -28,6 +28,15 @@ public interface IWorkOrderQuery
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// KPI counters over the same filtered, visibility-narrowed set as the list. Paging and sort
+    /// members of the query are ignored. See docs/architecture/pagination-contract.md §1.1.
+    /// </summary>
+    Task<WorkOrderListCountsDto> CountsAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default);

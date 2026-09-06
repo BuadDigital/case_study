@@ -7,6 +7,7 @@ using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;

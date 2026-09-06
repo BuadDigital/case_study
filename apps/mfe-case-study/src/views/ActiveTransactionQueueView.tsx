@@ -31,14 +31,12 @@ import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQu
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import {
-  AllTransactionsQueueTable,
-  DistributionQueueTable,
-  EngineeringSurveyQueueTable,
-  PrimaryQueueTable,
-  PropertyAppraisalQueueTable,
-  QueueFiltersToolbar,
-} from "./active-transaction-queue-tables";
+import { AllTransactionsQueueTable } from "./active-transaction-queue-all-transactions-table";
+import { DistributionQueueTable } from "./active-transaction-queue-distribution-table";
+import { EngineeringSurveyQueueTable } from "./active-transaction-queue-engineering-survey-table";
+import { PrimaryQueueTable } from "./active-transaction-queue-primary-table";
+import { PropertyAppraisalQueueTable } from "./active-transaction-queue-property-appraisal-table";
+import { QueueFiltersToolbar } from "./active-transaction-queue-filters-toolbar";
 import type {
   ActiveQueueApi,
   ActiveTransactionQueueConfig,
@@ -61,6 +59,63 @@ type PanelRenderProps = {
   onClose: () => void;
 };
 
+/**
+ * Server pager for the queues that page (pagination-contract §2). `totalCount`
+ * is the actor's total for the filters and the search; the range reports the
+ * rows that survived the client-side rules the contract keeps.
+ */
+function QueuePager({
+  pagination,
+  onPageChange,
+}: {
+  pagination: NonNullable<
+    ReturnType<typeof useActiveTransactionQueueWorkflow>["pagination"]
+  >;
+  onPageChange: (page: number) => void;
+}) {
+  const { totalCount, totalPages, safePage, rangeStart, rangeEnd, hasPrev, hasNext } =
+    pagination;
+  if (totalCount === 0) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
+      <span className="text-[12px] text-text-3">
+        عرض{" "}
+        <b className="font-bold text-heading">
+          {rangeStart}–{rangeEnd}
+        </b>{" "}
+        من <b className="font-bold text-heading">{totalCount}</b> نتيجة
+      </span>
+      <div className="flex items-center gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="default"
+          className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+          disabled={!hasPrev}
+          onClick={() => onPageChange(safePage - 1)}
+          aria-label="الصفحة السابقة"
+        >
+          ‹
+        </Button>
+        <span className="px-1 text-[12px] text-text-3">
+          {safePage} / {totalPages}
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="default"
+          className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+          disabled={!hasNext}
+          onClick={() => onPageChange(safePage + 1)}
+          aria-label="الصفحة التالية"
+        >
+          ›
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ActiveTransactionQueueView({
   config,
   renderPanel,
@@ -74,6 +129,9 @@ export function ActiveTransactionQueueView({
     router,
     tasks,
     staffUsers,
+    paged,
+    pagination,
+    setPage,
     now,
     isDesktopViewport,
     queueLoadError,
@@ -181,6 +239,11 @@ export function ActiveTransactionQueueView({
     />
   ) : null;
 
+  /** A filter or a search is narrowing the queue — an empty result is "no match", not "no work". */
+  const hasActiveQuery = Boolean(
+    search.trim() || statusFilter || typeFilter,
+  );
+
   const hasRail =
     !useFullPage && queueReady && listed.length > 0 && Boolean(renderPanel);
 
@@ -208,7 +271,10 @@ export function ActiveTransactionQueueView({
                 إعادة المحاولة
               </Button>
             </div>
-          ) : queueReady && listed.length === 0 ? (
+          ) : queueReady && listed.length === 0 && !hasActiveQuery ? (
+            /* With server search a no-match page is also `listed.length === 0`;
+               swapping in the whole-screen empty state would take the search box
+               away with it, so it only replaces an genuinely empty queue. */
             <EmptyState line={config.emptyLine} hint={config.emptyHint} />
           ) : (
             <>
@@ -243,6 +309,9 @@ export function ActiveTransactionQueueView({
                           : (config.emptyLine ?? "لا توجد معاملات مطابقة.")
                     }
                   />
+                  {paged && pagination ? (
+                    <QueuePager pagination={pagination} onPageChange={setPage} />
+                  ) : null}
                 </div>
               )}
               {isDesktopViewport === false ? null : (
@@ -322,6 +391,9 @@ export function ActiveTransactionQueueView({
                         ? "اضغط الصف لفتح دراسة الحالة."
                         : "اضغط الصف للفتح أو الإغلاق.")}
                 </QueueTableHint>
+                {paged && pagination ? (
+                  <QueuePager pagination={pagination} onPageChange={setPage} />
+                ) : null}
               </TableFrame>
               )}
             </>

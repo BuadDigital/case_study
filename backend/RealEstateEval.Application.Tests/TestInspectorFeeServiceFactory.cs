@@ -296,6 +296,21 @@ internal static class TestInspectorFeeServiceFactory
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<UserNotificationDto>>([]);
 
+        public Task<IReadOnlyList<UserNotificationDto>> ListForUserAsync(
+            string userId,
+            NotificationListQuery query,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<UserNotificationDto>>([]);
+
+        public Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
+            string userId,
+            NotificationListQuery query,
+            int skip,
+            int take,
+            int page,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PagedResultDto<UserNotificationDto> { Items = [], TotalCount = 0, Page = page, PageSize = take });
+
         public Task<UserNotificationDto> CreateForUserAsync(
             string userId,
             CreateUserNotificationRequest request,

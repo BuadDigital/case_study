@@ -169,7 +169,8 @@ public sealed class ValuationApproachSettingsService(
         ValuationRequest vr,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid == Guid.Empty)
             return (false, AssignmentType.Execution);
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
         var hasStructures = string.Equals(
@@ -194,7 +195,7 @@ public sealed class ValuationApproachSettingsService(
         return new ValuationApproachSettingsDto
         {
             ValuationRequestId = vr.Id,
-            PropertyId = vr.PropertyId,
+            PropertyId = vr.PropertyId.ToString("D"),
             PropertyType = vr.PropertyType,
             IsLandPropertyType = ValuationApproachSettingsRules.IsLandPropertyType(vr.PropertyType),
             HasStructuresToValue = hasStructures,

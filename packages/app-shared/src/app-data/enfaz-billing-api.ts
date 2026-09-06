@@ -7,6 +7,7 @@ import {
   listEnfazTracking,
   listEnfazAging,
   listReadyEnfazPoSummaries,
+  listReadyEnfazPoSummariesPage,
   listEnfazFollowups,
   addEnfazFollowup,
   setEnfazFinanceFlag,
@@ -16,18 +17,35 @@ import {
   type CollectPoEnfazInvoiceRequest,
   type EnfazAgingReportDto,
   type EnfazFollowupDto,
+  type EnfazReadyPoListQuery,
+  type EnfazReadyPoSummaryDto,
+  type PagedResultDto,
   type PoEnfazBillingDto,
   type PropertyEnfazRevenueDto,
   type SavePoEnfazBillingRequest,
   type SetEnfazFinanceFlagRequest,
 } from "@platform/api-client";
-import { workOrdersApiConfig, apiErrorMessage } from "./work-orders-api-config";
+import {
+  workOrdersApiConfig,
+  apiErrorMessage,
+  requireWorkOrdersApiConfig,
+  unwrapApiResult,
+} from "./work-orders-api-config";
 
 export async function loadReadyEnfazPoSummaries() {
   const config = workOrdersApiConfig();
   if (!config) return [];
   const result = await listReadyEnfazPoSummaries(config);
   return result.ok ? result.data : [];
+}
+
+/** One server page of Enfaz-ready work orders (pagination-contract §10.1). */
+export async function loadReadyEnfazPoSummariesPage(
+  query: EnfazReadyPoListQuery,
+): Promise<PagedResultDto<EnfazReadyPoSummaryDto>> {
+  const config = requireWorkOrdersApiConfig();
+  const result = await listReadyEnfazPoSummariesPage(config, query);
+  return unwrapApiResult(result, "تعذّر تحميل أوامر العمل الجاهزة للفوترة");
 }
 
 export async function loadPoEnfazBillingForQuery(

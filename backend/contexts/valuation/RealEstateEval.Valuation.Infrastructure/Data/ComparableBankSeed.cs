@@ -285,8 +285,8 @@ public static class ComparableBankSeed
         if (compsByRef.Count == 0) return;
 
         // Spec §2: link field comparables to this property for display priority.
-        if (Guid.TryParse(exists.PropertyId, out var subjectPropertyId)
-            && subjectPropertyId != Guid.Empty)
+        var subjectPropertyId = exists.PropertyId;
+        if (subjectPropertyId != Guid.Empty)
         {
             foreach (var r in Rows.Where(x =>
                          x.Source == ComparableSources.Field

@@ -28,7 +28,25 @@ async function migrateInspectorDefaultCoords(
   return migrateInspectorDefaultCoordsIfNeeded(draft, rawCoords);
 }
 
-export async function fetchInspectorWorkspace(
+const inFlightWorkspace = new Map<
+  string,
+  Promise<InspectorWorkspaceDraft | null>
+>();
+
+export function fetchInspectorWorkspace(
+  taskId: string,
+): Promise<InspectorWorkspaceDraft | null> {
+  const pending = inFlightWorkspace.get(taskId);
+  if (pending) return pending;
+  const run = fetchInspectorWorkspaceUncached(taskId);
+  inFlightWorkspace.set(taskId, run);
+  void run.finally(() => {
+    if (inFlightWorkspace.get(taskId) === run) inFlightWorkspace.delete(taskId);
+  });
+  return run;
+}
+
+async function fetchInspectorWorkspaceUncached(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
   let submission: PartyTaskSubmissionDto | null = null;

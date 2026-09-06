@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginViaUi } from "../../fixtures/auth";
+import { loginViaUi, submitMobileStep } from "../../fixtures/auth";
 
 test.describe("login journey", () => {
   test("prototype user can sign in and reach dashboard", async ({ page }) => {
@@ -12,13 +12,7 @@ test.describe("login journey", () => {
   test("login page shows error when API is unreachable", async ({ page }) => {
     await page.route("**/api/auth/login", (route) => route.abort());
     await page.goto("/login", { waitUntil: "domcontentloaded" });
-    await page.locator("#mobile").fill("500000001");
-    await page.locator("form").evaluate((form) => {
-      (form as HTMLFormElement).requestSubmit();
-    });
-    await expect(page.getByRole("heading", { name: "أدخل رمز التحقق" })).toBeVisible({
-      timeout: 15_000,
-    });
+    await submitMobileStep(page, "500000001");
     const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
     for (let i = 0; i < 6; i++) {
       await otpBoxes.nth(i).fill(String(i + 1));

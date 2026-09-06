@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
@@ -5,8 +6,9 @@ namespace RealEstateEval.Financial.Domain;
 /// <see cref="PeriodFrom"/> / <see cref="PeriodTo"/> are reserved for a later time-window mode.
 /// Accrual still creates the ledger; <c>suspended</c> status carries the withhold into payables.
 /// </summary>
-public class IncentiveSuspension
+public class IncentiveSuspension : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
 
  /// <summary>Identity user id of the incentive owner.</summary>

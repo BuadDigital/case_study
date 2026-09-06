@@ -20,7 +20,37 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                 .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_operations_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("OperationsReferenceSequences", "operations");
+                });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelope", b =>
                 {
@@ -52,8 +82,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal?>("FeeAmountSar")
                         .HasPrecision(12, 2)
@@ -119,8 +149,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("FeeGenerated");
-
                     b.HasIndex("OperationsTaskId");
 
                     b.HasIndex("ReferenceNumber");
@@ -129,38 +157,12 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("RevenueEntitlementAtUtc");
 
-                    b.HasIndex("Status");
+                    b.ToTable("KeyEnvelopes", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopes_FeeAmountSar_NonNegative", "\"FeeAmountSar\" IS NULL OR \"FeeAmountSar\" >= 0");
 
-                    b.ToTable("KeyEnvelopes", "operations");
-                });
-
-            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("LastValue")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Prefix")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Prefix", "Year")
-                        .IsUnique()
-                        .HasDatabaseName("UX_operations_ReferenceSequences_Prefix_Year");
-
-                    b.ToTable("OperationsReferenceSequences", "operations");
+                            t.HasCheckConstraint("CK_KeyEnvelopes_Status", "\"Status\" IS NULL OR \"Status\" IN ('reviewer', 'assessor', 'external', 'returned')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
@@ -177,8 +179,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ConfirmedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("DeedNumber")
                         .IsRequired()
@@ -212,7 +214,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("EnvelopeId", "DeedNumber");
 
-                    b.ToTable("KeyEnvelopeAssignments", "operations");
+                    b.ToTable("KeyEnvelopeAssignments", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopeAssignments_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'matched', 'partial', 'unmatched', 'unmatched_inspected', 'missing')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeHandoff", b =>
@@ -229,8 +234,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ConfirmedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -242,8 +247,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid>("EnvelopeId")
                         .HasColumnType("uuid");
@@ -280,8 +285,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ToUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -293,9 +298,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("EnvelopeId");
 
-                    b.HasIndex("Status");
-
-                    b.ToTable("KeyEnvelopeHandoffs", "operations");
+                    b.ToTable("KeyEnvelopeHandoffs", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopeHandoffs_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending_confirm', 'confirmed', 'completed')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeTimelineEntry", b =>
@@ -311,8 +317,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("ActorUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -393,6 +399,11 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("DeedsJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("DeedsText")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("\"DeedsJson\" #>> '{}'", true);
 
                     b.Property<string>("Description")
                         .HasMaxLength(4000)
@@ -488,6 +499,18 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("DeedsJson")
+                        .HasDatabaseName("IX_OperationsTasks_DeedsJson");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DeedsJson"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("DeedsJson"), new[] { "jsonb_path_ops" });
+
+                    b.HasIndex("DeedsText")
+                        .HasDatabaseName("IX_OperationsTasks_DeedsText_Trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("DeedsText"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("DeedsText"), new[] { "gin_trgm_ops" });
+
                     b.HasIndex("DisplayId")
                         .IsUnique();
 
@@ -497,30 +520,14 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("Status");
 
-                    b.ToTable("OperationsTasks", "case_study");
-                });
+                    b.ToTable("OperationsTasks", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_OperationsTasks_AgreedVisitFeeSar_NonNegative", "\"AgreedVisitFeeSar\" IS NULL OR \"AgreedVisitFeeSar\" >= 0");
 
-            modelBuilder.Entity("RealEstateEval.Operations.Domain.OperationsTaskSequence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                            t.HasCheckConstraint("CK_OperationsTasks_PrevStatus", "\"PrevStatus\" IS NULL OR \"PrevStatus\" IN ('created', 'in_progress', 'paused', 'completed', 'cancelled')");
 
-                    b.Property<int>("NextSeq")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Year")
-                        .IsUnique();
-
-                    b.ToTable("OperationsTaskSequences", "case_study");
+                            t.HasCheckConstraint("CK_OperationsTasks_Status", "\"Status\" IS NULL OR \"Status\" IN ('created', 'in_progress', 'paused', 'completed', 'cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyCourtAccess", b =>
@@ -582,8 +589,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("UpdatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -598,9 +605,14 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("RequestNumber");
 
-                    b.HasIndex("StudyHoldStatus");
+                    b.HasIndex("StudyHoldStatus")
+                        .HasDatabaseName("IX_PropertyCourtAccesses_EnabledNoKey")
+                        .HasFilter("\"StudyHoldStatus\" = 'enabled_no_key'");
 
-                    b.ToTable("PropertyCourtAccesses", "operations");
+                    b.ToTable("PropertyCourtAccesses", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_PropertyCourtAccesses_StudyHoldStatus", "\"StudyHoldStatus\" IS NULL OR \"StudyHoldStatus\" IN ('none', 'enabled_no_key', 'suspended_eviction')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyKeyRecord", b =>
@@ -656,7 +668,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasIndex("PoNumber", "PropertyId")
                         .IsUnique();
 
-                    b.ToTable("PropertyKeyRecords", "operations");
+                    b.ToTable("PropertyKeyRecords", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_PropertyKeyRecords_WorkflowStatus", "\"WorkflowStatus\" IS NULL OR \"WorkflowStatus\" IN ('progress', 'done')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.SurveyOffice", b =>

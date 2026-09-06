@@ -28,9 +28,6 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<byte[]>("Content")
-                        .HasColumnType("bytea");
-
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -63,8 +60,8 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
 
                     b.Property<string>("UploadedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 
@@ -107,6 +104,15 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                         .IsUnique();
 
                     b.ToTable("PhotoMetadata", "attachments");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>
+                {
+                    b.HasOne("RealEstateEval.Attachments.Domain.FileAttachment", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

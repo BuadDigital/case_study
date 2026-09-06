@@ -58,6 +58,7 @@ export {
   opsModalFooter,
 } from "./lib/ops-chrome";
 export { Button } from "./components/Button";
+export { ListPager, listPagerWindow, type ListPagerProps } from "./components/ListPager";
 export { ErrorBoundary } from "./components/ErrorBoundary";
 export { Spinner } from "./components/Spinner";
 export { GoogleMapPin } from "./components/GoogleMapPin";

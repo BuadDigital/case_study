@@ -1,11 +1,13 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// Explicit finance lifecycle flag for an Enfaz tracking row (optional property scope).
 /// Design: suspended / excluded when centre or finance marks blocked / final exclusion.
 /// </summary>
-public class PoEnfazFinanceFlag
+public class PoEnfazFinanceFlag : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public string PoNumber { get; set; } = "";
  /// <summary>When null, flag applies to all properties under the PO.</summary>

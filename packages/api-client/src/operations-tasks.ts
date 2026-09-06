@@ -173,7 +173,12 @@ export type OperationsTaskListSort =
   | "updated"
   | "priority";
 
-/** `GET /api/operations-tasks` query — pagination-contract §3. */
+/**
+ * `GET /api/operations-tasks` query — pagination-contract §3. Inherited `q`
+ * matches Title / DisplayId / AssigneeName / PoNumber / Reference **and any
+ * deed number in `DeedsJson`** (jsonb containment for a whole deed number, a
+ * trigram index for a partial one), so deed terms belong on the wire.
+ */
 export type OperationsTaskListQuery = Omit<ListPageQuery, "sort"> & {
   sort?: OperationsTaskListSort;
   assigneeId?: string;

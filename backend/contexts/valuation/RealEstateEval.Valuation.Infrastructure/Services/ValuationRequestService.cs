@@ -55,11 +55,11 @@ public sealed class ValuationRequestService : IValuationRequestService
         string propertyId,
         CancellationToken cancellationToken = default)
     {
-        var keys = PropertyIdKeys(propertyId);
-        if (keys.Count == 0) return null;
+        var key = NormalizePropertyId(propertyId);
+        if (key == Guid.Empty) return null;
 
         var row = await _db.ValuationRequests.AsNoTracking()
-            .Where(x => keys.Contains(x.PropertyId) && x.Status != ValuationRequestStatus.Done)
+            .Where(x => x.PropertyId == key && x.Status != ValuationRequestStatus.Done)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         return row is null ? null : ToDto(row);
@@ -71,6 +71,9 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
  // Taken before anything is staged so a lost race can hand the context back exactly
  // as the caller passed it in — otherwise their next save replays the failed insert.
+        var propertyId = NormalizePropertyId(request.PropId);
+        if (propertyId == Guid.Empty) return (null, "property_id_required");
+
         var checkpoint = ChangeTrackerCheckpoint.Capture(_db);
         var displayId = string.IsNullOrWhiteSpace(request.DisplayId)
             ? await NextDisplayIdAsync(cancellationToken)
@@ -78,7 +81,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         var row = ValuationRequest.Create(
             Guid.NewGuid(),
             displayId,
-            NormalizePropertyId(request.PropId),
+            propertyId,
             request.Area,
             request.Type,
             request.Appraiser,
@@ -87,12 +90,13 @@ public sealed class ValuationRequestService : IValuationRequestService
             ValuationRequestStatuses.Parse(request.Status));
         _db.ValuationRequests.Add(row);
 
-        var poNumber = await _poNumbers.ResolveForPropertyAsync(row.PropertyId, cancellationToken);
+        var propertyKey = row.PropertyId.ToString("D");
+        var poNumber = await _poNumbers.ResolveForPropertyAsync(propertyKey, cancellationToken);
         await _events.PublishAsync(
             IntegrationEventTypes.ValuationRequestCreated,
             new ValuationRequestCreatedPayload(
                 row.Id.ToString(),
-                row.PropertyId,
+                propertyKey,
                 poNumber),
             cancellationToken);
 
@@ -137,7 +141,7 @@ public sealed class ValuationRequestService : IValuationRequestService
             IntegrationEventTypes.ValuationReportSubmitted,
             new ValuationReportSubmittedPayload(
                 row.Id,
-                row.PropertyId,
+                row.PropertyId.ToString("D"),
                 row.DisplayId,
                 row.Appraiser),
             cancellationToken);
@@ -204,34 +208,18 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         Id = row.Id,
         DisplayId = row.DisplayId,
-        PropId = row.PropertyId,
+        PropId = row.PropertyId.ToString("D"),
         Area = row.Area,
         Type = row.PropertyType,
         Appraiser = row.Appraiser,
         Status = row.Status.ToDbValue(),
-        Date = row.RequestDate,
+        Date = row.RequestDate.ToString("yyyy-MM-dd"),
     };
 
-    internal static string NormalizePropertyId(string? propertyId)
-    {
-        var key = propertyId?.Trim() ?? "";
-        return Guid.TryParse(key, out var id) ? id.ToString("D") : key;
-    }
-
-    internal static IReadOnlyList<string> PropertyIdKeys(string? propertyId)
-    {
-        var key = propertyId?.Trim() ?? "";
-        if (key.Length == 0) return [];
-
-        var keys = new HashSet<string>(StringComparer.Ordinal) { key };
-        if (Guid.TryParse(key, out var id))
-        {
-            keys.Add(id.ToString("D"));
-            keys.Add(id.ToString("N"));
-            keys.Add(id.ToString("D").ToUpperInvariant());
-            keys.Add(id.ToString("N").ToUpperInvariant());
-        }
-
-        return keys.ToList();
-    }
+ /// <summary>
+ /// The wire carries the property id as text in any Guid format or casing; the column is a
+ /// uuid, so anything that is not a Guid can never match a property and reads as "none".
+ /// </summary>
+    internal static Guid NormalizePropertyId(string? propertyId) =>
+        Guid.TryParse(propertyId?.Trim(), out var id) ? id : Guid.Empty;
 }

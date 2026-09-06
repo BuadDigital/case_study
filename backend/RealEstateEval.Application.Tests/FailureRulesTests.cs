@@ -29,7 +29,7 @@ public class FailureRulesTests
         PropertyFailure.Reconstitute(
             Guid.NewGuid(),
             "PO-1",
-            Guid.NewGuid().ToString(),
+            Guid.NewGuid(),
             "D-1",
             title,
             "deed-inactive",
@@ -73,7 +73,7 @@ public class FailureRulesTests
         Assert.Empty(FailureRules.ValidateCreate(new CreateFailureRequest
         {
             PoNumber = "PO-1",
-            PropertyId = "p",
+            PropertyId = Guid.NewGuid().ToString(),
             Specialist = "سالم",
         }));
     }
@@ -122,7 +122,7 @@ public class FailureRulesTests
             new CreateFailureRequest
             {
                 PoNumber = " PO-2 ",
-                PropertyId = " p-2 ",
+                PropertyId = $" {Guid.NewGuid()} ",
                 DeedNumber = " D-2 ",
                 ProblemTypeId = FailureRules.DeedInactiveProblemTypeId,
                 Severity = "suspected",
@@ -145,7 +145,7 @@ public class FailureRulesTests
         var request = FailureRules.BourseObstructionCreateRequest(new BourseObstructionRequest
         {
             PoNumber = "PO-3",
-            PropertyId = "p-3",
+            PropertyId = Guid.NewGuid().ToString(),
             DeedNumber = "D-3",
             Reason = "  الصك موقوف  ",
             Specialist = "سالم",
@@ -171,7 +171,7 @@ public class FailureRulesTests
     [Fact]
     public void An_eviction_hold_is_born_suspended()
     {
-        var hold = FailureRules.NewEvictionHold("PO-5", "p-5", "D-5", "سالم", Now);
+        var hold = FailureRules.NewEvictionHold("PO-5", Guid.NewGuid(), "D-5", "سالم", Now);
 
         Assert.Equal(PropertyFailureStatus.Suspended, hold.Status);
         Assert.Equal(FailureRules.EvictionProblemTypeId, hold.ProblemTypeId);
@@ -182,7 +182,7 @@ public class FailureRulesTests
     [Fact]
     public void An_unmatched_key_failure_is_internal_and_system_raised()
     {
-        var failure = FailureRules.NewKeyUnmatchedFailure("PO-6", "p-6", "D-6", "سالم", Now);
+        var failure = FailureRules.NewKeyUnmatchedFailure("PO-6", Guid.NewGuid(), "D-6", "سالم", Now);
 
         Assert.Equal(FailureRules.KeyUnmatchedProblemTypeId, failure.ProblemTypeId);
         Assert.Equal(FailureRules.KeyUnmatchedTitle, failure.Title);
@@ -220,7 +220,7 @@ public class FailureRulesTests
 
         Assert.Equal("سبب", FailureRules.EscalateRequest(failure, "سبب").Reason);
         Assert.Equal(failure.PoNumber, FailureRules.ResolveObstructionRequest(failure).PoNumber);
-        Assert.Equal(failure.PropertyId, FailureRules.BlockTasksRequest(failure).PropertyId);
+        Assert.Equal(failure.PropertyId.ToString("D"), FailureRules.BlockTasksRequest(failure).PropertyId);
 
         var deedStatus = FailureRules.DeedStatusRequest(failure, "موقوف");
         Assert.Equal("موقوف", deedStatus.DeedStatus);
@@ -245,7 +245,7 @@ public class FailureRulesTests
     [Fact]
     public void The_suspended_timeline_entry_uses_the_suspension_time()
     {
-        var failure = FailureRules.NewEvictionHold("PO-7", "p-7", "D-7", "سالم", Now);
+        var failure = FailureRules.NewEvictionHold("PO-7", Guid.NewGuid(), "D-7", "سالم", Now);
 
         var entry = FailureRules.SuspendedTimelineEntry(failure, Guid.NewGuid());
         Assert.Equal($"failure:{failure.Id}:suspended", entry.EventKey);

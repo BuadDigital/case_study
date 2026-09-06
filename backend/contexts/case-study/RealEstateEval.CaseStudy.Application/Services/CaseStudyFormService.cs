@@ -67,11 +67,7 @@ public class CaseStudyFormService : ICaseStudyFormService
 
         var assigneeIds = await _db.ListTaskAndChildAssigneeIdsAsync(taskId, cancellationToken);
 
-        return assigneeIds.Any(assigneeId => PoRoleMatrixRules.CanReadPartyTask(
-            actor.PrototypeRole,
-            assigneeId,
-            actor.UserId,
-            actor.DistributionAssigneeId));
+        return CaseStudyFormReadRules.CanRead(actor, assigneeIds);
     }
 
     public async Task<(CaseStudyFormDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -391,81 +387,13 @@ public class CaseStudyFormService : ICaseStudyFormService
         entity.UpdatedAtUtc = now;
     }
 
-    private static CaseStudyFormDto EmptyDto(WorkflowTask task) =>
-        new()
-        {
-            TaskId = task.Id.ToString(),
-            PropertyId = task.PropertyId?.ToString(),
-            PoNumber = task.PoNumber,
-            Status = "new",
-        };
+    // Projection lives in CaseStudyFormMapping so the batch read returns the same shape.
+    private static CaseStudyFormDto EmptyDto(WorkflowTask task) => CaseStudyFormMapping.EmptyDto(task);
 
-    private static CaseStudyFormDto ToDto(CaseStudyForm entity)
-    {
-        var answers = ParseAnswers(entity.AnswersJson);
+    private static CaseStudyFormDto ToDto(CaseStudyForm entity) => CaseStudyFormMapping.ToDto(entity);
 
-        Dictionary<string, bool>? specialistReview = null;
-        if (!string.IsNullOrWhiteSpace(entity.SpecialistReviewApprovedJson))
-        {
-            try
-            {
-                specialistReview = JsonSerializer.Deserialize<Dictionary<string, bool>>(
-                    entity.SpecialistReviewApprovedJson, JsonOpts);
-            }
-            catch
-            {
-                specialistReview = new();
-            }
-        }
-
-        var provenance = CaseStudyAnswerProvenance.Parse(entity.AnswerProvenanceJson);
-
-        return new CaseStudyFormDto
-        {
-            TaskId = entity.TaskId.ToString(),
-            PropertyId = entity.PropertyId?.ToString(),
-            PoNumber = entity.PoNumber,
-            Status = entity.Status,
-            CurrentStep = entity.CurrentStep,
-            RequestNumber = entity.RequestNumber,
-            RequestDate = entity.RequestDate,
-            DeedNumber = entity.DeedNumber,
-            Answers = answers,
-            AnswerProvenance = provenance.Count == 0 ? null : provenance,
-            DeedRemarks = entity.DeedRemarks,
-            SurveyRemarks = entity.SurveyRemarks,
-            ComponentsRemarks = entity.ComponentsRemarks,
-            OccupancyRemarks = entity.OccupancyRemarks,
-            MeterType = entity.MeterType,
-            MeterNumber = entity.MeterNumber,
-            HoaFee = entity.HoaFee,
-            SigDeed = entity.SigDeed,
-            SigApprover = entity.SigApprover,
-            SigDate = entity.SigDate,
-            SpecialistReviewApproved = specialistReview,
-            InfathLinkedAssets = entity.InfathLinkedAssets,
-            InfathLinkedDeedNumbers = entity.InfathLinkedDeedNumbers,
-            InfathLinkedAssetsNotes = entity.InfathLinkedAssetsNotes,
-            InfathOtherNotes = entity.InfathOtherNotes,
-            InfathClosingNotes = entity.InfathClosingNotes,
-            DeedNatureMatchOutcome = entity.DeedNatureMatchOutcome,
-            DeedNatureMatchNotes = entity.DeedNatureMatchNotes,
-            SavedAtUtc = entity.SavedAtUtc?.ToString("O"),
-        };
-    }
-
-    private static Dictionary<string, object?> ParseAnswers(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return new();
-        try
-        {
-            return JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOpts) ?? new();
-        }
-        catch
-        {
-            return new();
-        }
-    }
+    private static Dictionary<string, object?> ParseAnswers(string? json) =>
+        CaseStudyFormMapping.ParseAnswers(json);
 
     private static Dictionary<string, string?> ReadRemarkMap(CaseStudyForm? entity)
     {

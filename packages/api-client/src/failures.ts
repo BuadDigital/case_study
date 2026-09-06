@@ -6,6 +6,7 @@ import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
+import { fetchListPage, type PagedResultDto } from "./pagination";
 
 export type FailuresApiConfig = WorkOrdersApiConfig;
 
@@ -63,6 +64,59 @@ function headers(token: string, idempotencyKey?: string): HeadersInit {
     Authorization: `Bearer ${token}`,
   };
   return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
+}
+
+/** Allowed `sort` keys — pagination-contract §5. Unknown keys fall back to `updated`. */
+export type FailureListSort = "updated" | "created" | "po" | "deed";
+
+/** `GET /api/failures` query — pagination-contract §5. */
+export type FailureListQuery = {
+  /** 1-based page; presence switches the endpoint to the paged envelope. */
+  page?: number;
+  pageSize?: number;
+  sort?: FailureListSort;
+  dir?: "asc" | "desc";
+  /** Free text over `PoNumber`, `DeedNumber`, `Title`, `Specialist`. */
+  q?: string;
+  /**
+   * CSV of `internal` | `review` | `approved` | `returned` | `suspended` |
+   * `resolved`. Unrecognised tokens are dropped; an all-unknown list applies no
+   * filter, so a typo never narrows the queue to nothing.
+   */
+  status?: string | readonly string[];
+  poNumber?: string;
+  problemTypeId?: string;
+};
+
+/** The filter set without the page window. */
+export type FailureListFilters = Omit<FailureListQuery, "page" | "pageSize">;
+
+function failureListParams(query?: FailureListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    status: query?.status,
+    poNumber: query?.poNumber,
+    problemTypeId: query?.problemTypeId,
+  };
+}
+
+/**
+ * One server page of the failures queue — pagination-contract §5. The actor's
+ * visible PO set is resolved inside the query, so `totalCount` is theirs.
+ */
+export async function listFailuresPage(
+  config: FailuresApiConfig,
+  query?: FailureListQuery,
+): Promise<ApiOk<PagedResultDto<FailureRecordDto>> | ApiErr> {
+  return fetchListPage<FailureRecordDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/failures",
+    failureListParams(query),
+  );
 }
 
 export async function listFailures(

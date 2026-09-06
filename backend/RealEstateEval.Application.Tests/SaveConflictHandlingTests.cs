@@ -39,19 +39,19 @@ public class SaveConflictHandlingTests
     public async Task Rolling_back_a_failed_attempt_leaves_the_callers_own_work_pending()
     {
         await using var db = CreateDb();
-        var stored = Row("VR-500", "property-1");
+        var stored = Row("VR-500", Guid.NewGuid());
         db.ValuationRequests.Add(stored);
         await db.SaveChangesAsync();
 
  // What the caller staged before handing the context to a service.
         Assert.Equal(ValuationRequestTransition.Applied, stored.RecordImpediment(DateTime.UtcNow));
-        var callerRow = Row("VR-501", "property-2");
+        var callerRow = Row("VR-501", Guid.NewGuid());
         db.ValuationRequests.Add(callerRow);
 
         var checkpoint = ChangeTrackerCheckpoint.Capture(db);
 
  // What the service stages and then loses on a unique index.
-        db.ValuationRequests.Add(Row("VR-502", "property-3"));
+        db.ValuationRequests.Add(Row("VR-502", Guid.NewGuid()));
         var refreshed = await db.ValuationRequests.SingleAsync(x => x.DisplayId == "VR-500");
         checkpoint.Rollback();
 
@@ -67,7 +67,7 @@ public class SaveConflictHandlingTests
         Assert.Equal(2, await db.ValuationRequests.CountAsync());
     }
 
-    private static ValuationRequest Row(string displayId, string propertyId) =>
+    private static ValuationRequest Row(string displayId, Guid propertyId) =>
         ValuationRequest.Create(
             Guid.NewGuid(),
             displayId,

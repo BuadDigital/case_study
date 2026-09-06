@@ -1,84 +1,70 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  useCommandMutation,
-  useIdempotentAction,
-} from "@platform/app-shared";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  loadPoEnfazBillingForQuery,
-  loadReadyEnfazPoSummaries,
-  savePoEnfazBillingData,
-  issueEnfazInvoice,
-  collectEnfazInvoice,
-  downloadEnfazInvoicePdf,
-  openEnfazAttachment,
-} from "@platform/app-shared/app-data/enfaz-billing-api";
+/**
+ * Enfaz work-order billing — match fees, save, issue the invoice, record the
+ * collection. Thin composition: the workflow lives in
+ * `useFinanceEnfazPoBillingWorkflow`, the regions in `FinanceEnfazBilling*`
+ * and the ready-list in `FinanceEnfazReadyPoList`.
+ */
+
+import type { PoEnfazBillingDto } from "@platform/api-client";
 import {
   EmptyState,
-  Input,
   StatusPill,
-  TBody,
-  THead,
-  Table,
-  TableFrame,
-  Td,
-  TdLtr,
-  Th,
-  Tr,
   cn,
   finStatusStyle,
   opsBtnGhost,
-  opsBtnPrimary,
-  opsCheckInput,
-  opsInsetPanel,
   opsLetterCard,
-  opsPanelCard,
   opsTfNote,
-  useToast,
 } from "@platform/ui-kit";
-import {
-  type EnfazReadyPoSummaryDto,
-  type PoEnfazRevenueLineDto,
-} from "@platform/api-client";
-import {
-  finMuted,
-  finPo,
-  finRowActive,
-  finWorkTitle,
-} from "../lib/finance-tw";
+import { invoiceHeaderPill } from "../lib/finance-enfaz-po-billing-state";
+import { finPo, finWorkTitle } from "../lib/finance-tw";
+import { FINANCE_LIST_PAGE_SIZE } from "../query/billing-list-page-queries";
+import { FinanceEnfazBillingActions } from "./FinanceEnfazBillingActions";
+import { FinanceEnfazBillingLinesTable } from "./FinanceEnfazBillingLinesTable";
+import { FinanceEnfazBillingSummary } from "./FinanceEnfazBillingSummary";
+import { FinanceEnfazReadyPoList } from "./FinanceEnfazReadyPoList";
+import { useFinanceEnfazPoBillingWorkflow } from "./useFinanceEnfazPoBillingWorkflow";
 
-const EMPTY_READY_SUMMARIES: EnfazReadyPoSummaryDto[] = [];
-
-type LineDraft = {
-  caseStudyFee: string;
-  surveyFee: string;
-  keyFee: string;
-  inc: boolean;
-};
-
-function lineTotal(d: LineDraft | undefined): number {
-  if (!d) return 0;
+function BillingErrorNote({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry: () => void;
+}) {
   return (
-    (Number(d.caseStudyFee) || 0) +
-    (Number(d.surveyFee) || 0) +
-    (Number(d.keyFee) || 0)
+    <p className={cn(opsTfNote, "mb-0")}>
+      {error instanceof Error
+        ? error.message
+        : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
+      <button
+        type="button"
+        className={cn(opsBtnGhost, "ms-2")}
+        onClick={onRetry}
+      >
+        إعادة المحاولة
+      </button>
+    </p>
   );
 }
 
-function invoiceStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case "collected":
-      return "محصّلة";
-    case "partially_collected":
-      return "تحصيل جزئي";
-    case "issued":
-      return "صادرة";
-    default:
-      return "مُفوتَرة";
-  }
+function BillingHeader({
+  poNumber,
+  billing,
+}: {
+  poNumber: string;
+  billing: PoEnfazBillingDto;
+}) {
+  const pill = invoiceHeaderPill(billing);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <h3 className={cn(finWorkTitle, finPo)} dir="ltr">
+        {poNumber}
+      </h3>
+      <StatusPill label={pill.label} style={finStatusStyle(pill.tone)} />
+    </div>
+  );
 }
 
 export function FinanceEnfazPoBilling({
@@ -90,333 +76,9 @@ export function FinanceEnfazPoBilling({
   /** Hides the side work-order list when working from a stage. */
   compact?: boolean;
 } = {}) {
-  const queryClient = useQueryClient();
-  const { showToast } = useToast();
-  const [selectedPo, setSelectedPo] = useState<string | null>(
-    initialPo?.trim() || null,
-  );
-  const [draft, setDraft] = useState<Record<string, LineDraft>>({});
-  const [collectAmount, setCollectAmount] = useState("");
-  const [busy, setBusy] = useState(false);
+  const wf = useFinanceEnfazPoBillingWorkflow({ initialPo, compact });
 
-  const { execute: executeIssueInvoice, loading: issuing } = useIdempotentAction(
-    useCallback(async (idempotencyKey: string) => {
-      if (!selectedPo) throw new Error("اختر أمر عمل");
-      return issueEnfazInvoice(selectedPo, idempotencyKey);
-    }, [selectedPo]),
-  );
-
-  const { run: runCollect, loading: collecting } = useCommandMutation(
-    useCallback(
-      async (
-        args: { poNumber: string; amountSar: number },
-        idempotencyKey: string,
-      ) =>
-        collectEnfazInvoice(
-          args.poNumber,
-          { amountSar: args.amountSar },
-          idempotencyKey,
-        ),
-      [],
-    ),
-  );
-
-  const commandBusy = busy || issuing || collecting;
-
-  const { data: readySummaries = EMPTY_READY_SUMMARIES } = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", "ready-summary"],
-    queryFn: loadReadyEnfazPoSummaries,
-  });
-
-  const readyPos = useMemo(
-    () => readySummaries.map((s) => s.poNumber),
-    [readySummaries],
-  );
-
-  useEffect(() => {
-    if (initialPo?.trim()) {
-      setSelectedPo(initialPo.trim());
-      return;
-    }
-    if (!selectedPo && readyPos.length > 0) setSelectedPo(readyPos[0]);
-  }, [initialPo, readyPos, selectedPo]);
-
-  const { data: billing, isPending, isError, error, refetch } = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", selectedPo],
-    queryFn: () => loadPoEnfazBillingForQuery(selectedPo!),
-    enabled: Boolean(selectedPo),
-  });
-
-  useEffect(() => {
-    if (!billing) return;
-    const next: Record<string, LineDraft> = {};
-    for (const line of billing.lines) {
-      next[line.propertyId] = {
-        caseStudyFee: String(line.caseStudyFeeSar || ""),
-        surveyFee: String(line.surveyFeeSar || ""),
-        keyFee: String(line.keyFeeSar || ""),
-        inc: line.includedInBilling,
-      };
-    }
-    setDraft(next);
-    const remaining = Math.max(
-      0,
-      (billing.totalSar || 0) - (billing.collectedAmountSar || 0),
-    );
-    setCollectAmount(remaining > 0 ? String(remaining) : "");
-  }, [billing]);
-
-  const totals = useMemo(() => {
-    if (!billing)
-      return { taxable: 0, key: 0, vat: 0, total: 0, billable: 0, sub: 0 };
-    let taxable = 0;
-    let key = 0;
-    let billable = 0;
-    for (const line of billing.lines) {
-      const d = draft[line.propertyId];
-      if (!d?.inc || line.workStatus !== "done") continue;
-      billable += 1;
-      taxable += (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
-      key += Number(d.keyFee) || 0;
-    }
-    // 15% VAT on (valuation+survey) only — keys fees are VAT-inclusive
-    const vat = Math.round(taxable * 0.15 * 100) / 100;
-    return {
-      taxable,
-      key,
-      vat,
-      total: taxable + vat + key,
-      billable,
-      /** Legacy UI compat: taxable subtotal before VAT */
-      sub: taxable,
-    };
-  }, [billing, draft]);
-
-  const issued = Boolean(billing?.invoiceNumber);
-  const fullyCollected = billing?.invoiceStatus === "collected";
-
-  const save = async () => {
-    if (!selectedPo || !billing) return;
-    setBusy(true);
-    try {
-      const saved = await savePoEnfazBillingData(selectedPo, {
-        lines: billing.lines.map((line) => {
-          const d = draft[line.propertyId];
-          return {
-            propertyId: line.propertyId,
-            caseStudyFeeSar: Number(d?.caseStudyFee) || 0,
-            surveyFeeSar: Number(d?.surveyFee) || 0,
-            keyFeeSar: Number(d?.keyFee) || 0,
-            keyEntitlementEnvelopeId: line.keyEntitlementEnvelopeId,
-            includedInBilling: d?.inc ?? true,
-          };
-        }),
-      });
-      if (!saved) {
-        showToast("تعذّر حفظ الأتعاب — حاول مرة أخرى", "error");
-        return;
-      }
-      showToast("تم حفظ الأتعاب", "success");
-      await queryClient.invalidateQueries({
-        queryKey: [...appDataKeys.all, "enfaz-billing"],
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const issueInvoice = async () => {
-    if (!selectedPo) return;
-    setBusy(true);
-    try {
-      const outcome = await executeIssueInvoice();
-      if (outcome.status === "skipped") return;
-      const issuedBilling = outcome.value;
-      if (!issuedBilling) {
-        showToast("تعذّر إصدار الفاتورة — حاول مرة أخرى", "error");
-        return;
-      }
-      showToast("تم إصدار الفاتورة", "success");
-      // Download does not depend on invalidation — parallel so the PDF is not delayed (async-parallel).
-      const [, downloaded] = await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: [...appDataKeys.all, "enfaz-billing"],
-        }),
-        downloadEnfazInvoicePdf(selectedPo),
-      ]);
-      if (!downloaded) {
-        showToast("صدرت الفاتورة لكن تعذّر تنزيل PDF", "info");
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const collect = async () => {
-    if (!selectedPo || !billing) return;
-    const amount = Number(collectAmount);
-    if (!(amount > 0)) {
-      showToast("أدخل مبلغ تحصيل أكبر من صفر", "error");
-      return;
-    }
-    const remaining = Math.max(
-      0,
-      (billing.totalSar || 0) - (billing.collectedAmountSar || 0),
-    );
-    if (
-      remaining > 0 &&
-      Math.abs(amount - remaining) > 0.009 &&
-      typeof window !== "undefined"
-    ) {
-      const ok = window.confirm(
-        `مبلغ التحويل (${amount.toLocaleString("en-US")} ر.س) يختلف عن المتبقي (${remaining.toLocaleString("en-US")} ر.س). المتابعة؟`,
-      );
-      if (!ok) return;
-    }
-    const outcome = await runCollect({
-      poNumber: selectedPo,
-      amountSar: amount,
-    });
-    if (outcome.status === "skipped") return;
-    if (!outcome.value) {
-      showToast("تعذّر تسجيل التحصيل — تحقق من المبلغ", "error");
-      return;
-    }
-    showToast("تم تسجيل التحصيل", "success");
-    await queryClient.invalidateQueries({
-      queryKey: [...appDataKeys.all, "enfaz-billing"],
-    });
-  };
-
-  const downloadPdf = async () => {
-    if (!selectedPo) return;
-    setBusy(true);
-    try {
-      const ok = await downloadEnfazInvoicePdf(selectedPo);
-      if (!ok) {
-        showToast("تعذّر تنزيل PDF — تأكد من إصدار الفاتورة أولاً", "error");
-        return;
-      }
-      showToast("تم تنزيل فاتورة PDF", "success");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const patchDraft = (propertyId: string, patch: Partial<LineDraft>) => {
-    setDraft((prev) => ({
-      ...prev,
-      [propertyId]: {
-        caseStudyFee: prev[propertyId]?.caseStudyFee ?? "",
-        surveyFee: prev[propertyId]?.surveyFee ?? "",
-        keyFee: prev[propertyId]?.keyFee ?? "",
-        inc: prev[propertyId]?.inc ?? true,
-        ...patch,
-      },
-    }));
-  };
-
-  const lineRow = (line: PoEnfazRevenueLineDto) => {
-    const cancelled = line.workStatus === "cancelled";
-    const d = draft[line.propertyId];
-    return (
-      <Tr
-        key={line.propertyId}
-        hoverable={false}
-        className={cn(cancelled && "opacity-50")}
-      >
-        <Td className="font-semibold text-heading">
-          {line.propertyLabel}
-          {line.hasKeyEntitlement ? (
-            <span className="ms-1 text-[10px] text-text-3">· مفتاح</span>
-          ) : null}
-        </Td>
-        <Td className="text-center">
-          <StatusPill
-            label={line.workStatusLabel}
-            style={finStatusStyle(line.workStatus === "done" ? "success" : "warning")}
-          />
-        </Td>
-        <Td className="text-center">
-          {cancelled ? (
-            <span className={finMuted}>—</span>
-          ) : (
-            <Input
-              type="number"
-              min={0}
-              className="h-8 w-24 text-xs"
-              value={d?.caseStudyFee ?? ""}
-              disabled={issued}
-              onChange={(e) =>
-                patchDraft(line.propertyId, { caseStudyFee: e.target.value })
-              }
-              aria-label={`دخل دراسة المعاملة ${line.propertyLabel}`}
-            />
-          )}
-        </Td>
-        <Td className="text-center">
-          {cancelled ? (
-            <span className={finMuted}>—</span>
-          ) : (
-            <Input
-              type="number"
-              min={0}
-              className="h-8 w-24 text-xs"
-              value={d?.surveyFee ?? ""}
-              disabled={issued}
-              onChange={(e) =>
-                patchDraft(line.propertyId, { surveyFee: e.target.value })
-              }
-              aria-label={`دخل تكاليف الرفع ${line.propertyLabel}`}
-            />
-          )}
-        </Td>
-        <Td className="text-center">
-          {cancelled ? (
-            <span className={finMuted}>—</span>
-          ) : line.hasKeyEntitlement ? (
-            <Input
-              type="number"
-              min={0}
-              className="h-8 w-24 text-xs"
-              value={d?.keyFee ?? ""}
-              disabled={issued}
-              onChange={(e) =>
-                patchDraft(line.propertyId, { keyFee: e.target.value })
-              }
-              aria-label={`أتعاب المفاتيح ${line.propertyLabel}`}
-            />
-          ) : (
-            <span className={finMuted}>—</span>
-          )}
-        </Td>
-        <TdLtr
-          className="text-center"
-          valueClassName="text-[14px] font-extrabold text-heading"
-        >
-          {cancelled ? "—" : `${lineTotal(d).toLocaleString("en-US")} ر.س`}
-        </TdLtr>
-        <Td className="text-center">
-          {cancelled ? (
-            <span className={finMuted}>—</span>
-          ) : (
-            <input
-              type="checkbox"
-              className={opsCheckInput}
-              checked={d?.inc ?? true}
-              disabled={issued}
-              onChange={(e) =>
-                patchDraft(line.propertyId, { inc: e.target.checked })
-              }
-              aria-label={`تضمين ${line.propertyLabel}`}
-            />
-          )}
-        </Td>
-      </Tr>
-    );
-  };
-
-  if (!compact && readyPos.length === 0 && !initialPo) {
+  if (wf.showReadyEmptyState) {
     return (
       <div className={opsLetterCard}>
         <EmptyState
@@ -428,253 +90,64 @@ export function FinanceEnfazPoBilling({
     );
   }
 
+  const errorNote = wf.isError ? (
+    <BillingErrorNote error={wf.error} onRetry={() => void wf.refetch()} />
+  ) : null;
+
   const detailPanel = (
-        <div className="min-w-0">
-          {!selectedPo || isPending ? (
-            <EmptyState panel line="اختر أمر عمل من القائمة." />
-          ) : !billing ? (
-            <EmptyState panel line="تعذر تحميل بيانات الفوترة." />
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className={cn(finWorkTitle, finPo)} dir="ltr">
-                  {selectedPo}
-                </h3>
-                {billing.invoiceNumber ? (
-                  <StatusPill
-                    label={`${invoiceStatusLabel(billing.invoiceStatus)}${billing.isOverdue ? " · متأخر" : ""} · ${billing.invoiceNumber}`}
-                    style={finStatusStyle(
-                      billing.isOverdue
-                        ? "danger"
-                        : billing.invoiceStatus === "collected"
-                          ? "success"
-                          : billing.invoiceStatus === "partially_collected"
-                            ? "warning"
-                            : "default",
-                    )}
-                  />
-                ) : billing.poReadyForBilling ? (
-                  <StatusPill label="جاهز للإصدار" style={finStatusStyle("default")} />
-                ) : (
-                  <StatusPill label="يحتاج حفظ" style={finStatusStyle("warning")} />
-                )}
-              </div>
+    <div className="min-w-0">
+      {!wf.selectedPo || wf.isPending ? (
+        <EmptyState panel line="اختر أمر عمل من القائمة." />
+      ) : !wf.billing ? (
+        <EmptyState panel line="تعذر تحميل بيانات الفوترة." />
+      ) : (
+        <div className="flex flex-col gap-3">
+          <BillingHeader poNumber={wf.selectedPo} billing={wf.billing} />
 
-              <TableFrame>
-                <Table className="min-w-[640px]">
-                  <THead>
-                    <Tr hoverable={false}>
-                      <Th>المعاملة</Th>
-                      <Th className="text-center">الحالة</Th>
-                      <Th className="text-center">دخل الدراسة</Th>
-                      <Th className="text-center">دخل الرفع</Th>
-                      <Th className="text-center">مفاتيح</Th>
-                      <Th className="text-center">المجموع</Th>
-                      <Th className="text-center">مشمول</Th>
-                    </Tr>
-                  </THead>
-                  <TBody>{billing.lines.map(lineRow)}</TBody>
-                </Table>
-              </TableFrame>
+          <FinanceEnfazBillingLinesTable
+            lines={wf.billing.lines}
+            draft={wf.draft}
+            issued={wf.issued}
+            onPatch={wf.patchDraft}
+          />
 
-              <div className={cn(opsPanelCard, "p-4 text-sm")}>
-                <div className="mb-2 text-[11px] text-text-3">
-                  {totals.billable} معاملة مشمولة في الفاتورة
-                </div>
-                <div className="flex justify-between py-1 text-text-2">
-                  <span>إجمالي الأتعاب (تقييم + رفع)</span>
-                  <span className="tabular-nums" dir="ltr">
-                    {(issued
-                      ? billing.subtotalSar
-                      : totals.taxable
-                    ).toLocaleString("en-US")}{" "}
-                    ر.س
-                  </span>
-                </div>
-                {issued ? (
-                  <div className="flex justify-between py-1 text-text-2">
-                    <span>أتعاب المفاتيح (ضمن الإجمالي)</span>
-                    <span className="tabular-nums text-text-3" dir="ltr">
-                      —
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between py-1 text-text-2">
-                    <span>أتعاب المفاتيح (شاملة الضريبة)</span>
-                    <span className="tabular-nums" dir="ltr">
-                      {totals.key.toLocaleString("en-US")} ر.س
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between py-1 text-text-2">
-                  <span>ضريبة القيمة المضافة 15%</span>
-                  <span className="tabular-nums" dir="ltr">
-                    {(issued ? billing.vatSar : totals.vat).toLocaleString(
-                      "en-US",
-                    )}{" "}
-                    ر.س
-                  </span>
-                </div>
-                <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold text-heading">
-                  <span>الإجمالي المستحق</span>
-                  <span className="tabular-nums" dir="ltr">
-                    {(issued ? billing.totalSar : totals.total).toLocaleString(
-                      "en-US",
-                    )}{" "}
-                    ر.س
-                  </span>
-                </div>
-                {issued ? (
-                  <div className="mt-2 flex justify-between border-t border-border pt-2 text-text-2">
-                    <span>المحصّل</span>
-                    <span className="tabular-nums" dir="ltr">
-                      {billing.collectedAmountSar.toLocaleString("en-US")} ر.س
-                    </span>
-                  </div>
-                ) : null}
-                {billing.attachmentIds.length > 0 ? (
-                  <div className="mt-3 border-t border-border pt-3">
-                    <div className="mb-2 text-[11px] text-text-3">
-                      مرفقات ظروف المفاتيح (عرض فقط)
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {billing.attachmentIds.map((id, index) => (
-                        <button
-                          key={id}
-                          type="button"
-                          className={opsBtnGhost}
-                          onClick={() => {
-                            void openEnfazAttachment(
-                              id,
-                              `مرفق-مفتاح-${index + 1}`,
-                            ).then((result) => {
-                              if (!result.ok) {
-                                showToast(result.error, "error");
-                              }
-                            });
-                          }}
-                        >
-                          مرفق {index + 1}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+          <FinanceEnfazBillingSummary
+            billing={wf.billing}
+            totals={wf.totals}
+            issued={wf.issued}
+            onOpenAttachment={wf.openAttachment}
+          />
 
-              <div className={cn(opsInsetPanel, "flex flex-wrap items-center justify-between gap-2 px-3.5 py-3")}>
-                <span className="text-xs text-text-2">
-                  {fullyCollected
-                    ? "الفاتورة محصّلة بالكامل."
-                    : issued
-                      ? "سجّل مبلغ التحصيل (جزئي أو كامل)."
-                      : totals.total <= 0
-                        ? "عبّئ أتعاب معاملة واحدة على الأقل قبل الإصدار."
-                        : "احفظ ثم أصدر الفاتورة."}
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  {!issued ? (
-                    <>
-                      <button
-                        type="button"
-                        className={opsBtnGhost}
-                        disabled={commandBusy}
-                        onClick={() => void save()}
-                      >
-                        حفظ المطابقة
-                      </button>
-                      <button
-                        type="button"
-                        className={opsBtnPrimary}
-                        disabled={
-                          commandBusy ||
-                          !billing.poReadyForBilling ||
-                          totals.total <= 0
-                        }
-                        onClick={() => void issueInvoice()}
-                      >
-                        تسجيل الفاتورة
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {!fullyCollected ? (
-                        <>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="h-8 w-28 text-xs"
-                            value={collectAmount}
-                            onChange={(e) => setCollectAmount(e.target.value)}
-                            aria-label="مبلغ التحصيل"
-                          />
-                          {(() => {
-                            const remaining = Math.max(
-                              0,
-                              (billing.totalSar || 0) -
-                                (billing.collectedAmountSar || 0),
-                            );
-                            const amt = Number(collectAmount) || 0;
-                            if (remaining > 0 && amt > 0 && Math.abs(amt - remaining) > 0.009) {
-                              return (
-                                <span className="text-[11px] text-[#a5432e]">
-                                  تنبيه: يختلف عن المتبقي
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
-                          <button
-                            type="button"
-                            className={opsBtnPrimary}
-                            disabled={commandBusy}
-                            onClick={() => void collect()}
-                          >
-                            تسجيل تحصيل
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        type="button"
-                        className={opsBtnGhost}
-                        disabled={commandBusy}
-                        onClick={() => void downloadPdf()}
-                      >
-                        تحميل PDF
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+          <FinanceEnfazBillingActions
+            issued={wf.issued}
+            fullyCollected={wf.fullyCollected}
+            canIssue={wf.billing.poReadyForBilling}
+            total={wf.totals.total}
+            commandBusy={wf.commandBusy}
+            collectAmount={wf.collectAmount}
+            remaining={wf.remaining}
+            onCollectAmountChange={wf.setCollectAmount}
+            onSave={() => void wf.save()}
+            onIssue={() => void wf.issueInvoice()}
+            onCollect={() => void wf.collect()}
+            onDownloadPdf={() => void wf.downloadPdf()}
+          />
 
-              {!compact ? (
-                <p className="m-0 text-xs text-text-3">
-                  المعاملات الملغاة لا تُفوتر. أتعاب المفاتيح شاملة الضريبة
-                  عند وجود استحقاق ظرف. التحصيل على الفاتورة يقفل معاملاتها.
-                </p>
-              ) : null}
-            </div>
-          )}
+          {!compact ? (
+            <p className="m-0 text-xs text-text-3">
+              المعاملات الملغاة لا تُفوتر. أتعاب المفاتيح شاملة الضريبة
+              عند وجود استحقاق ظرف. التحصيل على الفاتورة يقفل معاملاتها.
+            </p>
+          ) : null}
         </div>
+      )}
+    </div>
   );
 
   if (compact) {
     return (
       <div className="flex flex-col gap-3">
-        {isError ? (
-          <p className={cn(opsTfNote, "mb-0")}>
-            {error instanceof Error
-              ? error.message
-              : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
-            <button
-              type="button"
-              className={cn(opsBtnGhost, "ms-2")}
-              onClick={() => void refetch()}
-            >
-              إعادة المحاولة
-            </button>
-          </p>
-        ) : null}
+        {errorNote}
         {detailPanel}
       </div>
     );
@@ -687,54 +160,20 @@ export function FinanceEnfazPoBilling({
         سجّل الفاتورة ← سجّل التحويل.
       </p>
 
-      {isError ? (
-        <p className={cn(opsTfNote, "mb-0")}>
-          {error instanceof Error
-            ? error.message
-            : "تعذّر تحميل بيانات الفوترة — حاول مرة أخرى"}{" "}
-          <button
-            type="button"
-            className={cn(opsBtnGhost, "ms-2")}
-            onClick={() => void refetch()}
-          >
-            إعادة المحاولة
-          </button>
-        </p>
-      ) : null}
+      {errorNote}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(220px,0.9fr)_1.6fr]">
-        <div className={opsLetterCard}>
-          <div className="border-b border-border px-3 py-2.5 text-[12px] font-semibold text-heading">
-            أوامر العمل الجاهزة
-            <StatusPill
-              label={String(readySummaries.length)}
-              style={finStatusStyle("warning")}
-              className="ms-2"
-            />
-          </div>
-          {readySummaries.map((summary) => (
-            <button
-              key={summary.poNumber}
-              type="button"
-              className={cn(
-                "flex w-full items-center justify-between border-t border-border px-3 py-2.5 text-start text-sm transition-colors hover:bg-row-hover",
-                selectedPo === summary.poNumber && finRowActive,
-                selectedPo === summary.poNumber && "font-semibold",
-              )}
-              onClick={() => setSelectedPo(summary.poNumber)}
-            >
-              <span className={finPo} dir="ltr">
-                {summary.poNumber}
-              </span>
-              <span className="text-[11px] text-text-3">
-                {summary.doneCount} مكتملة
-                {summary.cancelledCount > 0
-                  ? ` · ${summary.cancelledCount} ملغاة`
-                  : ""}
-              </span>
-            </button>
-          ))}
-        </div>
+        <FinanceEnfazReadyPoList
+          summaries={wf.ready.summaries}
+          totalCount={wf.ready.totalCount}
+          totalPages={wf.ready.totalPages}
+          page={wf.ready.page}
+          pageSize={FINANCE_LIST_PAGE_SIZE}
+          pending={wf.ready.pending}
+          selectedPo={wf.selectedPo}
+          onSelect={wf.setSelectedPo}
+          onPageChange={wf.ready.setPage}
+        />
 
         {detailPanel}
       </div>

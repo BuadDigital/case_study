@@ -9,12 +9,15 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Application.Abstractions;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public sealed class DiscountFlagService : IDiscountFlagService
 {
+    private const int MaxListRows = 200;
+
     private readonly FinancialDbContext _db;
     private readonly ICaseStudyLookup _caseStudy;
     private readonly TimeProvider _time;
@@ -29,22 +32,92 @@ public sealed class DiscountFlagService : IDiscountFlagService
         _caseStudy = caseStudy;
     }
 
-    public async Task<IReadOnlyList<DiscountFlagDto>> ListAsync(
+    public Task<IReadOnlyList<DiscountFlagDto>> ListAsync(
         string? transactionKey = null,
         string? status = null,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(
+            new DiscountFlagListQuery { TransactionKey = transactionKey, Status = status },
+            cancellationToken);
+
+    public async Task<IReadOnlyList<DiscountFlagDto>> ListAsync(
+        DiscountFlagListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.DiscountFlags.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(transactionKey))
-            query = query.Where(x => x.TransactionKey == transactionKey.Trim());
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(x => x.Status == status.Trim());
-
-        var rows = await query
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(200)
+        var rows = await Sorted(Filtered(query), query)
+            .Take(MaxListRows)
             .ToListAsync(cancellationToken);
         return rows.Select(ToDto).ToList();
+    }
+
+ /// <summary>
+ /// Filters and sorts in the database, then pages. Every filter is an EF predicate, so the page
+ /// and TotalCount agree. See docs/architecture/pagination-contract.md §7.
+ /// </summary>
+    public async Task<PagedResultDto<DiscountFlagDto>> ListPagedAsync(
+        DiscountFlagListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default)
+    {
+        var filtered = Filtered(query);
+        var total = await filtered.CountAsync(cancellationToken);
+        var rows = await Sorted(filtered, query)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<DiscountFlagDto>
+        {
+            Items = rows.Select(ToDto).ToList(),
+            TotalCount = total,
+            Page = page,
+            PageSize = take,
+        };
+    }
+
+    private IQueryable<DiscountFlag> Filtered(DiscountFlagListQuery query)
+    {
+        var rows = _db.DiscountFlags.AsNoTracking().AsQueryable();
+
+        var transactionKey = FinancialLedgerListQueryRules.NormalizeExact(query.TransactionKey);
+        if (transactionKey is not null)
+            rows = rows.Where(x => x.TransactionKey == transactionKey);
+
+        var status = FinancialLedgerListQueryRules.NormalizeExact(query.Status);
+        if (status is not null)
+            rows = rows.Where(x => x.Status == status);
+
+        var search = FinancialLedgerListQueryRules.NormalizeSearch(query.Q);
+        if (search is not null)
+        {
+            rows = rows.Where(x =>
+                x.TransactionKey.Contains(search)
+                || x.TargetAssigneeId.Contains(search)
+                || x.Reason.Contains(search));
+        }
+
+        return rows;
+    }
+
+ /// <summary>Allow-listed sort plus the id tiebreaker so consecutive pages never overlap.</summary>
+    private static IQueryable<DiscountFlag> Sorted(
+        IQueryable<DiscountFlag> rows,
+        DiscountFlagListQuery query)
+    {
+        var descending = FinancialLedgerListQueryRules.ResolveDescending(query.Dir);
+        IOrderedQueryable<DiscountFlag> ordered =
+            FinancialLedgerListQueryRules.ResolveSort(query.Sort)
+                == FinancialLedgerListSortKey.TransactionKey
+                ? descending
+                    ? rows.OrderByDescending(x => x.TransactionKey)
+                    : rows.OrderBy(x => x.TransactionKey)
+                : descending
+                    ? rows.OrderByDescending(x => x.CreatedAtUtc)
+                    : rows.OrderBy(x => x.CreatedAtUtc);
+
+        return ordered.ThenBy(x => x.Id);
     }
 
     public async Task<(DiscountFlagDto? Row, string? Error)> CreateAsync(

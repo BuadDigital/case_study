@@ -253,12 +253,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
             utcNow,
             cancellationToken);
 
-    public Task AddAuditLogAsync(AuditLog entry, CancellationToken cancellationToken)
-    {
-        _db.AuditLogs.Add(entry);
-        return Task.CompletedTask;
-    }
-
     public async Task<IStaffWriteTransaction?> BeginTransactionAsync(
         CancellationToken cancellationToken) =>
         _db.Database.IsRelational()

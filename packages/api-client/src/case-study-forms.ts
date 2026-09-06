@@ -129,6 +129,54 @@ export async function getPartyCaseStudyForm(
   }
 }
 
+/** One case-study parent with its party children — `GET /api/case-study-forms/batch`. */
+export type CaseStudyFormBatchItemDto = {
+  parentTaskId: string;
+  /** The specialist's (non-party) form; an unsaved empty form when no row exists yet. */
+  parent: CaseStudyFormDto;
+  /** Party forms of the parent's child tasks, keyed by child workflow-task id. */
+  partyFormsByChildTaskId: Record<string, CaseStudyFormDto>;
+};
+
+export type CaseStudyFormBatchDto = {
+  /**
+   * Keyed by parent workflow-task id. A parent the actor may not read, or that does
+   * not exist, is absent — the same "not found" the single-item GETs answer with.
+   */
+  byParentTaskId: Record<string, CaseStudyFormBatchItemDto>;
+};
+
+/** Server cap on distinct `parentTaskIds` per batch request (400 above it). */
+export const CASE_STUDY_FORM_BATCH_MAX_IDS = 100;
+
+/**
+ * The case-study form of every listed parent plus the party forms of its children in
+ * one request — replaces the per-row `getCaseStudyForm` + N × `getPartyCaseStudyForm`
+ * the active queue used to issue. At most `CASE_STUDY_FORM_BATCH_MAX_IDS` ids per call;
+ * chunk above that. Same visibility rule as the single-item reads.
+ */
+export async function getCaseStudyFormsBatch(
+  config: WorkOrdersApiConfig,
+  parentTaskIds: readonly string[],
+): Promise<ApiOk<CaseStudyFormBatchDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const params = new URLSearchParams({ parentTaskIds: parentTaskIds.join(",") });
+  try {
+    const res = await fetch(`${base}/api/case-study-forms/batch?${params}`, {
+      headers: headers(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as CaseStudyFormBatchDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function savePartyCaseStudyForm(
   config: WorkOrdersApiConfig,
   taskId: string,

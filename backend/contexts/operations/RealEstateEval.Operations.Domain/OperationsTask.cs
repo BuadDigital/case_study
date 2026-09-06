@@ -327,10 +327,3 @@ public class OperationsTask
     private void Touch(DateTime nowUtc) => UpdatedAtUtc = nowUtc;
 }
 
-public class OperationsTaskSequence
-{
-    public Guid Id { get; set; }
-    public int Year { get; set; }
-    public int NextSeq { get; set; }
-    public DateTime UpdatedAtUtc { get; set; }
-}

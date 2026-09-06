@@ -43,13 +43,14 @@ public sealed class ValuationReportFieldInjectionService(
         var vr = await valuationRequests.GetAsync(valuationRequestId, cancellationToken);
         if (vr is null) return null;
 
-        var propertyId = vr.PropertyId?.Trim() ?? "";
+        var propertyId = vr.PropertyId.ToString("D");
         WorkOrderProperty? prop = null;
         FieldInspectionWorkspace? workspace = null;
         InspectorPayloadFacts inspector = new();
         Client? client = null;
         var deedNatureMatchOutcome = DeedNatureMatchOutcomes.Unset;
-        if (Guid.TryParse(propertyId, out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
                 propertyGuid,

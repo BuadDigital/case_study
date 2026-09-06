@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Domain;
 using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Financial.Application.Contracts;
+using RealEstateEval.Financial.Application.Rules;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Data;
@@ -112,21 +114,41 @@ public sealed class PartyBillingStatementRepository : IPartyBillingStatementRepo
     }
 
     public async Task<IReadOnlyList<PartyBillingStatement>> ListStatementsAsync(
-        string? assigneeId,
-        string? status,
-        bool issuedOrLaterOnly,
-        int max,
-        CancellationToken cancellationToken)
+        PartyBillingStatementListFilterQuery filter,
+        PartyBillingStatementListSortKey sort,
+        bool descending,
+        int skip,
+        int take,
+        CancellationToken cancellationToken) =>
+        await SortStatements(FilterStatements(filter), sort, descending)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> CountStatementsAsync(
+        PartyBillingStatementListFilterQuery filter,
+        CancellationToken cancellationToken) =>
+        FilterStatements(filter).CountAsync(cancellationToken);
+
+    /// <summary>Every clause is an EF predicate — pagination-contract §9.1.</summary>
+    private IQueryable<PartyBillingStatement> FilterStatements(PartyBillingStatementListFilterQuery filter)
     {
         var query = _db.PartyBillingStatements.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-            query = query.Where(s => s.AssigneeId == assigneeId);
+        if (filter.AssigneeId is not null)
+            query = query.Where(s => s.AssigneeId == filter.AssigneeId);
 
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(s => s.Status == status);
+        if (filter.Statuses is not null)
+        {
+            // An empty list is a status filter that recognised none of its tokens: it matches
+            // no row, exactly as the old exact-match filter did for a typo.
+            var statuses = filter.Statuses.ToList();
+            query = statuses.Count == 0
+                ? query.Where(s => false)
+                : query.Where(s => statuses.Contains(s.Status));
+        }
 
-        if (issuedOrLaterOnly)
+        if (filter.IssuedOrLaterOnly)
         {
             query = query.Where(s =>
                 s.Status == PartyBillingStatementStatus.Issued
@@ -134,10 +156,44 @@ public sealed class PartyBillingStatementRepository : IPartyBillingStatementRepo
                 || s.Status == PartyBillingStatementStatus.Closed);
         }
 
-        return await query
-            .OrderByDescending(s => s.CreatedAtUtc)
-            .Take(max)
-            .ToListAsync(cancellationToken);
+        if (filter.Search is not null)
+        {
+            var q = filter.Search;
+            query = query.Where(s =>
+                s.ReferenceNumber.Contains(q)
+                || (s.VendorInvoiceNumber != null && s.VendorInvoiceNumber.Contains(q))
+                || (s.DisbursementVoucher != null && s.DisbursementVoucher.Contains(q))
+                || (s.TransferReference != null && s.TransferReference.Contains(q)));
+        }
+
+        return query;
+    }
+
+    private static IOrderedQueryable<PartyBillingStatement> SortStatements(
+        IQueryable<PartyBillingStatement> query,
+        PartyBillingStatementListSortKey sort,
+        bool descending)
+    {
+        IOrderedQueryable<PartyBillingStatement> ordered = sort switch
+        {
+            PartyBillingStatementListSortKey.Issued => descending
+                ? query.OrderByDescending(s => s.IssuedAtUtc)
+                : query.OrderBy(s => s.IssuedAtUtc),
+            PartyBillingStatementListSortKey.Closed => descending
+                ? query.OrderByDescending(s => s.ClosedAtUtc)
+                : query.OrderBy(s => s.ClosedAtUtc),
+            PartyBillingStatementListSortKey.Reference => descending
+                ? query.OrderByDescending(s => s.ReferenceNumber)
+                : query.OrderBy(s => s.ReferenceNumber),
+            PartyBillingStatementListSortKey.TotalNet => descending
+                ? query.OrderByDescending(s => s.TotalNetSar)
+                : query.OrderBy(s => s.TotalNetSar),
+            _ => descending
+                ? query.OrderByDescending(s => s.CreatedAtUtc)
+                : query.OrderBy(s => s.CreatedAtUtc),
+        };
+
+        return ordered.ThenBy(s => s.Id);
     }
 
     public Task<PartyBillingStatement?> FindStatementAsync(

@@ -13,6 +13,7 @@ import {
   acceptPartySubmission,
   reopenPartySubmission,
 } from "@platform/app-shared/app-data/party-submission-api";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 
 function formatAcceptedDate(iso: string): string {
@@ -94,6 +95,9 @@ export function PropertyDetailPartyPackageReview({
         return;
       }
       showToast(acceptSuccessToast, "success");
+      // Accept/return write a transaction timeline entry server-side; the
+      // timeline rail refetches on the tasks-changed event.
+      notifyTasksChanged();
       onChanged?.();
     } catch (error) {
       showToast(
@@ -121,6 +125,7 @@ export function PropertyDetailPartyPackageReview({
       setReturnOpen(false);
       setReturnNote("");
       showToast(returnSuccessToast, "success");
+      notifyTasksChanged();
       onChanged?.();
     } finally {
       setReturnBusy(false);

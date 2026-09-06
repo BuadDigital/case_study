@@ -18,10 +18,59 @@ public sealed class HttpFailureService(
 {
     private const string Setting = "UpstreamServices:FailuresBaseUrl";
 
-    public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+    public Task<IReadOnlyList<FailureRecordDto>> ListAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default) =>
-        await GetAsync<List<FailureRecordDto>>("/api/failures", cancellationToken);
+        ListAsync(FailureListQuery.Empty, actor, cancellationToken);
+
+ /// <summary>
+ /// The actor is not forwarded: the upstream re-derives it from the bearer header. Filters and
+ /// the sort go on the query string, so they are applied where the rows live.
+ /// See docs/architecture/pagination-contract.md §5.
+ /// </summary>
+    public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<FailureRecordDto>>(
+            "/api/failures" + QueryString(query, paged: false),
+            cancellationToken);
+
+    public async Task<PagedResultDto<FailureRecordDto>> ListPagedAsync(
+        FailureListQuery query,
+        PermissionsDto? actor,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<PagedResultDto<FailureRecordDto>>(
+            "/api/failures" + QueryString(query, paged: true),
+            cancellationToken);
+
+    private static string QueryString(FailureListQuery query, bool paged)
+    {
+        var parts = new List<string>();
+        void Add(string name, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                parts.Add($"{name}={Uri.EscapeDataString(value)}");
+        }
+
+        if (paged)
+        {
+            Add("page", (query.Page ?? 1).ToString());
+            if (query.PageSize is { } size) Add("pageSize", size.ToString());
+        }
+
+        Add("sort", query.Sort);
+        Add("dir", query.Dir);
+        Add("q", query.Q);
+        Add("status", query.Status);
+        Add("poNumber", query.PoNumber);
+        Add("problemTypeId", query.ProblemTypeId);
+
+        return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
 
     public Task<FailureRecordDto?> GetActiveForPropertyAsync(
         string poNumber,

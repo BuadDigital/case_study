@@ -73,6 +73,12 @@ public class WorkOrderService : IWorkOrderService
         CancellationToken cancellationToken = default) =>
         _query.ListPagedAsync(query, actor, cancellationToken);
 
+    public Task<WorkOrderListCountsDto> CountsAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default) =>
+        _query.CountsAsync(query, actor, cancellationToken);
+
     public Task<IReadOnlyList<WorkOrderDto>> ListDetailsAsync(
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default) =>

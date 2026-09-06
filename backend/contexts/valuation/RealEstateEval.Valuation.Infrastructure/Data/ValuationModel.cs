@@ -21,14 +21,12 @@ public static class ValuationModel
             e.ToTable("ValuationRequests", DatabaseSchemas.Valuation);
             e.UseOptimisticConcurrency();
             e.Property(x => x.DisplayId).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.Area).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.Appraiser).HasMaxLength(256);
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.ValuationRequestStatus)
                 .HasMaxLength(32);
-            e.Property(x => x.RequestDate).HasMaxLength(32);
             e.HasIndex(x => x.DisplayId)
                 .IsUnique()
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestDisplayId);
@@ -38,20 +36,25 @@ public static class ValuationModel
                 .IsUnique()
                 .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}'")
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestOpenPerProperty);
+            e.HasAllowedValues(
+                "ValuationRequests",
+                nameof(ValuationRequest.Status),
+                [ValuationRequestStatuses.Progress, ValuationRequestStatuses.Done, ValuationRequestStatuses.Failed]);
         });
 
         builder.Entity<EvaluatorRecallRecord>(e =>
         {
             e.ToTable("EvaluatorRecallRecords", DatabaseSchemas.Valuation);
             e.UseOptimisticConcurrency();
-            e.Property(x => x.TaskId).HasMaxLength(64);
             e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Reason).HasMaxLength(4000);
             e.Property(x => x.SpecialistNote).HasMaxLength(4000);
             e.HasIndex(x => x.TaskId).IsUnique();
-            e.HasIndex(x => x.Status);
+            e.HasAllowedValues(
+                "EvaluatorRecallRecords",
+                nameof(EvaluatorRecallRecord.Status),
+                [EvaluatorRecallStatus.Pending, EvaluatorRecallStatus.Approved, EvaluatorRecallStatus.Rejected]);
         });
 
         builder.Entity<ComparableProperty>(e =>
@@ -75,6 +78,7 @@ public static class ValuationModel
             e.Property(x => x.AreaSqm).HasPrecision(18, 2);
             e.Property(x => x.Price).HasPrecision(18, 2);
             e.Property(x => x.PricePerSqm).HasPrecision(18, 2);
+            e.HasNonNegative("ComparableProperties", "AreaSqm", "Price", "PricePerSqm");
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.District).HasMaxLength(128).IsRequired();
             e.Property(x => x.PlanNumber).HasMaxLength(64);
@@ -107,6 +111,7 @@ public static class ValuationModel
         builder.Entity<ValuationComparableSelection>(e =>
         {
             e.ToTable("ValuationComparableSelections", DatabaseSchemas.Valuation);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.SelectedByUserId).HasMaxLength(128);
             e.Property(x => x.SelectionContext).HasMaxLength(32).IsRequired();
             e.Property(x => x.WeightPct).HasPrecision(9, 4);
@@ -114,6 +119,7 @@ public static class ValuationModel
             e.Property(x => x.AreaAdjustmentMethod).HasMaxLength(32).IsRequired();
             e.Property(x => x.PriceOverrideSar).HasPrecision(18, 2);
             e.Property(x => x.AreaOverrideSqm).HasPrecision(18, 2);
+            e.HasNonNegative("ValuationComparableSelections", "PriceOverrideSar", "AreaOverrideSqm");
             e.HasIndex(x => new { x.ValuationRequestId, x.ComparablePropertyId, x.SelectionContext })
                 .IsUnique()
                 .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp_Context");
@@ -148,7 +154,7 @@ public static class ValuationModel
         {
             e.ToTable("ValuationReportIssuances", DatabaseSchemas.Valuation);
             e.Property(x => x.DepositIssuedByUserId).HasMaxLength(128);
-            e.Property(x => x.DocumentJson).IsRequired();
+            e.Property(x => x.DocumentJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.DepositCode).HasMaxLength(128);
             e.Property(x => x.CertificateFileName).HasMaxLength(512);
             e.Property(x => x.CertificateContentType).HasMaxLength(128);
@@ -192,7 +198,8 @@ public static class ValuationModel
             e.Property(x => x.AnnualMarketRatePct).HasPrecision(9, 4);
             e.Property(x => x.ValueRoundDecimals);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
-            e.Property(x => x.SubjectSpecJson).HasMaxLength(4000);
+            e.Property(x => x.SubjectSpecJson).HasColumnType("jsonb");
+            e.HasNonNegative("ValuationMarketApproaches", "SubjectAreaSqm");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -214,7 +221,7 @@ public static class ValuationModel
             e.Property(x => x.ExternalSpecialistDetails).HasMaxLength(2000);
             e.Property(x => x.ValuationDateMode).HasMaxLength(16).IsRequired();
             e.Property(x => x.RetrospectiveRationale).HasMaxLength(2000);
-            e.Property(x => x.SelectedAssumptionsJson);
+            e.Property(x => x.SelectedAssumptionsJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -241,6 +248,15 @@ public static class ValuationModel
             e.Property(x => x.ExternalObsolescencePct).HasPrecision(9, 4);
             e.Property(x => x.ExternalObsolescenceRationale).HasMaxLength(2000);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
+            e.HasNonNegative(
+                "ValuationCostApproaches",
+                "LandUnitRateFromMarket",
+                "LandAreaSqm",
+                "ApartmentLandShareSqm",
+                "LandValueFromMarket",
+                "ActualAgeYears",
+                "EconomicAgeYears",
+                "LifeExtensionYears");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -276,6 +292,7 @@ public static class ValuationModel
             e.Property(x => x.BuildRatioPct).HasPrecision(9, 4);
             e.Property(x => x.UnitCostSar).HasPrecision(18, 2);
             e.Property(x => x.Rationale).HasMaxLength(2000);
+            e.HasNonNegative("ValuationCostLines", "AreaSqm", "UnitCostSar");
             e.HasIndex(x => x.CostApproachId);
         });
 
@@ -287,7 +304,7 @@ public static class ValuationModel
             e.Property(x => x.ValuePremiseKey).HasMaxLength(32);
             e.Property(x => x.LiquidationDiscountPct).HasPrecision(9, 4);
             e.Property(x => x.LiquidationDiscountRationale).HasMaxLength(2000);
-            e.Property(x => x.MethodologyAlertOverridesJson);
+            e.Property(x => x.MethodologyAlertOverridesJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
                 .WithMany()
@@ -306,6 +323,7 @@ public static class ValuationModel
             e.Property(x => x.ApproachValue).HasPrecision(18, 2);
             e.Property(x => x.WeightPct).HasPrecision(9, 4);
             e.Property(x => x.Rationale).HasMaxLength(2000);
+            e.HasNonNegative("ValuationReconciliationMethodLines", "ApproachValue");
             e.HasIndex(x => x.ReconciliationId);
         });
 

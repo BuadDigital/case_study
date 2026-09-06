@@ -4,14 +4,17 @@ import {
   deleteFailuresForPo as apiDeleteFailuresForPo,
   dtoToFailureRecord,
   listFailures,
+  listFailuresPage,
   reportBourseObstruction as apiReportBourseObstruction,
   resolveFailure as apiResolveFailure,
   returnFailure as apiReturnFailure,
   submitFailureForReview as apiSubmitFailureForReview,
   suspendFailure as apiSuspendFailure,
   upgradeFailureToInternal as apiUpgradeFailureToInternal,
+  type FailureListQuery,
   type FailureRecordDto,
   type FailuresApiConfig,
+  type PagedResultDto,
 } from "@platform/api-client";
 import {
   notifyWorkOrdersChanged,
@@ -100,6 +103,27 @@ export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
     const mapped = result.data.map(mapDto);
     setCachedFailuresList(mapped);
     return mapped;
+  }
+
+  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));
+}
+
+/**
+ * React Query loader for one queue page (pagination-contract §5). The page is
+ * not written to the offline list cache — that cache is the whole set the
+ * property gates read, and a window would shadow rows outside it.
+ */
+export async function loadFailuresPageForQuery(
+  query: FailureListQuery,
+): Promise<PagedResultDto<FailureRecord>> {
+  const config = failuresApiConfig();
+  if (!config) {
+    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+  }
+
+  const result = await listFailuresPage(config, query);
+  if (result.ok) {
+    return { ...result.data, items: result.data.items.map(mapDto) };
   }
 
   throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));

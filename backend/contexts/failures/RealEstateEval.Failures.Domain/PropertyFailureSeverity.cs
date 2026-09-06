@@ -8,4 +8,6 @@ public static class PropertyFailureSeverity
 {
     public const string Suspected = "suspected";
     public const string Internal = "internal";
+
+    public static readonly IReadOnlyList<string> All = [Suspected, Internal];
 }

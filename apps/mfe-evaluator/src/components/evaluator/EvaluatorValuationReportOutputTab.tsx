@@ -204,9 +204,13 @@ async function loadReportOutputBundle(input: {
   // Inspection photos are tied to the task id — collected from the inspector draft and passed to the loader.
   const attachmentsP = inspectorP.then((ws) =>
     propertyId
-      ? loadValuationReportPrintAttachments(config, propertyId, true, {
-          inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
-        })
+      ? loadValuationReportPrintAttachments(
+          config,
+          // Property documents are keyed `<po>:<propertyId>` — the PO number is part of the needle.
+          { poNumber: input.poNumber, propertyId },
+          true,
+          { inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws) },
+        )
       : emptyAttach,
   );
   const [ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach] =

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
@@ -12,10 +13,80 @@ namespace RealEstateEval.Valuation.Infrastructure.Persistence;
 public sealed class ComparablePropertyRepository(ValuationDbContext db)
     : IComparablePropertyRepository
 {
-    public async Task<IReadOnlyList<ComparableProperty>> ListAsync(
+    public Task<IReadOnlyList<ComparableProperty>> ListAsync(
         ComparableBankFilter filter,
         int take,
+        CancellationToken cancellationToken) =>
+        ListPageAsync(filter, 0, take, cancellationToken);
+
+ /// <summary>
+ /// One filtered, sorted window. Everything — including the comparison-method §2 field-first
+ /// priority — is an EF expression, so the window and <see cref="CountAsync"/> always agree.
+ /// </summary>
+    public async Task<IReadOnlyList<ComparableProperty>> ListPageAsync(
+        ComparableBankFilter filter,
+        int skip,
+        int take,
         CancellationToken cancellationToken)
+    {
+        var q = Filtered(filter);
+
+        var ordered = filter.ForPropertyId is { } subjectId
+            ? q.OrderByDescending(x =>
+                x.SourcePropertyId == subjectId
+                && (x.Source == ComparableSources.Field
+                    || x.IntakeChannel == ComparableIntakeChannels.Field)
+                    ? 2
+                : x.Source == ComparableSources.Field
+                  || x.IntakeChannel == ComparableIntakeChannels.Field
+                    ? 1
+                    : 0)
+            : null;
+
+        var sorted = Sort(ordered, q, filter);
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        return await sorted
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountAsync(ComparableBankFilter filter, CancellationToken cancellationToken) =>
+        Filtered(filter).CountAsync(cancellationToken);
+
+ /// <summary>Allow-listed sort plus a stable tiebreaker so consecutive pages never overlap.</summary>
+    private static IQueryable<ComparableProperty> Sort(
+        IOrderedQueryable<ComparableProperty>? priority,
+        IQueryable<ComparableProperty> rows,
+        ComparableBankFilter filter)
+    {
+        var descending = filter.Descending;
+        IOrderedQueryable<ComparableProperty> ordered = filter.Sort switch
+        {
+            ComparablePropertyListSortKey.Created => Then(priority, rows, x => x.CreatedAtUtc, descending),
+            ComparablePropertyListSortKey.Price => Then(priority, rows, x => x.Price, descending),
+            ComparablePropertyListSortKey.PricePerSqm => Then(priority, rows, x => x.PricePerSqm, descending),
+            ComparablePropertyListSortKey.Area => Then(priority, rows, x => x.AreaSqm, descending),
+            ComparablePropertyListSortKey.District => Then(priority, rows, x => x.District, descending),
+            _ => Then(priority, rows, x => x.TransactionDate, descending),
+        };
+
+        return ordered.ThenByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id);
+    }
+
+    private static IOrderedQueryable<ComparableProperty> Then<TKey>(
+        IOrderedQueryable<ComparableProperty>? priority,
+        IQueryable<ComparableProperty> rows,
+        System.Linq.Expressions.Expression<Func<ComparableProperty, TKey>> key,
+        bool descending)
+    {
+        if (priority is null)
+            return descending ? rows.OrderByDescending(key) : rows.OrderBy(key);
+        return descending ? priority.ThenByDescending(key) : priority.ThenBy(key);
+    }
+
+    private IQueryable<ComparableProperty> Filtered(ComparableBankFilter filter)
     {
         var q = db.ComparableProperties.AsNoTracking().AsQueryable();
 
@@ -75,11 +146,7 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
         if (filter.ToDate is { } to)
             q = q.Where(x => x.TransactionDate <= to);
 
-        return await q
-            .OrderByDescending(x => x.TransactionDate)
-            .ThenByDescending(x => x.CreatedAtUtc)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return q;
     }
 
     public async Task<IReadOnlyList<ComparableCoordinate>> ListDuplicateCoordinatesAsync(

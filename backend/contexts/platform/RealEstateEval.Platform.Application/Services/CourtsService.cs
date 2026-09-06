@@ -1,4 +1,3 @@
-using System.Text.Json;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
@@ -92,45 +91,6 @@ public sealed class CourtsService : ICourtsService
 
     public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _repo.AnyCourtsAsync(cancellationToken))
-        {
-            var legacy = await _repo.ListLegacyCatalogAsync(cancellationToken);
-            foreach (var row in legacy)
-            {
-                var court = new Court
-                {
-                    Id = row.Id == Guid.Empty ? Guid.NewGuid() : row.Id,
-                    Name = row.Court.Trim(),
-                    Region = row.City.Trim(),
-                    City = row.City.Trim(),
-                    IsActive = true,
-                    CreatedBy = "system",
-                    CreatedAtUtc = _time.UtcNow(),
-                };
-                await _repo.AddCourtAsync(court, cancellationToken);
-                var circuits = ParseCircuits(row.CircuitsJson);
-                foreach (var circuitNo in circuits)
-                {
-                    await _repo.AddCircuitAsync(
-                        new CourtCircuit
-                        {
-                            Id = Guid.NewGuid(),
-                            CourtId = court.Id,
-                            CircuitNo = circuitNo.Trim(),
-                            IsActive = true,
-                            CreatedBy = "system",
-                            CreatedAtUtc = _time.UtcNow(),
-                        },
-                        cancellationToken);
-                }
-            }
-
-            if (legacy.Count > 0)
-            {
-                await _repo.SaveChangesAsync(cancellationToken);
-            }
-        }
-
         var courts = (await _repo.ListCourtsWithCircuitsAsync(cancellationToken)).ToList();
         var now = _time.UtcNow();
 
@@ -525,18 +485,6 @@ public sealed class CourtsService : ICourtsService
                 CircuitName = c.CircuitName,
             })
             .ToList();
-    }
-
-    private static List<string> ParseCircuits(string json)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<List<string>>(json) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
     }
 
     private static CourtDto ToDto(Court c, int circuitsCount) => new()

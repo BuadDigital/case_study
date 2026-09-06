@@ -78,7 +78,7 @@ export function PoListView() {
     typeFilter,
     setTypeFilter,
     assignmentTypes,
-    list,
+    emptyMessage,
     totalCount,
     pageRows,
     teamByPo,
@@ -303,11 +303,7 @@ export function PoListView() {
                     <TableEmptyRow colSpan={11}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <InboxIcon />
-                        <span>
-                          {list.length === 0
-                            ? "لا توجد أوامر عمل."
-                            : "لا توجد نتائج مطابقة"}
-                        </span>
+                        <span>{emptyMessage}</span>
                       </div>
                     </TableEmptyRow>
                   ) : (
@@ -438,11 +434,7 @@ export function PoListView() {
             <ActiveQueueMobileCards
               items={mobileCardItems}
               pending={!statsReady}
-              emptyMessage={
-                list.length === 0
-                  ? "لا توجد أوامر عمل."
-                  : "لا توجد نتائج مطابقة"
-              }
+              emptyMessage={emptyMessage}
             />
           </div>
         </OperationalPanel>

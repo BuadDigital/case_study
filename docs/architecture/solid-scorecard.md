@@ -143,14 +143,137 @@ Client: `packages/api-client/src/pagination.ts` gained `fetchListPage` + `buildL
 
 Known gaps, all documented in the contract's "still client-side" lists: Enfaz billing buckets widen server-side and narrow in the browser; the queue's search covers PO-record columns the task endpoint does not have, so `q` is plumbed but not sent for that screen; deed-number search on operations tasks is not available server-side (`DeedsJson` is jsonb). Container tests: the eight long-standing 403 failures on dispatch routes were a test gap (the upstream header required since 2026-08-30 was never sent); fixed in the two test helpers.
 
+## Frontend architecture ratchet (2026-09-04)
+
+The backend has frozen its layering in `RealEstateEval.Architecture.Tests`. The frontend now has the
+equivalent under **`tests/architecture/`**, running inside the existing `npx vitest run`
+(`vitest.config.ts` gained `tests/**/*.{test,spec}.{ts,tsx}` to its `include`). Three suites plus a
+shared scanner in `tests/architecture/support/frontend-tree.ts`; no AST, no new dependency, just
+`node:fs` walks and a handful of regexes. Every failure message names the fix and points back here.
+
+The frozen lists live in [`frontend-size-baseline.json`](frontend-size-baseline.json) and **may only
+shrink**. Each size suite asserts both directions, the same pair as `InfrastructureServiceSizeTests`:
+nothing over the cap may be missing from the list, and every listed file must still exist and still be
+over the cap. So a file that gets split has to be removed from the baseline, which is what stops it
+regrowing unnoticed.
+
+| Suite | Scope | Cap | Frozen at freeze time |
+| --- | --- | --- | --- |
+| `component-size.test.ts` | `apps/*/src/**/*.tsx` (excludes `node_modules`, `.next`, `dist`/`build`, `__tests__`, `*.test.tsx`) | 700 lines | 24 of 336 components |
+| `hook-size.test.ts` | `use*.ts` under `apps/*/src` and `packages/*/src` | 500 lines | 4 of 50 hooks |
+| `storage-module-purity.test.ts` | `apps/*/src/lib/app-data`, `packages/app-shared/src/app-data`, plus a repo-wide `*-storage.ts` sweep | n/a | 3 storage facades |
+
+Finding 4 above is what these cap. The 24 frozen components are the tail the third pass did not reach;
+the four frozen hooks are the workflow hooks that absorbed orchestration when the big views were split
+(`useOperationsTasksWorkflow`, `useActiveTransactionQueueWorkflow`, and the two `useValuationWork*`
+halves). Splitting any of them means deleting its baseline row in the same commit.
+
+Storage purity encodes the shape slice 4 moved to — `-model` / `-reads` / `-commands` triples under
+`lib/app-data`:
+
+- a `*-reads.ts` module may not carry `method: "POST" | "PUT" | "PATCH" | "DELETE"`, may not call
+  `repositoryFetch` with a `method` option, and may not import runtime code from a `*-commands`
+  sibling (`import type` is fine);
+- a `*-commands.ts` module may not own a TanStack `useQuery` / `useInfiniteQuery` / `useSuspenseQuery`;
+- no new `*-storage.ts` facade anywhere in `apps/*/src` or `packages/*/src`. The three left are
+  `apps/mfe-case-study/src/lib/app-data/{tasks,infath-deposit}-storage.ts` and
+  `apps/mfe-settings/src/lib/app-data/courts-storage.ts`.
+
+All three rules pass on the current tree with no exemptions, and each was verified to fail when
+deliberately broken (a component pushed to 703 lines, a hook to 506, a `POST` literal added to
+`tasks-reads.ts`, a `useQuery` to `tasks-commands.ts`, a stray `probe-storage.ts`, and a stale baseline
+row for the already-split `PoListView.tsx`).
+
+Also closed in this pass: the third-pass follow-up on `dtoToProperty`. `deedNumber` now falls back to
+`""` like its neighbours, covered by
+`apps/mfe-case-study/src/lib/app-data/__tests__/po-intake-model-deed-number.test.ts`.
+
+## Pagination slice, second pass (2026-09-04)
+
+The contract (`docs/architecture/pagination-contract.md`) now covers seven endpoints plus a counts
+route, and two of the three original endpoints lost the client-side rules that were keeping their
+screens un-pageable.
+
+| Endpoint | What landed |
+| --- | --- |
+| `GET /api/work-orders/counts` | New. The PO screen's whole KPI band (`poListKpi`) and its empty-state copy as six SQL `COUNT`s over the same filtered, visibility-narrowed set the list pages. `WorkOrderListCountsDto` in `CaseStudy.Application/Contracts`; `WorkOrderQueryService` now takes an injected `TimeProvider` for the due-date window. |
+| `GET /api/workflow-tasks` | `WorkflowTaskDto` carries `deedNumber`, `city`, `district`, `propertyType`, `classification` joined from `WorkOrderProperty` (additive, null for unlinked slots); `q` covers all five; `sort=deed` and `sort=city` added. The active-transaction queue's PO-record search and joins are retired, so it can page. |
+| `GET /api/operations-tasks` | `q` matches deed numbers server-side. Migration `AddOperationsTaskDeedSearchIndex` adds a stored generated `DeedsText` projection plus GIN `jsonb_path_ops` (exact `@>`) and GIN `gin_trgm_ops` (substring `LIKE`) indexes; the in-memory provider takes a LINQ fallback behind `Database.IsNpgsql()`. `OperationsTaskQueryService` moved from `Infrastructure/Services` to `Infrastructure/Persistence`. |
+| `GET /api/comparable-properties` | Paged envelope, six sort keys, and the comparison-method §2 field-first priority pushed from an in-memory re-truncation into the SQL ordering — so a page and its count now agree. |
+| `GET /api/failures` | Went from no parameters at all to the full contract; visibility still narrows before the count. The HTTP client forwards the filters upstream. |
+| `GET /api/notifications` | Paged envelope plus `q` / `category` / `unread`; the SSE stream is untouched and the feed keeps its own 50-row unpaged cap. |
+| `GET /api/financial/{incentive-suspensions,discount-flags}` | Paged envelope, shared `FinancialLedgerListQueryRules`, hard-coded `Take(200)` kept as the unpaged cap. |
+
+Two endpoint families remain deliberately plain arrays — party-fee-pricing tables (a catalogue that
+answers 400 on a bad `category`) and the non-list `*-dispatch` routes (owner-to-owner). The contract's
+§8 records each reason. The party billing and Enfaz billing lists, first left out because they are
+cross-host passthroughs and two of them compose rows in memory, are now §9–§10: the dispatch mirrors
+return the same envelope as the public routes, and the synthesised lists page over the materialised
+row set so the count and the page still agree (`MaterialisedListPage`, `*ListQueryRules` under
+`Financial.Application/Rules`).
+
+Verification at close: build clean; `Application.Tests` 1,324 passed, `Architecture.Tests` 67 / 0,
+`Api.IntegrationTests` 214 / 0, `Api.ContainerTests` 42 / 0. The Operations migration was applied to
+the local dev database.
+
+## Read-side decision: no BFF / GraphQL for now (2026-09-04)
+
+Criteria used (stated here for the first time; earlier they were only discussed): a BFF or GraphQL layer is justified when a screen needs six or more requests across several services on initial load and its slowest endpoint is the user-visible cost. Measured with `e2e/.measure-property-detail.mjs` (three cold runs, medians, fixture PO 036680; full tables in `property-detail-fanout-2026-09-04.md`):
+
+| Page | Requests | Distinct endpoints | Bytes | Slowest endpoint |
+| --- | --- | --- | --- | --- |
+| Property detail | 88 | 24 | 11.98 MB | party task submission, 439 ms |
+| Active transactions queue | 56 | 17 | 86 KB | party case-study form, 399 ms |
+| PO list | 27 | 18 | 75 KB | distribution assignees, 259 ms |
+
+The request count trips the threshold but the shape argues against a BFF: 59% of the property detail requests hit one service (attachments), and 36 of them download only 19 distinct blobs at full resolution because `usePropertyDetailDocuments` runs on mount with no tab gate and prefetches every inspection photo for previews. The queue's cost is a per-row N+1 in `case-study-party-progress.ts` (four requests per row, repeated three times per load, 64% of the page). Neither is breadth across services; both are repetition on the client.
+
+Decision: fix the clients, keep REST. Next slices, in value order: (1) gate the documents / photo prefetch on the documents and photos tabs and de-duplicate blob downloads through the query cache; (2) switch the document lists to the existing `GET /api/attachments/for-property` and give it a thumbnail variant, which removes about 51 of the 88 requests and nearly all of the 12 MB; (3) replace the queue's per-row party-form calls with one batched lookup. Re-measure after each; revisit the BFF question only if a screen is still over the threshold with the repetition gone.
+
+## Status after the read-side fixes (2026-09-04, evening)
+
+All three read-side slices shipped and re-measured (`property-detail-fanout-2026-09-04.md`): property detail cold load 88 → 29 requests and 12 MB → 180 KB with the overview photo intact; active queue 56 → 20 with the party-form N+1 replaced by `GET /api/case-study-forms/batch`. The two queue workflow hooks are split (data / commands / pure state) and out of the frontend baseline. Finance lists (party billing statements, ready lines, Enfaz summaries and tracking) follow the pagination contract on both hosts, failures and the finance screens render the shared `ListPager`. Five Playwright journeys cover intake → distribution, inspection, survey, appraisal and billing, and the full e2e suite is green twice (47 smoke, 19 journeys, 0 skips). Product bugs found by the journeys are fixed: specialist read access to the final report (`ReadValuationReport` policy), engineering-survey pricing seed (tiers **and** the per-office assignment, added through the DbSet), photo pickers for the five component toggles, concurrency-safe session issuance, and the survey accept now refreshes the timeline rail.
+
+The original four slices below are complete; they stay for the record.
+
+## Frontend burn-down, first slice (2026-09-05)
+
+The four components over 1,200 lines and the two frozen evaluator hooks are split, behaviour-preserving, with their baseline entries removed (`hooks.frozen` is now empty; 19 components remain frozen, 716–989 lines):
+
+| Was | Now |
+| --- | --- |
+| `active-transaction-queue-tables.tsx`, 1,378 | deleted; one file per table/toolbar (117–288 lines), shared row parts, `active-transaction-queue-tables-state.ts` (14 tests) |
+| `OperationsTasksView.tsx` 1,310 + `OperationsTasksViewParts.tsx` 1,336 | view 125 lines composing eleven region files (102–511); fourteen pure helpers added to `operations-tasks-view-state.ts` (33 tests) |
+| `FieldInspectionWorkBody.tsx`, 1,235 | 286-line composition over seven step/chrome files (133–283); `field-inspection-work-state.ts` (14 tests) |
+| `useValuationWorkCommands.ts` 779 / `useValuationWorkData.ts` 733 | 33 / 439, composing six concern hooks (113–303) over `market-commands-state.ts` and `valuation-data-state.ts` (37 tests) |
+
+Verification: typecheck clean on every MFE, vitest 80 files / 531 tests with the size ratchets, barrel lint clean, the five journeys and the modules smoke green. One product race surfaced by the survey journey under a slow dev server and fixed: engineering-survey draft writes were built from a cache that only advanced when the PUT resolved, so overlapping writes erased each other; writes — field patches and the report upload/clear alike — are now serialised per task through `engineering-survey-draft-write-queue.ts`, and submit waits for the queue (`engineering-survey-draft-write-queue.test.ts`).
+
+## Frontend burn-down, second slice (2026-09-05): frozen lists empty
+
+The remaining nineteen components were split the same way, six agents on disjoint folders, and both frozen lists in `frontend-size-baseline.json` are now `[]`. From here the ratchet is absolute: no `.tsx` over 700 lines, no `use*.ts` over 500, no new storage facades.
+
+| Area | Was | Now |
+| --- | --- | --- |
+| Settings (4 views, 845–989) | monoliths | 69 / 88 / 101 / 195-line views over workflow hooks, state modules and region files; shared `ConfirmActionModal` (53 tests) |
+| Shell (nav parts 982, shell 870, offline sync 733) | | 538 / 285 / 95 over `app-shell-nav-state`, `app-shell-chrome-state`, `offline-sync-state`, five hooks and `offline-sync-replay` (48 tests) |
+| Keys (dialogs 968, register modal 928, view 791) | | four dialog files + shared; 265-line modal over a workflow hook and sections; 156-line view over a workflow hook and regions (49 tests) |
+| Financial (revenue tables 972, Enfaz billing 731) + failures view 916 | | 25-line re-export hub over six tables; 182-line billing over a workflow hook; 64-line failures view over a workflow hook and six regions (44 tests) |
+| Property intake (inspection parts 941, Enfaz form 866, upload 769) | | 29 / 205 / 94 over parts, sections, an autofill hook and an upload workflow (55 tests) |
+| Task work view 965, create-task modal 879, defined photos 716 | | 121 / 272 / 312 over workflow + commands hooks, a reducer state module and slot components (36 tests) |
+
+Verification after the slice: typecheck clean on all seven MFEs, the shell and the api-client; vitest 99 files / 816 tests including both size ratchets; barrel lint clean; Playwright smoke 47 pass, journeys 19 pass twice. One deliberate behaviour fix surfaced by the split: failure cards on mobile now show action spinners (a memo with a stale dependency had hidden them).
+
 ## Recommended next slices
 
-Ordered by value over cost. Each needs its own decision.
+None open. The scorecard's findings are closed on both sides; the ratchets (backend size and boundaries, frontend size and storage purity) hold the shape. Reopen only with a new finding.
 
-1. **Move use-case orchestration into Application, one service at a time.** Start with `PartyTaskSubmissionService` (915 lines, Case Study). Leave EF access behind a narrow port; keep the Infrastructure class as the adapter. Add an architecture test that caps Infrastructure service size or forbids business rules there once the first slice lands.
-2. **Retire `ICaseStudyRepository` as a DbSet facade.** Replace the 17 exposed sets with per-aggregate ports in Application. Stop passing `IQueryable` across the Application boundary; the visibility filter abstraction is the first candidate.
-3. **Extract rules from the five largest Infrastructure services** into `Rules` modules, mirroring the existing validators. This is the cheapest SRP gain and reuses a proven pattern.
-4. **Split the three largest prototype storage facades** into read hooks and write commands, starting with PO intake. Track the split in the frontend gap report so it is not re-audited as new.
+Completed slices (kept for the record):
+
+1. ~~Move use-case orchestration into Application, one service at a time.~~ Done for all seven contexts; `FrozenOverCap` is empty.
+2. ~~Retire `ICaseStudyRepository` as a DbSet facade.~~ Done; no `IQueryable`/`DbSet` on any Application abstraction.
+3. ~~Extract rules from the five largest Infrastructure services.~~ Done; `Rules` modules per context, list-query rules per paged endpoint.
+4. ~~Split the three largest prototype storage facades.~~ Done; model / reads / commands modules with the purity ratchet.
 
 ## What not to reopen
 

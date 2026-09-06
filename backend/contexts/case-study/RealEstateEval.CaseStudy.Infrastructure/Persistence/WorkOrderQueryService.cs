@@ -2,6 +2,7 @@ using RealEstateEval.CaseStudy.Application.Mapping;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -30,6 +31,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly IWorkOrderLoader _loader;
     private readonly DatabaseOptions _dbOptions;
+    private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderQueryService(
@@ -39,7 +41,8 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         IUserLabelLookup labels,
         IWorkOrderLoader loader,
         IWorkOrderVisibilityFilter? visibility = null,
-        IOptions<DatabaseOptions>? dbOptions = null)
+        IOptions<DatabaseOptions>? dbOptions = null,
+        TimeProvider? time = null)
     {
         _db = db;
         _failureLookup = failureLookup;
@@ -48,6 +51,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         _loader = loader;
         _visibility = visibility ?? new WorkOrderVisibilityFilter(db);
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+        _time = time ?? TimeProvider.System;
     }
 
     public Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
@@ -115,15 +119,82 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         };
     }
 
+ /// <summary>
+ /// PO list KPI counters. Every number is a SQL COUNT over the same filtered, visibility-narrowed
+ /// set the list pages — no row is materialised. Mirrors poListKpi on the screen; see
+ /// docs/architecture/pagination-contract.md §1.1.
+ /// </summary>
+    public async Task<WorkOrderListCountsDto> CountsAsync(
+        WorkOrderListQuery query,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+    {
+        var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
+        if (visiblePos is { Count: 0 })
+            return new WorkOrderListCountsDto();
+
+        var visible = VisibleWorkOrders(visiblePos);
+        var filtered = FilteredWorkOrders(query, visiblePos);
+        var active = NotTerminal(filtered);
+
+        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var dueSoonUpper = WorkOrderListQueryRules.DueSoonUpperBound(today);
+
+        return new WorkOrderListCountsDto
+        {
+            Total = await filtered.CountAsync(cancellationToken),
+            TotalUnfiltered = await visible.CountAsync(cancellationToken),
+            Active = await active.CountAsync(cancellationToken),
+            Overdue = await active
+                .Where(w => w.DueDateAt < today)
+                .CountAsync(cancellationToken),
+            DueSoon = await active
+                .Where(w => w.DueDateAt > today && w.DueDateAt <= dueSoonUpper)
+                .CountAsync(cancellationToken),
+            DoneProperties = await filtered
+                .SelectMany(w => w.Properties)
+                .Where(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
+                    t.Kind == CaseStudyPropertyKind
+                    && t.PropertyId == p.Id
+                    && (t.Status == WorkflowTaskStatus.Completed
+                        || t.Phase == WorkflowTaskPhase.Done)))
+                .CountAsync(cancellationToken),
+        };
+    }
+
+ /// <summary>
+ /// Rows whose PO list status is not terminal — the screen's !isPoListStatusTerminal(status).
+ /// cancelled / stopped are the lifecycle overrides; completed (and therefore fully_billed, which
+ /// only refines it) is the count condition. new / under_study / partially_billed stay.
+ /// </summary>
+    private IQueryable<WorkOrder> NotTerminal(IQueryable<WorkOrder> rows) =>
+        rows.Where(w =>
+            (w.LifecycleStatus == null
+                || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
+                    && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped))
+            && !(w.Properties.Count(p => !p.IsRemoved) > 0
+                && w.Properties.Count(p => !p.IsRemoved)
+                    >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
+                && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
+                        t.Kind == CaseStudyPropertyKind
+                        && t.PoNumber == w.PoNumber
+                        && t.PropertyId == p.Id
+                        && (t.Status == WorkflowTaskStatus.Completed
+                            || t.Phase == WorkflowTaskPhase.Done)))
+                    >= w.Properties.Count(p => !p.IsRemoved)));
+
+    private IQueryable<WorkOrder> VisibleWorkOrders(HashSet<string>? visiblePos)
+    {
+        IQueryable<WorkOrder> rows = _db.WorkOrders.AsNoTracking();
+        return visiblePos is null ? rows : rows.Where(w => visiblePos.Contains(w.PoNumber));
+    }
+
  /// <summary>Visibility + filters as EF predicates; nothing is filtered after materialisation.</summary>
     private IQueryable<WorkOrder> FilteredWorkOrders(
         WorkOrderListQuery query,
         HashSet<string>? visiblePos)
     {
-        IQueryable<WorkOrder> rows = _db.WorkOrders.AsNoTracking();
-
-        if (visiblePos is not null)
-            rows = rows.Where(w => visiblePos.Contains(w.PoNumber));
+        var rows = VisibleWorkOrders(visiblePos);
 
         var type = WorkOrderListQueryRules.ResolveAssignmentType(query.Type);
         if (type is not null)

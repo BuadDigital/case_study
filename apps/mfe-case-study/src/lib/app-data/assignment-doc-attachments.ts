@@ -2,8 +2,11 @@ import {
   deleteAttachment,
   downloadAttachmentBlob,
   listAttachments,
+  listAttachmentsForProperty,
   uploadAttachment,
+  type FileAttachmentMetaDto,
 } from "@platform/api-client";
+import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { currentOfflineUserId } from "@platform/app-shared/offline/offline-write";
 import { getOfflineBlob } from "@platform/offline-client";
@@ -37,6 +40,24 @@ const API_SCOPE: Record<PropertyDocKind, string> = {
   registry: "property-registry",
   boundaries: "property-boundaries",
 };
+
+const KIND_BY_API_SCOPE: Partial<Record<string, PropertyDocKind>> =
+  Object.fromEntries(
+    (Object.entries(API_SCOPE) as [PropertyDocKind, string][]).map(
+      ([kind, scope]) => [scope, kind],
+    ),
+  );
+
+/** Kinds the property detail page hydrates together — keys-proof stays on its own path. */
+const PROPERTY_DOC_PREFETCH_KINDS: readonly PropertyDocKind[] = [
+  "decree",
+  "delegation",
+  "deed",
+  "bourse-deed",
+  "registry",
+  "other",
+  "boundaries",
+];
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
@@ -129,6 +150,7 @@ export function clearCachedPropertyDoc(
   const key = cacheKey(kind, poNumber, propertyId);
   bumpWriteGeneration(key);
   docCache.delete(key);
+  forgetPropertyDocMetas(poNumber, propertyId);
   notifyCacheListeners();
   const config = prototypeModulesApiConfig();
   if (!config) return;
@@ -150,6 +172,7 @@ export async function removeCachedPropertyDoc(
   bumpWriteGeneration(key);
   if (next.length === 0) docCache.delete(key);
   else docCache.set(key, next);
+  forgetPropertyDocMetas(poNumber, propertyId);
   notifyCacheListeners();
 
   const config = prototypeModulesApiConfig();
@@ -260,6 +283,7 @@ async function writeCachedDoc(
   const replaceAll = options?.replaceAll ?? kind === "keys-proof";
   const key = cacheKey(kind, poNumber, propertyId);
   const generation = bumpWriteGeneration(key);
+  forgetPropertyDocMetas(poNumber, propertyId);
 
   if (replaceAll) {
     docCache.delete(key);
@@ -419,7 +443,7 @@ async function hydrateOneMeta(
   );
   if (existing?.dataUrl) return;
 
-  const blobResult = await downloadAttachmentBlob(config, meta.id);
+  const blobResult = await downloadAttachmentBlobOnce(config, meta.id);
   if (!isCurrentGeneration(key, generationAtStart)) return;
 
   const payload: CachedAssignmentDoc = {
@@ -510,29 +534,195 @@ async function hydrateKindFromApi(
   );
 }
 
-export async function prefetchPropertyDocAttachments(
+type PropertyDocMetasByKind = Map<PropertyDocKind, FileAttachmentMetaDto[]>;
+
+/**
+ * The `for-property` list, shared: the primary-photo path on the basic tab and
+ * the full prefetch on the documents tab both need it, so the first caller pays
+ * the request and the other reuses it while fresh. Any write to a property
+ * scope forgets it (`forgetPropertyDocMetas`).
+ */
+const META_STALE_MS = 60_000;
+const propertyDocMetas = new Map<
+  string,
+  { promise: Promise<PropertyDocMetasByKind | null>; settledAt: number | null }
+>();
+
+function forgetPropertyDocMetas(poNumber: string, propertyId: string): void {
+  propertyDocMetas.delete(scopeKey(poNumber, propertyId));
+}
+
+/**
+ * Every document scope of one property in a single request.
+ *
+ * `GET /api/attachments/for-property` matches `scopeKey == needle` or
+ * `scopeKey startsWith needle + ":"`, and property documents are keyed
+ * `po:propertyId`, so the compound scope key is the needle. Rows carry `scope`,
+ * so they group by kind client-side — this replaces seven parallel per-scope
+ * `GET /api/attachments` calls (fanout doc, 2026-09-04).
+ */
+function fetchPropertyDocMetas(
+  poNumber: string,
+  propertyId: string,
+): Promise<PropertyDocMetasByKind | null> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !poNumber.trim() || !propertyId) return Promise.resolve(null);
+
+  const sk = scopeKey(poNumber, propertyId);
+  const existing = propertyDocMetas.get(sk);
+  if (
+    existing &&
+    (existing.settledAt === null ||
+      Date.now() - existing.settledAt < META_STALE_MS)
+  ) {
+    return existing.promise;
+  }
+
+  const entry = {
+    promise: Promise.resolve<PropertyDocMetasByKind | null>(null),
+    settledAt: null as number | null,
+  };
+  entry.promise = listAttachmentsForProperty(config, sk).then((listed) => {
+    if (propertyDocMetas.get(sk) !== entry) return null;
+    if (!listed.ok) {
+      propertyDocMetas.delete(sk);
+      return null;
+    }
+    entry.settledAt = Date.now();
+    const byKind: PropertyDocMetasByKind = new Map();
+    for (const meta of listed.data) {
+      if (meta.scopeKey !== sk) continue;
+      const kind = KIND_BY_API_SCOPE[meta.scope];
+      if (!kind || !PROPERTY_DOC_PREFETCH_KINDS.includes(kind)) continue;
+      const bucket = byKind.get(kind);
+      if (bucket) bucket.push(meta);
+      else byKind.set(kind, [meta]);
+    }
+    return byKind;
+  });
+  propertyDocMetas.set(sk, entry);
+  return entry.promise;
+}
+
+/**
+ * Cache the *metadata* of every property document (name, type, attachment id)
+ * without downloading anything, so `collectIntakeDocuments` can list them.
+ * Entries that already hold a preview are left alone. One request at most.
+ */
+export async function primePropertyDocMetadata(
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  const metas = await fetchPropertyDocMetas(poNumber, propertyId);
+  if (!metas) return;
+  for (const [kind, rows] of metas) {
+    const key = cacheKey(kind, poNumber, propertyId);
+    for (const meta of rows) {
+      const existing = getCachedPropertyDocMatching(
+        kind,
+        poNumber,
+        propertyId,
+        meta.fileName,
+      );
+      if (existing) continue;
+      upsertCachedDoc(key, {
+        fileName: meta.fileName,
+        mimeType: meta.contentType,
+        attachmentId: meta.id,
+      });
+    }
+  }
+}
+
+/**
+ * Download the preview for exactly one cached property document (by attachment
+ * id) — the basic tab's primary photo. Goes through the same per-kind cache and
+ * blob once-cache as the full prefetch, so opening the documents tab later
+ * reuses it instead of downloading again.
+ */
+export async function hydrateCachedPropertyDocPreview(
+  poNumber: string,
+  propertyId: string,
+  attachmentId: string,
+): Promise<void> {
+  const id = attachmentId.trim();
+  if (!id || !poNumber.trim() || !propertyId) return;
+  for (const kind of PROPERTY_DOC_PREFETCH_KINDS) {
+    const match = readCachedDocs(kind, poNumber, propertyId).find(
+      (doc) => doc.attachmentId === id,
+    );
+    if (!match) continue;
+    if (match.dataUrl) return;
+    const key = cacheKey(kind, poNumber, propertyId);
+    await hydrateOneMeta(
+      kind,
+      poNumber,
+      propertyId,
+      { id, fileName: match.fileName, contentType: match.mimeType },
+      writeGeneration.get(key) ?? 0,
+    );
+    return;
+  }
+}
+
+async function hydrateAllKindsFromApi(
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  const generationAtStart = new Map<PropertyDocKind, number>(
+    PROPERTY_DOC_PREFETCH_KINDS.map((kind) => [
+      kind,
+      writeGeneration.get(cacheKey(kind, poNumber, propertyId)) ?? 0,
+    ]),
+  );
+
+  const byKind = await fetchPropertyDocMetas(poNumber, propertyId);
+  if (!byKind || byKind.size === 0) return;
+
+  await Promise.all(
+    [...byKind].map(async ([kind, metas]) => {
+      const generation = generationAtStart.get(kind) ?? 0;
+      if (!isCurrentGeneration(cacheKey(kind, poNumber, propertyId), generation)) {
+        return;
+      }
+      await Promise.all(
+        metas.map((meta) =>
+          hydrateOneMeta(kind, poNumber, propertyId, meta, generation),
+        ),
+      );
+    }),
+  );
+}
+
+/** The documents effect re-runs as task ids resolve — share the run, not the requests. */
+const inFlightPropertyPrefetch = new Map<string, Promise<void>>();
+
+export function prefetchPropertyDocAttachments(
   poNumber: string,
   propertyId: string,
   options?: { kind?: PropertyDocKind; expectedFileName?: string },
 ): Promise<void> {
   if (options?.kind) {
-    await hydrateKindFromApi(
+    return hydrateKindFromApi(
       options.kind,
       poNumber,
       propertyId,
       options.expectedFileName,
     );
-    return;
   }
-  await Promise.all([
-    hydrateKindFromApi("decree", poNumber, propertyId),
-    hydrateKindFromApi("delegation", poNumber, propertyId),
-    hydrateKindFromApi("deed", poNumber, propertyId),
-    hydrateKindFromApi("bourse-deed", poNumber, propertyId),
-    hydrateKindFromApi("registry", poNumber, propertyId),
-    hydrateKindFromApi("other", poNumber, propertyId),
-    hydrateKindFromApi("boundaries", poNumber, propertyId),
-  ]);
+
+  const key = scopeKey(poNumber, propertyId);
+  const pending = inFlightPropertyPrefetch.get(key);
+  if (pending) return pending;
+
+  const run = hydrateAllKindsFromApi(poNumber, propertyId);
+  inFlightPropertyPrefetch.set(key, run);
+  void run.finally(() => {
+    if (inFlightPropertyPrefetch.get(key) === run) {
+      inFlightPropertyPrefetch.delete(key);
+    }
+  });
+  return run;
 }
 
 export async function prefetchKeysProofDoc(
@@ -643,6 +833,7 @@ export async function clonePropertyDocumentsFromPrior(
     await replaceScopeAttachments(API_SCOPE[kind], scopeKey(toPo, toId));
     const targetCacheKey = cacheKey(kind, toPo, toId);
     bumpWriteGeneration(targetCacheKey);
+    forgetPropertyDocMetas(toPo, toId);
     docCache.delete(targetCacheKey);
     notifyCacheListeners();
 

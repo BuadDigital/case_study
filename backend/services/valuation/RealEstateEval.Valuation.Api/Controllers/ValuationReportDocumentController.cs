@@ -20,7 +20,7 @@ public class ValuationReportDocumentController : ControllerBase
         _reports = reports;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationReportDocumentDto>> GetPreview(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -30,7 +30,7 @@ public class ValuationReportDocumentController : ControllerBase
     }
 
     [HttpGet("pdf")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<IActionResult> GetPreviewPdf(
         Guid valuationRequestId,
         CancellationToken ct)

@@ -16,12 +16,12 @@ public class ValuationRequest
 
     public Guid Id { get; private set; }
     public string DisplayId { get; private set; } = "";
-    public string PropertyId { get; private set; } = "";
+    public Guid PropertyId { get; private set; }
     public string Area { get; private set; } = "";
     public string PropertyType { get; private set; } = "";
     public string Appraiser { get; private set; } = "";
     public ValuationRequestStatus Status { get; private set; } = ValuationRequestStatus.Progress;
-    public string RequestDate { get; private set; } = "";
+    public DateOnly RequestDate { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
  /// <summary>
@@ -34,7 +34,7 @@ public class ValuationRequest
     public static ValuationRequest Create(
         Guid id,
         string displayId,
-        string propertyId,
+        Guid propertyId,
         string area,
         string propertyType,
         string appraiser,
@@ -44,14 +44,23 @@ public class ValuationRequest
         {
             Id = id,
             DisplayId = displayId.Trim(),
-            PropertyId = propertyId.Trim(),
+            PropertyId = propertyId,
             Area = area.Trim(),
             PropertyType = propertyType.Trim(),
             Appraiser = appraiser.Trim(),
             Status = status,
-            RequestDate = requestDate.Trim(),
+            RequestDate = ParseRequestDate(requestDate, nowUtc),
             UpdatedAtUtc = nowUtc,
         };
+
+ /// <summary>
+ /// The wire carries the request date as ISO text; anything unparsable is taken as "today" so a
+ /// request is never stored without a date to sort and number by.
+ /// </summary>
+    public static DateOnly ParseRequestDate(string? text, DateTime nowUtc) =>
+        DateOnly.TryParseExact(text?.Trim(), "yyyy-MM-dd", out var parsed)
+            ? parsed
+            : DateOnly.FromDateTime(nowUtc);
 
  /// <summary>The appraiser delivered the report — the request closes and releases the property.</summary>
     public ValuationRequestTransition SubmitReport(DateTime nowUtc)

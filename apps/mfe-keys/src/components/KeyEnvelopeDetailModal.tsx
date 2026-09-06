@@ -3,8 +3,8 @@
 /**
  * The key-envelope detail screen. Composition only: `useKeyEnvelopeDetailWorkflow`
  * owns loading and commands, `KeyEnvelopeDetailPanels` renders the four tabs,
- * `KeyEnvelopeDetailDialogs` renders the modals, and this file draws the header
- * and wires the pieces together.
+ * the `KeyEnvelope*Dialog` files render the modals, and this file draws the
+ * header and wires the pieces together.
  */
 import { cn, opsBtnPrimary, opsPpHeadCard } from "@platform/ui-kit";
 import {
@@ -28,12 +28,10 @@ import {
   CustodyPanel,
   TimelinePanel,
 } from "./KeyEnvelopeDetailPanels";
-import {
-  CourtAccessModal,
-  DeliverEnvelopeModal,
-  MatchResultModal,
-  ReceiveEnvelopeModal,
-} from "./KeyEnvelopeDetailDialogs";
+import { CourtAccessModal } from "./KeyEnvelopeCourtAccessDialog";
+import { DeliverEnvelopeModal } from "./KeyEnvelopeDeliverDialog";
+import { MatchResultModal } from "./KeyEnvelopeMatchResultDialog";
+import { ReceiveEnvelopeModal } from "./KeyEnvelopeReceiveDialog";
 import {
   displayPersonName,
   envelopeHasAttachments,

@@ -17,7 +17,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts;
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options)
     : DbContext(options)
 {
-    public DbSet<CourtCatalogEntry> CourtCatalogEntries => Set<CourtCatalogEntry>();
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<CourtCircuit> CourtCircuits => Set<CourtCircuit>();
     public DbSet<CourtAuditLog> CourtAuditLogs => Set<CourtAuditLog>();

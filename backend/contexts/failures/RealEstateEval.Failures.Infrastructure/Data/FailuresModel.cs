@@ -24,7 +24,6 @@ public static class FailuresModel
 
             e.UseOptimisticConcurrency();
             e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.Title).HasMaxLength(512);
             e.Property(x => x.ProblemTypeId).HasMaxLength(64);
@@ -36,10 +35,15 @@ public static class FailuresModel
             e.Property(x => x.ContinueInstructions).HasMaxLength(4000);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Specialist).HasMaxLength(256);
-            e.Property(x => x.SuspendedByUserId).HasMaxLength(450);
+            e.Property(x => x.SuspendedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
-            e.HasIndex(x => x.Status);
+ // The only status-only read is the suspended queue; a partial index holds just those rows.
+            e.HasIndex(x => x.Status)
+                .HasFilter($"\"Status\" = '{PropertyFailureStatus.Suspended}'")
+                .HasDatabaseName("IX_PropertyFailures_Suspended");
+            e.HasAllowedValues("PropertyFailures", nameof(PropertyFailure.Status), PropertyFailureStatus.All);
+            e.HasAllowedValues("PropertyFailures", nameof(PropertyFailure.Severity), PropertyFailureSeverity.All);
         });
 
         builder.Entity<FailureTypesCatalogConfig>(e =>

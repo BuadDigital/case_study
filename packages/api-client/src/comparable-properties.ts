@@ -1,6 +1,8 @@
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
+import { fetchListPage, type PagedResultDto } from "./pagination";
+import type { ApiErr, ApiOk } from "./work-orders";
 
 export type ComparableSourceCardDto = {
   intakeChannel: string;
@@ -97,6 +99,15 @@ export type UpsertComparablePropertyRequest = {
   isActive?: boolean;
 };
 
+/** Allowed `sort` keys — pagination-contract §4. Unknown keys fall back to `transaction`. */
+export type ComparablePropertyListSort =
+  | "transaction"
+  | "created"
+  | "price"
+  | "pricePerSqm"
+  | "area"
+  | "district";
+
 export type ComparablePropertyListQuery = {
   district?: string;
   city?: string;
@@ -108,10 +119,48 @@ export type ComparablePropertyListQuery = {
   fromDate?: string;
   toDate?: string;
   includeInactive?: boolean;
+  /**
+   * Legacy row cap for the **unpaged** array (default 100, max 200). Ignored
+   * once `page` / `pageSize` is sent — pagination-contract §4.
+   */
   take?: number;
   /** Comparison-method spec: field priority for this property. */
   forPropertyId?: string;
+  /** 1-based page; presence switches the endpoint to the paged envelope. */
+  page?: number;
+  pageSize?: number;
+  sort?: ComparablePropertyListSort;
+  dir?: "asc" | "desc";
 };
+
+/** The filter set without the page window — one query key per filter change. */
+export type ComparablePropertyListFilters = Omit<
+  ComparablePropertyListQuery,
+  "page" | "pageSize"
+>;
+
+/** Every parameter of the list, in the order the endpoint documents them. */
+function comparablePropertyListParams(query: ComparablePropertyListQuery) {
+  return {
+    district: query.district,
+    city: query.city,
+    transactionKind: query.transactionKind,
+    source: query.source,
+    intakeChannel: query.intakeChannel,
+    propertyType: query.propertyType,
+    q: query.q,
+    fromDate: query.fromDate,
+    toDate: query.toDate,
+    // `false` is the server default; only send the flag when it is on, so the
+    // unpaged callers' query strings do not change shape.
+    includeInactive: query.includeInactive ? true : undefined,
+    forPropertyId: query.forPropertyId,
+    sort: query.sort,
+    dir: query.dir,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
+}
 
 export type ComparableProximityQuery = {
   propertyId?: string;
@@ -190,6 +239,23 @@ export async function listComparableProperties(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/**
+ * One server page of the comparables bank — pagination-contract §4. The
+ * `forPropertyId` field priority is applied inside the query now, so page 1
+ * still holds the subject's own field comparables whatever `sort` says and
+ * `totalCount` is exact. `take` is not sent: it only caps the unpaged array.
+ */
+export async function listComparablePropertiesPage(
+  config: ComparablePropertiesApiConfig,
+  query: ComparablePropertyListQuery = {},
+): Promise<ApiOk<PagedResultDto<ComparablePropertyDto>> | ApiErr> {
+  return fetchListPage<ComparablePropertyDto>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/comparable-properties",
+    comparablePropertyListParams(query),
+  );
 }
 
 export async function suggestComparablePropertiesByProximity(

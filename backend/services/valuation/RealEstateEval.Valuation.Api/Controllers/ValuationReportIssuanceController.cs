@@ -21,7 +21,7 @@ public class ValuationReportIssuanceController : ControllerBase
         _issuance = issuance;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationReportIssuanceStateDto>> GetState(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -84,7 +84,7 @@ public class ValuationReportIssuanceController : ControllerBase
     }
 
     [HttpGet("deposit-pdf")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<IActionResult> DepositPdf(Guid valuationRequestId, CancellationToken ct)
     {
         var pdf = await _issuance.GetDepositPdfAsync(valuationRequestId, ct);
@@ -94,7 +94,7 @@ public class ValuationReportIssuanceController : ControllerBase
     }
 
     [HttpGet("final-pdf")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<IActionResult> FinalPdf(Guid valuationRequestId, CancellationToken ct)
     {
         var pdf = await _issuance.GetFinalPdfAsync(valuationRequestId, ct);

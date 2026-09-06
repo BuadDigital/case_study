@@ -78,14 +78,16 @@ public static class DependencyInjection
             configuration);
 
         services.AddDbContextPool<TContext>(options =>
-            options.UseNpgsql(pooledConnectionString, npgsql =>
-            {
-                npgsql.EnableRetryOnFailure(maxRetryCount: 3);
-                npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
-                npgsql.MigrationsHistoryTable(
-                    BoundedContextMigrations.HistoryTable,
-                    BoundedContextMigrations.HistorySchemaFor<TContext>());
-            }));
+            options
+                .UseNpgsql(pooledConnectionString, npgsql =>
+                {
+                    npgsql.EnableRetryOnFailure(maxRetryCount: 3);
+                    npgsql.CommandTimeout(dbOptions.CommandTimeoutSeconds);
+                    npgsql.MigrationsHistoryTable(
+                        BoundedContextMigrations.HistoryTable,
+                        BoundedContextMigrations.HistorySchemaFor<TContext>());
+                })
+                .AddInterceptors(new UpdatedAtStampingInterceptor()));
         // A8: startup migration loops enumerate registered streams via these markers instead
         // of the catalog naming concrete context types.
         services.AddSingleton(new BoundedContextStreamRegistration(typeof(TContext)));
@@ -267,6 +269,11 @@ public static class DependencyInjection
         services.AddOptions<OutboxDispatcherOptions>();
         services.AddSingleton<RabbitMqMessagePublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
+ // The host that drains an outbox is also the one that prunes it (and, on the messaging
+ // database, the inbox, idempotency and read-notification rows).
+        services.AddOptions<MessagingRetentionOptions>()
+            .Bind(configuration.GetSection(MessagingRetentionOptions.SectionName));
+        services.AddHostedService<MessagingRetentionHostedService>();
         return services;
     }
 

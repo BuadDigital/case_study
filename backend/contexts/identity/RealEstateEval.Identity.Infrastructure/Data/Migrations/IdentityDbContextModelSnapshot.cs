@@ -228,63 +228,11 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.ToTable("Users", "identity");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.AuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("ActorId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("AfterJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("BeforeJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EntityId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Action");
-
-                    b.HasIndex("ActorId");
-
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("AuditLogs", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Department")
                         .IsRequired()
@@ -292,7 +240,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("EmployeeNumber")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("EmploymentType")
                         .IsRequired()
@@ -303,7 +252,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasColumnType("date");
 
                     b.Property<string>("NationalId")
-                        .HasColumnType("text");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("Section")
                         .HasMaxLength(256)
@@ -317,43 +267,55 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
             modelBuilder.Entity("RealEstateEval.Domain.ProcServiceProviderProfile", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<string>("BankName")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("BillingEmail")
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("CommercialRegistration")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("DelegateName")
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("FullName")
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Iban")
-                        .HasColumnType("text");
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
 
                     b.Property<string>("NationalId")
-                        .HasColumnType("text");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("OrganizationName")
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<int>("ProviderKind")
                         .HasColumnType("integer");
 
                     b.Property<string>("Region")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Sector")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("ServiceType")
                         .IsRequired()
@@ -361,7 +323,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasColumnType("character varying(128)");
 
                     b.Property<string>("VatRegistration")
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.HasKey("UserId");
 
@@ -470,8 +433,7 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasColumnType("integer");
 
                     b.Property<string>("ReviewerCityCoverageJson")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("RoleId")
                         .HasMaxLength(64)
@@ -546,8 +508,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 

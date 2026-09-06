@@ -5,9 +5,9 @@ namespace RealEstateEval.Valuation.Domain;
 public class EvaluatorRecallRecord
 {
     public Guid Id { get; set; }
-    public string TaskId { get; set; } = "";
+    public Guid TaskId { get; set; }
     public string PoNumber { get; set; } = "";
-    public string PropertyId { get; set; } = "";
+    public Guid PropertyId { get; set; }
  /// <summary>pending | approved | rejected</summary>
     public string Status { get; set; } = EvaluatorRecallStatus.Pending;
     public string Reason { get; set; } = "";

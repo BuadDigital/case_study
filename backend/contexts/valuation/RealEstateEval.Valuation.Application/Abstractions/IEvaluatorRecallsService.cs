@@ -10,7 +10,8 @@ public interface IEvaluatorRecallsService
 
     Task<EvaluatorRecallDto?> GetAsync(string taskId, CancellationToken cancellationToken = default);
 
-    Task<EvaluatorRecallDto> RequestAsync(
+    /// <summary>Returns the row, or an error when the task or property id is not a valid Guid.</summary>
+    Task<(EvaluatorRecallDto? Result, string? Error)> RequestAsync(
         CreateEvaluatorRecallRequest request,
         CancellationToken cancellationToken = default);
 

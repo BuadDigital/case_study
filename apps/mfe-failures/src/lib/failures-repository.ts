@@ -4,6 +4,7 @@ import {
   deleteFailuresForPoAsync,
   getPropertyFailureFromCache,
   loadFailuresForQuery,
+  loadFailuresPageForQuery,
   reportBourseObstructionAsync,
   resolveFailureAsync,
   returnFailureAsync,
@@ -12,6 +13,7 @@ import {
   upgradeFailureToInternalAsync,
   type FailureMutationResult,
 } from "./failures-api";
+import type { FailureListQuery, PagedResultDto } from "@platform/api-client";
 import type {
   BourseObstructionInput,
   CreateFailureInput,
@@ -23,6 +25,13 @@ export type { FailureMutationResult } from "./failures-api";
 
 export async function loadFailuresQuery(): Promise<FailureRecord[]> {
   return loadFailuresForQuery();
+}
+
+/** One server page of the failures queue — pagination-contract §5. */
+export async function loadFailuresPageQuery(
+  query: FailureListQuery,
+): Promise<PagedResultDto<FailureRecord>> {
+  return loadFailuresPageForQuery(query);
 }
 
 export async function createFailure(

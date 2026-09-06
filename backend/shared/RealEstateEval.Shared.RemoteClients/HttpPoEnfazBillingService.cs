@@ -17,6 +17,63 @@ public sealed class HttpPoEnfazBillingService(
         CancellationToken cancellationToken = default) =>
         await GetAsync<List<EnfazReadyPoSummaryDto>>($"{Root}/ready-pos-summary", cancellationToken);
 
+    /// <summary>
+    /// List parameters go upstream on the query string; the owner re-resolves the page window
+    /// from its own <c>Database</c> options, so skip / take here are informational only
+    /// (pagination-contract §10).
+    /// </summary>
+    public async Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
+        EnfazReadyPoListQuery query,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<EnfazReadyPoSummaryDto>>(
+            $"{Root}/ready-pos-summary" + ListQueryString(null, null, query.Sort, query.Dir, query.Q),
+            cancellationToken);
+
+    public Task<PagedResultDto<EnfazReadyPoSummaryDto>> ListReadyPoSummariesPagedAsync(
+        EnfazReadyPoListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PagedResultDto<EnfazReadyPoSummaryDto>>(
+            $"{Root}/ready-pos-summary"
+                + ListQueryString(query.Page ?? 1, query.PageSize, query.Sort, query.Dir, query.Q),
+            cancellationToken);
+
+    public async Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
+        EnfazTrackingListQuery query,
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<EnfazTrackingRowDto>>(
+            $"{Root}/tracking" + ListQueryString(null, null, query.Sort, query.Dir, query.Q),
+            cancellationToken);
+
+    public Task<PagedResultDto<EnfazTrackingRowDto>> ListTrackingPagedAsync(
+        EnfazTrackingListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default) =>
+        GetAsync<PagedResultDto<EnfazTrackingRowDto>>(
+            $"{Root}/tracking"
+                + ListQueryString(query.Page ?? 1, query.PageSize, query.Sort, query.Dir, query.Q),
+            cancellationToken);
+
+    private static string ListQueryString(int? page, int? pageSize, string? sort, string? dir, string? q)
+    {
+        var parts = new List<string>();
+        if (page is { } p) parts.Add($"page={p}");
+        if (pageSize is { } size) parts.Add($"pageSize={size}");
+        void Add(string name, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                parts.Add($"{name}={Uri.EscapeDataString(value.Trim())}");
+        }
+        Add("sort", sort);
+        Add("dir", dir);
+        Add("q", q);
+        return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
+
     public Task<PoEnfazBillingDto?> GetPoBillingAsync(
         string poNumber,
         CancellationToken cancellationToken = default) =>

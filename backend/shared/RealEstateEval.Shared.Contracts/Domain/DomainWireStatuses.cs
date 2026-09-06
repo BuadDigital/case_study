@@ -20,6 +20,8 @@ public static class CaseStudyFormStatuses
     public const string Completed = "completed";
     public const string Done = "done";
 
+    public static readonly IReadOnlyList<string> All = [New, Draft, Submitted, Completed, Done];
+
     public static bool IsTerminal(string? status) =>
         status is Submitted or Completed or Done;
 }

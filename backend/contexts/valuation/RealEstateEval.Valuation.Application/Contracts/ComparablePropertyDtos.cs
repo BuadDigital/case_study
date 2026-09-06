@@ -169,6 +169,20 @@ public class ComparablePropertyListQuery
     public int Take { get; init; } = 100;
     /// <summary>Comparison-method spec §2: prioritize field comparables for this property, then banked ones.</summary>
     public string? ForPropertyId { get; init; }
+
+    /// <summary>1-based page. Presence switches the endpoint to the paged envelope.</summary>
+    public int? Page { get; init; }
+
+    /// <summary>Rows per page (clamped). Takes precedence over <see cref="Take"/> when paging.</summary>
+    public int? PageSize { get; init; }
+
+    /// <summary>Sort key from <c>ComparablePropertyListQueryRules.AllowedSortKeys</c>; unknown falls back.</summary>
+    public string? Sort { get; init; }
+
+    /// <summary><c>asc</c> or <c>desc</c>; anything else falls back to <c>desc</c>.</summary>
+    public string? Dir { get; init; }
+
+    public bool IsPaged => Page.HasValue || PageSize.HasValue;
 }
 
 public class ComparableProximityQuery

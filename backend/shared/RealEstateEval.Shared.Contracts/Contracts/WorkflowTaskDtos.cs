@@ -58,6 +58,26 @@ public class WorkflowTaskDto
  /// Prefer specialist-accepted inspection when several completed siblings exist.
  /// </summary>
     public string? FieldInspectionTaskId { get; set; }
+
+ /// <summary>
+ /// PO-record columns of the property this task hangs off, joined from
+ /// <c>case_study.WorkOrderProperties</c> so the queue can page. Optional and additive: null when
+ /// the task has no property (or the property row is gone), and every field the queue used to
+ /// build from a separate PO-intake fetch. See docs/architecture/pagination-contract.md §2.
+ /// </summary>
+    public string? DeedNumber { get; set; }
+
+ /// <inheritdoc cref="DeedNumber"/>
+    public string? City { get; set; }
+
+ /// <inheritdoc cref="DeedNumber"/>
+    public string? District { get; set; }
+
+ /// <inheritdoc cref="DeedNumber"/>
+    public string? PropertyType { get; set; }
+
+ /// <inheritdoc cref="DeedNumber"/>
+    public string? Classification { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest

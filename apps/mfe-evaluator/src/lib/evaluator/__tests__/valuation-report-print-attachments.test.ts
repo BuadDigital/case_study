@@ -4,6 +4,7 @@ import {
   collectInspectorPhotoAttachmentIds,
   pairsFromOrgLines,
   photoBudget,
+  propertyAttachmentScopeKey,
 } from "../valuation-report-print-attachments";
 import {
   applyValuationReportLiveFill,
@@ -22,6 +23,22 @@ describe("valuation-report-print-attachments", () => {
       "site-map",
     );
     expect(attachmentTypeKeyFromScope("other")).toBeNull();
+  });
+
+  it("builds the for-property needle as the property library's compound key", () => {
+    // `assignment-doc-attachments.ts` keys property documents `<po>:<propertyId>`.
+    expect(propertyAttachmentScopeKey("PO-2026-001", "prop-1")).toBe(
+      "PO-2026-001:prop-1",
+    );
+    expect(propertyAttachmentScopeKey("  PO-2026-001 ", " prop-1 ")).toBe(
+      "PO-2026-001:prop-1",
+    );
+    // No PO number — the bare id is the only needle available.
+    expect(propertyAttachmentScopeKey("", "prop-1")).toBe("prop-1");
+    expect(propertyAttachmentScopeKey(null, "prop-1")).toBe("prop-1");
+    expect(propertyAttachmentScopeKey(undefined, "prop-1")).toBe("prop-1");
+    // No property — nothing to ask for.
+    expect(propertyAttachmentScopeKey("PO-2026-001", "  ")).toBe("");
   });
 
   it("uses 12 photos for buildings and 6 for land", () => {

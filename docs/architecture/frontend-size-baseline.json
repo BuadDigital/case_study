@@ -1,0 +1,22 @@
+{
+  "$comment": "Frozen lists for the frontend architecture ratchet (tests/architecture). The lists may only shrink: see docs/architecture/solid-scorecard.md, section \"Frontend architecture ratchet\".",
+  "generated": "2026-09-04",
+  "components": {
+    "cap": 700,
+    "note": "apps/*/src/**/*.tsx over the cap at freeze time. Excludes node_modules, .next, dist/build and test files. Line counts are lines of text (equal to `wc -l` for newline-terminated files).",
+    "frozen": []
+  },
+  "hooks": {
+    "cap": 500,
+    "note": "use*.ts modules under apps/*/src and packages/*/src over the cap at freeze time.",
+    "frozen": []
+  },
+  "storageModules": {
+    "note": "The only *-storage.ts facades left after the lib/prototype split. No new ones may appear; these may only be removed.",
+    "frozen": [
+      "apps/mfe-case-study/src/lib/app-data/infath-deposit-storage.ts",
+      "apps/mfe-case-study/src/lib/app-data/tasks-storage.ts",
+      "apps/mfe-settings/src/lib/app-data/courts-storage.ts"
+    ]
+  }
+}

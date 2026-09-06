@@ -27,13 +27,16 @@ public static class MessagingModel
             e.Property(x => x.PayloadJson).HasColumnType("jsonb");
             e.Property(x => x.Error).HasMaxLength(2000);
             e.Property(x => x.LockedBy).HasMaxLength(128);
-            e.HasIndex(x => x.ProcessedAtUtc);
-            e.HasIndex(x => x.CreatedAtUtc);
  // Drives the dispatcher claim query: unprocessed, not dead-lettered, oldest first.
  // Partial so the index only ever holds the backlog instead of every message the
  // system has published, which also lets the claim read rows already in claim order.
             e.HasIndex(x => x.CreatedAtUtc, DatabaseIndexNames.OutboxPendingByCreatedAt)
                 .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
+ // Retention deletes by processed / dead-lettered time; the pending partial index above
+ // serves the dispatcher, so no full index on CreatedAtUtc or ProcessedAtUtc is kept.
+            e.HasIndex(x => x.ProcessedAtUtc)
+                .HasFilter("\"ProcessedAtUtc\" IS NOT NULL")
+                .HasDatabaseName("IX_OutboxMessages_Processed_ProcessedAtUtc");
         });
 
         return builder;
@@ -67,7 +70,7 @@ public static class MessagingModel
         {
             MapTable(e, "CommandIdempotencyRecords", DatabaseSchemas.Messaging, ownsMigrations);
             e.HasKey(x => new { x.ActorId, x.HttpMethod, x.RequestPath, x.IdempotencyKey });
-            e.Property(x => x.ActorId).HasMaxLength(450);
+            e.Property(x => x.ActorId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.HttpMethod).HasMaxLength(16);
             e.Property(x => x.RequestPath).HasMaxLength(512);
             e.Property(x => x.IdempotencyKey).HasMaxLength(128);
@@ -90,7 +93,7 @@ public static class MessagingModel
         builder.Entity<UserNotification>(e =>
         {
             MapTable(e, "UserNotifications", DatabaseSchemas.Messaging, ownsMigrations);
-            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.Title).HasMaxLength(256);
             e.Property(x => x.Body).HasMaxLength(2000);
             e.Property(x => x.Href).HasMaxLength(512);
@@ -114,7 +117,7 @@ public static class MessagingModel
         builder.Entity<PushSubscription>(e =>
         {
             MapTable(e, "PushSubscriptions", DatabaseSchemas.Messaging, ownsMigrations);
-            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.Endpoint).HasMaxLength(1024);
             e.Property(x => x.P256dh).HasMaxLength(256);
             e.Property(x => x.Auth).HasMaxLength(64);
@@ -131,7 +134,7 @@ public static class MessagingModel
         {
             MapTable(e, "PushPreferences", DatabaseSchemas.Messaging, ownsMigrations);
             e.HasKey(x => x.UserId);
-            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
         });
 
         return builder;

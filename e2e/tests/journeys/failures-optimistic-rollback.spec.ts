@@ -28,17 +28,33 @@ test.describe("Failures optimistic rollback", () => {
   }) => {
     await loginAs(page, RELEASE_USERS.cdo);
 
-    await page.route("**/api/failures", async (route) => {
-      if (route.request().method() === "GET") {
+    // Whole-set read (plain array) and the server-paged list (envelope) both
+    // return the one mocked row — the screen is paged since 2026-09-04.
+    await page.route(
+      (url) => /\/api\/failures(\?.*)?$/.test(url.href),
+      async (route) => {
+        if (route.request().method() !== "GET") {
+          await route.continue();
+          return;
+        }
+        const paged = new URL(route.request().url()).searchParams.has("page");
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify([reviewFailure]),
+          body: JSON.stringify(
+            paged
+              ? {
+                  items: [reviewFailure],
+                  totalCount: 1,
+                  page: 1,
+                  pageSize: 10,
+                  totalPages: 1,
+                }
+              : [reviewFailure],
+          ),
         });
-        return;
-      }
-      await route.continue();
-    });
+      },
+    );
 
     // Abort the approve mutation after the optimistic UI has a chance to flip.
     await page.route(`**/api/failures/${FAILURE_ID}/approve`, (route) =>
@@ -58,6 +74,7 @@ test.describe("Failures optimistic rollback", () => {
       page.getByRole("status").filter({ hasText: "تعذّر اعتماد التعذر — حاول مرة أخرى" }),
     ).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText("مراجعة")).toBeVisible();
-    await expect(page.getByText("معتمد")).toHaveCount(0);
+    // Scoped to the row: the KPI band's «معتمدة / تم الحل» label is a substring match.
+    await expect(row.getByText("معتمد", { exact: true })).toHaveCount(0);
   });
 });

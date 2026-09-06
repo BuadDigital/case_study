@@ -55,6 +55,8 @@ public static class FailureRules
             errors["poNumber"] = "رقم أمر العمل مطلوب";
         if (string.IsNullOrWhiteSpace(request.PropertyId))
             errors["propertyId"] = "معرف العقار مطلوب";
+        else if (!TryParsePropertyId(request.PropertyId, out _))
+            errors["propertyId"] = "معرف العقار غير صالح";
         if (string.IsNullOrWhiteSpace(request.Specialist))
             errors["specialist"] = "اسم الأخصائي مطلوب";
         return errors;
@@ -92,6 +94,16 @@ public static class FailureRules
 
     public static string EvictionLiftedNote(string actorName) => $"رُفع التعليق بواسطة {actorName}.";
 
+    /// <summary>
+    /// Property ids travel as strings on the wire; the aggregate stores the work-order property
+    /// Guid, so a value that is not one can never link to a property and is rejected up front.
+    /// </summary>
+    public static bool TryParsePropertyId(string? text, out Guid propertyId) =>
+        Guid.TryParse(text?.Trim(), out propertyId) && propertyId != Guid.Empty;
+
+    public static Guid ParsePropertyId(string? text) =>
+        TryParsePropertyId(text, out var propertyId) ? propertyId : Guid.Empty;
+
     public static PropertyFailure NewFailure(
         CreateFailureRequest request,
         string raisedByRole,
@@ -100,7 +112,7 @@ public static class FailureRules
         PropertyFailure.Create(
             Guid.NewGuid(),
             request.PoNumber,
-            request.PropertyId,
+            ParsePropertyId(request.PropertyId),
             request.DeedNumber,
             ResolveTitle(request),
             request.ProblemTypeId,
@@ -150,7 +162,7 @@ public static class FailureRules
     /// <summary>An eviction hold is born already suspended — the study stops on the spot.</summary>
     public static PropertyFailure NewEvictionHold(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string deedNumber,
         string resolvedSpecialist,
         DateTime nowUtc) =>
@@ -173,7 +185,7 @@ public static class FailureRules
 
     public static PropertyFailure NewKeyUnmatchedFailure(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string deedNumber,
         string resolvedSpecialist,
         DateTime nowUtc) =>
@@ -209,7 +221,7 @@ public static class FailureRules
         new()
         {
             PoNumber = failure.PoNumber,
-            PropertyId = failure.PropertyId,
+            PropertyId = failure.PropertyId.ToString("D"),
             Reason = reason,
         };
 
@@ -217,14 +229,14 @@ public static class FailureRules
         new()
         {
             PoNumber = failure.PoNumber,
-            PropertyId = failure.PropertyId,
+            PropertyId = failure.PropertyId.ToString("D"),
         };
 
     public static BlockCaseStudyTasksForFailureRequest BlockTasksRequest(PropertyFailure failure) =>
         new()
         {
             PoNumber = failure.PoNumber,
-            PropertyId = failure.PropertyId,
+            PropertyId = failure.PropertyId.ToString("D"),
             Reason = ApprovedBlockReason(failure),
         };
 
@@ -234,7 +246,7 @@ public static class FailureRules
         new()
         {
             PoNumber = failure.PoNumber,
-            PropertyId = failure.PropertyId,
+            PropertyId = failure.PropertyId.ToString("D"),
             DeedNumber = failure.DeedNumber,
             DeedStatus = deedStatus,
         };

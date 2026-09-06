@@ -50,7 +50,7 @@ coupling is entirely in queries and transactions, not in referential constraints
 | Id | Question | Outcome | Note |
 | --- | --- | --- | --- |
 | D1 | Inspector-fee ledgers, transitions, disbursement batches | **financial** | Accrual/discount/exclusion/batching are financial lifecycle states, and financial reporting and engineering billing already read the ledger. Rows stay named in `case_study`; after the Phase 4 cutover they live on the dedicated financial database until a later relocate. |
-| D2 | Operations tasks, their sequences, court-visit charges | **operations** owns `OperationsTasks`/`OperationsTaskSequences`; **financial** owns `CourtVisitFeeCharges` | The task lifecycle is operations work; the charge it produces is priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3. |
+| D2 | Operations tasks, court-visit charges | **operations** owns `OperationsTasks` (display-id numbering moved to `operations.OperationsReferenceSequences` on 2026-09-05); **financial** owns `CourtVisitFeeCharges` | The task lifecycle is operations work; the charge it produces is priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3. |
 | D3 | Notification inbox rows and recipient resolution | **platform** | Platform already owns the list/mutation endpoints and non-owners already request notifications through the outbox. Recipient resolution becomes a Platform projection or an owner contract in Phase 3. |
 | D4 | Document-reference counters | **case-study** | The counter is the correspondence-numbering sequence of the case-study document set; engineering billing is a consumer and gets numbers through a Case Study command in Phase 3. |
 | D5 | Service-local shape of outbox/inbox | **per-producer outbox, per-consumer inbox** | Each producing context maps `messaging.OutboxMessages` and owns only the rows it inserts, so a business write and its event stay in one `SaveChanges`. Consumers own the rows carrying their own `Consumer` value. |
@@ -95,13 +95,13 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | `InternalDelegationLetterSets`, `PoIntakeDrafts`, `DocumentReferenceCounters` (D4) | case-study | `ApplicationDbContext` | `case-study.documents` |
 | `InspectorFeeLedgers`, `InspectorFeeTransitions` (D1) | financial | `ApplicationDbContext` | `inspector-fees.ledger` |
 | `DisbursementBatches` (D1) | financial | `ApplicationDbContext` | `inspector-fees.disbursement` |
-| `OperationsTasks`, `OperationsTaskSequences` (D2) | operations | `ApplicationDbContext` | `operations.tasks` |
+| `OperationsTasks` (D2) | operations | `ApplicationDbContext` | `operations.tasks` |
 
 ### `platform` — extracted
 
 | Table | Owner | Context | Transaction group |
 | --- | --- | --- | --- |
-| `CourtCatalogEntries`, `Courts`, `CourtCircuits`, `CourtAuditLogs` | platform | `PlatformDbContext` | `platform.courts` |
+| `Courts`, `CourtCircuits`, `CourtAuditLogs` (legacy `CourtCatalogEntries` dropped 2026-09-05) | platform | `PlatformDbContext` | `platform.courts` |
 | `Regions`, `Cities`, `Districts` | platform | `PlatformDbContext` | `platform.geo` |
 | `FieldDictionaryConfigs`, `CaseStudyInfoRolesConfigs`, `OrganizationSettings` | platform | `PlatformDbContext` | `platform.config` |
 | `FieldSyncStatuses` | platform | `PlatformDbContext` | `platform.field-sync` |

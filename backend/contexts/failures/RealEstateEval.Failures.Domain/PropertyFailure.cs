@@ -13,8 +13,8 @@ public class PropertyFailure
 
     public Guid Id { get; private set; }
     public string PoNumber { get; private set; } = "";
- /// <summary>Frontend property key — usually work-order property Guid string.</summary>
-    public string PropertyId { get; private set; } = "";
+    /// <summary>Work-order property id (case_study.WorkOrderProperties.Id).</summary>
+    public Guid PropertyId { get; private set; }
     public string DeedNumber { get; private set; } = "";
     public string Title { get; private set; } = "";
     public string ProblemTypeId { get; private set; } = "";
@@ -38,7 +38,7 @@ public class PropertyFailure
     public static PropertyFailure Create(
         Guid id,
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string deedNumber,
         string title,
         string problemTypeId,
@@ -51,7 +51,7 @@ public class PropertyFailure
         {
             Id = id,
             PoNumber = poNumber.Trim(),
-            PropertyId = propertyId.Trim(),
+            PropertyId = propertyId,
             DeedNumber = deedNumber.Trim(),
             Title = title.Trim(),
             ProblemTypeId = problemTypeId.Trim(),
@@ -182,7 +182,7 @@ public class PropertyFailure
     public static PropertyFailure Reconstitute(
         Guid id,
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string deedNumber,
         string title,
         string problemTypeId,

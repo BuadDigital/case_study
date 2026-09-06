@@ -2,9 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
@@ -18,53 +20,140 @@ public class PartyBillingStatementsController : ControllerBase
 {
     private readonly IPartyBillingStatementService _statements;
     private readonly IPermissionService _permissions;
+    private readonly DatabaseOptions _dbOptions;
 
     public PartyBillingStatementsController(
         IPartyBillingStatementService statements,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _statements = statements;
         _permissions = permissions;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
+ /// <summary>
+ /// Ready dues. Sending page or pageSize returns PagedResultDto; without them the response stays
+ /// the plain array. The rows are synthesised, so the page is cut over the materialised list.
+ /// See docs/architecture/pagination-contract.md §9.2.
+ /// </summary>
     [HttpGet("ready-lines")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
-    public async Task<ActionResult<IReadOnlyList<PartyBillingReadyLineDto>>> ListReadyLines(
+    public async Task<IActionResult> ListReadyLines(
         [FromQuery] string? assigneeId = null,
-        CancellationToken ct = default) =>
-        Ok(await _statements.ListReadyLinesAsync(assigneeId, ct));
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        var query = new PartyBillingReadyLineListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            AssigneeId = assigneeId,
+        };
 
+        if (!query.IsPaged)
+            return Ok(await _statements.ListReadyLinesAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _statements.ListReadyLinesPagedAsync(query, skip, take, resolvedPage, ct));
+    }
+
+ /// <summary>
+ /// Statements. Sending page or pageSize returns PagedResultDto; without them the response stays
+ /// the plain array. Actor narrowing (an office sees only its own issued-or-later statements) is
+ /// folded into the query before it is forwarded, so the count is the actor's.
+ /// See docs/architecture/pagination-contract.md §9.1.
+ /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<PartyBillingStatementDto>>> List(
+    public async Task<IActionResult> List(
         [FromQuery] string? assigneeId = null,
         [FromQuery] string? status = null,
         [FromQuery] bool issuedOrLaterOnly = false,
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
         CancellationToken ct = default)
     {
         var ctx = await BuildActorContextAsync(ct);
         if (ctx.UserId is null) return Unauthorized();
 
- // Office: only own issued/closed statements.
+        var narrowed = NarrowStatementList(ctx, assigneeId, issuedOrLaterOnly);
+        if (narrowed is null) return Forbid();
+
+        var query = new PartyBillingStatementListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Status = status,
+            AssigneeId = narrowed.Value.AssigneeId,
+            IssuedOrLaterOnly = narrowed.Value.IssuedOrLaterOnly,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _statements.ListStatementsAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _statements.ListStatementsPagedAsync(query, skip, take, resolvedPage, ct));
+    }
+
+ /// <summary>
+ /// One statement, under the list's visibility rule: finance and operations managers see any
+ /// statement; a payee sees only its own, once issued.
+ /// </summary>
+    [HttpGet("{statementId:guid}")]
+    public async Task<ActionResult<PartyBillingStatementDto>> Get(
+        Guid statementId,
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+
+        var statement = await _statements.GetStatementAsync(statementId, ct);
+        if (statement is null) return NotFound();
+
+        if (ctx.IsFinancialOfficer || ctx.IsOperationsManager)
+            return Ok(statement);
+
+        var isOwner = !string.IsNullOrWhiteSpace(ctx.AssigneeId)
+            && string.Equals(ctx.AssigneeId, statement.AssigneeId, StringComparison.Ordinal);
+        var issuedOrLater = statement.Status is "issued" or "invoice_received" or "closed";
+        return isOwner && issuedOrLater ? Ok(statement) : NotFound();
+    }
+
+ /// <summary>
+ /// The visibility rule of the statement list. Office: only its own issued-or-later statements
+ /// (null when it has no assignee id at all → 403). Supervisor: issued-or-later unless finance
+ /// asks otherwise. Finance: whatever it filtered.
+ /// </summary>
+    private static (string? AssigneeId, bool IssuedOrLaterOnly)? NarrowStatementList(
+        ActorContext ctx,
+        string? assigneeId,
+        bool issuedOrLaterOnly)
+    {
         if (!ctx.IsFinancialOfficer && !ctx.IsOperationsManager)
         {
             if (string.IsNullOrWhiteSpace(ctx.AssigneeId))
-                return Forbid();
-
-            return Ok(await _statements.ListStatementsAsync(
-                ctx.AssigneeId,
-                status,
-                issuedOrLaterOnly: true,
-                ct));
+                return null;
+            return (ctx.AssigneeId, true);
         }
 
- // Supervisor visibility: issued+ by default unless finance filters.
         var issuedOnly = issuedOrLaterOnly
             || (ctx.IsOperationsManager && !ctx.IsFinancialOfficer);
-        return Ok(await _statements.ListStatementsAsync(
-            assigneeId,
-            status,
-            issuedOnly,
-            ct));
+        return (assigneeId, issuedOnly);
     }
 
     [HttpPost]

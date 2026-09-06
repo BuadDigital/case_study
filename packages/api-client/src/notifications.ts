@@ -1,6 +1,8 @@
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
+import { fetchListPage, type PagedResultDto } from "./pagination";
+import type { ApiErr, ApiOk } from "./work-orders";
 
 export type NotificationsApiConfig = {
   baseUrl?: string;
@@ -69,6 +71,58 @@ export async function listNotifications(
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`notifications ${res.status}`);
   return res.json() as Promise<UserNotificationDto[]>;
+}
+
+/**
+ * `GET /api/notifications` query — pagination-contract §6. The feed has one
+ * meaningful order, so `sort` is `created` and any other value resolves to it.
+ */
+export type NotificationListQuery = {
+  /** 1-based page; presence switches the endpoint to the paged envelope. */
+  page?: number;
+  pageSize?: number;
+  sort?: "created";
+  /** Default `desc` — newest first. */
+  dir?: "asc" | "desc";
+  /** Free text over `Title` and `Body`. */
+  q?: string;
+  category?: string;
+  /** `true` → unread only; `false` → read only; omitted → both. */
+  unread?: boolean;
+};
+
+/** The filter set without the page window. */
+export type NotificationListFilters = Omit<
+  NotificationListQuery,
+  "page" | "pageSize"
+>;
+
+function notificationListParams(query?: NotificationListQuery) {
+  return {
+    page: query?.page,
+    pageSize: query?.pageSize,
+    sort: query?.sort,
+    dir: query?.dir,
+    q: query?.q,
+    category: query?.category,
+    unread: query?.unread,
+  };
+}
+
+/**
+ * One server page of the signed-in user's bell feed — pagination-contract §6.
+ * The unpaged `listNotifications` stays on its own 50-row cap, and the SSE
+ * stream is untouched.
+ */
+export async function listNotificationsPage(
+  config: NotificationsApiConfig,
+  query?: NotificationListQuery,
+): Promise<ApiOk<PagedResultDto<UserNotificationDto>> | ApiErr> {
+  return fetchListPage<UserNotificationDto>(
+    { ...config, baseUrl: baseUrl(config) },
+    "/api/notifications",
+    notificationListParams(query),
+  );
 }
 
 export async function createNotification(

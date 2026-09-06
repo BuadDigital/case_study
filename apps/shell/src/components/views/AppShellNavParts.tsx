@@ -1,17 +1,11 @@
 "use client";
 
-/** App shell pieces — module-level nav icons, rows, and menus, extracted literally from AppShell (SRP). */
+/** Sidebar rows and dropdowns. Icons/class recipes live in AppShellNavPrimitives; the nav model in app-shell-nav-state. */
 import Link from "next/link";
-import { useLinkStatus } from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  cn,
-  Spinner,
-} from "@platform/ui-kit";
+import { cn } from "@platform/ui-kit";
 import { NavIcon } from "@/components/views/NavIcon";
-import { ThemeSwitch } from "@/components/views/ThemeSwitch";
-import type { PageId, RoleId } from "@platform/types";
-import { NAV } from "@platform/app-shared/app-data/constants";
+import type { NavItem, PageId, RoleId } from "@platform/types";
 import {
   ACTIVE_TRANSACTIONS_GROUP,
   ACTIVE_TRANSACTIONS_GROUP_ICON,
@@ -36,194 +30,18 @@ import {
   isInFinancialSection,
   type FinanceNavArea,
 } from "@platform/app-shared/app-data/financial-nav";
-
-export function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center [&_svg]:size-5">
-      {children}
-    </span>
-  );
-}
-
-export function MenuIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </svg>
-  );
-}
-
-/** Design ref: topbar toggle — collapsed icon-rail sidebar. */
-export function SidebarPanelsIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="3" y="4" width="18" height="16" rx="2.5" />
-      <path d="M9 4v16" />
-    </svg>
-  );
-}
-
-export const SIDEBAR_COLLAPSED_KEY = "ejada.sidebar.collapsed";
-
-export function readSidebarCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function CloseIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-      <path d="M10 17l5-5-5-5M15 12H3" />
-    </svg>
-  );
-}
-
-export const mobileTopbarIconBtn =
-  "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98] lg:hidden";
-
-export const topbarActionIconBtn =
-  "flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-surface text-text shadow-[0_1px_2px_rgba(15,52,96,0.06)] transition-colors hover:bg-surface-2 active:scale-[0.98]";
-
-function navItemClasses({
-  active = false,
-  sub = false,
-  locked = false,
-  toggle = false,
-  rail = false,
-}: {
-  active?: boolean;
-  sub?: boolean;
-  locked?: boolean;
-  toggle?: boolean;
-  /** Desktop icon-rail mode (labels hidden via group on #sidebar). */
-  rail?: boolean;
-} = {}) {
-  return cn(
-    "relative flex cursor-pointer items-center gap-[11px] rounded-lg px-3 py-[9px] text-[13.5px] font-medium text-[#aeb6c4] no-underline outline-none transition-[background,color] duration-150",
-    "hover:bg-white/[0.06] hover:text-white",
-    "[&>svg]:size-[18px] [&>svg]:shrink-0",
-    sub && "gap-[9px] ps-8 text-[12.5px] [&>svg]:size-3.5",
-    toggle && "w-full border-0 bg-transparent font-inherit",
-    rail &&
-      "lg:justify-center lg:gap-0 lg:px-0 lg:py-2.5 lg:before:hidden",
-    rail && sub && "lg:ps-0",
-    active &&
-      "bg-[color-mix(in_srgb,var(--gold)_18%,transparent)] font-bold text-gold-2 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:rounded-e-sm before:bg-gold before:content-['']",
-    locked && "cursor-default opacity-35",
-  );
-}
-
-function navBadgeClasses(rail = false) {
-  return cn(
-    "ms-auto inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-[5px] text-[10px] font-semibold text-white",
-    rail &&
-      "lg:absolute lg:end-0.5 lg:top-0.5 lg:ms-0 lg:h-[16px] lg:min-w-[16px] lg:px-[4px] lg:text-[9px]",
-  );
-}
-
-function navLabelClasses(rail = false) {
-  return cn(rail && "lg:sr-only");
-}
-
-function navChevronClasses(rail = false) {
-  return cn(rail && "lg:hidden");
-}
-
-export type NavRun = { label: string | null; items: (typeof NAV)[number][] };
-
-// Computed once at module load — NAV is a constant so this never changes.
-const ALL_NAV_RUNS: NavRun[] = (() => {
-  const runs: NavRun[] = [];
-  let lastGrp: string | null = null;
-  let cur: NavRun | null = null;
-  for (const item of NAV) {
-    if (item.grp && item.grp !== lastGrp) {
-      lastGrp = item.grp;
-      cur = { label: item.grp, items: [] };
-      runs.push(cur);
-      cur.items.push(item);
-    } else if (!item.grp && lastGrp) {
-      lastGrp = null;
-      cur = { label: null, items: [] };
-      runs.push(cur);
-      cur.items.push(item);
-    } else {
-      if (!cur) { cur = { label: null, items: [] }; runs.push(cur); }
-      cur.items.push(item);
-    }
-  }
-  return runs;
-})();
-
-export function navRunsForRole(rolePages: PageId[], role: RoleId): NavRun[] {
-  return ALL_NAV_RUNS
-    .map((run) => {
-      let items = run.items.filter((item) => rolePages.includes(item.id));
-      if (role === "engineering-office" || role === "field-inspector") {
-        items = sortPartyFeesBeforeFailures(items);
-      }
-      return { ...run, items };
-    })
-    .filter((run) => run.items.length > 0);
-}
-
-/** Transaction parties — fees first, then failures immediately below. */
-function sortPartyFeesBeforeFailures(
-  items: (typeof NAV)[number][],
-): (typeof NAV)[number][] {
-  const order: PageId[] = ["party-fees", "failures"];
-  return [...items].sort((a, b) => {
-    const ai = order.indexOf(a.id);
-    const bi = order.indexOf(b.id);
-    if (ai === -1 && bi === -1) return 0;
-    if (ai === -1) return -1;
-    if (bi === -1) return 1;
-    return ai - bi;
-  });
-}
+import { useRailFlyoutDismiss } from "@/hooks/useRailFlyoutDismiss";
+import {
+  ChevronDownIcon,
+  NavDropdownChevron,
+  NavFlyoutPanel,
+  NavPending,
+  NavRailSeparator,
+  navBadgeClasses,
+  navGroupLabelClasses,
+  navItemClasses,
+  navLabelClasses,
+} from "./AppShellNavPrimitives";
 
 export function NavRow({
   item,
@@ -232,7 +50,7 @@ export function NavRow({
   badgeCount,
   rail = false,
 }: {
-  item: (typeof NAV)[number];
+  item: NavItem;
   active: boolean;
   onPrefetch: (page: PageId) => void;
   badgeCount?: number;
@@ -261,20 +79,6 @@ export function NavRow({
       <span className={navLabelClasses(rail)}>{item.label}</span>
       <NavPending fallback={badge} />
     </Link>
-  );
-}
-
-/**
- * Instant click feedback: navigation used to stay silent until the next page
- * mounted, so the tap looked ignored. Replaces the badge while pending so the row does not grow.
- */
-function NavPending({ fallback = null }: { fallback?: React.ReactNode }) {
-  const { pending } = useLinkStatus();
-  if (!pending) return fallback;
-  return (
-    <span className="ms-auto inline-flex items-center" aria-label="جاري التحميل">
-      <Spinner />
-    </span>
   );
 }
 
@@ -342,51 +146,45 @@ function ActiveTransactionNavRow({
   );
 }
 
-function NavDropdownChevron({ open, rail = false }: { open: boolean; rail?: boolean }) {
-  return (
-    <span
-      className={cn(
-        "ms-auto inline-flex shrink-0 opacity-45 transition-transform duration-200 ease-in-out",
-        open && "-rotate-90 opacity-70",
-        navChevronClasses(rail),
-      )}
-      aria-hidden
-    >
-      <svg
-        className="size-[18px]"
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
-    </span>
-  );
-}
-
-function NavFlyoutPanel({
+/**
+ * Dropdown body rendered in one of three places: inline (expanded sidebar),
+ * inline but hidden on desktop (rail, mobile drawer), and the rail flyout.
+ */
+function NavDropdownBody({
+  id,
   label,
+  open,
+  rail,
+  borderClass,
   children,
 }: {
+  id: string;
   label: string;
-  children: React.ReactNode;
+  open: boolean;
+  rail: boolean;
+  borderClass: string;
+  children: () => React.ReactNode;
 }) {
-  return (
-    <div
-      className="absolute end-full top-0 z-[60] me-2 hidden min-w-[210px] rounded-[10px] border border-white/[0.1] bg-sidebar p-2 shadow-lg lg:block"
-      role="group"
-      aria-label={label}
-    >
-      <div className="px-2.5 pb-1.5 pt-1 text-[11px] font-bold tracking-[0.03em] text-[#6f7b90]">
-        {label}
+  if (!open) return null;
+  if (!rail) {
+    return (
+      <div id={id} className={borderClass} role="group" aria-label={label}>
+        {children()}
       </div>
-      <div className="flex flex-col">{children}</div>
-    </div>
+    );
+  }
+  return (
+    <>
+      <div
+        id={id}
+        className={cn(borderClass, "lg:hidden")}
+        role="group"
+        aria-label={label}
+      >
+        {children()}
+      </div>
+      <NavFlyoutPanel label={label}>{children()}</NavFlyoutPanel>
+    </>
   );
 }
 
@@ -426,19 +224,7 @@ export function FinanceHtmlNav({
     if (onCore) setOpen(true);
   }, [onCore]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (rail) setOpen(false);
-  }, [rail]);
-
-  useEffect(() => {
-    if (!open || !rail) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open, rail]);
+  useRailFlyoutDismiss(open, rail, rootRef, setOpen);
 
   const finLeaves = () =>
     FINANCIAL_NAV_LEAVES.map((leaf) => {
@@ -478,12 +264,7 @@ export function FinanceHtmlNav({
       >
         {FINANCIAL_GROUP}
       </div>
-      {rail ? (
-        <div
-          className="mx-auto my-1.5 hidden h-px w-6 bg-white/10 lg:block"
-          aria-hidden
-        />
-      ) : null}
+      {rail ? <NavRailSeparator /> : null}
 
       {/* .nav-item toggle: Finance & billing */}
       <button
@@ -503,31 +284,15 @@ export function FinanceHtmlNav({
         <NavDropdownChevron open={open} rail={rail} />
       </button>
 
-      {open && !rail ? (
-        <div
-          id="nav-financial-leaves"
-          className="ms-3 flex flex-col border-s border-white/[0.07] py-0.5"
-          role="group"
-          aria-label={FINANCIAL_TOGGLE_LABEL}
-        >
-          {finLeaves()}
-        </div>
-      ) : null}
-      {open && rail ? (
-        <>
-          <div
-            id="nav-financial-leaves"
-            className="ms-3 flex flex-col border-s border-white/[0.07] py-0.5 lg:hidden"
-            role="group"
-            aria-label={FINANCIAL_TOGGLE_LABEL}
-          >
-            {finLeaves()}
-          </div>
-          <NavFlyoutPanel label={FINANCIAL_TOGGLE_LABEL}>
-            {finLeaves()}
-          </NavFlyoutPanel>
-        </>
-      ) : null}
+      <NavDropdownBody
+        id="nav-financial-leaves"
+        label={FINANCIAL_TOGGLE_LABEL}
+        open={open}
+        rail={rail}
+        borderClass="ms-3 flex flex-col border-s border-white/[0.07] py-0.5"
+      >
+        {finLeaves}
+      </NavDropdownBody>
     </div>
   );
 }
@@ -562,19 +327,7 @@ export function ActiveTransactionsNavDropdown({
     if (inSection && !rail) setOpen(true);
   }, [inSection, rail]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
-    if (rail) setOpen(false);
-  }, [rail]);
-
-  useEffect(() => {
-    if (!open || !rail) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open, rail]);
+  useRailFlyoutDismiss(open, rail, rootRef, setOpen);
 
   const childActive = (tx: ActiveTransactionNavItem) =>
     currentPage === tx.id ||
@@ -612,31 +365,15 @@ export function ActiveTransactionsNavDropdown({
         <span className={navLabelClasses(rail)}>{ACTIVE_TRANSACTIONS_GROUP}</span>
         <NavDropdownChevron open={open} rail={rail} />
       </button>
-      {open && !rail ? (
-        <div
-          id="nav-active-transactions"
-          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
-          role="group"
-          aria-label={ACTIVE_TRANSACTIONS_GROUP}
-        >
-          {renderRows()}
-        </div>
-      ) : null}
-      {open && rail ? (
-        <>
-          <div
-            id="nav-active-transactions"
-            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
-            role="group"
-            aria-label={ACTIVE_TRANSACTIONS_GROUP}
-          >
-            {renderRows()}
-          </div>
-          <NavFlyoutPanel label={ACTIVE_TRANSACTIONS_GROUP}>
-            {renderRows()}
-          </NavFlyoutPanel>
-        </>
-      ) : null}
+      <NavDropdownBody
+        id="nav-active-transactions"
+        label={ACTIVE_TRANSACTIONS_GROUP}
+        open={open}
+        rail={rail}
+        borderClass="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
+      >
+        {renderRows}
+      </NavDropdownBody>
     </div>
   );
 }
@@ -700,19 +437,7 @@ export function SystemSettingsNavDropdown({
     });
   }, [currentPage, inSection, search, tree]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- avoid leftover open flyouts when entering icon-rail.
-    if (rail) setOpen(false);
-  }, [rail]);
-
-  useEffect(() => {
-    if (!open || !rail) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open, rail]);
+  useRailFlyoutDismiss(open, rail, rootRef, setOpen);
 
   const renderItem = (item: SystemSettingsNavItem) => (
     <ActiveTransactionNavRow
@@ -757,18 +482,7 @@ export function SystemSettingsNavDropdown({
                 )}
                 aria-hidden
               >
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
+                <ChevronDownIcon />
               </span>
             </button>
             {groupOpen ? node.items.map(renderItem) : null}
@@ -796,187 +510,29 @@ export function SystemSettingsNavDropdown({
         <span className={navLabelClasses(rail)}>{SYSTEM_SETTINGS_GROUP}</span>
         <NavDropdownChevron open={open} rail={rail} />
       </button>
-      {open && !rail ? (
-        <div
-          id="nav-system-settings"
-          className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
-          role="group"
-          aria-label={SYSTEM_SETTINGS_GROUP}
-        >
-          {renderBody()}
-        </div>
-      ) : null}
-      {open && rail ? (
-        <>
-          <div
-            id="nav-system-settings"
-            className="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1 lg:hidden"
-            role="group"
-            aria-label={SYSTEM_SETTINGS_GROUP}
-          >
-            {renderBody()}
-          </div>
-          <NavFlyoutPanel label={SYSTEM_SETTINGS_GROUP}>
-            {renderBody()}
-          </NavFlyoutPanel>
-        </>
-      ) : null}
+      <NavDropdownBody
+        id="nav-system-settings"
+        label={SYSTEM_SETTINGS_GROUP}
+        open={open}
+        rail={rail}
+        borderClass="ms-3 flex flex-col border-s border-white/[0.06] py-0.5 pb-1"
+      >
+        {renderBody}
+      </NavDropdownBody>
     </div>
   );
 }
 
-export function ProfileMenu({
-  chipName,
-  initials,
-  dept,
-  currentPage,
-  onLogout,
-}: {
-  chipName: string;
-  initials: string;
-  dept: string;
-  currentPage: PageId;
-  onLogout: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  const inMenuSection = currentPage === "profile";
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onPointerDown(event: MouseEvent) {
-      if (!panelRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const avatar = (
-    <div
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-[color-mix(in_srgb,var(--gold)_16%,var(--surface))] text-[13px] font-bold text-gold-d"
-      id="uav"
-    >
-      {initials || "—"}
-    </div>
-  );
-
-  const identity = (
-    <div className="hidden min-w-0 sm:block">
-      <div
-        className="truncate text-[13px] font-bold leading-[1.25] text-heading"
-        id="uname"
-      >
-        {chipName}
-      </div>
-      <div className="truncate text-[11px] text-text-3" id="udept">
-        {dept}
-      </div>
-    </div>
-  );
-
+/** "عام" heading + system settings dropdown — shared by the anchored and fallback slots. */
+export function GeneralSettingsNavGroup({
+  rail,
+  ...dropdown
+}: Omit<Parameters<typeof SystemSettingsNavDropdown>[0], "rail"> & { rail: boolean }) {
   return (
-    <div className="relative flex items-center" ref={panelRef}>
-      <Link
-        href="/profile"
-        className={cn(
-          "flex items-center gap-2.5 rounded-lg py-1 pe-2 ps-2.5 no-underline transition-colors",
-          "max-lg:min-h-11 max-lg:ps-1.5",
-          "hover:bg-surface-2",
-          inMenuSection && "bg-surface-2",
-        )}
-        aria-label="البروفايل"
-        aria-current={inMenuSection ? "page" : undefined}
-      >
-        {avatar}
-        {identity}
-      </Link>
-      <button
-        type="button"
-        className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors",
-          "max-lg:size-11",
-          "hover:bg-surface-2 hover:text-text",
-          open && "bg-surface-2 text-text",
-        )}
-        aria-label="قائمة الحساب"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span
-          className={cn("inline-flex transition-transform", open && "rotate-180")}
-          aria-hidden
-        >
-          <svg
-            className="size-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </span>
-      </button>
-        {open ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-            aria-label="إغلاق القائمة"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className="absolute end-0 top-[calc(100%+6px)] z-50 w-64 overflow-hidden rounded-md border border-border bg-surface shadow-modal max-lg:fixed max-lg:inset-x-3 max-lg:bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:top-auto max-lg:w-auto max-lg:rounded-[14px]"
-            role="menu"
-            aria-label="قائمة الحساب"
-          >
-            <div className="border-b border-border px-3 py-2.5">
-              <div className="truncate text-sm font-semibold text-text">
-                {chipName}
-              </div>
-              <div className="truncate text-[11px] text-text-3">{dept}</div>
-            </div>
-            <div>
-              <ThemeSwitch />
-            </div>
-            <div className="border-t border-border p-1.5">
-              <button
-                type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-semibold text-danger-text transition-colors hover:bg-[color-mix(in_srgb,var(--red)_10%,transparent)] max-lg:min-h-11 [&>svg]:size-4 [&>svg]:shrink-0"
-                onPointerDown={(e) => {
-                  // Keep the menu item click from racing the outside-dismiss listener.
-                  e.stopPropagation();
-                }}
-                onClick={() => {
-                  setOpen(false);
-                  void onLogout();
-                }}
-                data-no-action-toast
-              >
-                <LogoutIcon />
-                <span>تسجيل الخروج</span>
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
-    </div>
+    <>
+      <div className={navGroupLabelClasses(rail)}>عام</div>
+      {rail ? <NavRailSeparator /> : null}
+      <SystemSettingsNavDropdown rail={rail} {...dropdown} />
+    </>
   );
 }

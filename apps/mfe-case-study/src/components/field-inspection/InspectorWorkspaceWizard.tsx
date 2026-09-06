@@ -190,6 +190,7 @@ export function InspectorWorkspaceWizard({
             locked={locked}
             isLand={isLand}
             isShop={isShop}
+            missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
             onPatch={onPatch}
           />
 

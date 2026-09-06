@@ -14,15 +14,11 @@ import {
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
   isShopHiddenInspectorComponentKey,
-  patchInspectorFeatureValues,
-  visibleInspectorFeatureFields,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
-import {
-  COMPONENT_BOOL_KEYS,
-  inspectorBoolPillClass,
-} from "./inspector-wizard-state";
+import { inspectorBoolPillClass } from "./inspector-wizard-state";
+import { InspectorComponentBoolPills } from "./InspectorComponentBoolPills";
 
 export function InspectorWizardComponentsCards({
   deedNumber,
@@ -31,6 +27,7 @@ export function InspectorWizardComponentsCards({
   locked,
   isLand,
   isShop,
+  missingFeaturePhotoKey,
   onPatch,
 }: {
   deedNumber: string;
@@ -39,6 +36,8 @@ export function InspectorWizardComponentsCards({
   locked: boolean;
   isLand: boolean;
   isShop: boolean;
+  /** Validation focus target — highlights the pill whose proof photo is missing. */
+  missingFeaturePhotoKey?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const showShop = (key: string) =>
@@ -137,33 +136,14 @@ export function InspectorWizardComponentsCards({
             >
               يوجد ملحق
             </button>
-            {COMPONENT_BOOL_KEYS.map((key) => {
-              const field = visibleInspectorFeatureFields(false).find(
-                (f) => f.key === key,
-              );
-              if (!field || isLand) return null;
-              const on = (draft.featureValues[key] ?? "") === "نعم";
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={!editable}
-                  className={inspectorBoolPillClass(on, !editable)}
-                  onClick={() =>
-                    editable &&
-                    onPatch({
-                      featureValues: patchInspectorFeatureValues(
-                        draft.featureValues,
-                        key,
-                        on ? "لا" : "نعم",
-                      ),
-                    })
-                  }
-                >
-                  {field.label}
-                </button>
-              );
-            })}
+            <InspectorComponentBoolPills
+              deedNumber={deedNumber}
+              draft={draft}
+              editable={editable}
+              isLand={isLand}
+              missingFeaturePhotoKey={missingFeaturePhotoKey}
+              onPatch={onPatch}
+            />
           </div>
           {draft.hasAnnex === "نعم" ? (
             <div className="mt-2.5 flex flex-wrap gap-4 rounded-lg bg-surface-2 px-3 py-2.5">

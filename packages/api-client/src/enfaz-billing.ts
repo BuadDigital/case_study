@@ -1,5 +1,10 @@
 import { getApiBase } from "./api-base";
 import { withIdempotencyKey } from "./idempotency-key";
+import {
+  fetchListPage,
+  type ListPageQuery,
+  type PagedResultDto,
+} from "./pagination";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -299,19 +304,96 @@ export async function listReadyEnfazPoSummaries(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const raw = (await res.json()) as Record<string, unknown>[];
-    return {
-      ok: true,
-      data: raw.map((item) => ({
-        poNumber: String(item.poNumber ?? item.PoNumber ?? ""),
-        doneCount: Number(item.doneCount ?? item.DoneCount ?? 0),
-        cancelledCount: Number(
-          item.cancelledCount ?? item.CancelledCount ?? 0,
-        ),
-      })),
-    };
+    return { ok: true, data: raw.map(normalizeReadySummary) };
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+function normalizeReadySummary(
+  item: Record<string, unknown>,
+): EnfazReadyPoSummaryDto {
+  return {
+    poNumber: String(item.poNumber ?? item.PoNumber ?? ""),
+    doneCount: Number(item.doneCount ?? item.DoneCount ?? 0),
+    cancelledCount: Number(item.cancelledCount ?? item.CancelledCount ?? 0),
+  };
+}
+
+function asRecord(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+}
+
+export type EnfazReadyPoListSort = "created" | "po";
+
+/**
+ * `GET /api/enfaz-billing/ready-pos-summary` — pagination-contract §10.1.
+ * `created` is the readiness scan's own order (newest work order first).
+ */
+export type EnfazReadyPoListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: EnfazReadyPoListSort;
+};
+
+/** One server page of ready work orders — cut over the readiness scan, count exact. */
+export async function listReadyEnfazPoSummariesPage(
+  config: EnfazBillingApiConfig,
+  query?: EnfazReadyPoListQuery,
+): Promise<ApiOk<PagedResultDto<EnfazReadyPoSummaryDto>> | ApiErr> {
+  const result = await fetchListPage<unknown>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/enfaz-billing/ready-pos-summary",
+    {
+      page: query?.page,
+      pageSize: query?.pageSize,
+      sort: query?.sort,
+      dir: query?.dir,
+      q: query?.q,
+    },
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      ...result.data,
+      items: result.data.items.map((r) => normalizeReadySummary(asRecord(r))),
+    },
+  };
+}
+
+export type EnfazTrackingListSort = "created" | "po" | "completed" | "invoiceIssued";
+
+/**
+ * `GET /api/enfaz-billing/tracking` — pagination-contract §10.2. `q` covers
+ * PO, deed, property label, city and invoice number.
+ */
+export type EnfazTrackingListQuery = Omit<ListPageQuery, "sort"> & {
+  sort?: EnfazTrackingListSort;
+};
+
+/** One server page of tracking rows — cut over the materialised scan, count exact. */
+export async function listEnfazTrackingPage(
+  config: EnfazBillingApiConfig,
+  query?: EnfazTrackingListQuery,
+): Promise<ApiOk<PagedResultDto<EnfazTrackingRowDto>> | ApiErr> {
+  const result = await fetchListPage<unknown>(
+    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+    "/api/enfaz-billing/tracking",
+    {
+      page: query?.page,
+      pageSize: query?.pageSize,
+      sort: query?.sort,
+      dir: query?.dir,
+      q: query?.q,
+    },
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      ...result.data,
+      items: result.data.items.map((r) => normalizeTrackingRow(asRecord(r))),
+    },
+  };
 }
 
 export async function getPoEnfazBilling(

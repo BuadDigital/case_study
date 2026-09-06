@@ -5,7 +5,7 @@
  * state, the derived queue, and the cancel/stop/delete writes. The view consumes
  * the returned bag and keeps JSX plus event wiring only.
  */
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
@@ -28,9 +28,9 @@ import {
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
   usePoListRowsPageQuery,
-  usePoListRowsQuery,
   usePropertyListItemsQuery,
   useWorkflowTasksQuery,
+  useWorkOrderListCountsQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import {
@@ -44,7 +44,8 @@ import {
   INITIAL_PO_LIST_QUERY,
   isPoListBillingBucket,
   poListBillingWindow,
-  poListKpi,
+  poListEmptyMessage,
+  poListKpiFromCounts,
   poListQueryReducer,
   poListRowView,
   poListServerPagination,
@@ -53,6 +54,7 @@ import {
   PO_LIST_PAGE_SIZE,
   registeredCountsByPo,
   teamNamesByPo,
+  toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
   type SortKey,
   type StatusFilter,
@@ -70,7 +72,9 @@ export function usePoListWorkflow() {
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
-  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [intakeOpen, setIntakeOpenState] = useState(false);
+  /** `/po/intake` redirects here as `?intake=1` — the deep link into the modal. */
+  const intakeFromQuery = searchParams.get("intake") === "1";
   const [query, dispatchQuery] = useReducer(
     poListQueryReducer,
     INITIAL_PO_LIST_QUERY,
@@ -85,11 +89,24 @@ export function usePoListWorkflow() {
   const setPage = (value: number) => dispatchQuery({ type: "page", page: value });
 
   useEffect(() => {
-    if (!showIntake) return;
-    if (searchParams.get("intake") !== "1") return;
-    setIntakeOpen(true);
-    router.replace("/po", { scroll: false });
-  }, [showIntake, searchParams, router]);
+    if (!showIntake || !intakeFromQuery) return;
+    setIntakeOpenState(true);
+  }, [showIntake, intakeFromQuery]);
+
+  /**
+   * The query param stays on the URL while the modal is open and is dropped
+   * only when it closes — replacing the URL during the opening render raced
+   * the navigation that brought it here (`/po/intake` → `/po?intake=1`).
+   */
+  const setIntakeOpen = useCallback(
+    (open: boolean) => {
+      setIntakeOpenState(open);
+      if (!open && intakeFromQuery) {
+        router.replace("/po", { scroll: false });
+      }
+    },
+    [intakeFromQuery, router],
+  );
 
   // The search box drives a server request — debounce it, do not just defer a
   // local filter pass (the deferred value would fire a request per keystroke).
@@ -99,17 +116,21 @@ export function usePoListWorkflow() {
     [query, debouncedSearch],
   );
 
+  const countsQuery = useMemo(
+    () => toWorkOrderListCountsQuery(query, { search: debouncedSearch }),
+    [query, debouncedSearch],
+  );
+
   const {
     data: pageResult,
     isPending: pagePending,
     isPlaceholderData,
   } = usePoListRowsPageQuery(serverQuery);
-  // KPI counters and the empty-state copy read the whole list, which the server
-  // cannot fold into the page (pagination-contract §1, "still client-side" #3).
-  const { data: rows, isPending: rowsPending } = usePoListRowsQuery();
+  // The KPI band and the empty-state copy are SQL COUNTs on the same filters —
+  // no list is loaded for them any more (pagination-contract §1.1).
+  const { data: counts } = useWorkOrderListCountsQuery(countsQuery);
   const { data: propertyItems } = usePropertyListItemsQuery();
   const { data: workflowTasks } = useWorkflowTasksQuery();
-  const list = useMemo(() => rows ?? [], [rows]);
   const teamByPo = useMemo(() => teamNamesByPo(workflowTasks), [workflowTasks]);
   const deedIndex = useMemo(
     () => buildPoDeedIndex(propertyItems ?? []),
@@ -127,10 +148,8 @@ export function usePoListWorkflow() {
   const searchModeLabel = poListSearchModeLabel(searchMode);
   const statsReady = pageResult !== undefined && !pagePending;
 
-  const kpi = useMemo(
-    () => (rows !== undefined && !rowsPending ? poListKpi(list) : undefined),
-    [list, rows, rowsPending],
-  );
+  const kpi = useMemo(() => poListKpiFromCounts(counts), [counts]);
+  const emptyMessage = poListEmptyMessage(counts);
 
   const assignmentTypes = PO_ASSIGNMENT_TYPE_OPTIONS;
 
@@ -324,7 +343,7 @@ export function usePoListWorkflow() {
     typeFilter,
     setTypeFilter,
     assignmentTypes,
-    list,
+    emptyMessage,
     totalCount,
     pageRows,
     teamByPo,

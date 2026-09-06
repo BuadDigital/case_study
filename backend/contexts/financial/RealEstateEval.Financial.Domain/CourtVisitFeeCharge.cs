@@ -32,4 +32,6 @@ public static class CourtVisitFeeStatuses
 {
     public const string Open = "open";
     public const string Settled = "settled";
+
+    public static readonly IReadOnlyList<string> All = [Open, Settled];
 }

@@ -1,11 +1,13 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Selected comparable from the company bank for a valuation request.
 /// Adoption feeds the market approach; adjustment lines hold sequential % .
 /// </summary>
-public class ValuationComparableSelection
+public class ValuationComparableSelection : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
     public Guid ComparablePropertyId { get; set; }

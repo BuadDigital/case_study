@@ -120,9 +120,6 @@ public interface IStaffRegistrationRepository
         DateTime utcNow,
         CancellationToken cancellationToken);
 
-    /// <summary>Stages an audit row so it commits with the change it describes.</summary>
-    Task AddAuditLogAsync(AuditLog entry, CancellationToken cancellationToken);
-
     /// <summary>Opens a transaction, or returns <c>null</c> on a non-relational provider.</summary>
     Task<IStaffWriteTransaction?> BeginTransactionAsync(CancellationToken cancellationToken);
 

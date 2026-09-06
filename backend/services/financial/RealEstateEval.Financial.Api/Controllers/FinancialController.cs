@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
@@ -20,19 +22,22 @@ public class FinancialController : ControllerBase
     private readonly IIncentiveSuspensionService _incentiveSuspensions;
     private readonly IDiscountFlagService _discountFlags;
     private readonly ILogger<FinancialController> _logger;
+    private readonly DatabaseOptions _dbOptions;
 
     public FinancialController(
         IFinancialReportService financial,
         IPartyFeePricingService pricing,
         IIncentiveSuspensionService incentiveSuspensions,
         IDiscountFlagService discountFlags,
-        ILogger<FinancialController> logger)
+        ILogger<FinancialController> logger,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _financial = financial;
         _pricing = pricing;
         _incentiveSuspensions = incentiveSuspensions;
         _discountFlags = discountFlags;
         _logger = logger;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
     [HttpGet("summary")]
@@ -189,14 +194,42 @@ public class FinancialController : ControllerBase
         }
     }
 
+ /// <summary>
+ /// Incentive-suspension ledger. Sending page or pageSize returns PagedResultDto; without them
+ /// the response stays the plain array. See docs/architecture/pagination-contract.md §7.
+ /// </summary>
     [HttpGet("incentive-suspensions")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
-    public async Task<ActionResult<IReadOnlyList<IncentiveSuspensionDto>>> ListIncentiveSuspensions(
+    public async Task<IActionResult> ListIncentiveSuspensions(
         [FromQuery] string? transactionKey,
         [FromQuery] string? assigneeId,
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
         [FromQuery] bool activeOnly = true,
-        CancellationToken ct = default) =>
-        Ok(await _incentiveSuspensions.ListAsync(transactionKey, assigneeId, activeOnly, ct));
+        CancellationToken ct = default)
+    {
+        var query = new IncentiveSuspensionListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            TransactionKey = transactionKey,
+            AssigneeId = assigneeId,
+            ActiveOnly = activeOnly,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _incentiveSuspensions.ListAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _incentiveSuspensions.ListPagedAsync(query, skip, take, resolvedPage, ct));
+    }
 
     [HttpPost("incentive-suspensions")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
@@ -227,13 +260,40 @@ public class FinancialController : ControllerBase
             : Ok(row);
     }
 
+ /// <summary>
+ /// Discount-flag ledger. Sending page or pageSize returns PagedResultDto; without them the
+ /// response stays the plain array. See docs/architecture/pagination-contract.md §7.
+ /// </summary>
     [HttpGet("discount-flags")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
-    public async Task<ActionResult<IReadOnlyList<DiscountFlagDto>>> ListDiscountFlags(
+    public async Task<IActionResult> ListDiscountFlags(
         [FromQuery] string? transactionKey,
         [FromQuery] string? status,
-        CancellationToken ct = default) =>
-        Ok(await _discountFlags.ListAsync(transactionKey, status, ct));
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        [FromQuery] string? q = null,
+        CancellationToken ct = default)
+    {
+        var query = new DiscountFlagListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            TransactionKey = transactionKey,
+            Status = status,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _discountFlags.ListAsync(query, ct));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page, query.PageSize, _dbOptions);
+        return Ok(await _discountFlags.ListPagedAsync(query, skip, take, resolvedPage, ct));
+    }
 
     [HttpPost("discount-flags")]
     [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]

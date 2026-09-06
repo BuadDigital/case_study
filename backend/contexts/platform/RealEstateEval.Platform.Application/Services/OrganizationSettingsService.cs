@@ -2,6 +2,7 @@ using System.Text.Json;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Platform.Application.Abstractions;
 using RealEstateEval.Platform.Domain;
@@ -165,7 +166,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             return ReportTextPackageRules.InitialVersion + 1;
         }
 
-        if (string.Equals(nextJson, latest.TextsJson, StringComparison.Ordinal))
+        if (JsonTextEquality.SemanticallyEqual(nextJson, latest.TextsJson))
             return latest.Version;
 
         var version = latest.Version + 1;

@@ -59,7 +59,8 @@ public sealed class ValuationCostApproachService(
         var approachSettings = await repo.GetApproachSettingsAsync(
             valuationRequestId, cancellationToken);
         var hasStructures = false;
-        if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
                 propertyGuid,
@@ -421,7 +422,7 @@ public sealed class ValuationCostApproachService(
         return new ValuationCostApproachDto
         {
             ValuationRequestId = vr.Id,
-            PropertyId = vr.PropertyId,
+            PropertyId = vr.PropertyId.ToString("D"),
             LandUnitRateFromMarket = entity?.LandUnitRateFromMarket ?? 0m,
             LandAreaSqm = entity?.LandAreaSqm ?? 0m,
             LandEstimateComplete = landEstimateComplete,

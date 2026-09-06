@@ -1,6 +1,7 @@
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
@@ -57,7 +58,8 @@ public sealed class ValuationReconciliationService(
         if (settings is null)
         {
             var hasStructures = false;
-            if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+            var propertyGuid = vr.PropertyId;
+            if (propertyGuid != Guid.Empty)
             {
                 var context = await caseStudy.GetValuationPropertyContextAsync(
                     propertyGuid,
@@ -80,7 +82,8 @@ public sealed class ValuationReconciliationService(
         ValuationRequest vr,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid == Guid.Empty)
             return AssignmentType.Execution;
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
         return context?.AssignmentTypeValue() ?? AssignmentType.Execution;
@@ -107,7 +110,8 @@ public sealed class ValuationReconciliationService(
 
  // Quality gate before calculation, not only at issuance: traditional deeds must clear
  // the deed↔nature match before the final opinion is computed (registered title skips).
-        if (Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
                 propertyGuid,
@@ -277,7 +281,7 @@ public sealed class ValuationReconciliationService(
 
  // S2 : every alert pass — rationale or acknowledgement —
  // leaves an audit trail. Logged best-effort after the main save.
-        if (!string.Equals(previousOverridesJson, entity.MethodologyAlertOverridesJson, StringComparison.Ordinal))
+        if (!JsonTextEquality.SemanticallyEqual(previousOverridesJson, entity.MethodologyAlertOverridesJson))
         {
             await auditLog.AppendAsync(audit.Create(
                 actorId: string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId,
@@ -372,7 +376,7 @@ public sealed class ValuationReconciliationService(
         return new ValuationReconciliationDto
         {
             ValuationRequestId = vr.Id,
-            PropertyId = vr.PropertyId,
+            PropertyId = vr.PropertyId.ToString("D"),
             MarketOpinionValue = marketValue,
             CostOpinionWithLand = costValue,
             Methods = methodDtos,

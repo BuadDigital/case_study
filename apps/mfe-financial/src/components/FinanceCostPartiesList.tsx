@@ -12,6 +12,7 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   EmptyState,
+  ListPager,
   StatusPill,
   TBody,
   THead,
@@ -23,6 +24,7 @@ import {
   Tr,
   cn,
   finStatusStyle,
+  listPagerWindow,
   opsLetterCard,
   opsSearchInput,
   opsTfNote,
@@ -31,6 +33,10 @@ import {
   buildFinanceCostParties,
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
+import {
+  FINANCE_LIST_PAGE_SIZE,
+  useListPageState,
+} from "../query/billing-list-page-queries";
 import {
   finMuted,
   finRowActive,
@@ -91,13 +97,18 @@ export function FinanceCostPartiesList({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
+  // Deliberately unpaged loads: a payee row is an aggregate — its balance sums
+  // every ready line and every statement of that payee, and a payee with no
+  // ready line still appears through its statements. Neither list has a
+  // "group by payee" on the server, so both must be whole; the pager below
+  // windows the aggregated rows client-side (pagination-contract §9, note).
   const readyQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "ready-lines", "parties"],
+    queryKey: [...appDataKeys.partyBilling(), "ready-lines", "parties"],
     queryFn: () => loadPartyBillingReadyLines(),
     staleTime: 20_000,
   });
   const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "statements", "parties"],
+    queryKey: [...appDataKeys.partyBilling(), "statements", "parties"],
     queryFn: () => loadPartyBillingStatements(),
     staleTime: 20_000,
   });
@@ -122,6 +133,21 @@ export function FinanceCostPartiesList({
         p.taskKindLabel.toLowerCase().includes(needle),
     );
   }, [parties, deferredQ]);
+
+  const [page, setPage] = useListPageState(deferredQ.trim());
+  const pageWindow = listPagerWindow({
+    page,
+    pageSize: FINANCE_LIST_PAGE_SIZE,
+    totalCount: filtered.length,
+  });
+  const pageRows = useMemo(
+    () =>
+      filtered.slice(
+        (pageWindow.safePage - 1) * FINANCE_LIST_PAGE_SIZE,
+        pageWindow.safePage * FINANCE_LIST_PAGE_SIZE,
+      ),
+    [filtered, pageWindow.safePage],
+  );
 
   const pending =
     readyQuery.isPending || statementsQuery.isPending;
@@ -188,7 +214,7 @@ export function FinanceCostPartiesList({
               </Tr>
             </THead>
             <TBody>
-              {filtered.map((p) => (
+              {pageRows.map((p) => (
                 <Tr
                   key={p.assigneeId}
                   className="cursor-pointer"
@@ -264,6 +290,15 @@ export function FinanceCostPartiesList({
           </Table>
         </TableFrame>
       )}
+      {!pending && filtered.length > 0 ? (
+        <ListPager
+          page={pageWindow.safePage}
+          pageSize={FINANCE_LIST_PAGE_SIZE}
+          totalCount={filtered.length}
+          totalPages={pageWindow.totalPages}
+          onPageChange={setPage}
+        />
+      ) : null}
     </div>
   );
 }

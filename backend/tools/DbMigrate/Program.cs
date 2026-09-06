@@ -7,6 +7,7 @@ using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
+using RealEstateEval.Attachments.Infrastructure.Storage;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
@@ -17,7 +18,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
-// A10: the frozen legacy god-context stream is archived — every database is
+// the frozen legacy god-context stream is archived — every database is
 // provisioned and migrated from its own bounded-context stream (each stream carries an
 // Ensure*TablesForStandalone baseline). To migrate a restored pre-split database, check
 // out the git tag `a10-legacy-stream-final`, which still carries the legacy stream.
@@ -30,10 +31,9 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 // RealEstateEval.DbMigrate seed migrate (if needed) then run DataSeeder
 // RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
 // RealEstateEval.DbMigrate rollback 0 <stream> remove all migrations (empty DB schema target)
+// RealEstateEval.DbMigrate attachment-blobs move legacy inline attachment bytes to blob storage (run before the migration that drops the column)
 
-var configuration = new ConfigurationBuilder()
-    .AddEnvironmentVariables()
-    .Build();
+var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
 
 // A8: the catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
 // This migrator keeps the concrete list and fails loudly if it drifts from the catalog —
@@ -75,24 +75,15 @@ foreach (var (type, connection) in streamConnections)
 
 var services = new ServiceCollection();
 services.AddLogging();
-services.AddDbContext<AttachmentsDbContext>(options =>
-    UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
-services.AddDbContext<PlatformDbContext>(options =>
-    UseStream<PlatformDbContext>(options, streamConnections[typeof(PlatformDbContext)]));
-services.AddDbContext<ValuationDbContext>(options =>
-    UseStream<ValuationDbContext>(options, streamConnections[typeof(ValuationDbContext)]));
-services.AddDbContext<IdentityDbContext>(options =>
-    UseStream<IdentityDbContext>(options, streamConnections[typeof(IdentityDbContext)]));
-services.AddDbContext<FailuresDbContext>(options =>
-    UseStream<FailuresDbContext>(options, streamConnections[typeof(FailuresDbContext)]));
-services.AddDbContext<OperationsDbContext>(options =>
-    UseStream<OperationsDbContext>(options, streamConnections[typeof(OperationsDbContext)]));
-services.AddDbContext<FinancialDbContext>(options =>
-    UseStream<FinancialDbContext>(options, streamConnections[typeof(FinancialDbContext)]));
-services.AddDbContext<CaseStudyDbContext>(options =>
-    UseStream<CaseStudyDbContext>(options, streamConnections[typeof(CaseStudyDbContext)]));
-services.AddDbContext<MessagingDbContext>(options =>
-    UseStream<MessagingDbContext>(options, streamConnections[typeof(MessagingDbContext)]));
+services.AddDbContext<AttachmentsDbContext>(options => UseStream<AttachmentsDbContext>(options, streamConnections[typeof(AttachmentsDbContext)]));
+services.AddDbContext<PlatformDbContext>(options => UseStream<PlatformDbContext>(options, streamConnections[typeof(PlatformDbContext)]));
+services.AddDbContext<ValuationDbContext>(options => UseStream<ValuationDbContext>(options, streamConnections[typeof(ValuationDbContext)]));
+services.AddDbContext<IdentityDbContext>(options => UseStream<IdentityDbContext>(options, streamConnections[typeof(IdentityDbContext)]));
+services.AddDbContext<FailuresDbContext>(options => UseStream<FailuresDbContext>(options, streamConnections[typeof(FailuresDbContext)]));
+services.AddDbContext<OperationsDbContext>(options => UseStream<OperationsDbContext>(options, streamConnections[typeof(OperationsDbContext)]));
+services.AddDbContext<FinancialDbContext>(options => UseStream<FinancialDbContext>(options, streamConnections[typeof(FinancialDbContext)]));
+services.AddDbContext<CaseStudyDbContext>(options => UseStream<CaseStudyDbContext>(options, streamConnections[typeof(CaseStudyDbContext)]));
+services.AddDbContext<MessagingDbContext>(options => UseStream<MessagingDbContext>(options, streamConnections[typeof(MessagingDbContext)]));
 
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
@@ -158,8 +149,11 @@ switch (command)
         Console.WriteLine("[migrate] rollback complete.");
         break;
 
+    case "attachment-blobs":
+        await MoveInlineAttachmentBlobsAsync();
+        break;
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | seed | rollback.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | seed | rollback | attachment-blobs.");
         return 1;
 }
 
@@ -174,6 +168,72 @@ async Task SeedDemoUsersAsync()
         identityConnection);
     await DataSeeder.SeedAsync(seedProvider);
     Console.WriteLine("[migrate] demo seed complete.");
+}
+
+// Legacy attachments kept their bytes in FileAttachments.Content. The migration that drops that
+// column refuses to run while any row still has inline bytes, and this command is the way to
+// clear them: each blob is written to the configured store (BlobStorage__LocalRootPath must be
+// the same volume the Attachments service uses) and the row is repointed at its storage key.
+// The column is read through raw SQL because the entity no longer maps it.
+async Task MoveInlineAttachmentBlobsAsync()
+{
+    var connection = streamConnections[typeof(AttachmentsDbContext)];
+    var db = (AttachmentsDbContext)scope.ServiceProvider.GetRequiredService(typeof(AttachmentsDbContext));
+    var columnExists = await db.Database
+        .SqlQueryRaw<int>(
+            """
+            SELECT COUNT(*)::int AS "Value" FROM information_schema.columns
+            WHERE table_schema = 'attachments' AND table_name = 'FileAttachments' AND column_name = 'Content'
+            """)
+        .SingleAsync();
+    if (columnExists == 0)
+    {
+        Console.WriteLine($"[migrate] AttachmentsDbContext ({DatabaseName(connection)}): inline content column already dropped; nothing to move.");
+        return;
+    }
+
+    var blobOptions = configuration.GetSection("BlobStorage").Get<BlobStorageOptions>() ?? new BlobStorageOptions();
+    var blobs = new LocalFileBlobStorage(
+        Microsoft.Extensions.Options.Options.Create(blobOptions),
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalFileBlobStorage>.Instance);
+    Console.WriteLine($"[migrate] moving inline attachment blobs to '{Path.GetFullPath(blobOptions.LocalRootPath)}'…");
+
+    var moved = 0;
+    while (true)
+    {
+        var batch = await db.Database
+            .SqlQueryRaw<InlineAttachmentRow>(
+                """
+                SELECT "Id", "FileName", "Content"
+                FROM attachments."FileAttachments"
+                WHERE "Content" IS NOT NULL AND ("StorageKey" IS NULL OR "StorageKey" = '')
+                ORDER BY "CreatedAtUtc"
+                LIMIT 50
+                """)
+            .ToListAsync();
+        if (batch.Count == 0) break;
+
+        foreach (var row in batch)
+        {
+            var storageKey = await blobs.SaveAsync("attachments", $"{row.Id:N}/{row.FileName}", row.Content);
+            await db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE attachments."FileAttachments"
+                SET "StorageKey" = {storageKey}, "Content" = NULL,
+                    "SizeBytes" = CASE WHEN "SizeBytes" > 0 THEN "SizeBytes" ELSE {row.Content.LongLength} END
+                WHERE "Id" = {row.Id}
+                """);
+            moved++;
+        }
+    }
+
+    var remaining = await db.Database
+        .SqlQueryRaw<int>(
+            """
+            SELECT COUNT(*)::int AS "Value" FROM attachments."FileAttachments" WHERE "Content" IS NOT NULL
+            """)
+        .SingleAsync();
+    Console.WriteLine($"[migrate] moved {moved} inline blob(s); {remaining} row(s) still hold inline content.");
 }
 
 async Task ApplyPendingAsync(string name, string connection, DbContext db)
@@ -213,3 +273,11 @@ void UseStream<TContext>(DbContextOptionsBuilder options, string connectionStrin
 
 static string DatabaseName(string connectionString) =>
     new NpgsqlConnectionStringBuilder(connectionString).Database ?? "(unknown)";
+
+/// <summary>Projection for the legacy inline-content rows read by <c>attachment-blobs</c>.</summary>
+internal sealed class InlineAttachmentRow
+{
+    public Guid Id { get; set; }
+    public string FileName { get; set; } = "";
+    public byte[] Content { get; set; } = [];
+}

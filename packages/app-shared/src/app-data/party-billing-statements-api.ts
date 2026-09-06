@@ -4,9 +4,12 @@ import {
   createMonthVendorStatements,
   deferPartyBillingLines,
   downloadAttachmentBlob,
+  getPartyBillingStatement,
   issuePartyBillingStatement,
   listPartyBillingReadyLines,
+  listPartyBillingReadyLinesPage,
   listPartyBillingStatements,
+  listPartyBillingStatementsPage,
   matchVendorInvoice,
   rejectVendorInvoice,
   cancelPartyBillingStatement,
@@ -16,8 +19,11 @@ import {
   type ClosePartyBillingStatementRequest,
   type CreatePartyBillingStatementRequest,
   type DeferPartyBillingLinesRequest,
+  type PagedResultDto,
   type PartyBillingReadyLineDto,
+  type PartyBillingReadyLineListQuery,
   type PartyBillingStatementDto,
+  type PartyBillingStatementListQuery,
   type RejectVendorInvoiceRequest,
   type SubmitVendorInvoiceRequest,
 } from "@platform/api-client";
@@ -25,7 +31,9 @@ import { prototypeModulesApiConfig } from "./modules-api-config";
 import {
   workOrdersApiConfig,
   apiErrorMessage,
+  requireWorkOrdersApiConfig,
   resolveApiError,
+  unwrapApiResult,
 } from "./work-orders-api-config";
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 
@@ -53,6 +61,38 @@ export async function loadPartyBillingStatements(query?: {
   if (!config) return [];
   const result = await listPartyBillingStatements(config, query ?? {});
   return result.ok ? result.data : [];
+}
+
+/** One server page of statements (pagination-contract §9.1); throws so React Query shows the error. */
+export async function loadPartyBillingStatementsPage(
+  query: PartyBillingStatementListQuery,
+): Promise<PagedResultDto<PartyBillingStatementDto>> {
+  const config = requireWorkOrdersApiConfig();
+  const result = await listPartyBillingStatementsPage(config, query);
+  return unwrapApiResult(result, "تعذّر تحميل مسيرات وأوامر الصرف");
+}
+
+/** One server page of ready dues (pagination-contract §9.2). */
+export async function loadPartyBillingReadyLinesPage(
+  query: PartyBillingReadyLineListQuery,
+): Promise<PagedResultDto<PartyBillingReadyLineDto>> {
+  const config = requireWorkOrdersApiConfig();
+  const result = await listPartyBillingReadyLinesPage(config, query);
+  return unwrapApiResult(result, "تعذّر تحميل المستحقات");
+}
+
+/** One statement by id; null when it does not exist or the actor may not see it. */
+export async function loadPartyBillingStatement(
+  statementId: string,
+): Promise<PartyBillingStatementDto | null> {
+  const config = workOrdersApiConfig();
+  if (!config) return null;
+  const result = await getPartyBillingStatement(config, statementId);
+  if (!result.ok) {
+    if (result.kind === "not_found") return null;
+    throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل المسير"));
+  }
+  return result.data;
 }
 
 export async function runCreatePartyBillingStatement(

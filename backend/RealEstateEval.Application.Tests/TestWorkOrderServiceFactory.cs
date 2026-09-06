@@ -88,6 +88,21 @@ internal static class TestWorkOrderServiceFactory
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Application.Contracts.UserNotificationDto>>([]);
 
+        public Task<IReadOnlyList<Application.Contracts.UserNotificationDto>> ListForUserAsync(
+            string userId,
+            Application.Contracts.NotificationListQuery query,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Application.Contracts.UserNotificationDto>>([]);
+
+        public Task<Application.Contracts.PagedResultDto<Application.Contracts.UserNotificationDto>> ListPagedForUserAsync(
+            string userId,
+            Application.Contracts.NotificationListQuery query,
+            int skip,
+            int take,
+            int page,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Application.Contracts.PagedResultDto<Application.Contracts.UserNotificationDto> { Items = [], TotalCount = 0, Page = page, PageSize = take });
+
         public Task<Application.Contracts.UserNotificationDto> CreateForUserAsync(
             string userId,
             Application.Contracts.CreateUserNotificationRequest request,

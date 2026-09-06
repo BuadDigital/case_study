@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
@@ -15,18 +17,57 @@ public class FailuresController : ControllerBase
 {
     private readonly IFailureService _failures;
     private readonly IPermissionService _permissions;
+    private readonly DatabaseOptions _dbOptions;
 
-    public FailuresController(IFailureService failures, IPermissionService permissions)
+    public FailuresController(
+        IFailureService failures,
+        IPermissionService permissions,
+        IOptions<DatabaseOptions>? dbOptions = null)
     {
         _failures = failures;
         _permissions = permissions;
+        _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
     }
 
+ /// <summary>
+ /// Failures queue. Sending page or pageSize returns PagedResultDto; without them the response
+ /// stays the plain array every existing caller expects.
+ /// See docs/architecture/pagination-contract.md §5.
+ /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FailureRecordDto>>> List(
+    public async Task<IActionResult> List(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        [FromQuery] string? sort,
+        [FromQuery] string? dir,
+        [FromQuery] string? q,
+        [FromQuery] string? status,
+        [FromQuery] string? poNumber,
+        [FromQuery] string? problemTypeId,
         CancellationToken cancellationToken)
     {
-        return Ok(await _failures.ListAsync(await ActorAsync(cancellationToken), cancellationToken));
+        var actor = await ActorAsync(cancellationToken);
+        var query = new FailureListQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Sort = sort,
+            Dir = dir,
+            Q = q,
+            Status = status,
+            PoNumber = poNumber,
+            ProblemTypeId = problemTypeId,
+        };
+
+        if (!query.IsPaged)
+            return Ok(await _failures.ListAsync(query, actor, cancellationToken));
+
+        var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
+            query.Page,
+            query.PageSize,
+            _dbOptions);
+        return Ok(await _failures.ListPagedAsync(
+            query, actor, skip, take, resolvedPage, cancellationToken));
     }
 
     [HttpGet("property")]

@@ -163,7 +163,7 @@ public static class ValuationComparableListBuilder
         return new ValuationComparableSelectionListDto
         {
             ValuationRequestId = request.Id,
-            PropertyId = request.PropertyId,
+            PropertyId = request.PropertyId.ToString("D"),
             SelectionContext = ComparableSelectionContexts.Normalize(selectionContext),
             AdoptedCount = adoptedRows.Count,
             MeetsMinimumAdoptedGate = ValuationComparableSelectionRules.MeetsMinimumAdopted(

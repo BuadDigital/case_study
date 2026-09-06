@@ -7,6 +7,7 @@ using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Services;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -16,14 +17,58 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class CaseStudyFormsController : ControllerBase
 {
     private readonly ICaseStudyFormService _forms;
+    private readonly ICaseStudyFormBatchReadService _batch;
     private readonly IPermissionService _permissions;
 
     public CaseStudyFormsController(
         ICaseStudyFormService forms,
+        ICaseStudyFormBatchReadService batch,
         IPermissionService permissions)
     {
         _forms = forms;
+        _batch = batch;
         _permissions = permissions;
+    }
+
+    /// <summary>
+    /// One read for many queue rows: the case-study form of every listed parent plus the party
+    /// forms of its children, keyed by id. Same visibility rule as the two single-item GETs —
+    /// an id the actor may not read is simply absent. <c>parentTaskIds</c> is comma-separated,
+    /// at most <see cref="CaseStudyFormBatchReadService.MaxParentTaskIds"/> distinct GUIDs.
+    /// Not paged: the caller already holds the row window it is decorating.
+    /// </summary>
+    [HttpGet("batch")]
+    public async Task<ActionResult<CaseStudyFormBatchDto>> GetBatch(
+        [FromQuery] string? parentTaskIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = new List<Guid>();
+        foreach (var raw in (parentTaskIds ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!Guid.TryParse(raw, out var id))
+            {
+                return this.FieldErrorsProblem(new Dictionary<string, string>
+                {
+                    ["parentTaskIds"] = "معرّف مهمة غير صالح",
+                });
+            }
+            ids.Add(id);
+        }
+
+        if (ids.Distinct().Count() > CaseStudyFormBatchReadService.MaxParentTaskIds)
+        {
+            return this.FieldErrorsProblem(new Dictionary<string, string>
+            {
+                ["parentTaskIds"] =
+                    $"الحد الأقصى {CaseStudyFormBatchReadService.MaxParentTaskIds} معرّفاً في الطلب الواحد",
+            });
+        }
+
+        var dto = await _batch.GetForParentsAsync(
+            ids,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return Ok(dto);
     }
 
     [HttpGet("{taskId:guid}")]

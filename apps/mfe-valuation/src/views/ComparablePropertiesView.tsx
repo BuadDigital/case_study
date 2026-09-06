@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   deactivateComparableProperty,
-  listComparableProperties,
+  listComparablePropertiesPage,
   reactivateComparableProperty,
   type ComparablePropertyDto,
 } from "@platform/api-client";
@@ -45,9 +45,15 @@ import { TagEditorRow } from "./TagEditorRow";
  * Company-wide comparable bank CRUD.
  * Selection / adopt into a valuation request lives on the appraiser workspace (Comparables tab).
  */
+/** Rows per server page — the screen used to take one truncated 100-row slab. */
+const BANK_PAGE_SIZE = 25;
+
 export function ComparablePropertiesView() {
   const { showToast } = useToast();
   const [rows, setRows] = useState<ComparablePropertyDto[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -62,6 +68,17 @@ export function ComparablePropertiesView() {
     return () => clearTimeout(t);
   }, [q]);
 
+  // A new search or a toggled «show inactive» is a different result set — page 3
+  // of the old one is not page 3 of the new one.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQ, showInactive]);
+
+  /**
+   * One server page (pagination-contract §4). The bank used to arrive as a
+   * single `take: 100` slab that silently dropped row 101 onwards; `totalCount`
+   * is now the real size of the filtered bank.
+   */
   const reload = useCallback(async () => {
     const config = apiConfig();
     if (!config) {
@@ -71,10 +88,11 @@ export function ComparablePropertiesView() {
     }
     const seq = ++requestSeqRef.current;
     setLoading(true);
-    const res = await listComparableProperties(config, {
+    const res = await listComparablePropertiesPage(config, {
       q: debouncedQ || undefined,
-      take: 100,
       includeInactive: showInactive,
+      page,
+      pageSize: BANK_PAGE_SIZE,
     });
     if (seq !== requestSeqRef.current) return;
     setLoading(false);
@@ -83,8 +101,10 @@ export function ComparablePropertiesView() {
       return;
     }
     setError(null);
-    setRows(res.data);
-  }, [debouncedQ, showInactive]);
+    setRows(res.data.items);
+    setTotalCount(res.data.totalCount);
+    setTotalPages(Math.max(1, res.data.totalPages));
+  }, [debouncedQ, showInactive, page]);
 
   useEffect(() => {
     void reload();
@@ -117,8 +137,12 @@ export function ComparablePropertiesView() {
     await reload();
   }
 
+  // Page-local, so the active/inactive split is only exact on a single page.
   const inactiveCount = rows.filter((row) => !row.isActive).length;
   const activeCount = rows.length - inactiveCount;
+  const singlePage = totalPages <= 1;
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * BANK_PAGE_SIZE + 1;
+  const rangeEnd = rangeStart === 0 ? 0 : rangeStart + rows.length - 1;
 
   return (
     <PageShell
@@ -198,17 +222,17 @@ export function ComparablePropertiesView() {
             <div>
               <div className={opsLetterTitle}>سجل المقارنات</div>
               <div className={opsLetterSub}>
-                {rows.length === 0
+                {totalCount === 0
                   ? showInactive
                     ? "لا مقارنات"
                     : "لا مقارنات نشطة — جرّب إظهار المعطّلة"
-                  : showInactive && inactiveCount > 0
+                  : singlePage && showInactive && inactiveCount > 0
                     ? `${activeCount} نشط · ${inactiveCount} معطّل`
-                    : `${rows.length} ${rows.length === 1 ? "مقارن" : "مقارنًا"}`}
+                    : `${totalCount} ${totalCount === 1 ? "مقارن" : "مقارنًا"}`}
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{rows.length}</span>
+          <span className={opsPpBadge}>{totalCount}</span>
         </div>
         <div className="px-4 pb-2 sm:px-[18px]">
           {rows.length === 0 ? (
@@ -336,6 +360,40 @@ export function ComparablePropertiesView() {
               ))}
             </div>
           )}
+          {totalCount > 0 && !singlePage ? (
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5 pb-1">
+              <span className="text-[12px] text-text-3">
+                عرض{" "}
+                <b className="font-bold text-heading">
+                  {rangeStart}–{rangeEnd}
+                </b>{" "}
+                من <b className="font-bold text-heading">{totalCount}</b>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className={cn(opsBtnGhost, "disabled:opacity-40")}
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((n) => Math.max(1, n - 1))}
+                  aria-label="الصفحة السابقة"
+                >
+                  ‹
+                </button>
+                <span className="px-1 text-[12px] text-text-3">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className={cn(opsBtnGhost, "disabled:opacity-40")}
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
+                  aria-label="الصفحة التالية"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </PageShell>

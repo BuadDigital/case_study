@@ -11,6 +11,7 @@ import {
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import { persistPartySubmissionPayload } from "@platform/app-shared/app-data/party-submission-api";
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/app-data/party-submission-changed-event";
+import { enqueueEngineeringSurveyDraftWrite } from "./engineering-survey-draft-write-queue";
 import {
   ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   loadEngineeringSurveySubmission,
@@ -213,18 +214,26 @@ export async function cacheEngineeringSurveyFile(
     attachmentId: uploaded.attachmentId,
   });
 
-  const dto = getCachedPartySubmission(taskId);
-  const payload: Record<string, unknown> = {
-    ...(dto?.payload ?? {}),
-    ...current,
-    [meta.fileNameKey]: file.name,
-    [meta.attachmentKey]: attachment,
-    updatedAtUtc: new Date().toISOString(),
-  };
-  const saved = await persistPartySubmissionPayload(taskId, payload);
-  if (!saved) return { ok: false, error: "تعذّر حفظ الملف." };
-  notifyChanged();
-  return { ok: true };
+  // The upload took time: rebuild from the cache *inside* the write queue so a
+  // coordinate/checklist write that landed meanwhile is not erased.
+  return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
+    const latest = loadEngineeringSurveySubmission(taskId);
+    if (!latest || latest.status === "submitted") {
+      return { ok: false as const, error: "لا يمكن تعديل الرفع بعد الإرسال." };
+    }
+    const dto = getCachedPartySubmission(taskId);
+    const payload: Record<string, unknown> = {
+      ...(dto?.payload ?? {}),
+      ...latest,
+      [meta.fileNameKey]: file.name,
+      [meta.attachmentKey]: attachment,
+      updatedAtUtc: new Date().toISOString(),
+    };
+    const saved = await persistPartySubmissionPayload(taskId, payload);
+    if (!saved) return { ok: false as const, error: "تعذّر حفظ الملف." };
+    notifyChanged();
+    return { ok: true as const };
+  });
 }
 
 export async function clearEngineeringSurveyFile(
@@ -238,18 +247,21 @@ export async function clearEngineeringSurveyFile(
   const meta = FIELD_META[field];
   await clearTaskScopedAttachments(meta.scope, taskId);
 
-  const dto = getCachedPartySubmission(taskId);
-  const payload: Record<string, unknown> = {
-    ...(dto?.payload ?? {}),
-    ...current,
-    [meta.fileNameKey]: "",
-    updatedAtUtc: new Date().toISOString(),
-  };
-  delete payload[meta.attachmentKey];
-  const saved = await persistPartySubmissionPayload(taskId, payload);
-  if (!saved) return false;
-  notifyChanged();
-  return true;
+  return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
+    const latest = loadEngineeringSurveySubmission(taskId) ?? current;
+    const dto = getCachedPartySubmission(taskId);
+    const payload: Record<string, unknown> = {
+      ...(dto?.payload ?? {}),
+      ...latest,
+      [meta.fileNameKey]: "",
+      updatedAtUtc: new Date().toISOString(),
+    };
+    delete payload[meta.attachmentKey];
+    const saved = await persistPartySubmissionPayload(taskId, payload);
+    if (!saved) return false;
+    notifyChanged();
+    return true;
+  });
 }
 
 export function openEngineeringSurveyDocumentPreview(

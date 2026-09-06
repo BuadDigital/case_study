@@ -24,6 +24,10 @@ import {
   submissionToPayload,
 } from "./engineering-survey-submission-model";
 import { fetchEngineeringSurveySubmission } from "./engineering-survey-submission-reads";
+import {
+  awaitEngineeringSurveyDraftWrites,
+  enqueueEngineeringSurveyDraftWrite,
+} from "./engineering-survey-draft-write-queue";
 
 export async function saveEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
@@ -58,7 +62,23 @@ export async function getOrCreateEngineeringSurveyDraft(input: {
   return saveEngineeringSurveySubmission(draft);
 }
 
-export async function updateEngineeringSurveyDraft(
+export { awaitEngineeringSurveyDraftWrites } from "./engineering-survey-draft-write-queue";
+
+/** Serialised per task — see engineering-survey-draft-write-queue.ts. */
+export function updateEngineeringSurveyDraft(
+  taskId: string,
+  patch: EngineeringSurveyDraftPatch,
+): Promise<EngineeringSurveySubmission | null> {
+  return enqueueEngineeringSurveyDraftWrite(taskId, () =>
+    writeEngineeringSurveyDraft(taskId, patch),
+  );
+}
+
+export type EngineeringSurveyDraftPatch = Parameters<
+  typeof writeEngineeringSurveyDraft
+>[1];
+
+async function writeEngineeringSurveyDraft(
   taskId: string,
   patch: Partial<
     Pick<
@@ -112,6 +132,8 @@ export async function submitEngineeringSurveySubmission(
   taskId: string,
   idempotencyKey?: string,
 ): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
+  // A debounced field write may still be in flight; submit must build on it.
+  await awaitEngineeringSurveyDraftWrites(taskId);
   const current = loadEngineeringSurveySubmission(taskId);
   if (!current) {
     return { ok: false, error: "لا توجد مسودة للإرسال" };

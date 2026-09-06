@@ -69,7 +69,7 @@ public class AdjustmentFactorRationaleTests
         var db = contexts.Valuation;
         var id = Guid.Parse("b2000001-0000-4000-8000-000000000001");
         db.ValuationRequests.Add(ValuationRequest.Create(
-            id, "VR-800", Guid.NewGuid().ToString(), "جدة", "فيلا", "مقيم",
+            id, "VR-800", Guid.NewGuid(), "جدة", "فيلا", "مقيم",
             "2026-06-25", DateTime.UtcNow));
         await db.SaveChangesAsync();
 
@@ -139,7 +139,7 @@ public class AdjustmentFactorRationaleTests
         var db = contexts.Valuation;
         var id = Guid.Parse("b2000002-0000-4000-8000-000000000002");
         db.ValuationRequests.Add(ValuationRequest.Create(
-            id, "VR-801", Guid.NewGuid().ToString(), "جدة", "فيلا", "مقيم",
+            id, "VR-801", Guid.NewGuid(), "جدة", "فيلا", "مقيم",
             "2026-06-25", DateTime.UtcNow));
         db.ValuationAdjustmentFactorRationales.Add(new ValuationAdjustmentFactorRationale
         {

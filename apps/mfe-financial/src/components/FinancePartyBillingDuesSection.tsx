@@ -2,6 +2,7 @@
 
 import {
   EmptyState,
+  ListPager,
   TBody,
   THead,
   Table,
@@ -29,8 +30,10 @@ import { formatSar } from "./FinancePartyBillingParts";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
 
 /**
- * Outstanding dues: search, group select and the selectable line table. Every
- * selection and total comes from the party-billing workflow.
+ * Outstanding dues: search, group select and the selectable line table over
+ * one server page (pagination-contract §9.2), with the shared pager below.
+ * Every selection and total comes from the party-billing workflow; a
+ * selection survives a page flip.
  */
 export function FinancePartyBillingDuesSection({
   workflow,
@@ -51,6 +54,11 @@ export function FinancePartyBillingDuesSection({
     toggle,
     selectGroup,
     createStatement,
+    pageSize,
+    duesPage,
+    setDuesPage,
+    duesTotalCount,
+    duesTotalPages,
   } = workflow;
 
   return (
@@ -130,7 +138,7 @@ export function FinancePartyBillingDuesSection({
             : ""}
         </button>
         <span className="text-[11px] whitespace-nowrap text-text-3">
-          {filteredDues.length} مستحق ·{" "}
+          {duesTotalCount} مستحق ·{" "}
           <b
             className={
               payableDues.length > 0
@@ -200,12 +208,12 @@ export function FinancePartyBillingDuesSection({
                       on &&
                         "bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]",
                     )}
-                    onClick={() => selectable && toggle(line.workflowTaskId)}
+                    onClick={() => selectable && toggle(line)}
                     onKeyDown={(e) => {
                       if (!selectable) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        toggle(line.workflowTaskId);
+                        toggle(line);
                       }
                     }}
                   >
@@ -215,7 +223,7 @@ export function FinancePartyBillingDuesSection({
                           type="checkbox"
                           className={opsCheckInput}
                           checked={on}
-                          onChange={() => toggle(line.workflowTaskId)}
+                          onChange={() => toggle(line)}
                           onClick={(e) => e.stopPropagation()}
                           aria-label="تحديد البند"
                         />
@@ -287,6 +295,15 @@ export function FinancePartyBillingDuesSection({
           </Table>
         </TableFrame>
       )}
+      {!readyQuery.isPending && duesTotalCount > 0 ? (
+        <ListPager
+          page={duesPage}
+          pageSize={pageSize}
+          totalCount={duesTotalCount}
+          totalPages={duesTotalPages}
+          onPageChange={setDuesPage}
+        />
+      ) : null}
     </section>
   );
 }

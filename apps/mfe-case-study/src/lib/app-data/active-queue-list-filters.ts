@@ -55,6 +55,17 @@ export type PrimaryQueueRowMeta = {
   statusLabel: string;
 };
 
+/**
+ * The PO-record column the server joined onto the task row, or the record-derived
+ * value when the task carries none (an unfilled slot). The join in
+ * `buildPrimaryQueueRowMeta` / `buildDistributionQueueRowMeta` is no longer the
+ * source of these five — pagination-contract §2, "The PO-record joins for display".
+ */
+function serverColumn(value: string | undefined, fallback: string): string {
+  const v = value?.trim();
+  return v ? v : fallback;
+}
+
 export function buildPrimaryQueueRowMeta(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
@@ -64,14 +75,19 @@ export function buildPrimaryQueueRowMeta(
   return tasks.map((task) => {
     const record = poByNumber.get(task.poNumber.trim());
     const property = findPropertyForTask(record, task);
-    const row = buildPrimaryDataTableRow(task, property, record, now);
+    const base = buildPrimaryDataTableRow(task, property, record, now);
+    const row = {
+      ...base,
+      city: serverColumn(task.city, base.city),
+      district: serverColumn(task.district, base.district),
+    };
     const badge = resolveBadge(task);
     return {
       task,
       record,
       property,
       row,
-      deed: row.propertySlot,
+      deed: serverColumn(task.deedNumber, row.propertySlot),
       assignmentType: row.assignmentType,
       city: row.city,
       district: row.district,
@@ -80,16 +96,27 @@ export function buildPrimaryQueueRowMeta(
   });
 }
 
-/** Returns the same meta — consumers (tables/cards) read the prebuilt row instead of rebuilding it. */
+/**
+ * Returns the same meta — consumers (tables/cards) read the prebuilt row instead
+ * of rebuilding it.
+ *
+ * The free-text pass is **gone**: the deed / city / district haystack this used
+ * to build is exactly what server `q` now matches, so the queues that call this
+ * send the search term and render the page they get back
+ * (pagination-contract §2, "Retired client-side rules"). Only the two filters
+ * the server cannot answer are left: the badge *label* status filter (§2 "still
+ * client-side" #1) and the assignment-type label, which the queue resolves as
+ * `record.assignmentType ?? task.assignmentType` and so can differ from the
+ * column the server would filter on.
+ */
 export function filterPrimaryQueueRowMeta(
   rows: PrimaryQueueRowMeta[],
   filters: {
-    search: string;
     statusFilter: string;
     typeFilter: string;
   },
 ): PrimaryQueueRowMeta[] {
-  const q = filters.search.trim().toLowerCase();
+  if (!filters.typeFilter && !filters.statusFilter) return rows;
   return rows.filter((row) => {
     if (filters.typeFilter && row.assignmentType !== filters.typeFilter) {
       return false;
@@ -97,11 +124,7 @@ export function filterPrimaryQueueRowMeta(
     if (filters.statusFilter && row.statusLabel !== filters.statusFilter) {
       return false;
     }
-    if (!q) return true;
-    const hay = [row.deed, row.assignmentType, row.city, row.district]
-      .join(" ")
-      .toLowerCase();
-    return hay.includes(q);
+    return true;
   });
 }
 
@@ -126,18 +149,26 @@ export function buildDistributionQueueRowMeta(
     const row = buildDistributionTableRow(task, property, record);
     return {
       task,
-      deed: row.deedLabel,
+      deed: serverColumn(task.deedNumber, row.deedLabel),
       poNumber: task.poNumber.trim(),
-      city: row.city,
-      district: row.district,
-      propertyType: row.propertyType,
-      classification: row.classification,
+      city: serverColumn(task.city, row.city),
+      district: serverColumn(task.district, row.district),
+      propertyType: serverColumn(task.propertyType, row.propertyType),
+      classification: serverColumn(task.classification, row.classification),
       assignmentType:
         record?.assignmentType?.trim() || task.assignmentType?.trim() || "—",
     };
   });
 }
 
+/**
+ * The distribution and case-study tables read a parent's children out of the
+ * same list (`buildCaseStudyPartyAssignees`), so their request is deliberately
+ * left unnarrowed and unpaged — sending `q` would drop the siblings the party
+ * columns need. The free-text pass therefore stays here, over the same five
+ * PO-record columns the server would match (pagination-contract §2, and the
+ * sibling-reading exception it carves out for these layouts).
+ */
 export function filterDistributionQueueRows(
   rows: DistributionQueueRowMeta[],
   filters: {

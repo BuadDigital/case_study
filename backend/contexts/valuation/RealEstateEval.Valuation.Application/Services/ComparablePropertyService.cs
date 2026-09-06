@@ -1,4 +1,5 @@
 using RealEstateEval.Application;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Abstractions;
@@ -30,7 +31,38 @@ public sealed class ComparablePropertyService(
         CancellationToken cancellationToken = default)
     {
         var take = query.Take is < 1 or > MaxTake ? 100 : query.Take;
-        var filter = new ComparableBankFilter(
+        var rows = await repo.ListPageAsync(Filter(query), 0, take, cancellationToken);
+        return await ToDtosAsync(rows, cancellationToken);
+    }
+
+ /// <summary>
+ /// One page of the same filtered, sorted set. The comparison-method §2 field-first display
+ /// priority is part of the SQL ordering (see <c>ComparableBankFilter.ForPropertyId</c>), so no
+ /// row is dropped after materialisation and TotalCount always agrees with the page.
+ /// See docs/architecture/pagination-contract.md §4.
+ /// </summary>
+    public async Task<PagedResultDto<ComparablePropertyDto>> ListPagedAsync(
+        ComparablePropertyListQuery query,
+        int skip,
+        int take,
+        int page,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = Filter(query);
+        var total = await repo.CountAsync(filter, cancellationToken);
+        var rows = await repo.ListPageAsync(filter, skip, take, cancellationToken);
+
+        return new PagedResultDto<ComparablePropertyDto>
+        {
+            Items = await ToDtosAsync(rows, cancellationToken),
+            TotalCount = total,
+            Page = page,
+            PageSize = take,
+        };
+    }
+
+    private static ComparableBankFilter Filter(ComparablePropertyListQuery query) =>
+        new(
             query.IncludeInactive,
             query.District,
             query.City,
@@ -38,43 +70,17 @@ public sealed class ComparablePropertyService(
             query.Source,
             query.IntakeChannel,
             query.PropertyType,
-            query.Q,
+            ComparablePropertyListQueryRules.NormalizeSearch(query.Q),
             DateOnly.TryParse(query.FromDate, out var from) ? from : null,
-            DateOnly.TryParse(query.ToDate, out var to) ? to : null);
+            DateOnly.TryParse(query.ToDate, out var to) ? to : null,
+            ComparablePropertyListQueryRules.ResolveForPropertyId(query.ForPropertyId),
+            ComparablePropertyListQueryRules.ResolveSort(query.Sort),
+            ComparablePropertyListQueryRules.ResolveDescending(query.Dir));
 
-        Guid? forPropertyId = null;
-        if (Guid.TryParse(query.ForPropertyId, out var parsedPropertyId)
-            && parsedPropertyId != Guid.Empty)
-        {
-            forPropertyId = parsedPropertyId;
-        }
-
-        var fetchTake = forPropertyId is not null
-            ? Math.Min(MaxTake, Math.Max(take * 2, take + 20))
-            : take;
-
-        var rows = await repo.ListAsync(filter, fetchTake, cancellationToken);
-
-        // Comparison-method spec §2 display priority:
-        // 1) field for this property 2) rest of the bank
-        if (forPropertyId is Guid subjectId)
-        {
-            rows = rows
-                .OrderByDescending(x =>
-                    x.SourcePropertyId == subjectId
-                    && (x.Source == ComparableSources.Field
-                        || x.IntakeChannel == ComparableIntakeChannels.Field)
-                        ? 2
-                    : x.Source == ComparableSources.Field
-                      || x.IntakeChannel == ComparableIntakeChannels.Field
-                        ? 1
-                    : 0)
-                .ThenByDescending(x => x.TransactionDate)
-                .ThenByDescending(x => x.CreatedAtUtc)
-                .Take(take)
-                .ToList();
-        }
-
+    private async Task<IReadOnlyList<ComparablePropertyDto>> ToDtosAsync(
+        IReadOnlyList<ComparableProperty> rows,
+        CancellationToken cancellationToken)
+    {
  // Q-3/2: system suggests suspicion (two records at same location) and neither blocks nor merges automatically.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 

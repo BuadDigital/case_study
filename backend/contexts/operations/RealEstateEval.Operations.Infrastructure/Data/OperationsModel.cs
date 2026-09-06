@@ -14,8 +14,26 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 // global beside the frozen legacy context (drift guard).
 public static class OperationsModel
 {
+ /// <summary>
+ /// Stored generated column holding <c>DeedsJson</c> as text (<c>"DeedsJson" #&gt;&gt; '{}'</c>, which
+ /// is immutable so PostgreSQL accepts it in a generated column). It exists only so a deed-number
+ /// substring search is index-backed: a GIN <c>gin_trgm_ops</c> index over this column answers
+ /// <c>LIKE '%…%'</c>, which no jsonb operator class can do. See
+ /// docs/architecture/pagination-contract.md §3.
+ /// </summary>
+    public const string OperationsTaskDeedsTextColumn = "DeedsText";
+
+ /// <summary>Trigram index behind the deed substring search.</summary>
+    public const string OperationsTaskDeedsTextIndex = "IX_OperationsTasks_DeedsText_Trgm";
+
+ /// <summary>Containment index behind the exact deed-number match (<c>@&gt;</c>).</summary>
+    public const string OperationsTaskDeedsJsonIndex = "IX_OperationsTasks_DeedsJson";
+
     public static ModelBuilder ApplyOperationsModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
+        if (ownsMigrations)
+            builder.HasPostgresExtension("pg_trgm");
+
  // Numbering workshop: annual KE counters local to the operations schema.
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.Operations);
@@ -40,6 +58,10 @@ public static class OperationsModel
             e.Property(x => x.Specialist).HasMaxLength(256);
             e.Property(x => x.WorkflowStatus).HasMaxLength(32);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
+            e.HasAllowedValues(
+                "PropertyKeyRecords",
+                nameof(PropertyKeyRecord.WorkflowStatus),
+                [PropertyKeyWorkflowStatuses.Progress, PropertyKeyWorkflowStatuses.Done]);
         });
 
         builder.Entity<KeyEnvelope>(e =>
@@ -56,14 +78,14 @@ public static class OperationsModel
             e.Property(x => x.ReceiveScenario).HasMaxLength(32);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.FeeAmountSar).HasPrecision(12, 2);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => x.CreatedAtUtc);
-            e.HasIndex(x => x.Status);
-            e.HasIndex(x => x.FeeGenerated);
             e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
+            e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.Status), KeyEnvelopeStatuses.All);
+            e.HasNonNegative("KeyEnvelopes", nameof(KeyEnvelope.FeeAmountSar));
             e.HasMany(x => x.Assignments)
                 .WithOne(x => x.Envelope!)
                 .HasForeignKey(x => x.EnvelopeId)
@@ -85,10 +107,14 @@ public static class OperationsModel
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ConfirmedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
             e.HasIndex(x => new { x.EnvelopeId, x.DeedNumber });
+            e.HasAllowedValues(
+                "KeyEnvelopeAssignments",
+                nameof(KeyEnvelopeAssignment.Status),
+                KeyAssignmentStatuses.All);
         });
 
         builder.Entity<KeyEnvelopeHandoff>(e =>
@@ -98,16 +124,16 @@ public static class OperationsModel
             e.Property(x => x.Kind).HasMaxLength(32);
             e.Property(x => x.FromParty).HasMaxLength(256);
             e.Property(x => x.ToParty).HasMaxLength(256);
-            e.Property(x => x.ToUserId).HasMaxLength(450);
+            e.Property(x => x.ToUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.LetterNumber).HasMaxLength(128);
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ConfirmedByName).HasMaxLength(256);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
-            e.HasIndex(x => x.Status);
+            e.HasAllowedValues("KeyEnvelopeHandoffs", nameof(KeyEnvelopeHandoff.Status), KeyHandoffStatuses.All);
         });
 
         builder.Entity<KeyEnvelopeTimelineEntry>(e =>
@@ -115,7 +141,7 @@ public static class OperationsModel
             MapTable(e, "KeyEnvelopeTimelineEntries", DatabaseSchemas.Operations, ownsMigrations);
             e.Property(x => x.EventType).HasMaxLength(64);
             e.Property(x => x.Summary).HasMaxLength(1000);
-            e.Property(x => x.ActorUserId).HasMaxLength(450);
+            e.Property(x => x.ActorUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ActorName).HasMaxLength(256);
             e.HasIndex(x => new { x.EnvelopeId, x.CreatedAtUtc });
         });
@@ -130,11 +156,18 @@ public static class OperationsModel
             e.Property(x => x.StudyHoldStatus).HasMaxLength(32);
             e.Property(x => x.ContactPhones).HasMaxLength(1000);
             e.Property(x => x.Notes).HasMaxLength(4000);
-            e.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.UpdatedByName).HasMaxLength(256);
             e.HasIndex(x => x.PropertyId).IsUnique();
             e.HasIndex(x => x.RequestNumber);
-            e.HasIndex(x => x.StudyHoldStatus);
+ // The gate scan asks only for enabled-no-key rows; keep those in a partial index.
+            e.HasIndex(x => x.StudyHoldStatus)
+                .HasFilter($"\"StudyHoldStatus\" = '{PropertyCourtAccessStatuses.EnabledNoKey}'")
+                .HasDatabaseName("IX_PropertyCourtAccesses_EnabledNoKey");
+            e.HasAllowedValues(
+                "PropertyCourtAccesses",
+                nameof(PropertyCourtAccess.StudyHoldStatus),
+                PropertyCourtAccessStatuses.All);
         });
 
  // D2: task lifecycle is operations-owned while rows stay in case_study physically.
@@ -184,13 +217,25 @@ public static class OperationsModel
             e.HasIndex(x => x.DueAtUtc);
             e.HasIndex(x => x.CreatedBy);
             e.HasIndex(x => x.PoNumber);
+            e.HasAllowedValues("OperationsTasks", nameof(OperationsTask.Status), OperationsTaskStatusValues.All);
+            e.HasAllowedValues("OperationsTasks", nameof(OperationsTask.PrevStatus), OperationsTaskStatusValues.All);
+            e.HasNonNegative("OperationsTasks", nameof(OperationsTask.AgreedVisitFeeSar));
+
+ // Deed search. jsonb_path_ops answers `DeedsJson @> '["<deed>"]'` (exact element); the
+ // trigram index over the text projection answers the substring half. Both are GIN.
+            e.HasIndex(x => x.DeedsJson)
+                .HasDatabaseName(OperationsTaskDeedsJsonIndex)
+                .HasMethod("gin")
+                .HasOperators("jsonb_path_ops");
+            e.Property<string>(OperationsTaskDeedsTextColumn)
+                .HasColumnType("text")
+                .HasComputedColumnSql("\"DeedsJson\" #>> '{}'", stored: true);
+            e.HasIndex(OperationsTaskDeedsTextColumn)
+                .HasDatabaseName(OperationsTaskDeedsTextIndex)
+                .HasMethod("gin")
+                .HasOperators("gin_trgm_ops");
         });
 
-        builder.Entity<OperationsTaskSequence>(e =>
-        {
-            MapTable(e, "OperationsTaskSequences", DatabaseSchemas.CaseStudy, ownsMigrations);
-            e.HasIndex(x => x.Year).IsUnique();
-        });
 
         return builder;
     }

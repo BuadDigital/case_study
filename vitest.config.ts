@@ -8,6 +8,7 @@ export default defineConfig({
       "packages/**/__tests__/**/*.{test,spec}.{ts,tsx}",
       "packages/**/src/**/*.{test,spec}.{ts,tsx}",
       "apps/**/__tests__/**/*.{test,spec}.{ts,tsx}",
+      "tests/**/*.{test,spec}.{ts,tsx}",
     ],
     globals: true,
   },

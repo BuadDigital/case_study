@@ -137,27 +137,19 @@ public partial class PartyBillingStatementService : IPartyBillingStatementServic
         return PartyBillingStatementRules.OrderReadyLines(ledgerReady.Concat(visitReady));
     }
 
-    public async Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
+    public Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
         string? assigneeId = null,
         string? status = null,
         bool issuedOrLaterOnly = false,
-        CancellationToken cancellationToken = default)
-    {
-        var statements = await _db.ListStatementsAsync(
-            assigneeId,
-            status,
-            issuedOrLaterOnly,
-            MaxListRows,
+        CancellationToken cancellationToken = default) =>
+        ListStatementsAsync(
+            new PartyBillingStatementListQuery
+            {
+                AssigneeId = assigneeId,
+                Status = status,
+                IssuedOrLaterOnly = issuedOrLaterOnly,
+            },
             cancellationToken);
-
-        if (statements.Count == 0) return [];
-
-        var lines = await _db.ListLinesForStatementsAsync(
-            statements.Select(s => s.Id).ToList(),
-            cancellationToken);
-
-        return await MapStatementsAsync(statements, lines, cancellationToken);
-    }
 
     public async Task<PartyBillingStatementDto?> GetStatementAsync(
         Guid statementId,

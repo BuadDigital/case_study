@@ -51,7 +51,7 @@ public class FailureSuspendAttributionTests
         bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
             FailureId,
             "PO-900",
-            PropertyId.ToString(),
+            PropertyId,
             "D-1",
             "تعذر",
             "access",
@@ -87,7 +87,7 @@ public class FailureSuspendAttributionTests
         bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
             FailureId,
             "PO-901",
-            PropertyId.ToString(),
+            PropertyId,
             "D-2",
             "تعذر تاريخي",
             "access",
@@ -119,7 +119,7 @@ public class FailureSuspendAttributionTests
         bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
             FailureId,
             "PO-900",
-            PropertyId.ToString(),
+            PropertyId,
             "D-1",
             "تعذر",
             "access",

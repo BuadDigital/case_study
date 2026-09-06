@@ -84,3 +84,59 @@ export function restoreOptimisticPatch<T>(
   queryClient.setQueryData(queryKey, next);
   return "restored";
 }
+
+/** The paged envelope (`PagedResultDto`) — only `items` is patched. */
+type PagedItems<T> = { items: T[] };
+
+/**
+ * {@link optimisticPatchListItem} for one server page (pagination-contract
+ * envelope): the row is patched inside `items`, the counts are untouched.
+ */
+export function optimisticPatchPagedItem<T>(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  match: (item: T) => boolean,
+  patch: (item: T) => T,
+): OptimisticPatchResult<T> {
+  const previous = queryClient.getQueryData<PagedItems<T>>(queryKey);
+  if (!previous || !Array.isArray(previous.items)) {
+    return { match, previousItem: undefined, expectedItem: undefined };
+  }
+  let previousItem: T | undefined;
+  let expectedItem: T | undefined;
+  const items = previous.items.map((item) => {
+    if (!match(item)) return item;
+    previousItem = item;
+    expectedItem = patch(item);
+    return expectedItem;
+  });
+  if (previousItem !== undefined) {
+    queryClient.setQueryData<PagedItems<T>>(queryKey, { ...previous, items });
+  }
+  return { match, previousItem, expectedItem };
+}
+
+/** {@link restoreOptimisticPatch} for one server page. */
+export function restoreOptimisticPagedPatch<T>(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  snapshot: OptimisticPatchResult<T> | undefined,
+): "restored" | "invalidated" | "noop" {
+  if (!snapshot?.previousItem || !snapshot.expectedItem) return "noop";
+  const current = queryClient.getQueryData<PagedItems<T>>(queryKey);
+  if (!current || !Array.isArray(current.items)) return "noop";
+
+  const index = current.items.findIndex(snapshot.match);
+  if (
+    index < 0 ||
+    !sameOptimisticItem(current.items[index], snapshot.expectedItem)
+  ) {
+    void queryClient.invalidateQueries({ queryKey });
+    return "invalidated";
+  }
+
+  const items = current.items.slice();
+  items[index] = snapshot.previousItem;
+  queryClient.setQueryData<PagedItems<T>>(queryKey, { ...current, items });
+  return "restored";
+}

@@ -67,7 +67,6 @@ public class AttachmentLookupTests
         SizeBytes = 4,
         UploadedByUserId = uploadedBy,
         CreatedAtUtc = DateTime.UtcNow,
-        Content = [0xFF, 0xD8, 0xFF, 0xD9],
     };
 
     private static AttachmentsDbContext CreateDb() =>
