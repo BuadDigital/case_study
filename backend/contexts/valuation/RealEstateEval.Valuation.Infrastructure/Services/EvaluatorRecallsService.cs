@@ -1,19 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
-using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
-using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 {
     private const int MaxListRows = 500;
+
     private readonly ValuationDbContext _db;
     private readonly TimeProvider _time;
 
@@ -37,20 +35,25 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         string taskId,
         CancellationToken cancellationToken = default)
     {
+        if (!TryParseId(taskId, out var id)) return null;
         var row = await _db.EvaluatorRecallRecords.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.TaskId == taskId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.TaskId == id, cancellationToken);
         return row is null ? null : ToDto(row);
     }
 
-    public async Task<EvaluatorRecallDto> RequestAsync(
+    public async Task<(EvaluatorRecallDto? Result, string? Error)> RequestAsync(
         CreateEvaluatorRecallRequest request,
         CancellationToken cancellationToken = default)
     {
-        var taskId = request.TaskId.Trim();
+        if (!TryParseId(request.TaskId, out var taskId))
+            return (null, "معرّف المهمة غير صالح");
+        if (!TryParseId(request.PropertyId, out var propertyId))
+            return (null, "معرّف العقار غير صالح");
+
         var existing = await _db.EvaluatorRecallRecords
             .FirstOrDefaultAsync(x => x.TaskId == taskId, cancellationToken);
         if (existing?.Status == EvaluatorRecallStatus.Pending)
-            return ToDto(existing);
+            return (ToDto(existing), null);
 
         var now = _time.UtcNow();
         if (existing is null)
@@ -60,7 +63,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
                 Id = Guid.NewGuid(),
                 TaskId = taskId,
                 PoNumber = request.PoNumber.Trim(),
-                PropertyId = request.PropertyId.Trim(),
+                PropertyId = propertyId,
                 Status = EvaluatorRecallStatus.Pending,
                 Reason = request.Reason?.Trim() ?? "",
                 SpecialistNote = "",
@@ -71,7 +74,7 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         else
         {
             existing.PoNumber = request.PoNumber.Trim();
-            existing.PropertyId = request.PropertyId.Trim();
+            existing.PropertyId = propertyId;
             existing.Status = EvaluatorRecallStatus.Pending;
             existing.Reason = request.Reason?.Trim() ?? "";
             existing.SpecialistNote = "";
@@ -80,15 +83,16 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(existing);
+        return (ToDto(existing), null);
     }
 
     public async Task<EvaluatorRecallDto?> ApproveAsync(
         string taskId,
         CancellationToken cancellationToken = default)
     {
+        if (!TryParseId(taskId, out var id)) return null;
         var row = await _db.EvaluatorRecallRecords
-            .FirstOrDefaultAsync(x => x.TaskId == taskId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.TaskId == id, cancellationToken);
         if (row is null) return null;
         if (row.Status != EvaluatorRecallStatus.Pending) return ToDto(row);
 
@@ -103,8 +107,9 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         RejectEvaluatorRecallRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (!TryParseId(taskId, out var id)) return null;
         var row = await _db.EvaluatorRecallRecords
-            .FirstOrDefaultAsync(x => x.TaskId == taskId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.TaskId == id, cancellationToken);
         if (row is null) return null;
         if (row.Status != EvaluatorRecallStatus.Pending) return ToDto(row);
 
@@ -115,12 +120,16 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         return ToDto(row);
     }
 
+    /// <summary>Route and body ids arrive as text; the columns are uuids, so anything else matches nothing.</summary>
+    private static bool TryParseId(string? text, out Guid id) =>
+        Guid.TryParse(text?.Trim(), out id) && id != Guid.Empty;
+
     private static EvaluatorRecallDto ToDto(EvaluatorRecallRecord row) => new()
     {
         Id = row.Id,
-        TaskId = row.TaskId,
+        TaskId = row.TaskId.ToString("D"),
         PoNumber = row.PoNumber,
-        PropertyId = row.PropertyId,
+        PropertyId = row.PropertyId.ToString("D"),
         Status = row.Status,
         Reason = row.Reason,
         SpecialistNote = row.SpecialistNote,

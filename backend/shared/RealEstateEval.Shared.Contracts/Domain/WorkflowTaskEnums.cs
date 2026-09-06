@@ -55,6 +55,18 @@ public static class WorkflowTaskKindValues
  /// <summary>Ops court-visit fee charges (visit fees) — party-billing ready/statement kind.</summary>
     public const string CourtVisit = "court-visit";
 
+ /// <summary>Every stored value, legacy included; the database CHECK constraint is generated from it.</summary>
+    public static readonly IReadOnlyList<string> All =
+    [
+        CaseStudyProperty,
+        GovernmentReview,
+        ValuationCoordination,
+        FieldInspection,
+        PropertyAppraisal,
+        EngineeringSurvey,
+        CourtVisit,
+    ];
+
  /// <summary>Party kinds that may still be spawned as children of a case-study parent.</summary>
     public static readonly IReadOnlyList<WorkflowTaskKind> PartyKinds =
     [
@@ -106,6 +118,11 @@ public static class WorkflowTaskPhaseValues
     public const string Obstruction = "obstruction";
     public const string Done = "done";
 
+    public static readonly IReadOnlyList<string> All =
+    [
+        Enfath, Bourse, Distribution, CaseStudy, Obstruction, Done,
+    ];
+
     public static string ToDbValue(this WorkflowTaskPhase phase) => phase switch
     {
         WorkflowTaskPhase.Bourse => Bourse,
@@ -148,6 +165,8 @@ public static class WorkflowTaskStatusValues
     public const string Completed = "completed";
     public const string Cancelled = "cancelled";
     public const string Blocked = "blocked";
+
+    public static readonly IReadOnlyList<string> All = [Open, Completed, Cancelled, Blocked];
 
     public static string ToDbValue(this WorkflowTaskStatus status) => status switch
     {

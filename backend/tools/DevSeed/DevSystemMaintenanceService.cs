@@ -55,7 +55,6 @@ public sealed class DevSystemMaintenanceService : ISystemMaintenanceService
             WorkOrdersDeleted = await caseStudy.WorkOrders.CountAsync(cancellationToken),
             WorkflowTasksDeleted = await caseStudy.WorkflowTasks.CountAsync(cancellationToken),
             CaseStudyFormsDeleted = await caseStudy.CaseStudyForms.CountAsync(cancellationToken),
-            CourtCatalogEntriesDeleted = await platform.CourtCatalogEntries.CountAsync(cancellationToken),
             CaseStudyInfoRolesConfigsDeleted =
                 await platform.CaseStudyInfoRolesConfigs.CountAsync(cancellationToken),
             PropertyFailuresDeleted = await failures.PropertyFailures.CountAsync(cancellationToken),

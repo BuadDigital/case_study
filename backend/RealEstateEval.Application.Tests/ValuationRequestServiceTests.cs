@@ -68,7 +68,7 @@ public class ValuationRequestServiceTests
         db.ValuationRequests.Add(ValuationRequest.Create(
             Guid.Parse("a1000001-0000-4000-8000-000000000003"),
             "VR-510",
-            propertyId.ToString("D"),
+            propertyId,
             "جدة",
             "فيلا",
             "مقيم",
@@ -90,7 +90,7 @@ public class ValuationRequestServiceTests
         db.ValuationRequests.Add(ValuationRequest.Create(
             Guid.Parse("a1000001-0000-4000-8000-000000000004"),
             "VR-511",
-            propertyId.ToString("D"),
+            propertyId,
             "جدة",
             "فيلا",
             "مقيم",
@@ -137,7 +137,7 @@ public class ValuationRequestServiceTests
         ValuationRequest.Create(
             id,
             displayId,
-            Guid.NewGuid().ToString(),
+            Guid.NewGuid(),
             "جدة",
             "فيلا",
             "مقيم",

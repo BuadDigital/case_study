@@ -19,7 +19,7 @@ public partial class UserRegistrationService : IUserRegistrationService
 {
     private readonly IStaffRegistrationRepository _repo;
     private readonly IStaffIdentityStore _accounts;
-    private readonly IAuditLogAppend? _auditAppend;
+    private readonly IAuditLogAppend _auditAppend;
     private readonly List<AuditLog> _pendingRemoteAudit = [];
     private readonly IAuditLogWriter _audit;
     private readonly IAuthSessionService _sessions;
@@ -30,7 +30,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         IStaffIdentityStore accounts,
         IAuditLogWriter audit,
         IAuthSessionService sessions,
-        IAuditLogAppend? auditAppend = null,
+        IAuditLogAppend auditAppend,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -784,22 +784,22 @@ public partial class UserRegistrationService : IUserRegistrationService
         return candidate;
     }
 
-    private async Task AddAuditAsync(AuditLog entry, CancellationToken cancellationToken)
+ /// <summary>
+ /// Audit rows are appended through the Platform-owned ledger after the identity write commits;
+ /// the identity database holds no audit table of its own.
+ /// </summary>
+    private Task AddAuditAsync(AuditLog entry, CancellationToken cancellationToken)
     {
-        if (_auditAppend is not null)
-            _pendingRemoteAudit.Add(entry);
-        else
-            await _repo.AddAuditLogAsync(entry, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _pendingRemoteAudit.Add(entry);
+        return Task.CompletedTask;
     }
 
     private async Task SaveIdentityAsync(CancellationToken cancellationToken)
     {
         await _repo.SaveChangesAsync(cancellationToken);
-        if (_auditAppend is not null && _pendingRemoteAudit.Count > 0)
-        {
-            foreach (var entry in _pendingRemoteAudit)
-                await _auditAppend.AppendAsync(entry, cancellationToken);
-            _pendingRemoteAudit.Clear();
-        }
+        foreach (var entry in _pendingRemoteAudit)
+            await _auditAppend.AppendAsync(entry, cancellationToken);
+        _pendingRemoteAudit.Clear();
     }
 }

@@ -1706,50 +1706,6 @@ public static class DataSeeder
 
         await operations.SaveChangesAsync(cancellationToken);
 
-        if (!await valuation.ValuationRequests.AnyAsync(cancellationToken))
-        {
-            var now = DateTime.UtcNow;
-            valuation.ValuationRequests.AddRange(
-                ValuationRequest.Create(
-                    Guid.Parse("b2000001-0000-4000-8000-000000000001"),
-                    "VR-441",
-                    "E-4401",
-                    "مكة المكرمة",
-                    "أرض",
-                    "عبدالله الكثيري",
-                    "2025-01-13",
-                    now,
-                    ValuationRequestStatus.Done),
-                ValuationRequest.Create(
-                    Guid.Parse("b2000001-0000-4000-8000-000000000002"),
-                    "VR-442",
-                    "E-4402",
-                    "مكة المكرمة",
-                    "شقة",
-                    "محمد العساف",
-                    "2025-01-14",
-                    now),
-                ValuationRequest.Create(
-                    Guid.Parse("b2000001-0000-4000-8000-000000000003"),
-                    "VR-443",
-                    "E-4403",
-                    "جدة",
-                    "فيلا",
-                    "عبدالله الكثيري",
-                    "2025-01-12",
-                    now,
-                    ValuationRequestStatus.Done),
-                ValuationRequest.Create(
-                    Guid.Parse("b2000001-0000-4000-8000-000000000004"),
-                    "VR-444",
-                    "E-4405",
-                    "الطائف",
-                    "عمارة",
-                    "محمد العساف",
-                    "2025-01-14",
-                    now));
-        }
-
         await valuation.SaveChangesAsync(cancellationToken);
 
         if (!await failures.FailureTypesCatalogConfigs.AnyAsync(cancellationToken))

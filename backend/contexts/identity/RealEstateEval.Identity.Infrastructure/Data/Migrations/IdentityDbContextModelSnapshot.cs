@@ -228,59 +228,6 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.ToTable("Users", "identity");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.AuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("ActorId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("AfterJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("BeforeJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EntityId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Action");
-
-                    b.HasIndex("ActorId");
-
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("AuditLogs", "audit", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -470,8 +417,7 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasColumnType("integer");
 
                     b.Property<string>("ReviewerCityCoverageJson")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("RoleId")
                         .HasMaxLength(64)

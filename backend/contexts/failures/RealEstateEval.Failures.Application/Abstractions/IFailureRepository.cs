@@ -49,26 +49,26 @@ public interface IFailureRepository
     /// <summary>Untracked newest active failure of one property, or <c>null</c>.</summary>
     Task<PropertyFailure?> GetActiveForPropertyAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken);
 
     /// <summary>Tracked newest unresolved failure of one property — the hold upsert.</summary>
     Task<PropertyFailure?> FindLatestUnresolvedAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken);
 
     /// <summary>Tracked eviction holds that are neither resolved nor approved.</summary>
     Task<IReadOnlyList<PropertyFailure>> FindOpenEvictionHoldsAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string problemTypeId,
         CancellationToken cancellationToken);
 
     /// <summary>Whether the property already carries an unresolved failure of any kind.</summary>
     Task<bool> HasUnresolvedAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken);
 
     Task AddAsync(PropertyFailure failure, CancellationToken cancellationToken);

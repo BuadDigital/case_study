@@ -55,7 +55,7 @@ public class StaffUserUpdateTests
         Assert.Equal("case-specialist", updated.RoleId);
 
         var db = provider.GetRequiredService<IdentityDbContext>();
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_UPDATED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_UPDATED");
         Assert.Equal("admin", audit.ActorId);
         Assert.Equal("user", audit.EntityType);
         Assert.Equal(created.User.Id, audit.EntityId);
@@ -83,7 +83,7 @@ public class StaffUserUpdateTests
 
         Assert.Null(errors);
         var db = provider.GetRequiredService<IdentityDbContext>();
-        Assert.DoesNotContain(db.AuditLogs, entry => entry.Action == "USER_UPDATED");
+        Assert.DoesNotContain(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_UPDATED");
     }
 
     [Fact]
@@ -338,7 +338,7 @@ public class StaffUserUpdateTests
         Assert.All(
             await db.RefreshTokens.Where(token => token.UserId == created.User.Id).ToListAsync(),
             token => Assert.NotNull(token.RevokedAtUtc));
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_DISABLED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_DISABLED");
         Assert.Equal("different-admin", audit.ActorId);
     }
 
@@ -380,7 +380,7 @@ public class StaffUserUpdateTests
         Assert.False(await userManager.IsLockedOutAsync(
             (await userManager.FindByIdAsync(created.User.Id))!));
         var db = provider.GetRequiredService<IdentityDbContext>();
-        Assert.Contains(db.AuditLogs, entry => entry.Action == "USER_REACTIVATED");
+        Assert.Contains(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_REACTIVATED");
     }
 
     [Fact]
@@ -415,7 +415,7 @@ public class StaffUserUpdateTests
 
         Assert.Null(errors);
         var db = provider.GetRequiredService<IdentityDbContext>();
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_UPDATED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_UPDATED");
         Assert.DoesNotContain(iban, audit.AfterJson, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
             "set",
@@ -462,7 +462,7 @@ public class StaffUserUpdateTests
         Assert.False(await userManager.IsLockedOutAsync(
             (await userManager.FindByIdAsync(created.User.Id))!));
         var db = provider.GetRequiredService<IdentityDbContext>();
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_UNLOCKED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_UNLOCKED");
         Assert.Equal("admin", audit.ActorId);
     }
 
@@ -531,6 +531,8 @@ public class StaffUserUpdateTests
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();
+        services.AddSingleton<RecordingAuditLogAppend>();
+        services.AddSingleton<IAuditLogAppend>(sp => sp.GetRequiredService<RecordingAuditLogAppend>());
 
         var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<IdentityDbContext>().Database.EnsureCreatedAsync();

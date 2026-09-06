@@ -72,7 +72,7 @@ public static class IdentityModel
             e.Property(x => x.TaxNumber).HasMaxLength(32);
             e.Property(x => x.CommercialRegistration).HasMaxLength(64);
             e.Property(x => x.DistributionAssigneeId).HasMaxLength(128);
-            e.Property(x => x.ReviewerCityCoverageJson).HasMaxLength(1024);
+            e.Property(x => x.ReviewerCityCoverageJson).HasColumnType("jsonb");
             e.Property(x => x.PermissionLevel).HasMaxLength(64);
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.HasIndex(x => x.RoleId);

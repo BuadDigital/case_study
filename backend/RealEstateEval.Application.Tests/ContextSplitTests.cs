@@ -107,7 +107,7 @@ public class ContextSplitTests
         var request = await contexts.Valuation.ValuationRequests.AsNoTracking().SingleAsync();
         var outbox = await contexts.Valuation.OutboxMessages.AsNoTracking().SingleAsync();
 
-        Assert.Equal(propertyId, request.PropertyId);
+        Assert.Equal(Guid.Parse(propertyId), request.PropertyId);
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
         Assert.Contains("PO-777", outbox.PayloadJson);
 

@@ -64,7 +64,7 @@ public class StaffAccountActivationTests
         Assert.Equal("case-specialist", result.User.RoleId);
         Assert.Equal("+966500000099", result.User.Mobile);
         var db = provider.GetRequiredService<IdentityDbContext>();
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_CREATED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_CREATED");
         Assert.Equal("admin", audit.ActorId);
         Assert.Equal(result.User.Id, audit.EntityId);
 
@@ -120,7 +120,7 @@ public class StaffAccountActivationTests
         Assert.Equal(
             UserStatus.Active,
             (await db.UserProfiles.SingleAsync(profile => profile.UserId == created.User.Id)).Status);
-        Assert.Contains(db.AuditLogs, audit => audit.Action == "USER_ACTIVATED");
+        Assert.Contains(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, audit => audit.Action == "USER_ACTIVATED");
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class StaffAccountActivationTests
         Assert.Equal(
             UserStatus.Disabled,
             (await db.UserProfiles.SingleAsync(profile => profile.UserId == created.User.Id)).Status);
-        var audit = Assert.Single(db.AuditLogs, entry => entry.Action == "USER_DISABLED");
+        var audit = Assert.Single(provider.GetRequiredService<RecordingAuditLogAppend>().Entries, entry => entry.Action == "USER_DISABLED");
         Assert.Equal("different-admin", audit.ActorId);
     }
 
@@ -228,6 +228,8 @@ public class StaffAccountActivationTests
         services.AddDbContext<IdentityDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
         services.AddIdentityApplicationServices();
+        services.AddSingleton<RecordingAuditLogAppend>();
+        services.AddSingleton<IAuditLogAppend>(sp => sp.GetRequiredService<RecordingAuditLogAppend>());
 
         var provider = services.BuildServiceProvider();
         var db = provider.GetRequiredService<IdentityDbContext>();

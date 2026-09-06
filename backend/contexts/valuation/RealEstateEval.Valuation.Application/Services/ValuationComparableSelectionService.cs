@@ -552,7 +552,8 @@ public sealed class ValuationComparableSelectionService(
         ValuationRequest request,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(request.PropertyId, out var propertyId) || propertyId == Guid.Empty)
+        var propertyId = request.PropertyId;
+        if (propertyId == Guid.Empty)
             return false;
 
         var links = await repo.ListPropertyLinkedComparableIdsAsync(propertyId, cancellationToken);

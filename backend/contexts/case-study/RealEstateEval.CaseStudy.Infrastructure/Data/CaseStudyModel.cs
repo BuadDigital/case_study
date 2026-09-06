@@ -15,6 +15,12 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 // global beside the frozen legacy context (drift guard).
 public static class CaseStudyModel
 {
+ /// <summary>
+ /// The intake form's yes/no questions are stored as the wire strings the prototype defines,
+ /// with "" for "not answered yet"; the CHECK constraint keeps them to exactly those three.
+ /// </summary>
+    private static readonly string[] TriStateAnswers = ["", "yes", "no"];
+
     public static ModelBuilder ApplyCaseStudyModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
  // Numbering workshop: annual TX/LT/CS counters local to the case_study schema.
@@ -54,7 +60,6 @@ public static class CaseStudyModel
             e.Property(x => x.IdentityNumber).HasMaxLength(64);
             e.Property(x => x.Phone).HasMaxLength(32);
             e.Property(x => x.Email).HasMaxLength(256);
-            e.HasIndex(x => x.IsActive);
             e.HasIndex(x => x.NameAr);
         });
 
@@ -67,6 +72,8 @@ public static class CaseStudyModel
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
+            e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.HasStructuresToValue), TriStateAnswers);
+            e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
             e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
             // Q-9: comprehensive Enfaz upload.
@@ -100,7 +107,7 @@ public static class CaseStudyModel
             e.Property(x => x.RestrictionsPresent).HasMaxLength(8);
             e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
-            e.Property(x => x.DeedOwnersJson).HasMaxLength(4000);
+            e.Property(x => x.DeedOwnersJson).HasColumnType("jsonb");
             e.Property(x => x.OwnershipType).HasMaxLength(32);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlanName).HasMaxLength(256);
@@ -165,6 +172,10 @@ public static class CaseStudyModel
             e.Property(x => x.UnlinkedByUserId).HasMaxLength(128);
             e.HasIndex(x => x.GroupId);
             e.HasIndex(x => new { x.PropertyId, x.IsActive });
+            e.HasOne<WorkOrderProperty>()
+                .WithMany()
+                .HasForeignKey(x => x.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PropertyContact>(e =>
@@ -207,6 +218,20 @@ public static class CaseStudyModel
             e.HasIndex(x => new { x.Kind, x.Status });
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => x.AssigneeId);
+            e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.Kind), WorkflowTaskKindValues.All);
+            e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.Phase), WorkflowTaskPhaseValues.All);
+            e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.Status), WorkflowTaskStatusValues.All);
+            e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.ObstructionPriorPhase), WorkflowTaskPhaseValues.All);
+ // A task belongs to a property of the same work order and cascades with it, exactly as the
+ // repository delete paths already do by hand; sub-tasks follow their parent the same way.
+            e.HasOne<WorkOrderProperty>()
+                .WithMany()
+                .HasForeignKey(x => x.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PartyTaskSubmission>(e =>
@@ -226,6 +251,11 @@ public static class CaseStudyModel
             e.Property(x => x.ReopenedByName).HasMaxLength(256);
             e.HasIndex(x => x.WorkflowTaskId).IsUnique();
             e.HasIndex(x => x.PoNumber);
+            e.HasAllowedValues("PartyTaskSubmissions", nameof(PartyTaskSubmission.Status), PartyTaskSubmissionStatus.All);
+            e.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(x => x.WorkflowTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<FieldInspectionWorkspace>(e =>
@@ -242,6 +272,15 @@ public static class CaseStudyModel
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => x.PartyTaskSubmissionId).IsUnique();
+            e.HasAllowedValues("FieldInspectionWorkspaces", nameof(FieldInspectionWorkspace.Status), PartyTaskSubmissionStatus.All);
+            e.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(x => x.WorkflowTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<PartyTaskSubmission>()
+                .WithMany()
+                .HasForeignKey(x => x.PartyTaskSubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<CaseStudyForm>(e =>
@@ -266,6 +305,7 @@ public static class CaseStudyModel
             e.Property(x => x.SigDate).HasMaxLength(32);
             e.Property(x => x.SpecialistReviewApprovedJson).HasColumnType("jsonb");
             e.Property(x => x.InfathLinkedAssets).HasMaxLength(8);
+            e.HasAllowedValues("CaseStudyForms", nameof(CaseStudyForm.InfathLinkedAssets), TriStateAnswers);
             e.Property(x => x.InfathLinkedDeedNumbers).HasMaxLength(512);
             e.Property(x => x.InfathLinkedAssetsNotes).HasMaxLength(4000);
             e.Property(x => x.InfathOtherNotes).HasMaxLength(4000);
@@ -274,6 +314,11 @@ public static class CaseStudyModel
             e.Property(x => x.DeedNatureMatchNotes).HasMaxLength(4000);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
+            e.HasAllowedValues("CaseStudyForms", nameof(CaseStudyForm.Status), CaseStudyFormStatuses.All);
+            e.HasOne<WorkflowTask>()
+                .WithMany()
+                .HasForeignKey(x => x.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<InternalDelegationLetterSet>(e =>
@@ -325,6 +370,10 @@ public static class CaseStudyModel
             e.Property(x => x.Tone).HasMaxLength(16);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId, x.EventKey }).IsUnique();
             e.HasIndex(x => new { x.PoNumber, x.PropertyId, x.OccurredAtUtc });
+            e.HasOne<WorkOrderProperty>()
+                .WithMany()
+                .HasForeignKey(x => x.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         return builder;

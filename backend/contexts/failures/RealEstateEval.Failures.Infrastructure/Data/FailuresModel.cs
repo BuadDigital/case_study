@@ -24,7 +24,6 @@ public static class FailuresModel
 
             e.UseOptimisticConcurrency();
             e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.Property(x => x.PropertyId).HasMaxLength(128);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.Title).HasMaxLength(512);
             e.Property(x => x.ProblemTypeId).HasMaxLength(64);
@@ -40,6 +39,8 @@ public static class FailuresModel
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
             e.HasIndex(x => x.Status);
+            e.HasAllowedValues("PropertyFailures", nameof(PropertyFailure.Status), PropertyFailureStatus.All);
+            e.HasAllowedValues("PropertyFailures", nameof(PropertyFailure.Severity), PropertyFailureSeverity.All);
         });
 
         builder.Entity<FailureTypesCatalogConfig>(e =>

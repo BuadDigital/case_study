@@ -133,16 +133,15 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
 
     public Task<PropertyFailure?> GetActiveForPropertyAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken)
     {
         var po = poNumber.Trim();
-        var prop = propertyId.Trim();
         return failures.PropertyFailures
             .AsNoTracking()
             .Where(f =>
                 f.PoNumber == po
-                && f.PropertyId == prop
+                && f.PropertyId == propertyId
                 && ActiveStatuses.Contains(f.Status))
             .OrderByDescending(f => f.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -150,15 +149,14 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
 
     public Task<PropertyFailure?> FindLatestUnresolvedAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken)
     {
         var po = poNumber.Trim();
-        var prop = propertyId.Trim();
         return failures.PropertyFailures
             .Where(f =>
                 f.PoNumber == po
-                && f.PropertyId == prop
+                && f.PropertyId == propertyId
                 && f.Status != PropertyFailureStatus.Resolved)
             .OrderByDescending(f => f.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -166,16 +164,15 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
 
     public async Task<IReadOnlyList<PropertyFailure>> FindOpenEvictionHoldsAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         string problemTypeId,
         CancellationToken cancellationToken)
     {
         var po = poNumber.Trim();
-        var prop = propertyId.Trim();
         return await failures.PropertyFailures
             .Where(f =>
                 f.PoNumber == po
-                && f.PropertyId == prop
+                && f.PropertyId == propertyId
                 && f.ProblemTypeId == problemTypeId
                 && f.Status != PropertyFailureStatus.Resolved
                 && f.Status != PropertyFailureStatus.Approved)
@@ -184,15 +181,14 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
 
     public Task<bool> HasUnresolvedAsync(
         string poNumber,
-        string propertyId,
+        Guid propertyId,
         CancellationToken cancellationToken)
     {
         var po = poNumber.Trim();
-        var prop = propertyId.Trim();
         return failures.PropertyFailures.AnyAsync(
             f =>
                 f.PoNumber == po
-                && f.PropertyId == prop
+                && f.PropertyId == propertyId
                 && f.Status != PropertyFailureStatus.Resolved,
             cancellationToken);
     }

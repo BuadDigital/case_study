@@ -20,13 +20,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<HrEmployeeProfile> HrEmployeeProfiles => Set<HrEmployeeProfile>();
     public DbSet<ProcServiceProviderProfile> ProcServiceProviderProfiles =>
         Set<ProcServiceProviderProfile>();
-    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-        builder
-            .ApplyIdentityModel()
-            .ApplyAuditModel(ownsMigrations: false);
+        builder.ApplyIdentityModel();
     }
 }

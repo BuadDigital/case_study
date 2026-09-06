@@ -23,4 +23,6 @@ public static class KeyReceiptFeeStatuses
 {
     public const string Open = "open";
     public const string Collected = "collected";
+
+    public static readonly IReadOnlyList<string> All = [Open, Collected];
 }

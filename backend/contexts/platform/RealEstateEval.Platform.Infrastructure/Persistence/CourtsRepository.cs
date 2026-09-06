@@ -12,13 +12,6 @@ namespace RealEstateEval.Platform.Infrastructure.Persistence;
 /// </summary>
 public sealed class CourtsRepository(PlatformDbContext db) : ICourtsRepository
 {
-    public Task<bool> AnyCourtsAsync(CancellationToken cancellationToken) =>
-        db.Courts.AnyAsync(cancellationToken);
-
-    public async Task<IReadOnlyList<CourtCatalogEntry>> ListLegacyCatalogAsync(
-        CancellationToken cancellationToken) =>
-        await db.CourtCatalogEntries.AsNoTracking().ToListAsync(cancellationToken);
-
     public async Task<IReadOnlyList<Court>> ListCourtsWithCircuitsAsync(
         CancellationToken cancellationToken) =>
         await db.Courts.Include(c => c.Circuits).ToListAsync(cancellationToken);

@@ -37,7 +37,8 @@ public class EvaluatorRecallsController : ControllerBase
         [FromBody] CreateEvaluatorRecallRequest request,
         CancellationToken ct)
     {
-        var dto = await _recalls.RequestAsync(request, ct);
+        var (dto, error) = await _recalls.RequestAsync(request, ct);
+        if (dto is null) return this.BadRequestProblem(error ?? "طلب غير صالح");
         return CreatedAtAction(nameof(Get), new { taskId = dto.TaskId }, dto);
     }
 

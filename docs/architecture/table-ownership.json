@@ -165,9 +165,9 @@
       "input": "product + operations",
       "status": "approved",
       "decidedOn": "2026-07-30",
-      "outcome": "operations owns OperationsTasks and OperationsTaskSequences; financial owns CourtVisitFeeCharges",
+      "outcome": "operations owns OperationsTasks; financial owns CourtVisitFeeCharges",
       "rationale": "The task lifecycle (court visits, letters, key handover) is operations work; the charge it produces is a financial artefact priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3; the OperationsTasks rows stay in the case_study schema until Phase 4.",
-      "note": "OperationsTasks/OperationsTaskSequences live in case_study and are written by OperationsTaskService on the Operations host; the same service writes financial.CourtVisitFeeCharges."
+      "note": "OperationsTasks lives in case_study and is written by OperationsTaskService on the Operations host; the same service writes financial.CourtVisitFeeCharges."
     },
     {
       "id": "D3",
@@ -687,36 +687,6 @@
       "transactionGroup": "operations.tasks",
       "decision": "D2",
       "note": "Owned by operations, still physically in case_study until Phase 4. Written via OperationsDbContext; financial CourtVisitFeeCharges still on ApplicationDbContext in the same business transaction."
-    },
-    {
-      "table": "OperationsTaskSequences",
-      "schema": "case_study",
-      "dbSet": "OperationsTaskSequences",
-      "entity": "OperationsTaskSequence",
-      "owner": "operations",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "OperationsDbContext"
-      ],
-      "transactionGroup": "operations.tasks",
-      "decision": "D2",
-      "note": "Reference-number sequence written in the task transaction."
-    },
-    {
-      "table": "CourtCatalogEntries",
-      "schema": "platform",
-      "dbSet": "CourtCatalogEntries",
-      "entity": "CourtCatalogEntry",
-      "owner": "platform",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "PlatformDbContext"
-      ],
-      "transactionGroup": "platform.courts",
-      "decision": null,
-      "note": "Legacy catalog rows read once by the Courts seeding path."
     },
     {
       "table": "Courts",
@@ -1614,12 +1584,11 @@
       "ownershipModel": "per-producer",
       "contexts": [
         "PlatformDbContext",
-        "IdentityDbContext",
         "FinancialDbContext"
       ],
       "transactionGroup": "audit.log",
       "decision": "D7",
-      "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, every other context maps it excluded from migrations."
+      "note": "Append-only ledger. Each producer owns the rows it inserts and appends them in the same transaction as the change they describe (D7); a database trigger rejects UPDATE and DELETE. PlatformDbContext creates and shapes the table, Financial maps it excluded from migrations; Identity appends through the Platform API and holds no audit table."
     },
     {
       "table": "CaseStudyReferenceSequences",

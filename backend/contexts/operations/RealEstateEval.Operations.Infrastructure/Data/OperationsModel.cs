@@ -58,6 +58,10 @@ public static class OperationsModel
             e.Property(x => x.Specialist).HasMaxLength(256);
             e.Property(x => x.WorkflowStatus).HasMaxLength(32);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
+            e.HasAllowedValues(
+                "PropertyKeyRecords",
+                nameof(PropertyKeyRecord.WorkflowStatus),
+                [PropertyKeyWorkflowStatuses.Progress, PropertyKeyWorkflowStatuses.Done]);
         });
 
         builder.Entity<KeyEnvelope>(e =>
@@ -79,9 +83,10 @@ public static class OperationsModel
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => x.Status);
-            e.HasIndex(x => x.FeeGenerated);
             e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
+            e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.Status), KeyEnvelopeStatuses.All);
+            e.HasNonNegative("KeyEnvelopes", nameof(KeyEnvelope.FeeAmountSar));
             e.HasMany(x => x.Assignments)
                 .WithOne(x => x.Envelope!)
                 .HasForeignKey(x => x.EnvelopeId)
@@ -107,6 +112,10 @@ public static class OperationsModel
             e.Property(x => x.ConfirmedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
             e.HasIndex(x => new { x.EnvelopeId, x.DeedNumber });
+            e.HasAllowedValues(
+                "KeyEnvelopeAssignments",
+                nameof(KeyEnvelopeAssignment.Status),
+                KeyAssignmentStatuses.All);
         });
 
         builder.Entity<KeyEnvelopeHandoff>(e =>
@@ -126,6 +135,7 @@ public static class OperationsModel
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
             e.HasIndex(x => x.Status);
+            e.HasAllowedValues("KeyEnvelopeHandoffs", nameof(KeyEnvelopeHandoff.Status), KeyHandoffStatuses.All);
         });
 
         builder.Entity<KeyEnvelopeTimelineEntry>(e =>
@@ -153,6 +163,10 @@ public static class OperationsModel
             e.HasIndex(x => x.PropertyId).IsUnique();
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => x.StudyHoldStatus);
+            e.HasAllowedValues(
+                "PropertyCourtAccesses",
+                nameof(PropertyCourtAccess.StudyHoldStatus),
+                PropertyCourtAccessStatuses.All);
         });
 
  // D2: task lifecycle is operations-owned while rows stay in case_study physically.
@@ -202,6 +216,9 @@ public static class OperationsModel
             e.HasIndex(x => x.DueAtUtc);
             e.HasIndex(x => x.CreatedBy);
             e.HasIndex(x => x.PoNumber);
+            e.HasAllowedValues("OperationsTasks", nameof(OperationsTask.Status), OperationsTaskStatusValues.All);
+            e.HasAllowedValues("OperationsTasks", nameof(OperationsTask.PrevStatus), OperationsTaskStatusValues.All);
+            e.HasNonNegative("OperationsTasks", nameof(OperationsTask.AgreedVisitFeeSar));
 
  // Deed search. jsonb_path_ops answers `DeedsJson @> '["<deed>"]'` (exact element); the
  // trigram index over the text projection answers the substring half. Both are GIN.
@@ -218,11 +235,6 @@ public static class OperationsModel
                 .HasOperators("gin_trgm_ops");
         });
 
-        builder.Entity<OperationsTaskSequence>(e =>
-        {
-            MapTable(e, "OperationsTaskSequences", DatabaseSchemas.CaseStudy, ownsMigrations);
-            e.HasIndex(x => x.Year).IsUnique();
-        });
 
         return builder;
     }

@@ -38,14 +38,15 @@ public sealed class ValuationReportDocumentService(
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return null;
 
-        var propertyId = vr.PropertyId?.Trim() ?? "";
+        var propertyId = vr.PropertyId.ToString("D");
         WorkOrderProperty? prop = null;
         FieldInspectionWorkspace? workspace = null;
         InspectorPayloadFacts inspector = new();
         string? clientNameAr = null;
         IReadOnlyList<string> reportUserNames = [];
         AssignmentType? assignmentType = null;
-        if (Guid.TryParse(propertyId, out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
                 propertyGuid,

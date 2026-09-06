@@ -179,7 +179,7 @@ public class ValuationReportIssuanceTests
     {
         var id = Guid.NewGuid();
         db.ValuationRequests.Add(ValuationRequest.Create(
-            id, displayId, Guid.NewGuid().ToString(), "جدة", "فيلا", "مقيم",
+            id, displayId, Guid.NewGuid(), "جدة", "فيلا", "مقيم",
             "2026-06-25", DateTime.UtcNow));
         return id;
     }

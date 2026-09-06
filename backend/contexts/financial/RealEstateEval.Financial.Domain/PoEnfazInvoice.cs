@@ -25,4 +25,6 @@ public static class PoEnfazInvoiceStatus
     public const string Issued = "issued";
     public const string PartiallyCollected = "partially_collected";
     public const string Collected = "collected";
+
+    public static readonly IReadOnlyList<string> All = [Issued, PartiallyCollected, Collected];
 }

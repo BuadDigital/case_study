@@ -7,6 +7,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Failures.Application.Rules;
 using RealEstateEval.Failures.Domain;
 using RealEstateEval.Infrastructure.Services;
 
@@ -22,7 +23,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var property = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
         return db.PropertyFailures.AsNoTracking().AnyAsync(
             f => f.PoNumber == po
                 && f.PropertyId == property
@@ -36,7 +37,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var property = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
         return db.PropertyFailures.AsNoTracking().AnyAsync(
             f => f.PoNumber == po
                 && f.PropertyId == property
@@ -54,7 +55,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             .ToListAsync(cancellationToken);
 
         return rows
-            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId.Trim()}")
+            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId:D}")
             .Distinct(StringComparer.Ordinal)
             .ToList();
     }
@@ -65,7 +66,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var property = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return [];
         var rows = await db.PropertyFailures.AsNoTracking()
             .Where(f => f.PoNumber == po && f.PropertyId == property)
             .OrderBy(f => f.CreatedAtUtc)
@@ -92,7 +93,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var property = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return [];
         var problem = problemTypeId.Trim();
         var role = raisedByRole.Trim();
         return await db.PropertyFailures.AsNoTracking()
@@ -110,7 +111,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
     {
         Id = entity.Id.ToString(),
         PoNumber = entity.PoNumber,
-        PropertyId = entity.PropertyId,
+        PropertyId = entity.PropertyId.ToString("D"),
         DeedNumber = entity.DeedNumber,
         Title = entity.Title,
         ProblemTypeId = entity.ProblemTypeId,

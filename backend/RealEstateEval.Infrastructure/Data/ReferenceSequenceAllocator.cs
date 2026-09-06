@@ -46,6 +46,44 @@ public static class ReferenceSequenceAllocator
             return (null, "بادئة الرقم المرجعي مطلوبة.");
 
         var year = ReferenceNumbering.RiyadhYear(utcNow);
+        var (sequence, error) = await AllocateYearlySequenceAsync(
+            database,
+            sequences,
+            saveChangesAsync,
+            schema,
+            normalizedPrefix,
+            year,
+            utcNow,
+            cancellationToken);
+        if (error is not null)
+            return (null, error);
+        if (sequence > ReferenceNumbering.MaxYearlySequence)
+            return (null, "تجاوز العدّاد السنوي للرقم المرجعي حده الأقصى.");
+
+        return (ReferenceNumbering.Format(normalizedPrefix, year, sequence), null);
+    }
+
+ /// <summary>
+ /// Allocates the next raw sequence value for <paramref name="prefix"/> in <paramref name="year"/>
+ /// and leaves formatting to the caller — the one seam for numbers whose printed form predates the
+ /// workshop pattern (operations task display ids) but which still share the per-context
+ /// <c>ReferenceSequences</c> table. Atomic upsert on npgsql; on other providers the row is staged
+ /// and persisted by <paramref name="saveChangesAsync"/>, or by the caller's own SaveChanges when
+ /// that delegate is <c>null</c>.
+ /// </summary>
+    public static async Task<(int Sequence, string? Error)> AllocateYearlySequenceAsync(
+        DatabaseFacade database,
+        DbSet<ReferenceSequence> sequences,
+        Func<CancellationToken, Task<int>>? saveChangesAsync,
+        string schema,
+        string prefix,
+        int year,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedPrefix = (prefix ?? "").Trim();
+        if (normalizedPrefix.Length == 0)
+            return (0, "بادئة الرقم المرجعي مطلوبة.");
 
         if (database.IsNpgsql())
         {
@@ -68,11 +106,7 @@ public static class ReferenceSequenceAllocator
                 .ToListAsync(cancellationToken);
 
             var seq = rows.FirstOrDefault();
-            if (seq <= 0)
-                return (null, "تعذّر تخصيص الرقم المرجعي.");
-            if (seq > ReferenceNumbering.MaxYearlySequence)
-                return (null, "تجاوز العدّاد السنوي للرقم المرجعي حده الأقصى.");
-            return (ReferenceNumbering.Format(normalizedPrefix, year, seq), null);
+            return seq <= 0 ? (0, "تعذّر تخصيص الرقم المرجعي.") : (seq, null);
         }
 
         var counter = await sequences
@@ -94,12 +128,13 @@ public static class ReferenceSequenceAllocator
         else
         {
             if (counter.LastValue >= ReferenceNumbering.MaxYearlySequence)
-                return (null, "تجاوز العدّاد السنوي للرقم المرجعي حده الأقصى.");
+                return (0, "تجاوز العدّاد السنوي للرقم المرجعي حده الأقصى.");
             counter.LastValue += 1;
             counter.UpdatedAtUtc = utcNow;
         }
 
-        await saveChangesAsync(cancellationToken);
-        return (ReferenceNumbering.Format(normalizedPrefix, year, counter.LastValue), null);
+        if (saveChangesAsync is not null)
+            await saveChangesAsync(cancellationToken);
+        return (counter.LastValue, null);
     }
 }

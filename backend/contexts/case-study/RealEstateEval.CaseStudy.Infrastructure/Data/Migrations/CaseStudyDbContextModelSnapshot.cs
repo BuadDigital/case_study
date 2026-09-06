@@ -224,7 +224,12 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("TaskId", "IsPartyForm")
                         .IsUnique();
 
-                    b.ToTable("CaseStudyForms", "case_study");
+                    b.ToTable("CaseStudyForms", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_CaseStudyForms_InfathLinkedAssets", "\"InfathLinkedAssets\" IS NULL OR \"InfathLinkedAssets\" IN ('', 'yes', 'no')");
+
+                            t.HasCheckConstraint("CK_CaseStudyForms_Status", "\"Status\" IS NULL OR \"Status\" IN ('new', 'draft', 'submitted', 'completed', 'done')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.Client", b =>
@@ -264,8 +269,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
 
                     b.HasIndex("NameAr");
 
@@ -310,7 +313,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.FieldInspectionWorkspace", b =>
                 {
                     b.Property<Guid>("WorkflowTaskId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("AttachmentCount")
@@ -387,7 +389,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasIndex("Status");
 
-                    b.ToTable("FieldInspectionWorkspaces", "case_study");
+                    b.ToTable("FieldInspectionWorkspaces", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_FieldInspectionWorkspaces_Status", "\"Status\" IS NULL OR \"Status\" IN ('draft', 'submitted', 'reopened')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.InternalDelegationLetterSet", b =>
@@ -548,7 +553,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("WorkflowTaskId")
                         .IsUnique();
 
-                    b.ToTable("PartyTaskSubmissions", "case_study");
+                    b.ToTable("PartyTaskSubmissions", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartyTaskSubmissions_Status", "\"Status\" IS NULL OR \"Status\" IN ('draft', 'submitted', 'reopened')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PoIntakeDraft", b =>
@@ -717,6 +725,8 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PropertyId");
+
                     b.HasIndex("PoNumber", "PropertyId", "EventKey")
                         .IsUnique();
 
@@ -880,8 +890,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("character varying(128)");
 
                     b.Property<string>("DeedOwnersJson")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("DeedOwnershipFileName")
                         .HasColumnType("text");
@@ -1122,7 +1131,12 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasIndex("WorkOrderId", "DeedNumber");
 
-                    b.ToTable("WorkOrderProperties", "case_study");
+                    b.ToTable("WorkOrderProperties", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkOrderProperties_HasStructuresToValue", "\"HasStructuresToValue\" IS NULL OR \"HasStructuresToValue\" IN ('', 'yes', 'no')");
+
+                            t.HasCheckConstraint("CK_WorkOrderProperties_RestrictionsPresent", "\"RestrictionsPresent\" IS NULL OR \"RestrictionsPresent\" IN ('', 'yes', 'no')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkflowTask", b =>
@@ -1224,7 +1238,16 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasIndex("PoNumber", "PropertyOrdinal");
 
-                    b.ToTable("WorkflowTasks", "case_study");
+                    b.ToTable("WorkflowTasks", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkflowTasks_Kind", "\"Kind\" IS NULL OR \"Kind\" IN ('case-study-property', 'government-review', 'valuation-coordination', 'field-inspection', 'property-appraisal', 'engineering-survey', 'court-visit')");
+
+                            t.HasCheckConstraint("CK_WorkflowTasks_ObstructionPriorPhase", "\"ObstructionPriorPhase\" IS NULL OR \"ObstructionPriorPhase\" IN ('enfath', 'bourse', 'distribution', 'case-study', 'obstruction', 'done')");
+
+                            t.HasCheckConstraint("CK_WorkflowTasks_Phase", "\"Phase\" IS NULL OR \"Phase\" IN ('enfath', 'bourse', 'distribution', 'case-study', 'obstruction', 'done')");
+
+                            t.HasCheckConstraint("CK_WorkflowTasks_Status", "\"Status\" IS NULL OR \"Status\" IN ('open', 'completed', 'cancelled', 'blocked')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
@@ -1267,6 +1290,39 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyForm", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.FieldInspectionWorkspace", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.PartyTaskSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("PartyTaskSubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PartyTaskSubmission", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyContact", b =>
                 {
                     b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", "Property")
@@ -1286,7 +1342,22 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", null)
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyTimelineEntry", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", null)
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
@@ -1308,6 +1379,19 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .IsRequired();
 
                     b.Navigation("WorkOrder");
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkflowTask", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
+                        .WithMany()
+                        .HasForeignKey("ParentTaskId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", null)
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroup", b =>

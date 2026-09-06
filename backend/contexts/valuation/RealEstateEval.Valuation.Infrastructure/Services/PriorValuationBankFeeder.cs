@@ -28,7 +28,7 @@ public sealed class PriorValuationBankFeeder(
         var vr = await valuation.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return false;
-        if (!Guid.TryParse(vr.PropertyId?.Trim(), out var propertyGuid)) return false;
+        var propertyGuid = vr.PropertyId;
 
  // Idempotent — one prior-valuation row per subject property.
         var exists = await valuation.ComparableProperties.AsNoTracking()

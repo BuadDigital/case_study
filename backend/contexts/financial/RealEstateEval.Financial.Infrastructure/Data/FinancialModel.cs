@@ -53,6 +53,8 @@ public static class FinancialModel
             e.HasIndex(x => x.DisbursementVoucher)
                 .IsUnique()
                 .HasFilter("\"DisbursementVoucher\" IS NOT NULL");
+            e.HasAllowedValues("PartyBillingStatements", nameof(PartyBillingStatement.Status), PartyBillingStatementStatus.All);
+            e.HasNonNegative("PartyBillingStatements", nameof(PartyBillingStatement.TotalNetSar));
             e.HasMany(x => x.Lines)
                 .WithOne(x => x.Statement!)
                 .HasForeignKey(x => x.StatementId)
@@ -64,6 +66,7 @@ public static class FinancialModel
             MapTable(e, "PartyBillingStatementLines", DatabaseSchemas.Financial, ownsMigrations);
             e.HasKey(x => x.Id);
             e.Property(x => x.NetFeeSar).HasPrecision(12, 2);
+            e.HasNonNegative("PartyBillingStatementLines", nameof(PartyBillingStatementLine.NetFeeSar));
             e.HasIndex(x => x.StatementId);
             e.HasIndex(x => x.WorkflowTaskId).IsUnique();
         });
@@ -76,6 +79,7 @@ public static class FinancialModel
             e.Property(x => x.CaseStudyFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SurveyFeeSar).HasPrecision(12, 2);
             e.Property(x => x.KeyFeeSar).HasPrecision(12, 2);
+            e.HasNonNegative("PoEnfazRevenueLines", "CaseStudyFeeSar", "SurveyFeeSar", "KeyFeeSar");
             e.Ignore(x => x.TotalFeeSar);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId }).IsUnique();
             e.HasIndex(x => x.KeyEntitlementEnvelopeId);
@@ -93,6 +97,8 @@ public static class FinancialModel
             e.Property(x => x.TotalSar).HasPrecision(14, 2);
             e.Property(x => x.CollectedAmountSar).HasPrecision(14, 2);
             e.Property(x => x.AttachmentIdsJson).HasColumnType("jsonb");
+            e.HasAllowedValues("PoEnfazInvoices", nameof(PoEnfazInvoice.Status), PoEnfazInvoiceStatus.All);
+            e.HasNonNegative("PoEnfazInvoices", "SubtotalSar", "VatSar", "TotalSar", "CollectedAmountSar");
         });
 
         builder.Entity<PoEnfazFollowup>(e =>
@@ -132,6 +138,8 @@ public static class FinancialModel
             e.HasIndex(x => x.EnvelopeId).IsUnique();
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => x.CollectionStatus);
+            e.HasAllowedValues("KeyReceiptFeeCharges", nameof(KeyReceiptFeeCharge.CollectionStatus), KeyReceiptFeeStatuses.All);
+            e.HasNonNegative("KeyReceiptFeeCharges", nameof(KeyReceiptFeeCharge.AmountSar));
         });
 
         builder.Entity<CourtVisitFeeCharge>(e =>
@@ -148,6 +156,13 @@ public static class FinancialModel
             e.HasIndex(x => x.CreditAssigneeId);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.PricingTableId);
+            e.HasAllowedValues("CourtVisitFeeCharges", nameof(CourtVisitFeeCharge.Status), CourtVisitFeeStatuses.All);
+            e.HasNonNegative("CourtVisitFeeCharges", nameof(CourtVisitFeeCharge.AmountSar));
+ // A deleted pricing table leaves the charge on file with its priced amount and no table link.
+            e.HasOne<PartyFeePricingTable>()
+                .WithMany()
+                .HasForeignKey(x => x.PricingTableId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<FinancialReportConfig>(e =>
@@ -169,6 +184,12 @@ public static class FinancialModel
             e.Property(x => x.FieldInspectorIndividualFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FieldInspectorOrganizationFeeSar).HasPrecision(12, 2);
             e.Property(x => x.FlatAmountSar).HasPrecision(12, 2);
+            e.HasNonNegative(
+                "PartyFeePricingTables",
+                "CourtVisitFeeSar",
+                "FieldInspectorIndividualFeeSar",
+                "FieldInspectorOrganizationFeeSar",
+                "FlatAmountSar");
             e.HasIndex(x => x.Category).IsUnique().HasFilter("\"IsActive\" = true");
             e.HasIndex(x => x.PricingKind);
             e.HasMany(x => x.AreaTiers).WithOne(x => x.Table).HasForeignKey(x => x.TableId)
@@ -184,6 +205,7 @@ public static class FinancialModel
             e.HasKey(x => x.Id);
             e.Property(x => x.MaxAreaM2).HasPrecision(12, 2);
             e.Property(x => x.FeeSar).HasPrecision(12, 2);
+            e.HasNonNegative("PartyFeePricingTiers", "MaxAreaM2", "FeeSar");
             e.HasIndex(x => new { x.TableId, x.SortOrder });
         });
 
@@ -208,7 +230,6 @@ public static class FinancialModel
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
             e.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
             e.Property(x => x.LiftedByUserId).HasMaxLength(450);
-            e.HasIndex(x => new { x.AssigneeId, x.TransactionKey });
             e.HasIndex(x => new { x.AssigneeId, x.TransactionKey })
                 .IsUnique()
                 .HasFilter("\"LiftedAtUtc\" IS NULL")
@@ -227,6 +248,8 @@ public static class FinancialModel
             e.Property(x => x.ApprovedByUserId).HasMaxLength(450);
             e.Property(x => x.ResolutionNote).HasMaxLength(2000);
             e.Property(x => x.ProposedDiscountSar).HasPrecision(12, 2);
+            e.HasAllowedValues("DiscountFlags", nameof(DiscountFlag.Status), DiscountFlagStatuses.All);
+            e.HasNonNegative("DiscountFlags", nameof(DiscountFlag.ProposedDiscountSar));
             e.HasIndex(x => x.TransactionKey);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.TransactionKey, x.TargetAssigneeId, x.Status });
@@ -265,9 +288,22 @@ public static class FinancialModel
             e.HasIndex(x => x.SupervisingDepartment);
             e.HasIndex(x => x.BillingStatus);
             e.HasIndex(x => x.PricingTableId);
-            e.HasIndex(x => x.ExcludedFromBatch);
             e.HasIndex(x => x.DisbursementBatchId);
             e.HasIndex(x => x.PartyBillingStatementId);
+            e.HasAllowedValues("InspectorFeeLedgers", nameof(InspectorFeeLedger.BillingStatus), InspectorFeeBillingStatus.All);
+            e.HasAllowedValues("InspectorFeeLedgers", nameof(InspectorFeeLedger.PreSuspensionStatus), InspectorFeeBillingStatus.All);
+            e.HasNonNegative(
+                "InspectorFeeLedgers",
+                "AgreedFeeSar",
+                "SupervisorDiscountSar",
+                "NetFeeSar",
+                "PaidAmountSar");
+ // Both tables sit in case_study on the financial database (D1), so the link can be enforced;
+ // deleting a batch releases its lines back to the unbatched pool instead of orphaning them.
+            e.HasOne<DisbursementBatch>()
+                .WithMany()
+                .HasForeignKey(x => x.DisbursementBatchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<InspectorFeeTransition>(e =>
@@ -289,6 +325,7 @@ public static class FinancialModel
             e.Property(x => x.AssigneeId).HasMaxLength(128);
             e.Property(x => x.CreatedByUserId).HasMaxLength(450);
             e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
+            e.HasNonNegative("DisbursementBatches", nameof(DisbursementBatch.TotalNetSar));
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.CreatedAtUtc);
         });

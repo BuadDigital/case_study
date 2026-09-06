@@ -34,7 +34,7 @@ public class CaseStudyValuationDispatchTests
         await dispatch.TryCreateWhenAppraisalSpawnedAsync(ParentTaskId);
 
         var vr = await contexts.Valuation.ValuationRequests.SingleAsync();
-        Assert.Equal(PropertyId.ToString(), vr.PropertyId);
+        Assert.Equal(PropertyId, vr.PropertyId);
         Assert.Equal(ValuationRequestStatus.Progress, vr.Status);
         Assert.Equal("جدة", vr.Area);
         Assert.Equal("فيلا", vr.PropertyType);

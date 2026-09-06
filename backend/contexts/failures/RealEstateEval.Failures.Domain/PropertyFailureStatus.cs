@@ -9,6 +9,12 @@ public static class PropertyFailureStatus
     public const string Suspended = "suspended";
     public const string Resolved = "resolved";
 
+    /// <summary>Every value the column may hold; the database CHECK constraint is generated from it.</summary>
+    public static readonly IReadOnlyList<string> All =
+    [
+        Internal, Review, Approved, Returned, Suspended, Resolved,
+    ];
+
     public static readonly HashSet<string> Active =
     [
         Internal, Review, Approved, Returned,

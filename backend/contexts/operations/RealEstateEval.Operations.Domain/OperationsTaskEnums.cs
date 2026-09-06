@@ -122,6 +122,8 @@ public static class OperationsTaskStatusValues
     public const string Completed = "completed";
     public const string Cancelled = "cancelled";
 
+    public static readonly IReadOnlyList<string> All = [Created, InProgress, Paused, Completed, Cancelled];
+
     public static string ToDbValue(this OperationsTaskStatus status) => status switch
     {
         OperationsTaskStatus.InProgress => InProgress,

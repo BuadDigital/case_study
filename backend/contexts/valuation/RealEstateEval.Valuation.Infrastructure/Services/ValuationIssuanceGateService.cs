@@ -39,7 +39,7 @@ public sealed class ValuationIssuanceGateService(
         var org = await organizationSettings.GetInternalAsync(cancellationToken);
         var eval = org.Evaluator;
 
-        var propertyId = vr.PropertyId?.Trim() ?? "";
+        var propertyId = vr.PropertyId.ToString("D");
         DeedKind deedKind = DeedKind.Traditional;
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
         var hasStructures = false;
@@ -50,7 +50,8 @@ public sealed class ValuationIssuanceGateService(
         string? inspectionRestrictionReason = null;
         var remoteInspectionApproved = false;
 
-        if (Guid.TryParse(propertyId, out var propertyGuid))
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
             var context = await caseStudy.GetValuationPropertyContextAsync(
                 propertyGuid,

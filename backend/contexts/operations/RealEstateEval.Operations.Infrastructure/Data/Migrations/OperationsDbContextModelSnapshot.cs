@@ -149,8 +149,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.HasIndex("FeeGenerated");
-
                     b.HasIndex("OperationsTaskId");
 
                     b.HasIndex("ReferenceNumber");
@@ -161,7 +159,12 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("Status");
 
-                    b.ToTable("KeyEnvelopes", "operations");
+                    b.ToTable("KeyEnvelopes", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopes_FeeAmountSar_NonNegative", "\"FeeAmountSar\" IS NULL OR \"FeeAmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_KeyEnvelopes_Status", "\"Status\" IS NULL OR \"Status\" IN ('reviewer', 'assessor', 'external', 'returned')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
@@ -213,7 +216,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("EnvelopeId", "DeedNumber");
 
-                    b.ToTable("KeyEnvelopeAssignments", "operations");
+                    b.ToTable("KeyEnvelopeAssignments", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopeAssignments_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'matched', 'partial', 'unmatched', 'unmatched_inspected', 'missing')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeHandoff", b =>
@@ -296,7 +302,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("Status");
 
-                    b.ToTable("KeyEnvelopeHandoffs", "operations");
+                    b.ToTable("KeyEnvelopeHandoffs", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyEnvelopeHandoffs_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending_confirm', 'confirmed', 'completed')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeTimelineEntry", b =>
@@ -515,30 +524,14 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("Status");
 
-                    b.ToTable("OperationsTasks", "case_study");
-                });
+                    b.ToTable("OperationsTasks", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_OperationsTasks_AgreedVisitFeeSar_NonNegative", "\"AgreedVisitFeeSar\" IS NULL OR \"AgreedVisitFeeSar\" >= 0");
 
-            modelBuilder.Entity("RealEstateEval.Operations.Domain.OperationsTaskSequence", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                            t.HasCheckConstraint("CK_OperationsTasks_PrevStatus", "\"PrevStatus\" IS NULL OR \"PrevStatus\" IN ('created', 'in_progress', 'paused', 'completed', 'cancelled')");
 
-                    b.Property<int>("NextSeq")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Year")
-                        .IsUnique();
-
-                    b.ToTable("OperationsTaskSequences", "case_study");
+                            t.HasCheckConstraint("CK_OperationsTasks_Status", "\"Status\" IS NULL OR \"Status\" IN ('created', 'in_progress', 'paused', 'completed', 'cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyCourtAccess", b =>
@@ -618,7 +611,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("StudyHoldStatus");
 
-                    b.ToTable("PropertyCourtAccesses", "operations");
+                    b.ToTable("PropertyCourtAccesses", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_PropertyCourtAccesses_StudyHoldStatus", "\"StudyHoldStatus\" IS NULL OR \"StudyHoldStatus\" IN ('none', 'enabled_no_key', 'suspended_eviction')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.PropertyKeyRecord", b =>
@@ -674,7 +670,10 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasIndex("PoNumber", "PropertyId")
                         .IsUnique();
 
-                    b.ToTable("PropertyKeyRecords", "operations");
+                    b.ToTable("PropertyKeyRecords", "operations", t =>
+                        {
+                            t.HasCheckConstraint("CK_PropertyKeyRecords_WorkflowStatus", "\"WorkflowStatus\" IS NULL OR \"WorkflowStatus\" IN ('progress', 'done')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.SurveyOffice", b =>

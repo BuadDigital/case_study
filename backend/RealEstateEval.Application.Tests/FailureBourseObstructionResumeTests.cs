@@ -168,7 +168,7 @@ public class FailureBourseObstructionResumeTests
             bundle.Failures.PropertyFailures.Add(PropertyFailure.Reconstitute(
                 FailureId,
                 PoNumber,
-                PropertyId.ToString(),
+                PropertyId,
                 "DEED-1",
                 "عدم معرفة حدود العقار",
                 "unknown-boundaries",

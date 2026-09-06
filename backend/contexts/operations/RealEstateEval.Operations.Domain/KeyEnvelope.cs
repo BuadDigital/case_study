@@ -153,6 +153,8 @@ public static class KeyEnvelopeStatuses
     public const string Assessor = "assessor";
     public const string External = "external";
     public const string Returned = "returned";
+
+    public static readonly IReadOnlyList<string> All = [Reviewer, Assessor, External, Returned];
 }
 
 public static class KeyReceiveScenarios
@@ -189,6 +191,11 @@ public static class KeyAssignmentStatuses
     public const string Unmatched = "unmatched";
     public const string UnmatchedInspected = "unmatched_inspected";
     public const string Missing = "missing";
+
+    public static readonly IReadOnlyList<string> All =
+    [
+        Pending, Matched, Partial, Unmatched, UnmatchedInspected, Missing,
+    ];
 
     public static bool IsConfirmResult(string status) =>
         status is Matched or Partial or Unmatched or UnmatchedInspected or Missing;
@@ -236,6 +243,8 @@ public static class KeyHandoffStatuses
     public const string PendingConfirm = "pending_confirm";
     public const string Confirmed = "confirmed";
     public const string Completed = "completed";
+
+    public static readonly IReadOnlyList<string> All = [PendingConfirm, Confirmed, Completed];
 }
 
 public class KeyEnvelopeTimelineEntry
@@ -292,4 +301,6 @@ public static class PropertyCourtAccessStatuses
     public const string None = "none";
     public const string EnabledNoKey = "enabled_no_key";
     public const string SuspendedEviction = "suspended_eviction";
+
+    public static readonly IReadOnlyList<string> All = [None, EnabledNoKey, SuspendedEviction];
 }

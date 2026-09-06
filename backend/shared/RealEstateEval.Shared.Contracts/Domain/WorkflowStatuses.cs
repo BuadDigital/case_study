@@ -14,4 +14,6 @@ public static class PartyTaskSubmissionStatus
     public const string Draft = "draft";
     public const string Submitted = "submitted";
     public const string Reopened = "reopened";
+
+    public static readonly IReadOnlyList<string> All = [Draft, Submitted, Reopened];
 }

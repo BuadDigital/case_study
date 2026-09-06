@@ -283,7 +283,7 @@ public class FailureListQueryTests
         var failure = PropertyFailure.Create(
             Guid.NewGuid(),
             poNumber,
-            Guid.NewGuid().ToString(),
+            Guid.NewGuid(),
             deedNumber,
             title,
             "problem-1",

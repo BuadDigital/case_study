@@ -6,6 +6,8 @@ public static class LocationCatalogStatuses
     public const string Approved = "approved";
     public const string Pending = "pending";
     public const string Merged = "merged";
+
+    public static readonly IReadOnlyList<string> All = [Approved, Pending, Merged];
 }
 
 /// <summary>Administrative area — system directory (not permanently deleted; disabled via IsActive).</summary>

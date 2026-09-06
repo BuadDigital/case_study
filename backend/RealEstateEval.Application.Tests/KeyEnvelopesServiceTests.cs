@@ -242,7 +242,7 @@ public class KeyEnvelopesServiceTests
         Assert.Equal(PropertyCourtAccessStatuses.SuspendedEviction, access!.StudyHoldStatus);
         Assert.Contains(
             bundle.Failures.PropertyFailures.AsNoTracking(),
-            f => f.PropertyId == property.Id.ToString()
+            f => f.PropertyId == property.Id
                  && f.Status == PropertyFailureStatus.Suspended);
         var blocked = await db.WorkflowTasks.AsNoTracking()
             .FirstAsync(t => t.PropertyId == property.Id
@@ -292,7 +292,7 @@ public class KeyEnvelopesServiceTests
         Assert.Null(cleared.EvictionNoticeAttachmentId);
         Assert.Contains(
             bundle.Failures.PropertyFailures.AsNoTracking(),
-            f => f.PropertyId == property.Id.ToString()
+            f => f.PropertyId == property.Id
                  && f.Status == PropertyFailureStatus.Resolved);
         var resumed = await db.WorkflowTasks.AsNoTracking()
             .FirstAsync(t => t.PropertyId == property.Id

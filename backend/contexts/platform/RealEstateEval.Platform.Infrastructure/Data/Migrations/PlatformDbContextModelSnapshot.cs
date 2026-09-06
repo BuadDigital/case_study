@@ -181,8 +181,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("MergedIntoCityId");
 
                     b.HasIndex("NameSearch");
@@ -195,7 +193,10 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
 
                     b.HasIndex("RegionId", "Status");
 
-                    b.ToTable("Cities", "platform");
+                    b.ToTable("Cities", "platform", t =>
+                        {
+                            t.HasCheckConstraint("CK_Cities_Status", "\"Status\" IS NULL OR \"Status\" IN ('approved', 'pending', 'merged')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Platform.Domain.Court", b =>
@@ -238,8 +239,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                         .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
 
                     b.HasIndex("Name", "City")
                         .IsUnique();
@@ -291,31 +290,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                     b.ToTable("CourtAuditLogs", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCatalogEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CircuitsJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("Court")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CourtCatalogEntries", "platform");
-                });
-
             modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCircuit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -353,8 +327,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                         .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
 
                     b.HasIndex("CourtId", "CircuitNo")
                         .IsUnique();
@@ -436,15 +408,16 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("MergedIntoDistrictId");
 
                     b.HasIndex("NameSearch");
 
                     b.HasIndex("CityId", "Status");
 
-                    b.ToTable("Districts", "platform");
+                    b.ToTable("Districts", "platform", t =>
+                        {
+                            t.HasCheckConstraint("CK_Districts_Status", "\"Status\" IS NULL OR \"Status\" IN ('approved', 'pending', 'merged')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Platform.Domain.FieldDictionaryConfig", b =>
@@ -564,8 +537,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("IsActive");
-
                     b.HasIndex("OfficialId")
                         .IsUnique();
 
@@ -587,7 +558,7 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
 
                     b.Property<string>("TextsJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("Version")
                         .HasColumnType("integer");

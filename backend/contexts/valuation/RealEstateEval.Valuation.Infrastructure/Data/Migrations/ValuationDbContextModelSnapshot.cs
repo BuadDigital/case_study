@@ -232,7 +232,14 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.HasIndex("IsActive", "District");
 
-                    b.ToTable("ComparableProperties", "valuation");
+                    b.ToTable("ComparableProperties", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ComparableProperties_AreaSqm_NonNegative", "\"AreaSqm\" IS NULL OR \"AreaSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ComparableProperties_PricePerSqm_NonNegative", "\"PricePerSqm\" IS NULL OR \"PricePerSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ComparableProperties_Price_NonNegative", "\"Price\" IS NULL OR \"Price\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.EvaluatorRecallRecord", b =>
@@ -246,10 +253,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<string>("PropertyId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -272,10 +277,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
-                    b.Property<string>("TaskId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -290,7 +293,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.HasIndex("TaskId")
                         .IsUnique();
 
-                    b.ToTable("EvaluatorRecallRecords", "valuation");
+                    b.ToTable("EvaluatorRecallRecords", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_EvaluatorRecallRecords_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'approved', 'rejected')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.PropertyComparableLink", b =>
@@ -422,7 +428,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnType("character varying(2000)");
 
                     b.Property<string>("SelectedAssumptionsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -561,7 +567,12 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsUnique()
                         .HasDatabaseName("IX_ValuationComparableSelections_Request_Comp_Context");
 
-                    b.ToTable("ValuationComparableSelections", "valuation");
+                    b.ToTable("ValuationComparableSelections", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationComparableSelections_AreaOverrideSqm_NonNegative", "\"AreaOverrideSqm\" IS NULL OR \"AreaOverrideSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationComparableSelections_PriceOverrideSar_NonNegative", "\"PriceOverrideSar\" IS NULL OR \"PriceOverrideSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostApproach", b =>
@@ -651,7 +662,22 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.HasIndex("ValuationRequestId")
                         .IsUnique();
 
-                    b.ToTable("ValuationCostApproaches", "valuation");
+                    b.ToTable("ValuationCostApproaches", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_ActualAgeYears_NonNegative", "\"ActualAgeYears\" IS NULL OR \"ActualAgeYears\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_ApartmentLandShareSqm_NonNegative", "\"ApartmentLandShareSqm\" IS NULL OR \"ApartmentLandShareSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_EconomicAgeYears_NonNegative", "\"EconomicAgeYears\" IS NULL OR \"EconomicAgeYears\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_LandAreaSqm_NonNegative", "\"LandAreaSqm\" IS NULL OR \"LandAreaSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_LandUnitRateFromMarket_NonNegative", "\"LandUnitRateFromMarket\" IS NULL OR \"LandUnitRateFromMarket\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_LandValueFromMarket_NonNegative", "\"LandValueFromMarket\" IS NULL OR \"LandValueFromMarket\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_LifeExtensionYears_NonNegative", "\"LifeExtensionYears\" IS NULL OR \"LifeExtensionYears\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationCostLine", b =>
@@ -716,7 +742,12 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.HasIndex("CostApproachId");
 
-                    b.ToTable("ValuationCostLines", "valuation");
+                    b.ToTable("ValuationCostLines", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationCostLines_AreaSqm_NonNegative", "\"AreaSqm\" IS NULL OR \"AreaSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostLines_UnitCostSar_NonNegative", "\"UnitCostSar\" IS NULL OR \"UnitCostSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>
@@ -779,8 +810,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("SubjectSpecJson")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -796,7 +826,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.HasIndex("ValuationRequestId")
                         .IsUnique();
 
-                    b.ToTable("ValuationMarketApproaches", "valuation");
+                    b.ToTable("ValuationMarketApproaches", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationMarketApproaches_SubjectAreaSqm_NonNegative", "\"SubjectAreaSqm\" IS NULL OR \"SubjectAreaSqm\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReconciliation", b =>
@@ -822,7 +855,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnType("character varying(2000)");
 
                     b.Property<string>("MethodologyAlertOverridesJson")
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("MethodsRationale")
                         .IsRequired()
@@ -884,7 +917,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.HasIndex("ReconciliationId");
 
-                    b.ToTable("ValuationReconciliationMethodLines", "valuation");
+                    b.ToTable("ValuationReconciliationMethodLines", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationReconciliationMethodLines_ApproachValue_NonNegative", "\"ApproachValue\" IS NULL OR \"ApproachValue\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportIssuance", b =>
@@ -928,7 +964,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.Property<string>("DocumentJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime?>("FinalIssuedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -986,10 +1022,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<string>("PropertyId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("PropertyType")
                         .IsRequired()
@@ -1026,7 +1060,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasDatabaseName("IX_ValuationRequests_PropertyId_Open")
                         .HasFilter("\"Status\" <> 'done'");
 
-                    b.ToTable("ValuationRequests", "valuation");
+                    b.ToTable("ValuationRequests", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationRequests_Status", "\"Status\" IS NULL OR \"Status\" IN ('progress', 'done', 'fail')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.PropertyComparableLink", b =>

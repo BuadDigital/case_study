@@ -152,16 +152,14 @@ public class FailureService : IFailureService
         var errors = FailureRules.ValidateCreate(request);
         if (errors.Count > 0) return (null, errors);
 
-        if (Guid.TryParse(request.PropertyId.Trim(), out var createPropertyId))
-        {
-            var props = await _caseStudyLookup.ListPropertiesByIdsAsync(
-                [createPropertyId],
-                cancellationToken);
-            if (props.Count == 0)
-                return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
-            if (props[0].IsRemoved)
-                return (null, new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" });
-        }
+        var createPropertyId = FailureRules.ParsePropertyId(request.PropertyId);
+        var props = await _caseStudyLookup.ListPropertiesByIdsAsync(
+            [createPropertyId],
+            cancellationToken);
+        if (props.Count == 0)
+            return (null, new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" });
+        if (props[0].IsRemoved)
+            return (null, new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" });
 
         var now = _time.UtcNow();
         var entity = FailureRules.NewFailure(
@@ -174,12 +172,9 @@ public class FailureService : IFailureService
         await _failures.AddAsync(entity, cancellationToken);
         await _failures.SaveChangesAsync(cancellationToken);
 
-        if (Guid.TryParse(entity.PropertyId, out var propertyId))
-        {
-            await _caseStudy.RecordPropertyTimelineEventAsync(
-                FailureRules.CreatedTimelineEntry(entity, propertyId, now),
-                cancellationToken);
-        }
+        await _caseStudy.RecordPropertyTimelineEventAsync(
+            FailureRules.CreatedTimelineEntry(entity, entity.PropertyId, now),
+            cancellationToken);
 
         if (entity.Severity == PropertyFailureSeverity.Internal)
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
@@ -283,12 +278,9 @@ public class FailureService : IFailureService
 
         await _failures.SaveChangesAsync(cancellationToken);
 
-        if (Guid.TryParse(entity.PropertyId, out var propertyId))
-        {
-            await _caseStudy.RecordPropertyTimelineEventAsync(
-                FailureRules.SuspendedTimelineEntry(entity, propertyId),
-                cancellationToken);
-        }
+        await _caseStudy.RecordPropertyTimelineEventAsync(
+            FailureRules.SuspendedTimelineEntry(entity, entity.PropertyId),
+            cancellationToken);
 
         return await ToDtoAsync(entity, cancellationToken);
     }
@@ -359,7 +351,7 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var propertyKey = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var propertyKey)) return;
         var now = _time.UtcNow();
 
         var existing = await _failures.FindLatestUnresolvedAsync(
@@ -403,7 +395,7 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var propertyKey = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var propertyKey)) return;
         var now = _time.UtcNow();
 
         var active = await _failures.FindOpenEvictionHoldsAsync(
@@ -438,7 +430,7 @@ public class FailureService : IFailureService
         CancellationToken cancellationToken = default)
     {
         var po = poNumber.Trim();
-        var propertyKey = propertyId.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var propertyKey)) return;
         var active = await _failures.HasUnresolvedAsync(po, propertyKey, cancellationToken);
         if (active) return;
 
@@ -504,7 +496,8 @@ public class FailureService : IFailureService
         string propertyId,
         CancellationToken cancellationToken)
     {
-        return await _failures.GetActiveForPropertyAsync(poNumber, propertyId, cancellationToken);
+        if (!FailureRules.TryParsePropertyId(propertyId, out var propertyKey)) return null;
+        return await _failures.GetActiveForPropertyAsync(poNumber, propertyKey, cancellationToken);
     }
 
     private async Task NotifyFailureSubmittedAsync(
@@ -557,7 +550,7 @@ public class FailureService : IFailureService
     {
         Id = entity.Id.ToString(),
         PoNumber = entity.PoNumber,
-        PropertyId = entity.PropertyId,
+        PropertyId = entity.PropertyId.ToString("D"),
         DeedNumber = entity.DeedNumber,
         Title = entity.Title,
         ProblemTypeId = entity.ProblemTypeId,
@@ -579,11 +572,10 @@ public class FailureService : IFailureService
 
     private async Task BlockCaseStudyTaskForHoldAsync(
         string poNumber,
-        string propertyIdText,
+        Guid propertyId,
         string reason,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
         var task = await _caseStudy.BlockTaskForHoldAsync(
             new CaseStudyHoldTaskRequest
@@ -603,10 +595,9 @@ public class FailureService : IFailureService
 
     private async Task UnblockCaseStudyTaskForHoldAsync(
         string poNumber,
-        string propertyIdText,
+        Guid propertyId,
         CancellationToken cancellationToken)
     {
-        if (!Guid.TryParse(propertyIdText, out var propertyId)) return;
 
         var task = await _caseStudy.UnblockTaskForHoldAsync(
             new CaseStudyHoldTaskRequest

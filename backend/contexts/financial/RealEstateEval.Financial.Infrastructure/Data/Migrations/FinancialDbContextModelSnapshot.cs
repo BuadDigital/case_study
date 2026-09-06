@@ -167,7 +167,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("Status");
 
-                    b.ToTable("CourtVisitFeeCharges", "financial");
+                    b.ToTable("CourtVisitFeeCharges", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_CourtVisitFeeCharges_AmountSar_NonNegative", "\"AmountSar\" IS NULL OR \"AmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_CourtVisitFeeCharges_Status", "\"Status\" IS NULL OR \"Status\" IN ('open', 'settled')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.DisbursementBatch", b =>
@@ -199,7 +204,10 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.ToTable("DisbursementBatches", "case_study");
+                    b.ToTable("DisbursementBatches", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_DisbursementBatches_TotalNetSar_NonNegative", "\"TotalNetSar\" IS NULL OR \"TotalNetSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.DiscountFlag", b =>
@@ -262,7 +270,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("TransactionKey", "TargetAssigneeId", "Status");
 
-                    b.ToTable("DiscountFlags", "financial");
+                    b.ToTable("DiscountFlags", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_DiscountFlags_ProposedDiscountSar_NonNegative", "\"ProposedDiscountSar\" IS NULL OR \"ProposedDiscountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_DiscountFlags_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'approved', 'rejected')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.FinancialReportConfig", b =>
@@ -474,8 +487,6 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("DisbursementBatchId");
 
-                    b.HasIndex("ExcludedFromBatch");
-
                     b.HasIndex("PartyBillingStatementId");
 
                     b.HasIndex("PoNumber");
@@ -490,7 +501,20 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .IsUnique()
                         .HasDatabaseName("UX_InspectorFeeLedgers_Transaction_Deed_User");
 
-                    b.ToTable("InspectorFeeLedgers", "case_study");
+                    b.ToTable("InspectorFeeLedgers", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_AgreedFeeSar_NonNegative", "\"AgreedFeeSar\" IS NULL OR \"AgreedFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_BillingStatus", "\"BillingStatus\" IS NULL OR \"BillingStatus\" IN ('draft', 'office-review', 'disputed', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
+
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_NetFeeSar_NonNegative", "\"NetFeeSar\" IS NULL OR \"NetFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_PaidAmountSar_NonNegative", "\"PaidAmountSar\" IS NULL OR \"PaidAmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_PreSuspensionStatus", "\"PreSuspensionStatus\" IS NULL OR \"PreSuspensionStatus\" IN ('draft', 'office-review', 'disputed', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
+
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_SupervisorDiscountSar_NonNegative", "\"SupervisorDiscountSar\" IS NULL OR \"SupervisorDiscountSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.InspectorFeeTransition", b =>
@@ -600,7 +624,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("RequestNumber");
 
-                    b.ToTable("KeyReceiptFeeCharges", "financial");
+                    b.ToTable("KeyReceiptFeeCharges", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_KeyReceiptFeeCharges_AmountSar_NonNegative", "\"AmountSar\" IS NULL OR \"AmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_KeyReceiptFeeCharges_CollectionStatus", "\"CollectionStatus\" IS NULL OR \"CollectionStatus\" IN ('open', 'collected')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PartyBillingStatement", b =>
@@ -744,7 +773,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("Status");
 
-                    b.ToTable("PartyBillingStatements", "financial");
+                    b.ToTable("PartyBillingStatements", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartyBillingStatements_Status", "\"Status\" IS NULL OR \"Status\" IN ('draft', 'issued', 'invoice_received', 'closed', 'cancelled')");
+
+                            t.HasCheckConstraint("CK_PartyBillingStatements_TotalNetSar_NonNegative", "\"TotalNetSar\" IS NULL OR \"TotalNetSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PartyBillingStatementLine", b =>
@@ -770,7 +804,10 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                     b.HasIndex("WorkflowTaskId")
                         .IsUnique();
 
-                    b.ToTable("PartyBillingStatementLines", "financial");
+                    b.ToTable("PartyBillingStatementLines", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartyBillingStatementLines_NetFeeSar_NonNegative", "\"NetFeeSar\" IS NULL OR \"NetFeeSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PartyFeePricingAssignment", b =>
@@ -873,7 +910,16 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("PricingKind");
 
-                    b.ToTable("PartyFeePricingTables", "financial");
+                    b.ToTable("PartyFeePricingTables", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartyFeePricingTables_CourtVisitFeeSar_NonNegative", "\"CourtVisitFeeSar\" IS NULL OR \"CourtVisitFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PartyFeePricingTables_FieldInspectorIndividualFeeSar_NonNegative", "\"FieldInspectorIndividualFeeSar\" IS NULL OR \"FieldInspectorIndividualFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PartyFeePricingTables_FieldInspectorOrganizationFeeSar_NonNegative", "\"FieldInspectorOrganizationFeeSar\" IS NULL OR \"FieldInspectorOrganizationFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PartyFeePricingTables_FlatAmountSar_NonNegative", "\"FlatAmountSar\" IS NULL OR \"FlatAmountSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PartyFeePricingTier", b =>
@@ -906,7 +952,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("TableId", "SortOrder");
 
-                    b.ToTable("PartyFeePricingTiers", "financial");
+                    b.ToTable("PartyFeePricingTiers", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartyFeePricingTiers_FeeSar_NonNegative", "\"FeeSar\" IS NULL OR \"FeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PartyFeePricingTiers_MaxAreaM2_NonNegative", "\"MaxAreaM2\" IS NULL OR \"MaxAreaM2\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PoEnfazFinanceFlag", b =>
@@ -1033,7 +1084,18 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasKey("PoNumber");
 
-                    b.ToTable("PoEnfazInvoices", "financial");
+                    b.ToTable("PoEnfazInvoices", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PoEnfazInvoices_CollectedAmountSar_NonNegative", "\"CollectedAmountSar\" IS NULL OR \"CollectedAmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PoEnfazInvoices_Status", "\"Status\" IS NULL OR \"Status\" IN ('issued', 'partially_collected', 'collected')");
+
+                            t.HasCheckConstraint("CK_PoEnfazInvoices_SubtotalSar_NonNegative", "\"SubtotalSar\" IS NULL OR \"SubtotalSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PoEnfazInvoices_TotalSar_NonNegative", "\"TotalSar\" IS NULL OR \"TotalSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PoEnfazInvoices_VatSar_NonNegative", "\"VatSar\" IS NULL OR \"VatSar\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PoEnfazRevenueLine", b =>
@@ -1078,7 +1140,30 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                     b.HasIndex("PoNumber", "PropertyId")
                         .IsUnique();
 
-                    b.ToTable("PoEnfazRevenueLines", "financial");
+                    b.ToTable("PoEnfazRevenueLines", "financial", t =>
+                        {
+                            t.HasCheckConstraint("CK_PoEnfazRevenueLines_CaseStudyFeeSar_NonNegative", "\"CaseStudyFeeSar\" IS NULL OR \"CaseStudyFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PoEnfazRevenueLines_KeyFeeSar_NonNegative", "\"KeyFeeSar\" IS NULL OR \"KeyFeeSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_PoEnfazRevenueLines_SurveyFeeSar_NonNegative", "\"SurveyFeeSar\" IS NULL OR \"SurveyFeeSar\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("RealEstateEval.Financial.Domain.CourtVisitFeeCharge", b =>
+                {
+                    b.HasOne("RealEstateEval.Financial.Domain.PartyFeePricingTable", null)
+                        .WithMany()
+                        .HasForeignKey("PricingTableId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("RealEstateEval.Financial.Domain.InspectorFeeLedger", b =>
+                {
+                    b.HasOne("RealEstateEval.Financial.Domain.DisbursementBatch", null)
+                        .WithMany()
+                        .HasForeignKey("DisbursementBatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.PartyBillingStatementLine", b =>

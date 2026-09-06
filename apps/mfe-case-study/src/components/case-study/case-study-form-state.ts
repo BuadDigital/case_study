@@ -23,10 +23,7 @@ export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "extra",
 ];
 
-export type SectionQuestions = Record<
-  CaseStudyQuestionSection,
-  readonly string[]
->;
+export type SectionQuestions = Record< CaseStudyQuestionSection, readonly string[]>;
 
 /** Question is visible to the current viewer (specialist or party). */
 export type QuestionVisibilityPredicate = (key: string) => boolean;

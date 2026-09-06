@@ -16,7 +16,7 @@ public class ValuationRequest
 
     public Guid Id { get; private set; }
     public string DisplayId { get; private set; } = "";
-    public string PropertyId { get; private set; } = "";
+    public Guid PropertyId { get; private set; }
     public string Area { get; private set; } = "";
     public string PropertyType { get; private set; } = "";
     public string Appraiser { get; private set; } = "";
@@ -34,7 +34,7 @@ public class ValuationRequest
     public static ValuationRequest Create(
         Guid id,
         string displayId,
-        string propertyId,
+        Guid propertyId,
         string area,
         string propertyType,
         string appraiser,
@@ -44,7 +44,7 @@ public class ValuationRequest
         {
             Id = id,
             DisplayId = displayId.Trim(),
-            PropertyId = propertyId.Trim(),
+            PropertyId = propertyId,
             Area = area.Trim(),
             PropertyType = propertyType.Trim(),
             Appraiser = appraiser.Trim(),

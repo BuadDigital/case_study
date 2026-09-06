@@ -22,14 +22,6 @@ public static class PlatformModel
  /// </param>
     public static ModelBuilder ApplyPlatformModel(this ModelBuilder builder, bool ownsMigrations = true)
     {
-        builder.Entity<CourtCatalogEntry>(e =>
-        {
-            e.ToTable("CourtCatalogEntries", DatabaseSchemas.Platform);
-            e.Property(x => x.City).HasMaxLength(128);
-            e.Property(x => x.Court).HasMaxLength(256);
-            e.Property(x => x.CircuitsJson).HasColumnType("jsonb");
-        });
-
         builder.Entity<Court>(e =>
         {
             e.ToTable("Courts", DatabaseSchemas.Platform);
@@ -40,7 +32,6 @@ public static class PlatformModel
             e.Property(x => x.UpdatedBy).HasMaxLength(128);
             e.HasIndex(x => new { x.Name, x.City }).IsUnique();
             e.HasIndex(x => new { x.Region, x.City });
-            e.HasIndex(x => x.IsActive);
             e.HasMany(x => x.Circuits)
                 .WithOne(x => x.Court)
                 .HasForeignKey(x => x.CourtId)
@@ -55,7 +46,6 @@ public static class PlatformModel
             e.Property(x => x.CreatedBy).HasMaxLength(128).IsRequired();
             e.Property(x => x.UpdatedBy).HasMaxLength(128);
             e.HasIndex(x => new { x.CourtId, x.CircuitNo }).IsUnique();
-            e.HasIndex(x => x.IsActive);
         });
 
         builder.Entity<CourtAuditLog>(e =>
@@ -79,7 +69,6 @@ public static class PlatformModel
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.OfficialId).IsUnique();
             e.HasIndex(x => x.AdminAreaId).IsUnique();
-            e.HasIndex(x => x.IsActive);
             e.HasMany(x => x.Cities)
                 .WithOne(x => x.Region)
                 .HasForeignKey(x => x.RegionId)
@@ -103,7 +92,7 @@ public static class PlatformModel
             e.HasIndex(x => x.NameSearch);
             e.HasIndex(x => new { x.RegionId, x.IsGovernorate });
             e.HasIndex(x => new { x.RegionId, x.Status });
-            e.HasIndex(x => x.IsActive);
+            e.HasAllowedValues("Cities", nameof(City.Status), LocationCatalogStatuses.All);
             e.HasOne(x => x.MergedIntoCity)
                 .WithMany()
                 .HasForeignKey(x => x.MergedIntoCityId)
@@ -129,7 +118,7 @@ public static class PlatformModel
             e.Property(x => x.ReviewedByUserId).HasMaxLength(128);
             e.HasIndex(x => x.NameSearch);
             e.HasIndex(x => new { x.CityId, x.Status });
-            e.HasIndex(x => x.IsActive);
+            e.HasAllowedValues("Districts", nameof(District.Status), LocationCatalogStatuses.All);
             e.HasOne(x => x.MergedIntoDistrict)
                 .WithMany()
                 .HasForeignKey(x => x.MergedIntoDistrictId)
@@ -182,7 +171,7 @@ public static class PlatformModel
                 e.ToTable("ValuationReportTextPackages", DatabaseSchemas.Platform);
             else
                 e.ToTable("ValuationReportTextPackages", DatabaseSchemas.Platform, t => t.ExcludeFromMigrations());
-            e.Property(x => x.TextsJson).IsRequired();
+            e.Property(x => x.TextsJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.CreatedByUserId).HasMaxLength(128);
             e.HasIndex(x => x.Version).IsUnique();
         });
