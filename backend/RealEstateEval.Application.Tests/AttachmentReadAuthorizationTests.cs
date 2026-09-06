@@ -103,7 +103,6 @@ public class AttachmentReadAuthorizationTests
             SizeBytes = 4,
             UploadedByUserId = uploadedBy,
             CreatedAtUtc = DateTime.UtcNow,
-            Content = [0xFF, 0xD8, 0xFF, 0xD9],
         });
         await db.SaveChangesAsync();
         return id;

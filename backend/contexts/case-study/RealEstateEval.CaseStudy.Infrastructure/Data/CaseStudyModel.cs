@@ -66,6 +66,9 @@ public static class CaseStudyModel
         builder.Entity<WorkOrderProperty>(e =>
         {
             MapTable(e, "WorkOrderProperties", DatabaseSchemas.CaseStudy, ownsMigrations);
+ // Edited from intake, bourse, inspection and specialist screens; a stale save must 409
+ // rather than silently overwrite another user's answers.
+            e.UseOptimisticConcurrency();
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.HasIndex(x => x.ReferenceNumber);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
@@ -120,6 +123,17 @@ public static class CaseStudyModel
             e.Property(x => x.FinishingStructure).HasMaxLength(32);
             e.Property(x => x.SpecialistReportExtrasJson).HasColumnType("jsonb");
             e.Property(x => x.RemovalReason).HasMaxLength(500);
+            e.Property(x => x.Area).HasMaxLength(128);
+            e.Property(x => x.Court).HasMaxLength(256);
+            e.Property(x => x.Circuit).HasMaxLength(150);
+            e.Property(x => x.DeedDate).HasMaxLength(32);
+            e.Property(x => x.DeedStatus).HasMaxLength(64);
+            e.Property(x => x.OwnerName).HasMaxLength(256);
+            e.Property(x => x.AssignmentDocFileName).HasMaxLength(512);
+            e.Property(x => x.BourseDeedImageFileName).HasMaxLength(512);
+            e.Property(x => x.DeedOwnershipFileName).HasMaxLength(512);
+            e.Property(x => x.RealEstateRegFileName).HasMaxLength(512);
+            e.Property(x => x.UninspectedUnitsJson).HasColumnType("jsonb");
             e.Property(x => x.City).HasMaxLength(128);
             e.Property(x => x.Region).HasMaxLength(100);
             e.Property(x => x.District).HasMaxLength(128);
@@ -200,7 +214,7 @@ public static class CaseStudyModel
                 .HasMaxLength(32);
             e.Property(x => x.AssigneeRole).HasMaxLength(64);
             e.Property(x => x.AssigneeName).HasMaxLength(256);
-            e.Property(x => x.AssigneeId).HasMaxLength(64);
+            e.Property(x => x.AssigneeId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.WorkflowTaskStatus)
                 .HasMaxLength(32);
@@ -243,11 +257,11 @@ public static class CaseStudyModel
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.PayloadJson).HasColumnType("jsonb");
             e.Property(x => x.ReturnNote).HasMaxLength(4000);
-            e.Property(x => x.SubmittedByUserId).HasMaxLength(450);
+            e.Property(x => x.SubmittedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.SubmittedByName).HasMaxLength(256);
-            e.Property(x => x.AcceptedByUserId).HasMaxLength(450);
+            e.Property(x => x.AcceptedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.AcceptedByName).HasMaxLength(256);
-            e.Property(x => x.ReopenedByUserId).HasMaxLength(450);
+            e.Property(x => x.ReopenedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ReopenedByName).HasMaxLength(256);
             e.HasIndex(x => x.WorkflowTaskId).IsUnique();
             e.HasIndex(x => x.PoNumber);
@@ -269,7 +283,6 @@ public static class CaseStudyModel
             e.Property(x => x.MapLatitude).HasPrecision(10, 6);
             e.Property(x => x.MapLongitude).HasPrecision(10, 6);
             e.HasIndex(x => x.PoNumber);
-            e.HasIndex(x => x.Status);
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => x.PartyTaskSubmissionId).IsUnique();
             e.HasAllowedValues("FieldInspectionWorkspaces", nameof(FieldInspectionWorkspace.Status), PartyTaskSubmissionStatus.All);
@@ -337,7 +350,7 @@ public static class CaseStudyModel
             e.Property(x => x.ReferenceNumber).HasMaxLength(32).IsRequired();
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.Title).HasMaxLength(512);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.ReferenceNumber).IsUnique();
             e.HasIndex(x => new { x.Kind, x.PoNumber });
             e.HasIndex(x => x.CreatedAtUtc);
@@ -355,7 +368,7 @@ public static class CaseStudyModel
         builder.Entity<PoIntakeDraft>(e =>
         {
             MapTable(e, "PoIntakeDrafts", DatabaseSchemas.CaseStudy, ownsMigrations);
-            e.Property(x => x.UserId).HasMaxLength(450);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.DraftJson).HasColumnType("jsonb");
             e.HasIndex(x => x.UserId).IsUnique();
         });

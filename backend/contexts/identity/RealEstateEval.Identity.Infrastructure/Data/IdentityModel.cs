@@ -87,7 +87,7 @@ public static class IdentityModel
         {
             e.ToTable("RefreshTokens", DatabaseSchemas.Identity);
             e.HasKey(x => x.Id);
-            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
             e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
             e.Property(x => x.RevokedReason).HasMaxLength(128);
             e.HasIndex(x => x.TokenHash).IsUnique();
@@ -108,9 +108,12 @@ public static class IdentityModel
                 .WithOne(x => x.HrEmployee)
                 .HasForeignKey<HrEmployeeProfile>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.EmploymentType).HasMaxLength(64);
             e.Property(x => x.Department).HasMaxLength(256);
             e.Property(x => x.Section).HasMaxLength(256);
+            e.Property(x => x.NationalId).HasMaxLength(10);
+            e.Property(x => x.EmployeeNumber).HasMaxLength(64);
         });
 
         builder.Entity<ProcServiceProviderProfile>(e =>
@@ -121,7 +124,20 @@ public static class IdentityModel
                 .WithOne(x => x.ProcProvider)
                 .HasForeignKey<ProcServiceProviderProfile>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ServiceType).HasMaxLength(128);
+            e.Property(x => x.FullName).HasMaxLength(256);
+            e.Property(x => x.OrganizationName).HasMaxLength(256);
+            e.Property(x => x.CommercialRegistration).HasMaxLength(64);
+            e.Property(x => x.DelegateName).HasMaxLength(256);
+            e.Property(x => x.NationalId).HasMaxLength(10);
+            e.Property(x => x.Sector).HasMaxLength(128);
+            e.Property(x => x.Address).HasMaxLength(512);
+            e.Property(x => x.Region).HasMaxLength(128);
+            e.Property(x => x.BankName).HasMaxLength(128);
+            e.Property(x => x.Iban).HasMaxLength(34);
+            e.Property(x => x.BillingEmail).HasMaxLength(256);
+            e.Property(x => x.VatRegistration).HasMaxLength(32);
         });
 
         return builder;

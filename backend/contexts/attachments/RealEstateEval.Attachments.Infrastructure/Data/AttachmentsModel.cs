@@ -25,7 +25,7 @@ public static class AttachmentsModel
             e.Property(x => x.FileName).HasMaxLength(512);
             e.Property(x => x.ContentType).HasMaxLength(128);
             e.Property(x => x.StorageKey).HasMaxLength(1024);
-            e.Property(x => x.UploadedByUserId).HasMaxLength(450);
+            e.Property(x => x.UploadedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => new { x.Scope, x.ScopeKey });
         });
 
@@ -35,6 +35,11 @@ public static class AttachmentsModel
             e.HasKey(x => x.Id);
             e.Property(x => x.Flag).HasMaxLength(64);
             e.HasIndex(x => x.PhotoId).IsUnique();
+ // Metadata is an extension row of the photo attachment and goes with it.
+            e.HasOne<FileAttachment>()
+                .WithMany()
+                .HasForeignKey(x => x.PhotoId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         return builder;

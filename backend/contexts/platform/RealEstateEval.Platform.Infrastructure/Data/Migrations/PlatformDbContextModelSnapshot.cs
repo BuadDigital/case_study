@@ -176,6 +176,9 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("UsageCount")
                         .HasColumnType("integer");
 
@@ -402,6 +405,9 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("UsageCount")
                         .HasColumnType("integer");

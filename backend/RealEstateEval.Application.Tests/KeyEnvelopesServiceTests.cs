@@ -641,7 +641,6 @@ public class KeyEnvelopesServiceTests
             FileName = fileName,
             ContentType = "application/octet-stream",
             SizeBytes = 4,
-            Content = [1, 2, 3, 4],
             UploadedByUserId = "test",
             CreatedAtUtc = DateTime.UtcNow,
         });

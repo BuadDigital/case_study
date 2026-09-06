@@ -125,6 +125,11 @@ dotnet run --project backend/tools/DbMigrate
 # List applied / pending
 dotnet run --project backend/tools/DbMigrate -- list
 
+# Move legacy inline attachment bytes into blob storage. Needed once, before the
+# DropInlineAttachmentContent migration, on any database that still has rows with
+# inline content; BlobStorage__LocalRootPath must be the volume the Attachments service uses.
+dotnet run --project backend/tools/DbMigrate -- attachment-blobs
+
 # Rollback to a named migration (or 0 for empty schema)
 dotnet run --project backend/tools/DbMigrate -- rollback <MigrationName>
 # Prod example:

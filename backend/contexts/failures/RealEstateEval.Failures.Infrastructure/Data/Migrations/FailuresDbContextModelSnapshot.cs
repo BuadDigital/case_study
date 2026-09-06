@@ -111,8 +111,8 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SuspendedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -132,7 +132,9 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
 
                     b.HasIndex("PoNumber");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_PropertyFailures_Suspended")
+                        .HasFilter("\"Status\" = 'suspended'");
 
                     b.HasIndex("PoNumber", "PropertyId");
 

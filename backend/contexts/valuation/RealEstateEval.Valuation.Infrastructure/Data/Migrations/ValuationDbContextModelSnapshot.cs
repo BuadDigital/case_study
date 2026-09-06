@@ -65,9 +65,9 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("ProcessedAtUtc");
+                    b.HasIndex("ProcessedAtUtc")
+                        .HasDatabaseName("IX_OutboxMessages_Processed_ProcessedAtUtc")
+                        .HasFilter("\"ProcessedAtUtc\" IS NOT NULL");
 
                     b.HasIndex(new[] { "CreatedAtUtc" }, "IX_OutboxMessages_Pending_CreatedAtUtc")
                         .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
@@ -287,8 +287,6 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnName("xmin");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Status");
 
                     b.HasIndex("TaskId")
                         .IsUnique();
@@ -543,8 +541,17 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("ValuationRequestId")
                         .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<bool>("WeightIsManual")
                         .HasColumnType("boolean");
@@ -1030,10 +1037,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
-                    b.Property<string>("RequestDate")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                    b.Property<DateOnly>("RequestDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("Status")
                         .IsRequired()

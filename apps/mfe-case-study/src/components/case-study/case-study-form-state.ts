@@ -3,15 +3,8 @@
  * their clamping, the draft seed, the hydration merge and the answer scans
  * (progress summary, missing answers, deed non-match). No React and no I/O.
  */
-import {
-  caseStudyAnswerKey,
-  type CaseStudyFormAnswer,
-  type CaseStudyQuestionSection,
-} from "../../lib/app-data/case-study-form-data";
-import {
-  emptyCaseStudyFormDraft,
-  type CaseStudyFormDraft,
-} from "../../lib/app-data/case-study-form-model";
+import { caseStudyAnswerKey, type CaseStudyFormAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-form-data";
+import { emptyCaseStudyFormDraft, type CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 

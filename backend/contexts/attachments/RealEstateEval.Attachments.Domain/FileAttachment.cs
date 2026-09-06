@@ -7,9 +7,8 @@ public class FileAttachment
     public string ScopeKey { get; set; } = "";
     public string FileName { get; set; } = "";
     public string ContentType { get; set; } = "application/octet-stream";
-    /// <summary>Blob key when stored on disk/S3; preferred over inline <see cref="Content"/>.</summary>
+    /// <summary>Key of the file in blob storage; every attachment has one since the inline column was dropped.</summary>
     public string? StorageKey { get; set; }
-    public byte[]? Content { get; set; }
     public long SizeBytes { get; set; }
     public string UploadedByUserId { get; set; } = "";
     public DateTime CreatedAtUtc { get; set; }

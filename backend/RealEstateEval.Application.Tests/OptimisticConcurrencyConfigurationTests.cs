@@ -31,6 +31,7 @@ public class OptimisticConcurrencyConfigurationTests
     [
         typeof(UserProfile),
         typeof(WorkOrder),
+        typeof(WorkOrderProperty),
         typeof(WorkflowTask),
         typeof(PartyTaskSubmission),
         typeof(FieldInspectionWorkspace),
@@ -39,6 +40,7 @@ public class OptimisticConcurrencyConfigurationTests
         typeof(PropertyFailure),
         typeof(CaseStudyForm),
         typeof(ValuationRequest),
+        typeof(ValuationComparableSelection),
         typeof(PropertyKeyRecord),
         typeof(KeyEnvelope),
         typeof(KeyEnvelopeAssignment),

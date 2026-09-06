@@ -213,7 +213,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         Type = row.PropertyType,
         Appraiser = row.Appraiser,
         Status = row.Status.ToDbValue(),
-        Date = row.RequestDate,
+        Date = row.RequestDate.ToString("yyyy-MM-dd"),
     };
 
  /// <summary>

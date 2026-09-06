@@ -78,11 +78,10 @@ public static class OperationsModel
             e.Property(x => x.ReceiveScenario).HasMaxLength(32);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.FeeAmountSar).HasPrecision(12, 2);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.RequestNumber);
             e.HasIndex(x => x.CreatedAtUtc);
-            e.HasIndex(x => x.Status);
             e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
             e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.Status), KeyEnvelopeStatuses.All);
@@ -108,7 +107,7 @@ public static class OperationsModel
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ConfirmedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
             e.HasIndex(x => new { x.EnvelopeId, x.DeedNumber });
@@ -125,16 +124,15 @@ public static class OperationsModel
             e.Property(x => x.Kind).HasMaxLength(32);
             e.Property(x => x.FromParty).HasMaxLength(256);
             e.Property(x => x.ToParty).HasMaxLength(256);
-            e.Property(x => x.ToUserId).HasMaxLength(450);
+            e.Property(x => x.ToUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.LetterNumber).HasMaxLength(128);
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.ConfirmedByUserId).HasMaxLength(450);
+            e.Property(x => x.ConfirmedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ConfirmedByName).HasMaxLength(256);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId);
-            e.HasIndex(x => x.Status);
             e.HasAllowedValues("KeyEnvelopeHandoffs", nameof(KeyEnvelopeHandoff.Status), KeyHandoffStatuses.All);
         });
 
@@ -143,7 +141,7 @@ public static class OperationsModel
             MapTable(e, "KeyEnvelopeTimelineEntries", DatabaseSchemas.Operations, ownsMigrations);
             e.Property(x => x.EventType).HasMaxLength(64);
             e.Property(x => x.Summary).HasMaxLength(1000);
-            e.Property(x => x.ActorUserId).HasMaxLength(450);
+            e.Property(x => x.ActorUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ActorName).HasMaxLength(256);
             e.HasIndex(x => new { x.EnvelopeId, x.CreatedAtUtc });
         });
@@ -158,11 +156,14 @@ public static class OperationsModel
             e.Property(x => x.StudyHoldStatus).HasMaxLength(32);
             e.Property(x => x.ContactPhones).HasMaxLength(1000);
             e.Property(x => x.Notes).HasMaxLength(4000);
-            e.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.UpdatedByName).HasMaxLength(256);
             e.HasIndex(x => x.PropertyId).IsUnique();
             e.HasIndex(x => x.RequestNumber);
-            e.HasIndex(x => x.StudyHoldStatus);
+ // The gate scan asks only for enabled-no-key rows; keep those in a partial index.
+            e.HasIndex(x => x.StudyHoldStatus)
+                .HasFilter($"\"StudyHoldStatus\" = '{PropertyCourtAccessStatuses.EnabledNoKey}'")
+                .HasDatabaseName("IX_PropertyCourtAccesses_EnabledNoKey");
             e.HasAllowedValues(
                 "PropertyCourtAccesses",
                 nameof(PropertyCourtAccess.StudyHoldStatus),

@@ -165,7 +165,9 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("PricingTableId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_CourtVisitFeeCharges_Open")
+                        .HasFilter("\"Status\" = 'open'");
 
                     b.ToTable("CourtVisitFeeCharges", "financial", t =>
                         {
@@ -191,8 +193,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal>("TotalNetSar")
                         .HasPrecision(14, 2)
@@ -217,16 +219,16 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnType("uuid");
 
                     b.Property<string>("ApprovedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FlaggedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal>("ProposedDiscountSar")
                         .HasPrecision(12, 2)
@@ -258,6 +260,9 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("WorkflowTaskId")
                         .HasColumnType("uuid");
@@ -312,15 +317,15 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime?>("LiftedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LiftedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateOnly?>("PeriodFrom")
                         .HasColumnType("date");
@@ -338,10 +343,13 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 
@@ -525,8 +533,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("ActorUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -585,8 +593,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid>("EnvelopeId")
                         .HasColumnType("uuid");
@@ -616,8 +624,6 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnName("xmin");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CollectionStatus");
 
                     b.HasIndex("EnvelopeId")
                         .IsUnique();
@@ -651,23 +657,23 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CancelledByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime?>("ClosedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ClosedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("DisbursementVoucher")
                         .HasMaxLength(128)
@@ -681,8 +687,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("IssuedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
@@ -728,6 +734,9 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("VendorInvoiceAttachmentId")
                         .HasColumnType("uuid");
 
@@ -738,8 +747,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("VendorInvoiceMatchedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("VendorInvoiceNumber")
                         .HasMaxLength(128)
@@ -749,8 +758,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("VendorInvoiceSubmittedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -770,8 +779,6 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("ReferenceNumber")
                         .IsUnique();
-
-                    b.HasIndex("Status");
 
                     b.ToTable("PartyBillingStatements", "financial", t =>
                         {
@@ -942,6 +949,9 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                     b.Property<Guid>("TableId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -988,8 +998,11 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("SetByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1016,8 +1029,8 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("FollowedAtUtc")
                         .HasColumnType("timestamp with time zone");

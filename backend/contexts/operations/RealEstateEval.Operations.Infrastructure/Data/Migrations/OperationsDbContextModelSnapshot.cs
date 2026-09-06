@@ -82,8 +82,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal?>("FeeAmountSar")
                         .HasPrecision(12, 2)
@@ -157,8 +157,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("RevenueEntitlementAtUtc");
 
-                    b.HasIndex("Status");
-
                     b.ToTable("KeyEnvelopes", "operations", t =>
                         {
                             t.HasCheckConstraint("CK_KeyEnvelopes_FeeAmountSar_NonNegative", "\"FeeAmountSar\" IS NULL OR \"FeeAmountSar\" >= 0");
@@ -181,8 +179,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ConfirmedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("DeedNumber")
                         .IsRequired()
@@ -236,8 +234,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ConfirmedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -249,8 +247,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("CreatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid>("EnvelopeId")
                         .HasColumnType("uuid");
@@ -287,8 +285,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("ToUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -299,8 +297,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.HasKey("Id");
 
                     b.HasIndex("EnvelopeId");
-
-                    b.HasIndex("Status");
 
                     b.ToTable("KeyEnvelopeHandoffs", "operations", t =>
                         {
@@ -321,8 +317,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("ActorUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -593,8 +589,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.Property<string>("UpdatedByUserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -609,7 +605,9 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("RequestNumber");
 
-                    b.HasIndex("StudyHoldStatus");
+                    b.HasIndex("StudyHoldStatus")
+                        .HasDatabaseName("IX_PropertyCourtAccesses_EnabledNoKey")
+                        .HasFilter("\"StudyHoldStatus\" = 'enabled_no_key'");
 
                     b.ToTable("PropertyCourtAccesses", "operations", t =>
                         {

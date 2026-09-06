@@ -103,9 +103,7 @@ public sealed class ValuationReportDocumentService(
             .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-        var reservedDate = DateOnly.TryParse(vr.RequestDate, out var parsedRequestDate)
-            ? parsedRequestDate
-            : today;
+        var reservedDate = vr.RequestDate;
         var sections = visible.Select(def =>
         {
             var title = ValuationReportSectionCatalog.DisplayTitleAr(def, hasStructures);

@@ -1,10 +1,12 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// One engineering-survey area band. <see cref="MaxAreaM2"/> null = open-ended (above previous max).
 /// </summary>
-public class PartyFeePricingTier
+public class PartyFeePricingTier : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
 
     public Guid TableId { get; set; }

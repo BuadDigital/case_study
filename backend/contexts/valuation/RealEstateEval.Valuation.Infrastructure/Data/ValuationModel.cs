@@ -27,7 +27,6 @@ public static class ValuationModel
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.ValuationRequestStatus)
                 .HasMaxLength(32);
-            e.Property(x => x.RequestDate).HasMaxLength(32);
             e.HasIndex(x => x.DisplayId)
                 .IsUnique()
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestDisplayId);
@@ -52,7 +51,6 @@ public static class ValuationModel
             e.Property(x => x.Reason).HasMaxLength(4000);
             e.Property(x => x.SpecialistNote).HasMaxLength(4000);
             e.HasIndex(x => x.TaskId).IsUnique();
-            e.HasIndex(x => x.Status);
             e.HasAllowedValues(
                 "EvaluatorRecallRecords",
                 nameof(EvaluatorRecallRecord.Status),
@@ -113,6 +111,7 @@ public static class ValuationModel
         builder.Entity<ValuationComparableSelection>(e =>
         {
             e.ToTable("ValuationComparableSelections", DatabaseSchemas.Valuation);
+            e.UseOptimisticConcurrency();
             e.Property(x => x.SelectedByUserId).HasMaxLength(128);
             e.Property(x => x.SelectionContext).HasMaxLength(32).IsRequired();
             e.Property(x => x.WeightPct).HasPrecision(9, 4);

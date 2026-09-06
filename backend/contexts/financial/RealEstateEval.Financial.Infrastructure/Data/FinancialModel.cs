@@ -31,24 +31,23 @@ public static class FinancialModel
             e.Property(x => x.PayeeType).HasMaxLength(32);
             e.Property(x => x.TaskKind).HasMaxLength(64);
             e.Property(x => x.Status).HasMaxLength(32);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
-            e.Property(x => x.IssuedByUserId).HasMaxLength(450);
-            e.Property(x => x.ClosedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.IssuedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ClosedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ExternalInvoiceNumber).HasMaxLength(128);
             e.Property(x => x.TransferReceiptRef).HasMaxLength(256);
             e.Property(x => x.TransferReference).HasMaxLength(256);
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.Property(x => x.VendorInvoiceNumber).HasMaxLength(128);
-            e.Property(x => x.VendorInvoiceSubmittedByUserId).HasMaxLength(450);
-            e.Property(x => x.VendorInvoiceMatchedByUserId).HasMaxLength(450);
+            e.Property(x => x.VendorInvoiceSubmittedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.VendorInvoiceMatchedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.RejectedInvoicesJson).HasColumnType("jsonb");
-            e.Property(x => x.CancelledByUserId).HasMaxLength(450);
+            e.Property(x => x.CancelledByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CancelReason).HasMaxLength(1000);
             e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
             e.HasIndex(x => x.ReferenceNumber).IsUnique();
             e.HasIndex(x => x.AssigneeId);
-            e.HasIndex(x => x.Status);
             e.HasIndex(x => x.CreatedAtUtc);
             e.HasIndex(x => x.DisbursementVoucher)
                 .IsUnique()
@@ -108,7 +107,7 @@ public static class FinancialModel
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.Channel).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => x.FollowedAtUtc);
         });
@@ -120,7 +119,7 @@ public static class FinancialModel
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.Flag).HasMaxLength(32);
             e.Property(x => x.Note).HasMaxLength(1000);
-            e.Property(x => x.SetByUserId).HasMaxLength(450);
+            e.Property(x => x.SetByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
         });
@@ -133,11 +132,10 @@ public static class FinancialModel
             e.Property(x => x.AmountSar).HasPrecision(12, 2);
             e.Property(x => x.CollectionStatus).HasMaxLength(32);
             e.Property(x => x.InvoiceReference).HasMaxLength(128);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.CreatedByName).HasMaxLength(256);
             e.HasIndex(x => x.EnvelopeId).IsUnique();
             e.HasIndex(x => x.RequestNumber);
-            e.HasIndex(x => x.CollectionStatus);
             e.HasAllowedValues("KeyReceiptFeeCharges", nameof(KeyReceiptFeeCharge.CollectionStatus), KeyReceiptFeeStatuses.All);
             e.HasNonNegative("KeyReceiptFeeCharges", nameof(KeyReceiptFeeCharge.AmountSar));
         });
@@ -154,7 +152,10 @@ public static class FinancialModel
             e.Property(x => x.Status).HasMaxLength(32);
             e.HasIndex(x => x.OperationsTaskId).IsUnique();
             e.HasIndex(x => x.CreditAssigneeId);
-            e.HasIndex(x => x.Status);
+ // Open charges are the settlement queue; settled rows only ever grow, so index just the open ones.
+            e.HasIndex(x => x.Status)
+                .HasFilter($"\"Status\" = '{CourtVisitFeeStatuses.Open}'")
+                .HasDatabaseName("IX_CourtVisitFeeCharges_Open");
             e.HasIndex(x => x.PricingTableId);
             e.HasAllowedValues("CourtVisitFeeCharges", nameof(CourtVisitFeeCharge.Status), CourtVisitFeeStatuses.All);
             e.HasNonNegative("CourtVisitFeeCharges", nameof(CourtVisitFeeCharge.AmountSar));
@@ -224,12 +225,12 @@ public static class FinancialModel
         {
             MapTable(e, "IncentiveSuspensions", DatabaseSchemas.Financial, ownsMigrations);
             e.HasKey(x => x.Id);
-            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
             e.Property(x => x.AssigneeId).HasMaxLength(128).IsRequired();
             e.Property(x => x.TransactionKey).HasMaxLength(64).IsRequired();
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
-            e.Property(x => x.LiftedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
+            e.Property(x => x.LiftedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => new { x.AssigneeId, x.TransactionKey })
                 .IsUnique()
                 .HasFilter("\"LiftedAtUtc\" IS NULL")
@@ -242,10 +243,10 @@ public static class FinancialModel
             e.HasKey(x => x.Id);
             e.Property(x => x.TransactionKey).HasMaxLength(64).IsRequired();
             e.Property(x => x.TargetAssigneeId).HasMaxLength(128).IsRequired();
-            e.Property(x => x.FlaggedByUserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.FlaggedByUserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
             e.Property(x => x.Status).HasMaxLength(32).IsRequired();
-            e.Property(x => x.ApprovedByUserId).HasMaxLength(450);
+            e.Property(x => x.ApprovedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ResolutionNote).HasMaxLength(2000);
             e.Property(x => x.ProposedDiscountSar).HasPrecision(12, 2);
             e.HasAllowedValues("DiscountFlags", nameof(DiscountFlag.Status), DiscountFlagStatuses.All);
@@ -313,7 +314,7 @@ public static class FinancialModel
             e.Property(x => x.FromStatus).HasMaxLength(32);
             e.Property(x => x.ToStatus).HasMaxLength(32);
             e.Property(x => x.Reason).HasMaxLength(2000);
-            e.Property(x => x.ActorUserId).HasMaxLength(450);
+            e.Property(x => x.ActorUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.WorkflowTaskId);
             e.HasIndex(x => x.CreatedAtUtc);
         });
@@ -323,7 +324,7 @@ public static class FinancialModel
             MapTable(e, "DisbursementBatches", DatabaseSchemas.CaseStudy, ownsMigrations);
             e.HasKey(x => x.Id);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
-            e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.TotalNetSar).HasPrecision(14, 2);
             e.HasNonNegative("DisbursementBatches", nameof(DisbursementBatch.TotalNetSar));
             e.HasIndex(x => x.AssigneeId);

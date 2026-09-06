@@ -119,7 +119,6 @@ public sealed class AttachmentService : IAttachmentService
  // Persist the verified type, so downloads can never echo a client-chosen MIME.
             ContentType = inspection.ContentType,
             StorageKey = storageKey,
-            Content = null,
             SizeBytes = content.LongLength,
             UploadedByUserId = uploadedByUserId,
             CreatedAtUtc = _time.UtcNow(),
@@ -184,9 +183,7 @@ public sealed class AttachmentService : IAttachmentService
         if (!string.IsNullOrWhiteSpace(row.StorageKey))
             await _blobs.DeleteAsync(row.StorageKey, cancellationToken);
 
-        var photo = await _db.PhotoMetadata.FirstOrDefaultAsync(x => x.PhotoId == id, cancellationToken);
-        if (photo is not null) _db.PhotoMetadata.Remove(photo);
-
+ // PhotoMetadata cascades from the attachment row at the database.
         _db.FileAttachments.Remove(row);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
@@ -195,13 +192,10 @@ public sealed class AttachmentService : IAttachmentService
     private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
         AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
 
-    private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct)
-    {
-        if (!string.IsNullOrWhiteSpace(row.StorageKey))
-            return await _blobs.ReadAsync(row.StorageKey, ct);
-
-        return row.Content;
-    }
+    private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct) =>
+        string.IsNullOrWhiteSpace(row.StorageKey)
+            ? null
+            : await _blobs.ReadAsync(row.StorageKey, ct);
 
     private static FileAttachmentMetaDto ToMeta(
         FileAttachment row,
@@ -213,7 +207,7 @@ public sealed class AttachmentService : IAttachmentService
         ScopeKey = row.ScopeKey,
         FileName = row.FileName,
         ContentType = contentTypeOverride ?? row.ContentType,
-        SizeBytes = row.SizeBytes > 0 ? row.SizeBytes : row.Content?.LongLength ?? 0,
+        SizeBytes = row.SizeBytes,
         CreatedAtUtc = row.CreatedAtUtc,
         PhotoMetadata = photo is null
             ? null

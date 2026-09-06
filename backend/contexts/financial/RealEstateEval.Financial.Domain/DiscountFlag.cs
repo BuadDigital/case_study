@@ -1,11 +1,13 @@
+using RealEstateEval.Domain;
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
 /// A specialist's proposed discount on a party fee. It does not change money until a supervisor
 /// of the transaction's department approves it onto the ledger.
 /// </summary>
-public class DiscountFlag
+public class DiscountFlag : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
 
  /// <summary>Work-order PO — the transaction key until introduces a dedicated id.</summary>

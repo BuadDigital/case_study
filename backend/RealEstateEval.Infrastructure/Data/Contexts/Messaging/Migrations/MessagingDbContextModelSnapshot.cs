@@ -22,6 +22,48 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Messaging.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RealEstateEval.Domain.CommandIdempotencyRecord", b =>
+                {
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ActorId", "HttpMethod", "RequestPath", "IdempotencyKey");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("CommandIdempotencyRecords", "messaging");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -62,9 +104,9 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Messaging.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("ProcessedAtUtc");
+                    b.HasIndex("ProcessedAtUtc")
+                        .HasDatabaseName("IX_OutboxMessages_Processed_ProcessedAtUtc")
+                        .HasFilter("\"ProcessedAtUtc\" IS NOT NULL");
 
                     b.HasIndex(new[] { "CreatedAtUtc" }, "IX_OutboxMessages_Pending_CreatedAtUtc")
                         .HasFilter("\"ProcessedAtUtc\" IS NULL AND \"DeadLetteredAtUtc\" IS NULL");
@@ -96,53 +138,11 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Messaging.Migrations
                     b.ToTable("ProcessedIntegrationEvents", "messaging");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Domain.CommandIdempotencyRecord", b =>
-                {
-                    b.Property<string>("ActorId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("HttpMethod")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<string>("RequestPath")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<string>("IdempotencyKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("ResponseBody")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<int>("StatusCode")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ActorId", "HttpMethod", "RequestPath", "IdempotencyKey");
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.ToTable("CommandIdempotencyRecords", "messaging");
-                });
-
             modelBuilder.Entity("RealEstateEval.Domain.PushPreference", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<bool>("PushEnabled")
                         .HasColumnType("boolean");
@@ -205,8 +205,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Messaging.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 
@@ -270,8 +270,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts.Messaging.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 

@@ -8,8 +8,9 @@ namespace RealEstateEval.CaseStudy.Domain;
 /// independent; each deed keeps its own rule. Comparable/cost/weighting
 /// distribution across units belongs to the grouped-property workshop.
 /// </summary>
-public class PropertyGroup
+public class PropertyGroup : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
  /// <summary>Optional display name (e.g. scheme/owner).</summary>
     public string? Name { get; set; }

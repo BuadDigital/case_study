@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 ﻿using RealEstateEval.Domain;
 
 namespace RealEstateEval.Financial.Domain;
@@ -6,8 +7,9 @@ namespace RealEstateEval.Financial.Domain;
 /// Monthly payee billing document (Payment Order) — stages 6–8.
 /// Reference format: FN-CS-YYMMDD-NNN.
 /// </summary>
-public class PartyBillingStatement
+public class PartyBillingStatement : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public string ReferenceNumber { get; set; } = "";
  /// <summary>Distribution assignee id.</summary>

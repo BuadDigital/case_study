@@ -2,8 +2,9 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-public class WorkOrderProperty
+public class WorkOrderProperty : ITrackUpdatedAt
 {
+    public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
  /// <summary>Numbering shop: Internal transaction reference number TX-{year}-{sequence 5}.</summary>
