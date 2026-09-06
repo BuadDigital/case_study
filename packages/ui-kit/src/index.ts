@@ -74,7 +74,18 @@ export {
   reverseGeocodeLocation,
 } from "./lib/google-maps-loader";
 export type { ReverseGeocodeDetail } from "./lib/google-maps-loader";
-export { Skeleton, SkeletonTableRows, PanelSkeleton, InlineLoadingSkeleton } from "./components/Skeleton";
+export {
+  Skeleton,
+  SkeletonTableRows,
+  PanelSkeleton,
+  InlineLoadingSkeleton,
+  PageLoadingHint,
+} from "./components/Skeleton";
+export { GentleBusy, GentleLoadingCopy } from "./components/GentleBusy";
+export {
+  useDeferredVisible,
+  GENTLE_LOADING_DELAY_MS,
+} from "./hooks/use-deferred-visible";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
 export { Input } from "./components/Input";

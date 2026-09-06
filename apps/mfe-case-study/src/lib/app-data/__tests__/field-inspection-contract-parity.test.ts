@@ -118,6 +118,32 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.features).toBeUndefined();
   });
 
+  it("does not demand retired fields the inspector never filled when the specialist re-shows them", () => {
+    const draft = completeDraft();
+    draft.featureValues.assetSubject = "عمارة";
+    draft.featureValues.facade = "شمالية";
+    draft.featureValues.propertyUsage = "سكني";
+    draft.featureValues.buildState = "جيد";
+    draft.featureValues.occupancyState = "شاغر";
+    draft.featureValues.districtState = "متوسط";
+    draft.featurePhotoAttachments.facade = {
+      fileName: "facade.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-facade",
+    };
+    draft.featurePhotoAttachments.buildState = {
+      fileName: "build.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-build",
+    };
+
+    const errors = validateInspectorWorkspace(draft, {
+      includeRetiredFeatureKeys: ["zoneStatus"],
+    });
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("zoneStatus");
+    expect(errors.features).toBeUndefined();
+  });
+
   it("requires a mismatch note when a boundary is marked غير مطابق", () => {
     const draft = completeDraft();
     draft.boundaryMatches.south = {

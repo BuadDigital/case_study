@@ -25,11 +25,12 @@ import {
   InsCard,
   InsEditField,
   InsFieldsGrid,
-  EDIT_CONTROL_CLASS,
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
+  EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
+  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
@@ -135,9 +136,15 @@ export function InspectorWizardLocationStep({
                 }}
               />
             ) : (
-              <div className="py-0.5 text-[13px] font-semibold tabular-nums text-heading [direction:ltr]">
-                {coordsValue || "—"}
-              </div>
+              <input
+                id="ins-map-coords"
+                readOnly
+                tabIndex={-1}
+                aria-readonly="true"
+                className={cn(INSPECTOR_LOCKED_CONTROL_CLASS, "tabular-nums")}
+                dir="ltr"
+                value={coordsValue || "—"}
+              />
             )}
           </div>
           {editable ? (

@@ -11,7 +11,9 @@ import {
   Th,
   THead,
   Tr,
+  cn,
 } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   PROPERTY_BOUNDARY_ROWS,
   type PoPropertyIntake,
@@ -84,7 +86,8 @@ export function PoPropertyBoundariesEntrySection({
                 <Td className="align-top">
                   <Input
                     id={`bnd_desc_${row.descKey}`}
-                    className="text-xs"
+                    className={cn("text-xs", descError && invalidControlClass)}
+                    hasError={Boolean(descError)}
                     value={property[row.descKey]}
                     placeholder="مثال: شارع عرض 15م"
                     onChange={(e) => onPatch(row.descKey, e.target.value)}
@@ -96,7 +99,8 @@ export function PoPropertyBoundariesEntrySection({
                 <Td className="align-top">
                   <Input
                     id={`bnd_len_${row.lenKey}`}
-                    className="text-xs"
+                    className={cn("text-xs", lenError && invalidControlClass)}
+                    hasError={Boolean(lenError)}
                     inputMode="decimal"
                     value={property[row.lenKey]}
                     placeholder="25.00"

@@ -123,6 +123,8 @@ export function poPropertyErrorTargetId(
     case "boundariesExternalDocName":
       return "boundaries_external";
     default:
+      if (key.endsWith("BoundaryLengthM")) return `bnd_len_${key}`;
+      if (key.endsWith("Boundary")) return `bnd_desc_${key}`;
       return null;
   }
 }

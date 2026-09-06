@@ -47,11 +47,10 @@ export function ActiveCaseStudyView() {
     pageTitle: "دراسة حالة العقارات",
     hidePageTitle: true,
     tableLayout: "case-study",
-    disableRowOpen: true,
     emptyLine: "لا توجد معاملات في مرحلة دراسة الحالة.",
     emptyHint:
-      "تظهر هنا بعد تأكيد توزيع المعاملة وإرسال المهام للأطراف. افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮.",
-    tableHint: "افتح عبر رقم الصك أو أمر العمل أو قائمة ⋮.",
+      "تظهر هنا بعد تأكيد توزيع المعاملة وإرسال المهام للأطراف. اضغط الصف لفتح تفاصيل العقار.",
+    tableHint: "اضغط الصف لفتح تفاصيل العقار.",
     panelId: "case-study-panel",
     getBasePath: activeCaseStudyPath,
     getTaskPath: caseStudyTaskPath,

@@ -7,6 +7,7 @@ import {
   Textarea,
   cn,
 } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 
 const MATCH_OPTIONS = [
@@ -23,16 +24,26 @@ export function CaseStudyDeedNatureMatchSection({
   draft,
   disabled,
   onPatch,
+  outcomeInvalid,
+  notesInvalid,
 }: {
   draft: CaseStudyFormDraft;
   disabled?: boolean;
   onPatch: (patch: Partial<CaseStudyFormDraft>) => void;
+  outcomeInvalid?: boolean;
+  notesInvalid?: boolean;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
   const needsNotes = outcome === "differences" || outcome === "impediment";
 
   return (
-    <section className="overflow-hidden rounded-[10px] border border-border">
+    <section
+      id="cs-deed-nature-match"
+      className={cn(
+        "overflow-hidden rounded-[10px] border border-border",
+        outcomeInvalid && invalidControlClass,
+      )}
+    >
       <header className="border-b border-border bg-surface-2 px-4 py-2.5">
         <h3 className="m-0 text-[12.5px] font-bold text-heading">
           مطابقة الصك على الطبيعة
@@ -59,6 +70,7 @@ export function CaseStudyDeedNatureMatchSection({
                     on
                       ? "border-ink bg-ink text-white"
                       : "border-border-md bg-surface text-text-2 hover:text-heading",
+                    outcomeInvalid && !on && invalidControlClass,
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >
@@ -92,9 +104,11 @@ export function CaseStudyDeedNatureMatchSection({
               disabled={disabled}
               rows={3}
               value={draft.deedNatureMatchNotes ?? ""}
+              aria-invalid={notesInvalid || undefined}
               onChange={(e) =>
                 onPatch({ deedNatureMatchNotes: e.target.value })
               }
+              className={cn(notesInvalid && invalidControlClass)}
             />
           </FormGroup>
         ) : null}

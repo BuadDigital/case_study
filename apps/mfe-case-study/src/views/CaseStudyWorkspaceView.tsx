@@ -29,7 +29,11 @@ import { findPropertyForTask } from "../lib/app-data/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/app-data/viewer-task-access";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-answers";
-import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../lib/app-data/inspector-workspace-data";
+import {
+  CASE_STUDY_SPECIALIST_FEATURE_KEYS,
+  isInspectorWorkspaceAccepted,
+  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
+} from "../lib/app-data/inspector-workspace-data";
 import { reopenInspectorWorkspace } from "../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
 import {
@@ -87,7 +91,6 @@ function CaseStudyAppraisalPanel({
   /** True once a tab that shows transaction photos has been visited (fanout gate). */
   documentsEnabled: boolean;
 }) {
-  const router = useRouter();
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -98,6 +101,7 @@ function CaseStudyAppraisalPanel({
   const [inspectionPackageStatus, setInspectionPackageStatus] = useState<
     string | null
   >(null);
+  const [inspectionAccepted, setInspectionAccepted] = useState(false);
   const [inspectionReturnNote, setInspectionReturnNote] = useState<string | null>(
     null,
   );
@@ -145,6 +149,7 @@ function CaseStudyAppraisalPanel({
   useEffect(() => {
     if (!inspectionTask) {
       setInspectionPackageStatus(null);
+      setInspectionAccepted(false);
       setInspectionReturnNote(null);
       return;
     }
@@ -153,6 +158,7 @@ function CaseStudyAppraisalPanel({
       void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((draft) => {
         if (cancelled) return;
         setInspectionPackageStatus(draft?.status ?? null);
+        setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
         setInspectionReturnNote(draft?.returnNote?.trim() || null);
       });
     };
@@ -229,6 +235,11 @@ function CaseStudyAppraisalPanel({
             معاينة العقار — إدخال البيانات
           </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
+          {inspectionAccepted ? (
+            <span className="rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)]">
+              معتمد — مدخلات المعاين مقفلة
+            </span>
+          ) : null}
           {canReturnToInspector && !returnOpen ? (
             <button
               type="button"
@@ -244,8 +255,8 @@ function CaseStudyAppraisalPanel({
           ) : null}
         </div>
         <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-          راجع بيانات المعاين وعدّلها إن لزم. «حفظ وإرسال» يعتمد الحزمة ويفتح
-          التقييم للمقيم. «إعادة للتصحيح» ترجع المهمة للمعاين.
+          راجع بيانات المعاين وعدّلها إن لزم. «{SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}»
+          يعتمد الحزمة ويقفل التبويب. «إعادة للتصحيح» ترجع المهمة للمعاين.
         </p>
 
         {returnOpen ? (
@@ -309,19 +320,17 @@ function CaseStudyAppraisalPanel({
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
-            submitSuccessToast="تم حفظ وإرسال المعاينة — يمكن للمقيم بدء التقييم"
+            submitSuccessToast="تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
             submitFooterAfter={
               <SpecialistValuationReportInputs
                 propertyId={property.id}
                 poNumber={poNumber}
+                readOnly={inspectionAccepted}
               />
             }
             onSubmitted={() => {
+              setInspectionAccepted(true);
               setInspectionReloadKey((n) => n + 1);
-              // Match party-task handoff: let the success toast paint, then leave.
-              window.setTimeout(() => {
-                router.push(poPropertyPath(poNumber, property.id));
-              }, 900);
             }}
           />
         ) : (
@@ -413,18 +422,19 @@ export function CaseStudyWorkspaceView({
     tasksFetched &&
     (!task || !canAccess || (recordFetched && (!record || !property)));
 
+  const waitingForWorkspace =
+    !hasLoadError &&
+    (loading ||
+      shouldRedirect ||
+      !task ||
+      !record ||
+      !property ||
+      propertyIndex < 0);
+
   useEffect(() => {
     if (!shouldRedirect) return;
     router.replace(caseStudyWorkspaceFallbackPath(task));
   }, [shouldRedirect, task, router]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
-        <PanelSkeleton />
-      </div>
-    );
-  }
 
   if (hasLoadError) {
     return (
@@ -447,17 +457,12 @@ export function CaseStudyWorkspaceView({
     );
   }
 
-  if (shouldRedirect || !task) {
+  if (waitingForWorkspace || !task || !record || !property) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
-        <PanelSkeleton />
-      </div>
-    );
-  }
-
-  if (!record || !property || propertyIndex < 0) {
-    return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+      <div
+        className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+        aria-busy
+      >
         <PanelSkeleton />
       </div>
     );

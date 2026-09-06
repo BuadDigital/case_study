@@ -44,6 +44,7 @@ import {
 import {
   collectInspectorPhotoAttachmentIds,
   loadValuationReportPrintAttachments,
+  surveyReportAttachmentIdFromPayload,
   type ValuationReportSlotAttachment,
 } from "../../lib/evaluator/valuation-report-print-attachments";
 import type { ComparablesMapPin } from "../../lib/evaluator/valuation-report-comparables-map";
@@ -201,17 +202,29 @@ async function loadReportOutputBundle(input: {
   const surveyP = input.surveyTaskId
     ? getPartyTaskSubmission(config, input.surveyTaskId)
     : Promise.resolve(null);
-  // Inspection photos are tied to the task id — collected from the inspector draft and passed to the loader.
-  const attachmentsP = inspectorP.then((ws) =>
-    propertyId
-      ? loadValuationReportPrintAttachments(
-          config,
-          // Property documents are keyed `<po>:<propertyId>` — the PO number is part of the needle.
-          { poNumber: input.poNumber, propertyId },
-          true,
-          { inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws) },
-        )
-      : emptyAttach,
+  // Inspection photos and the survey PDF are task-scoped — for-property never
+  // sees them. Collect ids from the inspector draft + engineering submission.
+  const attachmentsP = Promise.all([inspectorP, surveyP]).then(
+    ([ws, surveyRes]) => {
+      if (!propertyId) return emptyAttach;
+      const surveyPayload =
+        surveyRes && "ok" in surveyRes && surveyRes.ok
+          ? (surveyRes.data.payload as Record<string, unknown>)
+          : null;
+      const surveyAttachmentId =
+        surveyReportAttachmentIdFromPayload(surveyPayload);
+      return loadValuationReportPrintAttachments(
+        config,
+        { poNumber: input.poNumber, propertyId },
+        true,
+        {
+          inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
+          surveyAttachmentIds: surveyAttachmentId
+            ? [surveyAttachmentId]
+            : [],
+        },
+      );
+    },
   );
   const [ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach] =
     await Promise.all([
@@ -506,7 +519,7 @@ export function EvaluatorValuationReportOutputTab({
       const opened = openHtmlDocumentInNewTab(html, {
         print: true,
         waitForImages: true,
-        waitForFonts: true,
+        waitForFonts: false,
       });
       if (!opened) {
         setError("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");

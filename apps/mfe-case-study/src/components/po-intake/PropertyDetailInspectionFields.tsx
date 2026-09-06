@@ -5,7 +5,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@platform/ui-kit";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
-import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
+import { EDIT_CONTROL_CLASS, INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 
 const InsFieldsGridCenteredContext = createContext(false);
 
@@ -108,9 +108,8 @@ export function InsEditField({
           tabIndex={-1}
           aria-readonly="true"
           className={cn(
-            EDIT_CONTROL_CLASS,
+            INSPECTOR_LOCKED_CONTROL_CLASS,
             inputCenterClass,
-            "cursor-default font-semibold text-heading",
           )}
           value={value}
         />
@@ -216,7 +215,22 @@ export function InsEditTextarea({
   hint?: string;
 }) {
   if (disabled) {
-    return <InsField label={label} value={value} className={className} />;
+    return (
+      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-text-2">{label}</span>
+        </div>
+        <textarea
+          id={id}
+          rows={rows}
+          readOnly
+          tabIndex={-1}
+          aria-readonly="true"
+          className={cn(INSPECTOR_LOCKED_CONTROL_CLASS, "resize-none")}
+          value={value}
+        />
+      </div>
+    );
   }
   return (
     <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>

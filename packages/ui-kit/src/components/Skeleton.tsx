@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
 import { opsIconBoxGold, opsPanelCard } from "../lib/ops-chrome";
+import { GentleBusy } from "./GentleBusy";
 import { Spinner } from "./Spinner";
 import { Tr, Td } from "./Table";
 
@@ -103,7 +104,9 @@ export function PanelSkeleton({ className }: { className?: string }) {
       )}
       aria-busy
     >
-      <LoadingBox />
+      <GentleBusy>
+        <LoadingBox />
+      </GentleBusy>
     </div>
   );
 }
@@ -115,7 +118,35 @@ export function InlineLoadingSkeleton({ className }: { className?: string }) {
       className={cn("grid w-full place-items-center py-3", className)}
       aria-busy
     >
-      <LoadingBox compact hint="لحظات…" />
+      <GentleBusy>
+        <LoadingBox compact hint="لحظات…" />
+      </GentleBusy>
+    </div>
+  );
+}
+
+/** Spinner + label for settings-style pages — delayed so fast loads stay quiet. */
+export function PageLoadingHint({
+  className,
+  label = "جاري التحميل…",
+}: {
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-center gap-2 text-text-3",
+        className ?? "py-16",
+      )}
+      aria-busy
+    >
+      <GentleBusy>
+        <>
+          <Spinner />
+          <span className="text-[13px]">{label}</span>
+        </>
+      </GentleBusy>
     </div>
   );
 }
@@ -130,21 +161,23 @@ export function SkeletonTableRows({
   className?: string;
 }) {
   return (
-    <>
-      {Array.from({ length: rows }, (_, rowIndex) => (
-        <Tr key={rowIndex} hoverable={false} className={className}>
-          {Array.from({ length: cols }, (_, colIndex) => (
-            <Td key={colIndex}>
-              <Skeleton
-                className={cn(
-                  "h-3",
-                  colIndex === 0 ? "w-20" : "w-full max-w-[120px]",
-                )}
-              />
-            </Td>
-          ))}
-        </Tr>
-      ))}
-    </>
+    <GentleBusy>
+      <>
+        {Array.from({ length: rows }, (_, rowIndex) => (
+          <Tr key={rowIndex} hoverable={false} className={className}>
+            {Array.from({ length: cols }, (_, colIndex) => (
+              <Td key={colIndex}>
+                <Skeleton
+                  className={cn(
+                    "h-3",
+                    colIndex === 0 ? "w-20" : "w-full max-w-[120px]",
+                  )}
+                />
+              </Td>
+            ))}
+          </Tr>
+        ))}
+      </>
+    </GentleBusy>
   );
 }

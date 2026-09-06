@@ -6,7 +6,7 @@
  * the `KeyEnvelope*Dialog` files render the modals, and this file draws the
  * header and wires the pieces together.
  */
-import { cn, opsBtnPrimary, opsPpHeadCard } from "@platform/ui-kit";
+import { cn, GentleBusy, opsBtnPrimary, opsPpHeadCard } from "@platform/ui-kit";
 import {
   envelopeDisplayRef,
   envelopeStatusColor,
@@ -87,8 +87,8 @@ export function KeyEnvelopeDetailPage({
       <KeysBackLink onClick={onBack}>{backLabel}</KeysBackLink>
 
       {loading || !env ? (
-        <div className={cn(opsPpHeadCard, "py-8 text-sm text-text-3")}>
-          جاري التحميل…
+        <div className={cn(opsPpHeadCard, "py-8 text-sm text-text-3")} aria-busy>
+          <GentleBusy>جاري التحميل…</GentleBusy>
         </div>
       ) : (
         <>

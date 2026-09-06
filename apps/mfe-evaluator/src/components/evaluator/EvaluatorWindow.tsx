@@ -35,7 +35,9 @@ import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   firstEvaluatorError,
   firstEvaluatorErrorTarget,
+  evaluatorWorkScreenForErrorTarget,
   validateEvaluatorSubmission,
+  type EvaluatorRetrospectiveDraft,
   type EvaluatorValidationErrors,
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
@@ -59,6 +61,7 @@ import {
   type ValuationWorkNavAvailability,
   type ValuationWorkScreenId,
 } from "./EvaluatorComparableSelectionPanel";
+import { PrimaryBtn } from "./valuation-work/atoms";
 
 export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
 
@@ -173,6 +176,13 @@ export function EvaluatorWindow({
   if (isWorkScreen(activeTab)) lastWorkScreenRef.current = activeTab;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editVersionRef = useRef(0);
+  const retrospectiveRef = useRef<EvaluatorRetrospectiveDraft | null>(null);
+  const onRetrospectiveDraftChange = useCallback(
+    (draft: EvaluatorRetrospectiveDraft) => {
+      retrospectiveRef.current = draft;
+    },
+    [],
+  );
 
   const locked = isEvaluatorFormLocked(draft.status);
   const formDisabled = locked || !gate.ready;
@@ -331,6 +341,7 @@ export function EvaluatorWindow({
       independenceDeclared: draft.independenceDeclared,
       reportWorkers: draft.reportWorkers,
       skipManualLandBuilding: approachesOn,
+      retrospective: retrospectiveRef.current,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -338,8 +349,9 @@ export function EvaluatorWindow({
         firstEvaluatorError(errors) ?? "تحقق من الحقول المطلوبة";
       setFormError(message);
       showToast(message, "error");
-      setActiveTab("review");
-      scheduleScrollToFormField(firstEvaluatorErrorTarget(errors), 120);
+      const targetId = firstEvaluatorErrorTarget(errors);
+      setActiveTab(evaluatorWorkScreenForErrorTarget(targetId));
+      scheduleScrollToFormField(targetId, 180, { retries: 24 });
       return false;
     }
 
@@ -654,11 +666,12 @@ export function EvaluatorWindow({
                     onReportChoicesPatch={onReportChoicesPatch}
                     onSubmit={() => void submit()}
                     submitting={submitBusy}
-                    showSubmit={!formDisabled}
+                    showSubmit={false}
                     screen={workScreen}
                     onScreenChange={onWorkScreenChange}
                     embeddedInTopTabs
                     onNavAvailabilityChange={onNavAvailabilityChange}
+                    onRetrospectiveDraftChange={onRetrospectiveDraftChange}
                   />
                 ) : (
                   <p className="text-[13px] text-text-3">
@@ -678,6 +691,22 @@ export function EvaluatorWindow({
                   assignedAppraiserName={assignedAppraiserName}
                 />
               </Activity>
+            ) : null}
+
+            {!formDisabled && activeTab === "review" ? (
+              <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+                <PrimaryBtn
+                  disabled={submitBusy}
+                  onClick={() => void submit()}
+                >
+                  {submitBusy ? <Spinner /> : null}
+                  <span>
+                    {submitBusy
+                      ? "جاري الاعتماد…"
+                      : "اعتماد التقييم وإرسال للأخصائي"}
+                  </span>
+                </PrimaryBtn>
+              </div>
             ) : null}
           </div>
         </div>

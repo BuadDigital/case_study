@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateEvaluatorSubmission } from "../evaluator-validation";
+import {
+  firstEvaluatorErrorTarget,
+  evaluatorWorkScreenForErrorTarget,
+  validateEvaluatorSubmission,
+} from "../evaluator-validation";
 import { normalizeReportWorkers } from "../evaluator-window-data";
 
 describe("validateEvaluatorSubmission", () => {
@@ -76,6 +80,83 @@ describe("validateEvaluatorSubmission", () => {
       assetDataConfirmed: true,
     });
     expect(errors.forced_sale_discount).toBeTruthy();
+  });
+
+  it("requires a retrospective date when valuation date mode is retrospective", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      assetDataConfirmed: true,
+      retrospective: {
+        mode: "retrospective",
+        kind: "single",
+        date: "",
+        dateEnd: "",
+      },
+    });
+    expect(errors.retrospective_date).toBe("تاريخ الأثر الرجعي إلزامي");
+  });
+
+  it("requires the period end when retrospective range is selected", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+      assetDataConfirmed: true,
+      retrospective: {
+        mode: "retrospective",
+        kind: "range",
+        date: "2024-01-01",
+        dateEnd: "",
+      },
+    });
+    expect(errors.retrospective_date_to).toBe("حدّد تاريخ نهاية الفترة");
+  });
+});
+
+describe("firstEvaluatorErrorTarget", () => {
+  it("points at the review-tab controls that exist on submit", () => {
+    expect(
+      firstEvaluatorErrorTarget({
+        evaluator_price: "مطلوب",
+      }),
+    ).toBe("final-inf-total");
+    expect(
+      firstEvaluatorErrorTarget({
+        forced_sale_discount: "مطلوب",
+      }),
+    ).toBe("final-inf-discount");
+    expect(
+      firstEvaluatorErrorTarget({
+        asset_data_confirmed: "أكّد المراجعة",
+      }),
+    ).toBe("val-asset-data");
+    expect(evaluatorWorkScreenForErrorTarget("final-inf-total")).toBe("review");
+    expect(evaluatorWorkScreenForErrorTarget("final-inf-discount")).toBe(
+      "review",
+    );
+    expect(evaluatorWorkScreenForErrorTarget("val-asset-data")).toBe("review");
+  });
+
+  it("opens basics and focuses the missing retrospective date", () => {
+    expect(
+      firstEvaluatorErrorTarget({
+        retrospective_date: "تاريخ الأثر الرجعي إلزامي",
+        evaluator_price: "مطلوب",
+      }),
+    ).toBe("as-retro-date");
+    expect(
+      firstEvaluatorErrorTarget({
+        retrospective_date_from: "تاريخ الأثر الرجعي إلزامي",
+      }),
+    ).toBe("as-retro-date-from");
+    expect(
+      firstEvaluatorErrorTarget({
+        retrospective_date_to: "حدّد تاريخ نهاية الفترة",
+      }),
+    ).toBe("as-retro-date-to");
+    expect(evaluatorWorkScreenForErrorTarget("as-retro-date")).toBe("basic");
+    expect(evaluatorWorkScreenForErrorTarget("as-retro-date-from")).toBe(
+      "basic",
+    );
+    expect(evaluatorWorkScreenForErrorTarget("as-retro-date-to")).toBe("basic");
   });
 });
 

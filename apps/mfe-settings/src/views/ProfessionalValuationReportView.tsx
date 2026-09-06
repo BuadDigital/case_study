@@ -19,7 +19,7 @@ import {
   type ValuationListsDto,
 } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
-import { Button, Note, PageShell, Spinner, useToast } from "@platform/ui-kit";
+import { Button, Note, PageLoadingHint, PageShell, useToast } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 import { refreshOrgCache } from "../lib/org-settings-ui";
 import {
@@ -128,10 +128,7 @@ export function ProfessionalValuationReportView() {
   if (loading) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <div className="flex items-center justify-center gap-2 py-20 text-text-3">
-          <Spinner />
-          <span className="text-[13px]">جاري التحميل…</span>
-        </div>
+        <PageLoadingHint className="py-20" />
       </PageShell>
     );
   }

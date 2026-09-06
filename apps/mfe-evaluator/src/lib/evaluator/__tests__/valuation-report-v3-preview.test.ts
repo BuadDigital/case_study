@@ -44,6 +44,38 @@ describe("valuation report v3 header meta and page numbers", () => {
     expect(html).not.toContain("من 20");
   });
 
+  it("merges split property-photo pages into one صور العقار section", () => {
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <section class="sec" data-sec="34" data-name="صور العقار (1/2)">
+          <h2><span class="n">34</span>صور العقار (1 من 2)</h2>
+          <div style="display:grid">
+            <image-slot id="photo-1" placeholder="a"></image-slot>
+          </div>
+        </section>
+        <div class="pg-num">صفحة 14 من 20</div>
+      </section>
+      <section class="page pg">
+        <section class="sec" data-sec="34ب" data-name="صور العقار (2/2)">
+          <h2>صور العقار (2 من 2)</h2>
+          <div style="display:grid">
+            <image-slot id="photo-7" placeholder="b"></image-slot>
+          </div>
+        </section>
+        <div class="pg-num">صفحة 15 من 20</div>
+      </section>`,
+      {},
+      "print",
+    );
+    expect(html).toContain("صور العقار</h2>");
+    expect(html).not.toContain("صور العقار (1 من 2)");
+    expect(html).not.toContain("صور العقار (2 من 2)");
+    expect(html).toContain('id="photo-1"');
+    expect(html).toContain('id="photo-7"');
+    expect(html).not.toContain("34ب");
+    expect(html).toContain("صفحة 1 من 1");
+  });
+
   it("prints real report number, date, and deposit code in every header", () => {
     const html = prepareValuationReportV3Html(
       `<section class="page pg"><div class="pg-meta">رقم التقرير: 047789</div></section>`,
@@ -266,5 +298,22 @@ a{color:#102b4e}a:hover{color:#a4906f}
     expect(html).not.toMatch(/(^|})\s*a\s*\{/);
     expect(html).not.toMatch(/\bbody\s*\{/);
     expect(html).not.toMatch(/:not\(:defined\)/);
+  });
+
+  it("does not load Google Maps JS in the print HTML", () => {
+    const prev = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = "test-maps-key";
+    try {
+      const html = prepareValuationReportV3Html(
+        SAMPLE,
+        {},
+        "print",
+      );
+      expect(html).not.toContain("maps.googleapis.com/maps/api/js");
+      expect(html).not.toContain("__ejadaReportMapsInit");
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      else process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = prev;
+    }
   });
 });

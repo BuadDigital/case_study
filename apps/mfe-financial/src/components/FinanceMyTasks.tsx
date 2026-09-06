@@ -22,6 +22,7 @@ import {
   Th,
   Tr,
   cn,
+  GentleBusy,
   opsLetterCard,
   opsPanelCard,
 } from "@platform/ui-kit";
@@ -427,7 +428,7 @@ export function FinanceMyTasks() {
       {pending ? (
         <div className={cn(opsLetterCard, "rounded-xl border-[#ece8df] bg-white")}>
           <div className="px-5 py-[54px] text-center text-[14px] font-bold text-[#73767f]">
-            جاري التحميل…
+            <GentleBusy>جاري التحميل…</GentleBusy>
           </div>
         </div>
       ) : tasks.length === 0 ? (

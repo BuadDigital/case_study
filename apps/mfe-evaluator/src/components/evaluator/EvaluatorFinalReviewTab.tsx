@@ -68,6 +68,8 @@ export function EvaluatorFinalReviewTab({
   onDraftPatch?: (patch: {
     evaluatorPrice?: string;
     forcedSaleDiscountPct?: string;
+    assetDataConfirmed?: boolean;
+    assetDataVarianceNotes?: string;
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   fieldErrors?: Record<string, string>;
@@ -365,6 +367,48 @@ export function EvaluatorFinalReviewTab({
             </div>
           ) : null}
         </ValFieldsGrid>
+      </ValCard>
+
+      <ValCard title="مراجعة بيانات الأصل">
+        <p className={noteClassName}>
+          أكّد مطابقة بيانات الأصل للمعاينة، أو دوّن ملاحظات التباين إن وُجدت.
+        </p>
+        <div
+          id="val-asset-data"
+          className={cn(
+            "rounded-[10px] border border-border bg-surface px-3.5 py-3",
+            err("asset_data_confirmed") && invalidControlClass,
+          )}
+        >
+          <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-text">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
+              disabled={disabled}
+              checked={Boolean(draft.assetDataConfirmed)}
+              onChange={(e) =>
+                onDraftPatch?.({ assetDataConfirmed: e.target.checked })
+              }
+            />
+            <span>أكّدت مراجعة بيانات الأصل ومطابقتها للواقع</span>
+          </label>
+          <textarea
+            id="val-asset-variance-notes"
+            disabled={disabled}
+            rows={3}
+            placeholder="ملاحظات التباين (إلزامية إن لم تُؤكَّد المراجعة)"
+            value={draft.assetDataVarianceNotes}
+            onChange={(e) =>
+              onDraftPatch?.({ assetDataVarianceNotes: e.target.value })
+            }
+            className={cn(opsFldControl, "mt-2.5 min-h-[72px] resize-y")}
+          />
+          {err("asset_data_confirmed") ? (
+            <p className="mt-1.5 text-[11px] text-danger-text">
+              {err("asset_data_confirmed")}
+            </p>
+          ) : null}
+        </div>
       </ValCard>
 
       <ValCard title="الافتراضات الخاصة">

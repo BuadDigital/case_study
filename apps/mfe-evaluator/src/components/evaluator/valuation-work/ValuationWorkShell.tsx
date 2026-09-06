@@ -21,6 +21,10 @@ import type {
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
+import {
+  retrospectiveDraftFromSettings,
+  type EvaluatorRetrospectiveDraft,
+} from "../../../lib/evaluator/evaluator-validation";
 
 import {
   Card,
@@ -100,6 +104,7 @@ export type ValuationWorkShellProps = {
   embeddedInTopTabs?: boolean;
   /** Notify parent which approach tabs should appear (Rule Q-2). */
   onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
+  onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
 };
 
 /**
@@ -127,6 +132,7 @@ export function ValuationWorkShell({
   onScreenChange,
   embeddedInTopTabs = false,
   onNavAvailabilityChange,
+  onRetrospectiveDraftChange,
 }: ValuationWorkShellProps) {
   const [internalScreen, setInternalScreen] =
     useState<ValuationWorkScreenId>("basic");
@@ -208,8 +214,13 @@ export function ValuationWorkShell({
   });
   const effectiveScreen = resolveEffectiveScreen(navItems, screen);
 
-  /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost. */
+  /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost.
+   * Basics + review stay mounted so send-from-any-tab can scroll to their fields. */
   const visitedScreensRef = useRef<Set<ValuationWorkScreenId>>(new Set());
+  if (!loading) {
+    visitedScreensRef.current.add("basic");
+    visitedScreensRef.current.add("review");
+  }
   visitedScreensRef.current.add(effectiveScreen);
   const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
@@ -218,6 +229,12 @@ export function ValuationWorkShell({
     if (!screenControlled) return;
     if (screen !== effectiveScreen) onScreenChange?.(effectiveScreen);
   }, [effectiveScreen, onScreenChange, screen, screenControlled]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const fromSaved = retrospectiveDraftFromSettings(approachSettings);
+    if (fromSaved) onRetrospectiveDraftChange?.(fromSaved);
+  }, [approachSettings, loading, onRetrospectiveDraftChange]);
 
   /* ─── screens ─── */
   function renderMarket() {
@@ -481,8 +498,8 @@ export function ValuationWorkShell({
             onReportChoicesPatch={onReportChoicesPatch}
           />
         </Suspense>
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-          {showSubmit ? (
+        {showSubmit ? (
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
             <PrimaryBtn
               disabled={disabled || submitting}
               onClick={() => onSubmit?.()}
@@ -494,8 +511,8 @@ export function ValuationWorkShell({
                   : "اعتماد التقييم وإرسال للأخصائي"}
               </span>
             </PrimaryBtn>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </>
     );
   }
@@ -588,6 +605,8 @@ export function ValuationWorkShell({
               saving={saving}
               onSavingChange={setSaving}
               onSettingsSaved={onSettingsSaved}
+              fieldErrors={fieldErrors}
+              onRetrospectiveDraftChange={onRetrospectiveDraftChange}
             />
           </Activity>
         ) : null}

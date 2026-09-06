@@ -1,6 +1,6 @@
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
-import { activeSurveyEntryPath, caseStudyWorkspacePath } from "../my-task-routes";
+import { activeSurveyEntryPath } from "../my-task-routes";
 import {
   poPropertyEditPath,
   poPropertyFailurePath,
@@ -224,34 +224,7 @@ export function buildCaseStudyQueueRowMoreItems(options: {
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
-  const failureExists = propertyId
-    ? Boolean(getPropertyFailure(po, propertyId))
-    : false;
-
-  const items: RowMoreMenuItem[] = [
-    {
-      id: "case-study",
-      label: "دراسة العقار",
-      onClick: () =>
-        options.router.push(caseStudyWorkspacePath(options.task.id)),
-    },
-    {
-      id: "register-failure",
-      label: "تسجيل تعذر",
-      danger: true,
-      disabled: !propertyId || failureExists,
-      onClick: () => {
-        if (!propertyId) return;
-        options.router.push(poPropertyFailurePath(po, propertyId));
-      },
-    },
-    {
-      id: "assign-task",
-      label: "إسناد مهمة",
-      onClick: () =>
-        options.router.push(caseStudyWorkspacePath(options.task.id)),
-    },
-  ];
+  const items: RowMoreMenuItem[] = [];
 
   if (
     options.task.kind === "case-study-property" &&

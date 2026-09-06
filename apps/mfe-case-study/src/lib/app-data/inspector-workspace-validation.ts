@@ -20,6 +20,7 @@ import {
   listInspectorPhotoValidationIssues,
   sanitizeInspectorDraftForLand,
   isInspectorPresenceToggleField,
+  isInspectorRetiredFeatureKey,
   INSPECTOR_BOUNDARY_KEYS,
   firstIncompleteServiceAmenitySlotId,
   visibleInspectorFeatureFields,
@@ -279,6 +280,7 @@ export function validateInspectorWorkspace(
     .filter(
       (field) =>
         !isInspectorPresenceToggleField(field) &&
+        !isInspectorRetiredFeatureKey(field.key) &&
         !(submission.featureValues[field.key] ?? "").trim(),
     )
     .map((field) => field.key);

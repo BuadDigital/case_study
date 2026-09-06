@@ -32,6 +32,7 @@ import {
   Note,
   PageShell,
   Select,
+  PageLoadingHint,
   Spinner,
   Table,
   TableEmptyRow,
@@ -410,10 +411,7 @@ export function CourtsView() {
 
       <Card className="overflow-hidden">
         {loading && courts.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-            <Spinner />
-            <span className="text-[13px]">جاري التحميل…</span>
-          </div>
+          <PageLoadingHint />
         ) : (
           <Table className="tabular-nums">
             <THead>

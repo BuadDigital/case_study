@@ -432,8 +432,16 @@ export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([
   "zoneStatus",
 ]);
 
-/** Retired for the field inspector — shown again in case-study specialist appraisal. */
+/**
+ * Retired for the field inspector — shown again in case-study specialist appraisal.
+ * Showing them must not block forwarding the inspector payload as-is.
+ */
 export const CASE_STUDY_SPECIALIST_FEATURE_KEYS = ["zoneStatus"] as const;
+
+/** Retired keys the inspector never answers — optional even when re-shown. */
+export function isInspectorRetiredFeatureKey(key: string): boolean {
+  return RETIRED_INSPECTOR_FEATURE_KEYS.has(key);
+}
 
 export type InspectorFeatureFieldVisibilityOptions = {
   includeRetiredKeys?: readonly string[];
@@ -845,12 +853,28 @@ export function isInspectorWorkspaceLocked(
   return status === "submitted";
 }
 
+export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
+  "اعتماد مدخلات المعاين";
+
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
   draft: Pick<InspectorWorkspaceDraft, "acceptedAtUtc"> | null | undefined,
 ): boolean {
   const stamp = draft?.acceptedAtUtc;
   return typeof stamp === "string" && stamp.trim().length > 0;
+}
+
+/**
+ * Inspector cannot edit after submit. Specialist may correct a submitted
+ * package until they accept it — then the valuation tab locks.
+ */
+export function isInspectorWorkspaceReviewLocked(
+  draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
+  options?: { specialistReview?: boolean },
+): boolean {
+  if (draft.status === "reopened") return false;
+  if (options?.specialistReview) return isInspectorWorkspaceAccepted(draft);
+  return isInspectorWorkspaceLocked(draft.status);
 }
 
 export function inspectorWorkspaceStatusLabel(

@@ -12,7 +12,7 @@ import {
   PageGutter,
   PageShell,
   PageShellHeader,
-  Spinner,
+  PageLoadingHint,
   Table,
   TBody,
   Td,
@@ -91,9 +91,7 @@ export function FieldSyncSupervisorView() {
         </Note>
 
         {loading ? (
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
+          <PageLoadingHint />
         ) : error ? (
           <Note tone="danger">{error}</Note>
         ) : rows.length === 0 ? (

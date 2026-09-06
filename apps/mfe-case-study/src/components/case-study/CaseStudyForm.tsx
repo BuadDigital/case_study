@@ -106,6 +106,7 @@ export function CaseStudyForm({
     saving,
     submittingForm,
     missingAnswerKeys,
+    formFieldErrors,
     partyAnswersByKey,
     partyContribCount,
     setPartyRevision,
@@ -304,9 +305,11 @@ export function CaseStudyForm({
             footer={
               !isParty ? (
                 <RemarksBlock
+                  id="cs-deed-remarks"
                   label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
                   value={draft.deedRemarks}
                   disabled={isFormReadOnly}
+                  invalid={Boolean(formFieldErrors.deedRemarks)}
                   onChange={(v) => patch("deedRemarks", v)}
                 />
               ) : undefined
@@ -342,6 +345,8 @@ export function CaseStudyForm({
             <CaseStudyDeedNatureMatchSection
               draft={draft}
               disabled={isFormReadOnly}
+              outcomeInvalid={Boolean(formFieldErrors.deedNature)}
+              notesInvalid={Boolean(formFieldErrors.deedNatureNotes)}
               onPatch={(p) => {
                 if (p.deedNatureMatchOutcome !== undefined)
                   patch("deedNatureMatchOutcome", p.deedNatureMatchOutcome);

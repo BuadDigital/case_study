@@ -5,6 +5,7 @@ import {
   pairsFromOrgLines,
   photoBudget,
   propertyAttachmentScopeKey,
+  surveyReportAttachmentIdFromPayload,
 } from "../valuation-report-print-attachments";
 import {
   applyValuationReportLiveFill,
@@ -39,6 +40,25 @@ describe("valuation-report-print-attachments", () => {
     expect(propertyAttachmentScopeKey(undefined, "prop-1")).toBe("prop-1");
     // No property — nothing to ask for.
     expect(propertyAttachmentScopeKey("PO-2026-001", "  ")).toBe("");
+  });
+
+  it("reads the survey-report attachment id from the engineering submission", () => {
+    expect(surveyReportAttachmentIdFromPayload(null)).toBeNull();
+    expect(surveyReportAttachmentIdFromPayload({})).toBeNull();
+    expect(
+      surveyReportAttachmentIdFromPayload({
+        surveyReportFileName: "899077003398.pdf",
+      }),
+    ).toBeNull();
+    expect(
+      surveyReportAttachmentIdFromPayload({
+        surveyReportAttachment: {
+          fileName: "899077003398.pdf",
+          mimeType: "application/pdf",
+          attachmentId: "db16acae-3470-4f9e-aaf1-dfc1ca747bd4",
+        },
+      }),
+    ).toBe("db16acae-3470-4f9e-aaf1-dfc1ca747bd4");
   });
 
   it("uses 12 photos for buildings and 6 for land", () => {

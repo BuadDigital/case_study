@@ -19,10 +19,13 @@ import {
   saveCaseStudyFormDraft,
   savePartyCaseStudyFormDraft,
 } from "../../lib/app-data/case-study-form-commands";
-import { scheduleScrollToCaseStudyQuestion } from "../../lib/app-data/case-study-form-ux";
+import {
+  scheduleScrollToCaseStudyField,
+  scheduleScrollToCaseStudyQuestion,
+} from "../../lib/app-data/case-study-form-ux";
 import {
   collectMissingCaseStudyAnswers,
-  deedNonMatchAnswerKeys,
+  firstCaseStudyFormScrollTarget,
 } from "./case-study-form-state";
 import type { CaseStudyFormData } from "./useCaseStudyFormData";
 
@@ -38,6 +41,8 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
     saving,
     setSaving,
     setMissingAnswerKeys,
+    setFormFieldErrors,
+    property,
     isQuestionVisible,
     canEditKey,
     visibleStepIndices,
@@ -189,6 +194,13 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
     value: CaseStudyFormDraft[K],
   ) => {
     if (isParty || draft.status === "submitted") return;
+    if (
+      key === "deedRemarks" ||
+      key === "deedNatureMatchOutcome" ||
+      key === "deedNatureMatchNotes"
+    ) {
+      setFormFieldErrors({});
+    }
     setDraft((d) => {
       const next = { ...d, [key]: value };
       persist(next);
@@ -255,23 +267,25 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
 
     setSaving(true);
     try {
-      const { answered, total, pct } = summary;
-      const deedNonMatchKeys = deedNonMatchAnswerKeys(
-        draft.answers,
+      const gate = firstCaseStudyFormScrollTarget({
+        draft,
         sectionQuestions,
         isQuestionVisible,
-      );
-      if (
-        deedNonMatchKeys.length > 0 &&
-        !String(draft.deedRemarks ?? "").trim()
-      ) {
-        showToast(
-          "الملاحظات إلزامية عند إجابة «غير مطابق» في أسئلة الصك — أكمل ملاحظات قسم الصك.",
-          "error",
-        );
-        if (draft.currentStep !== 0) goStep(0);
+        property,
+        isParty: false,
+      });
+      if (gate?.blocking) {
+        setFormFieldErrors({
+          deedRemarks: gate.invalidDeedRemarks,
+          deedNature: gate.invalidDeedNature,
+          deedNatureNotes: gate.invalidDeedNatureNotes,
+        });
+        if (gate.step !== draft.currentStep) goStep(gate.step);
+        scheduleScrollToCaseStudyField(gate.targetId, 200);
+        showToast(gate.message, "error");
         return;
       }
+      const { answered, total, pct } = summary;
       if (pct < 100) {
         const { missing, firstMissingKey, firstMissingStep } =
           collectMissingCaseStudyAnswers(

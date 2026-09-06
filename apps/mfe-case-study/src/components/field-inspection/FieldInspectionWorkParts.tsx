@@ -125,6 +125,10 @@ export const BOUNDARY_ROW_MAP: Record<
 export const EDIT_CONTROL_CLASS =
   "w-full box-border appearance-none rounded-lg border border-border-md bg-surface px-3 py-2 font-inherit text-[12.5px] text-text outline-none focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]";
 
+/** Read-only fill after specialist acceptance — gray field, not a white edit box. */
+export const INSPECTOR_LOCKED_CONTROL_CLASS =
+  "w-full box-border cursor-default appearance-none rounded-lg border border-transparent bg-[color-mix(in_srgb,var(--ink)_10%,var(--bg))] px-3 py-2 font-inherit text-[12.5px] font-semibold text-text-2 shadow-none outline-none";
+
 export const INS_LABEL_CLASS =
   "mb-[5px] block text-[11px] font-semibold text-text-2";
 

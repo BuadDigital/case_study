@@ -8,6 +8,7 @@ import {
   Label,
   Note,
   cn,
+  GentleBusy,
   useToast,
 } from "@platform/ui-kit";
 import {
@@ -123,7 +124,9 @@ export function InspectionLimitsSection({
       </div>
 
       {loading ? (
-        <p className="text-[12px] text-text-2">جاري التحميل…</p>
+        <GentleBusy>
+          <p className="text-[12px] text-text-2">جاري التحميل…</p>
+        </GentleBusy>
       ) : (
         <>
           <FormGroup>

@@ -2,7 +2,7 @@
 
 /** Sidebar/topbar building blocks: icons, class recipes, pending spinner, chevron, flyout. */
 import { useLinkStatus } from "next/link";
-import { cn, Spinner } from "@platform/ui-kit";
+import { cn, Spinner, useDeferredVisible } from "@platform/ui-kit";
 
 export function TopbarSvgIcon({ children }: { children: React.ReactNode }) {
   return (
@@ -167,7 +167,8 @@ export function navChevronClasses(rail = false) {
  */
 export function NavPending({ fallback = null }: { fallback?: React.ReactNode }) {
   const { pending } = useLinkStatus();
-  if (!pending) return fallback;
+  const show = useDeferredVisible(pending);
+  if (!show) return fallback;
   return (
     <span className="ms-auto inline-flex items-center" aria-label="جاري التحميل">
       <Spinner />

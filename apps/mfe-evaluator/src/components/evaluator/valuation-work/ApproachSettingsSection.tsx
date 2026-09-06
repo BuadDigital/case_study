@@ -7,7 +7,12 @@ import {
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
+import {
+  invalidControlClass,
+  scheduleScrollToFormField,
+} from "@platform/app-shared/form-ux";
 import { cn, opsFldControl, useToast } from "@platform/ui-kit";
+import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
 
 import { valuationPurposeKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
@@ -35,6 +40,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   saving,
   onSavingChange,
   onSettingsSaved,
+  fieldErrors,
+  onRetrospectiveDraftChange,
 }: {
   valuationRequestId: string | null;
   assignmentType?: string;
@@ -43,6 +50,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
   onSettingsSaved: (dto: ValuationApproachSettingsDto) => void;
+  fieldErrors?: Record<string, string>;
+  onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
 }) {
   const { showToast } = useToast();
   const [asMarketEnabled, setAsMarketEnabled] = useState(true);
@@ -102,21 +111,41 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     );
   }, [hydrateKey, settings, assignmentType]);
 
+  useEffect(() => {
+    onRetrospectiveDraftChange?.({
+      mode: asDateMode,
+      kind: asRetroKind,
+      date: asRetroDate,
+      dateEnd: asRetroDateEnd,
+    });
+  }, [
+    asDateMode,
+    asRetroKind,
+    asRetroDate,
+    asRetroDateEnd,
+    onRetrospectiveDraftChange,
+  ]);
+
   async function saveApproachSettings() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
     if (asDateMode === "retrospective") {
       if (!asRetroDate.trim()) {
         showToast("تاريخ الأثر الرجعي إلزامي", "error");
+        scheduleScrollToFormField(
+          asRetroKind === "range" ? "as-retro-date-from" : "as-retro-date",
+        );
         return;
       }
       if (asRetroKind === "range") {
         if (!asRetroDateEnd.trim()) {
           showToast("حدّد تاريخ نهاية الفترة", "error");
+          scheduleScrollToFormField("as-retro-date-to");
           return;
         }
         if (asRetroDateEnd < asRetroDate) {
           showToast("تاريخ النهاية يجب ألا يسبق تاريخ البداية", "error");
+          scheduleScrollToFormField("as-retro-date-to");
           return;
         }
       }
@@ -399,7 +428,11 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       dir="ltr"
                       value={asRetroDate}
                       onChange={(e) => setAsRetroDate(e.target.value)}
-                      className={cn(opsFldControl, "font-semibold")}
+                      className={cn(
+                        opsFldControl,
+                        "font-semibold",
+                        fieldErrors?.retrospective_date && invalidControlClass,
+                      )}
                     />
                   </div>
                 ) : (
@@ -411,14 +444,19 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       >
                         من تاريخ
                       </label>
-                      <input
-                        id="as-retro-date-from"
-                        type="date"
-                        dir="ltr"
-                        value={asRetroDate}
-                        onChange={(e) => setAsRetroDate(e.target.value)}
-                        className={cn(opsFldControl, "font-semibold")}
-                      />
+                        <input
+                          id="as-retro-date-from"
+                          type="date"
+                          dir="ltr"
+                          value={asRetroDate}
+                          onChange={(e) => setAsRetroDate(e.target.value)}
+                          className={cn(
+                            opsFldControl,
+                            "font-semibold",
+                            fieldErrors?.retrospective_date_from &&
+                              invalidControlClass,
+                          )}
+                        />
                     </div>
                     <div>
                       <label
@@ -427,15 +465,20 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       >
                         إلى تاريخ
                       </label>
-                      <input
-                        id="as-retro-date-to"
-                        type="date"
-                        dir="ltr"
-                        value={asRetroDateEnd}
-                        min={asRetroDate || undefined}
-                        onChange={(e) => setAsRetroDateEnd(e.target.value)}
-                        className={cn(opsFldControl, "font-semibold")}
-                      />
+                        <input
+                          id="as-retro-date-to"
+                          type="date"
+                          dir="ltr"
+                          value={asRetroDateEnd}
+                          min={asRetroDate || undefined}
+                          onChange={(e) => setAsRetroDateEnd(e.target.value)}
+                          className={cn(
+                            opsFldControl,
+                            "font-semibold",
+                            fieldErrors?.retrospective_date_to &&
+                              invalidControlClass,
+                          )}
+                        />
                     </div>
                   </div>
                 )}
