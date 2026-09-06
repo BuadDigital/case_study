@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useToast } from "@platform/ui-kit";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useIdempotentAction } from "@platform/app-shared";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
@@ -38,7 +39,10 @@ import {
 import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
-  scrollToInspectorField,
+  inspectorWizardStepForErrorTarget,
+  inspectorWorkspaceHasBlockingErrors,
+  pickInspectorErrorsForWizardStep,
+  scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
@@ -244,17 +248,13 @@ export function useFieldInspectionWorkflow({
       propertyType: property?.propertyType,
     });
     setFieldErrors(errors);
-    if (
-      Object.keys(errors).length > 0 ||
-      (errors.emptyFeatureKeys?.length ?? 0) > 0
-    ) {
+    if (inspectorWorkspaceHasBlockingErrors(errors)) {
       const message = firstInspectorWorkspaceError(errors);
       setFormError(message);
       showToast(message ?? "يرجى تصحيح الحقول", "error");
       const targetId = firstInspectorWorkspaceErrorTarget(errors);
-      if (targetId) {
-        window.setTimeout(() => scrollToInspectorField(targetId), 60);
-      }
+      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+      scheduleInspectorErrorScroll(errors);
       return false;
     }
 
@@ -299,13 +299,11 @@ export function useFieldInspectionWorkflow({
     }
 
     if (result.errors) {
-      setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
-      const targetId = firstInspectorWorkspaceErrorTarget(
-        result.errors as InspectorWorkspaceFieldErrors,
-      );
-      if (targetId) {
-        window.setTimeout(() => scrollToInspectorField(targetId), 60);
-      }
+      const nextErrors = result.errors as InspectorWorkspaceFieldErrors;
+      setFieldErrors(nextErrors);
+      const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
+      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+      scheduleInspectorErrorScroll(nextErrors);
     }
     setFormError(result.message);
     showToast(result.message, "error");
@@ -357,7 +355,8 @@ export function useFieldInspectionWorkflow({
   }, [requestMapMove, showToast]);
 
   const scrollToErrorTarget = useCallback((targetId: string) => {
-    scrollToInspectorField(targetId);
+    setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+    scheduleScrollToFormField(targetId, 80);
   }, []);
 
   const errorLinks = inspectorErrorLinks(fieldErrors);
@@ -391,6 +390,36 @@ export function useFieldInspectionWorkflow({
     setMapBackup(null);
     setMapPinEpoch((n) => n + 1);
   }
+
+  function selectInspectorStep(next: InspectorStepId) {
+    if (!draft || next <= activeStep) {
+      setActiveStep(next);
+      return;
+    }
+    const allErrors = validateInspectorWorkspace(draft, {
+      boundariesUnavailable,
+      classification: property?.classification,
+      propertyType: property?.propertyType,
+    });
+    for (let step = activeStep; step < next; step += 1) {
+      const current = step as InspectorStepId;
+      const stepErrors = pickInspectorErrorsForWizardStep(allErrors, current);
+      if (!inspectorWorkspaceHasBlockingErrors(stepErrors)) continue;
+      const message =
+        firstInspectorWorkspaceError(stepErrors) ??
+        "أكمل الحقول الناقصة قبل المتابعة";
+      setFieldErrors(stepErrors);
+      setFormError(message);
+      showToast(message, "error");
+      setActiveStep(current);
+      scheduleInspectorErrorScroll(stepErrors);
+      return;
+    }
+    setFieldErrors({});
+    setFormError(null);
+    setActiveStep(next);
+  }
+
   return {
     activeStep,
     boundariesUnavailable,
@@ -417,7 +446,7 @@ export function useFieldInspectionWorkflow({
     saveDraft,
     saveState,
     scrollToErrorTarget,
-    setActiveStep,
+    setActiveStep: selectInspectorStep,
     setMapPinned,
     showToast,
     submit,

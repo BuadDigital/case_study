@@ -6,6 +6,7 @@
  */
 
 import { Button, cn, Select } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import {
   INSPECTOR_OBSERVATION_CATEGORIES,
@@ -32,6 +33,7 @@ export function InspectorFieldObservationsCard({
   editable,
   serviceProofFromTransactionPhotos,
   transactionPhotos,
+  missingObservationId,
   onPatch,
 }: {
   deedNumber: string;
@@ -39,6 +41,7 @@ export function InspectorFieldObservationsCard({
   editable: boolean;
   serviceProofFromTransactionPhotos: boolean;
   transactionPhotos: PropertyDetailDocumentEntry[];
+  missingObservationId?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const photoStamp = inspectorPhotoStampText(draft);
@@ -51,6 +54,7 @@ export function InspectorFieldObservationsCard({
           <DetailBadge tone="gray">شرح + صورة لكل ملاحظة</DetailBadge>
         }
       >
+        <div id="ins-observations">
         {draft.observations.length === 0 ? (
           <p className="m-0 mt-2 text-[11.5px] text-text-3">
             لا توجد ملاحظات ميدانية مسجّلة.
@@ -62,7 +66,11 @@ export function InspectorFieldObservationsCard({
             return (
             <div
               key={obs.id}
-              className="grid grid-cols-[150px_minmax(0,1fr)_auto_auto] items-stretch gap-2 rounded-lg border border-border bg-surface-2 p-2.5"
+              id={`ins-observation-${obs.id}`}
+              className={cn(
+                "grid grid-cols-[150px_minmax(0,1fr)_auto_auto] items-stretch gap-2 rounded-lg border border-border bg-surface-2 p-2.5",
+                missingObservationId === obs.id && invalidControlClass,
+              )}
             >
               <Select
                 value={obs.category}
@@ -81,7 +89,11 @@ export function InspectorFieldObservationsCard({
                 ))}
               </Select>
               <input
-                className={cn(EDIT_CONTROL_CLASS, "h-full min-h-9")}
+                className={cn(
+                  EDIT_CONTROL_CLASS,
+                  "h-full min-h-9",
+                  missingObservationId === obs.id && invalidControlClass,
+                )}
                 placeholder="اشرح الملاحظة…"
                 value={obs.text}
                 disabled={!editable}
@@ -210,6 +222,7 @@ export function InspectorFieldObservationsCard({
             إضافة ملاحظة موثّقة
           </Button>
         ) : null}
+        </div>
       </InsCard>
     </>
   );

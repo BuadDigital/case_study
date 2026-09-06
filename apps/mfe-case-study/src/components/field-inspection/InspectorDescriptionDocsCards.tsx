@@ -150,6 +150,7 @@ export function InspectorDefinedPhotosCard({
           disabled={locked}
           onPatch={(patch) => persist(patch)}
           layout={mobile ? "mobile" : "desktop"}
+          invalidSlotId={fieldErrors.missingDefinedPhotoSlotId}
         />
       </InspectorCard>
       {fieldErrors.definedPhotos ? (

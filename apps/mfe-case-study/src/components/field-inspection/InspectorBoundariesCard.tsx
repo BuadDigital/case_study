@@ -7,6 +7,7 @@
  * the workflow hook.
  */
 import { cn, formControlClassName, Input, Select, Textarea } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
@@ -27,18 +28,20 @@ export function InspectorBoundariesCard({
   activeStep,
   draft,
   facadeTypeOptions,
+  fieldErrors = {},
   layout,
   locked,
   mobile,
   persist,
   property,
-}: Pick<FieldInspectionWorkflow, "activeStep" | "facadeTypeOptions" | "locked" | "persist"> & {
+}: Pick<FieldInspectionWorkflow, "activeStep" | "facadeTypeOptions" | "fieldErrors" | "locked" | "persist"> & {
   draft: InspectorWorkspaceDraft;
   layout: "desktop" | "mobile";
   mobile: boolean;
   property: PoPropertyIntake;
 }) {
   return (
+    <div id="ins-boundaries-section">
     <InspectorCard
       title="الحدود والأطوال"
       hidden={activeStep !== 2}
@@ -66,10 +69,12 @@ export function InspectorBoundariesCard({
         const row = BOUNDARY_ROW_MAP[key];
         const deed = boundaryDeedDisplay(property[row.descKey], property[row.lenKey]);
         const match = draft.boundaryMatches[key];
+        const mismatchInvalid = fieldErrors.missingBoundaryKey === key;
         if (mobile) {
           return (
             <div
               key={key}
+              id={`ins-boundary-${key}`}
               className="border-b border-border py-3.5 last:border-b-0"
             >
               <div className="mb-2.5 flex items-start justify-between gap-2">
@@ -110,12 +115,17 @@ export function InspectorBoundariesCard({
                   placeholder="ملاحظة عدم التطابق"
                   value={match.mismatchNote}
                   disabled={locked}
+                  aria-invalid={mismatchInvalid || undefined}
                   onChange={(e) =>
                     persist(
                       boundaryMatchPatch(draft, key, { mismatchNote: e.target.value }),
                     )
                   }
-                  className={cn(mobileControlClassName, "mt-2")}
+                  className={cn(
+                    mobileControlClassName,
+                    "mt-2",
+                    mismatchInvalid && invalidControlClass,
+                  )}
                 />
               ) : null}
             </div>
@@ -124,6 +134,7 @@ export function InspectorBoundariesCard({
         return (
           <div
             key={key}
+            id={`ins-boundary-${key}`}
             className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
           >
             <span className="text-xs font-semibold text-text-2">
@@ -171,12 +182,17 @@ export function InspectorBoundariesCard({
                   rows={2}
                   placeholder="ملاحظة عدم التطابق..."
                   value={match.mismatchNote}
+                  aria-invalid={mismatchInvalid || undefined}
                   onChange={(e) =>
                     persist(
                       boundaryMatchPatch(draft, key, { mismatchNote: e.target.value }),
                     )
                   }
-                  className={cn(formControlClassName, "mt-2 min-h-12 text-xs")}
+                  className={cn(
+                    formControlClassName,
+                    "mt-2 min-h-12 text-xs",
+                    mismatchInvalid && invalidControlClass,
+                  )}
                 />
               ) : null}
             </div>
@@ -184,5 +200,6 @@ export function InspectorBoundariesCard({
         );
       })}
     </InspectorCard>
+    </div>
   );
 }

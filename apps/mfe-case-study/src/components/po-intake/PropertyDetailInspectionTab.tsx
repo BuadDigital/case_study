@@ -79,9 +79,9 @@ import { InspectorMovablesDescriptionField } from "../field-inspection/Inspector
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 import {
   firstInspectorWorkspaceError,
-  firstInspectorWorkspaceErrorTarget,
   inspectorInvalidControlClass,
-  scrollToInspectorField,
+  inspectorWorkspaceHasBlockingErrors,
+  scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
@@ -415,16 +415,13 @@ export function PropertyDetailInspectionTab({
       });
       // Confirmation is set above — don't block on it for this path.
       delete errors.inspectionConfirmed;
-      if (Object.keys(errors).length > 0 || (errors.emptyFeatureKeys?.length ?? 0) > 0) {
+      if (inspectorWorkspaceHasBlockingErrors(errors)) {
         setFieldErrors(errors);
         const message =
           firstInspectorWorkspaceError(errors) ?? "يرجى مراجعة بيانات المعاينة";
         setFormError(message);
         showToast(message, "error");
-        const targetId = firstInspectorWorkspaceErrorTarget(errors);
-        if (targetId) {
-          window.setTimeout(() => scrollToInspectorField(targetId), 60);
-        }
+        scheduleInspectorErrorScroll(errors);
         return;
       }
 
@@ -435,12 +432,9 @@ export function PropertyDetailInspectionTab({
       if (!result.ok) {
         if (result.errors) {
           setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
-          const targetId = firstInspectorWorkspaceErrorTarget(
+          scheduleInspectorErrorScroll(
             result.errors as InspectorWorkspaceFieldErrors,
           );
-          if (targetId) {
-            window.setTimeout(() => scrollToInspectorField(targetId), 60);
-          }
         }
         setFormError(result.message);
         showToast(result.message, "error");
@@ -519,6 +513,14 @@ export function PropertyDetailInspectionTab({
           fieldErrors={fieldErrors}
           flat={!steps}
           hideSubmitFooter={Boolean(submitFooterAfter)}
+          onStepGateFailed={(errors, message) => {
+            setFieldErrors(errors);
+            setFormError(message);
+          }}
+          onStepGateClear={() => {
+            setFieldErrors({});
+            setFormError(null);
+          }}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}
@@ -559,6 +561,7 @@ export function PropertyDetailInspectionTab({
         <InspectorWorkspaceSubmitFooter
           draft={draft}
           saving={submitBusy}
+          confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}

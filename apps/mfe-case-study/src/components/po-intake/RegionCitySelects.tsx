@@ -64,6 +64,7 @@ export function RegionCitySelects({
   const [regions, setRegions] = useState<SelectableRegionDto[]>([]);
   const [cities, setCities] = useState<SelectableCityDto[]>([]);
   const [districts, setDistricts] = useState<SelectableDistrictDto[]>([]);
+  const [regionsLoading, setRegionsLoading] = useState(true);
   const [citiesLoading, setCitiesLoading] = useState(false);
   const [districtsLoading, setDistrictsLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -81,10 +82,13 @@ export function RegionCitySelects({
     const config = regionsApiConfig();
     if (!config) {
       setRegions([]);
+      setRegionsLoading(false);
       setCatalogError("يجب تسجيل الدخول لتحميل المناطق والمدن");
       return;
     }
 
+    setRegionsLoading(true);
+    setCatalogError(null);
     void listSelectableRegions(config).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
@@ -102,6 +106,8 @@ export function RegionCitySelects({
           ? "لا توجد مناطق في النظام — أعد تشغيل Platform API"
           : null,
       );
+    }).finally(() => {
+      if (!cancelled) setRegionsLoading(false);
     });
 
     return () => {
@@ -122,18 +128,20 @@ export function RegionCitySelects({
     const config = regionsApiConfig();
     if (!config || !regionId) {
       setCities([]);
+      setCitiesLoading(false);
       return;
     }
     const seq = ++citySearchSeq.current;
     setCitiesLoading(true);
     void listSelectableCities(config, regionId, query).then((result) => {
       if (seq !== citySearchSeq.current) return;
-      setCitiesLoading(false);
       if (!result.ok) {
         setCities([]);
         return;
       }
       setCities(result.cities);
+    }).finally(() => {
+      if (seq === citySearchSeq.current) setCitiesLoading(false);
     });
   };
 
@@ -141,18 +149,20 @@ export function RegionCitySelects({
     const config = regionsApiConfig();
     if (!config || !cityId) {
       setDistricts([]);
+      setDistrictsLoading(false);
       return;
     }
     const seq = ++districtSearchSeq.current;
     setDistrictsLoading(true);
     void listSelectableDistricts(config, cityId, query).then((result) => {
       if (seq !== districtSearchSeq.current) return;
-      setDistrictsLoading(false);
       if (!result.ok) {
         setDistricts([]);
         return;
       }
       setDistricts(result.districts);
+    }).finally(() => {
+      if (seq === districtSearchSeq.current) setDistrictsLoading(false);
     });
   };
 
@@ -326,6 +336,7 @@ export function RegionCitySelects({
         required={required}
         options={regionOptions}
         value={selectedRegionId}
+        loading={regionsLoading}
         error={fieldErrors.region ?? catalogError ?? undefined}
         placeholder="اختر المنطقة..."
         onChange={(value) => {
@@ -351,9 +362,11 @@ export function RegionCitySelects({
           serverFiltered
           loading={citiesLoading}
           placeholder={
-            selectedRegionId
-              ? "ابحث عن مدينة (المحافظات أولاً)…"
-              : "اختر المنطقة أولاً…"
+            !selectedRegionId
+              ? "اختر المنطقة أولاً…"
+              : citiesLoading
+                ? "جاري التحميل…"
+                : "ابحث عن مدينة (المحافظات أولاً)…"
           }
           hint="بدون بحث تظهر المحافظات فقط — اكتب لتوسيع البحث"
           createLabel={(q) => `إضافة «${q}» كمدينة مبدئية`}
@@ -403,7 +416,11 @@ export function RegionCitySelects({
           serverFiltered
           loading={districtsLoading}
           placeholder={
-            selectedCityId ? "ابحث عن حي أو أضف مبدئياً…" : "اختر المدينة أولاً…"
+            !selectedCityId
+              ? "اختر المدينة أولاً…"
+              : districtsLoading
+                ? "جاري التحميل…"
+                : "ابحث عن حي أو أضف مبدئياً…"
           }
           hint="قائمة الأحياء تُبنى من إدخالات المستخدمين"
           createLabel={(q) => `إضافة «${q}» كحي مبدئي`}

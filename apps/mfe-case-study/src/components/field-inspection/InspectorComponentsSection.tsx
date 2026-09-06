@@ -40,6 +40,7 @@ import {
   cn,
   formControlClassName,
 } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
@@ -195,7 +196,16 @@ export function InspectorComponentsSection({
               />
             )}
             {photoMeta && count > 0 ? (
-              <div className="mt-1.5">
+              <div
+                id={`ins-component-photo-${photoMeta.photoKey}`}
+                className={cn(
+                  "mt-1.5",
+                  fieldErrors.missingComponentPhotoKey === photoMeta.photoKey &&
+                    invalidControlClass,
+                  fieldErrors.missingComponentPhotoKey === photoMeta.photoKey &&
+                    "rounded-md p-0.5",
+                )}
+              >
                 {attachment?.fileName ? (
                   <InspectorStampedPhotoThumb
                     compact

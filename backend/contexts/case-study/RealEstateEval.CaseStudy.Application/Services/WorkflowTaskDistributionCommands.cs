@@ -552,7 +552,9 @@ public sealed class WorkflowTaskDistributionCommands : IWorkflowTaskDistribution
         return kind switch
         {
             WorkflowTaskKind.EngineeringSurvey => $"/active-survey/{id}",
-            WorkflowTaskKind.FieldInspection => $"/property-inspection/{id}",
+            // Official inspector queue — `/property-inspection` is the orphan
+            // screen and is not on the field-inspector role's pages.
+            WorkflowTaskKind.FieldInspection => $"/active-inspection/{id}",
             WorkflowTaskKind.PropertyAppraisal => $"/property-appraisal/{id}",
             _ => "/operations-tasks",
         };

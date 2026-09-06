@@ -6,6 +6,7 @@
  */
 
 import { cn, Select } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import {
   PROPERTY_BOUNDARY_ROWS,
@@ -28,11 +29,13 @@ export function InspectorBoundaryMatchTable({
   property,
   draft,
   editable,
+  mismatchNoteInvalidKey,
   onPatch,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
   editable: boolean;
+  mismatchNoteInvalidKey?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const catalogFacadeOptions = useFacadeOptions();
@@ -41,6 +44,7 @@ export function InspectorBoundaryMatchTable({
   return (
     <>
       {!boundariesMarkedUnavailable(property.boundariesAvailability) ? (
+        <div id="ins-boundaries-section">
         <InsCard
           title="الحدود والأطوال"
           badge={
@@ -86,7 +90,7 @@ export function InspectorBoundaryMatchTable({
                   const ok = match?.matches !== false;
                   const facadeKey = `boundaryFacade:${matchKey}`;
                   return (
-                    <tr key={row.descKey}>
+                    <tr key={row.descKey} id={`ins-boundary-${matchKey}`}>
                       <td className={cn(INS_TD_CLASS, "font-bold text-heading")}>
                         {row.label}
                       </td>
@@ -183,7 +187,12 @@ export function InspectorBoundaryMatchTable({
                         {!ok ? (
                           editable ? (
                           <input
-                            className={cn(EDIT_CONTROL_CLASS, "text-[11.5px]")}
+                            className={cn(
+                              EDIT_CONTROL_CLASS,
+                              "text-[11.5px]",
+                              mismatchNoteInvalidKey === matchKey &&
+                                invalidControlClass,
+                            )}
                             placeholder="ملاحظة عدم التطابق…"
                             value={match?.mismatchNote ?? ""}
                             onChange={(e) =>
@@ -214,6 +223,7 @@ export function InspectorBoundaryMatchTable({
             </table>
           </div>
         </InsCard>
+        </div>
       ) : null}
     </>
   );

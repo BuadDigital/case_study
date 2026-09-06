@@ -99,8 +99,7 @@ export function InspectorWizardServicesCard({
             }
           />
         </div>
-        {draft.services.length > 0 || draft.amenities.length > 0 ? (
-          <div id="ins-defined-photos" className="mt-4 border-t border-border pt-3">
+        <div id="ins-defined-photos" className="mt-4 border-t border-border pt-3">
             {fieldErrors.definedPhotos ? (
               <p className="mb-2 text-[10px] text-danger-text" role="alert">
                 {fieldErrors.definedPhotos}
@@ -116,9 +115,9 @@ export function InspectorWizardServicesCard({
                   ? transactionPhotos
                   : undefined
               }
+              invalidSlotId={fieldErrors.missingDefinedPhotoSlotId}
             />
           </div>
-        ) : null}
       </InsCard>
     </>
   );

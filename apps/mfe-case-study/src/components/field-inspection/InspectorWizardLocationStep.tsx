@@ -31,6 +31,7 @@ import {
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
 } from "./FieldInspectionWorkParts";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 
 export function InspectorWizardLocationStep({
@@ -76,6 +77,7 @@ export function InspectorWizardLocationStep({
   return (
     <>
       <InsCard title="تحديد موقع العقار" step={1}>
+        <div id="ins-map-section">
         <div
           key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
           className="relative h-[280px] overflow-hidden rounded-lg border border-border"
@@ -111,7 +113,12 @@ export function InspectorWizardLocationStep({
             </span>
             {editable ? (
               <input
-                className={cn(EDIT_CONTROL_CLASS, "tabular-nums")}
+                id="ins-map-coords"
+                className={cn(
+                  EDIT_CONTROL_CLASS,
+                  "tabular-nums",
+                  fieldErrors.mapLatitude && invalidControlClass,
+                )}
                 dir="ltr"
                 placeholder="21.523339, 39.187743"
                 value={coordsValue}
@@ -159,6 +166,14 @@ export function InspectorWizardLocationStep({
             التقرير.
           </p>
         ) : null}
+        {fieldErrors.mapLatitude ? (
+          <p className="mt-2 mb-0 text-[11px] text-danger-text" role="alert">
+            {fieldErrors.mapLatitude}
+          </p>
+        ) : null}
+        <span id="ins-date" className="sr-only" />
+        <span id="ins-time" className="sr-only" />
+        </div>
       </InsCard>
 
       <InsCard title="بيانات الموقع والوصول" step={2}>
@@ -197,7 +212,13 @@ export function InspectorWizardLocationStep({
       </InsCard>
 
       <InsCard title="تصوير العقار" step={3}>
-        <div id="ins-property-photos">
+        <div
+          id="ins-property-photos"
+          className={cn(
+            fieldErrors.freePhotos && invalidControlClass,
+            fieldErrors.freePhotos && "rounded-md p-0.5",
+          )}
+        >
           <InspectorPropertyPhotosSection
             draft={draft}
             disabled={!editable}
