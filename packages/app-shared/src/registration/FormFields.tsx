@@ -179,6 +179,7 @@ export function RegSelect({
   error,
   hint,
   disabled,
+  loading = false,
   placeholder,
 }: {
   id: string;
@@ -191,28 +192,33 @@ export function RegSelect({
   error?: string;
   hint?: string;
   disabled?: boolean;
+  loading?: boolean;
   placeholder?: string;
 }) {
   const entries = regSelectEntries(options);
+  const busy = Boolean(loading);
   return (
     <FieldWrap
       label={label}
       required={required}
       className={className}
-      error={error}
+      error={busy ? undefined : error}
       hint={hint}
       fieldId={id}
     >
       <Select
         id={id}
-        hasError={Boolean(error)}
+        hasError={!busy && Boolean(error)}
         value={value}
-        disabled={disabled}
+        disabled={disabled || busy}
         onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={!busy && error ? true : undefined}
+        aria-busy={busy || undefined}
         className="disabled:cursor-not-allowed disabled:opacity-65"
       >
-        <option value="">{placeholder ?? "اختر..."}</option>
+        <option value="">
+          {busy ? "جاري التحميل…" : (placeholder ?? "اختر...")}
+        </option>
         {entries.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

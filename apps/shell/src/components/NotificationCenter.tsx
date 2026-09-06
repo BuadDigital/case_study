@@ -209,14 +209,14 @@ export function NotificationCenter() {
       {open ? (
         <>
           <div
-            className="fixed inset-0 z-40 bg-[rgba(10,33,56,0.35)] lg:hidden"
+            className="fixed inset-0 z-[var(--z-toast)] bg-[rgba(10,33,56,0.35)] lg:hidden"
             aria-hidden
             onClick={() => setOpen(false)}
           />
           <div
             className={cn(
-              "absolute end-0 top-[calc(100%+6px)] z-50 w-80 overflow-hidden rounded-md border border-border bg-surface shadow-modal",
-              "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-auto max-lg:z-50 max-lg:flex max-lg:max-h-[min(88dvh,100%)] max-lg:w-full max-lg:flex-col max-lg:rounded-b-none max-lg:rounded-t-[16px]",
+              "absolute end-0 top-[calc(100%+6px)] z-[var(--z-toast)] w-80 overflow-hidden rounded-md border border-border bg-surface shadow-modal",
+              "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-auto max-lg:flex max-lg:max-h-[min(88dvh,100%)] max-lg:w-full max-lg:flex-col max-lg:rounded-b-none max-lg:rounded-t-[16px]",
             )}
             role="dialog"
             aria-label="مركز الإشعارات"

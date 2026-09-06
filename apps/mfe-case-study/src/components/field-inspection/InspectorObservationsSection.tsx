@@ -31,6 +31,7 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 export function InspectorObservationsSection({
   activeStep,
@@ -94,12 +95,18 @@ export function InspectorObservationsSection({
     ) : null}
     {draft.observations.map((obs) => {
       const obsPhotoRef = `observation:${obs.id}`;
+      const obsInvalid = fieldErrors.missingObservationId === obs.id;
 
       if (mobile) {
         return (
           <div
             key={obs.id}
-            className={cn(opsInsetPanel, "mb-2.5 flex gap-2.5 p-2.5")}
+            id={`ins-observation-${obs.id}`}
+            className={cn(
+              opsInsetPanel,
+              "mb-2.5 flex gap-2.5 p-2.5",
+              obsInvalid && invalidControlClass,
+            )}
           >
             <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-border bg-surface">
               {obs.photo?.fileName ? (
@@ -186,6 +193,7 @@ export function InspectorObservationsSection({
                 placeholder="اشرح الملاحظة..."
                 value={obs.text}
                 disabled={locked}
+                aria-invalid={obsInvalid || undefined}
                 onChange={(e) =>
                   persist({
                     observations: draft.observations.map((o) =>
@@ -217,7 +225,11 @@ export function InspectorObservationsSection({
       return (
       <div
         key={obs.id}
-        className="relative mb-2.5 flex flex-col items-stretch gap-3.5 rounded-lg border border-border bg-surface-2 p-3 sm:flex-row"
+        id={`ins-observation-${obs.id}`}
+        className={cn(
+          "relative mb-2.5 flex flex-col items-stretch gap-3.5 rounded-lg border border-border bg-surface-2 p-3 sm:flex-row",
+          obsInvalid && invalidControlClass,
+        )}
       >
         <div className="flex w-full shrink-0 flex-col items-center justify-center sm:w-[116px]">
           {obs.photo?.fileName ? (
@@ -324,6 +336,7 @@ export function InspectorObservationsSection({
             rows={2}
             placeholder="اشرح الملاحظة..."
             value={obs.text}
+            aria-invalid={obsInvalid || undefined}
             onChange={(e) =>
               persist({
                 observations: draft.observations.map((o) =>
@@ -331,7 +344,11 @@ export function InspectorObservationsSection({
                 ),
               })
             }
-            className={cn(formControlClassName, "min-h-[62px] text-xs")}
+            className={cn(
+              formControlClassName,
+              "min-h-[62px] text-xs",
+              obsInvalid && invalidControlClass,
+            )}
           />
           <div className="flex justify-end">
             <Button

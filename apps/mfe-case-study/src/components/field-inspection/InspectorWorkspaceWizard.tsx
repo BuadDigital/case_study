@@ -7,10 +7,14 @@
  * sibling components; pure rules live in `inspector-wizard-state.ts`.
  */
 
-import { useMemo, useState } from "react";
-import { Button } from "@platform/ui-kit";
+import { useEffect, useMemo, useState } from "react";
+import { Button, cn, useToast } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
-import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import {
+  boundariesMarkedUnavailable,
+  type PoPropertyIntake,
+} from "../../lib/app-data/po-intake-data";
 import {
   isLandInspectionContext,
   isCommercialShopInspectionContext,
@@ -30,7 +34,16 @@ import { InspectorWizardServicesCard } from "./InspectorWizardServicesCard";
 import { InspectorFieldObservationsCard } from "./InspectorFieldObservationsCard";
 import { COMPONENT_BOOL_KEYS } from "./inspector-wizard-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
-import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
+import {
+  firstInspectorWorkspaceError,
+  firstInspectorWorkspaceErrorTarget,
+  inspectorWizardStepForErrorTarget,
+  inspectorWorkspaceHasBlockingErrors,
+  pickInspectorErrorsForWizardStep,
+  scheduleInspectorErrorScroll,
+  validateInspectorWorkspace,
+  type InspectorWorkspaceFieldErrors,
+} from "../../lib/app-data/inspector-workspace-validation";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
@@ -59,6 +72,8 @@ export function InspectorWorkspaceWizard({
   flat = false,
   /** Hide inline submit footer — parent renders it after extra sections. */
   hideSubmitFooter = false,
+  onStepGateFailed,
+  onStepGateClear,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -83,7 +98,13 @@ export function InspectorWorkspaceWizard({
   onRestoreInspectorMap?: () => void;
   flat?: boolean;
   hideSubmitFooter?: boolean;
+  onStepGateFailed?: (
+    errors: InspectorWorkspaceFieldErrors,
+    message: string,
+  ) => void;
+  onStepGateClear?: () => void;
 }) {
+  const { showToast } = useToast();
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const [doneSteps, setDoneSteps] = useState<Set<InspectorStepId>>(
     () => new Set(flat ? ([1, 2, 3] as InspectorStepId[]) : []),
@@ -115,7 +136,46 @@ export function InspectorWorkspaceWizard({
     [isLand, includeRetiredFeatureKeys],
   );
 
+  const validationOptions = {
+    boundariesUnavailable: boundariesMarkedUnavailable(
+      property.boundariesAvailability,
+    ),
+    classification: property.classification,
+    propertyType: property.propertyType,
+    includeRetiredFeatureKeys,
+    specialistProofServicesOnly: serviceProofFromTransactionPhotos,
+  };
+
+  function revealStepErrors(
+    step: InspectorStepId,
+    stepErrors: InspectorWorkspaceFieldErrors,
+  ) {
+    const message =
+      firstInspectorWorkspaceError(stepErrors) ??
+      "أكمل الحقول الناقصة قبل المتابعة";
+    onStepGateFailed?.(stepErrors, message);
+    showToast(message, "error");
+    setActiveStep(step);
+  }
+
+  function stepHasGaps(step: InspectorStepId): InspectorWorkspaceFieldErrors | null {
+    const stepErrors = pickInspectorErrorsForWizardStep(
+      validateInspectorWorkspace(draft, validationOptions),
+      step,
+    );
+    return inspectorWorkspaceHasBlockingErrors(stepErrors) ? stepErrors : null;
+  }
+
+  function gateStep(step: InspectorStepId): boolean {
+    const stepErrors = stepHasGaps(step);
+    if (!stepErrors) return true;
+    revealStepErrors(step, stepErrors);
+    return false;
+  }
+
   function advance() {
+    if (!gateStep(activeStep)) return;
+    onStepGateClear?.();
     setDoneSteps((prev) => {
       const next = new Set(prev);
       next.add(activeStep);
@@ -124,13 +184,40 @@ export function InspectorWorkspaceWizard({
     setActiveStep((prev) => (prev === 3 ? prev : ((prev + 1) as InspectorStepId)));
   }
 
+  function selectStep(next: InspectorStepId) {
+    if (next <= activeStep) {
+      setActiveStep(next);
+      return;
+    }
+    for (let step = activeStep; step < next; step += 1) {
+      const current = step as InspectorStepId;
+      if (!gateStep(current)) return;
+      setDoneSteps((prev) => {
+        const copy = new Set(prev);
+        copy.add(current);
+        return copy;
+      });
+    }
+    onStepGateClear?.();
+    setActiveStep(next);
+  }
+
+  useEffect(() => {
+    const targetId = firstInspectorWorkspaceErrorTarget(fieldErrors);
+    if (!targetId) return;
+    if (!flat) {
+      setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+    }
+    scheduleInspectorErrorScroll(fieldErrors, flat ? 60 : 100);
+  }, [fieldErrors, flat]);
+
   return (
     <div>
       {!flat ? (
         <InspectorStepNav
           activeStep={activeStep}
           doneSteps={doneSteps}
-          onSelect={setActiveStep}
+          onSelect={selectStep}
         />
       ) : null}
 
@@ -170,6 +257,7 @@ export function InspectorWorkspaceWizard({
           </InsCard>
 
           <InsCard title="خصائص العقار">
+            <div id="ins-features-section">
             <InspectorFeatureWizardFields
               fields={featureFields}
               draft={draft}
@@ -181,6 +269,7 @@ export function InspectorWorkspaceWizard({
               disabled={!editable}
               onPatch={onPatch}
             />
+            </div>
           </InsCard>
 
           <InspectorWizardComponentsCards
@@ -191,6 +280,7 @@ export function InspectorWorkspaceWizard({
             isLand={isLand}
             isShop={isShop}
             missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
+            missingComponentPhotoKey={fieldErrors.missingComponentPhotoKey}
             onPatch={onPatch}
           />
 
@@ -198,6 +288,7 @@ export function InspectorWorkspaceWizard({
             property={property}
             draft={draft}
             editable={editable}
+            mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
             onPatch={onPatch}
           />
 
@@ -257,6 +348,7 @@ export function InspectorWorkspaceWizard({
             editable={editable}
             serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
             transactionPhotos={transactionPhotos}
+            missingObservationId={fieldErrors.missingObservationId}
             onPatch={onPatch}
           />
 
@@ -274,6 +366,7 @@ export function InspectorWorkspaceWizard({
             <InspectorWorkspaceSubmitFooter
               draft={draft}
               saving={saving}
+              confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
               onPatch={onPatch}
               onSubmit={onSubmit}
               onCancel={onCancel}
@@ -288,19 +381,27 @@ export function InspectorWorkspaceWizard({
 export function InspectorWorkspaceSubmitFooter({
   draft,
   saving,
+  confirmInvalid = false,
   onPatch,
   onSubmit,
   onCancel,
 }: {
   draft: InspectorWorkspaceDraft;
   saving: boolean;
+  confirmInvalid?: boolean;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3">
-      <label className="flex cursor-pointer items-center gap-2 text-xs text-text-2">
+      <label
+        id="ins-confirm"
+        className={cn(
+          "flex cursor-pointer items-center gap-2 text-xs text-text-2",
+          confirmInvalid && invalidControlClass,
+        )}
+      >
         <input
           type="checkbox"
           className="size-[15px] accent-ink"

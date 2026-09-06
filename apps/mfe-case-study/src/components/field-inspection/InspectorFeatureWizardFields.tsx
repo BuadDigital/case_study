@@ -6,6 +6,7 @@
  */
 
 import { cn } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   inspectorFeatureRequiresPhoto,
   patchInspectorFeatureValues,
@@ -134,7 +135,7 @@ export function InspectorFeatureWizardFields({
                 className={cn(
                   INS_GRID_SELECT_CLASS,
                   disabled && "cursor-default opacity-90",
-                  (valueMissing || photoMissing) && "border-danger",
+                  (valueMissing || photoMissing) && invalidControlClass,
                 )}
                 value={rawVal}
                 onChange={(e) => setFeature(field.key, e.target.value)}
@@ -204,12 +205,13 @@ export function InspectorFeatureWizardFields({
           const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
-            <div key={field.key} id={`ins-feature-${field.key}`}>
+            <div
+              key={field.key}
+              id={`ins-feature-${field.key}`}
+              className={cn(valueMissing && invalidControlClass, valueMissing && "rounded-md p-1")}
+            >
               <span className={INS_LABEL_CENTERED_CLASS}>
                 {field.label}
-                {valueMissing ? (
-                  <span className="ms-1.5 text-[10px] font-bold text-danger">مطلوب</span>
-                ) : null}
               </span>
               <div className="flex flex-wrap justify-center gap-1.5">
                 {field.options.map((opt) => (
@@ -280,7 +282,11 @@ export function InspectorFeatureWizardFields({
               const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
               const photoMissing = missingFeaturePhotoKey === field.key;
               return (
-                <div key={field.key} id={`ins-feature-${field.key}`} className="flex flex-wrap items-center gap-2">
+                <div
+                  key={field.key}
+                  id={`ins-feature-${field.key}`}
+                  className="flex flex-wrap items-center gap-2"
+                >
                   <button
                     type="button"
                     disabled={disabled}
@@ -304,7 +310,10 @@ export function InspectorFeatureWizardFields({
                   {!hidePhotos && needsPhoto ? (
                     <span
                       id={`ins-feature-photo-${field.key}`}
-                      className={cn(photoMissing && "rounded-md bg-danger-bg p-1")}
+                      className={cn(
+                        photoMissing && "rounded-md bg-danger-bg p-1",
+                        photoMissing && invalidControlClass,
+                      )}
                     >
                       <EditableFeaturePhotoCell
                         needsPhoto

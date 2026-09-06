@@ -24,6 +24,7 @@ import {
 } from "../../lib/app-data/inspector-photo-drop";
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { InsEditField, InsField } from "./PropertyDetailInspectionFields";
 import {
   componentCountPatch,
@@ -220,6 +221,7 @@ export function ComponentCountWithPhotoField({
   draft,
   editMode,
   disabled,
+  invalid,
   onPatch,
 }: {
   label: string;
@@ -233,6 +235,8 @@ export function ComponentCountWithPhotoField({
   draft: InspectorWorkspaceDraft;
   editMode: boolean;
   disabled?: boolean;
+  /** Highlight the photo slot after a failed save. */
+  invalid?: boolean;
   onPatch: (patch: InspectorWorkspacePatch) => void;
 }) {
   const { showToast } = useToast();
@@ -241,7 +245,10 @@ export function ComponentCountWithPhotoField({
 
   if (!editMode) {
     return (
-      <div className="min-w-0">
+      <div
+        id={`ins-component-photo-${photoKey}`}
+        className={cn("min-w-0", invalid && invalidControlClass, invalid && "rounded-md p-0.5")}
+      >
         <InsField label={label} value={countValue} ltr />
         {needsPhoto ? (
           <div className="mt-1.5 text-[11px] text-text-2">
@@ -260,7 +267,10 @@ export function ComponentCountWithPhotoField({
   }
 
   return (
-    <div className="min-w-0">
+    <div
+      id={`ins-component-photo-${photoKey}`}
+      className={cn("min-w-0", invalid && invalidControlClass, invalid && "rounded-md p-0.5")}
+    >
       <InsEditField
         label={label}
         value={countValue}

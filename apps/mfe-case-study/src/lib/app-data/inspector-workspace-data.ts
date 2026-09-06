@@ -4,6 +4,13 @@ export type InspectorWorkspaceStatus = "draft" | "submitted" | "reopened";
 
 export type InspectorBoundaryKey = "north" | "south" | "east" | "west";
 
+export const INSPECTOR_BOUNDARY_KEYS: InspectorBoundaryKey[] = [
+  "north",
+  "south",
+  "east",
+  "west",
+];
+
 export type InspectorBoundaryMatch = {
   matches: boolean;
   mismatchNote: string;
@@ -554,6 +561,20 @@ export function isServiceAmenityPhotoSlotComplete(
   return slot.photos.some((photo) => photo.approved && photo.fileName.trim());
 }
 
+/** First selected service/amenity still missing an approved photo. */
+export function firstIncompleteServiceAmenitySlotId(draft: {
+  services: string[];
+  amenities: string[];
+  definedPhotos: Record<string, InspectorDefinedPhotoSlot>;
+}): string | null {
+  for (const def of listServiceAmenityPhotoSlots(draft)) {
+    if (!isServiceAmenityPhotoSlotComplete(draft.definedPhotos[def.id])) {
+      return def.id;
+    }
+  }
+  return null;
+}
+
 export type InspectorFreePhotoCategory = {
   key: string;
   label: string;
@@ -1034,6 +1055,13 @@ export function inspectorFeatureRequiresPhoto(
   if (!trimmed) return false;
   if (field.options.includes("نعم")) return trimmed === "نعم";
   return true;
+}
+
+/** Yes/no presence pills — leaving them off means «لا», not a missing answer. */
+export function isInspectorPresenceToggleField(
+  field: Pick<InspectorFeatureField, "options">,
+): boolean {
+  return field.options.includes("نعم");
 }
 
 export function listInspectorPhotoValidationIssues(

@@ -290,6 +290,7 @@ export function ActiveTransactionQueueView({
                     resolveBadge={resolveTaskBadge}
                     resolveMoreItems={resolveRowMoreItems}
                     isOpening={isTaskOpening}
+                    resolveAttention={rowCtx.resolveRowAttention}
                   />
                 </div>
               ) : (

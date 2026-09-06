@@ -30,6 +30,7 @@ import {
 import {
   queueRowClassName,
   QueueRowMoreCell,
+  rowAttentionTrailing,
 } from "./active-transaction-queue-row-parts";
 
 type RenderStatusOrRemaining = (
@@ -69,6 +70,7 @@ const PrimaryQueueRow = memo(function PrimaryQueueRow({
           loading={ctx.isTaskOpening(task.id)}
           tone={isStudyLabel ? "gold" : "primary"}
           rtl={isStudyLabel}
+          trailing={rowAttentionTrailing(ctx, task)}
         />
       </Td>
       <Td className="text-text-2">

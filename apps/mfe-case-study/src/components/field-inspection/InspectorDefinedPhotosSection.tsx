@@ -62,6 +62,7 @@ export function InspectorDefinedPhotosSection({
   onPatch,
   layout = "desktop",
   transactionPhotos,
+  invalidSlotId,
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
@@ -70,6 +71,8 @@ export function InspectorDefinedPhotosSection({
   layout?: "desktop" | "mobile";
   /** When set (case-study specialist), empty slots can pick from transaction images. */
   transactionPhotos?: PropertyDetailDocumentEntry[];
+  /** Slot the validator sent the user to — highlight only after a failed save. */
+  invalidSlotId?: string;
 }) {
   const { showToast } = useToast();
   const [previewRef, setPreviewRef] = useState<PreviewRef | null>(null);
@@ -245,6 +248,7 @@ export function InspectorDefinedPhotosSection({
           onToggleNone={toggleSlotNone}
           onOpen={(slotId, photoId) => setPreviewRef({ kind: "slot", slotId, photoId })}
           onSelectTransactionPhoto={selectTransactionPhoto}
+          invalidSlotId={invalidSlotId}
         />
       </RegistrationFormCard>
 

@@ -5,7 +5,8 @@
  * (free property photos). Lifted out of `FieldInspectionWorkBody` — same
  * markup, state stays with the workflow hook.
  */
-import { FormRow, Input } from "@platform/ui-kit";
+import { FormRow, Input, cn } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import {
   SITE_LOCATION_ACK_PENDING_MESSAGE,
@@ -158,7 +159,13 @@ export function InspectorAccessPhotosCards({
         step={3}
         subtitle={mobile ? inspectorPhotosLabel(draft.freePhotos.length) : undefined}
       >
-        <div id="ins-property-photos">
+        <div
+          id="ins-property-photos"
+          className={cn(
+            fieldErrors.freePhotos && invalidControlClass,
+            fieldErrors.freePhotos && "rounded-md p-0.5",
+          )}
+        >
           <InspectorPropertyPhotosSection
             draft={draft}
             disabled={locked}

@@ -127,6 +127,54 @@ describe("inspectorErrorLinks", () => {
     ]);
   });
 
+  it("routes defined-photo, observation, and boundary errors to the missing control", () => {
+    const errors = {
+      definedPhotos: "أرفق صورة الخدمة",
+      missingDefinedPhotoSlotId: "service:مياه",
+      observations: "كل ملاحظة يجب أن تتضمن شرحاً",
+      missingObservationId: "obs-1",
+      boundaries: "أضف ملاحظة عدم التطابق",
+      missingBoundaryKey: "south",
+    } as InspectorWorkspaceFieldErrors;
+    expect(inspectorErrorLinks(errors)).toEqual([
+      {
+        key: "definedPhotos",
+        message: "أرفق صورة الخدمة",
+        targetId: "ins-defined-slot-service:مياه",
+      },
+      {
+        key: "boundaries",
+        message: "أضف ملاحظة عدم التطابق",
+        targetId: "ins-boundary-south",
+      },
+      {
+        key: "observations",
+        message: "كل ملاحظة يجب أن تتضمن شرحاً",
+        targetId: "ins-observation-obs-1",
+      },
+    ]);
+  });
+
+  it("routes free-photo and component-photo errors to the missing control", () => {
+    const errors = {
+      freePhotos: "أرفق صوراً إضافية",
+      componentPhotos: "يجب إرفاق صورة المعرض",
+      missingComponentPhotoKey: "showroom",
+    } as InspectorWorkspaceFieldErrors;
+    expect(inspectorErrorLinks(errors)).toEqual([
+      {
+        key: "freePhotos",
+        message: "أرفق صوراً إضافية",
+        targetId: "ins-property-photos",
+      },
+      {
+        key: "componentPhotos",
+        message: "يجب إرفاق صورة المعرض",
+        targetId: "ins-component-photo-showroom",
+      },
+    ]);
+  });
+
   it("skips non-string entries", () => {
     const errors = { emptyFeatureKeys: ["x"] } as unknown as InspectorWorkspaceFieldErrors;
     expect(inspectorErrorLinks(errors)).toEqual([]);

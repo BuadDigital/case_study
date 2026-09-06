@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   contactRoleSelectOptions,
   type PoContact,
@@ -204,7 +205,7 @@ export function InspectorAccessContactFields({
       EDIT_CONTROL_CLASS,
       layout === "desktop" && "h-[38px]",
       layout === "mobile" && "h-12",
-      invalid && "border-danger",
+      invalid && invalidControlClass,
       !editable && "cursor-default opacity-90",
     );
 

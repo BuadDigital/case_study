@@ -60,6 +60,7 @@ const ERROR_LINK_TARGETS: {
   { key: "accessContactPhone", targetId: "ins-access-phone" },
   { key: "accessContactRole", targetId: "ins-access-role" },
   { key: "accessRouteDescription", targetId: "ins-access-name" },
+  { key: "freePhotos", targetId: "ins-property-photos" },
   {
     key: "features",
     targetId: (errors) =>
@@ -76,9 +77,34 @@ const ERROR_LINK_TARGETS: {
         ? `ins-feature-photo-${errors.missingFeaturePhotoKey}`
         : "ins-features-section",
   },
-  { key: "definedPhotos", targetId: "ins-defined-photos" },
-  { key: "componentPhotos", targetId: "ins-components-section" },
-  { key: "observations", targetId: "ins-observations" },
+  {
+    key: "definedPhotos",
+    targetId: (errors) =>
+      errors.missingDefinedPhotoSlotId
+        ? `ins-defined-slot-${errors.missingDefinedPhotoSlotId}`
+        : "ins-defined-photos",
+  },
+  {
+    key: "componentPhotos",
+    targetId: (errors) =>
+      errors.missingComponentPhotoKey
+        ? `ins-component-photo-${errors.missingComponentPhotoKey}`
+        : "ins-components-section",
+  },
+  {
+    key: "boundaries",
+    targetId: (errors) =>
+      errors.missingBoundaryKey
+        ? `ins-boundary-${errors.missingBoundaryKey}`
+        : "ins-boundaries-section",
+  },
+  {
+    key: "observations",
+    targetId: (errors) =>
+      errors.missingObservationId
+        ? `ins-observation-${errors.missingObservationId}`
+        : "ins-observations",
+  },
   { key: "inspectionConfirmed", targetId: "ins-confirm" },
 ];
 

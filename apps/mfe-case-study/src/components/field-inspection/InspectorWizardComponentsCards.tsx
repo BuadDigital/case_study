@@ -28,6 +28,7 @@ export function InspectorWizardComponentsCards({
   isLand,
   isShop,
   missingFeaturePhotoKey,
+  missingComponentPhotoKey,
   onPatch,
 }: {
   deedNumber: string;
@@ -38,6 +39,7 @@ export function InspectorWizardComponentsCards({
   isShop: boolean;
   /** Validation focus target — highlights the pill whose proof photo is missing. */
   missingFeaturePhotoKey?: string;
+  missingComponentPhotoKey?: "showroom" | "well";
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const showShop = (key: string) =>
@@ -46,6 +48,7 @@ export function InspectorWizardComponentsCards({
   return (
     <>
       {!isLand ? (
+        <div id="ins-components-section">
         <InsCard title="مكوّنات العقار">
           <InsFieldsGrid min={130} centered>
             {showShop("roomCount") ? (
@@ -94,6 +97,7 @@ export function InspectorWizardComponentsCards({
               draft={draft}
               editMode={editable}
               disabled={locked}
+              invalid={missingComponentPhotoKey === "showroom"}
               onPatch={onPatch}
             />
             {showShop("wellCount") ? (
@@ -109,6 +113,7 @@ export function InspectorWizardComponentsCards({
                 draft={draft}
                 editMode={editable}
                 disabled={locked}
+                invalid={missingComponentPhotoKey === "well"}
                 onPatch={onPatch}
               />
             ) : null}
@@ -178,6 +183,7 @@ export function InspectorWizardComponentsCards({
             </div>
           ) : null}
         </InsCard>
+        </div>
       ) : null}
 
       {!isLand ? (

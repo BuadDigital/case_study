@@ -19,7 +19,11 @@ import {
   isOccupied,
   listInspectorPhotoValidationIssues,
   sanitizeInspectorDraftForLand,
+  isInspectorPresenceToggleField,
+  INSPECTOR_BOUNDARY_KEYS,
+  firstIncompleteServiceAmenitySlotId,
   visibleInspectorFeatureFields,
+  type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 
@@ -42,6 +46,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "features"
     | "movablesDescription"
     | "occupancyDescription"
+    | "boundaries"
     | "_"
     ,
     string
@@ -51,6 +56,14 @@ export type InspectorWorkspaceFieldErrors = Partial<
   emptyFeatureKeys?: string[];
   /** First feature key missing its required proof photo. */
   missingFeaturePhotoKey?: string;
+  /** First selected service/amenity slot missing a proof photo. */
+  missingDefinedPhotoSlotId?: string;
+  /** First observation row missing its explanation. */
+  missingObservationId?: string;
+  /** First boundary marked غير مطابق without a note. */
+  missingBoundaryKey?: string;
+  /** First component (معرض / بئر) missing its required proof photo. */
+  missingComponentPhotoKey?: InspectorComponentPhotoKey;
 };
 
 /** DOM ids used by the inspection form for auto-scroll. */
@@ -58,13 +71,29 @@ export function inspectorFieldTargetId(
   field:
     | keyof InspectorWorkspaceFieldErrors
     | `feature:${string}`
-    | `feature-photo:${string}`,
+    | `feature-photo:${string}`
+    | `defined-slot:${string}`
+    | `observation:${string}`
+    | `boundary:${string}`
+    | `component-photo:${string}`,
 ): string {
   if (field.startsWith("feature-photo:")) {
     return `ins-feature-photo-${field.slice("feature-photo:".length)}`;
   }
   if (field.startsWith("feature:")) {
     return `ins-feature-${field.slice("feature:".length)}`;
+  }
+  if (field.startsWith("defined-slot:")) {
+    return `ins-defined-slot-${field.slice("defined-slot:".length)}`;
+  }
+  if (field.startsWith("observation:")) {
+    return `ins-observation-${field.slice("observation:".length)}`;
+  }
+  if (field.startsWith("boundary:")) {
+    return `ins-boundary-${field.slice("boundary:".length)}`;
+  }
+  if (field.startsWith("component-photo:")) {
+    return `ins-component-photo-${field.slice("component-photo:".length)}`;
   }
   switch (field) {
     case "inspectionDate":
@@ -84,7 +113,7 @@ export function inspectorFieldTargetId(
     case "features":
       return "ins-features-section";
     case "movablesDescription":
-      return `ins-feature-${MOVABLES_DESCRIPTION_KEY}`;
+      return `ins-${MOVABLES_DESCRIPTION_KEY}`;
     case "occupancyDescription":
       return `ins-${OCCUPANCY_DESCRIPTION_KEY}`;
     case "featurePhotos":
@@ -99,6 +128,8 @@ export function inspectorFieldTargetId(
       return "ins-observations";
     case "inspectionConfirmed":
       return "ins-confirm";
+    case "boundaries":
+      return "ins-boundaries-section";
     default:
       return "pdInspection";
   }
@@ -125,6 +156,7 @@ export function firstInspectorWorkspaceErrorTarget(
   if (errors.accessRouteDescription) {
     return inspectorFieldTargetId("accessRouteDescription");
   }
+  if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
   if (errors.emptyFeatureKeys?.[0]) {
     return inspectorFieldTargetId(`feature:${errors.emptyFeatureKeys[0]}`);
   }
@@ -142,9 +174,25 @@ export function firstInspectorWorkspaceErrorTarget(
   if (errors.features || errors.featurePhotos) {
     return inspectorFieldTargetId("features");
   }
+  if (errors.missingComponentPhotoKey) {
+    return inspectorFieldTargetId(
+      `component-photo:${errors.missingComponentPhotoKey}`,
+    );
+  }
   if (errors.componentPhotos) return inspectorFieldTargetId("componentPhotos");
-  if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
+  if (errors.missingBoundaryKey) {
+    return inspectorFieldTargetId(`boundary:${errors.missingBoundaryKey}`);
+  }
+  if (errors.boundaries) return inspectorFieldTargetId("boundaries");
+  if (errors.missingDefinedPhotoSlotId) {
+    return inspectorFieldTargetId(
+      `defined-slot:${errors.missingDefinedPhotoSlotId}`,
+    );
+  }
   if (errors.definedPhotos) return inspectorFieldTargetId("definedPhotos");
+  if (errors.missingObservationId) {
+    return inspectorFieldTargetId(`observation:${errors.missingObservationId}`);
+  }
   if (errors.observations) return inspectorFieldTargetId("observations");
   if (errors.inspectionConfirmed) {
     return inspectorFieldTargetId("inspectionConfirmed");
@@ -228,7 +276,11 @@ export function validateInspectorWorkspace(
   }
 
   const emptyFeatureKeys = featureFields
-    .filter((field) => !(submission.featureValues[field.key] ?? "").trim())
+    .filter(
+      (field) =>
+        !isInspectorPresenceToggleField(field) &&
+        !(submission.featureValues[field.key] ?? "").trim(),
+    )
     .map((field) => field.key);
   if (emptyFeatureKeys.length > 0) {
     errors.emptyFeatureKeys = emptyFeatureKeys;
@@ -248,9 +300,21 @@ export function validateInspectorWorkspace(
     errors.occupancyDescription = "سبب الإشغال مطلوب عند اختيار «مشغول»";
   }
 
-  const incompleteObs = submission.observations.filter((o) => !o.text.trim());
-  if (incompleteObs.length > 0) {
+  if (!options?.boundariesUnavailable) {
+    const missingMismatchNotes = INSPECTOR_BOUNDARY_KEYS.filter((key) => {
+      const row = submission.boundaryMatches[key];
+      return Boolean(row) && row.matches === false && !row.mismatchNote.trim();
+    });
+    if (missingMismatchNotes.length > 0) {
+      errors.boundaries = "أضف ملاحظة عدم التطابق لكل حد غير مطابق";
+      errors.missingBoundaryKey = missingMismatchNotes[0];
+    }
+  }
+
+  const incompleteObs = submission.observations.find((o) => !o.text.trim());
+  if (incompleteObs) {
     errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
+    errors.missingObservationId = incompleteObs.id;
   }
 
   const photoIssues = listInspectorPhotoValidationIssues(submission, {
@@ -271,7 +335,12 @@ export function validateInspectorWorkspace(
     const componentIssue = photoIssues.find(
       (issue) => issue.includes("المعرض") || issue.includes("البئر"),
     );
-    if (componentIssue) errors.componentPhotos = componentIssue;
+    if (componentIssue) {
+      errors.componentPhotos = componentIssue;
+      errors.missingComponentPhotoKey = componentIssue.includes("المعرض")
+        ? "showroom"
+        : "well";
+    }
 
     const freeIssue = photoIssues.find((issue) => issue.includes("إضافية"));
     if (freeIssue) errors.freePhotos = freeIssue;
@@ -283,10 +352,13 @@ export function validateInspectorWorkspace(
         issue.includes("خدمة") ||
         issue.includes("مرفق"),
     );
-    if (definedIssue) errors.definedPhotos = definedIssue;
+    if (definedIssue) {
+      errors.definedPhotos = definedIssue;
+      const slotId = firstIncompleteServiceAmenitySlotId(submission);
+      if (slotId) errors.missingDefinedPhotoSlotId = slotId;
+    }
   }
 
-  void options?.boundariesUnavailable;
   return errors;
 }
 
@@ -303,12 +375,115 @@ const INSPECTOR_ERROR_KEYS = [
   "occupancyDescription",
   "featurePhotos",
   "componentPhotos",
+  "boundaries",
   "freePhotos",
   "definedPhotos",
   "observations",
   "inspectionConfirmed",
   "_",
 ] as const;
+
+export function inspectorWorkspaceHasBlockingErrors(
+  errors: InspectorWorkspaceFieldErrors,
+): boolean {
+  if ((errors.emptyFeatureKeys?.length ?? 0) > 0) return true;
+  return INSPECTOR_ERROR_KEYS.some((key) => {
+    const value = errors[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+}
+
+export type InspectorWizardStepId = 1 | 2 | 3;
+
+const WIZARD_STEP_ERROR_KEYS: Record<
+  InspectorWizardStepId,
+  readonly (keyof InspectorWorkspaceFieldErrors)[]
+> = {
+  1: [
+    "inspectionDate",
+    "inspectionTime",
+    "mapLatitude",
+    "mapLongitude",
+    "accessContactName",
+    "accessContactPhone",
+    "accessContactRole",
+    "accessRouteDescription",
+    "freePhotos",
+  ],
+  2: [
+    "features",
+    "movablesDescription",
+    "occupancyDescription",
+    "featurePhotos",
+    "componentPhotos",
+    "boundaries",
+    "definedPhotos",
+  ],
+  3: ["observations", "inspectionConfirmed"],
+};
+
+export function pickInspectorErrorsForWizardStep(
+  errors: InspectorWorkspaceFieldErrors,
+  step: InspectorWizardStepId,
+): InspectorWorkspaceFieldErrors {
+  const picked: InspectorWorkspaceFieldErrors = {};
+  for (const key of WIZARD_STEP_ERROR_KEYS[step]) {
+    const value = errors[key];
+    if (typeof value === "string" && value.trim()) {
+      Object.assign(picked, { [key]: value });
+    }
+  }
+  if (step === 2) {
+    if (errors.emptyFeatureKeys?.length) {
+      picked.emptyFeatureKeys = errors.emptyFeatureKeys;
+    }
+    if (errors.missingFeaturePhotoKey) {
+      picked.missingFeaturePhotoKey = errors.missingFeaturePhotoKey;
+    }
+    if (errors.missingDefinedPhotoSlotId) {
+      picked.missingDefinedPhotoSlotId = errors.missingDefinedPhotoSlotId;
+    }
+    if (errors.missingBoundaryKey) {
+      picked.missingBoundaryKey = errors.missingBoundaryKey;
+    }
+    if (errors.missingComponentPhotoKey) {
+      picked.missingComponentPhotoKey = errors.missingComponentPhotoKey;
+    }
+  }
+  if (step === 3 && errors.missingObservationId) {
+    picked.missingObservationId = errors.missingObservationId;
+  }
+  return picked;
+}
+
+export function inspectorWizardStepForErrorTarget(
+  targetId: string,
+): InspectorWizardStepId {
+  if (
+    targetId === "ins-date" ||
+    targetId === "ins-time" ||
+    targetId === "ins-map-section" ||
+    targetId === "ins-property-photos" ||
+    targetId.startsWith("ins-access")
+  ) {
+    return 1;
+  }
+  if (
+    targetId === "ins-observations" ||
+    targetId === "ins-confirm" ||
+    targetId.startsWith("ins-observation-")
+  ) {
+    return 3;
+  }
+  return 2;
+}
+
+export function scheduleInspectorErrorScroll(
+  errors: InspectorWorkspaceFieldErrors,
+  delayMs = 80,
+): void {
+  scheduleScrollToFormField(firstInspectorWorkspaceErrorTarget(errors), delayMs);
+}
 
 export function firstInspectorWorkspaceError(
   errors: InspectorWorkspaceFieldErrors,

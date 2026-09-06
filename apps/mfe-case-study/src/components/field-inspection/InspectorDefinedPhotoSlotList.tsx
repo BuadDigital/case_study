@@ -6,6 +6,8 @@
  * tiles plus the transaction-photo picker on desktop. Presentational: uploads,
  * «غير متوفر» toggles and previews are delegated upward.
  */
+import { cn } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { DesktopHtmlPhotoTile, MobilePhotoTile } from "./InspectorDefinedPhotoTiles";
@@ -25,6 +27,7 @@ export function InspectorDefinedPhotoSlotList({
   onToggleNone,
   onOpen,
   onSelectTransactionPhoto,
+  invalidSlotId,
 }: {
   cells: DefinedPhotoSlotCell[];
   layout: "desktop" | "mobile";
@@ -37,6 +40,8 @@ export function InspectorDefinedPhotoSlotList({
   onToggleNone: (slotId: string, none: boolean) => void;
   onOpen: (slotId: string, photoId: number) => void;
   onSelectTransactionPhoto: (slotId: string, doc: PropertyDetailDocumentEntry) => void;
+  /** Slot the validator sent the user to — highlight only after a failed save. */
+  invalidSlotId?: string;
 }) {
   const canPickFromTransaction = Boolean(
     transactionPhotos && transactionPhotos.length > 0,
@@ -54,6 +59,14 @@ export function InspectorDefinedPhotoSlotList({
     return (
       <div className="grid grid-cols-3 gap-2.5">
         {cells.map(({ id, label, slot, done, first }) => (
+          <div
+            key={id}
+            id={`ins-defined-slot-${id}`}
+            className={cn(
+              id === invalidSlotId && invalidControlClass,
+              id === invalidSlotId && "rounded-md p-0.5",
+            )}
+          >
           <MobilePhotoTile
             key={id}
             label={label}
@@ -65,6 +78,7 @@ export function InspectorDefinedPhotoSlotList({
             onToggleNone={() => onToggleNone(id, !slot.none)}
             onOpenDone={first ? () => onOpen(id, first.id) : undefined}
           />
+          </div>
         ))}
       </div>
     );
@@ -73,7 +87,15 @@ export function InspectorDefinedPhotoSlotList({
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
       {cells.map(({ id, label, slot, done, first, photoRef }) => (
-        <div key={id} className="flex flex-col gap-1">
+        <div
+          key={id}
+          id={`ins-defined-slot-${id}`}
+          className={cn(
+            "flex flex-col gap-1",
+            id === invalidSlotId && invalidControlClass,
+            id === invalidSlotId && "rounded-md p-1",
+          )}
+        >
           <DesktopHtmlPhotoTile
             label={label}
             required
