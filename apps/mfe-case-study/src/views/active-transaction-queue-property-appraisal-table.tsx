@@ -2,13 +2,12 @@
 
 /**
  * Property-appraisal branch of the active-transaction queue (Case Study.html
- * `VAL`): gold deed cell that opens the property detail, location, PO,
- * assignment date, the stacked party avatars with their hover card, and the
- * appraiser status pill. Rows are prebuilt in meta.
+ * `VAL`): gold deed cell that opens the property detail, property type,
+ * location, PO, assignment date, assigned main parties, and the appraiser
+ * status pill. Rows are prebuilt in meta.
  */
 import { memo } from "react";
 import {
-  cn,
   SkeletonTableRows,
   StatusPill,
   Table,
@@ -22,24 +21,24 @@ import {
   Tr,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { HoverPortalCard } from "../components/ui/HoverPortalCard";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import { buildCaseStudyPartyAssignees } from "../lib/app-data/case-study-tracks";
 import {
   appraiserInspectionDone,
-  appraiserNeedsSurvey,
   appraiserQueueStatusBadge,
-  appraiserSurveyDone,
 } from "../lib/evaluator-bridge";
 import {
+  APPRAISAL_QUEUE_SKELETON_COLS,
   assignedDateLabel,
-  buildAppraisalPartyDeps,
+  caseStudyParentForQueueTask,
+  EMPTY_PARTY_PROGRESS,
   engSurveyStatusPillStyle,
   joinCityDistrict,
-  PARTY_QUEUE_SKELETON_COLS,
   propertyTypeLabel,
-  type AppraisalPartyDep,
+  type PartyProgressByTask,
   type QueueRowContext,
 } from "./active-transaction-queue-tables-state";
 import {
@@ -48,119 +47,53 @@ import {
   queueRowClassName,
   QueueRowMoreCell,
 } from "./active-transaction-queue-row-parts";
+import { TeamStack } from "./PoListViewParts";
 
 type OpenPropertyDetail = (
   task: WorkflowTask,
   propertyId: string | undefined,
 ) => void;
 
-/* Two static icons in the parties card — were rebuilt per party per row per
-   render despite taking no inputs (rendering-hoist-jsx). */
-const PARTY_DEP_DONE_ICON = (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#2f7a4d"
-    strokeWidth="2.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
-    <path d="m5 13 4 4L19 7" />
-  </svg>
-);
-const PARTY_DEP_PENDING_ICON = (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#9aa0ab"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    aria-hidden
-  >
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v5l3 2" />
-  </svg>
-);
-
-function partyDepBackground(dep: AppraisalPartyDep): string {
-  return dep.ink ? "var(--ink, #102B4E)" : "var(--gold-d, #8c7857)";
-}
-
-/** Stacked party avatars; the hover card lists each party and its progress. */
-function PartyDepsCell({ deps }: { deps: AppraisalPartyDep[] }) {
-  return (
-    <HoverPortalCard
-      align="start"
-      triggerClassName="inline-flex"
-      panelClassName="flex min-w-[240px] flex-col gap-1 rounded-[11px] border border-border-md bg-surface p-2.5 shadow-[0_12px_30px_-8px_rgba(18,40,70,.25)]"
-      content={
-        <>
-          <span className="mb-1 px-1 text-[11px] font-bold text-text-3">
-            أطراف المعاملة ({deps.length})
-          </span>
-          {deps.map((dep) => (
-            <div
-              key={dep.role}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-1 py-1",
-                !dep.ok && "opacity-50",
-              )}
-            >
-              <span
-                className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                style={{ background: partyDepBackground(dep) }}
-              >
-                {dep.letter}
-              </span>
-              <span className="inline-flex min-w-0 flex-col">
-                <span className="text-[12.5px] font-semibold text-heading">
-                  {dep.name}
-                </span>
-                <span className="whitespace-nowrap text-[10.5px] text-text-3">
-                  {dep.role}
-                </span>
-              </span>
-              <span className="ms-auto">
-                {dep.ok ? PARTY_DEP_DONE_ICON : PARTY_DEP_PENDING_ICON}
-              </span>
-            </div>
-          ))}
-        </>
-      }
-    >
-      <span className="team inline-flex items-center">
-        {deps.map((dep, i) => (
-          <span
-            key={dep.role}
-            className="grid size-7 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white"
-            style={{
-              background: partyDepBackground(dep),
-              marginInlineStart: i === 0 ? 0 : -8,
-              opacity: dep.ok ? 1 : 0.35,
-            }}
-          >
-            {dep.letter}
-          </span>
-        ))}
-      </span>
-    </HoverPortalCard>
-  );
+/** Same overlapping-avatar stack as أوامر العمل (PO) «الفريق». */
+function AssignedPartiesCell({
+  parent,
+  tasks,
+  progress,
+  staffUsers,
+}: {
+  parent: WorkflowTask;
+  tasks: WorkflowTask[];
+  progress: typeof EMPTY_PARTY_PROGRESS;
+  staffUsers: StaffUser[];
+}) {
+  const members = buildCaseStudyPartyAssignees(
+    parent,
+    tasks,
+    progress,
+    staffUsers,
+  )
+    .filter((p) => p.enabled)
+    .flatMap((p) => {
+      const name = p.name.trim();
+      if (!name || name === "—") return [];
+      return [{ name, role: p.shortLabel }];
+    });
+  return <TeamStack members={members} />;
 }
 
 const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
   ctx,
   meta,
   tasks,
+  staffUsers,
+  partyProgressByTask,
   openPropertyDetail,
 }: {
   ctx: QueueRowContext;
   meta: PrimaryQueueRowMeta;
   tasks: WorkflowTask[];
+  staffUsers: StaffUser[];
+  partyProgressByTask: PartyProgressByTask;
   openPropertyDetail: OpenPropertyDetail;
 }) {
   const { task, record, property, row } = meta;
@@ -173,17 +106,13 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
     className: "b-new",
   };
   const inspected = appraiserInspectionDone(task, tasks);
-  const deps = buildAppraisalPartyDeps({
-    inspected,
-    needsSurvey: appraiserNeedsSurvey(task, tasks),
-    surveyed: appraiserSurveyDone(task, tasks),
-  });
+  const parent = caseStudyParentForQueueTask(task, tasks);
+  const typeLabel = propertyTypeLabel(property) || row.propertyType;
   const deedCell = (
     <PartyQueueDeedCell
       ctx={ctx}
       task={task}
       propertySlot={row.propertySlot}
-      propertyType={propertyTypeLabel(property)}
     />
   );
   return (
@@ -208,6 +137,9 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
           deedCell
         )}
       </Td>
+      <Td className="whitespace-nowrap text-center text-[13px] text-text-2">
+        {typeLabel && typeLabel !== "—" ? typeLabel : "—"}
+      </Td>
       <Td className="text-center text-[13px] text-text-2">
         {cityDistrict || "—"}
       </Td>
@@ -220,8 +152,13 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
       >
         {assignedLabel}
       </TdLtr>
-      <Td className="overflow-visible text-center">
-        <PartyDepsCell deps={deps} />
+      <Td className="overflow-visible whitespace-nowrap">
+        <AssignedPartiesCell
+          parent={parent}
+          tasks={tasks}
+          progress={partyProgressByTask.get(parent.id) ?? EMPTY_PARTY_PROGRESS}
+          staffUsers={staffUsers}
+        />
       </Td>
       <Td className="text-center">
         <StatusPill
@@ -238,12 +175,16 @@ export function PropertyAppraisalQueueTable({
   ctx,
   filteredMeta,
   tasks,
+  staffUsers,
+  partyProgressByTask,
   openPropertyDetail,
   statusColumnLabel,
 }: {
   ctx: QueueRowContext;
   filteredMeta: PrimaryQueueRowMeta[];
   tasks: WorkflowTask[];
+  staffUsers: StaffUser[];
+  partyProgressByTask: PartyProgressByTask;
   openPropertyDetail: OpenPropertyDetail;
   statusColumnLabel: string | undefined;
 }) {
@@ -256,6 +197,7 @@ export function PropertyAppraisalQueueTable({
       <THead>
         <Tr hoverable={false}>
           <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
+          <Th className="text-center">نوع العقار</Th>
           <Th className="text-center">المدينة / الحي</Th>
           <Th>أمر العمل</Th>
           <Th className="text-center">تاريخ الإسناد</Th>
@@ -266,9 +208,9 @@ export function PropertyAppraisalQueueTable({
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
-          <SkeletonTableRows rows={6} cols={PARTY_QUEUE_SKELETON_COLS} />
+          <SkeletonTableRows rows={6} cols={APPRAISAL_QUEUE_SKELETON_COLS} />
         ) : filteredMeta.length === 0 ? (
-          <TableEmptyRow colSpan={PARTY_QUEUE_SKELETON_COLS}>
+          <TableEmptyRow colSpan={APPRAISAL_QUEUE_SKELETON_COLS}>
             لا توجد مهام تقييم مطابقة.
           </TableEmptyRow>
         ) : (
@@ -278,6 +220,8 @@ export function PropertyAppraisalQueueTable({
               ctx={ctx}
               meta={meta}
               tasks={tasks}
+              staffUsers={staffUsers}
+              partyProgressByTask={partyProgressByTask}
               openPropertyDetail={openPropertyDetail}
             />
           ))

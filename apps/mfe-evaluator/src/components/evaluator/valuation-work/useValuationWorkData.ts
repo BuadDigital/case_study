@@ -36,7 +36,6 @@ import {
   MARKET_CONTEXT,
   buildFactorCatalog,
   officialValuationDateOf,
-  type ValuationWorkNavAvailability,
   type ValuationWorkPropertyHint,
 } from "./lib/shell-state";
 import {
@@ -60,7 +59,6 @@ export type ValuationWorkDataParams = {
   property?: ValuationWorkPropertyHint;
   intakeProperty?: PoPropertyIntake | null;
   onFinalOpinionChange?: (finalOpinionValue: number) => void;
-  onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
 };
 
 export function useValuationWorkData({
@@ -70,13 +68,10 @@ export function useValuationWorkData({
   property,
   intakeProperty = null,
   onFinalOpinionChange,
-  onNavAvailabilityChange,
 }: ValuationWorkDataParams) {
   const { showToast } = useToast();
   const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
   onFinalOpinionChangeRef.current = onFinalOpinionChange;
-  const onNavAvailabilityChangeRef = useRef(onNavAvailabilityChange);
-  onNavAvailabilityChangeRef.current = onNavAvailabilityChange;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -397,13 +392,6 @@ export function useValuationWorkData({
     resolveBankFetchOpts,
     applyBankResult,
   });
-
-  useEffect(() => {
-    onNavAvailabilityChangeRef.current?.({
-      market: marketEnabled,
-      cost: costEnabled,
-    });
-  }, [marketEnabled, costEnabled]);
 
   return {
     showToast,

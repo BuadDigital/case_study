@@ -9,6 +9,7 @@ import {
   getFieldInspectors,
   getValuators,
 } from "./distribution-parties";
+import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   migrateDistribution,
   type TaskDistributionDraft,
@@ -62,6 +63,25 @@ function findChild(
   return children.find((t) => t.kind === kind);
 }
 
+/** Real case-study parent id — party queue rows are children and may stand in as `parent`. */
+export function caseStudyFamilyParentId(task: WorkflowTask): string {
+  if (task.kind === "case-study-property" || !task.parentTaskId) return task.id;
+  return task.parentTaskId;
+}
+
+function partyChildrenForTracks(
+  parent: WorkflowTask,
+  allTasks: WorkflowTask[],
+): WorkflowTask[] {
+  const children = childTasksForCaseStudyParent(
+    caseStudyFamilyParentId(parent),
+    allTasks,
+  );
+  if (parent.kind === "case-study-property") return children;
+  if (children.some((t) => t.id === parent.id)) return children;
+  return [parent, ...children];
+}
+
 function distributionAssignee(
   distribution: TaskDistributionDraft,
   trackId: string,
@@ -105,7 +125,7 @@ export function buildCaseStudyTracks(
   staffUsers: StaffUser[] = [],
 ): CaseStudyTrack[] {
   const distribution = migrateDistribution(parent.distribution);
-  const children = allTasks.filter((t) => t.parentTaskId === parent.id);
+  const children = partyChildrenForTracks(parent, allTasks);
 
   const defs: { id: string; label: string; spawned: boolean }[] = [
     {
@@ -131,7 +151,10 @@ export function buildCaseStudyTracks(
     const child =
       kind === "parent"
         ? parent
-        : findChild(children, kind as Exclude<WorkflowTaskKind, "case-study-property">);
+        : (findChild(
+            children,
+            kind as Exclude<WorkflowTaskKind, "case-study-property">,
+          ) ?? (parent.kind === kind ? parent : undefined));
     const state =
       kind === "parent"
         ? parent.status === "completed" || parent.phase === "done"

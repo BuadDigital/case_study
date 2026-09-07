@@ -74,10 +74,12 @@ public static class ValuationComparableSelectionRequestRules
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
-            if (!MarketAdjustmentFactorKeys.IsKnown(line.FactorKey))
+            var key = line.FactorKey?.Trim() ?? "";
+            if (!MarketAdjustmentFactorKeys.IsKnown(key))
                 errors[$"adjustmentLines[{i}].factorKey"] = "عامل تسوية غير معروف";
 
-            if (line.FactorKey == MarketAdjustmentFactorKeys.Custom
+            if ((key == MarketAdjustmentFactorKeys.Custom
+                 || MarketAdjustmentFactorKeys.IsExtraCatalogKey(key))
                 && string.IsNullOrWhiteSpace(line.LabelAr))
                 errors[$"adjustmentLines[{i}].labelAr"] = "تسمية العامل المضاف مطلوبة";
 
@@ -119,6 +121,8 @@ public static class ValuationComparableSelectionRequestRules
     /// <summary>
     /// Adjustment line from a save request. Defined factors always keep their standard labels —
     /// a custom label is accepted for custom factors only (guard against mangled encoding labels).
+    /// IDs are always new: the caller deletes the previous rows first, so reusing a client id
+    /// would collide with the tracked-deleted entities.
     /// </summary>
     public static ValuationComparableAdjustmentLine BuildAdjustmentLine(
         Guid selectionId,
@@ -128,13 +132,10 @@ public static class ValuationComparableSelectionRequestRules
         var key = line.FactorKey.Trim();
         return new ValuationComparableAdjustmentLine
         {
-            Id = line.Id is { } existing && existing != Guid.Empty
-                ? existing
-                : Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             SelectionId = selectionId,
             FactorKey = key,
-            LabelAr = key != MarketAdjustmentFactorKeys.Custom
-                      && MarketAdjustmentFactorKeys.IsKnown(key)
+            LabelAr = MarketAdjustmentFactorKeys.HasFixedStandardLabel(key)
                 ? MarketAdjustmentFactorKeys.DefaultLabelAr(key)
                 : string.IsNullOrWhiteSpace(line.LabelAr)
                     ? MarketAdjustmentFactorKeys.DefaultLabelAr(key)
@@ -150,17 +151,20 @@ public static class ValuationComparableSelectionRequestRules
     }
 
     /// <summary>
-    /// Rebuilds the selection's adjustment lines from the (already validated) request and applies
-    /// the weight / price / area overrides. The caller stages the removal of the old lines first.
+    /// Builds the selection's new adjustment lines from the (already validated) request and applies
+    /// the weight / price / area overrides. The caller stages the removal of the old lines first and
+    /// must add the returned lines via the DbSet (not this navigation collection) — EF marks an
+    /// entity added through a tracked navigation collection as Modified when its key is already set,
+    /// which turns the INSERT into a 0-row UPDATE and throws DbUpdateConcurrencyException.
     /// </summary>
-    public static void ApplyMarketSave(
+    public static IReadOnlyList<ValuationComparableAdjustmentLine> ApplyMarketSave(
         ValuationComparableSelection row,
         SaveValuationComparableMarketRequest request)
     {
         var lines = request.AdjustmentLines ?? [];
-        row.AdjustmentLines.Clear();
+        var built = new List<ValuationComparableAdjustmentLine>(lines.Count);
         for (var i = 0; i < lines.Count; i++)
-            row.AdjustmentLines.Add(BuildAdjustmentLine(row.Id, lines[i], i));
+            built.Add(BuildAdjustmentLine(row.Id, lines[i], i));
 
         row.WeightIsManual = request.WeightIsManual;
         row.WeightPct = request.WeightIsManual ? request.WeightPct : null;
@@ -171,6 +175,8 @@ public static class ValuationComparableSelectionRequestRules
         row.AreaOverrideSqm = request.AreaOverrideSqm;
         if (request.AreaAdjustmentMethod is not null)
             row.AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(request.AreaAdjustmentMethod);
+
+        return built;
     }
 
     /// <summary>Market-approach header checks — null when the request is acceptable.</summary>

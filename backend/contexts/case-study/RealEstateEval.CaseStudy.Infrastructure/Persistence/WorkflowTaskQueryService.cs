@@ -243,6 +243,12 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                         p.Classification,
                     })
                     .FirstOrDefault(),
+                ParentDistributionJson = t.ParentTaskId == null
+                    ? null
+                    : _caseStudy.WorkflowTasks
+                        .Where(p => p.Id == t.ParentTaskId)
+                        .Select(p => p.DistributionJson)
+                        .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
@@ -250,6 +256,9 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(row =>
             {
                 var dto = WorkflowTaskMapper.ToDto(row.Task);
+                dto.Distribution = WorkflowTaskDistributionRules.CoalesceDistribution(
+                    dto.Distribution,
+                    WorkflowTaskMapper.DeserializeDistribution(row.ParentDistributionJson));
                 if (row.Property is null) return dto;
                 dto.DeedNumber = row.Property.DeedNumber;
                 dto.City = row.Property.City;

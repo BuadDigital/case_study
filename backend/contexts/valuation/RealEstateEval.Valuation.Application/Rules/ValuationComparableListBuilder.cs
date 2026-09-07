@@ -302,10 +302,6 @@ public static class ValuationComparableListBuilder
                                 suggestedMarket,
                                 suggestedKind)
                             : l.Percent;
-                    // "Suggested until overridden": comparable kind without an entered % shows the default as suggested.
-                    var isSuggested =
-                        l.FactorKey == MarketAdjustmentFactorKeys.TransactionType
-                        && l.Percent == 0m;
                     return new ValuationComparableAdjustmentLineDto
                     {
                         Id = l.Id,
@@ -316,7 +312,8 @@ public static class ValuationComparableListBuilder
                         DescriptionAr = l.DescriptionAr,
                         IsIncluded = l.IsIncluded,
                         SortOrder = l.SortOrder,
-                        IsSuggestedValue = isSuggested,
+                        // Every sequential factor is manual entry — nothing is ever "suggested until overridden".
+                        IsSuggestedValue = false,
                     };
                 })
                 .ToList(),

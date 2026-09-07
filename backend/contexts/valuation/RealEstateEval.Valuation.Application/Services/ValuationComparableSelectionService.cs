@@ -254,7 +254,8 @@ public sealed partial class ValuationComparableSelectionService(
         if (errors.Count > 0) return (null, errors);
 
         await repo.RemoveAdjustmentLinesAsync(row.AdjustmentLines.ToList(), cancellationToken);
-        ValuationComparableSelectionRequestRules.ApplyMarketSave(row, request);
+        var newLines = ValuationComparableSelectionRequestRules.ApplyMarketSave(row, request);
+        await repo.AddAdjustmentLinesAsync(newLines, cancellationToken);
 
         await repo.SaveChangesAsync(cancellationToken);
         return (await GetSelectionDtoAsync(row.Id, cancellationToken), null);

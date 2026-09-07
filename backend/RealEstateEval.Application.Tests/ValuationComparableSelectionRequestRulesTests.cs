@@ -96,13 +96,36 @@ public class ValuationComparableSelectionRequestRulesTests
     }
 
     [Fact]
+    public void ValidateMarketSave_accepts_an_extra_catalog_key()
+    {
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
+        {
+            AdjustmentLines = [Line("finishing", labelAr: "شكل التشطيب")],
+        });
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void BuildAdjustmentLine_keeps_the_catalog_extra_label()
+    {
+        var line = ValuationComparableSelectionRequestRules.BuildAdjustmentLine(
+            Guid.NewGuid(),
+            Line("finishing", labelAr: "  شكل التشطيب  "),
+            0);
+
+        Assert.Equal("finishing", line.FactorKey);
+        Assert.Equal("شكل التشطيب", line.LabelAr);
+    }
+
+    [Fact]
     public void ValidateMarketSave_flags_line_problems_by_index()
     {
         var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
         {
             AdjustmentLines =
             [
-                Line("bogus"),
+                Line("!!!"),
                 Line(MarketAdjustmentFactorKeys.Custom, labelAr: "  "),
                 Line(percent: 101m),
                 Line(percent: -101m, rationale: "قصير"),
@@ -189,14 +212,14 @@ public class ValuationComparableSelectionRequestRulesTests
     }
 
     [Fact]
-    public void BuildAdjustmentLine_reuses_id_and_explicit_sort_order_and_trims_text()
+    public void BuildAdjustmentLine_ignores_client_id_and_explicit_sort_order_and_trims_text()
     {
-        var id = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
         var line = ValuationComparableSelectionRequestRules.BuildAdjustmentLine(
             Guid.NewGuid(),
             new SaveValuationComparableAdjustmentLineRequest
             {
-                Id = id,
+                Id = clientId,
                 FactorKey = " financing ",
                 Percent = -2.5m,
                 Rationale = "  مبرر  ",
@@ -206,7 +229,8 @@ public class ValuationComparableSelectionRequestRulesTests
             },
             1);
 
-        Assert.Equal(id, line.Id);
+        Assert.NotEqual(Guid.Empty, line.Id);
+        Assert.NotEqual(clientId, line.Id);
         Assert.Equal(MarketAdjustmentFactorKeys.Financing, line.FactorKey);
         Assert.Equal(-2.5m, line.Percent);
         Assert.Equal("مبرر", line.Rationale);
@@ -216,8 +240,11 @@ public class ValuationComparableSelectionRequestRulesTests
     }
 
     [Fact]
-    public void ApplyMarketSave_rebuilds_lines_and_applies_overrides()
+    public void ApplyMarketSave_builds_new_lines_without_touching_the_navigation_collection()
     {
+        // The caller adds the returned lines via the DbSet — ApplyMarketSave must never add to
+        // row.AdjustmentLines itself (EF marks a pre-keyed entity added through a tracked navigation
+        // collection as Modified, turning the INSERT into a 0-row UPDATE and a false 409).
         var row = new ValuationComparableSelection
         {
             Id = Guid.NewGuid(),
@@ -227,7 +254,7 @@ public class ValuationComparableSelectionRequestRulesTests
             WeightOverrideRationale = "old",
         };
 
-        ValuationComparableSelectionRequestRules.ApplyMarketSave(row, new()
+        var built = ValuationComparableSelectionRequestRules.ApplyMarketSave(row, new()
         {
             AdjustmentLines = [Line(MarketAdjustmentFactorKeys.Location, percent: 4m), Line(sortOrder: 9)],
             WeightIsManual = false,
@@ -238,9 +265,11 @@ public class ValuationComparableSelectionRequestRulesTests
             AreaAdjustmentMethod = " AMTHAL ",
         });
 
-        Assert.Equal(2, row.AdjustmentLines.Count);
-        Assert.Equal([0, 9], row.AdjustmentLines.Select(l => l.SortOrder));
-        Assert.All(row.AdjustmentLines, l => Assert.Equal(row.Id, l.SelectionId));
+        Assert.Equal(2, built.Count);
+        Assert.Equal([0, 9], built.Select(l => l.SortOrder));
+        Assert.All(built, l => Assert.Equal(row.Id, l.SelectionId));
+        Assert.Single(row.AdjustmentLines);
+        Assert.Equal("market", row.AdjustmentLines.Single().FactorKey);
         Assert.False(row.WeightIsManual);
         Assert.Null(row.WeightPct);
         Assert.Null(row.WeightOverrideRationale);
@@ -254,7 +283,7 @@ public class ValuationComparableSelectionRequestRulesTests
     {
         var row = new ValuationComparableSelection { Id = Guid.NewGuid(), AreaAdjustmentMethod = AreaAdjustmentMethods.Amthal };
 
-        ValuationComparableSelectionRequestRules.ApplyMarketSave(row, new()
+        var built = ValuationComparableSelectionRequestRules.ApplyMarketSave(row, new()
         {
             WeightIsManual = true,
             WeightPct = 42m,
@@ -265,7 +294,7 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Equal(42m, row.WeightPct);
         Assert.Equal("مبرر الوزن اليدوي", row.WeightOverrideRationale);
         Assert.Equal(AreaAdjustmentMethods.Amthal, row.AreaAdjustmentMethod);
-        Assert.Empty(row.AdjustmentLines);
+        Assert.Empty(built);
     }
 
     // ---- market-approach header ----

@@ -85,6 +85,23 @@ public static class WorkflowTaskDistributionRules
     public static string? NormalizeAssigneeId(string? assigneeId) =>
         string.IsNullOrWhiteSpace(assigneeId) ? null : assigneeId.Trim();
 
+    /// <summary>
+    /// Party children do not store distribution JSON. When listing a child for a party
+    /// queue, reuse the parent's assignment so the row can name inspector / valuator /
+    /// office without seeing the parent task.
+    /// </summary>
+    public static bool IsBlankPartyAssignment(TaskDistributionDraftDto? distribution) =>
+        distribution is null
+        || (string.IsNullOrWhiteSpace(distribution.InspectorId)
+            && string.IsNullOrWhiteSpace(distribution.ValuatorId)
+            && string.IsNullOrWhiteSpace(distribution.EngineeringOfficeId)
+            && string.IsNullOrWhiteSpace(distribution.CaseSpecialistId));
+
+    public static TaskDistributionDraftDto? CoalesceDistribution(
+        TaskDistributionDraftDto? child,
+        TaskDistributionDraftDto? parent) =>
+        IsBlankPartyAssignment(child) ? parent ?? child : child;
+
     /// <summary>Timeline detail of a redistribution: «actor: name — reason» or «name — reason».</summary>
     public static string RedistributionDetail(string? actorName, string assigneeName, string reason) =>
         string.IsNullOrWhiteSpace(actorName)

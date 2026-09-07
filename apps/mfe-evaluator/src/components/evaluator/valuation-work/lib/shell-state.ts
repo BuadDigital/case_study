@@ -9,7 +9,6 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import {
   DEFAULT_DIFFERENCE_KEYS,
   type lineForSave,
@@ -86,19 +85,26 @@ export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
 /**
  * Interactive-form spec (buildNarrative): adjustments analysis text is generated from factor
  * justifications (“not justified” when empty) until the appraiser edits it manually.
+ * Rule Q-8-1: the factor-level justification (مبرر التسوية) lives in its own per-request table,
+ * not on the adjustment line — same precedence as `useAdjustmentsMatrixModel.justValue`. The
+ * per-comparable line rationale is a back-compat/override fallback only.
  */
 export function buildAutoNarrative(
   adopted: ValuationComparableSelectionDto[],
   factorRows: { factorKey: string; labelAr: string }[],
+  factorRationales?: { factorKey: string; rationaleAr: string }[],
 ): string {
   if (!adopted.length) {
     return "لم تُعتمد أي مقارنة بعد؛ يلزم اعتماد مقارن واحد على الأقل لتكوين رأي القيمة.";
   }
+  const rationaleByKey = new Map(
+    (factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr]),
+  );
   const first = adopted[0]?.market?.adjustmentLines ?? [];
   const bullets: string[] = [];
   for (const f of factorRows) {
     const line = first.find((l) => l.factorKey === f.factorKey);
-    const just = (line?.rationale ?? "").trim();
+    const just = (rationaleByKey.get(f.factorKey) ?? line?.rationale ?? "").trim();
     bullets.push(`• ${f.labelAr || f.factorKey} — ${just || "لم يتم تبريره"}`);
   }
   const weightJust = (
@@ -147,7 +153,7 @@ export function newAdjustmentLine(
   sortOrder: number,
 ): ReturnType<typeof lineForSave> {
   return {
-    id: createClientId("adj"),
+    id: null,
     factorKey,
     labelAr,
     percent: 0,

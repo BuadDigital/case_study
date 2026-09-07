@@ -52,6 +52,7 @@ export function EvaluatorFinalReviewTab({
   approachSettings: approachSettingsFromShell,
   onDraftPatch,
   onReportChoicesPatch,
+  onSettingsSaved,
   fieldErrors,
 }: {
   draft: EvaluatorSubmission;
@@ -72,6 +73,7 @@ export function EvaluatorFinalReviewTab({
     assetDataVarianceNotes?: string;
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
+  onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
   fieldErrors?: Record<string, string>;
 }) {
   const { showToast } = useToast();
@@ -99,6 +101,8 @@ export function EvaluatorFinalReviewTab({
     null,
   );
   const [assumptions, setAssumptions] = useState<string[]>([]);
+  const [specialistUsed, setSpecialistUsed] = useState(false);
+  const [specialistDetails, setSpecialistDetails] = useState("");
   const [freeAssumption, setFreeAssumption] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,6 +168,8 @@ export function EvaluatorFinalReviewTab({
         !s.externalSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
     );
     const useAll = loaded.length === 0;
+    setSpecialistUsed(s.externalSpecialistUsed);
+    setSpecialistDetails(s.externalSpecialistDetails ?? "");
     setAssumptions(
       useAll
         ? visible
@@ -249,20 +255,41 @@ export function EvaluatorFinalReviewTab({
 
   const visibleLibrary = useMemo(() => {
     const library = settings?.assumptionLibrary ?? [];
-    const specialistUsed = settings?.externalSpecialistUsed ?? false;
     const extras = assumptions.filter((a) => !library.includes(a));
     const base = library.filter(
       (clause) =>
         !specialistUsed || !isNoExternalSpecialistAssumption(clause),
     );
     return [...base, ...extras];
-  }, [assumptions, settings?.assumptionLibrary, settings?.externalSpecialistUsed]);
+  }, [assumptions, settings?.assumptionLibrary, specialistUsed]);
+
+  function applySpecialistUsed(used: boolean) {
+    setSpecialistUsed(used);
+    if (used) {
+      setAssumptions((prev) =>
+        prev.filter((x) => !isNoExternalSpecialistAssumption(x)),
+      );
+      return;
+    }
+    const clause = (settings?.assumptionLibrary ?? []).find(
+      isNoExternalSpecialistAssumption,
+    );
+    if (clause) {
+      setAssumptions((prev) =>
+        prev.includes(clause) ? prev : [...prev, clause],
+      );
+    }
+  }
 
   async function saveAssumptions() {
     const config = apiConfig();
     if (!config || !settings || disabled) return;
+    if (specialistUsed && !specialistDetails.trim()) {
+      showToast("توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»", "error");
+      return;
+    }
     setSaving(true);
-    const selected = settings.externalSpecialistUsed
+    const selected = specialistUsed
       ? assumptions.filter((x) => !isNoExternalSpecialistAssumption(x))
       : assumptions;
     const res = await saveValuationApproachSettings(
@@ -278,8 +305,10 @@ export function EvaluatorFinalReviewTab({
         adjustmentsEditUnlocked: settings.adjustmentsEditUnlocked,
         valuationPurposeKey: settings.valuationPurposeKey,
         valuationPurposeNote: settings.valuationPurposeNote ?? null,
-        externalSpecialistUsed: settings.externalSpecialistUsed,
-        externalSpecialistDetails: settings.externalSpecialistDetails ?? null,
+        externalSpecialistUsed: specialistUsed,
+        externalSpecialistDetails: specialistUsed
+          ? specialistDetails.trim()
+          : null,
         valuationDateMode: settings.valuationDateMode,
         retrospectiveDate: settings.retrospectiveDate ?? null,
         retrospectiveDateEnd: settings.retrospectiveDateEnd ?? null,
@@ -293,6 +322,7 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSettings(res.data);
+    onSettingsSaved?.(res.data);
     showToast("تم حفظ الافتراضات الخاصة", "success");
   }
 
@@ -416,6 +446,25 @@ export function EvaluatorFinalReviewTab({
           أزل العبارة التي لا تصح على هذا العقار، أو أضف بنداً إضافياً. يُحفظ مع
           إعدادات التقييم ويُطبع المُبقى فقط.
         </p>
+        <label className="mb-2 flex items-center gap-2 text-[12.5px] text-text">
+          <input
+            type="checkbox"
+            className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
+            disabled={disabled || saving}
+            checked={specialistUsed}
+            onChange={(e) => applySpecialistUsed(e.target.checked)}
+          />
+          استُعين بأخصائي خارجي
+        </label>
+        {specialistUsed ? (
+          <input
+            placeholder="الأخصائي، دوره، ونتيجته"
+            value={specialistDetails}
+            disabled={disabled || saving}
+            onChange={(e) => setSpecialistDetails(e.target.value)}
+            className={cn(opsFldControl, "mb-3 font-medium")}
+          />
+        ) : null}
         {visibleLibrary.length > 0 ? (
           <div className="mb-3 overflow-hidden rounded-[var(--radius)] border border-border">
             {visibleLibrary.map((clause) => (
@@ -463,7 +512,7 @@ export function EvaluatorFinalReviewTab({
                 t &&
                 !assumptions.includes(t) &&
                 !(
-                  settings?.externalSpecialistUsed &&
+                  specialistUsed &&
                   isNoExternalSpecialistAssumption(t)
                 )
               ) {

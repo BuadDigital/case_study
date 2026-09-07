@@ -289,11 +289,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     }
                   />
                   {adopted.map((item) => {
-                    // “Suggested” from the server — the primed draft is not a manual entry.
                     const line = lineOf(item, factorKey);
-                    const suggested =
-                      desc?.compNote === "kind-suggested" &&
-                      line?.isSuggestedValue === true;
                     const included2 = line?.isIncluded !== false;
                     const cellKey = `${item.id}:${factorKey}`;
                     return (
@@ -302,15 +298,12 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         cellKey={cellKey}
                         value={String(linePct(item, factorKey))}
                         disabled={locked || !included2}
-                        muted={suggested || !included2}
+                        muted={!included2}
                         note={
                           desc?.compNote === "deal-age"
                             ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
                             : desc?.compNote === "kind-suggested"
-                              ? [
-                                  item.comparable.transactionKindLabelAr,
-                                  suggested ? "مقترح" : "تجاوز يدوي",
-                                ].join(" · ")
+                              ? item.comparable.transactionKindLabelAr
                               : undefined
                         }
                         onCommit={
@@ -528,7 +521,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             {addableFactors.length > 0 ? (
               <AddFactorRow
                 options={addableFactors}
-                locked={locked}
+                locked={locked || saving}
                 colSpan={3 + adopted.length}
                 onAdd={(factorKey, labelAr) =>
                   void dispatch({ type: "add-factor", factorKey, labelAr })

@@ -113,6 +113,23 @@ public class WorkflowTaskDistributionRulesTests
     }
 
     [Fact]
+    public void Blank_child_distribution_inherits_the_parent()
+    {
+        var parent = Draft();
+        Assert.True(WorkflowTaskDistributionRules.IsBlankPartyAssignment(null));
+        Assert.True(WorkflowTaskDistributionRules.IsBlankPartyAssignment(new TaskDistributionDraftDto
+        {
+            ValuationDepartment = true,
+        }));
+        Assert.Same(parent, WorkflowTaskDistributionRules.CoalesceDistribution(null, parent));
+        Assert.Same(parent, WorkflowTaskDistributionRules.CoalesceDistribution(
+            new TaskDistributionDraftDto { ValuationDepartment = true }, parent));
+
+        var child = Draft();
+        Assert.Same(child, WorkflowTaskDistributionRules.CoalesceDistribution(child, parent));
+    }
+
+    [Fact]
     public void Redistribution_detail_prefixes_the_actor_when_known()
     {
         Assert.Equal("علي: فهد — تغيير", WorkflowTaskDistributionRules.RedistributionDetail("علي", "فهد", "تغيير"));
@@ -149,7 +166,7 @@ public class WorkflowTaskDistributionRulesTests
 
     [Theory]
     [InlineData(WorkflowTaskKind.EngineeringSurvey, "/active-survey/")]
-    [InlineData(WorkflowTaskKind.FieldInspection, "/property-inspection/")]
+    [InlineData(WorkflowTaskKind.FieldInspection, "/active-inspection/")]
     [InlineData(WorkflowTaskKind.PropertyAppraisal, "/property-appraisal/")]
     public void Task_href_routes_by_kind(WorkflowTaskKind kind, string prefix)
     {
@@ -190,7 +207,7 @@ public class WorkflowTaskDistributionRulesTests
 
         var single = requests["user-fi"];
         Assert.Equal("أُسندت إليك مهمة جديدة: معاينة العقار على D-1.", single.Body);
-        Assert.Equal($"/property-inspection/{inspection.Id}", single.Href);
+        Assert.Equal($"/active-inspection/{inspection.Id}", single.Href);
         Assert.Equal(inspection.Id.ToString(), single.EntityId);
         Assert.Equal($"distribution-assigned:{inspection.Id}", single.SourceEvent);
 

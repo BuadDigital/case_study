@@ -66,7 +66,10 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows: ComparablesBankRow[];
   subjectSqm: number | null;
   distanceKm: Record<string, number>;
-  onAdopt: (comparableId: string, adopted: boolean) => void;
+  /** Resolves once the save (and the reload it triggers) settles — the checkbox reverts to
+   * `rows` truth then. Adopting a comparable for the first time has no server round trip to
+   * flip early on, so the checkbox owns its own optimistic draft meanwhile (rerender-defer-reads). */
+  onAdopt: (comparableId: string, adopted: boolean) => Promise<void>;
   /** Market context only — when absent, show a vacant-land badge instead of the search field. */
   onSearch?: (q: string) => void;
   /** Returns true on successful save — the cell draft is cleared then. */
@@ -82,6 +85,10 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
 }) {
   const { showToast } = useToast();
   const [q, setQ] = useState("");
+  // Optimistic checkbox draft, keyed by comparable id — cleared once onAdopt settles and
+  // `rows` (server truth) catches up. Only a brand-new adoption lacks an earlier optimistic
+  // flip upstream, so without this the checkbox visibly waits on the full save + reload.
+  const [pendingAdopt, setPendingAdopt] = useState<Map<string, boolean>>(new Map());
   const [formOpen, setFormOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
@@ -294,18 +301,33 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             </Tr>
           </THead>
           <TBody>
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const pending = pendingAdopt.get(row.comp.id);
+              const adopted = pending ?? row.adopted;
+              return (
               <Tr
                 key={row.key}
-                hoverable={!row.adopted}
-                className={cn(row.adopted && "bg-gold-soft")}
+                hoverable={!adopted}
+                className={cn(adopted && "bg-gold-soft")}
               >
                 <Td className="text-center">
                   <input
                     type="checkbox"
-                    checked={row.adopted}
-                    onChange={(e) => onAdopt(row.comp.id, e.target.checked)}
-                    className="size-[17px] cursor-pointer accent-[var(--ink)]"
+                    checked={adopted}
+                    disabled={pending !== undefined}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      const compId = row.comp.id;
+                      setPendingAdopt((prev) => new Map(prev).set(compId, next));
+                      void onAdopt(compId, next).finally(() => {
+                        setPendingAdopt((prev) => {
+                          const copy = new Map(prev);
+                          copy.delete(compId);
+                          return copy;
+                        });
+                      });
+                    }}
+                    className="size-[17px] cursor-pointer accent-[var(--ink)] disabled:cursor-wait"
                   />
                 </Td>
                 <TdLtr
@@ -451,7 +473,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   </span>
                 </Td>
               </Tr>
-            ))}
+              );
+            })}
             {rows.length === 0 ? (
               <TableEmptyRow colSpan={12}>
                 {q.trim()

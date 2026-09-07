@@ -153,7 +153,6 @@ export function ValuationWorkShell({
     property,
     intakeProperty,
     onFinalOpinionChange,
-    onNavAvailabilityChange,
   });
   const {
     loading,
@@ -209,6 +208,23 @@ export function ValuationWorkShell({
     dispatchLandMatrix,
   } = useValuationWorkCommands(data);
 
+  const [draftApproaches, setDraftApproaches] =
+    useState<ValuationWorkNavAvailability | null>(null);
+  const onDraftApproachesChange = useCallback(
+    (nav: ValuationWorkNavAvailability) => {
+      setDraftApproaches(nav);
+    },
+    [],
+  );
+  const marketTab =
+    draftApproaches != null ? draftApproaches.market : marketEnabled;
+  const costTab =
+    draftApproaches != null ? draftApproaches.cost : costEnabled;
+
+  useEffect(() => {
+    onNavAvailabilityChange?.({ market: marketTab, cost: costTab });
+  }, [costTab, marketTab, onNavAvailabilityChange]);
+
   const comparableSeed = {
     type: property?.propertyType || intakeProperty?.propertyType,
     city: property?.city || intakeProperty?.city,
@@ -224,8 +240,8 @@ export function ValuationWorkShell({
   }, [reload]);
 
   const navItems = buildNavItems({
-    marketEnabled,
-    costEnabled,
+    marketEnabled: marketTab,
+    costEnabled: costTab,
     adoptedMarketCount: visibleAdoptedMarket.length,
   });
   const effectiveScreen = resolveEffectiveScreen(navItems, screen);
@@ -265,7 +281,7 @@ export function ValuationWorkShell({
         </Card>
       );
     }
-    if (!marketEnabled) {
+    if (!marketTab) {
       return (
         <Card>
           <CardPad>
@@ -351,7 +367,7 @@ export function ValuationWorkShell({
   }
 
   function renderCost() {
-    if (!settingsSaved || !costEnabled) {
+    if (!settingsSaved || !costTab) {
       return (
         <Card>
           <CardPad>
@@ -520,6 +536,7 @@ export function ValuationWorkShell({
             fieldErrors={fieldErrors}
             onDraftPatch={onDraftPatch}
             onReportChoicesPatch={onReportChoicesPatch}
+            onSettingsSaved={onSettingsSaved}
           />
         </Suspense>
         {showSubmit ? (
@@ -631,6 +648,11 @@ export function ValuationWorkShell({
               onSettingsSaved={onSettingsSaved}
               fieldErrors={fieldErrors}
               onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+              onDraftApproachesChange={onDraftApproachesChange}
+              hasMarketWork={visibleAdoptedMarket.length > 0}
+              hasCostWork={
+                (cost?.lines?.length ?? 0) > 0 || visibleAdoptedLand.length > 0
+              }
             />
           </Activity>
         ) : null}
@@ -640,7 +662,7 @@ export function ValuationWorkShell({
         {visitedScreensRef.current.has("cost") ? (
           <Activity mode={screenMode("cost")}>
             {renderCost()}
-            {settingsSaved && costEnabled ? (
+            {settingsSaved && costTab ? (
               <Suspense fallback={<InlineLoadingSkeleton />}>
                 <CostApproachSection
                   valuationRequestId={valuationRequestId}

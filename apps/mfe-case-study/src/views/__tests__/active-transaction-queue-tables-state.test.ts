@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import {
   assignedDateLabel,
   buildAppraisalPartyDeps,
+  APPRAISAL_QUEUE_SKELETON_COLS,
+  PARTY_QUEUE_SKELETON_COLS,
+  caseStudyParentForQueueTask,
   distributionSkeletonCols,
   engSurveyRemainingMode,
   engSurveyStatusPillStyle,
@@ -189,6 +193,18 @@ describe("skeleton column counts", () => {
     expect(distributionSkeletonCols(true)).toBe(11);
     expect(primarySkeletonCols(true)).toBe(7);
     expect(primarySkeletonCols(false)).toBe(5);
+    expect(PARTY_QUEUE_SKELETON_COLS).toBe(7);
+    expect(APPRAISAL_QUEUE_SKELETON_COLS).toBe(8);
+  });
+});
+
+describe("caseStudyParentForQueueTask", () => {
+  it("returns the parent when the queue row is a child task", () => {
+    const parent = { id: "parent-1", parentTaskId: "" } as WorkflowTask;
+    const child = { id: "child-1", parentTaskId: "parent-1" } as WorkflowTask;
+    expect(caseStudyParentForQueueTask(child, [parent, child])).toBe(parent);
+    expect(caseStudyParentForQueueTask(parent, [parent, child])).toBe(parent);
+    expect(caseStudyParentForQueueTask(child, [child])).toBe(child);
   });
 });
 

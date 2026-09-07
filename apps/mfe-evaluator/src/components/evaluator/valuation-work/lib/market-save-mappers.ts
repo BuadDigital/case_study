@@ -102,21 +102,16 @@ export function ensureLinesForSave(
 /**
  * Prepare an adjustment line for save: area is pinned to the auto suggestion; “suggested”
  * values (unentered comparable type) are zeroed so a suggestion does not become a permanent manual entry.
+ * IDs are always omitted — the API deletes previous rows then inserts, so reusing a stored
+ * id collides with the tracked-deleted entities.
  */
-const GUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function guidOrNull(id: string | null | undefined): string | null {
-  return id && GUID_RE.test(id) ? id : null;
-}
-
 export function lineForSave(
   item: ValuationComparableSelectionDto,
   l: ValuationComparableAdjustmentLineDto,
   i: number,
 ) {
   return {
-    id: guidOrNull(l.id),
+    id: null,
     factorKey: l.factorKey,
     labelAr: l.labelAr,
     percent:

@@ -1,6 +1,4 @@
-import {
-  listComparableProperties,
-  suggestComparablePropertiesByProximity,
+import { listComparableProperties,suggestComparablePropertiesByProximity, 
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";

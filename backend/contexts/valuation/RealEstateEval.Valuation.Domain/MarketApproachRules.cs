@@ -119,8 +119,9 @@ public static class MarketApproachRules
     }
 
     /// <summary>
-    /// Effective sequential %: market-conditions adjustment is fully manual (model shows deal age as a hint only);
-    /// unset comparable-kind adjustment takes the suggested default (KIND_DEFAULT) as "suggested until overridden".
+    /// Effective sequential %: every sequential factor is pure manual entry — the computed
+    /// suggestions (deal-age market conditions, comparable-kind default) are informational only
+    /// and never silently substituted as a default. Absent input reads as 0%, not a suggested value.
     /// </summary>
     public static decimal EffectiveSequentialPercent(
         string factorKey,
@@ -131,11 +132,9 @@ public static class MarketApproachRules
         decimal suggestedKindPct)
     {
         if (!isIncluded) return 0m;
-        // "Suggested until overridden" applies to the entered % only — writing a rationale alone does not cancel the default.
-        var hasManual = storedPercent != 0m;
-        if (hasManual) return storedPercent;
-        if (factorKey == MarketAdjustmentFactorKeys.TransactionType) return suggestedKindPct;
+        _ = factorKey;
         _ = suggestedMarketPct;
+        _ = suggestedKindPct;
         _ = rationale;
         return storedPercent;
     }

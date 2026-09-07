@@ -202,6 +202,11 @@ describe("savedLines", () => {
   it("returns an empty list when the comparable has no market data", () => {
     expect(savedLines({ id: "x" } as ValuationComparableSelectionDto)).toEqual([]);
   });
+
+  it("omits stored line ids so a replace-all save cannot collide with deleted rows", () => {
+    const guid = "a0000000-0000-4000-8000-000000000001";
+    expect(savedLines(item("a", [line("market", -5, { id: guid })]))[0].id).toBeNull();
+  });
 });
 
 describe("linesWithCellPercent", () => {
@@ -212,6 +217,7 @@ describe("linesWithCellPercent", () => {
       ["area", 4],
       ["location", -3],
     ]);
+    expect(lines.every((l) => l.id === null)).toBe(true);
     expect(lines[2].labelAr).toBe("الموقع");
   });
 });
@@ -236,8 +242,8 @@ describe("linesWithoutFactor / linesWithFactorAppended", () => {
       descriptionAr: null,
       isIncluded: true,
       sortOrder: 1,
+      id: null,
     });
-    expect(lines[1].id).toBeTruthy();
   });
 });
 

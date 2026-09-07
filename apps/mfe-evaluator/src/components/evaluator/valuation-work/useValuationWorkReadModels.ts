@@ -142,8 +142,13 @@ export function useValuationWorkReadModels({
   );
 
   const autoNarrative = useMemo(
-    () => buildAutoNarrative(visibleAdoptedMarket, visibleFactorRows),
-    [visibleAdoptedMarket, visibleFactorRows],
+    () =>
+      buildAutoNarrative(
+        visibleAdoptedMarket,
+        visibleFactorRows,
+        selection?.factorRationales,
+      ),
+    [visibleAdoptedMarket, visibleFactorRows, selection?.factorRationales],
   );
   const narrativeDirty = analysisNotes.trim().length > 0;
 

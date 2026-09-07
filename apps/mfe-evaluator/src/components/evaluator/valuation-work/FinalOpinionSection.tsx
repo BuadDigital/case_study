@@ -169,13 +169,23 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           step={5}
                           value={m.weightPct}
                           onChange={(e) => {
-                            const next = [...reconMethods];
-                            next[idx] = {
-                              ...m,
-                              weightPct:
+                            const raw = Math.min(
+                              100,
+                              Math.max(
+                                0,
                                 Number(e.target.value.replace(",", ".")) || 0,
-                              isIncluded: true,
-                            };
+                              ),
+                            );
+                            const next = [...reconMethods];
+                            next[idx] = { ...m, weightPct: raw, isIncluded: true };
+                            // Exactly two methods — the other's share auto-fills so they always sum to 100.
+                            if (reconMethods.length === 2) {
+                              const otherIdx = idx === 0 ? 1 : 0;
+                              next[otherIdx] = {
+                                ...next[otherIdx],
+                                weightPct: 100 - raw,
+                              };
+                            }
                             setReconMethods(next);
                           }}
                           className={cn(

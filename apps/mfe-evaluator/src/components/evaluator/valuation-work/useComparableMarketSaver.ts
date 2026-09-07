@@ -6,6 +6,7 @@
  * land table, and the two save shapes (one comparable, or a fan-out across the
  * adopted set) with their saving flag, failure toast and silent reload.
  */
+import { useRef } from "react";
 import {
   saveValuationComparableMarket,
   type SaveValuationComparableMarketRequest,
@@ -36,6 +37,39 @@ export type FanOutSave = {
   trackSaving?: boolean;
 };
 
+type MarketWriteResult = Awaited<ReturnType<typeof saveValuationComparableMarket>>;
+
+function writeFailureMessage(
+  res: { kind: string; message?: string },
+  fallback: string,
+): string {
+  const message = res.message?.trim();
+  if (message) return message;
+  if (res.kind === "auth") return "انتهت الجلسة — أعد تسجيل الدخول";
+  if (res.kind === "network") return "تعذّر الاتصال بالخادم";
+  return fallback;
+}
+
+async function putMarket(
+  ctx: WriteContext,
+  item: ValuationComparableSelectionDto,
+  lines: SavedLine[],
+  extra?: Partial<SaveValuationComparableMarketRequest>,
+): Promise<MarketWriteResult> {
+  const body = marketSaveBody(item, lines, extra);
+  const attempt = () =>
+    saveValuationComparableMarket(
+      ctx.config,
+      ctx.valuationRequestId,
+      item.id,
+      body,
+    );
+  const first = await attempt();
+  // A cell save and an add-factor fan-out can hit the same xmin; one replay is enough.
+  if (!first.ok && first.kind === "conflict") return attempt();
+  return first;
+}
+
 export function useComparableMarketSaver(data: ValuationWorkData) {
   const {
     showToast,
@@ -49,6 +83,16 @@ export function useComparableMarketSaver(data: ValuationWorkData) {
     adjustmentsLocked,
     reload,
   } = data;
+  const writeTail = useRef(Promise.resolve());
+
+  function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const run = writeTail.current.then(task, task);
+    writeTail.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
 
   /** Null when there is no session or no open request — or when the table is locked and the write needs it open. */
   function writeContext(opts?: { requireUnlocked?: boolean }): WriteContext | null {
@@ -77,22 +121,17 @@ export function useComparableMarketSaver(data: ValuationWorkData) {
     extra?: Partial<SaveValuationComparableMarketRequest>,
   ): Promise<boolean> {
     setSaving(true);
-    const res = await saveValuationComparableMarket(
-      ctx.config,
-      ctx.valuationRequestId,
-      item.id,
-      marketSaveBody(item, lines, extra),
-    );
+    const res = await enqueueWrite(() => putMarket(ctx, item, lines, extra));
     setSaving(false);
     if (!res.ok) {
-      showToast(res.message ?? errorMessage, "error");
+      showToast(writeFailureMessage(res, errorMessage), "error");
       return false;
     }
     await reload({ silent: true, scope: "derived" });
     return true;
   }
 
-  /** Every adopted comparable in parallel; the first failure is toasted, the reload always runs. */
+  /** Every adopted comparable, one after another so xmin on a row is never raced. */
   async function saveMany(
     ctx: WriteContext,
     {
@@ -105,20 +144,17 @@ export function useComparableMarketSaver(data: ValuationWorkData) {
     }: FanOutSave,
   ): Promise<boolean> {
     if (trackSaving) setSaving(true);
-    const results = await Promise.all(
-      items.map((item) =>
-        saveValuationComparableMarket(
-          ctx.config,
-          ctx.valuationRequestId,
-          item.id,
-          marketSaveBody(item, linesFor(item), extra),
-        ),
-      ),
-    );
+    const results = await enqueueWrite(async () => {
+      const out: MarketWriteResult[] = [];
+      for (const item of items) {
+        out.push(await putMarket(ctx, item, linesFor(item), extra));
+      }
+      return out;
+    });
     if (trackSaving) setSaving(false);
     const failed = results.find((r) => !r.ok);
     if (failed && !failed.ok) {
-      showToast(failed.message ?? errorMessage, "error");
+      showToast(writeFailureMessage(failed, errorMessage), "error");
       await reload({ silent: true, scope: "derived" });
       return false;
     }

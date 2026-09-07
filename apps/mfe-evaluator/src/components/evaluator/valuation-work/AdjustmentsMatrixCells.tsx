@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn, opsLetterCard } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 
 import { JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
+
+/** Enter commits like blur does (same onBlur handler); Escape discards the field's own change. */
+function commitOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.currentTarget.blur();
+  }
+}
 
 /**
  * Presentational pieces of the adjustments matrix — the percentage formatters,
@@ -215,6 +223,7 @@ export function LabelCell({
             disabled={locked}
             defaultValue={String(areaFactor)}
             onBlur={(e) => onAreaFactorChange(e.target.value)}
+            onKeyDown={commitOnEnter}
             className="w-16 rounded-[7px] border border-border-md bg-surface px-[7px] py-[5px] text-center text-[12px] font-bold text-heading"
           />
         </label>
@@ -272,6 +281,7 @@ export function JustCell({
         disabled={locked}
         placeholder="مبرّر التسوية (يغطي كل المقارنات)؟"
         onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={commitOnEnter}
         onBlur={() => {
           if (draft == null || tooShort) return;
           if (draft === committed) {
@@ -323,6 +333,7 @@ export function JustCell({
                           [o.id]: e.target.value,
                         }))
                       }
+                      onKeyDown={commitOnEnter}
                       onBlur={() => {
                         if (overrideTooShort) return;
                         if (draft !== o.value)
@@ -405,6 +416,7 @@ export function CompInput({
         disabled={disabled}
         value={draft ?? value}
         onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={commitOnEnter}
         onBlur={() => {
           if (draft == null) return;
           if (draft === value || !onCommit) {
@@ -451,6 +463,7 @@ export function InlineDraftInput({
       placeholder={placeholder}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
+      onKeyDown={commitOnEnter}
       onBlur={() => {
         if (draft == null) return;
         const text = draft;
@@ -485,6 +498,7 @@ export function WeightCell({
         disabled={locked}
         value={draft ?? value}
         onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={commitOnEnter}
         onBlur={() => {
           if (draft == null) return;
           if (draft === value) {

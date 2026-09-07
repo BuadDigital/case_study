@@ -445,7 +445,7 @@ type Result<T> =
   | { ok: true; data: T }
   | {
       ok: false;
-      kind: "auth" | "network" | "server" | "validation" | "not_found";
+      kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict";
       message?: string;
       errors?: Record<string, string>;
     };
@@ -598,6 +598,27 @@ export async function saveValuationComparableMarket(
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) {
+      return {
+        ok: false,
+        kind: "auth",
+        message: "ليست لديك صلاحية حفظ التسويات",
+      };
+    }
+    if (res.status === 409) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "conflict",
+        message:
+          payload?.detail ??
+          payload?.message ??
+          "تم تحديث السجل من طلب آخر. حدّث الصفحة ثم أعد المحاولة.",
+      };
+    }
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         errors?: Record<string, string | string[]>;

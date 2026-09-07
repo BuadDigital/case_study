@@ -53,9 +53,11 @@ public class MarketApproachRulesTests
     }
 
     [Fact]
-    public void EffectiveSequentialPercent_market_manual_kind_suggested()
+    public void EffectiveSequentialPercent_is_pure_manual_entry_for_every_factor()
     {
-        // Market conditions are manual — no suggestion replaces zero.
+        // Every sequential factor — market conditions and comparable kind alike — is manual entry.
+        // The computed suggestions (suggestedMarketPct, suggestedKindPct) are informational only and
+        // never silently substituted: an unentered percentage reads as 0%, not a "suggested" default.
         Assert.Equal(
             0m,
             MarketApproachRules.EffectiveSequentialPercent(
@@ -64,14 +66,12 @@ public class MarketApproachRulesTests
             3m,
             MarketApproachRules.EffectiveSequentialPercent(
                 MarketAdjustmentFactorKeys.Market, 3m, "ارتفاع السوق", true, 2.5m, -5m));
-        // The non-input comparator type takes the suggested default.
         Assert.Equal(
-            -5m,
+            0m,
             MarketApproachRules.EffectiveSequentialPercent(
                 MarketAdjustmentFactorKeys.TransactionType, 0m, "", true, 2.5m, -5m));
-        // Writing the justification alone does not eliminate the proposed default — the input percentage is the only nullifier.
         Assert.Equal(
-            -5m,
+            0m,
             MarketApproachRules.EffectiveSequentialPercent(
                 MarketAdjustmentFactorKeys.TransactionType, 0m, "عرض موثوق", true, 2.5m, -5m));
         Assert.Equal(
@@ -170,6 +170,11 @@ public class MarketApproachRulesTests
         Assert.True(MarketAdjustmentFactorKeys.IsSequential(MarketAdjustmentFactorKeys.Market));
         Assert.True(MarketAdjustmentFactorKeys.IsDifferenceFactor(MarketAdjustmentFactorKeys.Location));
         Assert.False(MarketAdjustmentFactorKeys.IsSequential(MarketAdjustmentFactorKeys.Location));
+        Assert.True(MarketAdjustmentFactorKeys.IsExtraCatalogKey("finishing"));
+        Assert.True(MarketAdjustmentFactorKeys.IsDifferenceFactor("finishing"));
+        Assert.True(MarketAdjustmentFactorKeys.IsKnown("finishing"));
+        Assert.False(MarketAdjustmentFactorKeys.HasFixedStandardLabel("finishing"));
+        Assert.False(MarketAdjustmentFactorKeys.IsExtraCatalogKey("!!!"));
     }
 
     [Fact]

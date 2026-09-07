@@ -59,7 +59,7 @@ export function PartyQueueDeedCell({
   ctx: QueueRowContext;
   task: WorkflowTask;
   propertySlot: string;
-  propertyType: string;
+  propertyType?: string;
 }) {
   return (
     <InteractiveDeedCell
