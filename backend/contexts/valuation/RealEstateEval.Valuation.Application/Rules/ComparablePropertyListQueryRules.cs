@@ -54,8 +54,18 @@ public static class ComparablePropertyListQueryRules
             _ => DefaultDescending,
         };
 
-    public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+    public static string? NormalizeSearch(string? q)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return null;
+        var term = q.Trim();
+        if (term.StartsWith("حي ", StringComparison.Ordinal)
+            || term.StartsWith("حى ", StringComparison.Ordinal))
+        {
+            var rest = term[3..].Trim();
+            if (rest.Length > 0) term = rest;
+        }
+        return term;
+    }
 
  /// <summary>
  /// Subject property for the comparison-method §2 display priority. A blank or unparsable value

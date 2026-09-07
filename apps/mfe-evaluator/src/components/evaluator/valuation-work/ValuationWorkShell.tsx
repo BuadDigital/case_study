@@ -195,6 +195,8 @@ export function ValuationWorkShell({
     landBankDistanceKm,
     subjectAreaNum,
     onSearchBank,
+    reload,
+    bankSubjectCoords,
   } = data;
 
   const {
@@ -206,6 +208,20 @@ export function ValuationWorkShell({
     dispatchMarketMatrix,
     dispatchLandMatrix,
   } = useValuationWorkCommands(data);
+
+  const comparableSeed = {
+    type: property?.propertyType || intakeProperty?.propertyType,
+    city: property?.city || intakeProperty?.city,
+    district:
+      property?.district || districtHint || intakeProperty?.district,
+    latitude:
+      bankSubjectCoords != null ? String(bankSubjectCoords.lat) : undefined,
+    longitude:
+      bankSubjectCoords != null ? String(bankSubjectCoords.lng) : undefined,
+  };
+  const onBankCreated = useCallback(() => {
+    void reload({ silent: true, scope: "full" });
+  }, [reload]);
 
   const navItems = buildNavItems({
     marketEnabled,
@@ -270,6 +286,10 @@ export function ValuationWorkShell({
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
           onSaveOverride={onSaveBankOverride}
+          seed={comparableSeed}
+          sourceWorkOrderNumber={poNumber}
+          sourcePropertyId={propertyId}
+          onCreated={onBankCreated}
         />
 
         {selection ? (
@@ -441,6 +461,10 @@ export function ValuationWorkShell({
           distanceKm={landBankDistanceKm}
           onAdopt={onAdoptLand}
           onSaveOverride={onSaveBankOverride}
+          seed={comparableSeed}
+          sourceWorkOrderNumber={poNumber}
+          sourcePropertyId={propertyId}
+          onCreated={onBankCreated}
         />
 
         {landSelection ? (

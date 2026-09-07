@@ -458,6 +458,14 @@ function headers(token: string): HeadersInit {
   };
 }
 
+function firstValidationMessage(
+  errors?: Record<string, string | string[]>,
+): string | undefined {
+  if (!errors) return undefined;
+  const first = Object.values(errors)[0];
+  return Array.isArray(first) ? first[0] : first;
+}
+
 
 export async function getOpenValuationRequestByProperty(
   config: ValuationSelectionsApiConfig,
@@ -592,17 +600,17 @@ export async function saveValuationComparableMarket(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
+        errors?: Record<string, string | string[]>;
         message?: string;
       } | null;
       return {
         ok: false,
         kind: "validation",
         message:
-          payload?.errors
-            ? Object.values(payload.errors)[0]
-            : payload?.message ?? "بيانات التسوية غير صالحة",
-        errors: payload?.errors,
+          firstValidationMessage(payload?.errors) ??
+          payload?.message ??
+          "بيانات التسوية غير صالحة",
+        errors: payload?.errors as Record<string, string> | undefined,
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };

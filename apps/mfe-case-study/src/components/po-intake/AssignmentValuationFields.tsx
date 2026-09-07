@@ -4,31 +4,43 @@ import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
   VALUATION_PURPOSE_OPTIONS,
   VALUE_BASIS_OPTIONS,
-  VALUE_PREMISE_OPTIONS,
+  assignmentValuationDefaults,
+  coercePremiseForBasis,
+  premiseOptionsForBasis,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
-import {
-  basisOfValueForAssignment,
-  defaultSubClientId,
-  valuationPurposeForAssignment,
-  valuePremiseForAssignment,
-  type AssignmentType,
-} from "../../lib/app-data/po-intake-data";
+import { type AssignmentType } from "../../lib/app-data/po-intake-data";
+
+const DEFAULT_HINT = "افتراضي";
 
 export function AssignmentValuationFields({
   assignmentType,
   subClientId,
   idPrefix,
+  purposeKey,
+  basisKey,
+  premiseKey,
+  onPurposeChange,
+  onBasisChange,
+  onPremiseChange,
 }: {
   assignmentType: AssignmentType | "";
   subClientId?: string;
   idPrefix: string;
+  purposeKey: string;
+  basisKey: string;
+  premiseKey: string;
+  onPurposeChange: (key: string) => void;
+  onBasisChange: (key: string) => void;
+  onPremiseChange: (key: string) => void;
 }) {
   if (!assignmentType) return null;
 
-  const nabrId = subClientId || defaultSubClientId();
-  const purpose = valuationPurposeForAssignment(assignmentType, nabrId);
-  const basis = basisOfValueForAssignment(assignmentType, nabrId);
-  const premise = valuePremiseForAssignment(assignmentType, nabrId);
+  const defaults = assignmentValuationDefaults(assignmentType, subClientId);
+  const premiseOptions = premiseOptionsForBasis(basisKey || defaults.basisKey);
+  const resolvedPremise = coercePremiseForBasis(
+    basisKey || defaults.basisKey,
+    premiseKey || defaults.premiseKey,
+  );
 
   return (
     <>
@@ -36,28 +48,39 @@ export function AssignmentValuationFields({
         id={`${idPrefix}_valuation_purpose`}
         label="الغرض من التقييم"
         required
-        value={purpose.key}
+        value={purposeKey || defaults.purposeKey}
         options={VALUATION_PURPOSE_OPTIONS}
-        hint="افتراضي"
-        onChange={() => undefined}
+        hint={
+          (purposeKey || defaults.purposeKey) === defaults.purposeKey
+            ? DEFAULT_HINT
+            : undefined
+        }
+        onChange={onPurposeChange}
       />
       <RegSelect
         id={`${idPrefix}_value_basis`}
         label="أساس القيمة"
         required
-        value={basis.key}
+        value={basisKey || defaults.basisKey}
         options={VALUE_BASIS_OPTIONS}
-        hint="افتراضي"
-        onChange={() => undefined}
+        hint={
+          (basisKey || defaults.basisKey) === defaults.basisKey
+            ? DEFAULT_HINT
+            : undefined
+        }
+        onChange={(next) => {
+          onBasisChange(next);
+          onPremiseChange(coercePremiseForBasis(next, premiseKey));
+        }}
       />
       <RegSelect
         id={`${idPrefix}_value_premise`}
         label="فرضية القيمة"
         required
-        value={premise.key}
-        options={VALUE_PREMISE_OPTIONS}
-        hint="افتراضي"
-        onChange={() => undefined}
+        value={resolvedPremise}
+        options={premiseOptions}
+        hint={resolvedPremise === defaults.premiseKey ? DEFAULT_HINT : undefined}
+        onChange={onPremiseChange}
       />
     </>
   );

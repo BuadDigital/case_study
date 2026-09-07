@@ -124,6 +124,29 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void ValidateHeader_rejects_unknown_valuation_purpose()
+    {
+        var request = ValidCreateRequest();
+        request.ValuationPurposeKey = "not-a-purpose";
+
+        var errors = WorkOrderValidator.ValidateHeader(request);
+
+        Assert.Equal("الغرض من التقييم غير معروف", errors["valuationPurposeKey"]);
+    }
+
+    [Fact]
+    public void ValidateHeader_rejects_premise_incompatible_with_basis()
+    {
+        var request = ValidCreateRequest();
+        request.BasisOfValueKey = "market";
+        request.ValuePremiseKey = "orderly";
+
+        var errors = WorkOrderValidator.ValidateHeader(request);
+
+        Assert.Equal("فرضية القيمة غير متوافقة مع أساس القيمة المختار", errors["valuePremiseKey"]);
+    }
+
+    [Fact]
     public void ValidateHeader_collects_required_field_errors()
     {
         var errors = WorkOrderValidator.ValidateHeader(new CreateWorkOrderRequest());
@@ -134,6 +157,9 @@ public class WorkOrderValidatorTests
         Assert.Contains("clientId", errors.Keys);
         Assert.DoesNotContain(errors, e => e.Key == "assignmentSpecialist");
         Assert.DoesNotContain(errors, e => e.Key == "assignmentSpecialistEmail");
+        Assert.DoesNotContain(errors, e => e.Key == "valuationPurposeKey");
+        Assert.DoesNotContain(errors, e => e.Key == "basisOfValueKey");
+        Assert.DoesNotContain(errors, e => e.Key == "valuePremiseKey");
     }
 
     [Fact]

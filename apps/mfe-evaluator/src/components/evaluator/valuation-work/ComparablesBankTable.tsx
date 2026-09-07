@@ -1,11 +1,19 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
-import type {
-  ComparablePropertyDto,
-  ValuationComparableSelectionDto,
-} from "@platform/api-client";
+import type { ValuationComparableSelectionDto } from "@platform/api-client";
+import { createComparableProperty } from "@platform/api-client";
+import { useCommandMutation } from "@platform/app-shared";
+import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
+import { ComparablePropertyEntryFields } from "@case-study/mfe/components/comparables/ComparablePropertyEntryFields";
 import {
+  comparableDraftToUpsert,
+  emptyComparableEntryDraft,
+  type ComparableEntryDraft,
+} from "@case-study/mfe/lib/comparable-entry";
+import {
+  AppModal,
+  Button,
   cn,
   Table,
   TableEmptyRow,
@@ -15,6 +23,7 @@ import {
   Th,
   THead,
   Tr,
+  useToast,
 } from "@platform/ui-kit";
 import { Card } from "./atoms";
 import {
@@ -24,14 +33,22 @@ import {
   sourceCardLine,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
-import { fmt } from "./lib/shell-utils";
+import { apiConfig, fmt } from "./lib/shell-utils";
 
 export type ComparablesBankRow = BankDisplayRow;
 
 /**
- * Comparables bank — owns search and compEdit drafts locally so typing does not
- * re-render the whole valuation shell; search fetches bank candidates only (no full reload).
+ * Nearby bank table — search and price/area drafts stay local so typing does
+ * not re-render the valuation shell. «اضافة مقارن» writes to the shared bank.
  */
+export type ComparableBankSeed = {
+  type?: string;
+  city?: string;
+  district?: string;
+  latitude?: string;
+  longitude?: string;
+};
+
 export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows,
   subjectSqm,
@@ -39,6 +56,10 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   onAdopt,
   onSearch,
   onSaveOverride,
+  seed,
+  sourceWorkOrderNumber,
+  sourcePropertyId,
+  onCreated,
 }: {
   rows: ComparablesBankRow[];
   subjectSqm: number | null;
@@ -52,12 +73,41 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     field: "price" | "area",
     raw: string,
   ) => Promise<boolean>;
+  seed?: ComparableBankSeed;
+  sourceWorkOrderNumber?: string;
+  sourcePropertyId?: string;
+  onCreated?: () => void;
 }) {
+  const { showToast } = useToast();
   const [q, setQ] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [draft, setDraft] = useState<ComparableEntryDraft>(() =>
+    emptyComparableEntryDraft(seed),
+  );
+  const initialDraftRef = useRef<ComparableEntryDraft | null>(null);
+  const { run: runCreate, loading: saving } = useCommandMutation(
+    async (next: ComparableEntryDraft) => {
+      const config = apiConfig();
+      if (!config) throw new Error("يلزم تسجيل الدخول");
+      const res = await createComparableProperty(
+        config,
+        comparableDraftToUpsert(next, {
+          intakeChannel: "office",
+          sourceWorkOrderNumber: sourceWorkOrderNumber ?? null,
+          sourcePropertyId: sourcePropertyId || null,
+        }),
+      );
+      if (!res.ok) throw new Error(res.message ?? "تعذّر حفظ المقارن");
+      return res.data;
+    },
+  );
   /** compEdit: price/area edit drafts for the comparable — local to the table. */
   const [editDraft, setEditDraft] = useState<Record<string, string>>({});
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;
+  const onCreatedRef = useRef(onCreated);
+  onCreatedRef.current = onCreated;
   const firstSearch = useRef(true);
 
   // Soft refresh when bank search query changes (no full-screen blank).
@@ -69,6 +119,55 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     const t = window.setTimeout(() => onSearchRef.current?.(q), 280);
     return () => window.clearTimeout(t);
   }, [q]);
+
+  function openForm() {
+    const next = emptyComparableEntryDraft(seed);
+    initialDraftRef.current = next;
+    setDraft(next);
+    setDiscardOpen(false);
+    setFormOpen(true);
+  }
+
+  function isDirty() {
+    return JSON.stringify(draft) !== JSON.stringify(initialDraftRef.current);
+  }
+
+  function closeForm() {
+    if (saving) return;
+    setDiscardOpen(false);
+    setFormOpen(false);
+  }
+
+  function requestClose() {
+    if (saving || discardOpen) return;
+    if (isDirty()) {
+      setDiscardOpen(true);
+      return;
+    }
+    closeForm();
+  }
+
+  async function saveComparable() {
+    try {
+      const outcome = await runCreate(draft);
+      if (outcome.status === "skipped") return;
+      const anomaly = outcome.value.pricePerSqmAnomalyNoteAr;
+      showToast(
+        anomaly ? `أُضيف المقارن إلى البنك — ${anomaly}` : "أُضيف المقارن إلى البنك",
+        anomaly ? "error" : "success",
+      );
+      setDraft(emptyComparableEntryDraft(seed));
+      setFormOpen(false);
+      setDiscardOpen(false);
+      if (q.trim()) onSearchRef.current?.(q);
+      else onCreatedRef.current?.();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "تعذّر حفظ المقارن",
+        "error",
+      );
+    }
+  }
 
   const saveOverride = (
     item: ValuationComparableSelectionDto,
@@ -94,22 +193,72 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             بنك المقارنات
           </h2>
           <span className="hidden text-[11.5px] text-text-3 md:inline">
-            ضمن {NEARBY_RADIUS_KM} كم من موقع العقار — الأقرب أولاً
+            {q.trim()
+              ? "نتائج البحث في البنك — الأقرب أولاً"
+              : `ضمن ${NEARBY_RADIUS_KM} كم من موقع العقار — الأقرب أولاً`}
           </span>
         </div>
-        {onSearch ? (
-          <input
-            placeholder="بحث حي / نوع / رقم مرجعي"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="w-[248px] rounded-lg border border-border-md bg-surface px-3.5 py-2 text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
-          />
-        ) : (
-          <span className="text-[12px] text-text-3">
-            أراضٍ فضاء فقط — لا استيراد من أسلوب السوق
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            actionLabel="إضافة مقارن"
+            disabled={saving}
+            onClick={openForm}
+          >
+            اضافة مقارن
+          </Button>
+          {onSearch ? (
+            <input
+              placeholder="بحث حي / نوع / رقم مرجعي"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="w-[248px] rounded-lg border border-border-md bg-surface px-3.5 py-2 text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+            />
+          ) : (
+            <span className="text-[12px] text-text-3">
+              أراضٍ فضاء فقط — لا استيراد من أسلوب السوق
+            </span>
+          )}
+        </div>
       </div>
+      <AppModal
+        open={formOpen}
+        title="إضافة مقارن"
+        subtitle={`يُحفظ في البنك المشترك ويظهر هنا إن كان ضمن ${NEARBY_RADIUS_KM} كم من موقع العقار.`}
+        wide
+        maxWidthPx={720}
+        look="ops-html"
+        onClose={requestClose}
+        footer={
+          <>
+            <Button type="button" onClick={requestClose} disabled={saving}>
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              loading={saving}
+              disabled={saving}
+              onClick={() => void saveComparable()}
+            >
+              حفظ في البنك
+            </Button>
+          </>
+        }
+      >
+        <ComparablePropertyEntryFields
+          draft={draft}
+          disabled={saving}
+          onChange={setDraft}
+        />
+      </AppModal>
+      <UnsavedChangesDialog
+        open={discardOpen}
+        onStay={() => setDiscardOpen(false)}
+        onLeave={closeForm}
+      />
       <Card className="mb-6">
         <Table className="min-w-[1180px]" wrapClassName="rounded-xl">
           <THead>
@@ -291,7 +440,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             ))}
             {rows.length === 0 ? (
               <TableEmptyRow colSpan={12}>
-                لا مقارنات ضمن {NEARBY_RADIUS_KM} كم — أضف مقارناً في بنك المقارنات (مدينة + إحداثيات).
+                {q.trim()
+                  ? "لا نتائج مطابقة لهذا البحث"
+                  : `لا مقارنات ضمن ${NEARBY_RADIUS_KM} كم — اضغط «اضافة مقارن» (مدينة + إحداثيات).`}
               </TableEmptyRow>
             ) : null}
           </TBody>

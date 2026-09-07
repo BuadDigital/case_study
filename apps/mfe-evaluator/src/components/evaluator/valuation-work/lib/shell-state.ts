@@ -9,6 +9,7 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import {
   DEFAULT_DIFFERENCE_KEYS,
   type lineForSave,
@@ -146,7 +147,7 @@ export function newAdjustmentLine(
   sortOrder: number,
 ): ReturnType<typeof lineForSave> {
   return {
-    id: crypto.randomUUID(),
+    id: createClientId("adj"),
     factorKey,
     labelAr,
     percent: 0,

@@ -91,6 +91,7 @@ export function useValuationWorkData({
     useState<ValuationComparableSelectionListDto | null>(null);
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
   const [bankSubjectCoords, setBankSubjectCoords] = useState<SubjectCoords | null>(null);
+  const [bankSearch, setBankSearch] = useState("");
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -184,9 +185,14 @@ export function useValuationWorkData({
     ],
   );
   const applyBankResult = useCallback(
-    (rows: ComparablePropertyDto[], subjectCoords: SubjectCoords | null) => {
+    (
+      rows: ComparablePropertyDto[],
+      subjectCoords: SubjectCoords | null,
+      search = "",
+    ) => {
       setCandidates(rows);
       setBankSubjectCoords(subjectCoords);
+      setBankSearch(search.trim());
     },
     [],
   );
@@ -383,6 +389,7 @@ export function useValuationWorkData({
     landSelection,
     candidates,
     bankSubjectCoords,
+    bankSearch,
     subjectArea,
     analysisNotes,
     cost,
@@ -427,6 +434,7 @@ export function useValuationWorkData({
     gates,
     officialValuationDate,
     reload,
+    bankSubjectCoords,
     ...sectionSaves,
     settingsSaved,
     marketEnabled,

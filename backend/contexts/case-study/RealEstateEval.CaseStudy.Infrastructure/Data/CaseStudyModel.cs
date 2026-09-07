@@ -40,6 +40,9 @@ public static class CaseStudyModel
             e.Property(x => x.PropertiesRegion).HasMaxLength(256).IsRequired(false);
             e.Property(x => x.WorkOrderDescription).HasMaxLength(2000).IsRequired(false);
             e.Property(x => x.ReportUserClientIdsJson).HasColumnType("jsonb");
+            e.Property(x => x.ValuationPurposeKey).HasMaxLength(32).IsRequired(false);
+            e.Property(x => x.BasisOfValueKey).HasMaxLength(32).IsRequired(false);
+            e.Property(x => x.ValuePremiseKey).HasMaxLength(32).IsRequired(false);
             e.HasOne(x => x.Client)
                 .WithMany()
                 .HasForeignKey(x => x.ClientId)

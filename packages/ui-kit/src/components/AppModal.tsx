@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef } from "react";
+import { cn } from "../lib/cn";
 import {
   ModalBody,
   ModalCard,
@@ -26,6 +27,8 @@ export function AppModal({
   maxWidthPx,
   /** Ops create-task look: start title, gray X, surface-2 footer */
   look,
+  /** Sit above another open modal (`--z-modal-2`). */
+  stacked,
 }: {
   open: boolean;
   title: string;
@@ -39,6 +42,7 @@ export function AppModal({
   wide?: boolean;
   maxWidthPx?: number;
   look?: "ops-html";
+  stacked?: boolean;
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -46,6 +50,7 @@ export function AppModal({
   onCloseRef.current = onClose;
   const maxPx = maxWidthPx ?? (wide ? 720 : 420);
   const opsHtml = look === "ops-html";
+  const overlayZ = stacked ? "!z-[var(--z-modal-2)]" : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -171,7 +176,7 @@ export function AppModal({
         <div
           onClick={onClose}
           role="presentation"
-          className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]"
+          className={`fixed inset-0 ${stacked ? "z-[var(--z-modal-2)]" : "z-[var(--z-modal)]"} flex items-start justify-center overflow-y-auto bg-[rgba(16,43,78,0.42)] px-4 py-[6vh] backdrop-blur-[2px]`}
         >
           {panel}
         </div>
@@ -183,7 +188,7 @@ export function AppModal({
     <ModalOverlay
       onClick={onClose}
       role="presentation"
-      className="overflow-hidden"
+      className={cn("overflow-hidden", overlayZ)}
     >
       {panel}
     </ModalOverlay>

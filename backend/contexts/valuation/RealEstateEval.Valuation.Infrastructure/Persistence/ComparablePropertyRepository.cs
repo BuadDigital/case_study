@@ -136,6 +136,7 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
                 x.ReferenceCode.Contains(term)
                 || x.ComparablePropertyType.Contains(term)
                 || x.District.Contains(term)
+                || (x.City != null && x.City.Contains(term))
                 || (x.ListingNumber != null && x.ListingNumber.Contains(term))
                 || (x.Description != null && x.Description.Contains(term)));
         }

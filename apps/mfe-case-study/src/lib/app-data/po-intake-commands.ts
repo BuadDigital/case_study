@@ -72,6 +72,9 @@ export async function savePoRecord(
     workOrderDescription: record.workOrderDescription.trim() || undefined,
     clientId: record.clientId.trim(),
     reportUserClientIds: record.reportUserClientIds ?? [],
+    valuationPurposeKey: record.valuationPurposeKey || undefined,
+    basisOfValueKey: record.basisOfValueKey || undefined,
+    valuePremiseKey: record.valuePremiseKey || undefined,
     properties: record.properties.map((p) =>
       propertyToEnfathDto(p, { forInsert: true }),
     ),
@@ -358,6 +361,9 @@ export async function updatePoRecord(
     workOrderDescription: record.workOrderDescription.trim() || undefined,
     clientId: record.clientId.trim(),
     reportUserClientIds: record.reportUserClientIds ?? [],
+    valuationPurposeKey: record.valuationPurposeKey || undefined,
+    basisOfValueKey: record.basisOfValueKey || undefined,
+    valuePremiseKey: record.valuePremiseKey || undefined,
   });
 
   if (!result.ok) {

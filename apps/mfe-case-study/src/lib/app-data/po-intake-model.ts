@@ -8,6 +8,7 @@ import {
   contactsForApi,
 } from "../domain/po-intake/property-validation";
 import type { PriorDeedRegistrationDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
+import { resolveAssignmentValuationKeys } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { hydrateSpecialistReportExtrasFromApi } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
@@ -38,6 +39,11 @@ export function normalizeProperty(prop: PoPropertyIntake): PoPropertyIntake {
 
 export function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
   const receivedFromEnfathTime = record.receivedFromEnfathTime ?? "";
+  const valuation = resolveAssignmentValuationKeys(record.assignmentType, {
+    purposeKey: record.valuationPurposeKey,
+    basisKey: record.basisOfValueKey,
+    premiseKey: record.valuePremiseKey,
+  });
   return {
     ...record,
     id: String(record.id),
@@ -46,6 +52,9 @@ export function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
     clientId: record.clientId?.trim() ?? "",
     reportUserClientIds: record.reportUserClientIds ?? [],
     clientNameAr: record.clientNameAr?.trim() || undefined,
+    valuationPurposeKey: valuation.purposeKey,
+    basisOfValueKey: valuation.basisKey,
+    valuePremiseKey: valuation.premiseKey,
     receivedFromEnfathTime,
     dueDateAt:
       record.dueDateAt ||
@@ -167,6 +176,9 @@ export function dtoToRecord(dto: WorkOrderDto): PoIntakeRecord {
     clientId: dto.clientId ?? "",
     reportUserClientIds: dto.reportUserClientIds ?? [],
     clientNameAr: dto.clientNameAr ?? undefined,
+    valuationPurposeKey: dto.valuationPurposeKey ?? undefined,
+    basisOfValueKey: dto.basisOfValueKey ?? undefined,
+    valuePremiseKey: dto.valuePremiseKey ?? undefined,
     dueDateAt: dto.dueDateAt,
     createdAtUtc: dto.createdAtUtc,
     properties: dto.properties.map((p) => dtoToProperty(p, dto.poNumber)),
@@ -682,6 +694,9 @@ export type PoIntakeDraftPayload = {
   propertiesRegion: string;
   workOrderDescription: string;
   clientId: string;
+  valuationPurposeKey?: string;
+  basisOfValueKey?: string;
+  valuePremiseKey?: string;
 };
 
 export function draftToDto(draft: PoIntakeDraftPayload) {
@@ -696,6 +711,9 @@ export function draftToDto(draft: PoIntakeDraftPayload) {
     propertiesRegion: draft.propertiesRegion,
     workOrderDescription: draft.workOrderDescription,
     clientId: draft.clientId,
+    valuationPurposeKey: draft.valuationPurposeKey,
+    basisOfValueKey: draft.basisOfValueKey,
+    valuePremiseKey: draft.valuePremiseKey,
   };
 }
 
@@ -710,6 +728,9 @@ export function dtoToDraft(dto: {
   propertiesRegion?: string;
   workOrderDescription?: string;
   clientId?: string;
+  valuationPurposeKey?: string;
+  basisOfValueKey?: string;
+  valuePremiseKey?: string;
 }): PoIntakeDraftPayload {
   return {
     step: dto.step ?? 1,
@@ -725,6 +746,9 @@ export function dtoToDraft(dto: {
     propertiesRegion: dto.propertiesRegion ?? "",
     workOrderDescription: dto.workOrderDescription ?? "",
     clientId: dto.clientId ?? "",
+    valuationPurposeKey: dto.valuationPurposeKey ?? "",
+    basisOfValueKey: dto.basisOfValueKey ?? "",
+    valuePremiseKey: dto.valuePremiseKey ?? "",
   };
 }
 

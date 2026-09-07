@@ -77,6 +77,9 @@ public sealed class PoIntakeDraftService(
                     : 1,
                 PropertiesRegion = dto.PropertiesRegion ?? "",
                 WorkOrderDescription = dto.WorkOrderDescription ?? "",
+                ValuationPurposeKey = dto.ValuationPurposeKey ?? "",
+                BasisOfValueKey = dto.BasisOfValueKey ?? "",
+                ValuePremiseKey = dto.ValuePremiseKey ?? "",
                 UpdatedAtUtc = updatedAtUtc,
             };
         }

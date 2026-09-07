@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@platform/ui-kit";
 import { useCommandMutation } from "@platform/app-shared";
 import {
+  assignmentValuationDefaults,
+  resolveAssignmentValuationKeys,
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import {
   INFATH_SEED_CLIENT_ID,
   listClients,
   type ClientDto,
@@ -59,6 +63,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [workOrderDescription, setWorkOrderDescription] = useState("");
   const [clientId, setClientId] = useState(INFATH_SEED_CLIENT_ID);
   const [subClientId, setSubClientId] = useState(defaultSubClientId());
+  const [valuationPurposeKey, setValuationPurposeKey] = useState("");
+  const [basisOfValueKey, setBasisOfValueKey] = useState("");
+  const [valuePremiseKey, setValuePremiseKey] = useState("");
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
@@ -74,6 +81,17 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           const count = draft.expectedPropertyCount;
           setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
           setWorkOrderDescription(draft.workOrderDescription ?? "");
+          const resolved = resolveAssignmentValuationKeys(
+            draft.assignmentType || "",
+            {
+              purposeKey: draft.valuationPurposeKey,
+              basisKey: draft.basisOfValueKey,
+              premiseKey: draft.valuePremiseKey,
+            },
+          );
+          setValuationPurposeKey(resolved.purposeKey);
+          setBasisOfValueKey(resolved.basisKey);
+          setValuePremiseKey(resolved.premiseKey);
         }
         setDraftReady(true);
       })
@@ -150,6 +168,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       propertiesRegion: "",
       workOrderDescription,
       clientId,
+      valuationPurposeKey,
+      basisOfValueKey,
+      valuePremiseKey,
     });
   }, [
     draftReady,
@@ -161,10 +182,17 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     expectedPropertyCount,
     workOrderDescription,
     clientId,
+    valuationPurposeKey,
+    basisOfValueKey,
+    valuePremiseKey,
   ]);
 
   function handleAssignmentType(next: AssignmentType) {
     setAssignmentType(next);
+    const defaults = assignmentValuationDefaults(next, subClientId);
+    setValuationPurposeKey(defaults.purposeKey);
+    setBasisOfValueKey(defaults.basisKey);
+    setValuePremiseKey(defaults.premiseKey);
   }
 
   function clearErrors() {
@@ -226,6 +254,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           expectedPropertyCount: string;
           workOrderDescription: string;
           subClientId: string;
+          valuationPurposeKey: string;
+          basisOfValueKey: string;
+          valuePremiseKey: string;
           clients: typeof clients;
         },
         idempotencyKey: string,
@@ -252,6 +283,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           workOrderDescription: args.workOrderDescription.trim(),
           clientId: INFATH_SEED_CLIENT_ID,
           clientNameAr,
+          valuationPurposeKey: args.valuationPurposeKey,
+          basisOfValueKey: args.basisOfValueKey,
+          valuePremiseKey: args.valuePremiseKey,
           properties: [],
         });
         return savePoRecord(record, idempotencyKey);
@@ -275,6 +309,9 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         expectedPropertyCount,
         workOrderDescription,
         subClientId,
+        valuationPurposeKey,
+        basisOfValueKey,
+        valuePremiseKey,
         clients,
       });
       if (outcome.status === "skipped") return;
@@ -319,6 +356,12 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setClientId,
     subClientId,
     setSubClientId,
+    valuationPurposeKey,
+    setValuationPurposeKey,
+    basisOfValueKey,
+    setBasisOfValueKey,
+    valuePremiseKey,
+    setValuePremiseKey,
     clients,
     clientsLoading,
     save,

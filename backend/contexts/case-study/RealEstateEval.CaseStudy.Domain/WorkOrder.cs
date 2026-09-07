@@ -30,6 +30,13 @@ public class WorkOrder
  /// <summary>JSON array of client ids for report users (0..n) — see <see cref="WorkOrderReportUsers"/>.</summary>
     public string? ReportUserClientIdsJson { get; set; }
 
+    /// <summary>Valuation purpose key — catalog default from assignment type; intake may override.</summary>
+    public string? ValuationPurposeKey { get; set; }
+    /// <summary>Basis of value key — catalog default from assignment type; intake may override.</summary>
+    public string? BasisOfValueKey { get; set; }
+    /// <summary>Value premise key — catalog default from assignment type; intake may override.</summary>
+    public string? ValuePremiseKey { get; set; }
+
     public Client? Client { get; set; }
     public ICollection<WorkOrderProperty> Properties { get; set; } = [];
 

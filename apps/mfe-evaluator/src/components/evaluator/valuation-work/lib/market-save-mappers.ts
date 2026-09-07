@@ -3,6 +3,7 @@ import type {
   ValuationComparableAdjustmentLineDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import {
   AUTO_AREA_KEY,
   FACTOR_REGISTRY,
@@ -75,7 +76,7 @@ export function ensureLinesForSave(
   for (const f of factors) {
     if (!byKey.has(f.factorKey)) {
       byKey.set(f.factorKey, {
-        id: crypto.randomUUID(),
+        id: createClientId("adj"),
         factorKey: f.factorKey,
         labelAr: f.labelAr,
         percent: f.factorKey === "area" ? (item.market?.suggestedAreaAdjustmentPct ?? 0) : 0,
@@ -102,13 +103,20 @@ export function ensureLinesForSave(
  * Prepare an adjustment line for save: area is pinned to the auto suggestion; “suggested”
  * values (unentered comparable type) are zeroed so a suggestion does not become a permanent manual entry.
  */
+const GUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function guidOrNull(id: string | null | undefined): string | null {
+  return id && GUID_RE.test(id) ? id : null;
+}
+
 export function lineForSave(
   item: ValuationComparableSelectionDto,
   l: ValuationComparableAdjustmentLineDto,
   i: number,
 ) {
   return {
-    id: l.id,
+    id: guidOrNull(l.id),
     factorKey: l.factorKey,
     labelAr: l.labelAr,
     percent:

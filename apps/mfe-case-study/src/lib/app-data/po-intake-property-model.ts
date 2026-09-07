@@ -259,6 +259,12 @@ export type PoIntakeRecord = {
   reportUserClientIds: string[];
   /** Denormalized client name from API when available */
   clientNameAr?: string;
+  /** Valuation purpose catalog key — defaults from assignment type, editable on intake. */
+  valuationPurposeKey?: string;
+  /** Basis of value catalog key — defaults from assignment type, editable on intake. */
+  basisOfValueKey?: string;
+  /** Value premise catalog key — defaults from assignment type, editable on intake. */
+  valuePremiseKey?: string;
   dueDateAt: string;
   properties: PoPropertyIntake[];
   createdAtUtc: string;

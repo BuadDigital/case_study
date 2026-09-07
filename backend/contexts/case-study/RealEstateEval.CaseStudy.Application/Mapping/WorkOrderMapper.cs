@@ -28,6 +28,9 @@ public static class WorkOrderMapper
             ClientId = entity.ClientId,
             ClientNameAr = entity.Client?.NameAr,
             ReportUserClientIds = [.. WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)],
+            ValuationPurposeKey = entity.ValuationPurposeKey,
+            BasisOfValueKey = entity.BasisOfValueKey,
+            ValuePremiseKey = entity.ValuePremiseKey,
             Properties = entity.Properties
                 .OrderBy(p => p.DeedNumber)
                 .Select(ToPropertyDto)

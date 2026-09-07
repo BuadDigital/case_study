@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /** Wait this long before showing loading chrome so fast cached opens stay quiet. */
-export const GENTLE_LOADING_DELAY_MS = 60_000;
+export const GENTLE_LOADING_DELAY_MS = 300;
 
 /**
  * Becomes true only after `active` has stayed true for `delayMs`.

@@ -140,15 +140,15 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
       await expect(page.getByRole("tab", { name: new RegExp(tab) })).toBeVisible();
     }
 
-    // The dues ledger itself, and the copy that names the survey line scope.
+    // The dues ledger itself: either rows (surveys accepted by earlier runs accrue
+    // fees for this office) or the empty state that names the survey line scope.
     await expect(
       page.getByRole("textbox", { name: "بحث المستحقات" }),
     ).toBeVisible();
-    await expect(
-      page.getByText(
-        "تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو مرحَّل.",
-      ),
-    ).toBeVisible();
+    const emptyHint = page.getByText(
+      "تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو مرحَّل.",
+    );
+    await expect(emptyHint.or(page.locator("tbody tr").first())).toBeVisible();
   });
 
   test("the accepted survey shows as a ledger row for the office", async ({

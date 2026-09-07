@@ -756,6 +756,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<int>("AssignmentType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BasisOfValueKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<Guid?>("ClientId")
                         .HasColumnType("uuid");
 
@@ -793,6 +797,14 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.Property<string>("ReportUserClientIdsJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("ValuePremiseKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ValuationPurposeKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()

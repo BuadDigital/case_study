@@ -12,6 +12,9 @@ export type PoIntakeDraftDto = {
   expectedPropertyCount: number;
   propertiesRegion?: string;
   workOrderDescription?: string;
+  valuationPurposeKey?: string;
+  basisOfValueKey?: string;
+  valuePremiseKey?: string;
   updatedAtUtc?: string;
 };
 
@@ -47,6 +50,9 @@ export async function getPoIntakeDraft(
       expectedPropertyCount?: number;
       propertiesRegion?: string;
       workOrderDescription?: string;
+      valuationPurposeKey?: string;
+      basisOfValueKey?: string;
+      valuePremiseKey?: string;
       updatedAtUtc?: string | null;
     } | null;
     if (!data?.updatedAtUtc && !data?.poNumber?.trim()) {
@@ -67,6 +73,9 @@ export async function getPoIntakeDraft(
             : 1,
         propertiesRegion: data.propertiesRegion ?? "",
         workOrderDescription: data.workOrderDescription ?? "",
+        valuationPurposeKey: data.valuationPurposeKey ?? "",
+        basisOfValueKey: data.basisOfValueKey ?? "",
+        valuePremiseKey: data.valuePremiseKey ?? "",
         updatedAtUtc: data.updatedAtUtc ?? undefined,
       },
     };
@@ -93,6 +102,9 @@ export async function savePoIntakeDraft(
         expectedPropertyCount: draft.expectedPropertyCount,
         propertiesRegion: draft.propertiesRegion,
         workOrderDescription: draft.workOrderDescription,
+        valuationPurposeKey: draft.valuationPurposeKey,
+        basisOfValueKey: draft.basisOfValueKey,
+        valuePremiseKey: draft.valuePremiseKey,
       }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
