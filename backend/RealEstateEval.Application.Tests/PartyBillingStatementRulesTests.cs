@@ -599,4 +599,100 @@ public class PartyBillingStatementRulesTests
         var ordered = PartyBillingStatementRules.OrderReadyLines([a, b, c]);
         Assert.Equal(["b", "a", "c"], ordered.Select(l => l.WorkflowTaskId));
     }
+
+    // ---- ledger moves ----
+
+    private static readonly DateTime MoveAt = new(2026, 3, 2, 8, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void Defer_moves_the_ledger_off_the_ready_queue_with_the_given_reason()
+    {
+        var ledger = Ledger(Guid.NewGuid());
+
+        var transition = PartyBillingStatementRules.Defer(
+            ledger, PartyBillingStatementRules.AccountantDeferralReason, "u-1", MoveAt);
+
+        Assert.Equal(InspectorFeeBillingStatus.Deferred, ledger.BillingStatus);
+        Assert.Equal(MoveAt, ledger.UpdatedAtUtc);
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, transition.FromStatus);
+        Assert.Equal(InspectorFeeBillingStatus.Deferred, transition.ToStatus);
+        Assert.Equal("ترحيل بقرار المحاسب", transition.Reason);
+        Assert.Equal(ledger.WorkflowTaskId, transition.WorkflowTaskId);
+    }
+
+    [Fact]
+    public void Disburse_stamps_the_voucher_and_records_where_the_ledger_came_from()
+    {
+        var ledger = Ledger(Guid.NewGuid(), status: InspectorFeeBillingStatus.InStatement);
+
+        var transition = PartyBillingStatementRules.Disburse(ledger, "V-9", "u-1", MoveAt);
+
+        Assert.Equal(InspectorFeeBillingStatus.Disbursed, ledger.BillingStatus);
+        Assert.Equal("V-9", ledger.DisbursementVoucher);
+        Assert.Equal(InspectorFeeBillingStatus.InStatement, transition.FromStatus);
+        Assert.Equal(InspectorFeeBillingStatus.Disbursed, transition.ToStatus);
+        Assert.Equal("صرف موثَّق — سند V-9", transition.Reason);
+    }
+
+    [Fact]
+    public void Return_to_finance_unbinds_the_ledger_from_the_cancelled_statement()
+    {
+        var statementId = Guid.NewGuid();
+        var ledger = Ledger(Guid.NewGuid(), status: InspectorFeeBillingStatus.InStatement, statementId: statementId);
+
+        var transition = PartyBillingStatementRules.ReturnToFinance(
+            ledger, "DS-2026-00003", "خطأ في البنود", "u-1", MoveAt);
+
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.BillingStatus);
+        Assert.Null(ledger.PartyBillingStatementId);
+        Assert.Equal(InspectorFeeBillingStatus.InStatement, transition.FromStatus);
+        Assert.Equal("إلغاء DS-2026-00003: خطأ في البنود", transition.Reason);
+    }
+
+    [Fact]
+    public void Property_ids_are_the_distinct_non_null_ones()
+    {
+        var shared = Guid.NewGuid();
+        var a = Ledger(Guid.NewGuid());
+        a.PropertyId = shared;
+        var b = Ledger(Guid.NewGuid());
+        b.PropertyId = shared;
+        var c = Ledger(Guid.NewGuid());
+
+        Assert.Equal(shared, Assert.Single(PartyBillingStatementRules.PropertyIdsOf([a, b, c])));
+    }
+
+    [Fact]
+    public void Apply_close_stamps_the_evidence_and_the_vendor_invoice_number()
+    {
+        var statement = new PartyBillingStatement
+        {
+            PayeeType = PartyBillingPayeeType.Vendor,
+            Status = PartyBillingStatementStatus.InvoiceReceived,
+            VendorInvoiceNumber = "VI-7",
+            Notes = "old",
+        };
+        var receipt = Guid.NewGuid();
+        var check = new PartyBillingStatementRules.CloseStatementCheck(
+            null, false, "V-1", "TR-1", receipt, "ref");
+        var paidAt = MoveAt.AddDays(-1);
+
+        PartyBillingStatementRules.ApplyClose(statement, check, "  paid  ", paidAt, "u-1", MoveAt);
+
+        Assert.Equal(PartyBillingStatementStatus.Closed, statement.Status);
+        Assert.Equal(MoveAt, statement.ClosedAtUtc);
+        Assert.Equal("u-1", statement.ClosedByUserId);
+        Assert.Equal("V-1", statement.DisbursementVoucher);
+        Assert.Equal("TR-1", statement.TransferReference);
+        Assert.Equal(receipt, statement.TransferReceiptAttachmentId);
+        Assert.Equal("ref", statement.TransferReceiptRef);
+        Assert.Equal("VI-7", statement.ExternalInvoiceNumber);
+        Assert.Equal(paidAt, statement.PaidAtUtc);
+        Assert.Equal("paid", statement.Notes);
+
+        var individual = new PartyBillingStatement { PayeeType = PartyBillingPayeeType.Individual, Notes = "keep" };
+        PartyBillingStatementRules.ApplyClose(individual, check, "   ", paidAt, "u-1", MoveAt);
+        Assert.Equal("V-1", individual.ExternalInvoiceNumber);
+        Assert.Equal("keep", individual.Notes);
+    }
 }

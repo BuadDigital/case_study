@@ -3,6 +3,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Platform.Application.Abstractions;
 using RealEstateEval.Platform.Application.Contracts;
+using RealEstateEval.Platform.Application.Rules;
 using RealEstateEval.Platform.Domain;
 
 namespace RealEstateEval.Platform.Application.Services;
@@ -10,67 +11,12 @@ namespace RealEstateEval.Platform.Application.Services;
 /// <summary>
 /// Courts and circuits catalog use case: execution-court seeding, admin CRUD with audit rows,
 /// and the selectable lists. Persistence goes through <see cref="ICourtsRepository"/>, so this
-/// file holds rules only - no EF (solid-scorecard finding 1).
+/// file holds rules only - no EF (solid-scorecard finding 1). Seeding lives in
+/// <c>CourtsService.Seeding.cs</c>, the DTO projections in <c>CourtsService.Mapping.cs</c>,
+/// and the pure validation / audit diff shaping in <see cref="CourtCatalogRules"/>.
 /// </summary>
-public sealed class CourtsService : ICourtsService
+public sealed partial class CourtsService : ICourtsService
 {
-    private static readonly (string Region, string City, string Name)[] ExecutionCourtSeeds =
-    [
-        ("الرياض", "الرياض", "محكمة التنفيذ بالرياض"),
-        ("مكة المكرمة", "مكة المكرمة", "محكمة التنفيذ بمكة المكرمة"),
-        ("مكة المكرمة", "جدة", "محكمة التنفيذ بجدة"),
-        ("مكة المكرمة", "الطائف", "محكمة التنفيذ بالطائف"),
-        ("المدينة المنورة", "المدينة المنورة", "محكمة التنفيذ بالمدينة المنورة"),
-        ("الشرقية", "الدمام", "محكمة التنفيذ بالدمام"),
-        ("الشرقية", "الخبر", "محكمة التنفيذ بالخبر"),
-        ("الشرقية", "الأحساء", "محكمة التنفيذ بالأحساء"),
-        ("القصيم", "بريدة", "محكمة التنفيذ ببريدة"),
-        ("عسير", "أبها", "محكمة التنفيذ بأبها"),
-        ("تبوك", "تبوك", "محكمة التنفيذ بتبوك"),
-        ("حائل", "حائل", "محكمة التنفيذ بحائل"),
-        ("جازان", "جازان", "محكمة التنفيذ بجازان"),
-        ("الجوف", "سكاكا", "محكمة التنفيذ بسكاكا"),
-    ];
-
-    private static readonly string[] ExecutionCircuitNames =
-    [
-        "دائرة التنفيذ الأولى",
-        "دائرة التنفيذ الثانية",
-        "دائرة التنفيذ الثالثة",
-        "دائرة التنفيذ الرابعة",
-        "دائرة التنفيذ الخامسة",
-        "دائرة التنفيذ السادسة",
-        "دائرة التنفيذ السابعة",
-        "دائرة التنفيذ الثامنة",
-        "دائرة التنفيذ التاسعة",
-        "دائرة التنفيذ العاشرة",
-        "دائرة التنفيذ الحادية عشرة",
-        "دائرة التنفيذ الثانية عشرة",
-        "دائرة التنفيذ الثالثة عشرة",
-        "دائرة التنفيذ الرابعة عشرة",
-        "دائرة التنفيذ الخامسة عشرة",
-        "دائرة التنفيذ السادسة عشرة",
-        "دائرة التنفيذ السابعة عشرة",
-        "دائرة التنفيذ الثامنة عشرة",
-        "دائرة التنفيذ التاسعة عشرة",
-        "دائرة التنفيذ العشرون",
-        "دائرة التنفيذ الواحدة والعشرون",
-        "دائرة التنفيذ الثانية والعشرون",
-        "دائرة التنفيذ الثالثة والعشرون",
-        "دائرة التنفيذ الرابعة والعشرون",
-        "دائرة التنفيذ الخامسة والعشرون",
-        "دائرة التنفيذ السادسة والعشرون",
-        "دائرة التنفيذ السابعة والعشرون",
-        "دائرة التنفيذ الثامنة والعشرون",
-        "دائرة التنفيذ التاسعة والعشرون",
-        "دائرة التنفيذ الثلاثون",
-        "دائرة التنفيذ الواحدة والثلاثون",
-        "دائرة التنفيذ الثانية والثلاثون",
-        "دائرة التنفيذ الثالثة والثلاثون",
-        "دائرة التنفيذ الرابعة والثلاثون",
-        "دائرة التنفيذ الخامسة والثلاثون",
-    ];
-
     private readonly ICourtsRepository _repo;
     private readonly IResponseCache _cache;
     private readonly IAuditLogWriter _audit;
@@ -87,77 +33,6 @@ public sealed class CourtsService : ICourtsService
         _repo = repo;
         _cache = cache;
         _audit = audit;
-    }
-
-    public async Task EnsureSeededAsync(CancellationToken cancellationToken = default)
-    {
-        var courts = (await _repo.ListCourtsWithCircuitsAsync(cancellationToken)).ToList();
-        var now = _time.UtcNow();
-
-        foreach (var seed in ExecutionCourtSeeds)
-        {
-            var court = courts.FirstOrDefault(c =>
-                c.Name == seed.Name && c.City == seed.City);
-            if (court is null)
-            {
-                court = new Court
-                {
-                    Id = Guid.NewGuid(),
-                    Name = seed.Name,
-                    Region = seed.Region,
-                    City = seed.City,
-                    IsActive = true,
-                    CreatedBy = "system",
-                    CreatedAtUtc = now,
-                };
-                courts.Add(court);
-                await _repo.AddCourtAsync(court, cancellationToken);
-            }
-
-            for (var index = 0; index < ExecutionCircuitNames.Length; index++)
-            {
-                var circuitNo = (index + 1).ToString();
-                var circuitName = ExecutionCircuitNames[index];
-                var legacyName = circuitName.Replace("دائرة التنفيذ ", "الدائرة ");
-                var circuit = court.Circuits.FirstOrDefault(c => c.CircuitNo == circuitNo);
-
-                if (circuit is null)
-                {
-                    circuit = court.Circuits.FirstOrDefault(c =>
-                        c.CreatedBy == "system" &&
-                        (c.CircuitNo == legacyName || c.CircuitName == circuitName));
-                }
-
-                if (circuit is not null)
-                {
-                    if (circuit.CreatedBy == "system")
-                    {
-                        circuit.CircuitNo = circuitNo;
-                        circuit.CircuitName = circuitName;
-                    }
-                    continue;
-                }
-
-                var newCircuit = new CourtCircuit
-                {
-                    Id = Guid.NewGuid(),
-                    CourtId = court.Id,
-                    CircuitNo = circuitNo,
-                    CircuitName = circuitName,
-                    IsActive = true,
-                    CreatedBy = "system",
-                    CreatedAtUtc = now,
-                };
-                court.Circuits.Add(newCircuit);
-                await _repo.AddCircuitAsync(newCircuit, cancellationToken);
-            }
-        }
-
-        if (_repo.HasPendingChanges())
-        {
-            await _repo.SaveChangesAsync(cancellationToken);
-            await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
-        }
     }
 
     public async Task<CourtListResponseDto> ListAdminAsync(
@@ -205,9 +80,8 @@ public sealed class CourtsService : ICourtsService
         var name = request.Name.Trim();
         var region = request.Region.Trim();
         var city = request.City.Trim();
-        if (name.Length is < 2 or > 150) return (null, "اسم المحكمة مطلوب");
-        if (string.IsNullOrWhiteSpace(region)) return (null, "المنطقة غير صحيحة");
-        if (string.IsNullOrWhiteSpace(city)) return (null, "المدينة غير صحيحة");
+        var invalid = CourtCatalogRules.ValidateCourt(name, region, city);
+        if (invalid is not null) return (null, invalid);
 
         var exists = await _repo.CourtNameTakenAsync(name, city, null, cancellationToken);
         if (exists) return (null, "توجد محكمة بنفس الاسم في هذه المدينة");
@@ -228,13 +102,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Court,
             entity.Id,
             actorId,
-            new Dictionary<string, AuditValueChange>
-            {
-                ["name"] = Diff(null, entity.Name),
-                ["region"] = Diff(null, entity.Region),
-                ["city"] = Diff(null, entity.City),
-                ["isActive"] = Diff(null, entity.IsActive),
-            },
+            CourtCatalogRules.CourtCreated(entity),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
@@ -253,17 +121,13 @@ public sealed class CourtsService : ICourtsService
         var name = request.Name?.Trim() ?? entity.Name;
         var region = request.Region?.Trim() ?? entity.Region;
         var city = request.City?.Trim() ?? entity.City;
-        if (name.Length is < 2 or > 150) return (null, "اسم المحكمة مطلوب");
-        if (string.IsNullOrWhiteSpace(region)) return (null, "المنطقة غير صحيحة");
-        if (string.IsNullOrWhiteSpace(city)) return (null, "المدينة غير صحيحة");
+        var invalid = CourtCatalogRules.ValidateCourt(name, region, city);
+        if (invalid is not null) return (null, invalid);
 
         var clash = await _repo.CourtNameTakenAsync(name, city, id, cancellationToken);
         if (clash) return (null, "توجد محكمة بنفس الاسم في هذه المدينة");
 
-        var beforeName = entity.Name;
-        var beforeRegion = entity.Region;
-        var beforeCity = entity.City;
-        var beforeActive = entity.IsActive;
+        var before = (entity.Name, entity.Region, entity.City, entity.IsActive);
 
         entity.Name = name;
         entity.Region = region;
@@ -272,15 +136,7 @@ public sealed class CourtsService : ICourtsService
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = _time.UtcNow();
 
-        var changes = new Dictionary<string, AuditValueChange>();
-        if (!string.Equals(beforeName, entity.Name, StringComparison.Ordinal))
-            changes["name"] = Diff(beforeName, entity.Name);
-        if (!string.Equals(beforeRegion, entity.Region, StringComparison.Ordinal))
-            changes["region"] = Diff(beforeRegion, entity.Region);
-        if (!string.Equals(beforeCity, entity.City, StringComparison.Ordinal))
-            changes["city"] = Diff(beforeCity, entity.City);
-        if (beforeActive != entity.IsActive)
-            changes["isActive"] = Diff(beforeActive, entity.IsActive);
+        var changes = CourtCatalogRules.CourtUpdated(before, entity);
 
         if (changes.Count > 0)
         {
@@ -318,7 +174,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Court,
             entity.Id,
             actorId,
-            new Dictionary<string, AuditValueChange> { ["isActive"] = Diff(before, isActive) },
+            CourtCatalogRules.StatusChanged(before, isActive),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
@@ -334,7 +190,8 @@ public sealed class CourtsService : ICourtsService
         var court = await _repo.FindCourtAsync(courtId, cancellationToken);
         if (court is null) return (null, "المحكمة غير موجودة");
         var circuitNo = request.CircuitNo.Trim();
-        if (circuitNo.Length is < 1 or > 50) return (null, "رقم الدائرة مطلوب");
+        var invalid = CourtCatalogRules.ValidateCircuitNo(circuitNo);
+        if (invalid is not null) return (null, invalid);
 
         var exists = await _repo.CircuitNoTakenAsync(courtId, circuitNo, null, cancellationToken);
         if (exists) return (null, "الدائرة مكرّرة في هذه المحكمة");
@@ -344,7 +201,7 @@ public sealed class CourtsService : ICourtsService
             Id = Guid.NewGuid(),
             CourtId = courtId,
             CircuitNo = circuitNo,
-            CircuitName = string.IsNullOrWhiteSpace(request.CircuitName) ? null : request.CircuitName.Trim(),
+            CircuitName = CourtCatalogRules.NormalizeCircuitName(request.CircuitName),
             IsActive = request.IsActive,
             CreatedBy = actorId,
             CreatedAtUtc = _time.UtcNow(),
@@ -355,13 +212,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Circuit,
             entity.Id,
             actorId,
-            new Dictionary<string, AuditValueChange>
-            {
-                ["courtId"] = Diff(null, entity.CourtId),
-                ["circuitNo"] = Diff(null, entity.CircuitNo),
-                ["circuitName"] = Diff(null, entity.CircuitName),
-                ["isActive"] = Diff(null, entity.IsActive),
-            },
+            CourtCatalogRules.CircuitCreated(entity),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
@@ -379,31 +230,22 @@ public sealed class CourtsService : ICourtsService
         if (entity is null) return (null, "الدائرة غير موجودة");
 
         var circuitNo = request.CircuitNo?.Trim() ?? entity.CircuitNo;
-        if (circuitNo.Length is < 1 or > 50) return (null, "رقم الدائرة مطلوب");
+        var invalid = CourtCatalogRules.ValidateCircuitNo(circuitNo);
+        if (invalid is not null) return (null, invalid);
         var clash = await _repo.CircuitNoTakenAsync(
             courtId, circuitNo, circuitId, cancellationToken);
         if (clash) return (null, "الدائرة مكرّرة في هذه المحكمة");
 
-        var beforeNo = entity.CircuitNo;
-        var beforeName = entity.CircuitName;
-        var beforeActive = entity.IsActive;
+        var before = (entity.CircuitNo, entity.CircuitName, entity.IsActive);
 
         entity.CircuitNo = circuitNo;
         if (request.CircuitName is not null)
-            entity.CircuitName = string.IsNullOrWhiteSpace(request.CircuitName)
-                ? null
-                : request.CircuitName.Trim();
+            entity.CircuitName = CourtCatalogRules.NormalizeCircuitName(request.CircuitName);
         if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
         entity.UpdatedBy = actorId;
         entity.UpdatedAtUtc = _time.UtcNow();
 
-        var changes = new Dictionary<string, AuditValueChange>();
-        if (!string.Equals(beforeNo, entity.CircuitNo, StringComparison.Ordinal))
-            changes["circuitNo"] = Diff(beforeNo, entity.CircuitNo);
-        if (!string.Equals(beforeName, entity.CircuitName, StringComparison.Ordinal))
-            changes["circuitName"] = Diff(beforeName, entity.CircuitName);
-        if (beforeActive != entity.IsActive)
-            changes["isActive"] = Diff(beforeActive, entity.IsActive);
+        var changes = CourtCatalogRules.CircuitUpdated(before, entity);
 
         if (changes.Count > 0)
         {
@@ -442,7 +284,7 @@ public sealed class CourtsService : ICourtsService
             CourtAuditEntityTypes.Circuit,
             entity.Id,
             actorId,
-            new Dictionary<string, AuditValueChange> { ["isActive"] = Diff(before, isActive) },
+            CourtCatalogRules.StatusChanged(before, isActive),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
         await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
@@ -456,15 +298,7 @@ public sealed class CourtsService : ICourtsService
     {
         await EnsureSeededAsync(cancellationToken);
         var courts = await _repo.ListActiveCourtsAsync(region, city, cancellationToken);
-        return courts
-            .Select(c => new SelectableCourtDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Region = c.Region,
-                City = c.City,
-            })
-            .ToList();
+        return courts.Select(c => ToSelectable(c)).ToList();
     }
 
     public async Task<IReadOnlyList<SelectableCircuitDto>> ListSelectableCircuitsAsync(
@@ -476,61 +310,8 @@ public sealed class CourtsService : ICourtsService
         if (!courtActive) return [];
 
         var circuits = await _repo.ListActiveCircuitsAsync(courtId, cancellationToken);
-        return circuits
-            .Select(c => new SelectableCircuitDto
-            {
-                Id = c.Id,
-                CourtId = c.CourtId,
-                CircuitNo = c.CircuitNo,
-                CircuitName = c.CircuitName,
-            })
-            .ToList();
+        return circuits.Select(c => ToSelectable(c)).ToList();
     }
-
-    private static CourtDto ToDto(Court c, int circuitsCount) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Region = c.Region,
-        City = c.City,
-        IsActive = c.IsActive,
-        CircuitsCount = circuitsCount,
-        CreatedBy = c.CreatedBy,
-        CreatedAtUtc = c.CreatedAtUtc.ToString("o"),
-        UpdatedBy = c.UpdatedBy,
-        UpdatedAtUtc = c.UpdatedAtUtc?.ToString("o"),
-    };
-
-    private static CourtDetailDto ToDetail(Court c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Region = c.Region,
-        City = c.City,
-        IsActive = c.IsActive,
-        CircuitsCount = c.Circuits.Count,
-        CreatedBy = c.CreatedBy,
-        CreatedAtUtc = c.CreatedAtUtc.ToString("o"),
-        UpdatedBy = c.UpdatedBy,
-        UpdatedAtUtc = c.UpdatedAtUtc?.ToString("o"),
-        Circuits = c.Circuits
-            .OrderBy(x => x.CircuitNo)
-            .Select(ToCircuitDto)
-            .ToList(),
-    };
-
-    private static CourtCircuitDto ToCircuitDto(CourtCircuit c) => new()
-    {
-        Id = c.Id,
-        CourtId = c.CourtId,
-        CircuitNo = c.CircuitNo,
-        CircuitName = c.CircuitName,
-        IsActive = c.IsActive,
-        CreatedBy = c.CreatedBy,
-        CreatedAtUtc = c.CreatedAtUtc.ToString("o"),
-        UpdatedBy = c.UpdatedBy,
-        UpdatedAtUtc = c.UpdatedAtUtc?.ToString("o"),
-    };
 
     private Task AddAuditAsync(
         string action,
@@ -547,7 +328,4 @@ public sealed class CourtsService : ICourtsService
                 entityId.ToString(),
                 changes),
             cancellationToken);
-
-    private static AuditValueChange Diff(object? before, object? after) =>
-        new(before, after);
 }

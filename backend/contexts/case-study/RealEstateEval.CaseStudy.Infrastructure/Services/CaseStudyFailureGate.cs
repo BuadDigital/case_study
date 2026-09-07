@@ -30,7 +30,7 @@ public sealed class CaseStudyFailureGate(
         failures.EnsureSystemInternalFailureAsync(
             poNumber,
             propertyId,
-            deedNumber,
+            deedNumber ?? "",
             problemKey,
             problemLabel,
             detail,

@@ -53,6 +53,8 @@ public sealed class GlobalExceptionHandlerMiddleware
             context.Response.Clear();
             context.Response.StatusCode = (int)HttpStatusCode.Conflict;
             context.Response.ContentType = "application/problem+json";
+            // A row-version race, not a domain conflict: replayable, must not be cached.
+            context.Response.Headers[TransientConflict.HeaderName] = TransientConflict.HeaderValue;
 
             var problem = new
             {

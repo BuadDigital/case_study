@@ -15,6 +15,48 @@ public class DatabaseReadinessOptionsTests
 
         Assert.True(options.CheckMigrations);
         Assert.Equal(5, options.CacheSeconds);
+        // Soft checks report only; on by default so /ready shows broker and cache state.
+        Assert.True(options.CheckRabbit);
+        Assert.True(options.CheckRedis);
+    }
+
+    [Fact]
+    public void Soft_probes_are_time_boxed_below_the_gateway_upstream_timeout()
+    {
+        var options = DatabaseReadinessOptions.FromConfiguration(
+            Configuration([]),
+            Environment("Production"));
+
+        // Gateway:Readiness:TimeoutSeconds defaults to 2 s; both soft probes run in parallel.
+        Assert.Equal(750, options.SoftProbeTimeoutMilliseconds);
+        Assert.True(options.SoftProbeTimeoutMilliseconds < 2_000);
+    }
+
+    [Theory]
+    [InlineData("10")]
+    [InlineData("20000")]
+    public void Soft_probe_timeout_is_validated(string value)
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            DatabaseReadinessOptions.FromConfiguration(
+                Configuration(new Dictionary<string, string?>
+                {
+                    ["Readiness:SoftProbeTimeoutMilliseconds"] = value,
+                }),
+                Environment("Production")));
+    }
+
+    [Fact]
+    public void Soft_checks_can_be_switched_off()
+    {
+        var options = DatabaseReadinessOptions.FromConfiguration(
+            Configuration(new Dictionary<string, string?>
+            {
+                ["Readiness:CheckRabbit"] = "false",
+                ["Readiness:CheckRedis"] = "false",
+            }),
+            Environment("Production"));
+
         Assert.False(options.CheckRabbit);
         Assert.False(options.CheckRedis);
     }

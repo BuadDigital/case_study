@@ -1,4 +1,3 @@
-using RealEstateEval.Domain;
 ﻿using RealEstateEval.Domain;
 
 namespace RealEstateEval.Financial.Domain;

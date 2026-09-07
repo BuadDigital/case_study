@@ -79,10 +79,15 @@ public sealed class CommandIdempotencyMiddleware(
             buffer.Position = 0;
             var bytes = buffer.ToArray();
 
-            // Cache successful and domain-conflict outcomes so retries are stable.
-            if (context.Response.StatusCode is >= 200 and < 300
-                or StatusCodes.Status409Conflict
-                or StatusCodes.Status400BadRequest)
+            // Cache successful and domain-conflict outcomes so retries are stable. A transient
+            // (row-version) conflict is the one 409 a retry is meant to get past, so it is
+            // never pinned to the key.
+            var transientConflict = context.Response.StatusCode == StatusCodes.Status409Conflict
+                && context.Response.Headers.ContainsKey(TransientConflict.HeaderName);
+            if (!transientConflict
+                && (context.Response.StatusCode is >= 200 and < 300
+                    or StatusCodes.Status409Conflict
+                    or StatusCodes.Status400BadRequest))
             {
                 await store.SaveAsync(
                     actor,

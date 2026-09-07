@@ -628,20 +628,24 @@ Phase 6             Module Federation and separate deployments per microfrontend
 - Numbered-document allocate/list gated by `ManageWorkOrders`
 - Rate limiting + CORS helpers; RabbitMQ outbox/consumers; Redis caching; OpenTelemetry OTLP export (infra already in Compose)
 - Release scripts: MFE typecheck, unit tests, Playwright smoke/journeys
+- Ports-and-adapters in every bounded context (use cases in `<Ctx>.Application`, EF adapters in `<Ctx>.Infrastructure`) with architecture ratchets; see `docs/architecture/solid-scorecard.md`
+- Frontend decomposition: `lib/prototype` retired into `lib/app-data` (`-model` / `-reads` / `-commands`), views composed from region components + `use<Name>Workflow` hooks + pure `-state.ts` modules; size ratchets in `tests/architecture` with empty frozen lists
+- Server-side pagination contract (`docs/architecture/pagination-contract.md`) on every list endpoint that grows
+- Schema integrity pass (2026-09): same-schema foreign keys, uuid keys, CHECK constraints from the constants lists, `jsonb` everywhere, row versions on contended aggregates, updated-at interceptor, messaging retention job, inline attachment blobs moved to the blob store
+- All nine services (Identity, Case Study, Operations, Reporting, Financial, Valuation, Failures, Platform, Attachments) behind the gateway with per-service `/ready` probes (database reachability, pending migrations, soft broker/cache checks)
+- Playwright journeys per party role (intake → distribution, inspection, survey, appraisal, billing)
 
 ### In progress or planned
 
 **Frontend**
 
 - [ ] Module Federation (F5) and independent MFE deploys
-- [ ] Continue relocating `lib/prototype/*` into `lib/domain` / `lib/storage`
-- [ ] Move remaining evaluator→case-study type/runtime/UI imports onto shared packages / bridges
+- [ ] Move the remaining evaluator→case-study type/runtime/UI imports onto shared packages / bridges (the only step left before F5)
 - [ ] HttpOnly/BFF session (replace localStorage JWT) if required by security review
 - [ ] Registration flow if in scope for first production release
 
 **Backend**
 
-- [ ] Finish extracting Operations and Financial services behind the gateway (dispatch already internal-header gated)
 - [ ] Promote specialist extras fields to first-class columns when product freezes the schema
 - [ ] Fluent Bit / Serilog → Elasticsearch → Kibana (JSON console logging today)
 

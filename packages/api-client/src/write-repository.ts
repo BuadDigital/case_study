@@ -39,12 +39,40 @@ export async function repositoryFetch(
   init?: RequestInit,
 ): Promise<Response> {
   const method = String(init?.method ?? "GET").toUpperCase();
-  const nativeWrite = () => globalThis.fetch(input, init);
-  if (!isWriteMethod(method)) return nativeWrite();
+  const nativeWrite = () => fetchRetryingTransientConflict(input, init);
+  if (!isWriteMethod(method)) return globalThis.fetch(input, init);
 
   return interceptor
     ? interceptor({ input, init, method }, nativeWrite)
     : nativeWrite();
+}
+
+/**
+ * Header the backend sets on a 409 that came from an optimistic-concurrency race (a row
+ * version changed between read and save) rather than from a domain rule. Such conflicts
+ * clear on their own, so one automatic retry keeps a background sync from turning a
+ * user's submit into an error toast.
+ */
+export const TRANSIENT_CONFLICT_HEADER = "X-REE-Transient-Conflict";
+const TRANSIENT_CONFLICT_RETRY_DELAY_MS = 300;
+
+async function fetchRetryingTransientConflict(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const first = await globalThis.fetch(input, init);
+  if (!isTransientConflict(first) || !isReplayableBody(init?.body)) return first;
+  await new Promise((resolve) => setTimeout(resolve, TRANSIENT_CONFLICT_RETRY_DELAY_MS));
+  return globalThis.fetch(input, init);
+}
+
+export function isTransientConflict(response: Response): boolean {
+  return response.status === 409 && response.headers.has(TRANSIENT_CONFLICT_HEADER);
+}
+
+/** A stream body is consumed by the first attempt; everything else can be sent again. */
+function isReplayableBody(body: RequestInit["body"]): boolean {
+  return !(typeof ReadableStream !== "undefined" && body instanceof ReadableStream);
 }
 
 function isWriteMethod(method: string): method is ApiWriteMethod {

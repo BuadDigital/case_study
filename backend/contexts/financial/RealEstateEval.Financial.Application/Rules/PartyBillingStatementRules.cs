@@ -164,6 +164,73 @@ public static class PartyBillingStatementRules
     public static string CancelledReason(string reference, string reason) =>
         $"إلغاء {reference}: {reason}";
 
+    /// <summary>At-finance → deferred; returns the transition row to record.</summary>
+    public static InspectorFeeTransition Defer(
+        InspectorFeeLedger ledger,
+        string reason,
+        string actorUserId,
+        DateTime nowUtc)
+    {
+        ledger.BillingStatus = InspectorFeeBillingStatus.Deferred;
+        ledger.UpdatedAtUtc = nowUtc;
+        return Transition(
+            ledger,
+            InspectorFeeBillingStatus.AtFinance,
+            InspectorFeeBillingStatus.Deferred,
+            reason,
+            actorUserId,
+            nowUtc);
+    }
+
+    /// <summary>Close stamps the voucher on every ledger of the statement and marks it disbursed.</summary>
+    public static InspectorFeeTransition Disburse(
+        InspectorFeeLedger ledger,
+        string voucher,
+        string actorUserId,
+        DateTime nowUtc)
+    {
+        var fromStatus = ledger.BillingStatus;
+        ledger.BillingStatus = InspectorFeeBillingStatus.Disbursed;
+        ledger.DisbursementVoucher = voucher;
+        ledger.UpdatedAtUtc = nowUtc;
+        return Transition(
+            ledger,
+            fromStatus,
+            InspectorFeeBillingStatus.Disbursed,
+            DisbursedReason(voucher),
+            actorUserId,
+            nowUtc);
+    }
+
+    /// <summary>Cancel unbinds the ledger from the statement and returns it to the ready queue.</summary>
+    public static InspectorFeeTransition ReturnToFinance(
+        InspectorFeeLedger ledger,
+        string reference,
+        string reason,
+        string actorUserId,
+        DateTime nowUtc)
+    {
+        var from = ledger.BillingStatus;
+        ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
+        ledger.PartyBillingStatementId = null;
+        ledger.UpdatedAtUtc = nowUtc;
+        return Transition(
+            ledger,
+            from,
+            InspectorFeeBillingStatus.AtFinance,
+            CancelledReason(reference, reason),
+            actorUserId,
+            nowUtc);
+    }
+
+    /// <summary>Distinct property ids the ledgers point at — the label lookup key set.</summary>
+    public static List<Guid> PropertyIdsOf(IEnumerable<InspectorFeeLedger> ledgers) =>
+        ledgers
+            .Where(l => l.PropertyId.HasValue)
+            .Select(l => l.PropertyId!.Value)
+            .Distinct()
+            .ToList();
+
     /// <summary>Net payable for one statement line = sum of the task's collapsed ledgers.</summary>
     public static decimal NetForGroup(IEnumerable<InspectorFeeLedger> ledgers) =>
         ledgers.Sum(l => InspectorFeeRules.NetFee(l.AgreedFeeSar, l.SupervisorDiscountSar));
@@ -259,6 +326,28 @@ public static class PartyBillingStatementRules
         statement.PayeeType == PartyBillingPayeeType.Vendor
             ? (statement.VendorInvoiceNumber ?? voucher)
             : voucher;
+
+    /// <summary>Stamps the payment evidence of a passed close check onto the statement.</summary>
+    public static void ApplyClose(
+        PartyBillingStatement statement,
+        CloseStatementCheck check,
+        string? notes,
+        DateTime paidAtUtc,
+        string actorUserId,
+        DateTime nowUtc)
+    {
+        statement.Status = PartyBillingStatementStatus.Closed;
+        statement.ClosedAtUtc = nowUtc;
+        statement.ClosedByUserId = actorUserId;
+        statement.DisbursementVoucher = check.Voucher;
+        statement.TransferReference = check.TransferReference;
+        statement.TransferReceiptAttachmentId = check.ReceiptAttachmentId;
+        statement.TransferReceiptRef = check.TransferReceiptRef;
+        statement.ExternalInvoiceNumber = ExternalInvoiceOnClose(statement, check.Voucher);
+        statement.PaidAtUtc = paidAtUtc;
+        if (!string.IsNullOrWhiteSpace(notes))
+            statement.Notes = notes.Trim();
+    }
 
     /// <summary>A statement is cancellable until it is closed, cancelled, or invoice-matched.</summary>
     public static (string? Error, string Reason) ValidateCancel(

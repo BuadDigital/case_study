@@ -1,5 +1,14 @@
 # Ownership catalog and boundary guardrails
 
+> **Status (2026-09-06): historical record.** The split this catalog planned is complete
+> (2026-08-28: the legacy context and `ApplicationDbContext` are gone, every context owns its
+> own database and migration stream) and the 2026-09 integrity pass added the foreign keys,
+> CHECK constraints and row versions. The ownership table and decisions D1–D6 below are still
+> the reference the boundary tests enforce (`TableOwnershipCatalog`, `SchemaAccessBoundaryTests`,
+> `docs/architecture/boundary-baseline.json`); for the database as it is today read
+> [`docs/DATABASE_OVERVIEW.md`](../DATABASE_OVERVIEW.md). The "Phase status" paragraphs that
+> follow are left as written.
+
 This is the Phase 0 artifact required by [`docs/architecture-split-plan.md`](../architecture-split-plan.md):
 a table ownership catalog, a classification of every verified cross-boundary use, and
 executable guardrails that stop the coupling from growing. Since ownership was approved it is

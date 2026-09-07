@@ -1,4 +1,4 @@
-﻿using RealEstateEval.Application;
+using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
@@ -55,18 +55,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             MaxPricingTables,
             cancellationToken);
 
-        var tables = rows
-            .Select(x => new PartyFeePricingTableSummaryDto
-            {
-                Id = x.Id,
-                Category = x.Category,
-                Name = x.Name,
-                PricingKind = x.PricingKind,
-                ManagedBy = x.ManagedBy,
-                IsActive = x.IsActive,
-                UpdatedAtUtc = x.UpdatedAtUtc,
-            })
-            .ToList();
+        var tables = rows.Select(PartyFeePricingLifecycleRules.ToSummaryDto).ToList();
 
         if (tables.Count == 0) return tables;
 
@@ -151,11 +140,8 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
     {
         var table = await LoadTableAsync(id, tracking: true, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found.");
-        if (await _db.AnyAssignmentsForTableAsync(id, cancellationToken))
-        {
-            throw new InvalidOperationException(
-                "لا يمكن تعديل جدول مرتبط بأطراف — احفظ التغيير كنسخة جديدة لإعادة ربطهم ذرّياً.");
-        }
+        PartyFeePricingLifecycleRules.RequireEditable(
+            await _db.AnyAssignmentsForTableAsync(id, cancellationToken));
         var before = PartyFeePricingSnapshots.Snapshot(table);
 
         table.Name = PartyFeePricingRules.NormalizeName(request.Name, table.Category);
@@ -184,11 +170,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
         var source = await LoadTableAsync(sourceId, tracking: true, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {sourceId} was not found.");
         var assignments = await _db.ListAssignmentsForTableAsync(sourceId, cancellationToken);
-        if (assignments.Count == 0)
-        {
-            throw new InvalidOperationException(
-                "الجدول غير مرتبط بأطراف ويمكن تعديله مباشرة دون إنشاء نسخة.");
-        }
+        PartyFeePricingLifecycleRules.RequireRevisable(assignments.Count);
 
         var now = _time.UtcNow();
         var sourceBefore = PartyFeePricingSnapshots.Snapshot(source);
@@ -197,8 +179,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
 
         if (wasSourceActive)
         {
-            source.IsActive = false;
-            source.UpdatedAtUtc = now;
+            PartyFeePricingLifecycleRules.SetActive(source, false, now);
             AddAudit(
                 actorId,
                 "PRICING_TABLE_DEACTIVATED",
@@ -240,9 +221,8 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
 
         if (wasSourceActive)
         {
-            var revisionBeforeActivate = PartyFeePricingSnapshots.Snapshot(revision);
-            revision.IsActive = true;
-            revision.UpdatedAtUtc = _time.UtcNow();
+            var revisionBeforeActivate = PartyFeePricingLifecycleRules.SetActive(
+                revision, true, _time.UtcNow());
             AddAudit(
                 actorId,
                 "PRICING_TABLE_ACTIVATED",
@@ -281,9 +261,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
         {
             foreach (var other in others)
             {
-                var before = PartyFeePricingSnapshots.Snapshot(other);
-                other.IsActive = false;
-                other.UpdatedAtUtc = now;
+                var before = PartyFeePricingLifecycleRules.SetActive(other, false, now);
                 AddAudit(
                     actorId,
                     "PRICING_TABLE_DEACTIVATED",
@@ -298,9 +276,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
 
             if (!table.IsActive)
             {
-                var targetBefore = PartyFeePricingSnapshots.Snapshot(table);
-                table.IsActive = true;
-                table.UpdatedAtUtc = now;
+                var targetBefore = PartyFeePricingLifecycleRules.SetActive(table, true, now);
                 AddAudit(
                     actorId,
                     "PRICING_TABLE_ACTIVATED",
@@ -324,14 +300,10 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
         var table = await LoadTableAsync(id, tracking: true, cancellationToken);
         if (table is null) return false;
 
-        var countInCategory = await _db.CountTablesInCategoryAsync(table.Category, cancellationToken);
-        if (countInCategory <= 1)
-            throw new InvalidOperationException("Cannot delete the last pricing table in this category.");
-        if (await _db.AnyAssignmentsForTableAsync(id, cancellationToken))
-        {
-            throw new InvalidOperationException(
-                "لا يمكن حذف جدول مرتبط بأطراف — انقل الإسنادات أولاً.");
-        }
+        PartyFeePricingLifecycleRules.RequireNotLastInCategory(
+            await _db.CountTablesInCategoryAsync(table.Category, cancellationToken));
+        PartyFeePricingLifecycleRules.RequireDeletable(
+            await _db.AnyAssignmentsForTableAsync(id, cancellationToken));
 
         var wasActive = table.IsActive;
         var category = table.Category;
@@ -345,9 +317,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             var next = await _db.FindNextTableInCategoryAsync(category, id, cancellationToken)
                 ?? throw new InvalidOperationException(
                     "Cannot delete the last pricing table in this category.");
-            var nextBefore = PartyFeePricingSnapshots.Snapshot(next);
-            next.IsActive = true;
-            next.UpdatedAtUtc = _time.UtcNow();
+            var nextBefore = PartyFeePricingLifecycleRules.SetActive(next, true, _time.UtcNow());
             AddAudit(
                 actorId,
                 "PRICING_TABLE_ACTIVATED",
@@ -366,150 +336,6 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             after: null);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
-    }
-
-    public async Task<IReadOnlyList<string>> ListAssignmentsAsync(
-        Guid tableId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _db.ListAssigneeIdsForTableAsync(tableId, cancellationToken);
-    }
-
-    public async Task<PartyFeePricingDto> SetAssignmentsAsync(
-        Guid tableId,
-        IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default,
-        string actorId = "system")
-    {
-        await EnsureAllCategoriesSeededAsync(cancellationToken);
-        var table = await LoadTableAsync(tableId, tracking: true, cancellationToken)
-            ?? throw new KeyNotFoundException($"Pricing table {tableId} was not found.");
-
-        var normalized = PartyFeePricingRules.NormalizeAssigneeIds(assigneeIds);
-        var categoryBefore = await _db.ListAssignmentSnapshotsByCategoryAsync(
-            table.Category, cancellationToken);
-
-        var now = _time.UtcNow();
-
-        var conflicting = await _db.ListConflictingAssignmentsAsync(
-            table.Category, tableId, normalized, cancellationToken);
-        if (conflicting.Count > 0)
-            _db.RemoveAssignments(conflicting);
-
-        var existing = await _db.ListAssignmentsForTableAsync(tableId, cancellationToken);
-        _db.RemoveAssignments(existing);
-
-        foreach (var assigneeId in normalized)
-        {
-            _db.AddAssignment(new PartyFeePricingAssignment
-            {
-                Id = Guid.NewGuid(),
-                TableId = tableId,
-                Category = table.Category,
-                AssigneeId = assigneeId,
-                UpdatedAtUtc = now,
-            });
-        }
-
-        table.UpdatedAtUtc = now;
-        var categoryAfter = PartyFeePricingRules.AssignmentsAfterReplace(
-            categoryBefore,
-            tableId,
-            normalized);
-        AddAudit(
-            actorId,
-            "PRICING_ASSIGNMENTS_REPLACED",
-            nameof(PartyFeePricingAssignment),
-            table.Id,
-            categoryBefore,
-            categoryAfter);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        var reloaded = await LoadTableAsync(tableId, tracking: false, cancellationToken)
-            ?? throw new KeyNotFoundException($"Pricing table {tableId} was not found after assign.");
-        return await ToDtoAsync(reloaded, cancellationToken);
-    }
-
-    public async Task<ResolvedPartyFee> ResolveDefaultFeeAsync(
-        WorkflowTaskKind taskKind,
-        string partyType,
-        decimal? areaM2 = null,
-        string? assigneeId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var category = PartyFeePricingRules.CategoryForTaskKind(taskKind);
-        if (category is null) return ResolvedPartyFee.Unresolved;
-
- // Employee incentives may only come from flat tables. An accidental party-rates assignment
- // (or the cooperator category default) must not silently leave the employee unpriced —
- // and must not price them from cooperator columns.
-        var pricing = PartyFeePricingRules.UsesEmployeeIncentiveTable(partyType, taskKind)
-            ? await ResolveEmployeeIncentiveTableAsync(category, assigneeId, cancellationToken)
-            : await ResolveTableDtoForAssigneeAsync(category, assigneeId, cancellationToken);
-
-        if (pricing is null) return ResolvedPartyFee.Unresolved;
-
-        return PartyFeePricingRules.ResolvedOrUnresolved(
-            PartyFeePricingRules.ResolveFromDto(pricing, taskKind, partyType, areaM2),
-            pricing.Id);
-    }
-
- /// <summary>
- /// Flat table assigned to the employee, else any flat incentive table for the category.
- /// Never returns the cooperator party-rates default.
- /// </summary>
-    private async Task<PartyFeePricingDto?> ResolveEmployeeIncentiveTableAsync(
-        string category,
-        string? assigneeId,
-        CancellationToken cancellationToken)
-    {
-        await EnsureAllCategoriesSeededAsync(cancellationToken);
-        var trimmed = assigneeId?.Trim();
-
-        if (!string.IsNullOrEmpty(trimmed))
-        {
-            var assignedTableId = await _db.FindAssignedTableIdAsync(
-                category, trimmed, cancellationToken);
-
-            if (assignedTableId is Guid tableId)
-            {
-                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
-                if (PartyFeePricingRules.IsUsableEmployeeIncentiveTable(assigned))
-                    return await ToDtoAsync(assigned!, cancellationToken);
-            }
-        }
-
-        var flat = await _db.FindFlatTableWithAmountAsync(category, cancellationToken);
-
-        return flat is null ? null : await ToDtoAsync(flat, cancellationToken);
-    }
-
-    private async Task<PartyFeePricingDto?> ResolveTableDtoForAssigneeAsync(
-        string category,
-        string? assigneeId,
-        CancellationToken cancellationToken)
-    {
-        await EnsureAllCategoriesSeededAsync(cancellationToken);
-        var trimmed = assigneeId?.Trim();
-
-        if (!string.IsNullOrEmpty(trimmed))
-        {
-            var assignedTableId = await _db.FindAssignedTableIdAsync(
-                category, trimmed, cancellationToken);
-
-            if (assignedTableId is Guid tableId)
-            {
-                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
-                if (assigned is not null)
-                    return await ToDtoAsync(assigned, cancellationToken);
-            }
-
-            if (!PartyFeePricingRules.AllowsCategoryDefaultFallback(category))
-                return null;
-        }
-
-        var fallback = await _db.FindActiveTableAsync(category, cancellationToken);
-        return fallback is null ? null : await ToDtoAsync(fallback, cancellationToken);
     }
 
     private Task<PartyFeePricingTable?> LoadTableAsync(
@@ -531,13 +357,10 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
         _db.AddTiers(PartyFeePricingRules.BuildTierRows(table.Id, tiers));
     }
 
-    private PricingTableSnapshot SnapshotFromTrackedState(PartyFeePricingTable table)
-    {
-        var tiers = _db.ListPendingTiers(table.Id)
-            .Select(t => new PricingTierSnapshot(t.SortOrder, t.MaxAreaM2, t.FeeSar))
-            .ToList();
-        return PartyFeePricingSnapshots.Snapshot(table, tiers);
-    }
+    private PricingTableSnapshot SnapshotFromTrackedState(PartyFeePricingTable table) =>
+        PartyFeePricingSnapshots.Snapshot(
+            table,
+            PartyFeePricingLifecycleRules.TierSnapshots(_db.ListPendingTiers(table.Id)));
 
     private async Task ApplyRatesFromRequestAsync(
         PartyFeePricingTable table,

@@ -264,6 +264,28 @@ The remaining nineteen components were split the same way, six agents on disjoin
 
 Verification after the slice: typecheck clean on all seven MFEs, the shell and the api-client; vitest 99 files / 816 tests including both size ratchets; barrel lint clean; Playwright smoke 47 pass, journeys 19 pass twice. One deliberate behaviour fix surfaced by the split: failure cards on mobile now show action spinners (a memo with a stale dependency had hidden them).
 
+## Application service size cap (2026-09-06)
+
+The Infrastructure cap (400) had held since 2026-09-03, but the use cases it pushed into `contexts/*/Application/Services` had no cap of their own and thirteen of them had grown past 500 lines. `ApplicationServiceSizeTests` now ratchets every file under `contexts/*/RealEstateEval.*.Application/Services/` at 500 lines with an empty `FrozenOverCap`, the same shape as the Infrastructure test. Each offender was split the way `PartyTaskSubmissionService` already was — `partial class` files by concern, decisions moved into `Rules/` modules with port-free tests. Public surface, constructor signatures, ports and every Arabic string are unchanged; side-effect order (validate → save → audit/timeline → notify) was preserved in each split.
+
+| Service | Before → after | Partials added | Rules added (tests) |
+| --- | --- | --- | --- |
+| identity `UserRegistrationService` | 805 → 363 | `.Activation` (105), `.Lifecycle` (173) | `StaffProfileRules` (16) |
+| financial `PartyBillingStatementService` | 731 → 381 | `.Create` (262) | `PartyBillingDraftRules` (8); `PartyBillingStatementRules` extended with the ledger moves, `PropertyIdsOf`, `ApplyClose` (+5) |
+| financial `PoEnfazBillingService` | 708 → 275 | `.Tracking` (93), `.Followups` (96) | `PoEnfazRevenueRules` (14), `PoEnfazInvoiceRules` (8), `PoEnfazFinanceFlagRules` (6); `PoEnfazFollowupRules` made public and extended (6) |
+| financial `PartyFeePricingService` | 589 → 412 | `.Resolution` (93), `.Assignments` (72) | `PartyFeePricingLifecycleRules` (8) |
+| operations `KeyEnvelopesService` | 678 → 403 | `.Handoffs` (176), `.LinkedProperties` (74) | `KeyEnvelopeRegistrationRules` (10) |
+| operations `OperationsTaskCommands` | 624 → 420 | `.Reminders` (113), `.Comments` (64) | `OperationsTaskCommandRules` (11) |
+| case-study `WorkflowTaskLifecycleCommands` | 672 → 307 | `.Revert` (105), `.Deletion` (151) | `WorkflowTaskLifecycleRules` (14) |
+| case-study `PartyTaskSubmissionService` | 632 → 409 | `.Validation` (93), `.Mapping` (45) | `PartyTaskSubmissionRules` (14) |
+| case-study `WorkflowTaskDistributionCommands` | 560 → 266 | `.Notifications` (60) | `WorkflowTaskDistributionRules` (11) — one `PartyChildSpec` table replaces the duplicated per-kind spawn blocks |
+| valuation `ValuationComparableSelectionService` | 633 → 344 | `.FactorRationale` (104), `.MarketApproach` (63) | `ValuationComparableSelectionRequestRules` (18) |
+| failures `FailureService` | 632 → 413 | `.Holds` (152), `.Notifications` (48) | `FailureRecordRules` (10) |
+| platform `CourtsService` | 553 → 331 | `.Seeding` (84), `.Mapping` (69) | `CourtCatalogSeed`, `CourtCatalogRules` (12) |
+| platform `RegionsService` | 540 → 237 | `.Seeding` (127), `.Review` (85) | `LocationCatalogRules` (18) |
+
+Sixteen new rules test files, 184 `[Fact]`/`[Theory]` cases (plus five added to `PartyBillingStatementRulesTests`); the Application suite went from 1,380 to 1,620 tests. Nothing moved in `boundary-baseline.json` — the split is inside Application, which the schema-boundary test does not key on. The largest remaining Application services sit at 482 lines (`OperationsTaskNotifier`, `ValuationReportFieldInjectionService`); they are the first to watch.
+
 ## Recommended next slices
 
 None open. The scorecard's findings are closed on both sides; the ratchets (backend size and boundaries, frontend size and storage purity) hold the shape. Reopen only with a new finding.
