@@ -8,7 +8,9 @@ import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedC
 import { ComparablePropertyEntryFields } from "@case-study/mfe/components/comparables/ComparablePropertyEntryFields";
 import {
   comparableDraftToUpsert,
+  comparableEntryReady,
   emptyComparableEntryDraft,
+  parseComparableCoords,
   type ComparableEntryDraft,
 } from "@case-study/mfe/lib/comparable-entry";
 import {
@@ -82,8 +84,10 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   const [q, setQ] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [draft, setDraft] = useState<ComparableEntryDraft>(() =>
-    emptyComparableEntryDraft(seed),
+    emptyComparableEntryDraft(),
   );
   const initialDraftRef = useRef<ComparableEntryDraft | null>(null);
   const { run: runCreate, loading: saving } = useCommandMutation(
@@ -121,9 +125,11 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   }, [q]);
 
   function openForm() {
-    const next = emptyComparableEntryDraft(seed);
+    const next = emptyComparableEntryDraft();
     initialDraftRef.current = next;
     setDraft(next);
+    setLocationConfirmed(false);
+    setFormKey((n) => n + 1);
     setDiscardOpen(false);
     setFormOpen(true);
   }
@@ -148,6 +154,10 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   }
 
   async function saveComparable() {
+    if (!comparableEntryReady(draft, locationConfirmed)) {
+      showToast("أكمل الموقع والنوع والسعر والمساحة والتاريخ قبل الحفظ", "error");
+      return;
+    }
     try {
       const outcome = await runCreate(draft);
       if (outcome.status === "skipped") return;
@@ -156,7 +166,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         anomaly ? `أُضيف المقارن إلى البنك — ${anomaly}` : "أُضيف المقارن إلى البنك",
         anomaly ? "error" : "success",
       );
-      setDraft(emptyComparableEntryDraft(seed));
+      setDraft(emptyComparableEntryDraft());
+      setLocationConfirmed(false);
       setFormOpen(false);
       setDiscardOpen(false);
       if (q.trim()) onSearchRef.current?.(q);
@@ -226,7 +237,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       <AppModal
         open={formOpen}
         title="إضافة مقارن"
-        subtitle={`يُحفظ في البنك المشترك ويظهر هنا إن كان ضمن ${NEARBY_RADIUS_KM} كم من موقع العقار.`}
+        subtitle="الدبوس الذهبي موقع العقار موضوع التقييم. ثبّت موقع المقارن ثم اختر أرضاً أو مبنى."
         wide
         maxWidthPx={720}
         look="ops-html"
@@ -240,7 +251,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               type="button"
               variant="primary"
               loading={saving}
-              disabled={saving}
+              disabled={saving || !comparableEntryReady(draft, locationConfirmed)}
               onClick={() => void saveComparable()}
             >
               حفظ في البنك
@@ -249,9 +260,12 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         }
       >
         <ComparablePropertyEntryFields
+          key={formKey}
           draft={draft}
           disabled={saving}
+          subjectPin={parseComparableCoords(seed?.latitude, seed?.longitude)}
           onChange={setDraft}
+          onLocationConfirmedChange={setLocationConfirmed}
         />
       </AppModal>
       <UnsavedChangesDialog

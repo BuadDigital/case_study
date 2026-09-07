@@ -169,7 +169,7 @@ export function InspectorWizardLocationStep({
         </div>
         {inspectorReferencePins.length > 0 ? (
           <p className="mt-2 mb-0 text-[10.5px] leading-relaxed text-text-3">
-            الدبوس الذهبي يعرض موقع المعاين الأصلي للمقارنة فقط — لا يُرفع مع
+            الدبوس الأزرق يعرض موقع المعاين الأصلي للمقارنة فقط — لا يُرفع مع
             التقرير.
           </p>
         ) : null}

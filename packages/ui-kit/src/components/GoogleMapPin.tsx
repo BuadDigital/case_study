@@ -55,6 +55,9 @@ export function GoogleMapPin({
   mapTypeControl = false,
   pinLabel,
   contextPins,
+  initialCenter,
+  viewCenter,
+  viewEpoch = 0,
   resolvePlace = false,
   onCoordsChange,
   onLocationDetail,
@@ -72,6 +75,11 @@ export function GoogleMapPin({
   pinLabel?: string;
   /** Other pins shown for context (not draggable). */
   contextPins?: GoogleMapContextPin[];
+  /** Map center when the primary pin is not placed yet. */
+  initialCenter?: { lat: number; lng: number } | null;
+  /** Pan here without moving the primary pin (e.g. return to the subject). */
+  viewCenter?: { lat: number; lng: number } | null;
+  viewEpoch?: number;
   /** Reverse-geocode after pick / when coords change and call onLocationDetail. */
   resolvePlace?: boolean;
   onCoordsChange?: (lat: number, lng: number) => void;
@@ -95,6 +103,9 @@ export function GoogleMapPin({
   pinLabelRef.current = pinLabel;
   const coordsRef = useRef({ lat, lng });
   coordsRef.current = { lat, lng };
+  const initialCenterRef = useRef(initialCenter);
+  initialCenterRef.current = initialCenter;
+  const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState<string | null>(() =>
     googleMapsApiKey()
       ? null
@@ -103,7 +114,7 @@ export function GoogleMapPin({
 
   const emitPick = (latVal: number, lngVal: number) => {
     onCoordsChangeRef.current?.(latVal, lngVal);
-    if (!resolvePlaceRef.current || !onLocationDetailRef.current) return;
+    if (!resolvePlaceRef.current) return;
     void reverseGeocode(latVal, lngVal).then((detail) => {
       onLocationDetailRef.current?.(detail);
     });
@@ -138,10 +149,14 @@ export function GoogleMapPin({
       .then((g) => {
         if (cancelled || !containerRef.current) return;
         const pin = parsePin(coordsRef.current.lat, coordsRef.current.lng);
-        const center = pin ?? SAUDI_CENTER;
+        const seed = parsePin(
+          initialCenterRef.current?.lat,
+          initialCenterRef.current?.lng,
+        );
+        const center = pin ?? seed ?? SAUDI_CENTER;
         const map = new g.maps.Map(containerRef.current, {
           center,
-          zoom: pin ? PIN_ZOOM : OVERVIEW_ZOOM,
+          zoom: pin || seed ? PIN_ZOOM : OVERVIEW_ZOOM,
           mapTypeId: "hybrid",
           mapTypeControl,
           mapTypeControlOptions: mapTypeControl
@@ -198,17 +213,16 @@ export function GoogleMapPin({
           openPrimaryInfo(g, pin);
         }
 
-        if (
-          pin &&
-          resolvePlaceRef.current &&
-          onLocationDetailRef.current
-        ) {
+        if (pin && resolvePlaceRef.current) {
           void reverseGeocode(pin.lat, pin.lng).then((detail) => {
             if (!cancelled) onLocationDetailRef.current?.(detail);
           });
         }
 
-        setError(null);
+        if (!cancelled) {
+          setError(null);
+          setMapReady(true);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -220,6 +234,7 @@ export function GoogleMapPin({
 
     return () => {
       cancelled = true;
+      setMapReady(false);
       infoRef.current?.close();
       infoRef.current = null;
       for (const m of contextMarkersRef.current) m.setMap(null);
@@ -254,6 +269,16 @@ export function GoogleMapPin({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !viewEpoch || !viewCenter) return;
+    if (!Number.isFinite(viewCenter.lat) || !Number.isFinite(viewCenter.lng)) {
+      return;
+    }
+    map.panTo(viewCenter);
+    if ((map.getZoom() ?? 0) < PIN_ZOOM) map.setZoom(PIN_ZOOM);
+  }, [viewEpoch, viewCenter, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !window.google?.maps) return;
     const g = window.google;
     for (const m of contextMarkersRef.current) m.setMap(null);
@@ -278,9 +303,9 @@ export function GoogleMapPin({
         icon: {
           path: g.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: "#C8B591",
+          fillColor: "#378add",
           fillOpacity: 0.95,
-          strokeColor: "#12284C",
+          strokeColor: "#fff",
           strokeWeight: 1.5,
         },
       });
@@ -292,7 +317,7 @@ export function GoogleMapPin({
       }
       contextMarkersRef.current.push(m);
     }
-  }, [contextPins]);
+  }, [contextPins, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;

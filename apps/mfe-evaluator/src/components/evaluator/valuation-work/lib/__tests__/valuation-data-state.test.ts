@@ -3,6 +3,7 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { isVacantLandComparable, resolveSubjectCoordsForBank } from "../bank-ranking";
 import {
   approachAvailability,
   buildBankFetchOptions,
@@ -124,6 +125,37 @@ describe("inspectorPinOf", () => {
     expect(inspectorPinOf({ mapLatitude: "0", mapLongitude: "0" })).toBeNull();
     expect(inspectorPinOf({ mapLatitude: "21.5", mapLongitude: "abc" })).toBeNull();
     expect(inspectorPinOf({ mapLatitude: "21.5", mapLongitude: "39.2" })).toEqual({ lat: 21.5, lng: 39.2 });
+  });
+});
+
+describe("resolveSubjectCoordsForBank", () => {
+  it("prefers the inspector pin over the district centroid", () => {
+    expect(
+      resolveSubjectCoordsForBank({
+        latitude: 24.8401,
+        longitude: 46.6556,
+        city: "الرياض",
+        district: "النرجس",
+      }),
+    ).toEqual({ lat: 24.8401, lng: 46.6556 });
+  });
+
+  it("falls back to the district approximate geo when the inspector has not pinned", () => {
+    const geo = resolveSubjectCoordsForBank({
+      city: "الرياض",
+      district: "النرجس",
+    });
+    expect(geo).not.toBeNull();
+    expect(geo!.lat).toBeCloseTo(24.8419, 2);
+    expect(geo!.lng).toBeCloseTo(46.658, 2);
+  });
+});
+
+describe("isVacantLandComparable", () => {
+  it("treats أرض as land and فيلا/مبنى as building", () => {
+    expect(isVacantLandComparable("أرض")).toBe(true);
+    expect(isVacantLandComparable("فيلا سكنية")).toBe(false);
+    expect(isVacantLandComparable("مبنى")).toBe(false);
   });
 });
 

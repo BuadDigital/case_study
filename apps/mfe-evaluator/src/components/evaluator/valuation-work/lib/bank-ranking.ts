@@ -191,6 +191,14 @@ export function resolveSubjectCoordsForBank(opts: {
   district?: string | null;
   deedNumber?: string | null;
 }): { lat: number; lng: number } | null {
+  if (
+    opts.latitude != null &&
+    opts.longitude != null &&
+    hasUsableCoords(opts.latitude, opts.longitude)
+  ) {
+    return { lat: opts.latitude, lng: opts.longitude };
+  }
+
   const fromUrl = coordsFromLocationMapUrl(opts.locationMapUrl);
   if (fromUrl) return fromUrl;
 
@@ -198,17 +206,8 @@ export function resolveSubjectCoordsForBank(opts: {
   const district = opts.district?.trim();
   const deedNumber = opts.deedNumber?.trim() || city || "";
 
-  // Property intake city+district wins over field-inspection GPS when district is known.
   if (city && district && hasDistrictGeo(city, district)) {
     return approximatePropertyGeo({ city, district, deedNumber });
-  }
-
-  if (
-    opts.latitude != null &&
-    opts.longitude != null &&
-    hasUsableCoords(opts.latitude, opts.longitude)
-  ) {
-    return { lat: opts.latitude, lng: opts.longitude };
   }
 
   if (city) {
