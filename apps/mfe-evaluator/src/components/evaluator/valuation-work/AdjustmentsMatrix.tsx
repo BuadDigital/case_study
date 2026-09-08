@@ -10,10 +10,12 @@ import type {
 import { fmt } from "./lib/shell-utils";
 import {
   AUTO_AREA_KEY,
+  CUSTOM_FACTOR_LABEL,
   factorDescriptor,
   factorHasSpecCell,
   factorMeta,
   lineIsIncluded,
+  nextCustomFactorKey,
 } from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import { afterWeightValue } from "./lib/adjustments-matrix-state";
@@ -523,16 +525,21 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               );
             })}
 
-            {addableFactors.length > 0 ? (
-              <AddFactorRow
-                options={addableFactors}
-                locked={locked || saving}
-                colSpan={3 + adopted.length}
-                onAdd={(factorKey, labelAr) =>
-                  void dispatch({ type: "add-factor", factorKey, labelAr })
-                }
-              />
-            ) : null}
+            <AddFactorRow
+              options={addableFactors}
+              locked={locked || saving}
+              colSpan={3 + adopted.length}
+              onAdd={(factorKey, labelAr) =>
+                void dispatch({ type: "add-factor", factorKey, labelAr })
+              }
+              onAddCustom={() =>
+                void dispatch({
+                  type: "add-factor",
+                  factorKey: nextCustomFactorKey(differenceKeys),
+                  labelAr: CUSTOM_FACTOR_LABEL,
+                })
+              }
+            />
 
             {/* Sum */}
             <tr className="bg-surface-2">
