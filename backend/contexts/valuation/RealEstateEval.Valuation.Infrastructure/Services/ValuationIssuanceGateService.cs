@@ -38,6 +38,9 @@ public sealed class ValuationIssuanceGateService(
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var org = await organizationSettings.GetInternalAsync(cancellationToken);
         var eval = org.Evaluator;
+        var firmLicenseExpiresAt = ValuerCredentialRules.FirstFilled(
+            org.Company.PracticeLicenseExpiresAt,
+            eval.LicenseExpiresAt);
 
         var propertyId = vr.PropertyId.ToString("D");
         DeedKind deedKind = DeedKind.Traditional;
@@ -105,7 +108,7 @@ public sealed class ValuationIssuanceGateService(
         var checks = new List<ValuationIssuanceGateCheck>
         {
             ValuationIssuanceGateRules.Credentials(
-                eval.LicenseExpiresAt,
+                firmLicenseExpiresAt,
                 eval.MembershipExpiresAt,
                 today),
             ValuationIssuanceGateRules.ParticipantCredentials(
@@ -113,7 +116,9 @@ public sealed class ValuationIssuanceGateService(
                     .Where(v => v.IsActive)
                     .Select(v => new ValuationIssuanceGateRules.RosterParticipantCredentials(
                         v.NameAr,
-                        v.LicenseExpiresAt,
+                        ValuerCredentialRules.FirstFilled(
+                            v.LicenseExpiresAt,
+                            firmLicenseExpiresAt),
                         v.MembershipExpiresAt))
                     .ToList(),
                 today),

@@ -34,6 +34,8 @@ import {
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
+import { FinalOpinionIssuanceCard } from "./FinalOpinionParts";
+import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
 import {
   buildNavItems,
@@ -42,6 +44,7 @@ import {
 } from "./lib/shell-state";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
+import { useReportIssuanceWorkflow } from "./useReportIssuanceWorkflow";
 
 export type {
   ValuationWorkNavAvailability,
@@ -208,6 +211,11 @@ export function ValuationWorkShell({
     dispatchLandMatrix,
   } = useValuationWorkCommands(data);
 
+  const issuanceWorkflow = useReportIssuanceWorkflow({
+    valuationRequestId,
+    allowsIssuance: gates?.allowsIssuance,
+  });
+
   const [draftApproaches, setDraftApproaches] =
     useState<ValuationWorkNavAvailability | null>(null);
   const onDraftApproachesChange = useCallback(
@@ -368,6 +376,16 @@ export function ValuationWorkShell({
         ) : (
           analysisCard
         )}
+        {gates && settingsSaved ? (
+          <MethodologyAlertsPanel
+            gates={gates}
+            recon={recon}
+            valuationRequestId={valuationRequestId}
+            saving={saving}
+            onSavingChange={setSaving}
+            onReconSaved={onReconSaved}
+          />
+        ) : null}
       </>
     );
   }
@@ -545,6 +563,12 @@ export function ValuationWorkShell({
             onSettingsSaved={onSettingsSaved}
           />
         </Suspense>
+        {issuanceWorkflow.issuance ? (
+          <FinalOpinionIssuanceCard
+            issuance={issuanceWorkflow.issuance}
+            workflow={issuanceWorkflow}
+          />
+        ) : null}
         {showSubmit ? (
           <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
             <PrimaryBtn

@@ -8,6 +8,7 @@ import {
   AUTO_AREA_KEY,
   FACTOR_REGISTRY,
   SEQUENTIAL_SET,
+  factorIncludedByDefault,
 } from "./factor-registry";
 
 // Derived from the factor registry — add a factor there once and it flows here automatically.
@@ -81,7 +82,7 @@ export function ensureLinesForSave(
         labelAr: f.labelAr,
         percent: f.factorKey === "area" ? (item.market?.suggestedAreaAdjustmentPct ?? 0) : 0,
         rationale: "",
-        isIncluded: true,
+        isIncluded: factorIncludedByDefault(f.factorKey),
         sortOrder: byKey.size,
       });
     }

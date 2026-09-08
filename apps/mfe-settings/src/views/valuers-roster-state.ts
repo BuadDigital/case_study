@@ -75,6 +75,10 @@ export function overlayCertified(
       evaluator.membershipExpiresAt,
       filled(row.membershipExpiresAt, html.membershipExpiresAt ?? ""),
     ),
+    licenseExpiresAt: filled(
+      evaluator.licenseExpiresAt,
+      filled(row.licenseExpiresAt, html.licenseExpiresAt ?? ""),
+    ),
     signatureUrl: (() => {
       const own = row.signatureUrl?.trim() ?? "";
       if (own && !own.endsWith("ejadah-signature.png")) return own;
@@ -98,7 +102,20 @@ export function initialRows(org: OrganizationSettingsDto): OrganizationValuerRos
   );
   if (certIndex < 0) certIndex = 0;
   return source.map((v, i) => {
-    if (i === certIndex) return overlayCertified(v, org.evaluator, org.branding);
+    if (i === certIndex) {
+      const overlaid = overlayCertified(v, org.evaluator, org.branding);
+      return {
+        ...overlaid,
+        licenseNumber: filled(
+          overlaid.licenseNumber,
+          org.company.practiceLicenseNumber ?? "",
+        ),
+        licenseExpiresAt: filled(
+          overlaid.licenseExpiresAt,
+          org.company.practiceLicenseExpiresAt ?? "",
+        ),
+      };
+    }
     return {
       ...v,
       role: v.role === "certified" ? "valuer" : v.role,
@@ -332,10 +349,20 @@ export function buildRosterSavePayload(
     evaluator: {
       ...org.evaluator,
       name: certified?.nameAr ?? org.evaluator.name,
-      licenseNumber: certified?.licenseNumber ?? org.evaluator.licenseNumber,
+      licenseNumber: filled(
+        certified?.licenseNumber,
+        filled(org.company.practiceLicenseNumber, org.evaluator.licenseNumber ?? ""),
+      ),
       membershipNumber: certified?.membershipNumber ?? org.evaluator.membershipNumber,
       membershipCategory:
         certified?.membershipCategory ?? org.evaluator.membershipCategory,
+      licenseExpiresAt: filled(
+        certified?.licenseExpiresAt,
+        filled(
+          org.company.practiceLicenseExpiresAt,
+          org.evaluator.licenseExpiresAt ?? "",
+        ),
+      ),
       membershipExpiresAt:
         certified?.membershipExpiresAt ?? org.evaluator.membershipExpiresAt,
     },

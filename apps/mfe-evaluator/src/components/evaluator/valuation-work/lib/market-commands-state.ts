@@ -10,6 +10,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
+import { factorIncludedByDefault } from "./factor-registry";
 import {
   ensureLinesForSave,
   lineForSave,
@@ -115,15 +116,17 @@ export function withFactorIncluded(
   };
 }
 
-/** The ✓ state of a factor is read from the first adopted comparable — missing line counts as on. */
+/** The ✓ state of a factor is read from the first adopted comparable — missing line uses the factor default. */
 export function isFactorIncluded(
   items: ValuationComparableSelectionDto[],
   factorKey: string,
 ): boolean {
-  return (
-    items[0]?.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)
-      ?.isIncluded !== false
+  const line = items[0]?.market?.adjustmentLines?.find(
+    (l) => l.factorKey === factorKey,
   );
+  return line
+    ? line.isIncluded !== false
+    : factorIncludedByDefault(factorKey);
 }
 
 /** compEdit: parse a price/area override — blank or non-positive clears it. */

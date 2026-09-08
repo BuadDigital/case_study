@@ -149,6 +149,11 @@ export function workOrderPremiseKey({
   return valuePremiseKeyForAssignment(assignmentType);
 }
 
+export type AlertOverrideRecord = Record<
+  string,
+  { overrideRationale: string; acknowledged: boolean }
+>;
+
 export type ReconciliationDraft = {
   reconMethods: ValuationReconciliationMethodDto[];
   methodsRationale: string;
@@ -157,11 +162,28 @@ export type ReconciliationDraft = {
   valuePremiseKey: string;
   liquidationDiscountPct: string;
   liquidationDiscountRationale: string;
-  alertOverrides: Record<
-    string,
-    { overrideRationale: string; acknowledged: boolean }
-  >;
+  alertOverrides: AlertOverrideRecord;
 };
+
+/** Saved methodology-alert dispositions keyed by code. */
+export function alertOverridesFromRecon(
+  recon: {
+    methodologyAlertOverrides?: {
+      code: string;
+      overrideRationale?: string | null;
+      acknowledged?: boolean;
+    }[];
+  } | null,
+): AlertOverrideRecord {
+  const ovMap: AlertOverrideRecord = {};
+  for (const o of recon?.methodologyAlertOverrides ?? []) {
+    ovMap[o.code] = {
+      overrideRationale: o.overrideRationale ?? "",
+      acknowledged: o.acknowledged ?? false,
+    };
+  }
+  return ovMap;
+}
 
 /** Draft state to the save request body. */
 export function reconciliationSaveRequest(

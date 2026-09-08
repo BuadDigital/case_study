@@ -3,40 +3,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   activeValuationListOptions,
-  getIssuancePdf,
-  getReportIssuanceState,
   getValuationReportDocument,
   getWorkOrder,
-  issueDepositVersion,
-  registerDepositCertificate,
-  reopenReportIssuance,
   saveValuationReconciliation,
   type ValuationCostApproachDto,
-  type ValuationIssuanceGatesDto,
   type ValuationReconciliationDto,
   type ValuationReconciliationMethodDto,
-  type ValuationReportIssuanceStateDto,
 } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
-import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import {
   VALUE_BASIS_OPTIONS,
   basisOfValueKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import {
+  alertOverridesFromRecon,
   finalOpinionComputed,
   mergeReconMethods,
   reconciliationSaveRequest,
   workOrderPremiseKey,
 } from "./lib/final-opinion-state";
-import { JUSTIFICATION_MIN_LENGTH, apiConfig } from "./lib/shell-utils";
+import { apiConfig } from "./lib/shell-utils";
 
 export type FinalOpinionWorkflowArgs = {
   valuationRequestId: string | null;
   recon: ValuationReconciliationDto | null;
-  gates: ValuationIssuanceGatesDto | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
@@ -49,13 +41,11 @@ export type FinalOpinionWorkflowArgs = {
 
 /**
  * Owns the final-opinion screen: the reconciliation drafts and their
- * hydration, the live value calc, the reconciliation save, the report preview
- * and the whole Rule Q-6 two-stage issuance cycle.
+ * hydration, the live value calc, the reconciliation save, and report preview.
  */
 export function useFinalOpinionWorkflow({
   valuationRequestId,
   recon,
-  gates,
   cost,
   hydrateKey,
   buildingOnly,
@@ -91,33 +81,6 @@ export function useFinalOpinionWorkflow({
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
     useState("");
-  const [alertOverrides, setAlertOverrides] = useState<
-    Record<string, { overrideRationale: string; acknowledged: boolean }>
-  >({});
-
-  /* ─── Rule Q-6: two-stage issuance + deposit certificate ─── */
-  const [issuance, setIssuance] = useState<ValuationReportIssuanceStateDto | null>(null);
-  const [issuanceBusy, setIssuanceBusy] = useState(false);
-  const [depositCodeDraft, setDepositCodeDraft] = useState("");
-  const [certificateFile, setCertificateFile] = useState<File | null>(null);
-  // Supplement Rule Q-9 (R2): reason for reopening the valuation cycle after deposit.
-  const [reopenReason, setReopenReason] = useState("");
-
-  const refreshIssuance = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const res = await getReportIssuanceState(config, valuationRequestId);
-    if (res.ok) {
-      setIssuance(res.data);
-      if (res.data.depositCode) setDepositCodeDraft(res.data.depositCode);
-    }
-  };
-
-  useEffect(() => {
-    void refreshIssuance();
-    // State is also refreshed after reconciliation save (gates may change).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valuationRequestId, gates?.allowsIssuance]);
 
   useEffect(() => {
     const config = apiConfig();
@@ -135,94 +98,6 @@ export function useFinalOpinionWorkflow({
       cancelled = true;
     };
   }, [poNumber]);
-
-  const issueDeposit = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    setIssuanceBusy(true);
-    const res = await issueDepositVersion(config, valuationRequestId);
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر إصدار نسخة الإيداع", "error");
-      return;
-    }
-    setIssuance(res.data);
-    showToast("صدرت نسخة الإيداع — التقرير مجمّد (ق-6)", "success");
-  };
-
-  const registerCertificate = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const code = depositCodeDraft.trim();
-    if (!code) {
-      showToast("أدخل رمز الإيداع من شهادة منصة قيمة", "error");
-      return;
-    }
-    setIssuanceBusy(true);
-    let certificateContentBase64: string | null = null;
-    if (certificateFile) {
-      // Chunked encoding via the shared helper — a char-by-char loop used to freeze
-      // the tab for seconds on large certificate images (js-perf).
-      certificateContentBase64 = await fileToBase64(certificateFile);
-    }
-    const res = await registerDepositCertificate(config, valuationRequestId, {
-      depositCode: code,
-      certificateFileName: certificateFile?.name ?? null,
-      certificateContentType: certificateFile?.type ?? null,
-      certificateContentBase64,
-    });
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر تسجيل الشهادة", "error");
-      return;
-    }
-    setIssuance(res.data);
-    showToast("سُجِّلت الشهادة وصدرت النسخة النهائية (ق-6)", "success");
-  };
-
-  // R2: deposited version is not edited — marked “superseded — replaced by a newer version” and kept
-  // on file; a new valuation cycle opens ending in deposit version N+1 (section-supervisor approval is a server rule).
-  const reopenIssuance = async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const reason = reopenReason.trim();
-    if (reason.length < JUSTIFICATION_MIN_LENGTH) {
-      showToast(
-        `سبب إعادة الفتح لا يقل عن ${JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)`,
-        "error",
-      );
-      return;
-    }
-    setIssuanceBusy(true);
-    const res = await reopenReportIssuance(config, valuationRequestId, reason);
-    setIssuanceBusy(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر إعادة فتح دور التقييم", "error");
-      return;
-    }
-    setIssuance(res.data);
-    setReopenReason("");
-    setDepositCodeDraft("");
-    setCertificateFile(null);
-    showToast("أُعيد فتح دور التقييم — النسخة السابقة ملغاة وتبقى بالملف (ر2)", "success");
-  };
-
-  const downloadIssuancePdf = async (kind: "deposit" | "final") => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    const res = await getIssuancePdf(config, valuationRequestId, kind);
-    if (!res.ok) {
-      showToast("تعذّر تنزيل النسخة", "error");
-      return;
-    }
-    const url = URL.createObjectURL(res.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      kind === "deposit" ? "نسخة-الإيداع.pdf" : "النسخة-النهائية.pdf";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   // Valuation lists from the shared query — used to duplicate a GET with the final-review tab.
   const { data: valuationLists } = useValuationListsQuery();
@@ -255,7 +130,6 @@ export function useFinalOpinionWorkflow({
       setFinalRoundDecimals("0");
       setLiquidationDiscountPct("0");
       setLiquidationDiscountRationale("");
-      setAlertOverrides({});
       return;
     }
     setReconMethods(recon.methods);
@@ -263,20 +137,8 @@ export function useFinalOpinionWorkflow({
     setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
     setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
-    const ovMap: Record<
-      string,
-      { overrideRationale: string; acknowledged: boolean }
-    > = {};
-    for (const o of recon.methodologyAlertOverrides ?? []) {
-      ovMap[o.code] = {
-        overrideRationale: o.overrideRationale ?? "",
-        acknowledged: o.acknowledged ?? false,
-      };
-    }
-    setAlertOverrides(ovMap);
   }, [hydrateKey, recon, assignmentType]);
 
-  /* ─── Live value-opinion calc (interactive-form spec) ─── */
   /* ─── Live value-opinion calc (interactive-form spec) ─── */
   const finalComputed = useMemo(
     () =>
@@ -318,7 +180,7 @@ export function useFinalOpinionWorkflow({
           valuePremiseKey,
           liquidationDiscountPct,
           liquidationDiscountRationale,
-          alertOverrides,
+          alertOverrides: alertOverridesFromRecon(recon),
         },
         finalComputed.opinionAuto,
       ),
@@ -382,10 +244,6 @@ export function useFinalOpinionWorkflow({
     methodsRationale.trim().length > 0 &&
     methodsRationale.trim() !== opinionAuto.trim();
 
-  // Single pass instead of filtering twice in the same render (js-combine-iterations).
-  const triggeredAlerts = gates
-    ? gates.methodologyAlerts.filter((a) => a.triggered)
-    : [];
   return {
     // Reconciliation drafts.
     reconMethods,
@@ -402,8 +260,6 @@ export function useFinalOpinionWorkflow({
     setLiquidationDiscountPct,
     liquidationDiscountRationale,
     setLiquidationDiscountRationale,
-    alertOverrides,
-    setAlertOverrides,
     // Derived.
     sole,
     finalComputed,
@@ -418,20 +274,6 @@ export function useFinalOpinionWorkflow({
     methodComplete,
     opinionAuto,
     opinionDirty,
-    triggeredAlerts,
-    // Issuance (Rule Q-6).
-    issuance,
-    issuanceBusy,
-    depositCodeDraft,
-    setDepositCodeDraft,
-    certificateFile,
-    setCertificateFile,
-    reopenReason,
-    setReopenReason,
-    issueDeposit,
-    registerCertificate,
-    reopenIssuance,
-    downloadIssuancePdf,
     // Commands.
     saveReconciliation,
     openReportPreview,

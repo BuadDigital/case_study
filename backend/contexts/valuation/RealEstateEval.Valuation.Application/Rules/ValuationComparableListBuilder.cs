@@ -40,7 +40,7 @@ public static class ValuationComparableListBuilder
                 LabelAr = MarketAdjustmentFactorKeys.DefaultLabelAr(key),
                 Percent = 0m,
                 Rationale = "",
-                IsIncluded = true,
+                IsIncluded = MarketAdjustmentFactorKeys.IncludedByDefault(key),
                 SortOrder = start + lines.Count,
             });
         }

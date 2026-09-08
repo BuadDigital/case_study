@@ -9,7 +9,11 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { AUTO_AREA_KEY, SEQUENTIAL_SET } from "./factor-registry";
+import {
+  AUTO_AREA_KEY,
+  SEQUENTIAL_SET,
+  factorIncludedByDefault,
+} from "./factor-registry";
 import { type lineForSave } from "./market-save-mappers";
 
 export const LAND_WITHIN_COST = "land_within_cost";
@@ -161,7 +165,7 @@ export function newAdjustmentLine(
     percent: 0,
     rationale: "",
     descriptionAr: null,
-    isIncluded: true,
+    isIncluded: factorIncludedByDefault(factorKey),
     sortOrder,
   };
 }

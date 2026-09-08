@@ -189,7 +189,17 @@ export function OrganizationDataView() {
     };
     const res = await saveOrganizationSettings(config, {
       company: nextCompany,
-      evaluator,
+      evaluator: {
+        ...evaluator,
+        licenseNumber: filled(
+          evaluator.licenseNumber,
+          nextCompany.practiceLicenseNumber ?? "",
+        ),
+        licenseExpiresAt: filled(
+          nextCompany.practiceLicenseExpiresAt,
+          evaluator.licenseExpiresAt ?? "",
+        ),
+      },
     });
     setSaving(false);
     if (!res.ok) {

@@ -19,6 +19,11 @@ export type FactorDescriptor = {
   alwaysPresent?: boolean;
   /** Deletable sequential factors — market conditions are not deleted. */
   deletable?: boolean;
+  /**
+   * When false, the include ✓ starts empty and the row stays out of the chain
+   * until the evaluator ticks it. Omitted means included.
+   */
+  includedByDefault?: boolean;
   /** Editable description / subject column cell (location is read from city/district). */
   specCell?: boolean;
   subjectCell?: FactorSubjectCell;
@@ -53,6 +58,7 @@ export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
     tip: "أثر شروط البيع والتمويل غير النقدية على السعر المرصود.",
     sequential: true,
     deletable: true,
+    includedByDefault: false,
   },
   market: {
     label: "تسوية ظروف السوق",
@@ -69,6 +75,7 @@ export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
     tip: "الفرق بين سعر المقارن وسعر السوق بحسب نوعه.",
     sequential: true,
     deletable: true,
+    includedByDefault: false,
     compNote: "kind-suggested",
   },
   area: {
@@ -134,4 +141,17 @@ export function factorMeta(factorKey: string, labelAr?: string) {
 /** Catalog factor with no entry here = standard difference factor with a description cell. */
 export function factorHasSpecCell(factorKey: string): boolean {
   return FACTOR_REGISTRY[factorKey]?.specCell !== false;
+}
+
+/** Optional sequential rows stay off until the evaluator ticks them. */
+export function factorIncludedByDefault(factorKey: string): boolean {
+  return FACTOR_REGISTRY[factorKey]?.includedByDefault !== false;
+}
+
+/** Missing line follows the factor default; a stored false stays excluded. */
+export function lineIsIncluded(
+  line: { isIncluded?: boolean } | null | undefined,
+  factorKey: string,
+): boolean {
+  return line ? line.isIncluded !== false : factorIncludedByDefault(factorKey);
 }

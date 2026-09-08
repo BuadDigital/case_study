@@ -74,6 +74,13 @@ public static class MarketAdjustmentFactorKeys
         key is Financing or Market or TransactionType;
 
     /// <summary>
+    /// Optional sequential rows stay out of the chain until the valuer ticks them.
+    /// Market conditions and difference factors stay on.
+    /// </summary>
+    public static bool IncludedByDefault(string? key) =>
+        key is not Financing and not TransactionType;
+
+    /// <summary>
     /// Built-in difference keys keep a fixed Arabic label. Catalog extras and
     /// <see cref="Custom"/> keep the label sent by the client.
     /// </summary>

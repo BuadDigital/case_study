@@ -205,7 +205,7 @@ public static class MarketApproachRules
                 LabelAr = MarketAdjustmentFactorKeys.DefaultLabelAr(key),
                 Percent = 0m,
                 Rationale = "",
-                IsIncluded = true,
+                IsIncluded = MarketAdjustmentFactorKeys.IncludedByDefault(key),
                 SortOrder = i,
             })
             .ToList();
@@ -225,7 +225,7 @@ public static class MarketApproachRules
                 LabelAr = MarketAdjustmentFactorKeys.DefaultLabelAr(key),
                 Percent = 0m,
                 Rationale = "",
-                IsIncluded = true,
+                IsIncluded = MarketAdjustmentFactorKeys.IncludedByDefault(key),
                 SortOrder = sortOrderStart + i,
             })
             .ToList();

@@ -187,8 +187,20 @@ describe("initialRows / overlayCertified", () => {
     );
     expect(out.nameAr).toBe("عماد");
     expect(out.licenseNumber).toBe("L");
+    expect(out.licenseExpiresAt).toBe("");
     expect(out.signatureUrl).toBe("data:brand");
     expect(out.role).toBe("certified");
+  });
+
+  it("stamps the firm practice-license date onto the certified row when personal is empty", () => {
+    const rows = initialRows(
+      org({
+        valuers: [row({ id: "c", role: "certified", licenseExpiresAt: undefined })],
+        company: { ...ORG_COMPANY_DEFAULTS, practiceLicenseExpiresAt: "2027-03-10" },
+        evaluator: { ...CERTIFIED_VALUER_HTML_DEFAULTS, licenseExpiresAt: "" },
+      }),
+    );
+    expect(rows[0]!.licenseExpiresAt).toBe("2027-03-10");
   });
 });
 
@@ -246,8 +258,18 @@ describe("buildRosterSavePayload", () => {
     expect(payload.company.certifiedValuerId).toBe("c");
     expect(payload.evaluator.name).toBe("ن");
     expect(payload.evaluator.title).toBe(o.evaluator.title);
+    expect(payload.evaluator.licenseExpiresAt).toBe(ORG_COMPANY_DEFAULTS.practiceLicenseExpiresAt);
+    expect(payload.evaluator.licenseNumber).toBe(ORG_COMPANY_DEFAULTS.practiceLicenseNumber);
     expect(payload.branding.signatureUrl).toBe("data:sig");
     expect(payload.valuers).toBe(rows);
+  });
+
+  it("prefers a personal license date on the certified row over the firm date", () => {
+    const o = org({
+      company: { ...ORG_COMPANY_DEFAULTS, practiceLicenseExpiresAt: "2027-03-10" },
+    });
+    const rows = [row({ id: "c", role: "certified", licenseExpiresAt: "2028-01-01" })];
+    expect(buildRosterSavePayload(o, rows).evaluator.licenseExpiresAt).toBe("2028-01-01");
   });
 
   it("falls back to the first row, then to the stored organization", () => {

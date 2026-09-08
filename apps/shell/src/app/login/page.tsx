@@ -233,8 +233,7 @@ export default function LoginPage() {
       setOtpError(
         timedOut
           ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
-          : typeof window !== "undefined" &&
-              !/localhost|127\.0\.0\.1/.test(window.location.hostname)
+          : typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
             ? "تعذر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
             : "تعذر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).",
       );

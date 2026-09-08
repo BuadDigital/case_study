@@ -159,6 +159,8 @@ describe("withFactorIncluded / isFactorIncluded", () => {
     expect(isFactorIncluded(next.items, "market")).toBe(true);
     expect(isFactorIncluded(next.items, "missing")).toBe(true);
     expect(isFactorIncluded([], "location")).toBe(true);
+    expect(isFactorIncluded([], "transaction_type")).toBe(false);
+    expect(isFactorIncluded([], "financing")).toBe(false);
   });
 });
 
@@ -243,6 +245,19 @@ describe("linesWithoutFactor / linesWithFactorAppended", () => {
       isIncluded: true,
       sortOrder: 1,
       id: null,
+    });
+  });
+
+  it("restores optional sequential rows as excluded until the evaluator ticks them", () => {
+    const lines = linesWithFactorAppended(
+      item("a", [line("market", 1)]),
+      "transaction_type",
+      "تسوية نوع المقارن",
+    );
+    expect(lines[1]).toMatchObject({
+      factorKey: "transaction_type",
+      isIncluded: false,
+      percent: 0,
     });
   });
 });

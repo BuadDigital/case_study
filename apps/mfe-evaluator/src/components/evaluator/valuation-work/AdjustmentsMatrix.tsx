@@ -8,7 +8,13 @@ import type {
 } from "@platform/api-client";
 
 import { fmt } from "./lib/shell-utils";
-import { AUTO_AREA_KEY, factorDescriptor, factorHasSpecCell, factorMeta } from "./lib/factor-registry";
+import {
+  AUTO_AREA_KEY,
+  factorDescriptor,
+  factorHasSpecCell,
+  factorMeta,
+  lineIsIncluded,
+} from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import { afterWeightValue } from "./lib/adjustments-matrix-state";
 import {
@@ -236,8 +242,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 factorKey,
                 lineOf(adopted[0]!, factorKey)?.labelAr,
               );
-              const included =
-                lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
+              const included = lineIsIncluded(
+                lineOf(adopted[0]!, factorKey),
+                factorKey,
+              );
               const deletable = desc?.deletable === true;
               return (
                 <tr
@@ -291,7 +299,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   />
                   {adopted.map((item) => {
                     const line = lineOf(item, factorKey);
-                    const included2 = line?.isIncluded !== false;
+                    const included2 = lineIsIncluded(line, factorKey);
                     const cellKey = `${item.id}:${factorKey}`;
                     return (
                       <CompInput
@@ -391,8 +399,10 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 factorKey,
                 lineOf(adopted[0]!, factorKey)?.labelAr,
               );
-              const included =
-                lineOf(adopted[0]!, factorKey)?.isIncluded !== false;
+              const included = lineIsIncluded(
+                lineOf(adopted[0]!, factorKey),
+                factorKey,
+              );
               const specEnabled = factorHasSpecCell(factorKey);
               let subjVal = "—";
               let subjNote: string | undefined;

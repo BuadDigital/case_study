@@ -162,6 +162,11 @@ public class MarketApproachRulesTests
         Assert.Contains(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Location);
         Assert.Contains(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Financing);
         Assert.DoesNotContain(lines, l => l.FactorKey == MarketAdjustmentFactorKeys.Zoning);
+        Assert.False(lines.Single(l => l.FactorKey == MarketAdjustmentFactorKeys.Financing).IsIncluded);
+        Assert.True(lines.Single(l => l.FactorKey == MarketAdjustmentFactorKeys.Market).IsIncluded);
+        Assert.False(lines.Single(l => l.FactorKey == MarketAdjustmentFactorKeys.TransactionType).IsIncluded);
+        Assert.True(lines.Single(l => l.FactorKey == MarketAdjustmentFactorKeys.Area).IsIncluded);
+        Assert.True(lines.Single(l => l.FactorKey == MarketAdjustmentFactorKeys.Location).IsIncluded);
     }
 
     [Fact]
@@ -175,6 +180,10 @@ public class MarketApproachRulesTests
         Assert.True(MarketAdjustmentFactorKeys.IsKnown("finishing"));
         Assert.False(MarketAdjustmentFactorKeys.HasFixedStandardLabel("finishing"));
         Assert.False(MarketAdjustmentFactorKeys.IsExtraCatalogKey("!!!"));
+        Assert.False(MarketAdjustmentFactorKeys.IncludedByDefault(MarketAdjustmentFactorKeys.Financing));
+        Assert.False(MarketAdjustmentFactorKeys.IncludedByDefault(MarketAdjustmentFactorKeys.TransactionType));
+        Assert.True(MarketAdjustmentFactorKeys.IncludedByDefault(MarketAdjustmentFactorKeys.Market));
+        Assert.True(MarketAdjustmentFactorKeys.IncludedByDefault(MarketAdjustmentFactorKeys.Location));
     }
 
     [Fact]

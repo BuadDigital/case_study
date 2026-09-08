@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import {
   cn,
+  opsBtnGhost,
   opsBtnPrimary,
   opsLetterCard,
 } from "@platform/ui-kit";
@@ -159,8 +160,8 @@ export function GhostBtn({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 items-center gap-[7px] rounded-[var(--radius)] border border-border-md bg-surface px-[13px] text-[12.5px] font-medium text-text-2",
-      disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+        opsBtnGhost,
+        disabled ? "cursor-not-allowed opacity-55" : null,
       )}
     >
       {children}
