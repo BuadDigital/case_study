@@ -29,10 +29,10 @@ public interface IUserRegistrationService
     Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
         CancellationToken cancellationToken = default);
 
- /// <summary>
- /// Creates a staff account with no password. The holder activates it with a ticket
- /// from <see cref="IssueActivationTicketAsync"/>; no secret is returned here.
- /// </summary>
+    /// <summary>
+    /// Creates a staff account with required mobile. The holder signs in by phone
+    /// (OTP UI / future Saudi SMS OTP); no password or activation ticket is issued.
+    /// </summary>
     Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
         CreateStaffUserRequest request,
         string actorId,
@@ -52,24 +52,6 @@ public interface IUserRegistrationService
     Task<(bool Ok, string? Error)> UnlockStaffAsync(
         string userId,
         string actorId,
-        CancellationToken cancellationToken = default);
-
- /// <summary>
- /// Issues a single-use, time-limited activation ticket for a staff account.
- /// Issuing a new ticket does not invalidate the existing password, if any.
- /// </summary>
-    Task<(ActivationTicketDto? Ticket, string? Error)> IssueActivationTicketAsync(
-        string userId,
-        string actorId,
-        CancellationToken cancellationToken = default);
-
- /// <summary>
- /// Redeems an activation ticket and sets the account's first (or replacement) password.
- /// Returns a single opaque error for every failure mode so the endpoint cannot be used
- /// to enumerate accounts.
- /// </summary>
-    Task<(bool Ok, string? Error)> ActivateAccountAsync(
-        ActivateAccountRequest request,
         CancellationToken cancellationToken = default);
 
  /// <summary>Soft-disables one staff user and revokes sessions; no identity row is deleted.</summary>

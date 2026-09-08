@@ -83,7 +83,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     public Task DisposeAsync() => Task.CompletedTask;
 
     [DockerFact]
-    public async Task Auth_login_refresh_and_activate_execute_against_postgres()
+    public async Task Auth_login_and_refresh_execute_against_postgres()
     {
         using var factory = Factory<IdentityMarker>("Identity");
         using var client = factory.CreateClient();
@@ -99,14 +99,6 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             RefreshToken = "invalid-refresh-token",
         });
         Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);
-
-        var activate = await client.PostAsJsonAsync("/api/auth/activate", new ActivateAccountRequest
-        {
-            UserName = "missing-user",
-            Token = "invalid-activation-ticket",
-            NewPassword = "A-valid-looking-password-123!",
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, activate.StatusCode);
     }
 
     [DockerFact]

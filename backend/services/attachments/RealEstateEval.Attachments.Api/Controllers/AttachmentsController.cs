@@ -43,6 +43,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
@@ -52,6 +53,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/meta")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<FileAttachmentMetaDto>> GetMeta(Guid id, CancellationToken ct)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
@@ -83,6 +85,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("lookup")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(
         [FromQuery] string ids,
         CancellationToken ct)
@@ -93,6 +96,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("for-property")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<IReadOnlyList<FileAttachmentMetaDto>>> ForProperty(
         [FromQuery] string propertyId,
         CancellationToken ct)
@@ -105,6 +109,7 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/exists")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);

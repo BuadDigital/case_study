@@ -33,6 +33,7 @@ public class InspectorFeesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPartyPayables)]
     public async Task<ActionResult<InspectorFeesSummaryDto>> List(
         [FromQuery] string? assigneeId,
         [FromQuery] string? workflowTaskId,
@@ -63,6 +64,7 @@ public class InspectorFeesController : ControllerBase
     }
 
     [HttpGet("{workflowTaskId:guid}/transitions")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPartyPayables)]
     public async Task<ActionResult<IReadOnlyList<InspectorFeeAuditEntryDto>>> ListTransitions(
         Guid workflowTaskId,
         CancellationToken ct)

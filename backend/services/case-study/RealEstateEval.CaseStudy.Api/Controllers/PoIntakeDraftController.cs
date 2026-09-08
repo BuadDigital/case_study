@@ -18,6 +18,7 @@ public class PoIntakeDraftController : ControllerBase
     public PoIntakeDraftController(IPoIntakeDraftService drafts) => _drafts = drafts;
 
     [HttpGet("mine")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<PoIntakeDraftDto>> GetMine(CancellationToken ct)
     {
         var userId = CurrentUserId();

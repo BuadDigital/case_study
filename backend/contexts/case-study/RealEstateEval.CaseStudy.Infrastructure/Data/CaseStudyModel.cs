@@ -82,7 +82,7 @@ public static class CaseStudyModel
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
             e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
-            // Q-9: comprehensive Enfaz upload.
+            // comprehensive "Enfaz" upload.
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
@@ -124,6 +124,12 @@ public static class CaseStudyModel
             e.Property(x => x.PartitionMinutesDate).HasMaxLength(32);
             e.Property(x => x.FinishingType).HasMaxLength(32);
             e.Property(x => x.FinishingStructure).HasMaxLength(32);
+            e.Property(x => x.SpecialistFinishingLevel).HasMaxLength(32);
+            e.Property(x => x.SearchScopeNotes).HasMaxLength(4000);
+            e.Property(x => x.PrintAttachmentKeysJson).HasColumnType("jsonb");
+            e.Property(x => x.InfathDepositCode).HasMaxLength(128);
+            e.Property(x => x.InfathDepositCertificateName).HasMaxLength(512);
+            e.Property(x => x.SpecialistEsgJson).HasColumnType("jsonb");
             e.Property(x => x.SpecialistReportExtrasJson).HasColumnType("jsonb");
             e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.Area).HasMaxLength(128);

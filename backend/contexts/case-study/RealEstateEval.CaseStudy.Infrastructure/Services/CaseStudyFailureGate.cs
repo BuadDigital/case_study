@@ -62,6 +62,7 @@ public sealed class CaseStudyFailureGate(
                     ResolutionReason = resolutionReason,
                     ContinueInstructions = continueInstructions,
                 },
+                actorUserId: null,
                 cancellationToken);
         }
     }

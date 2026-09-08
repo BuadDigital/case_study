@@ -114,6 +114,54 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageSystemConfig,
                     PlatformCapabilities.ManageOperations,
                     PlatformCapabilities.ManageWorkOrders)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadCaseStudyWorkspace,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitPartyWork)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadAttachments,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageAttachments,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.ManageOperations)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadIdentityDirectory,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.SubmitPartyWork)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadPartyPayables,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.ManageWorkOrders)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadInspectionContext,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageValuationRequests)));
         });
 
         return services;
@@ -143,21 +191,23 @@ public static class ServiceCollectionExtensions
         var jwtIssuer = RequireJwtValue(configuration, "Issuer");
         var jwtAudience = RequireJwtValue(configuration, "Audience");
         var jwtSigningKey = RequireJwtValue(configuration, "SigningKey");
+        var previousSigningKey = configuration["Jwt:PreviousSigningKey"]?.Trim();
 
         if (!environment.IsDevelopment())
         {
-            if (jwtSigningKey.Length < MinimumJwtSigningKeyLength)
-            {
-                throw new InvalidOperationException(
-                    $"Jwt:SigningKey must be at least {MinimumJwtSigningKeyLength} characters outside Development.");
-            }
+            ValidateProductionSigningKey(jwtSigningKey, "Jwt:SigningKey");
+            if (!string.IsNullOrEmpty(previousSigningKey))
+                ValidateProductionSigningKey(previousSigningKey, "Jwt:PreviousSigningKey");
+        }
 
-            if (jwtSigningKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
-                || jwtSigningKey.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    "Jwt:SigningKey contains a known placeholder and cannot be used outside Development.");
-            }
+        var signingKeys = new List<SecurityKey>
+        {
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
+        };
+        if (!string.IsNullOrEmpty(previousSigningKey)
+            && !string.Equals(previousSigningKey, jwtSigningKey, StringComparison.Ordinal))
+        {
+            signingKeys.Add(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(previousSigningKey)));
         }
 
         services.AddAuthentication(options =>
@@ -176,8 +226,9 @@ public static class ServiceCollectionExtensions
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSigningKey)),
+                    // Current key first; optional previous key keeps access tokens valid
+                    // during a rotation window (see docs/ops/jwt-signing-key-rotation.md).
+                    IssuerSigningKeys = signingKeys,
                     ClockSkew = TimeSpan.FromMinutes(1),
                     NameClaimType = JwtRegisteredClaimNames.Sub,
                     RoleClaimType = "role",
@@ -187,6 +238,22 @@ public static class ServiceCollectionExtensions
         services.AddRealEstateEvalCapabilityAuthorization();
 
         return services;
+    }
+
+    private static void ValidateProductionSigningKey(string key, string settingName)
+    {
+        if (key.Length < MinimumJwtSigningKeyLength)
+        {
+            throw new InvalidOperationException(
+                $"{settingName} must be at least {MinimumJwtSigningKeyLength} characters outside Development.");
+        }
+
+        if (key.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+            || key.Contains("DEV_ONLY", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"{settingName} contains a known placeholder and cannot be used outside Development.");
+        }
     }
 
     private static string RequireJwtValue(IConfiguration configuration, string name)

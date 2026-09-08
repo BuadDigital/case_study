@@ -1,4 +1,4 @@
-﻿using System.Net.Mail;
+using System.Net.Mail;
 using System.Text.RegularExpressions;
 using FluentValidation;
 using RealEstateEval.Application.Contracts;
@@ -44,26 +44,6 @@ public sealed class RefreshTokenRequestValidator : AbstractValidator<RefreshToke
     public RefreshTokenRequestValidator() =>
         RuleFor(x => x.RefreshToken).NotEmpty().MaximumLength(256)
             .OverridePropertyName("refreshToken");
-}
-
-public sealed class ActivateAccountRequestValidator : AbstractValidator<ActivateAccountRequest>
-{
-    public ActivateAccountRequestValidator()
-    {
-        RuleFor(x => x.UserName).NotEmpty().MaximumLength(256)
-            .OverridePropertyName("userName");
-        RuleFor(x => x.Token).NotEmpty().MaximumLength(4096)
-            .OverridePropertyName("token");
-        RuleFor(x => x.NewPassword)
-            .NotEmpty()
-            .MinimumLength(12)
-            .MaximumLength(256)
-            .Matches("[A-Z]").WithMessage("يجب أن تحتوي كلمة المرور على حرف إنجليزي كبير.")
-            .Matches("[a-z]").WithMessage("يجب أن تحتوي كلمة المرور على حرف إنجليزي صغير.")
-            .Matches("[0-9]").WithMessage("يجب أن تحتوي كلمة المرور على رقم.")
-            .Matches("[^a-zA-Z0-9]").WithMessage("يجب أن تحتوي كلمة المرور على رمز.")
-            .OverridePropertyName("newPassword");
-    }
 }
 
 public sealed class CreateStaffUserRequestValidator : AbstractValidator<CreateStaffUserRequest>
@@ -179,14 +159,6 @@ public sealed class UpdateStaffUserRequestValidator : AbstractValidator<UpdateSt
             .When(x => x.Status.HasValue)
             .OverridePropertyName("status");
     }
-}
-
-public sealed class IssueActivationTicketRequestValidator
-    : AbstractValidator<IssueActivationTicketRequest>
-{
-    public IssueActivationTicketRequestValidator() =>
-        RuleFor(x => x.Id).NotEmpty().MaximumLength(450)
-            .OverridePropertyName("id");
 }
 
 // Operations-task and key-envelope validators moved to RealEstateEval.Operations.Application (A8).

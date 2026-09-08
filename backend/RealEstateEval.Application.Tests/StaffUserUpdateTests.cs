@@ -317,7 +317,6 @@ public class StaffUserUpdateTests
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
         var db = provider.GetRequiredService<IdentityDbContext>();
-        await ActivateAsync(provider, users, created!);
         db.RefreshTokens.Add(new RefreshToken
         {
             Id = Guid.NewGuid(),
@@ -348,7 +347,6 @@ public class StaffUserUpdateTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
-        await ActivateAsync(provider, users, created!);
 
         var (result, errors) = await users.UpdateStaffAsync(
             created!.User.Id,
@@ -366,7 +364,6 @@ public class StaffUserUpdateTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
-        await ActivateAsync(provider, users, created!);
         await users.DeleteStaffAsync(created!.User.Id, "admin");
 
         var (updated, errors) = await users.UpdateStaffAsync(
@@ -384,20 +381,23 @@ public class StaffUserUpdateTests
     }
 
     [Fact]
-    public async Task A_pending_account_cannot_be_forced_active_without_an_activation_ticket()
+    public async Task A_legacy_pending_account_can_be_forced_active_for_phone_login()
     {
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        var profile = await db.UserProfiles.SingleAsync(p => p.UserId == created!.User.Id);
+        profile.Status = UserStatus.PendingActivation;
+        await db.SaveChangesAsync();
 
         var (result, errors) = await users.UpdateStaffAsync(
             created!.User.Id,
             new UpdateStaffUserRequest { Status = UserStatus.Active },
             "admin");
 
-        Assert.Null(result);
-        Assert.NotNull(errors);
-        Assert.True(errors.ContainsKey("status"));
+        Assert.Null(errors);
+        Assert.Equal(UserStatus.Active, result!.Status);
     }
 
     [Fact]
@@ -451,7 +451,6 @@ public class StaffUserUpdateTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
-        await ActivateAsync(provider, users, created!);
         var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByIdAsync(created!.User.Id);
         await userManager.SetLockoutEndDateAsync(user!, DateTimeOffset.UtcNow.AddHours(1));
@@ -472,7 +471,6 @@ public class StaffUserUpdateTests
         await using var provider = await CreateProviderAsync();
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (created, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
-        await ActivateAsync(provider, users, created!);
         await users.DeleteStaffAsync(created!.User.Id, "admin");
 
         var (ok, error) = await users.UnlockStaffAsync(created.User.Id, "admin");
@@ -495,20 +493,6 @@ public class StaffUserUpdateTests
         Assert.Null(result);
         Assert.NotNull(errors);
         Assert.True(errors.ContainsKey("_form"));
-    }
-
-    private static async Task ActivateAsync(
-        ServiceProvider provider,
-        IUserRegistrationService users,
-        CreateStaffUserResponseDto created)
-    {
-        var (ticket, _) = await users.IssueActivationTicketAsync(created.User.Id, "admin");
-        await users.ActivateAccountAsync(new ActivateAccountRequest
-        {
-            UserName = ticket!.UserName,
-            Token = ticket.Token,
-            NewPassword = "ChosenByHolder1!",
-        });
     }
 
     private static async Task<ServiceProvider> CreateProviderAsync()

@@ -189,6 +189,8 @@ POSTGRES_PASSWORD=<كلمة سر عشوائية>
 RABBITMQ_USER=ree-service
 RABBITMQ_PASSWORD=<كلمة سر عشوائية>
 JWT_SIGNING_KEY=<64 حرف على الأقل>
+# أثناء تدوير المفتاح فقط — انظر docs/ops/jwt-signing-key-rotation.md
+# JWT_PREVIOUS_SIGNING_KEY=
 GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=<كلمة سر عشوائية>
 TLS_CERTIFICATE_PATH=/etc/letsencrypt/live/app.example.com/fullchain.pem

@@ -19,6 +19,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
     private readonly IWorkflowTaskSlotSynchronizer _slots;
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
+    private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public WorkflowTaskLifecycleCommands(
@@ -29,6 +31,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         IWorkflowTaskSlotSynchronizer slots,
         INotificationService notifications,
         INotificationRecipientResolver recipients,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -40,6 +44,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         _slots = slots;
         _notifications = notifications;
         _recipients = recipients;
+        _audit = audit;
+        _auditLog = auditLog;
     }
 
     private static Dictionary<string, string> Error(string message) => new() { ["_"] = message };
@@ -252,6 +258,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         ReopenCompletedWorkflowTaskRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
         if (!WorkflowTaskLifecycleRules.IsSectionSupervisorOrAbove(actorRole))
@@ -301,6 +308,21 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
             PropertyTimelineTones.Warn,
             $"case-study-reopened:{entity.Id}:{entity.UpdatedAtUtc:O}",
             cancellationToken);
+
+        await _auditLog.AppendAsync(_audit.Create(
+            actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId.Trim(),
+            action: "case-study.workflow-task.reopened",
+            entityType: "WorkflowTask",
+            entityId: entity.Id.ToString("D"),
+            before: new { status = "Completed" },
+            after: new
+            {
+                status = entity.Status.ToString(),
+                reason,
+                actorRole,
+                actorName,
+                poNumber = entity.PoNumber,
+            }), cancellationToken);
 
         return (WorkflowTaskMapper.ToDto(entity), null);
     }

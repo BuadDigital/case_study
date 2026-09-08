@@ -2,7 +2,7 @@
 
 /**
  * Users-screen workflow: staff list query + filters, the add-user form,
- * per-row actions (edit / disable / reactivate / unlock / invite) and the
+ * per-row actions (edit / disable / reactivate / unlock) and the
  * dialogs they open. Pure rules live in `users-organization-state.ts`.
  */
 
@@ -18,7 +18,6 @@ import { getAuthSession } from "@platform/auth-client";
 import { useToast } from "@platform/ui-kit";
 import type { ConfirmActionSpec } from "../../components/ConfirmActionModal";
 import {
-  requestActivationTicket,
   submitCreateStaffUser,
   submitDeleteStaffUser,
   submitUnlockStaffUser,
@@ -26,7 +25,6 @@ import {
 } from "../../lib/users-api";
 import { useStaffUsersQuery } from "../../query/settings-queries";
 import {
-  activationTicketErrorMessage,
   applyRoleChange,
   buildCreateStaffUserPayload,
   canDeleteUser,
@@ -72,13 +70,8 @@ export function useUsersOrganizationWorkflow() {
   const [createdUser, setCreatedUser] = useState<{
     id: string;
     userName: string;
+    mobile: string;
   } | null>(null);
-  const [activationTicket, setActivationTicket] = useState<{
-    userName: string;
-    token: string;
-    expiresAtUtc: string;
-  } | null>(null);
-  const [issuingTicketFor, setIssuingTicketFor] = useState<string | null>(null);
 
   // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
@@ -104,7 +97,6 @@ export function useUsersOrganizationWorkflow() {
 
   function openAdd() {
     setCreatedUser(null);
-    setActivationTicket(null);
     setErrors({});
     setAdding(true);
   }
@@ -123,7 +115,6 @@ export function useUsersOrganizationWorkflow() {
 
     setSaving(true);
     setCreatedUser(null);
-    setActivationTicket(null);
     try {
       const result = await submitCreateStaffUser(buildCreateStaffUserPayload(form));
 
@@ -136,34 +127,19 @@ export function useUsersOrganizationWorkflow() {
         return;
       }
 
+      const mobile = form.mobile.trim();
       setForm(EMPTY_STAFF_FORM);
       setErrors({});
       setCreatedUser({
         id: result.result.user.id,
         userName: result.result.userName,
+        mobile,
       });
       setAdding(true);
       await invalidateUsers();
       showToast(USER_TOASTS.created, "success");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function onIssueActivationTicket(userId: string) {
-    setIssuingTicketFor(userId);
-    setActivationTicket(null);
-    try {
-      const result = await requestActivationTicket(userId);
-      if (!result.ok) {
-        showToast(activationTicketErrorMessage(result), "error");
-        return;
-      }
-      setActivationTicket(result.ticket);
-      setAdding(true);
-      showToast(USER_TOASTS.ticketIssued, "success");
-    } finally {
-      setIssuingTicketFor(null);
     }
   }
 
@@ -231,7 +207,7 @@ export function useUsersOrganizationWorkflow() {
     }
   }
 
-  /** Row action button: disable (after confirm) / reactivate / unlock / invite by status. */
+  /** Row action: disable (after confirm) / reactivate / unlock / activate pending. */
   function onToggleUser(user: StaffUser) {
     if (user.status === "Active") {
       if (!canDeleteUser(user, currentUserId)) {
@@ -244,15 +220,12 @@ export function useUsersOrganizationWorkflow() {
       });
       return;
     }
-    if (user.status === "Disabled") {
-      void onReactivateUser(user);
-      return;
-    }
     if (user.status === "Locked") {
       void onUnlockUser(user);
       return;
     }
-    void onIssueActivationTicket(user.id);
+    // Disabled or legacy PendingActivation — enable for phone login.
+    void onReactivateUser(user);
   }
 
   function isRowBusy(user: StaffUser): boolean {
@@ -279,9 +252,6 @@ export function useUsersOrganizationWorkflow() {
     closeAdd,
     onSubmit,
     createdUser,
-    activationTicket,
-    issuingTicketFor,
-    onIssueActivationTicket,
     profileUser,
     setProfileUser,
     editingUser,

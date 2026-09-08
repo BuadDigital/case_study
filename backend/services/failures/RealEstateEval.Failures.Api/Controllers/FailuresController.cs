@@ -90,7 +90,10 @@ public class FailuresController : ControllerBase
         [FromBody] CreateFailureRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _failures.CreateAsync(request, cancellationToken);
+        var (result, errors) = await _failures.CreateAsync(
+            request,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
@@ -147,7 +150,11 @@ public class FailuresController : ControllerBase
         [FromBody] ResolveFailureRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.ResolveAsync(id, request, cancellationToken);
+        var dto = await _failures.ResolveAsync(
+            id,
+            request,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر");
         return Ok(dto);
     }
@@ -159,7 +166,11 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.ApproveAsync(id, request.Note, cancellationToken);
+        var dto = await _failures.ApproveAsync(
+            id,
+            request.Note,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذر");
         return Ok(dto);
     }
@@ -171,7 +182,11 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.ReturnAsync(id, request.Note, cancellationToken);
+        var dto = await _failures.ReturnAsync(
+            id,
+            request.Note,
+            ActorClaims.Id(User),
+            cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذر");
         return Ok(dto);
     }

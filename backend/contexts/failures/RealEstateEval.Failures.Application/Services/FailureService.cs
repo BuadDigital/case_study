@@ -28,6 +28,8 @@ public partial class FailureService : IFailureService
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
     private readonly IUserLabelLookup _labels;
+    private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public FailureService(
@@ -37,6 +39,8 @@ public partial class FailureService : IFailureService
         INotificationService notifications,
         INotificationRecipientResolver recipients,
         IUserLabelLookup labels,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -47,6 +51,8 @@ public partial class FailureService : IFailureService
         _notifications = notifications;
         _recipients = recipients;
         _labels = labels;
+        _audit = audit;
+        _auditLog = auditLog;
     }
 
     public Task<IReadOnlyList<FailureRecordDto>> ListAsync(
@@ -158,6 +164,7 @@ public partial class FailureService : IFailureService
 
     public async Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
         var errors = FailureRules.ValidateCreate(request);
@@ -188,6 +195,20 @@ public partial class FailureService : IFailureService
         if (entity.Severity == PropertyFailureSeverity.Internal)
             await ApplyInternalSideEffectsAsync(entity, cancellationToken);
 
+        await AppendFailureAuditAsync(
+            actorUserId,
+            "failure.raised",
+            entity,
+            before: null,
+            after: new
+            {
+                status = entity.Status.ToString(),
+                severity = entity.Severity.ToString(),
+                problemTypeId = entity.ProblemTypeId,
+                poNumber = entity.PoNumber,
+            },
+            cancellationToken);
+
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
@@ -200,6 +221,7 @@ public partial class FailureService : IFailureService
 
         var create = await CreateAsync(
             FailureRules.BourseObstructionCreateRequest(request),
+            actorUserId: null,
             cancellationToken);
 
         if (create.Result is null) return create;
@@ -238,6 +260,7 @@ public partial class FailureService : IFailureService
                 title,
                 note,
                 resolvedSpecialist),
+            actorUserId: "system",
             cancellationToken);
 
         return result;
@@ -294,12 +317,21 @@ public partial class FailureService : IFailureService
             FailureRules.SuspendedTimelineEntry(entity, entity.PropertyId),
             cancellationToken);
 
+        await AppendFailureAuditAsync(
+            actorUserId,
+            "failure.suspended",
+            entity,
+            before: new { status = "ActiveOrReview" },
+            after: new { status = entity.Status.ToString(), note },
+            cancellationToken);
+
         return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ResolveAsync(
         Guid id,
         ResolveFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.FindAsync(id, cancellationToken);
@@ -314,12 +346,26 @@ public partial class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusActive, cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
+
+        await AppendFailureAuditAsync(
+            actorUserId,
+            "failure.resolved",
+            entity,
+            before: null,
+            after: new
+            {
+                status = entity.Status.ToString(),
+                resolutionReason = request.ResolutionReason,
+            },
+            cancellationToken);
+
         return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ApproveAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.FindAsync(id, cancellationToken);
@@ -334,12 +380,22 @@ public partial class FailureService : IFailureService
             entity.PoNumber,
             FailureRules.ApprovedNotification(entity),
             cancellationToken);
+
+        await AppendFailureAuditAsync(
+            actorUserId,
+            "failure.approved",
+            entity,
+            before: null,
+            after: new { status = entity.Status.ToString(), finalNote },
+            cancellationToken);
+
         return await ToDtoAsync(entity, cancellationToken);
     }
 
     public async Task<FailureRecordDto?> ReturnAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
         var entity = await _failures.FindAsync(id, cancellationToken);
@@ -350,6 +406,15 @@ public partial class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusActive, cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
+
+        await AppendFailureAuditAsync(
+            actorUserId,
+            "failure.returned",
+            entity,
+            before: null,
+            after: new { status = entity.Status.ToString(), finalNote },
+            cancellationToken);
+
         return await ToDtoAsync(entity, cancellationToken);
     }
 
@@ -357,6 +422,21 @@ public partial class FailureService : IFailureService
     {
         await _failures.DeleteForPoAsync(poNumber, cancellationToken);
     }
+
+    private Task AppendFailureAuditAsync(
+        string? actorUserId,
+        string action,
+        PropertyFailure entity,
+        object? before,
+        object? after,
+        CancellationToken cancellationToken) =>
+        _auditLog.AppendAsync(_audit.Create(
+            actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId.Trim(),
+            action: action,
+            entityType: "PropertyFailure",
+            entityId: entity.Id.ToString("D"),
+            before: before,
+            after: after), cancellationToken);
 
     private async Task ApplyInternalSideEffectsAsync(
         PropertyFailure entity,

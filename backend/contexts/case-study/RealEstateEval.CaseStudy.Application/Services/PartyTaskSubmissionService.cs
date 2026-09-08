@@ -39,6 +39,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IInspectorFeeService _inspectorFees;
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
+    private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public PartyTaskSubmissionService(
@@ -51,6 +53,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IInspectorFeeService inspectorFees,
         INotificationService notifications,
         INotificationRecipientResolver recipients,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -64,6 +68,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _inspectorFees = inspectorFees;
         _notifications = notifications;
         _recipients = recipients;
+        _audit = audit;
+        _auditLog = auditLog;
     }
 
     private static Dictionary<string, string> Error(string message) => PartyTaskSubmissionRules.Error(message);
@@ -401,6 +407,24 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (!alreadyAccepted)
             await NotifyPartyAcceptedAsync(task, cancellationToken);
+
+        if (!alreadyAccepted)
+        {
+            await _auditLog.AppendAsync(_audit.Create(
+                actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId,
+                action: "case-study.party-submission.accepted",
+                entityType: "PartyTaskSubmission",
+                entityId: taskId.ToString("D"),
+                before: new { status = "Submitted" },
+                after: new
+                {
+                    status = "Accepted",
+                    kind = task.Kind.ToString(),
+                    poNumber = task.PoNumber,
+                    acceptedBy = entity.AcceptedByName,
+                    acceptedAtUtc = entity.AcceptedAtUtc,
+                }), cancellationToken);
+        }
 
         return (await ToDtoAsync(entity, cancellationToken), null);
     }

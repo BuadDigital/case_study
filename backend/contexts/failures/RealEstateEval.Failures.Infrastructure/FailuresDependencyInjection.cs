@@ -40,6 +40,7 @@ public static class FailuresDependencyInjection
         services.AddScoped<IFailureRepository, FailureRepository>();
         services.AddScoped<IFailureService, FailureService>();
         services.AddScoped<IFailureTypesCatalogService, FailureTypesCatalogService>();
+        services.AddRemoteAuditLogAppend(configuration);
         return services;
     }
  /// <summary>Failures write context. Prefers a dedicated Failures connection string.

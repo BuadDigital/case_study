@@ -20,6 +20,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
     private readonly INotificationRecipientResolver _recipients;
     private readonly IPropertyTimelineService _timeline;
     private readonly ICaseStudyValuationDispatchService _valuationDispatch;
+    private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
@@ -30,6 +32,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         INotificationRecipientResolver recipients,
         IPropertyTimelineService timeline,
         ICaseStudyValuationDispatchService valuationDispatch,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -40,6 +44,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         _recipients = recipients;
         _timeline = timeline;
         _valuationDispatch = valuationDispatch;
+        _audit = audit;
+        _auditLog = auditLog;
     }
 
     private static Dictionary<string, string> Error(string message) => new() { ["_"] = message };
@@ -64,6 +70,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         ConfirmDistributionAsync(
             Guid id,
             ConfirmTaskDistributionRequest request,
+            string? actorUserId = null,
             CancellationToken cancellationToken = default)
     {
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
@@ -150,6 +157,20 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
 
         await _valuationDispatch.TryCreateWhenAppraisalSpawnedAsync(parent.Id, cancellationToken);
+
+        await _auditLog.AppendAsync(_audit.Create(
+            actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId.Trim(),
+            action: "case-study.workflow-task.distribution-confirmed",
+            entityType: "WorkflowTask",
+            entityId: parent.Id.ToString("D"),
+            before: new { phase = "Distribution" },
+            after: new
+            {
+                phase = parent.Phase.ToString(),
+                poNumber = parent.PoNumber,
+                childCount = children.Count,
+                childKinds = children.Select(c => c.Kind.ToString()).ToArray(),
+            }), cancellationToken);
 
         return (new ConfirmTaskDistributionResponseDto
         {

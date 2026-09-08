@@ -89,32 +89,18 @@ public static class WorkOrderPropertyWriteRules
         return (null, string.IsNullOrEmpty(trimmed) ? null : trimmed);
     }
 
-    /// <summary>The specialist report extras column stores validated JSON, or nothing.</summary>
+    /// <summary>
+    /// Validates the specialist-report wire bag and applies it to first-class columns
+    /// (see <see cref="SpecialistReportExtrasRules"/>). Empty / literal null clears the columns.
+    /// </summary>
     public static (Dictionary<string, string>? Errors, string? Value) ValidateSpecialistReportExtras(
         string? specialistReportExtrasJson)
     {
-        var trimmed = specialistReportExtrasJson?.Trim();
-        if (string.IsNullOrEmpty(trimmed) || trimmed == "null") return (null, null);
-
-        try
-        {
-            using var _ = System.Text.Json.JsonDocument.Parse(trimmed);
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return (
-                new Dictionary<string, string> { ["specialistReportExtrasJson"] = "صيغة JSON غير صالحة" },
-                null);
-        }
-
-        if (trimmed.Length > SpecialistReportExtrasMaxLength)
-        {
-            return (
-                new Dictionary<string, string> { ["specialistReportExtrasJson"] = "حجم البيانات أكبر من المسموح" },
-                null);
-        }
-
-        return (null, trimmed);
+        // Probe on a throwaway entity so callers that only need validation stay pure.
+        var probe = new WorkOrderProperty();
+        var errors = SpecialistReportExtrasRules.ApplyFromWireJson(probe, specialistReportExtrasJson);
+        if (errors is not null) return (errors, null);
+        return (null, probe.SpecialistReportExtrasJson);
     }
 
     /// <summary>Concurrency on a property save is reported with the entity kinds that clashed.</summary>
@@ -296,12 +282,7 @@ public static class WorkOrderPropertyWriteRules
         entity.FinishingType = NormalizeFinishingType(dto.FinishingType);
         entity.FinishingStructure = NormalizeFinishingStructure(dto.FinishingStructure);
         if (dto.SpecialistReportExtrasJson is not null)
-        {
-            var extras = dto.SpecialistReportExtrasJson.Trim();
-            entity.SpecialistReportExtrasJson = string.IsNullOrEmpty(extras) || extras == "null"
-                ? null
-                : extras;
-        }
+            SpecialistReportExtrasRules.ApplyFromWireJson(entity, dto.SpecialistReportExtrasJson);
     }
 
     /// <summary>The bourse half as it arrives inside the property DTO.</summary>

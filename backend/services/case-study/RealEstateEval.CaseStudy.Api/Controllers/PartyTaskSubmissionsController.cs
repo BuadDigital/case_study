@@ -26,6 +26,7 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<IReadOnlyList<PartyTaskSubmissionDto>>> List(
         [FromQuery] string? workflowTaskIds,
         CancellationToken cancellationToken)
@@ -46,6 +47,7 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     [HttpGet("{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Get(
         Guid taskId,
         CancellationToken cancellationToken)

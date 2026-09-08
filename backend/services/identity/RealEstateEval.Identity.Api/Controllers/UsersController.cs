@@ -15,16 +15,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserRegistrationService _users;
     private readonly IWebHostEnvironment _env;
-    private readonly ILogger<UsersController> _logger;
 
     public UsersController(
         IUserRegistrationService users,
-        IWebHostEnvironment env,
-        ILogger<UsersController> logger)
+        IWebHostEnvironment env)
     {
         _users = users;
         _env = env;
-        _logger = logger;
     }
 
     [HttpGet]
@@ -97,39 +94,6 @@ public class UsersController : ControllerBase
             });
 
         return NoContent();
-    }
-
- /// <summary>
- /// Issues a single-use activation ticket so the account holder can set their own
- /// password. Kept off the create response so the secret is only minted when an
- /// administrator explicitly asks for it.
- /// </summary>
-    [HttpPost("{id}/activation-ticket")]
-    public async Task<ActionResult<ActivationTicketDto>> IssueActivationTicket(
-        [FromRoute] IssueActivationTicketRequest request,
-        CancellationToken cancellationToken)
-    {
-        var (ticket, error) = await _users.IssueActivationTicketAsync(
-            request.Id,
-            ActorClaims.Id(User),
-            cancellationToken);
-        if (ticket is null)
-        {
-            _logger.LogInformation(
-                "Activation ticket request rejected for user {UserId}",
-                request.Id);
-            return this.FieldErrorsProblem(
-                new Dictionary<string, string>
-                {
-                    ["_form"] = error ?? "المستخدم غير موجود.",
-                },
-                StatusCodes.Status404NotFound,
-                "Not Found");
-        }
-
-        _logger.LogInformation("Activation ticket issued for user {UserId}", request.Id);
-        Response.Headers.CacheControl = "no-store";
-        return Ok(ticket);
     }
 
     [HttpDelete("registered")]

@@ -2,7 +2,6 @@ import {
   createStaffUser,
   deleteStaffUser,
   fetchMyProfile,
-  issueActivationTicket,
   listDistributionAssignees,
   listUsers,
   unlockStaffUser,
@@ -10,7 +9,6 @@ import {
   type CreateStaffUserRequest,
   type CreateStaffUserResult,
   type DeleteStaffUserResult,
-  type IssueActivationTicketResult,
   type UnlockStaffUserResult,
   type UpdateStaffUserRequest,
   type UpdateStaffUserResult,
@@ -107,14 +105,6 @@ export async function submitUnlockStaffUser(
   const config = apiConfig();
   if (!config) return { ok: false, kind: "network" };
   return unlockStaffUser(config, userId);
-}
-
-export async function requestActivationTicket(
-  userId: string,
-): Promise<IssueActivationTicketResult> {
-  const config = apiConfig();
-  if (!config) return { ok: false, kind: "network" };
-  return issueActivationTicket(config, userId);
 }
 
 export async function submitDeleteStaffUser(

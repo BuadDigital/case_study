@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public sealed class WorkflowAssigneesController(IWorkflowAssigneeLookup lookup) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<WorkflowAssigneeIdsDto>> Get(
         [FromQuery] Guid? propertyId,
         [FromQuery] string? poNumber,

@@ -2,8 +2,7 @@
 
 /**
  * "إضافة مستخدم" dialog: the create form (basic data, identity, compensation,
- * engineering-office extras), the created-account note and the one-time
- * activation ticket.
+ * engineering-office extras) and the created-account note (phone login ready).
  */
 
 import type { ReactNode } from "react";
@@ -19,7 +18,6 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-  Textarea,
   cn,
 } from "@platform/ui-kit";
 import {
@@ -51,9 +49,6 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
     closeAdd,
     onSubmit,
     createdUser,
-    activationTicket,
-    issuingTicketFor,
-    onIssueActivationTicket,
   } = workflow;
 
   return (
@@ -75,7 +70,7 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
         </ModalHeader>
         <ModalBody>
           <p className="m-0 mb-3 text-[12px] text-text-3">
-            اسم الدخول يُنشأ تلقائياً ويُفعَّل بدعوة لمرة واحدة.
+            اسم الدخول يُنشأ تلقائياً. يدخل المستخدم برقم الجوال (شاشة رمز التحقق).
           </p>
           <form id="add-staff-user" onSubmit={(e) => void onSubmit(e)}>
             <div className="grid gap-x-4 gap-y-3.5 sm:grid-cols-2">
@@ -254,42 +249,15 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
             ) : null}
             {createdUser ? (
               <div className="mt-3 rounded-[var(--radius)] border border-success/25 bg-success-bg px-3.5 py-3 text-xs leading-relaxed text-success-text">
-                <strong>تم إنشاء الحساب — بانتظار التفعيل</strong>
+                <strong>تم إنشاء الحساب — جاهز لتسجيل الدخول بالجوال</strong>
                 <div className="mt-2" dir="ltr">
                   <span className="text-text-3">username:</span> {createdUser.userName}
                 </div>
-                <div className="mt-2.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={issuingTicketFor === createdUser.id}
-                    loading={issuingTicketFor === createdUser.id}
-                    onClick={() => void onIssueActivationTicket(createdUser.id)}
-                  >
-                    إرسال دعوة التفعيل
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-            {activationTicket ? (
-              <div className="mt-3 rounded-[var(--radius)] border border-warning/35 bg-warning-bg px-3.5 py-3 text-xs leading-relaxed text-text">
-                <strong>رمز التفعيل لمرة واحدة</strong>
-                <div className="mt-2 space-y-1" dir="ltr">
-                  <div>
-                    <span className="text-text-3">username:</span>{" "}
-                    {activationTicket.userName}
+                {createdUser.mobile ? (
+                  <div className="mt-1" dir="ltr">
+                    <span className="text-text-3">mobile:</span> {createdUser.mobile}
                   </div>
-                  <Textarea
-                    readOnly
-                    rows={3}
-                    dir="ltr"
-                    aria-label="رمز التفعيل لمرة واحدة"
-                    className="min-h-0 resize-none bg-surface-2 font-mono text-[10.5px] leading-relaxed text-ink"
-                    value={activationTicket.token}
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
-                </div>
+                ) : null}
               </div>
             ) : null}
           </form>

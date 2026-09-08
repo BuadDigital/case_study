@@ -5,7 +5,8 @@ namespace RealEstateEval.Shared.Web;
 
 /// <summary>
 /// Restricts owner-to-owner dispatch routes. UpstreamJson always sends
-/// <see cref="HeaderName"/>; browser clients hitting the gateway must not.
+/// <see cref="HeaderName"/> on service-to-service calls. The public gateway and nginx strip
+/// this header from browser traffic so forging it at the edge does not open these routes.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class RequireUpstreamDispatchAttribute : Attribute, IAuthorizationFilter

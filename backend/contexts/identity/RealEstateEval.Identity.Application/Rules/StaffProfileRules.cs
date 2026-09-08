@@ -50,7 +50,7 @@ public static class StaffProfileRules
 
     // ---- registration ----
 
-    /// <summary>The pending-activation profile row of a freshly created, validated account.</summary>
+    /// <summary>The active profile row of a freshly created, validated account (phone login).</summary>
     public static StaffProfileState NewStaffProfile(
         CreateStaffUserRequest request,
         string userId,
@@ -83,7 +83,7 @@ public static class StaffProfileRules
             JoinedAt = request.JoinedAt,
             DistributionAssigneeId = StaffUserRules.BuildDistributionAssigneeId(roleId, userName),
             PermissionLevel = defaults.PermissionLevel,
-            Status = UserStatus.PendingActivation,
+            Status = UserStatus.Active,
             ReferenceNumber = userReference,
             CreatedAtUtc = nowUtc,
         };
@@ -149,11 +149,6 @@ public static class StaffProfileRules
 
         if (target.Status == UserStatus.Active && string.IsNullOrWhiteSpace(target.City))
             errors["city"] = "المدينة مطلوبة لتفعيل الحساب.";
-
-        if (target.Status == UserStatus.Active && currentStatus == UserStatus.PendingActivation)
-        {
-            errors["status"] = "الحساب بانتظار التفعيل — أصدر رمز تفعيل بدلاً من تغيير الحالة.";
-        }
 
         return errors;
     }

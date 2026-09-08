@@ -35,6 +35,7 @@ public interface IWorkflowTaskService
         ConfirmDistributionAsync(
             Guid id,
             ConfirmTaskDistributionRequest request,
+            string? actorUserId = null,
             CancellationToken cancellationToken = default);
     Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,
@@ -69,6 +70,7 @@ public interface IWorkflowTaskService
         ReopenCompletedWorkflowTaskRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
  /// <summary>Updates case-study party assignment (existing subtasks) without fully reopening distribution.</summary>

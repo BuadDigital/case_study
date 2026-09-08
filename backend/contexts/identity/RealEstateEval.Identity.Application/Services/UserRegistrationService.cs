@@ -8,12 +8,11 @@ using RealEstateEval.Identity.Application.Rules;
 namespace RealEstateEval.Identity.Application.Services;
 
 /// <summary>
-/// Staff registration use case: create a password-less account, edit it, issue and redeem the
-/// activation ticket, unlock, and soft-disable. Persistence goes through
+/// Staff registration use case: create a password-less account (phone login),
+/// edit it, unlock, and soft-disable. Persistence goes through
 /// <see cref="IStaffRegistrationRepository"/> and ASP.NET Identity through
 /// <see cref="IStaffIdentityStore"/>, so this file holds rules only — no EF and no
-/// <c>UserManager</c> (solid-scorecard finding 1). The activation ticket lives in
-/// <c>UserRegistrationService.Activation.cs</c>, unlock/disable/bulk delete in
+/// <c>UserManager</c> (solid-scorecard finding 1). Unlock/disable/bulk delete live in
 /// <c>UserRegistrationService.Lifecycle.cs</c>, and the reads in
 /// <c>UserRegistrationService.Queries.cs</c>; storage-free decisions sit in
 /// <see cref="StaffProfileRules"/>.
@@ -75,8 +74,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         await using var transaction = await _repo.BeginTransactionAsync(cancellationToken);
         var userName = await AllocateUniqueUserNameAsync(normalizedEmail, cancellationToken);
 
-        // Deliberately password-less: the account cannot sign in until its holder
-        // redeems an activation ticket, so no credential ever crosses the API boundary.
+        // Password-less Identity user: sign-in is by Saudi mobile (OTP UI / future SMS OTP).
         var (user, createErrors) = await _accounts.CreateAsync(
             new NewStaffIdentityUser(userName, normalizedEmail, displayName, normalizedMobile),
             cancellationToken);
@@ -139,7 +137,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         {
             User = dto!,
             UserName = userName,
-            ActivationRequired = true,
+            ActivationRequired = false,
         }, null);
     }
 

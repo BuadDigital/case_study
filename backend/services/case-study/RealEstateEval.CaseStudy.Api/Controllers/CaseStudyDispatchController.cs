@@ -8,8 +8,10 @@ using RealEstateEval.Shared.Web;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// Authenticated lookups used by Financial and Operations, Operator work-order and
-/// workflow-task routes keep their capability policies.
+/// Authenticated lookups used by Financial and Operations. Browser clients cannot reach
+/// these routes: the gateway and nginx strip <c>X-REE-Upstream</c>, and
+/// <see cref="RequireUpstreamDispatchAttribute"/> rejects requests without it. Capability
+/// policies are intentionally omitted — callers are other services forwarding a user JWT.
 /// </summary>
 
 [ApiController]

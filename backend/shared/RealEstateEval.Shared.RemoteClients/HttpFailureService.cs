@@ -87,6 +87,7 @@ public sealed class HttpFailureService(
 
     public Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
         PostForResultAsync<FailureRecordDto>("/api/failures", request, cancellationToken);
 
@@ -190,6 +191,7 @@ public sealed class HttpFailureService(
     public Task<FailureRecordDto?> ResolveAsync(
         Guid id,
         ResolveFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
         PostNullableAsync<FailureRecordDto>(
             $"/api/failure-dispatch/{id:D}/resolve",
@@ -199,6 +201,7 @@ public sealed class HttpFailureService(
     public Task<FailureRecordDto?> ApproveAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
         PostNullableAsync<FailureRecordDto>(
             $"/api/failures/{id:D}/approve",
@@ -208,6 +211,7 @@ public sealed class HttpFailureService(
     public Task<FailureRecordDto?> ReturnAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
         PostNullableAsync<FailureRecordDto>(
             $"/api/failures/{id:D}/return",

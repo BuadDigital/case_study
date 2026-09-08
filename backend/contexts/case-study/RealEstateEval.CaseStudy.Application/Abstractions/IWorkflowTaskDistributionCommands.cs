@@ -13,6 +13,7 @@ public interface IWorkflowTaskDistributionCommands
         ConfirmDistributionAsync(
             Guid id,
             ConfirmTaskDistributionRequest request,
+            string? actorUserId = null,
             CancellationToken cancellationToken = default);
 
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(

@@ -55,7 +55,7 @@ public class StaffProfileRulesTests
     // ---- registration ----
 
     [Fact]
-    public void New_profile_is_pending_activation_with_the_role_defaults_and_trimmed_members()
+    public void New_profile_is_active_with_the_role_defaults_and_trimmed_members()
     {
         var profile = StaffProfileRules.NewStaffProfile(
             CreateRequest(iban: "sa44 2000 0001 2345 6789 1234"),
@@ -66,7 +66,7 @@ public class StaffProfileRulesTests
             "US-2026-0001",
             Now);
 
-        Assert.Equal(UserStatus.PendingActivation, profile.Status);
+        Assert.Equal(UserStatus.Active, profile.Status);
         Assert.Equal("u-1", profile.UserId);
         Assert.Equal("الرياض", profile.City);
         Assert.Equal("1000000091", profile.NationalId);
@@ -195,7 +195,7 @@ public class StaffProfileRulesTests
     }
 
     [Fact]
-    public void A_pending_account_cannot_be_forced_active_by_a_status_edit()
+    public void A_legacy_pending_account_can_be_forced_active_by_a_status_edit()
     {
         var target = StaffProfileRules.ResolveUpdateTarget(
             new UpdateStaffUserRequest { Status = UserStatus.Active },
@@ -204,9 +204,7 @@ public class StaffProfileRulesTests
 
         var errors = StaffProfileRules.ValidateUpdateTarget(target, UserStatus.PendingActivation);
 
-        Assert.Equal(
-            "الحساب بانتظار التفعيل — أصدر رمز تفعيل بدلاً من تغيير الحالة.",
-            errors["status"]);
+        Assert.Empty(errors);
         Assert.Empty(StaffProfileRules.ValidateUpdateTarget(
             StaffProfileRules.ResolveUpdateTarget(new UpdateStaffUserRequest(), User(), Stored()),
             UserStatus.Active));

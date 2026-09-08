@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
@@ -225,7 +225,9 @@ public class FieldInspectionSubmissionIntegrationTests
             new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications ?? TestInspectorFeeServiceFactory.CreateNotificationDeps(db).Notifications,
-            recipients);
+            recipients,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

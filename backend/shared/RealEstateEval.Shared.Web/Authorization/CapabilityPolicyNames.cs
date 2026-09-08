@@ -69,5 +69,36 @@ public static class CapabilityPolicyNames
  /// </summary>
     public const string ManagePartyFeePricing = "Capability:manage-party-fee-pricing";
 
+    /// <summary>
+    /// Case-study workspace reads (work orders, forms, party submissions, workflow queue).
+    /// Case staff manage the file; field parties see their assigned slice (service-layer filter).
+    /// </summary>
+    public const string ReadCaseStudyWorkspace = "Capability:read-case-study-workspace";
+
+    /// <summary>
+    /// Attachment download / meta / property listing. Matches
+    /// <c>AttachmentAccessRules</c> operational caps plus case staff and party submitters;
+    /// per-file uploader checks remain in the service.
+    /// </summary>
+    public const string ReadAttachments = "Capability:read-attachments";
+
+    /// <summary>
+    /// Identity directory lookups that expose compensation or user-id resolution
+    /// (and display-name labels used across queues).
+    /// </summary>
+    public const string ReadIdentityDirectory = "Capability:read-identity-directory";
+
+    /// <summary>
+    /// Party billing statements and inspector-fee queues — finance/ops staff plus the
+    /// payee office (submit-party-work) and case supervisors.
+    /// </summary>
+    public const string ReadPartyPayables = "Capability:read-party-payables";
+
+    /// <summary>
+    /// Inspection limits / building inventory reads shared by case staff, field parties,
+    /// and appraisers reviewing remote-desktop scope.
+    /// </summary>
+    public const string ReadInspectionContext = "Capability:read-inspection-context";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

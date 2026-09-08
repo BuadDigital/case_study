@@ -268,30 +268,15 @@ Login returns a short-lived access token plus an opaque refresh token:
   access immediately should call `IAuthSessionService.RevokeAllForUserAsync` and rely
   on the short access-token window.
 
-### Staff account activation
+### Staff sign-in (phone; no password activation)
 
-`POST /api/users` creates the account **without a password** and never returns a
-credential. The response is `{ user, userName, activationRequired: true }`; until the
-account is activated, `PasswordHash` is null and every password login attempt fails.
+`POST /api/users` creates the account **without a password**, with required Saudi
+mobile, status **Active**. The response is `{ user, userName, activationRequired: false }`.
+The holder signs in at `/login` with the mobile number (OTP UI is interim theatre until
+Saudi SMS OTP is wired) via `POST /api/auth/login` (`Auth:EnableDevLogin`).
 
-Handing over the account is a separate, explicitly authorized step:
-
-1. `POST /api/users/{id}/activation-ticket` (`CanManageUsers`) mints a single-use
-   activation ticket — an Identity password-reset token, `Cache-Control: no-store`,
-   valid for 24 hours (`DataProtectionTokenProviderOptions.TokenLifespan`). Issuing is
-   logged. The ticket is not a password: it cannot be used to sign in.
-2. The administrator delivers the ticket out of band, and the holder redeems it at
-   `POST /api/auth/activate` (anonymous, auth rate-limit budget) with the username and
-   their chosen password. Redeeming rotates the security stamp, so a ticket works once.
-
-Activation answers with one opaque message for unknown users, forged tickets, and
-expired tickets alike, so the endpoint cannot be used to enumerate accounts. Only
-password-policy failures are reported specifically — the caller already proved
-possession of the ticket, so that detail leaks nothing.
-
-The shell serves the redemption form at `/activate` (a public route in `apps/shell`).
-Re-issuing a ticket for an existing user is available from the users list in settings;
-it does not invalidate the current password.
+Password activation tickets (`/activate`, `/api/auth/activate`,
+`/api/users/{id}/activation-ticket`) are removed from the product.
 
 ## HTTP security (shared pipeline)
 
@@ -331,7 +316,7 @@ Authentication endpoints draw on a much smaller budget than the rest of the API.
 | `RateLimiting:Global:QueueLimit` | `0` | `0` | Queued requests; `0` rejects immediately |
 | `RateLimiting:Auth:PermitLimit` | `1000` | `10` | Budget for `AuthPathPrefixes` |
 | `RateLimiting:Auth:WindowSeconds` / `QueueLimit` | `60` / `0` | `60` / `0` | As above |
-| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/login-username`, `/api/auth/refresh`, `/api/auth/dev-login-users`, `/api/auth/activate` | same | Strict-budget paths |
+| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/refresh`, `/api/auth/dev-login-users` | same | Strict-budget paths |
 | `RateLimiting:ExemptPathPrefixes` | `/health`, `/ready` | same | Never throttled, so healthchecks and post-deploy smoke checks cannot trip limits |
 | `RateLimiting:ClientAddressHeaderName` | `X-Real-IP` | same | Caller address published by the ingress proxy |
 | `RateLimiting:TrustForwardedForHeader` | `true` | same | Fall back to the right-most `X-Forwarded-For` entry |

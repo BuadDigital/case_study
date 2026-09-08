@@ -38,6 +38,7 @@ public class CaseStudyFormsController : ControllerBase
     /// Not paged: the caller already holds the row window it is decorating.
     /// </summary>
     [HttpGet("batch")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<CaseStudyFormBatchDto>> GetBatch(
         [FromQuery] string? parentTaskIds,
         CancellationToken cancellationToken)
@@ -72,6 +73,7 @@ public class CaseStudyFormsController : ControllerBase
     }
 
     [HttpGet("{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<CaseStudyFormDto>> Get(
         Guid taskId,
         CancellationToken cancellationToken)
@@ -103,6 +105,7 @@ public class CaseStudyFormsController : ControllerBase
     }
 
     [HttpGet("party/{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<CaseStudyFormDto>> GetParty(
         Guid taskId,
         CancellationToken cancellationToken)
