@@ -9,8 +9,10 @@ namespace RealEstateEval.Api.IntegrationTests;
 
 /// <summary>
 /// Stands in for JWT bearer authentication so tests can assert the authorization policies
-/// themselves. Every accepted token is authenticated; capabilities come from the token value, so
-/// a test can describe exactly the actor it needs with <see cref="TokenFor"/>.
+/// themselves. Every accepted token is authenticated. Capability tokens from <see cref="TokenFor"/>
+/// carry exactly the listed claims. Actor tokens (`actor:userId:role`) carry
+/// <see cref="PlatformCapabilities.SubmitPartyWork"/> so they pass read policies without
+/// <see cref="PlatformCapabilities.ManageAttachments"/>, which would bypass uploader scoping.
 /// </summary>
 public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
@@ -89,7 +91,7 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
         if (token.StartsWith(ActorTokenPrefix, StringComparison.Ordinal))
         {
-            capabilities = [];
+            capabilities = [PlatformCapabilities.SubmitPartyWork];
             return true;
         }
 
