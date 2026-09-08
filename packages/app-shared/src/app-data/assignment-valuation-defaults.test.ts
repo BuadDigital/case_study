@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignmentValuationDefaults,
+  basisKeyForPremise,
   coercePremiseForBasis,
   isPremiseCompatibleWithBasis,
   premiseOptionsForBasis,
@@ -40,6 +41,13 @@ describe("assignment valuation defaults", () => {
       "hau",
       "current",
     ]);
+  });
+
+  it("pairs HBU and current use with a non-liquidation basis", () => {
+    expect(basisKeyForPremise("hau", "liquidation")).toBe("market");
+    expect(basisKeyForPremise("current", "investment")).toBe("investment");
+    expect(basisKeyForPremise("orderly", "market")).toBe("liquidation");
+    expect(basisKeyForPremise("forced", "liquidation")).toBe("liquidation");
   });
 
   it("keeps stored overrides and fills missing keys from the assignment default", () => {

@@ -18,6 +18,7 @@ import {
 } from "@platform/ui-kit";
 
 import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
+import { VALUE_PREMISE_OPTIONS } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
   Card,
   CardPad,
@@ -50,6 +51,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   buildingOnly,
   hasAdoptedMarket,
   assignmentType,
+  poNumber,
   officialValuationDate,
   saving,
   onSavingChange,
@@ -63,6 +65,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   buildingOnly: boolean;
   hasAdoptedMarket: boolean;
   assignmentType?: string;
+  poNumber?: string;
   officialValuationDate: string | null;
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
@@ -77,6 +80,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     buildingOnly,
     hasAdoptedMarket,
     assignmentType,
+    poNumber,
     onSavingChange,
     onReconSaved,
   });
@@ -91,7 +95,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     basisOptions,
     premiseOptions,
     valuePremiseKey,
-    setValuePremiseKey,
     liquidationDiscountPct,
     setLiquidationDiscountPct,
     liquidationDiscountRationale,
@@ -284,33 +287,20 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
             <div className="mb-4 grid grid-cols-1 gap-3">
               <label className="flex flex-col gap-1.5">
                 <FieldLabel>فرضية القيمة</FieldLabel>
-                <select
-                  value={valuePremiseKey}
-                  onChange={(e) => setValuePremiseKey(e.target.value)}
-                  className={cn(opsFldControl, "font-semibold cursor-pointer font-medium")}
+                <div
+                  className={cn(
+                    opsFldControl,
+                    "cursor-default bg-surface-2 font-semibold text-heading",
+                  )}
                 >
-                  <option value="">— اختر —</option>
-                  {(premiseOptions.length
-                    ? premiseOptions.filter((o) =>
-                        basisOfValueKey === "liquidation"
-                          ? o.value === "orderly" || o.value === "forced"
-                          : o.value === "hau" || o.value === "current",
-                      )
-                    : basisOfValueKey === "liquidation"
-                      ? [
-                          { value: "orderly", label: "التصفية المنظمة" },
-                          { value: "forced", label: "البيع القسري" },
-                        ]
-                      : [
-                          { value: "hau", label: "أعلى وأفضل استخدام" },
-                          { value: "current", label: "الاستخدام الحالي" },
-                        ]
-                  ).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  {premiseOptions.find((o) => o.value === valuePremiseKey)?.label ??
+                    VALUE_PREMISE_OPTIONS.find((o) => o.value === valuePremiseKey)
+                      ?.label ??
+                    (valuePremiseKey || "—")}
+                </div>
+                <span className="text-[11px] text-text-3">
+                  تُقرأ تلقائياً من تسجيل أمر العمل — لا تُختار هنا
+                </span>
               </label>
             </div>
 

@@ -27,6 +27,25 @@ export type FactorDescriptor = {
 
 export const AUTO_AREA_KEY = "area";
 
+/** Minted custom difference factors — key max 32, extra-catalog charset. */
+export const CUSTOM_FACTOR_PREFIX = "c_";
+export const CUSTOM_FACTOR_LABEL = "عامل مخصص";
+
+/** Client-minted custom row (`c_1`) or the reserved `custom` key. */
+export function isCustomFactorKey(factorKey: string): boolean {
+  return factorKey === "custom" || factorKey.startsWith(CUSTOM_FACTOR_PREFIX);
+}
+
+/** Next unused `c_n` key among rows already on the table. */
+export function nextCustomFactorKey(existing: Iterable<string>): string {
+  const taken = new Set(existing);
+  for (let n = 1; n < 1000; n++) {
+    const key = `${CUSTOM_FACTOR_PREFIX}${n}`;
+    if (!taken.has(key)) return key;
+  }
+  return `${CUSTOM_FACTOR_PREFIX}${Date.now().toString(36)}`.slice(0, 32);
+}
+
 export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
   financing: {
     label: "تسوية شروط التمويل",

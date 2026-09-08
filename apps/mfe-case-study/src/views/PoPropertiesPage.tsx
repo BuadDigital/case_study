@@ -54,6 +54,7 @@ import {
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
+  PROPERTY_TYPE_USAGE_LABEL,
 } from "../lib/app-data/po-intake-data";
 import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
 import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
@@ -334,7 +335,7 @@ export function PoPropertiesPage({
               <Tr hoverable={false}>
                 <Th>رقم الصك</Th>
                 <Th>الموقع</Th>
-                <Th>التصنيف / النوع</Th>
+                <Th>{PROPERTY_TYPE_USAGE_LABEL}</Th>
                 <Th>حالة الصك</Th>
                 <Th>الحالة</Th>
                 <ThAction aria-hidden />

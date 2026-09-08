@@ -11,8 +11,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 public sealed partial class ValuationComparableSelectionService
 {
  /// <summary>
- /// Q-8-1: save the single adjustment-factor rationale (covers all comparables) — empty clears it,
- /// and non-empty is subject to the minimum length (Q-8-2).
+ /// Q-8-1: save the single adjustment-factor rationale (covers all comparables) — empty clears it.
  /// </summary>
     public async Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
         SaveFactorRationaleAsync(
@@ -50,13 +49,6 @@ public sealed partial class ValuationComparableSelectionService
             return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
 
         var rationale = request.RationaleAr?.Trim() ?? "";
-        if (JustificationRules.IsTooShort(rationale))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["rationaleAr"] = JustificationRules.TooShortMessageAr("مبرر التسوية"),
-            });
-        }
 
         var row = await repo.FindFactorRationaleAsync(
             valuationRequestId, context, factorKey, cancellationToken);

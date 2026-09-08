@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { Table, cn, opsBtnPrimary, opsPanelCard } from "@platform/ui-kit";
 import type {
   ValuationComparableSelectionDto,
@@ -56,6 +56,8 @@ export type AdjustmentsMatrixProps = {
    * One stable ref so table memo survives shell re-renders.
    */
   dispatch: MatrixDispatch;
+  /** Rendered between the output strip and the alerts so alerts stay last. */
+  children?: ReactNode;
 };
 
 export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
@@ -73,16 +75,15 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   subjectSpecs,
   canEditSubjectSpec,
   dispatch,
+  children,
 }: AdjustmentsMatrixProps) {
   const {
     confirmDelete,
     setConfirmDelete,
     saveRationale,
-    saveLineRationale,
     lineOf,
     linePct,
     justValue,
-    overridesFor,
     basisView,
     sequentialKeys,
     removedSequential,
@@ -173,7 +174,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   "min-w-[230px] border-s border-s-border",
                 )}
               >
-                مبرر التسوية
+                مبرر عامل التسوية
               </th>
             </tr>
           </thead>
@@ -325,8 +326,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     value={justValue(factorKey)}
                     locked={locked}
                     onCommit={saveRationale}
-                    overrides={overridesFor(factorKey)}
-                    onSaveOverride={saveLineRationale}
                   />
                 </tr>
               );
@@ -335,7 +334,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             {/* After sequential */}
             <tr className="bg-surface-2">
               <LabelCell
-                label="السعر بعد التسويات التسلسلية"
+                label="السعر بعد تسوية ظروف السوق"
                 hint="ضربية بالترتيب"
                 tip="السعر × (1+تمويل) × (1+سوق) × (1+نوع)."
                 locked={locked}
@@ -382,8 +381,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 value={justValue(AUTO_AREA_KEY)}
                 locked={locked}
                 onCommit={saveRationale}
-                overrides={overridesFor(AUTO_AREA_KEY)}
-                onSaveOverride={saveLineRationale}
               />
             </tr>
 
@@ -489,7 +486,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                             <InlineDraftInput
                               key={descKey}
                               disabled={locked}
-                              placeholder="وصف المقارن…"
+                              placeholder="وصف عامل التسوية"
                               value={line?.descriptionAr ?? ""}
                               onCommit={(text) =>
                                 void dispatch({
@@ -511,8 +508,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     value={justValue(factorKey)}
                     locked={locked}
                     onCommit={saveRationale}
-                    overrides={overridesFor(factorKey)}
-                    onSaveOverride={saveLineRationale}
                   />
                 </tr>
               );
@@ -640,6 +635,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
         basisView={basisView}
         weightedPricePerSqm={selection.weightedPricePerSqm}
       />
+
+      {children}
 
       <MatrixAlertsPanel alerts={alerts} />
 

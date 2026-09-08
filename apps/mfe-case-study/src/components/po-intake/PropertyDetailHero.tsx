@@ -13,7 +13,9 @@ import {
   assignmentCompositeTag,
   formatDateAr,
   formatPropertyLocation,
+  formatPropertyTypeLine,
   identifierTypeLabel,
+  PROPERTY_TYPE_USAGE_LABEL,
   propertyUiStatusLabel,
   showsCourtFields,
   type PoIntakeRecord,
@@ -421,22 +423,23 @@ export function PropertyDetailHero({
             node: ReactNode;
             valueTone?: "due";
           }[] = [];
+          const typeLine = formatPropertyTypeLine(property);
+          if (typeLine)
+            stripCells.push({
+              label: PROPERTY_TYPE_USAGE_LABEL,
+              node: typeLine,
+            });
+          if (locationLine)
+            stripCells.push({ label: "المدينة / الحي", node: locationLine });
+          if (property.area.trim())
+            stripCells.push({
+              label: "مساحة الأرض",
+              node: `${property.area.trim()} م²`,
+            });
           if (property.ownerName.trim())
             stripCells.push({
               label: "اسم المالك",
               node: property.ownerName.trim(),
-            });
-          if (locationLine)
-            stripCells.push({ label: "المدينة / الحي", node: locationLine });
-          if (property.classification.trim())
-            stripCells.push({
-              label: "التصنيف",
-              node: property.classification.trim(),
-            });
-          if (property.area.trim())
-            stripCells.push({
-              label: "المساحة",
-              node: `${property.area.trim()} م²`,
             });
           if (showsCourtFields(record.assignmentType) && courtLine && !compact)
             stripCells.push({ label: "المحكمة / الدائرة", node: courtLine });

@@ -117,6 +117,20 @@ export function coercePremiseForBasis(
   return defaultPremiseKeyForBasis(basisKey);
 }
 
+/** Choosing HBU/current use leaves liquidation; orderly/forced requires it. */
+export function basisKeyForPremise(
+  premiseKey: string,
+  currentBasisKey: string,
+): string {
+  if (premiseKey === "orderly" || premiseKey === "forced") {
+    return "liquidation";
+  }
+  if (premiseKey === "hau" || premiseKey === "current") {
+    return currentBasisKey === "liquidation" ? "market" : currentBasisKey;
+  }
+  return currentBasisKey;
+}
+
 export function premiseOptionsForBasis(basisKey: string): ValuationSelectOption[] {
   const allowed = new Set(
     basisKey === "liquidation" ? ["orderly", "forced"] : ["hau", "current"],

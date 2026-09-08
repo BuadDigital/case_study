@@ -644,7 +644,7 @@ export async function saveValuationComparableMarket(
   }
 }
 
-/** Q-8-1: save/clear single adjustment-factor justification — empty clears; min 10 chars (Q-8-2). */
+/** Q-8-1: save/clear single adjustment-factor justification — empty clears. */
 export async function saveAdjustmentFactorRationale(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,

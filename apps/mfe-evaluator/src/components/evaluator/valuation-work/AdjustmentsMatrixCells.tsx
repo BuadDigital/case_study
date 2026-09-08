@@ -4,8 +4,6 @@ import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn, opsLetterCard } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 
-import { JUSTIFICATION_MIN_LENGTH } from "./lib/shell-utils";
-
 /** Enter commits like blur does (same onBlur handler); Escape discards the field's own change. */
 function commitOnEnter(e: KeyboardEvent<HTMLInputElement>) {
   if (e.key === "Enter") {
@@ -88,6 +86,7 @@ export function LabelCell({
   confirmDelete,
   onConfirmDelete,
   onDelete,
+  onRenameLabel,
 }: {
   label: string;
   hint?: string;
@@ -109,17 +108,29 @@ export function LabelCell({
   confirmDelete?: string | null;
   onConfirmDelete?: (key: string | null) => void;
   onDelete?: () => void;
+  /** Custom difference factor — the name is typed in the label cell. */
+  onRenameLabel?: (text: string) => void;
 }) {
   return (
     <td className={tdLabelClass}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <div
-            title={tip || definition || undefined}
-            className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
-          >
-            {label}
-          </div>
+          {onRenameLabel ? (
+            <InlineDraftInput
+              disabled={locked}
+              placeholder="اسم العامل…"
+              value={label}
+              onCommit={onRenameLabel}
+              className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1 text-[12.5px] font-bold text-heading"
+            />
+          ) : (
+            <div
+              title={tip || definition || undefined}
+              className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
+            >
+              {label}
+            </div>
+          )}
           {hint ? (
             <div className="mt-px text-[10.5px] font-normal leading-[1.4] text-text-3">
               {hint}
@@ -241,49 +252,36 @@ export function SubjCell({ value, note }: { value: string; note?: string }) {
   );
 }
 
-/** Rule Q-8-1: factor-level justification + “per-comparable override” panel when they differ.
-    Draft lives in the cell — parent ownership re-rendered the whole table per keystroke (rerender-defer-reads). */
+/** One justification covering every comparable in the row. Draft lives in the cell. */
 export function JustCell({
   factorKey,
   value,
   locked,
   onCommit,
-  overrides,
-  onSaveOverride,
 }: {
   factorKey?: string;
   value?: string;
   locked?: boolean;
   /** On blur only when the value changed; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
-  overrides?: { id: string; label: string; value: string }[];
-  onSaveOverride?: (selectionId: string, factorKey: string, text: string) => void;
 }) {
-  const [showOverrides, setShowOverrides] = useState(false);
-  const [overrideDraft, setOverrideDraft] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<string | null>(null);
   if (!factorKey || !onCommit) {
     return <td className={tdJustClass} />;
   }
   const committed = value ?? "";
   const text = draft ?? committed;
-  // Rule Q-8-2: token/short justification (below min length) is not saved.
-  const tooShort =
-    text.trim().length > 0 && text.trim().length < JUSTIFICATION_MIN_LENGTH;
-  const overrideCount = (overrides ?? []).filter(
-    (o) => (overrideDraft[o.id] ?? o.value).trim().length > 0,
-  ).length;
   return (
     <td className={tdJustClass}>
       <input
         type="text"
         value={text}
         disabled={locked}
-        placeholder="مبرّر التسوية (يغطي كل المقارنات)؟"
+        placeholder="مبرر عامل التسوية"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={commitOnEnter}
         onBlur={() => {
-          if (draft == null || tooShort) return;
+          if (draft == null) return;
           if (draft === committed) {
             setDraft(null);
             return;
@@ -292,70 +290,8 @@ export function JustCell({
             if (ok !== false) setDraft(null);
           });
         }}
-        className={cn(
-          "w-full rounded-[7px] border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text",
-          tooShort ? "border-danger" : "border-border",
-        )}
+        className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text"
       />
-      {tooShort ? (
-        <div className="mt-1 text-[10.5px] font-semibold text-danger">
-          الحد الأدنى {JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)
-        </div>
-      ) : null}
-      {overrides && overrides.length > 0 && onSaveOverride ? (
-        <>
-          <button
-            type="button"
-            disabled={locked}
-            onClick={() => setShowOverrides((v) => !v)}
-            className="mt-1 text-[10.5px] font-semibold text-text-3 hover:text-text"
-          >
-            تخصيص لمقارن بعينه{overrideCount > 0 ? ` (${overrideCount})` : ""}{" "}
-            {showOverrides ? "▴" : "▾"}
-          </button>
-          {showOverrides ? (
-            <div className="mt-1.5 space-y-1.5">
-              {overrides.map((o) => {
-                const draft = overrideDraft[o.id] ?? o.value;
-                const overrideTooShort =
-                  draft.trim().length > 0 &&
-                  draft.trim().length < JUSTIFICATION_MIN_LENGTH;
-                return (
-                  <div key={o.id}>
-                    <input
-                      type="text"
-                      value={draft}
-                      disabled={locked}
-                      placeholder={`${o.label} — يرث مبرر العامل`}
-                      onChange={(e) =>
-                        setOverrideDraft((prev) => ({
-                          ...prev,
-                          [o.id]: e.target.value,
-                        }))
-                      }
-                      onKeyDown={commitOnEnter}
-                      onBlur={() => {
-                        if (overrideTooShort) return;
-                        if (draft !== o.value)
-                          onSaveOverride(o.id, factorKey, draft);
-                      }}
-                      className={cn(
-                        "w-full rounded-[6px] border bg-surface-2 px-2 py-1 text-[11px] text-text",
-                        overrideTooShort ? "border-danger" : "border-border",
-                      )}
-                    />
-                    {overrideTooShort ? (
-                      <div className="mt-0.5 text-[10px] font-semibold text-danger">
-                        الحد الأدنى {JUSTIFICATION_MIN_LENGTH} أحرف
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </>
-      ) : null}
     </td>
   );
 }
@@ -448,29 +384,51 @@ export function InlineDraftInput({
   placeholder,
   className,
   onCommit,
+  hintUntilFocus = false,
 }: {
   value: string;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
   onCommit: (text: string) => void;
+  /** Spec hint: hide the current text on focus and restore it if nothing was typed. */
+  hintUntilFocus?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const display = draft ?? (hintUntilFocus && focused ? "" : value);
   return (
     <input
       type="text"
       disabled={disabled}
-      placeholder={placeholder}
-      value={draft ?? value}
-      onChange={(e) => setDraft(e.target.value)}
+      placeholder={focused ? undefined : placeholder}
+      value={display}
+      onFocus={() => {
+        setFocused(true);
+        if (hintUntilFocus && draft == null) setDraft("");
+      }}
+      onChange={(e) => {
+        setEdited(true);
+        setDraft(e.target.value);
+      }}
       onKeyDown={commitOnEnter}
       onBlur={() => {
+        setFocused(false);
         if (draft == null) return;
+        if (hintUntilFocus && !edited) {
+          setDraft(null);
+          return;
+        }
         const text = draft;
         setDraft(null);
+        setEdited(false);
         if (text !== value) onCommit(text);
       }}
-      className={className}
+      className={cn(
+        className,
+        focused ? "placeholder:opacity-0" : hintUntilFocus && value && "text-text-3",
+      )}
     />
   );
 }
@@ -526,15 +484,14 @@ export function AddFactorRow({
   locked,
   colSpan,
   onAdd,
+  onAddCustom,
 }: {
   options: { factorKey: string; labelAr: string }[];
   locked: boolean;
   colSpan: number;
   onAdd: (factorKey: string, labelAr: string) => void;
+  onAddCustom: () => void;
 }) {
-  const [selected, setSelected] = useState(options[0]?.factorKey ?? "");
-  if (!options.length) return null;
-  const current = options.find((o) => o.factorKey === selected) ?? options[0];
   return (
     <tr className="bg-surface-2">
       <td colSpan={colSpan} className="px-4 py-2.5">
@@ -542,22 +499,31 @@ export function AddFactorRow({
           <span className="text-[12px] font-semibold text-text-2">
             إضافة عامل اختلاف
           </span>
-          <select
-            disabled={locked}
-            value={current.factorKey}
-            onChange={(e) => setSelected(e.target.value)}
-            className="min-w-[180px] rounded-[var(--radius-sm)] border border-border-md bg-surface px-2.5 py-[7px] text-[12.5px] text-heading"
-          >
-            {options.map((o) => (
-              <option key={o.factorKey} value={o.factorKey}>
-                {o.labelAr}
+          {options.length > 0 ? (
+            <select
+              disabled={locked}
+              value=""
+              onChange={(e) => {
+                const key = e.target.value;
+                const opt = options.find((o) => o.factorKey === key);
+                if (opt) onAdd(opt.factorKey, opt.labelAr);
+              }}
+              className="min-w-[180px] rounded-[var(--radius-sm)] border border-border-md bg-surface px-2.5 py-[7px] text-[12.5px] text-heading"
+            >
+              <option value="" disabled>
+                اختر من القائمة…
               </option>
-            ))}
-          </select>
+              {options.map((o) => (
+                <option key={o.factorKey} value={o.factorKey}>
+                  {o.labelAr}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <button
             type="button"
             disabled={locked}
-            onClick={() => onAdd(current.factorKey, current.labelAr)}
+            onClick={onAddCustom}
             className="cursor-pointer rounded-[var(--radius-sm)] border-none bg-ink px-3.5 py-[7px] text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-55"
           >
             إضافة

@@ -158,6 +158,8 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             AssignmentType = property.WorkOrder is { } wo
                 ? AssignmentTypeLabels.ToLabel(wo.AssignmentType)
                 : "",
+            BasisOfValueKey = property.WorkOrder?.BasisOfValueKey,
+            ValuePremiseKey = property.WorkOrder?.ValuePremiseKey,
             DeedKind = property.DeedKind.ToString(),
             DeedNumber = property.DeedNumber,
             DeedDate = property.DeedDate,

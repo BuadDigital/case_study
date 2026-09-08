@@ -9,10 +9,8 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import {
-  DEFAULT_DIFFERENCE_KEYS,
-  type lineForSave,
-} from "./market-save-mappers";
+import { AUTO_AREA_KEY, SEQUENTIAL_SET } from "./factor-registry";
+import { type lineForSave } from "./market-save-mappers";
 
 export const LAND_WITHIN_COST = "land_within_cost";
 export const MARKET_CONTEXT = "market";
@@ -75,7 +73,7 @@ export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
     definitions[f.key] = f.excludesAr
       ? `${f.definitionAr}\nلا يشمل: ${f.excludesAr}`
       : f.definitionAr;
-    if (!DEFAULT_DIFFERENCE_KEYS.has(f.key) && f.key !== "area") {
+    if (!SEQUENTIAL_SET.has(f.key) && f.key !== AUTO_AREA_KEY) {
       addable.push({ factorKey: f.key, labelAr: f.labelAr });
     }
   }
@@ -83,8 +81,8 @@ export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
 }
 
 /**
- * Interactive-form spec (buildNarrative): adjustments analysis text is generated from factor
- * justifications (“not justified” when empty) until the appraiser edits it manually.
+ * Interactive-form spec (buildNarrative): adjustments analysis lists only written
+ * factor justifications until the appraiser edits it manually. Empty factors are omitted.
  * Rule Q-8-1: the factor-level justification (مبرر التسوية) lives in its own per-request table,
  * not on the adjustment line — same precedence as `useAdjustmentsMatrixModel.justValue`. The
  * per-comparable line rationale is a back-compat/override fallback only.
@@ -105,12 +103,16 @@ export function buildAutoNarrative(
   for (const f of factorRows) {
     const line = first.find((l) => l.factorKey === f.factorKey);
     const just = (rationaleByKey.get(f.factorKey) ?? line?.rationale ?? "").trim();
-    bullets.push(`• ${f.labelAr || f.factorKey} — ${just || "لم يتم تبريره"}`);
+    if (!just) continue;
+    bullets.push(`• ${f.labelAr || f.factorKey} — ${just}`);
   }
   const weightJust = (
     adopted[0]?.market?.weightOverrideRationale ?? ""
   ).trim();
-  bullets.push(`• الوزن النسبي — ${weightJust || "لم يتم تبريره"}`);
+  if (weightJust) {
+    bullets.push(`• الوزن النسبي — ${weightJust}`);
+  }
+  if (bullets.length === 0) return "مبررات التسويات:";
   return `مبررات التسويات:\n${bullets.join("\n")}`;
 }
 

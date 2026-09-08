@@ -16,6 +16,10 @@ public sealed class CaseStudyValuationPropertyContextDto
     public Guid WorkOrderId { get; set; }
     public string PoNumber { get; set; } = "";
     public string AssignmentType { get; set; } = "";
+    /// <summary>Work-order basis of value — source for the final-opinion screen.</summary>
+    public string? BasisOfValueKey { get; set; }
+    /// <summary>Work-order value premise — source for the final-opinion screen.</summary>
+    public string? ValuePremiseKey { get; set; }
 
     public string DeedKind { get; set; } = "";
     public string DeedNumber { get; set; } = "";

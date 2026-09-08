@@ -138,7 +138,7 @@ export function PoPropertyBourseForm({
           />
           <RegField
             id="area"
-            label="المساحة (م²)"
+            label="مساحة الأرض (م²)"
             dir="ltr"
             inputMode="decimal"
             value={property.area}

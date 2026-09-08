@@ -7,6 +7,7 @@ import {
   formatPropertyLocation,
   formatPropertyRestrictionsLine,
   formatPropertyTypeLine,
+  PROPERTY_TYPE_USAGE_LABEL,
   hasBourseDetailFields,
   showsCourtFields,
   skipsBourseForIdentifier,
@@ -92,7 +93,7 @@ export function PoDetailPropertyCard({
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-[10px] font-semibold text-text-3">
-            التصنيف / النوع
+            {PROPERTY_TYPE_USAGE_LABEL}
           </span>
           <span className="text-xs leading-snug text-text">
             {typeLine || "—"}
@@ -102,7 +103,7 @@ export function PoDetailPropertyCard({
           <>
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[10px] font-semibold text-text-3">
-                المساحة
+                مساحة الأرض
               </span>
               <span className="text-xs leading-snug text-text">
                 {property.area || "—"}

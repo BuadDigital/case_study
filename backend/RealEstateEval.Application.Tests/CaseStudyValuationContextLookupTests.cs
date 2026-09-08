@@ -34,6 +34,8 @@ public class CaseStudyValuationContextLookupTests
         Assert.Equal("PO-900", context.PoNumber);
         Assert.Equal("تنفيذ", context.AssignmentType);
         Assert.Equal(AssignmentType.Execution, context.AssignmentTypeValue());
+        Assert.Equal("market", context.BasisOfValueKey);
+        Assert.Equal("hau", context.ValuePremiseKey);
         Assert.Equal(nameof(DeedKind.Traditional), context.DeedKind);
         Assert.Equal(DeedKind.Traditional, context.DeedKindValue());
         Assert.Equal("yes", context.HasStructuresToValue);
@@ -133,6 +135,8 @@ public class CaseStudyValuationContextLookupTests
             PoNumber = " PO-900 ",
             ClientId = ClientId,
             ReportUserClientIdsJson = WorkOrderReportUsers.Serialize([ReportUserId]),
+            BasisOfValueKey = "market",
+            ValuePremiseKey = "hau",
         });
         cs.WorkOrderProperties.Add(new WorkOrderProperty
         {

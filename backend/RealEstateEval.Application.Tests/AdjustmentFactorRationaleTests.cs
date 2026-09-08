@@ -63,7 +63,7 @@ public class AdjustmentFactorRationaleTests
     }
 
     [Fact]
-    public async Task Save_factor_rationale_upserts_clears_and_rejects_short_text()
+    public async Task Save_factor_rationale_upserts_clears_and_accepts_short_text()
     {
         await using var contexts = TestDatabases.Create("factor-rationale");
         var db = contexts.Valuation;
@@ -78,8 +78,7 @@ public class AdjustmentFactorRationaleTests
             new ValuationReportFreezeGate(db),
             new StubOrganizationSettings());
 
-        // Too short — rejected (Q-8-2).
-        var (_, shortErrors) = await service.SaveFactorRationaleAsync(
+        var (shortSaved, shortErrors) = await service.SaveFactorRationaleAsync(
             id,
             new SaveAdjustmentFactorRationaleRequest
             {
@@ -88,8 +87,9 @@ public class AdjustmentFactorRationaleTests
                 RationaleAr = "قصير",
             },
             "user-1");
-        Assert.NotNull(shortErrors);
-        Assert.Contains("rationaleAr", shortErrors!.Keys);
+        Assert.Null(shortErrors);
+        Assert.Equal("قصير", shortSaved!.RationaleAr);
+        Assert.Single(db.ValuationAdjustmentFactorRationales);
 
         // Save properly and then update.
         var (saved, saveErrors) = await service.SaveFactorRationaleAsync(

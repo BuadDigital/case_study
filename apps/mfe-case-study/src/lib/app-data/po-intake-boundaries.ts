@@ -69,7 +69,7 @@ export function buildPropertyDescriptionLine(
   ].filter(Boolean);
   const head = parts.join(" ");
   const area = property.area.trim()
-    ? `مساحة ${property.area.trim()} م²`
+    ? `مساحة الأرض ${property.area.trim()} م²`
     : "";
   const district = property.district.trim()
     ? `بحي ${property.district.trim()}`

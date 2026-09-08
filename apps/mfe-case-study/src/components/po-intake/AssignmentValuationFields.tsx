@@ -4,9 +4,10 @@ import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
   VALUATION_PURPOSE_OPTIONS,
   VALUE_BASIS_OPTIONS,
+  VALUE_PREMISE_OPTIONS,
   assignmentValuationDefaults,
+  basisKeyForPremise,
   coercePremiseForBasis,
-  premiseOptionsForBasis,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { type AssignmentType } from "../../lib/app-data/po-intake-data";
 
@@ -36,9 +37,9 @@ export function AssignmentValuationFields({
   if (!assignmentType) return null;
 
   const defaults = assignmentValuationDefaults(assignmentType, subClientId);
-  const premiseOptions = premiseOptionsForBasis(basisKey || defaults.basisKey);
+  const resolvedBasis = basisKey || defaults.basisKey;
   const resolvedPremise = coercePremiseForBasis(
-    basisKey || defaults.basisKey,
+    resolvedBasis,
     premiseKey || defaults.premiseKey,
   );
 
@@ -61,12 +62,10 @@ export function AssignmentValuationFields({
         id={`${idPrefix}_value_basis`}
         label="أساس القيمة"
         required
-        value={basisKey || defaults.basisKey}
+        value={resolvedBasis}
         options={VALUE_BASIS_OPTIONS}
         hint={
-          (basisKey || defaults.basisKey) === defaults.basisKey
-            ? DEFAULT_HINT
-            : undefined
+          resolvedBasis === defaults.basisKey ? DEFAULT_HINT : undefined
         }
         onChange={(next) => {
           onBasisChange(next);
@@ -78,9 +77,13 @@ export function AssignmentValuationFields({
         label="فرضية القيمة"
         required
         value={resolvedPremise}
-        options={premiseOptions}
+        options={VALUE_PREMISE_OPTIONS}
         hint={resolvedPremise === defaults.premiseKey ? DEFAULT_HINT : undefined}
-        onChange={onPremiseChange}
+        onChange={(next) => {
+          const nextBasis = basisKeyForPremise(next, resolvedBasis);
+          if (nextBasis !== resolvedBasis) onBasisChange(nextBasis);
+          onPremiseChange(next);
+        }}
       />
     </>
   );

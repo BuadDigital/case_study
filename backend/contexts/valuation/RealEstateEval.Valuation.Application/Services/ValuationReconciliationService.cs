@@ -39,14 +39,16 @@ public sealed class ValuationReconciliationService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var entity = await repo.GetWithMethodsAsync(valuationRequestId, cancellationToken);
 
-        var assignmentType = await ResolveAssignmentTypeAsync(vr, cancellationToken);
+        var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
         return ToDto(
             vr,
             market?.MarketOpinionValue ?? 0m,
             cost?.CostOpinionWithLand ?? 0m,
             entity,
             await GetEnabledKindsAsync(vr, cancellationToken),
-            assignmentType);
+            workOrder.AssignmentType,
+            workOrder.BasisOfValueKey,
+            workOrder.ValuePremiseKey);
     }
 
  /// <summary>Q-2: a disabled approach neither shows a row nor enters the weight.</summary>
@@ -78,15 +80,25 @@ public sealed class ValuationReconciliationService(
             settings.CostApproachEnabled);
     }
 
-    private async Task<AssignmentType> ResolveAssignmentTypeAsync(
-        ValuationRequest vr,
-        CancellationToken cancellationToken)
+    private async Task<(AssignmentType AssignmentType, string? BasisOfValueKey, string? ValuePremiseKey)>
+        ResolveWorkOrderValuationAsync(
+            ValuationRequest vr,
+            CancellationToken cancellationToken)
     {
         var propertyGuid = vr.PropertyId;
         if (propertyGuid == Guid.Empty)
-            return AssignmentType.Execution;
+            return (AssignmentType.Execution, null, null);
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
-        return context?.AssignmentTypeValue() ?? AssignmentType.Execution;
+        return (
+            context?.AssignmentTypeValue() ?? AssignmentType.Execution,
+            TrimOrNull(context?.BasisOfValueKey),
+            TrimOrNull(context?.ValuePremiseKey));
+    }
+
+    private static string? TrimOrNull(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     public async Task<(ValuationReconciliationDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -301,7 +313,9 @@ public sealed class ValuationReconciliationService(
         decimal costValue,
         ValuationReconciliation? entity,
         IReadOnlyList<string> enabledKinds,
-        AssignmentType assignmentType)
+        AssignmentType assignmentType,
+        string? workOrderBasisKey = null,
+        string? workOrderPremiseKey = null)
     {
  // Q-2: a disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
@@ -355,16 +369,14 @@ public sealed class ValuationReconciliationService(
         var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
         var weighted = ReconciliationRules.WeightedValue(includedMethods);
         var decimals = entity?.FinalRoundDecimals ?? 0;
-        var basis = string.IsNullOrWhiteSpace(entity?.BasisOfValueKey)
-            ? AssignmentValuationDefaults.BasisOfValueKey(assignmentType)
-            : entity!.BasisOfValueKey;
-        var premise = entity?.ValuePremiseKey;
-        if (string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.OrdinalIgnoreCase)
-            && string.IsNullOrWhiteSpace(premise))
-        {
-            // Forced-sale discount (interactive model spec) — default premise for liquidation.
-            premise = ValuePremiseKeys.Forced;
-        }
+        var basis = FirstValuationKey(
+            workOrderBasisKey,
+            entity?.BasisOfValueKey,
+            AssignmentValuationDefaults.BasisOfValueKey(assignmentType));
+        var premise = FirstValuationKey(
+            workOrderPremiseKey,
+            entity?.ValuePremiseKey,
+            AssignmentValuationDefaults.PremiseKey(assignmentType));
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;
         var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
             weighted,
@@ -428,6 +440,16 @@ public sealed class ValuationReconciliationService(
                 };
             })
             .ToList();
+    }
+
+    private static string FirstValuationKey(params string?[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var trimmed = key?.Trim();
+            if (!string.IsNullOrEmpty(trimmed)) return trimmed;
+        }
+        return "";
     }
 
     private static IReadOnlyList<ValuationMethodologyAlertOverrideDto> ParseAlertOverrides(string? json)

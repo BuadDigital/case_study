@@ -10,8 +10,10 @@ import {
   boundariesMarkedUnavailable,
   formatDateAr,
   formatPropertyRestrictionsLine,
+  formatPropertyTypeLine,
   hasBourseDetailFields,
   ownershipStatusLabel,
+  PROPERTY_TYPE_USAGE_LABEL,
   showsCourtFields,
   skipsBourseForIdentifier,
   PROPERTY_BOUNDARY_ROWS,
@@ -192,10 +194,12 @@ export function PropertyDetailBasicTab({
 
       <SectionHeader divider>البيانات المساحية</SectionHeader>
       <FieldsGrid cols={3}>
-        <FieldBox label="التصنيف" value={property.classification} />
-        <FieldBox label="النوع / الاستخدام" value={property.propertyType} />
         <FieldBox
-          label="المساحة الإجمالية"
+          label={PROPERTY_TYPE_USAGE_LABEL}
+          value={formatPropertyTypeLine(property)}
+        />
+        <FieldBox
+          label="مساحة الأرض"
           value={property.area.trim() ? `${property.area.trim()} م²` : ""}
         />
       </FieldsGrid>

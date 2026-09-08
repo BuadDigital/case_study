@@ -6,6 +6,7 @@ import {
   getIssuancePdf,
   getReportIssuanceState,
   getValuationReportDocument,
+  getWorkOrder,
   issueDepositVersion,
   registerDepositCertificate,
   reopenReportIssuance,
@@ -28,6 +29,7 @@ import {
   finalOpinionComputed,
   mergeReconMethods,
   reconciliationSaveRequest,
+  workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { JUSTIFICATION_MIN_LENGTH, apiConfig } from "./lib/shell-utils";
 
@@ -40,6 +42,7 @@ export type FinalOpinionWorkflowArgs = {
   buildingOnly: boolean;
   hasAdoptedMarket: boolean;
   assignmentType?: string;
+  poNumber?: string;
   onSavingChange: (saving: boolean) => void;
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 };
@@ -58,6 +61,7 @@ export function useFinalOpinionWorkflow({
   buildingOnly,
   hasAdoptedMarket,
   assignmentType,
+  poNumber,
   onSavingChange,
   onReconSaved,
 }: FinalOpinionWorkflowArgs) {
@@ -67,16 +71,23 @@ export function useFinalOpinionWorkflow({
   );
   const [methodsRationale, setMethodsRationale] = useState("");
   const [finalRoundDecimals, setFinalRoundDecimals] = useState("0");
-  // Pure derivation from assignment type — not user-controlled and not overwritten by saved state
-  // (rerender-derived-state-no-effect; was state written from five places with the same value).
-  const basisOfValueKey = useMemo(
-    () =>
-      assignmentType?.trim()
-        ? basisOfValueKeyForAssignment(assignmentType)
-        : "market",
-    [assignmentType],
-  );
-  const [valuePremiseKey, setValuePremiseKey] = useState("");
+  const [poKeys, setPoKeys] = useState<{
+    basis: string | null;
+    premise: string | null;
+  }>({ basis: null, premise: null });
+  const basisOfValueKey = useMemo(() => {
+    const fromPo =
+      poKeys.basis?.trim() || recon?.basisOfValueKey?.trim() || "";
+    if (fromPo) return fromPo;
+    return assignmentType?.trim()
+      ? basisOfValueKeyForAssignment(assignmentType)
+      : "market";
+  }, [assignmentType, poKeys.basis, recon?.basisOfValueKey]);
+  const valuePremiseKey = workOrderPremiseKey({
+    poPremise: poKeys.premise,
+    reconPremise: recon?.valuePremiseKey,
+    assignmentType,
+  });
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
     useState("");
@@ -107,6 +118,23 @@ export function useFinalOpinionWorkflow({
     // State is also refreshed after reconciliation save (gates may change).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valuationRequestId, gates?.allowsIssuance]);
+
+  useEffect(() => {
+    const config = apiConfig();
+    const n = poNumber?.trim();
+    if (!config || !n) return;
+    let cancelled = false;
+    void getWorkOrder(config, n).then((res) => {
+      if (cancelled || !res.ok) return;
+      setPoKeys({
+        basis: res.data.basisOfValueKey ?? null,
+        premise: res.data.valuePremiseKey ?? null,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [poNumber]);
 
   const issueDeposit = async () => {
     const config = apiConfig();
@@ -210,22 +238,6 @@ export function useFinalOpinionWorkflow({
       : [];
   }, [valuationLists]);
 
-  // Value basis always comes from the work order (PO) — do not force liquidation when type is absent.
-  useEffect(() => {
-    if (!assignmentType?.trim()) return;
-    const next = basisOfValueKeyForAssignment(assignmentType);
-    if (next === "liquidation") {
-      setValuePremiseKey((prev) =>
-        prev === "orderly" || prev === "forced" ? prev : "orderly",
-      );
-    } else {
-      setLiquidationDiscountPct("0");
-      setValuePremiseKey((prev) =>
-        prev === "orderly" || prev === "forced" ? "current" : prev,
-      );
-    }
-  }, [assignmentType]);
-
   // Hydration: new key = full load (full reseed); same key with a new batch = silent
   // reload that merges computed approach values and keeps user weights/rationales.
   const hydratedKeyRef = useRef<number | null>(null);
@@ -241,13 +253,6 @@ export function useFinalOpinionWorkflow({
       setReconMethods([]);
       setMethodsRationale("");
       setFinalRoundDecimals("0");
-      if (assignmentType?.trim()) {
-        setValuePremiseKey(
-          basisOfValueKeyForAssignment(assignmentType) === "liquidation"
-            ? "orderly"
-            : "",
-        );
-      }
       setLiquidationDiscountPct("0");
       setLiquidationDiscountRationale("");
       setAlertOverrides({});
@@ -256,19 +261,6 @@ export function useFinalOpinionWorkflow({
     setReconMethods(recon.methods);
     setMethodsRationale(recon.methodsRationale ?? "");
     setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
-    // Value basis from the work order (PO) only — not overwritten by previously saved reconciliation.
-    if (assignmentType?.trim()) {
-      const nextBasis = basisOfValueKeyForAssignment(assignmentType);
-      let nextPremise = recon.valuePremiseKey || "";
-      if (nextBasis === "liquidation") {
-        if (nextPremise !== "orderly" && nextPremise !== "forced") {
-          nextPremise = "orderly";
-        }
-      }
-      setValuePremiseKey(nextPremise);
-    } else {
-      setValuePremiseKey(recon.valuePremiseKey || "");
-    }
     setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
     const ovMap: Record<
@@ -339,7 +331,6 @@ export function useFinalOpinionWorkflow({
     setReconMethods(res.data.methods);
     setMethodsRationale(res.data.methodsRationale ?? "");
     setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
-    setValuePremiseKey(res.data.valuePremiseKey || "");
     setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");
     showToast(
@@ -407,7 +398,6 @@ export function useFinalOpinionWorkflow({
     basisOptions,
     premiseOptions,
     valuePremiseKey,
-    setValuePremiseKey,
     liquidationDiscountPct,
     setLiquidationDiscountPct,
     liquidationDiscountRationale,

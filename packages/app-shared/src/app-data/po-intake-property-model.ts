@@ -135,15 +135,16 @@ export function formatPropertyLocation(
   return "";
 }
 
+export const PROPERTY_TYPE_USAGE_LABEL = "نوع العقار / الاستخدام";
+
 export function formatPropertyTypeLine(property: Pick<
   PoPropertyIntake,
   "classification" | "propertyType"
 >): string {
-  const typeLabel = property.propertyType.trim() || property.classification.trim();
-  if (property.classification.trim() && property.propertyType.trim()) {
-    return `${property.classification.trim()} · ${property.propertyType.trim()}`;
-  }
-  return typeLabel || "";
+  const type = property.propertyType.trim();
+  const usage = property.classification.trim();
+  if (type && usage && type !== usage) return `${type} / ${usage}`;
+  return type || usage || "";
 }
 
 export type PoPropertyIntake = {

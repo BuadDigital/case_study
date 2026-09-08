@@ -7,6 +7,7 @@ import type {
   ValuationCostApproachDto,
   ValuationReconciliationMethodDto,
 } from "@platform/api-client";
+import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import { fmt } from "./shell-utils";
 
@@ -129,6 +130,24 @@ export function finalOpinionComputed({
 }
 
 export type FinalOpinionComputed = ReturnType<typeof finalOpinionComputed>;
+
+/** PO selection wins; saved recon is fallback; assignment type is last resort. */
+export function workOrderPremiseKey({
+  poPremise,
+  reconPremise,
+  assignmentType,
+}: {
+  poPremise?: string | null;
+  reconPremise?: string | null;
+  assignmentType?: string;
+}): string {
+  const fromPo = poPremise?.trim();
+  if (fromPo) return fromPo;
+  const fromRecon = reconPremise?.trim();
+  if (fromRecon) return fromRecon;
+  if (!assignmentType?.trim()) return "";
+  return valuePremiseKeyForAssignment(assignmentType);
+}
 
 export type ReconciliationDraft = {
   reconMethods: ValuationReconciliationMethodDto[];

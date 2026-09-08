@@ -829,13 +829,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
 
-        // Q-8-2: placeholder rationale is rejected.
+        // Short factor justification is accepted (no minimum length on this field).
         using var shortRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
-        var tooShort = await client.SendAsync(shortRationale);
-        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
-        Assert.Equal("application/problem+json", tooShort.Content.Headers.ContentType?.MediaType);
+        var shortSaved = await client.SendAsync(shortRationale);
+        Assert.Equal(HttpStatusCode.OK, shortSaved.StatusCode);
+        Assert.Contains("قصير", await shortSaved.Content.ReadAsStringAsync());
 
         // Q-8-1: one rationale per factor — persisted and returned in the comparables payload.
         using var saveRationale = AuthorizedPut(

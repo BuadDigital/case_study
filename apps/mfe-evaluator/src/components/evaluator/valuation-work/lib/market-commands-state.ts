@@ -184,6 +184,19 @@ export function linesWithFactorAppended(
   ];
 }
 
+/** Rename a custom difference factor — other lines keep their labels. */
+export function linesWithLabel(
+  item: ValuationComparableSelectionDto,
+  factorKey: string,
+  labelAr: string,
+): SavedLine[] {
+  const next = labelAr.trim();
+  return (item.market?.adjustmentLines ?? []).map((l, i) => ({
+    ...lineForSave(item, l, i),
+    labelAr: l.factorKey === factorKey && next ? next : l.labelAr,
+  }));
+}
+
 /** compSpec: comparable description for one factor — other lines keep theirs. */
 export function linesWithDescription(
   item: ValuationComparableSelectionDto,
