@@ -1,5 +1,5 @@
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
-import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
+import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
+import { savePartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
 import { loadEvaluatorSubmission } from "./evaluator-submission-model";
 import {
   saveEvaluatorSubmission,

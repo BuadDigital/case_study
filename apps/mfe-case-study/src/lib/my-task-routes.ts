@@ -1,7 +1,12 @@
 import type { PageId } from "@platform/types";
 import { isPartyTaskPage } from "@platform/app-shared/app-data/party-task-pages";
-import { poPropertyInspectionInputPath } from "@platform/app-shared/domain/po-routes";
+import {
+  poPropertyInspectionInputPath,
+  propertyAppraisalWorkspacePath,
+} from "@platform/app-shared/domain/po-routes";
 import type { WorkflowTask } from "./app-data/tasks-storage";
+
+export { propertyAppraisalWorkspacePath };
 
 export function myTasksPath(): string {
   return "/active-primary-data";
@@ -48,11 +53,6 @@ export function activeSurveyWorkspacePath(taskId: string): string {
 /** Data-entry page for survey (editable form). */
 export function activeSurveyEntryPath(taskId: string): string {
   return `/active-survey/${encodeURIComponent(taskId)}/entry`;
-}
-
-/** Full-page workspace for the property appraiser (property valuation). */
-export function propertyAppraisalWorkspacePath(taskId: string): string {
-  return `/property-appraisal/${encodeURIComponent(taskId)}`;
 }
 
 /** Full-page workspace for the field inspector — official path under active transactions. */

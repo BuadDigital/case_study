@@ -27,8 +27,8 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import { fetchBankCandidates } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {

@@ -5,14 +5,14 @@ import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { createComparableProperty } from "@platform/api-client";
 import { useCommandMutation } from "@platform/app-shared";
 import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
-import { ComparablePropertyEntryFields } from "@case-study/mfe/components/comparables/ComparablePropertyEntryFields";
+import { ComparablePropertyEntryFields } from "../ComparablePropertyEntryFieldsSlot";
 import {
   comparableDraftToUpsert,
   comparableEntryReady,
   emptyComparableEntryDraft,
   parseComparableCoords,
   type ComparableEntryDraft,
-} from "@case-study/mfe/lib/comparable-entry";
+} from "@platform/app-shared/app-data/comparable-entry";
 import {
   AppModal,
   Button,

@@ -1,7 +1,10 @@
 /** Map live work-order properties + comparable bank → PropertyMapView records. */
 
 import type { ComparablePropertyDto } from "@platform/api-client";
-import { approximatePropertyGeo } from "./po-intake-boundaries";
+import {
+  approximatePropertyGeo,
+  coordsFromLocationMapUrl,
+} from "@platform/app-shared/domain/property-geo";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-property-model";
 import type {
   MapComparableRecord,
@@ -9,6 +12,8 @@ import type {
   MapPropertyRecord,
   WorkflowStatusKey,
 } from "./map-locations-logic";
+
+export { coordsFromLocationMapUrl };
 
 function parseCoordPair(
   latRaw: string | null | undefined,
@@ -20,29 +25,6 @@ function parseCoordPair(
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   if (lat === 0 && lng === 0) return null;
   return { lat, lng };
-}
-
-/** Extract lat/lng from a Google Maps URL when present. */
-export function coordsFromLocationMapUrl(
-  url: string | null | undefined,
-): MapCoords | null {
-  const raw = (url ?? "").trim();
-  if (!raw) return null;
-  try {
-    const u = new URL(raw);
-    const q = u.searchParams.get("query") || u.searchParams.get("q");
-    if (q) {
-      const m = q.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
-      if (m) return parseCoordPair(m[1], m[2]);
-    }
-  } catch {
-    /* not a URL — fall through */
-  }
-  const at = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (at) return parseCoordPair(at[1], at[2]);
-  const plain = raw.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
-  if (plain) return parseCoordPair(plain[1], plain[2]);
-  return null;
 }
 
 export function resolveLivePropertyCoords(

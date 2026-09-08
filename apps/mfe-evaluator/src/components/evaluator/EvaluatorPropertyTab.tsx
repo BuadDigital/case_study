@@ -4,12 +4,9 @@ import {
   cn,
   opsEmptyHint,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import {
-  downloadPropertyDetailDocument,
-  type PropertyDetailDocumentEntry,
-} from "@case-study/mfe/lib/app-data/property-detail-documents";
-import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
+import { downloadPropertyDetailDocument, usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
 import { EvaluatorInspectionFactsSection } from "./EvaluatorInspectionFactsSection";
 import {

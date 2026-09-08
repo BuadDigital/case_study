@@ -53,29 +53,15 @@ export function inspectorComponentPhotoLabel(key: string): string {
   return key.trim() || "صورة مكوّن";
 }
 
-export type PropertyDetailDocumentEntry = {
-  id: string;
-  name: string;
-  fileName: string;
-  source: string;
-  kind: "pdf" | "file" | "image";
-  dataUrl?: string;
-  attachmentId?: string;
-  /** Engineering survey field — used to resolve blob via attachments API. */
-  engineeringField?: "surveyReport" | "siteLetter";
-  engineeringTaskId?: string;
-  /**
-   * Field-inspection source — lets a caller hydrate this one photo through
-   * `prefetchInspectorPhoto` without the whole-workspace prefetch. Deliberately
-   * not `attachmentId`: that field marks an entry available, and an inspection
-   * photo is available only once its preview is cached.
-   */
-  inspectionPhoto?: {
-    taskId: string;
-    photoRef: string;
-    attachment: InspectorPhotoAttachment;
-  };
-};
+export {
+  pickPrimaryPropertyDetailPhoto,
+  type PropertyDetailDocumentEntry,
+  type PropertyDetailDocumentSection,
+} from "@platform/app-shared/app-data/property-detail-document-types";
+import type {
+  PropertyDetailDocumentEntry,
+  PropertyDetailDocumentSection,
+} from "@platform/app-shared/app-data/property-detail-document-types";
 
 function fileKind(fileName: string, mimeType?: string): "pdf" | "file" | "image" {
   if (mimeType && isImageMime(mimeType)) return "image";
@@ -444,12 +430,6 @@ export function collectFieldInspectionDocumentsFromSubmission(
   return docs;
 }
 
-export type PropertyDetailDocumentSection = {
-  id: string;
-  title: string;
-  documents: PropertyDetailDocumentEntry[];
-};
-
 /** Display order for property documents — one section per upload source. */
 export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   id: string;
@@ -537,20 +517,6 @@ export function listPropertyDetailPhotos(
   return sections
     .flatMap((section) => section.documents)
     .filter((doc) => doc.kind === "image");
-}
-
-export function pickPrimaryPropertyDetailPhoto(
-  photos: PropertyDetailDocumentEntry[],
-): PropertyDetailDocumentEntry | null {
-  const preferred = photos.find((p) =>
-    /رئيس|main|primary/i.test(`${p.name} ${p.fileName}`),
-  );
-  return (
-    preferred ??
-    photos.find((p) => Boolean(p.dataUrl)) ??
-    photos[0] ??
-    null
-  );
 }
 
 export function openPropertyDetailDocumentPreview(

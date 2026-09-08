@@ -18,10 +18,10 @@ import {
 } from "@platform/ui-kit";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "@case-study/mfe/query/case-study-queries";
-import { usePropertyDetailDocuments } from "@case-study/mfe/query/property-detail-documents-query";
-import { subClientIdFromReportUsers } from "@case-study/mfe/lib/app-data/po-intake-data";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "../../lib/case-study-bridge";
+import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
+import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import {
   basisOfValueKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";

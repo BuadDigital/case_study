@@ -2,8 +2,8 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { approximatePropertyGeo, hasDistrictGeo } from "@case-study/mfe/lib/app-data/po-intake-boundaries";
-import { coordsFromLocationMapUrl } from "@case-study/mfe/lib/app-data/map-live-records";
+import { approximatePropertyGeo, hasDistrictGeo } from "@platform/app-shared/domain/property-geo";
+import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
 
 export const BANK_CANDIDATE_POOL = 40;
 export const BANK_DISPLAY_LIMIT = 6;

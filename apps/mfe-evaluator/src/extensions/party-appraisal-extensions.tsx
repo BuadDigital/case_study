@@ -1,9 +1,9 @@
 "use client";
 
-import type { PartyAppraisalExtensions } from "@case-study/mfe/lib/party-appraisal-extensions";
-import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PartyAppraisalExtensions } from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
+import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-data";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
-import { propertyAppraisalWorkspacePath } from "@case-study/mfe/lib/my-task-routes";
+import { propertyAppraisalWorkspacePath } from "@platform/app-shared/domain/po-routes";
 import dynamic from "next/dynamic";
 
 const AppraiserUploadTab = dynamic(() =>
@@ -33,7 +33,15 @@ const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حس
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {
   patchQueueConfig(base, _def) {
-    const baseFilter = base.filterListed!;
+    type QueuePatchBase = {
+      filterListed?: (
+        mine: WorkflowTask[],
+        poByNumber: Map<string, PoIntakeRecord>,
+        options?: { showCompleted?: boolean },
+      ) => WorkflowTask[];
+    };
+    const queueBase = base as QueuePatchBase;
+    const baseFilter = queueBase.filterListed!;
 
     return {
       ...base,
@@ -55,9 +63,10 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         void prefetchEvaluatorSubmissions(listed.map((t) => t.id));
         return listed;
       },
-      buildRowMoreItems: (ctx) => buildAppraiserQueueRowMoreItems(ctx),
-      canOpenTask: (task) => canAppraiserOpenTask(task.id, task.status),
-      getTaskStatusBadge: (task) =>
+      buildRowMoreItems: (ctx: Parameters<typeof buildAppraiserQueueRowMoreItems>[0]) =>
+        buildAppraiserQueueRowMoreItems(ctx),
+      canOpenTask: (task: WorkflowTask) => canAppraiserOpenTask(task.id, task.status),
+      getTaskStatusBadge: (task: WorkflowTask) =>
         appraiserTaskStatusBadge(task.id, task.status),
       refreshOnWindowEvents: [
         PARTY_TASK_RECALL_CHANGED_EVENT,

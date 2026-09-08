@@ -15,7 +15,7 @@ import {
   cn,
   opsLetterCard,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,

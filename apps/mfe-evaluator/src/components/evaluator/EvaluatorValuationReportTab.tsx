@@ -15,23 +15,23 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import { subClientIdFromReportUsers } from "@case-study/mfe/lib/app-data/po-intake-data";
-import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
-import { PropertyDetailMediaGlance } from "@case-study/mfe/components/po-intake/PropertyDetailMediaGlance";
+import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import { usePoRecordQuery } from "../../lib/case-study-bridge";
+import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlanceSlot";
 import {
   VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
   loadSpecialistFinishingLevel,
   type SpecialistFinishingLevel,
-} from "@case-study/mfe/lib/app-data/valuation-report-specialist-finishing";
-import { prefetchInspectorWorkspacePhotos } from "@case-study/mfe/lib/app-data/inspector-photo-upload";
+} from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
+import { prefetchInspectorWorkspacePhotos } from "../../lib/case-study-bridge";
 import {
-  collectFieldInspectionDocumentsFromSubmission,
   pickPrimaryPropertyDetailPhoto,
   type PropertyDetailDocumentEntry,
-} from "@case-study/mfe/lib/app-data/property-detail-documents";
+} from "@platform/app-shared/app-data/property-detail-document-types";
+import { collectFieldInspectionDocumentsFromSubmission } from "../../lib/case-study-bridge";
 import {
   Spinner,
   cn,

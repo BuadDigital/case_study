@@ -13,7 +13,8 @@ import {
 
 export type { CaseStudyQuestionSection };
 
-export type CaseStudyFormAnswer = "A" | "B" | "NA";
+export type { CaseStudyFormAnswer } from "@platform/app-shared/app-data/case-study-form-model";
+import type { CaseStudyFormAnswer } from "@platform/app-shared/app-data/case-study-form-model";
 
 export { CASE_STUDY_FORM_STEPS } from "@platform/app-shared/domain/case-study/question-catalog";
 

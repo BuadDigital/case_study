@@ -640,7 +640,7 @@ Phase 6             Module Federation and separate deployments per microfrontend
 **Frontend**
 
 - [ ] Module Federation (F5) and independent MFE deploys
-- [ ] Move the remaining evaluator→case-study type/runtime/UI imports onto shared packages / bridges (the only step left before F5)
+- [x] Move the remaining evaluator→case-study type/runtime/UI imports onto shared packages / bridges (evaluator uses app-shared + shell-registered case-study bridge/slots)
 - [ ] HttpOnly/BFF session (replace localStorage JWT) if required by security review
 - [ ] Registration flow if in scope for first production release
 

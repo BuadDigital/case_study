@@ -26,14 +26,14 @@ import {
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
-import { loadInfathDeposit } from "@case-study/mfe/lib/app-data/infath-deposit-storage";
-import { loadSpecialistFinishingLevel } from "@case-study/mfe/lib/app-data/valuation-report-specialist-finishing";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
-import { isLandInspectionContext } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import { openHtmlDocumentInNewTab } from "@case-study/mfe/lib/open-html-document";
-import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
+import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
+import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit-storage";
+import { loadSpecialistFinishingLevel } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
+import { usePoRecordQuery } from "../../lib/case-study-bridge";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report-v3-preview";
 import {
