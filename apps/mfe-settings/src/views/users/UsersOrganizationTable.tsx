@@ -79,9 +79,9 @@ function StaffUserRow({
   user: StaffUser;
   workflow: UsersOrganizationWorkflow;
 }) {
-  const { canManage, issuingTicketFor, isRowBusy, setProfileUser, setEditingUser, onToggleUser } =
+  const { canManage, isRowBusy, setProfileUser, setEditingUser, onToggleUser } =
     workflow;
-  const busy = isRowBusy(user) || issuingTicketFor === user.id;
+  const busy = isRowBusy(user);
   return (
     <Tr hoverable={false}>
       <Td className="font-medium">
