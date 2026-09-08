@@ -7,7 +7,12 @@ import {
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
-import { cn, opsFldControl, useToast } from "@platform/ui-kit";
+import {
+  invalidControlClass,
+  scheduleScrollToFormField,
+} from "@platform/app-shared/form-ux";
+import { cn, opsFldControl, AppModal, Button, useToast } from "@platform/ui-kit";
+import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
 
 import { valuationPurposeKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import {
@@ -20,10 +25,15 @@ import {
 } from "./atoms";
 
 import { apiConfig } from "./lib/shell-utils";
+import {
+  approachesDisabledWithWork,
+  disableApproachConfirmCopy,
+  initialApproachToggles,
+} from "./lib/valuation-data-state";
 
 /**
  * Basics screen — owns valuation settings drafts (approaches, scope, basis,
- * valuation date, external specialist) locally: writes here do not re-render the valuation shell.
+ * valuation date) locally: writes here do not re-render the valuation shell.
  * Rehydrates from the server payload via hydrateKey — bumps on full load and every settings save
  * (so an old draft cannot overwrite what was saved from the cost screen).
  */
@@ -35,6 +45,11 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   saving,
   onSavingChange,
   onSettingsSaved,
+  fieldErrors,
+  onRetrospectiveDraftChange,
+  hasMarketWork = false,
+  hasCostWork = false,
+  onDraftApproachesChange,
 }: {
   valuationRequestId: string | null;
   assignmentType?: string;
@@ -43,10 +58,15 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
   onSettingsSaved: (dto: ValuationApproachSettingsDto) => void;
+  fieldErrors?: Record<string, string>;
+  onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
+  hasMarketWork?: boolean;
+  hasCostWork?: boolean;
+  onDraftApproachesChange?: (nav: { market: boolean; cost: boolean }) => void;
 }) {
   const { showToast } = useToast();
-  const [asMarketEnabled, setAsMarketEnabled] = useState(true);
-  const [asCostEnabled, setAsCostEnabled] = useState(true);
+  const [asMarketEnabled, setAsMarketEnabled] = useState(false);
+  const [asCostEnabled, setAsCostEnabled] = useState(false);
   const [asCostBasis, setAsCostBasis] = useState("replacement");
   /** Cost valuation scope: land_and_building | building_only (interactive form spec). */
   const [asCostScope, setAsCostScope] = useState("land_and_building");
@@ -55,21 +75,21 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     valuationPurposeKeyForAssignment(assignmentType),
   );
   const [asPurposeNote, setAsPurposeNote] = useState("");
-  const [asSpecialistUsed, setAsSpecialistUsed] = useState(false);
-  const [asSpecialistDetails, setAsSpecialistDetails] = useState("");
   const [asDateMode, setAsDateMode] = useState("issue");
   const [asRetroKind, setAsRetroKind] = useState<"single" | "range">("single");
   const [asRetroDate, setAsRetroDate] = useState("");
   const [asRetroDateEnd, setAsRetroDateEnd] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
+  const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
 
   const hydratedKeyRef = useRef<number | null>(null);
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
     if (!settings) return;
-    setAsMarketEnabled(settings.marketApproachEnabled);
-    setAsCostEnabled(settings.costApproachEnabled);
+    const toggles = initialApproachToggles(settings);
+    setAsMarketEnabled(toggles.market);
+    setAsCostEnabled(toggles.cost);
     setAsCostBasis(settings.costBasisKey || "replacement");
     setAsCostScope(settings.costScopeKey || "land_and_building");
     setAsCostUnit(settings.costMeasurementUnitKey || "comparison_unit");
@@ -78,8 +98,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         valuationPurposeKeyForAssignment(assignmentType),
     );
     setAsPurposeNote(settings.valuationPurposeNote ?? "");
-    setAsSpecialistUsed(settings.externalSpecialistUsed);
-    setAsSpecialistDetails(settings.externalSpecialistDetails ?? "");
     setAsDateMode(settings.valuationDateMode || "issue");
     setAsRetroDate(settings.retrospectiveDate ?? "");
     setAsRetroDateEnd(settings.retrospectiveDateEnd ?? "");
@@ -102,21 +120,53 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     );
   }, [hydrateKey, settings, assignmentType]);
 
+  useEffect(() => {
+    onRetrospectiveDraftChange?.({
+      mode: asDateMode,
+      kind: asRetroKind,
+      date: asRetroDate,
+      dateEnd: asRetroDateEnd,
+    });
+  }, [
+    asDateMode,
+    asRetroKind,
+    asRetroDate,
+    asRetroDateEnd,
+    onRetrospectiveDraftChange,
+  ]);
+
+  useEffect(() => {
+    onDraftApproachesChange?.({
+      market: asMarketEnabled,
+      cost: asCostEnabled && (settings?.costApproachAllowed ?? true),
+    });
+  }, [
+    asMarketEnabled,
+    asCostEnabled,
+    settings?.costApproachAllowed,
+    onDraftApproachesChange,
+  ]);
+
   async function saveApproachSettings() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
     if (asDateMode === "retrospective") {
       if (!asRetroDate.trim()) {
         showToast("تاريخ الأثر الرجعي إلزامي", "error");
+        scheduleScrollToFormField(
+          asRetroKind === "range" ? "as-retro-date-from" : "as-retro-date",
+        );
         return;
       }
       if (asRetroKind === "range") {
         if (!asRetroDateEnd.trim()) {
           showToast("حدّد تاريخ نهاية الفترة", "error");
+          scheduleScrollToFormField("as-retro-date-to");
           return;
         }
         if (asRetroDateEnd < asRetroDate) {
           showToast("تاريخ النهاية يجب ألا يسبق تاريخ البداية", "error");
+          scheduleScrollToFormField("as-retro-date-to");
           return;
         }
       }
@@ -129,7 +179,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     const library = latest.ok
       ? latest.data.assumptionLibrary
       : settings?.assumptionLibrary ?? [];
-    if (asSpecialistUsed) {
+    const specialistUsed = latest.ok
+      ? latest.data.externalSpecialistUsed
+      : (settings?.externalSpecialistUsed ?? false);
+    const specialistDetails = latest.ok
+      ? latest.data.externalSpecialistDetails
+      : settings?.externalSpecialistDetails;
+    if (specialistUsed) {
       selectedAssumptions = selectedAssumptions.filter(
         (x) => !isNoExternalSpecialistAssumption(x),
       );
@@ -143,7 +199,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     if (selectedAssumptions.length === 0 && library.length > 0) {
       selectedAssumptions = library.filter(
         (clause) =>
-          !asSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
+          !specialistUsed || !isNoExternalSpecialistAssumption(clause),
       );
     }
     const res = await saveValuationApproachSettings(config, valuationRequestId, {
@@ -157,8 +213,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
       valuationPurposeKey:
         valuationPurposeKeyForAssignment(assignmentType) || asPurpose || null,
       valuationPurposeNote: asPurposeNote.trim() || null,
-      externalSpecialistUsed: asSpecialistUsed,
-      externalSpecialistDetails: asSpecialistDetails.trim() || null,
+      externalSpecialistUsed: specialistUsed,
+      externalSpecialistDetails: specialistDetails?.trim() || null,
       valuationDateMode: asDateMode,
       retrospectiveDate: asDateMode === "retrospective" ? asRetroDate || null : null,
       retrospectiveDateEnd:
@@ -170,15 +226,43 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     });
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر بدء التقييم", "error");
+      showToast(res.message ?? "تعذّر حفظ الأساليب", "error");
       return;
     }
-    showToast("تم بدء التقييم", "success");
+    showToast(
+      settings?.isSaved ? "تم حفظ الأساليب" : "تم بدء التقييم",
+      "success",
+    );
     onSettingsSaved(res.data);
   }
 
   const settingsSaved = settings?.isSaved ?? false;
   const isLandKind = settings?.isLandPropertyType ?? false;
+  const costAllowed = settings?.costApproachAllowed ?? true;
+  const nextCostEnabled = asCostEnabled && costAllowed;
+  const droppingWithWork = settingsSaved
+    ? approachesDisabledWithWork({
+        savedMarketEnabled: settings?.marketApproachEnabled ?? false,
+        savedCostEnabled: settings?.costApproachEnabled ?? false,
+        nextMarketEnabled: asMarketEnabled,
+        nextCostEnabled,
+        hasMarketWork,
+        hasCostWork,
+      })
+    : [];
+  const confirmCopy = disableApproachConfirmCopy(droppingWithWork);
+
+  function requestSave() {
+    if (!asMarketEnabled && !nextCostEnabled) {
+      showToast("يلزم تفعيل أسلوب واحد على الأقل", "error");
+      return;
+    }
+    if (confirmCopy) {
+      setConfirmDisableOpen(true);
+      return;
+    }
+    void saveApproachSettings();
+  }
 
   return (
     <>
@@ -202,6 +286,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               <input
                 type="checkbox"
                 checked={asMarketEnabled}
+                disabled={saving}
                 onChange={(e) => setAsMarketEnabled(e.target.checked)}
                 className="mt-0.5 size-[17px] accent-[var(--ink)]"
               />
@@ -399,7 +484,11 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       dir="ltr"
                       value={asRetroDate}
                       onChange={(e) => setAsRetroDate(e.target.value)}
-                      className={cn(opsFldControl, "font-semibold")}
+                      className={cn(
+                        opsFldControl,
+                        "font-semibold",
+                        fieldErrors?.retrospective_date && invalidControlClass,
+                      )}
                     />
                   </div>
                 ) : (
@@ -411,14 +500,19 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       >
                         من تاريخ
                       </label>
-                      <input
-                        id="as-retro-date-from"
-                        type="date"
-                        dir="ltr"
-                        value={asRetroDate}
-                        onChange={(e) => setAsRetroDate(e.target.value)}
-                        className={cn(opsFldControl, "font-semibold")}
-                      />
+                        <input
+                          id="as-retro-date-from"
+                          type="date"
+                          dir="ltr"
+                          value={asRetroDate}
+                          onChange={(e) => setAsRetroDate(e.target.value)}
+                          className={cn(
+                            opsFldControl,
+                            "font-semibold",
+                            fieldErrors?.retrospective_date_from &&
+                              invalidControlClass,
+                          )}
+                        />
                     </div>
                     <div>
                       <label
@@ -427,15 +521,20 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       >
                         إلى تاريخ
                       </label>
-                      <input
-                        id="as-retro-date-to"
-                        type="date"
-                        dir="ltr"
-                        value={asRetroDateEnd}
-                        min={asRetroDate || undefined}
-                        onChange={(e) => setAsRetroDateEnd(e.target.value)}
-                        className={cn(opsFldControl, "font-semibold")}
-                      />
+                        <input
+                          id="as-retro-date-to"
+                          type="date"
+                          dir="ltr"
+                          value={asRetroDateEnd}
+                          min={asRetroDate || undefined}
+                          onChange={(e) => setAsRetroDateEnd(e.target.value)}
+                          className={cn(
+                            opsFldControl,
+                            "font-semibold",
+                            fieldErrors?.retrospective_date_to &&
+                              invalidControlClass,
+                          )}
+                        />
                     </div>
                   </div>
                 )}
@@ -447,44 +546,47 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             )}
           </div>
 
-          <label className="mb-2 flex items-center gap-2 text-[12.5px]">
-            <input
-              type="checkbox"
-              className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-              checked={asSpecialistUsed}
-              onChange={(e) => {
-                const used = e.target.checked;
-                setAsSpecialistUsed(used);
-              }}
-            />
-            استُعين بأخصائي خارجي
-          </label>
-          {asSpecialistUsed ? (
-            <input
-              placeholder="الأخصائي، دوره، ونتيجته"
-              value={asSpecialistDetails}
-              onChange={(e) => setAsSpecialistDetails(e.target.value)}
-              className={cn(opsFldControl, "font-semibold mb-0 font-medium")}
-            />
-          ) : null}
-
-          {!settingsSaved ? (
-            <>
-              <div className="mt-6">
-                <PrimaryBtn
-                  disabled={saving}
-                  onClick={() => void saveApproachSettings()}
-                >
-                  بدء التقييم
-                </PrimaryBtn>
-              </div>
-              <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-                ابدأ التقييم أولاً لفتح شاشات العمل (السوق، التكلفة، الترجيح).
-              </p>
-            </>
-          ) : null}
+          <div className="mt-6">
+            <PrimaryBtn disabled={saving} onClick={requestSave}>
+              {settingsSaved ? "حفظ الأساليب" : "بدء التقييم"}
+            </PrimaryBtn>
+          </div>
+          {settingsSaved ? (
+            <p className="mb-0 mt-3 text-[11.5px] text-text-3">
+              حدّد الأسلوب ليظهر تبويب طريقته فوراً. احفظ ليثبت الاختيار في
+              التقرير. إلغاء أسلوب يخفي تبويبه دون حذف العمل.
+            </p>
+          ) : (
+            <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
+              حدّد أسلوب السوق أو التكلفة ليظهر تبويب العمل، ثم ابدأ التقييم.
+            </p>
+          )}
         </CardPad>
       </Card>
+      <AppModal
+        open={confirmDisableOpen}
+        title="إخفاء تبويب أسلوب"
+        onClose={() => setConfirmDisableOpen(false)}
+        footer={
+          <>
+            <Button type="button" onClick={() => setConfirmDisableOpen(false)}>
+              البقاء
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setConfirmDisableOpen(false);
+                void saveApproachSettings();
+              }}
+            >
+              متابعة الحفظ
+            </Button>
+          </>
+        }
+      >
+        <p className="m-0 text-[13px] leading-6 text-text-2">{confirmCopy}</p>
+      </AppModal>
     </>
   );
 });

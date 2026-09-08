@@ -756,6 +756,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<int>("AssignmentType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BasisOfValueKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<Guid?>("ClientId")
                         .HasColumnType("uuid");
 
@@ -793,6 +797,14 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.Property<string>("ReportUserClientIdsJson")
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("ValuationPurposeKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ValuePremiseKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -961,6 +973,14 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<int>("IdentifierType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("InfathDepositCertificateName")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("InfathDepositCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("InspectionRestrictionReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -1028,6 +1048,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("PrintAttachmentKeysJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("PropertyType")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1086,6 +1109,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<string>("SearchScopeNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("SouthBoundary")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
@@ -1101,6 +1128,13 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<string>("SouthFacadeFinishing")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SpecialistEsgJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SpecialistFinishingLevel")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("SpecialistReportExtrasJson")
                         .HasColumnType("jsonb");

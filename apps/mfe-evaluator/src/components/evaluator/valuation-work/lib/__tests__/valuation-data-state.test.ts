@@ -3,8 +3,13 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { isVacantLandComparable, resolveSubjectCoordsForBank } from "../bank-ranking";
 import {
   approachAvailability,
+  approachWorkPresence,
+  approachesDisabledWithWork,
+  disableApproachConfirmCopy,
+  initialApproachToggles,
   buildBankFetchOptions,
   costBasisUnitSettingsBody,
   farAdoptedItems,
@@ -78,6 +83,74 @@ describe("approachAvailability", () => {
   });
 });
 
+describe("approachWorkPresence / disable confirm", () => {
+  it("treats adopted comps and cost lines as work", () => {
+    expect(
+      approachWorkPresence({
+        adoptedMarketCount: 2,
+        adoptedLandCount: 0,
+        costLineCount: 0,
+      }),
+    ).toEqual({ hasMarketWork: true, hasCostWork: false });
+    expect(
+      approachWorkPresence({
+        adoptedMarketCount: 0,
+        adoptedLandCount: 1,
+        costLineCount: 0,
+      }),
+    ).toEqual({ hasMarketWork: false, hasCostWork: true });
+    expect(
+      approachWorkPresence({
+        adoptedMarketCount: 0,
+        adoptedLandCount: 0,
+        costLineCount: 3,
+      }),
+    ).toEqual({ hasMarketWork: false, hasCostWork: true });
+  });
+
+  it("warns only when a saved approach with work is being turned off", () => {
+    expect(
+      approachesDisabledWithWork({
+        savedMarketEnabled: true,
+        savedCostEnabled: true,
+        nextMarketEnabled: false,
+        nextCostEnabled: true,
+        hasMarketWork: true,
+        hasCostWork: true,
+      }),
+    ).toEqual(["market"]);
+    expect(
+      approachesDisabledWithWork({
+        savedMarketEnabled: true,
+        savedCostEnabled: false,
+        nextMarketEnabled: false,
+        nextCostEnabled: false,
+        hasMarketWork: false,
+        hasCostWork: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it("explains that hiding a tab keeps the work", () => {
+    expect(disableApproachConfirmCopy(["market"])).toContain("طريقة المقارنة");
+    expect(disableApproachConfirmCopy(["cost"])).toContain("طريقة المقاول");
+    expect(disableApproachConfirmCopy([])).toBeNull();
+  });
+
+  it("starts with both approaches off until the valuer picks or a saved row loads", () => {
+    expect(initialApproachToggles(null)).toEqual({ market: false, cost: false });
+    expect(initialApproachToggles(settings({ isSaved: false }))).toEqual({
+      market: false,
+      cost: false,
+    });
+    expect(
+      initialApproachToggles(
+        settings({ marketApproachEnabled: true, costApproachEnabled: false }),
+      ),
+    ).toEqual({ market: true, cost: false });
+  });
+});
+
 describe("openFailureMessage / openRequestBody", () => {
   it("maps the failure kind to the shell message", () => {
     expect(openFailureMessage("auth")).toBe("يلزم تسجيل الدخول");
@@ -124,6 +197,37 @@ describe("inspectorPinOf", () => {
     expect(inspectorPinOf({ mapLatitude: "0", mapLongitude: "0" })).toBeNull();
     expect(inspectorPinOf({ mapLatitude: "21.5", mapLongitude: "abc" })).toBeNull();
     expect(inspectorPinOf({ mapLatitude: "21.5", mapLongitude: "39.2" })).toEqual({ lat: 21.5, lng: 39.2 });
+  });
+});
+
+describe("resolveSubjectCoordsForBank", () => {
+  it("prefers the inspector pin over the district centroid", () => {
+    expect(
+      resolveSubjectCoordsForBank({
+        latitude: 24.8401,
+        longitude: 46.6556,
+        city: "الرياض",
+        district: "النرجس",
+      }),
+    ).toEqual({ lat: 24.8401, lng: 46.6556 });
+  });
+
+  it("falls back to the district approximate geo when the inspector has not pinned", () => {
+    const geo = resolveSubjectCoordsForBank({
+      city: "الرياض",
+      district: "النرجس",
+    });
+    expect(geo).not.toBeNull();
+    expect(geo!.lat).toBeCloseTo(24.8419, 2);
+    expect(geo!.lng).toBeCloseTo(46.658, 2);
+  });
+});
+
+describe("isVacantLandComparable", () => {
+  it("treats أرض as land and فيلا/مبنى as building", () => {
+    expect(isVacantLandComparable("أرض")).toBe(true);
+    expect(isVacantLandComparable("فيلا سكنية")).toBe(false);
+    expect(isVacantLandComparable("مبنى")).toBe(false);
   });
 });
 

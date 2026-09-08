@@ -96,6 +96,90 @@ export function defaultPremiseKeyForBasis(valueBasisKey: string): string {
   return valueBasisKey === "liquidation" ? "orderly" : "current";
 }
 
+export function isPremiseCompatibleWithBasis(
+  basisKey: string,
+  premiseKey: string,
+): boolean {
+  if (!premiseKey.trim()) return true;
+  const liquidation = basisKey.trim() === "liquidation";
+  return liquidation
+    ? premiseKey === "orderly" || premiseKey === "forced"
+    : premiseKey === "hau" || premiseKey === "current";
+}
+
+export function coercePremiseForBasis(
+  basisKey: string,
+  premiseKey: string,
+): string {
+  if (isPremiseCompatibleWithBasis(basisKey, premiseKey) && premiseKey.trim()) {
+    return premiseKey;
+  }
+  return defaultPremiseKeyForBasis(basisKey);
+}
+
+/** Choosing HBU/current use leaves liquidation; orderly/forced requires it. */
+export function basisKeyForPremise(
+  premiseKey: string,
+  currentBasisKey: string,
+): string {
+  if (premiseKey === "orderly" || premiseKey === "forced") {
+    return "liquidation";
+  }
+  if (premiseKey === "hau" || premiseKey === "current") {
+    return currentBasisKey === "liquidation" ? "market" : currentBasisKey;
+  }
+  return currentBasisKey;
+}
+
+export function premiseOptionsForBasis(basisKey: string): ValuationSelectOption[] {
+  const allowed = new Set(
+    basisKey === "liquidation" ? ["orderly", "forced"] : ["hau", "current"],
+  );
+  return VALUE_PREMISE_OPTIONS.filter((o) => allowed.has(o.value));
+}
+
+export function assignmentValuationDefaults(
+  type: string | null | undefined,
+  subClientId?: string | null,
+): { purposeKey: string; basisKey: string; premiseKey: string } {
+  const purposeKey = valuationPurposeKeyForAssignment(type, subClientId);
+  const basisKey = basisOfValueKeyForAssignment(type, subClientId);
+  return {
+    purposeKey,
+    basisKey,
+    premiseKey: valuePremiseKeyForAssignment(type, subClientId),
+  };
+}
+
+export function resolveAssignmentValuationKeys(
+  type: string | null | undefined,
+  keys?: {
+    purposeKey?: string | null;
+    basisKey?: string | null;
+    premiseKey?: string | null;
+  },
+  subClientId?: string | null,
+): { purposeKey: string; basisKey: string; premiseKey: string } {
+  if (!(type ?? "").trim()) {
+    return {
+      purposeKey: keys?.purposeKey?.trim() || "",
+      basisKey: keys?.basisKey?.trim() || "",
+      premiseKey: keys?.premiseKey?.trim() || "",
+    };
+  }
+  const defaults = assignmentValuationDefaults(type, subClientId);
+  const purposeKey = keys?.purposeKey?.trim() || defaults.purposeKey;
+  const basisKey = keys?.basisKey?.trim() || defaults.basisKey;
+  return {
+    purposeKey,
+    basisKey,
+    premiseKey: coercePremiseForBasis(
+      basisKey,
+      keys?.premiseKey?.trim() || defaults.premiseKey,
+    ),
+  };
+}
+
 export function valuePremiseKeyForAssignment(
   type: string | null | undefined,
   subClientId?: string | null,

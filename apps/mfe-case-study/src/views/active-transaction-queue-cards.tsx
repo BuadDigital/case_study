@@ -145,6 +145,11 @@ export function buildQueueMobileCardItems({
     const meta = [
       { text: formatPoDisplay(task.poNumber), kind: "po" as const },
       row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
+      flags.isPropertyAppraisalTable &&
+      row.propertyType &&
+      row.propertyType !== "—"
+        ? { text: row.propertyType, kind: "type" as const }
+        : null,
       row.assignmentType !== "—"
         ? { text: row.assignmentType, kind: "type" as const }
         : null,

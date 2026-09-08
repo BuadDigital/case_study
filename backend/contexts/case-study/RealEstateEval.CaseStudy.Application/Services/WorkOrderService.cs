@@ -173,6 +173,9 @@ public class WorkOrderService : IWorkOrderService
             WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription),
             ClientId = request.ClientId,
             ReportUserClientIdsJson = WorkOrderReportUsers.Serialize(request.ReportUserClientIds),
+            ValuationPurposeKey = NormalizeValuationKey(request.ValuationPurposeKey),
+            BasisOfValueKey = NormalizeValuationKey(request.BasisOfValueKey),
+            ValuePremiseKey = NormalizeValuationKey(request.ValuePremiseKey),
             DueDateAt = BusinessDueDateCalculator.Compute(
                 promulgation,
                 request.ReceivedFromEnfathTime,
@@ -275,6 +278,9 @@ public class WorkOrderService : IWorkOrderService
         entity.WorkOrderDescription = IWorkOrderLoader.NormalizeOptionalText(request.WorkOrderDescription);
         entity.ClientId = request.ClientId;
         entity.ReportUserClientIdsJson = WorkOrderReportUsers.Serialize(request.ReportUserClientIds);
+        entity.ValuationPurposeKey = NormalizeValuationKey(request.ValuationPurposeKey);
+        entity.BasisOfValueKey = NormalizeValuationKey(request.BasisOfValueKey);
+        entity.ValuePremiseKey = NormalizeValuationKey(request.ValuePremiseKey);
  // DueDateAt is the SLA snapshot taken when Enfath first hands us the work order. Editing
  // header facts later must not move the deadline of work that is already in progress.
 
@@ -451,5 +457,11 @@ public class WorkOrderService : IWorkOrderService
         {
             return AssignmentTypeRules.BusinessDaysRequired(assignmentType);
         }
+    }
+
+    private static string? NormalizeValuationKey(string? value)
+    {
+        var trimmed = value?.Trim().ToLowerInvariant();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 }

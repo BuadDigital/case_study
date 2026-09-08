@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { REG_BACK } from "@platform/app-shared/registration/registration-labels";
-import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
+import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
 import { Button, cn } from "@platform/ui-kit";
 
 export function PoEditShell({
@@ -40,8 +41,13 @@ export function PoEditShell({
   scrollMode?: "viewport" | "document";
   children: ReactNode;
 }) {
+  const [discardOpen, setDiscardOpen] = useState(false);
+
   function handleBack() {
-    if (isDirty && !window.confirm(UNSAVED_CONFIRM_MSG)) return;
+    if (isDirty) {
+      setDiscardOpen(true);
+      return;
+    }
     onBack();
   }
 
@@ -124,6 +130,14 @@ export function PoEditShell({
           ) : null}
         </div>
       </div>
+      <UnsavedChangesDialog
+        open={discardOpen}
+        onStay={() => setDiscardOpen(false)}
+        onLeave={() => {
+          setDiscardOpen(false);
+          onBack();
+        }}
+      />
     </div>
   );
 }

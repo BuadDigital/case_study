@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import { Can } from "@platform/app-shared/components/Can";
 import {
   Note,
+  PageLoadingHint,
   PageShell,
   Spinner,
   cn,
@@ -35,10 +36,7 @@ import { useOrganizationSettingsWorkflow } from "./useOrganizationSettingsWorkfl
 
 const settingsViewFallback = () => (
   <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-    <div className="flex items-center justify-center gap-2 py-20 text-text-3">
-      <Spinner />
-      <span className="text-[13px]">جاري التحميل…</span>
-    </div>
+    <PageLoadingHint className="py-20" />
   </PageShell>
 );
 
@@ -100,10 +98,7 @@ export function OrganizationSettingsView() {
   if (loading) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <div className="flex items-center justify-center gap-2 py-20 text-text-3">
-          <Spinner />
-          <span className="text-[13px]">جاري تحميل الإعدادات…</span>
-        </div>
+        <PageLoadingHint className="py-20" label="جاري تحميل الإعدادات…" />
       </PageShell>
     );
   }

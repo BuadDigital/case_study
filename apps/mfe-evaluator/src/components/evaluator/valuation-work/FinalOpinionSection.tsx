@@ -14,32 +14,63 @@ import {
   Th,
   Tr,
   cn,
-  opsFldControl,
 } from "@platform/ui-kit";
 
-import { amountWordsOrZero } from "../../../lib/evaluator/value-estimation";
 import {
   Card,
   CardPad,
-  CardTitle,
-  FieldLabel,
   GhostBtn,
-  LedgerRow,
   PrimaryBtn,
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
 import {
   FinalOpinionGatesCard,
-  FinalOpinionIssuanceCard,
 } from "./FinalOpinionParts";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 
+/** Invoice line from the interactive-form spec — label | value | note. */
+function OpinionInvoiceRow({
+  label,
+  note,
+  value,
+  strong,
+  valueClassName,
+}: {
+  label: string;
+  note?: string;
+  value: string;
+  strong?: boolean;
+  valueClassName?: string;
+}) {
+  return (
+    <tr className="border-b border-dashed border-border">
+      <td
+        className={cn(
+          "w-px whitespace-nowrap py-2 text-start text-[12.5px] text-heading",
+          strong ? "font-extrabold" : "font-medium",
+        )}
+      >
+        {label}
+      </td>
+      <td
+        dir="ltr"
+        className={cn(
+          "w-[150px] py-2 pe-0 ps-[18px] text-start font-bold text-heading",
+          strong ? "text-[14px] font-extrabold" : "text-[13.5px]",
+          valueClassName,
+        )}
+      >
+        {value}
+      </td>
+      <td className="py-2 text-start text-[10.5px] text-text-3">{note}</td>
+    </tr>
+  );
+}
+
 /**
- * Final-opinion screen — reconciliation table, the value-opinion card, the
- * issuance gates and the Rule Q-6 issuance cycle. Drafts live in
- * `useFinalOpinionWorkflow`, so typing here does not re-render the valuation
- * shell; the section stays mounted (hidden) after first visit so unsaved
- * drafts survive, and hydrates from the server batch via hydrateKey.
+ * Final-opinion screen — reconciliation table, the value-opinion card, and
+ * issuance gates. Drafts live in `useFinalOpinionWorkflow`. The Q-6 issuance
+ * cycle lives on المراجعة النهائية; methodology alerts live on طريقة المقارنة.
  */
 export const FinalOpinionSection = memo(function FinalOpinionSection({
   valuationRequestId,
@@ -50,6 +81,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   buildingOnly,
   hasAdoptedMarket,
   assignmentType,
+  poNumber,
   officialValuationDate,
   saving,
   onSavingChange,
@@ -63,6 +95,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   buildingOnly: boolean;
   hasAdoptedMarket: boolean;
   assignmentType?: string;
+  poNumber?: string;
   officialValuationDate: string | null;
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
@@ -71,12 +104,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   const workflow = useFinalOpinionWorkflow({
     valuationRequestId,
     recon,
-    gates,
     cost,
     hydrateKey,
     buildingOnly,
     hasAdoptedMarket,
     assignmentType,
+    poNumber,
     onSavingChange,
     onReconSaved,
   });
@@ -87,15 +120,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setMethodsRationale,
     finalRoundDecimals,
     setFinalRoundDecimals,
-    basisOfValueKey,
-    basisOptions,
-    premiseOptions,
-    valuePremiseKey,
-    setValuePremiseKey,
     liquidationDiscountPct,
     setLiquidationDiscountPct,
-    liquidationDiscountRationale,
-    setLiquidationDiscountRationale,
     sole,
     weightSumLocal,
     reconWeightsBad,
@@ -108,7 +134,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     methodComplete,
     opinionAuto,
     opinionDirty,
-    issuance,
     saveReconciliation,
     openReportPreview,
   } = workflow;
@@ -169,13 +194,23 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           step={5}
                           value={m.weightPct}
                           onChange={(e) => {
-                            const next = [...reconMethods];
-                            next[idx] = {
-                              ...m,
-                              weightPct:
+                            const raw = Math.min(
+                              100,
+                              Math.max(
+                                0,
                                 Number(e.target.value.replace(",", ".")) || 0,
-                              isIncluded: true,
-                            };
+                              ),
+                            );
+                            const next = [...reconMethods];
+                            next[idx] = { ...m, weightPct: raw, isIncluded: true };
+                            // Exactly two methods — the other's share auto-fills so they always sum to 100.
+                            if (reconMethods.length === 2) {
+                              const otherIdx = idx === 0 ? 1 : 0;
+                              next[otherIdx] = {
+                                ...next[otherIdx],
+                                weightPct: 100 - raw,
+                              };
+                            }
                             setReconMethods(next);
                           }}
                           className={cn(
@@ -234,33 +269,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
             </div>
           </Card>
         </>
-      ) : (
-        <Card>
-          <CardPad>
-            <p className="mb-3 text-[12.5px] text-text-2">
-              أسلوب واحد مفعّل — لا توفيق بين مؤشرات (n = 1). القيمة النهائية = مؤشر
-              الأسلوب الوحيد بوزن ١٠٠٪.
-            </p>
-            {reconMethods.map((m) => (
-              <div
-                key={m.approachKind}
-                className="mb-2 rounded-[10px] border border-border-md bg-gold-soft px-3.5 py-3"
-              >
-                <div className="font-bold text-heading">{m.labelAr}</div>
-                <div className="mt-1 text-xs text-text-2">
-                  <span dir="ltr">{fmt(m.approachValue)}</span> ر.س · وزن ١٠٠٪
-                </div>
-              </div>
-            ))}
-          </CardPad>
-        </Card>
-      )}
+      ) : null}
 
-      <Card>
+      <Card className="relative overflow-hidden">
+        <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
         <CardPad>
-          <div className="relative ps-3">
-            <span className="absolute start-0 top-0 h-full w-[3px] rounded-full bg-gold" />
-            <div className="mb-3.5 flex flex-wrap justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-4">
               <div className="text-sm font-extrabold text-heading">
                 الرأي النهائي للقيمة
               </div>
@@ -271,193 +285,132 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </div>
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3">
-              <label className="flex flex-col gap-1.5">
-                <FieldLabel>فرضية القيمة</FieldLabel>
-                <select
-                  value={valuePremiseKey}
-                  onChange={(e) => setValuePremiseKey(e.target.value)}
-                  className={cn(opsFldControl, "font-semibold cursor-pointer font-medium")}
-                >
-                  <option value="">— اختر —</option>
-                  {(premiseOptions.length
-                    ? premiseOptions.filter((o) =>
-                        basisOfValueKey === "liquidation"
-                          ? o.value === "orderly" || o.value === "forced"
-                          : o.value === "hau" || o.value === "current",
-                      )
-                    : basisOfValueKey === "liquidation"
-                      ? [
-                          { value: "orderly", label: "التصفية المنظمة" },
-                          { value: "forced", label: "البيع القسري" },
-                        ]
-                      : [
-                          { value: "hau", label: "أعلى وأفضل استخدام" },
-                          { value: "current", label: "الاستخدام الحالي" },
-                        ]
-                  ).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {/* Value ledger — interactive-form spec (invoiceRows) */}
-            <div className="mb-4 overflow-hidden rounded-[10px] border border-border">
-              {soleCost && !buildingOnly ? (
-                <>
-                  <LedgerRow
-                    label="قيمة الأرض"
-                    note={
-                      cost?.landEstimateComplete
-                        ? `${fmt(cost?.landUnitRateAfterDiscount)} ر.س/م² × ${fmt(
-                            cost?.apartmentLandShareSqm || cost?.landAreaSqm,
-                          )} م²`
-                        : "بانتظار المقارنات"
-                    }
-                    value={
-                      cost?.landEstimateComplete
-                        ? fmt(cost?.landValueFromMarket)
-                        : "—"
-                    }
+            <table className="w-full border-collapse">
+              <tbody>
+                {soleCost && !buildingOnly ? (
+                  <>
+                    <OpinionInvoiceRow
+                      label="قيمة الأرض"
+                      note={
+                        cost?.landEstimateComplete
+                          ? `${fmt(cost?.landUnitRateAfterDiscount)} ر.س/م² × ${fmt(
+                              cost?.apartmentLandShareSqm || cost?.landAreaSqm,
+                            )} م²`
+                          : "بانتظار المقارنات"
+                      }
+                      value={
+                        cost?.landEstimateComplete
+                          ? fmt(cost?.landValueFromMarket)
+                          : "—"
+                      }
+                    />
+                    <OpinionInvoiceRow
+                      label="+ قيمة المباني بعد الإهلاك"
+                      note="تكلفة الإحلال − الإهلاك"
+                      value={fmt(cost?.buildingsValueAfterDepreciation)}
+                    />
+                  </>
+                ) : null}
+                {reconMethods.map((m) => {
+                  const done = methodComplete(m.approachKind);
+                  return (
+                    <OpinionInvoiceRow
+                      key={m.approachKind}
+                      label={`${soleCost && !buildingOnly ? "= " : ""}مؤشر ${m.labelAr}`}
+                      note={
+                        reconMethods.length === 1
+                          ? "وزنه ١٠٠٪"
+                          : `وزنه ${m.weightPct}٪`
+                      }
+                      value={done ? fmt(m.approachValue) : "غير مكتمل"}
+                      strong={soleCost && !buildingOnly}
+                      valueClassName={done ? undefined : "text-red-text"}
+                    />
+                  );
+                })}
+                {reconMethods.length >= 2 ? (
+                  <OpinionInvoiceRow
+                    label="القيمة المرجّحة"
+                    note="مجموع المؤشرات بأوزانها"
+                    value={fmt(weightedLocal)}
+                    strong
+                    valueClassName="text-[14px]"
                   />
-                  <LedgerRow
-                    label="+ قيمة المباني بعد الإهلاك"
-                    note="تكلفة الإحلال − الإهلاك"
-                    value={fmt(cost?.buildingsValueAfterDepreciation)}
-                  />
-                </>
-              ) : null}
-              {reconMethods.map((m) => {
-                const done = methodComplete(m.approachKind);
-                return (
-                  <LedgerRow
-                    key={m.approachKind}
-                    label={`${soleCost && !buildingOnly ? "= " : ""}مؤشر ${m.labelAr}`}
-                    note={
-                      reconMethods.length === 1
-                        ? "وزنه ١٠٠٪"
-                        : `وزنه ${m.weightPct}٪`
-                    }
-                    value={done ? fmt(m.approachValue) : "غير مكتمل"}
-                    valueClassName={done ? undefined : "text-red-text"}
-                  />
-                );
-              })}
-              {reconMethods.length >= 2 ? (
-                <LedgerRow
-                  label="القيمة المرجّحة"
-                  note="مجموع المؤشرات بأوزانها"
-                  value={fmt(weightedLocal)}
-                  strong
-                />
-              ) : null}
-              {isLiquidation ? (
-                <div className="flex items-center gap-2.5 border-b border-border bg-[var(--red-light)] px-4 py-[11px]">
-                  <div className="flex-1">
-                    <div className="text-[12.5px] font-bold text-red-text">
-                      − خصم البيع القسري
-                    </div>
-                    <div className="mt-0.5 text-[10.5px] text-text-3">
+                ) : null}
+                {isLiquidation ? (
+                  <tr className="border-b border-dashed border-border">
+                    <td className="w-px whitespace-nowrap py-1.5 text-start">
+                      <span className="text-[12.5px] font-medium text-text">
+                        − خصم البيع القسري
+                      </span>
+                      <input
+                        dir="ltr"
+                        type="number"
+                        min={0}
+                        max={90}
+                        step={5}
+                        value={liquidationDiscountPct}
+                        onChange={(e) =>
+                          setLiquidationDiscountPct(e.target.value)
+                        }
+                        className="ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading"
+                      />
+                    </td>
+                    <td
+                      dir="ltr"
+                      className="w-[150px] py-1.5 pe-0 ps-[18px] text-start text-[13.5px] font-bold text-red-text"
+                    >
+                      −{fmt(forcedCut)}
+                    </td>
+                    <td className="py-1.5 text-start text-[10.5px] text-text-3">
                       ٪ من القيمة قبل الخصم
-                    </div>
-                  </div>
-                  <input
-                    value={liquidationDiscountRationale}
-                    placeholder="مبرر معامل التصفية…"
-                    onChange={(e) =>
-                      setLiquidationDiscountRationale(e.target.value)
-                    }
-                    className="flex-[1.2] rounded-[7px] border border-dashed border-border bg-surface px-[9px] py-1.5 text-[11.5px]"
-                  />
-                  <input
-                    dir="ltr"
-                    type="number"
-                    min={0}
-                    max={90}
-                    step={5}
-                    value={liquidationDiscountPct}
-                    onChange={(e) => setLiquidationDiscountPct(e.target.value)}
-                    className="w-[66px] rounded-[7px] border border-border-md p-[7px] text-center font-bold"
-                  />
-                  <span
-                    dir="ltr"
-                    className="w-[110px] text-end text-[13.5px] font-extrabold text-red-text"
-                  >
-                    −{fmt(forcedCut)}
-                  </span>
-                </div>
-              ) : null}
-              <div className="flex items-center gap-2.5 border-b border-border px-4 py-[11px]">
-                <div className="flex-1">
-                  <div className="text-[12.5px] font-bold text-heading">
-                    تقريب القيمة
-                  </div>
-                  <div className="mt-0.5 text-[10.5px] text-text-3">
+                    </td>
+                  </tr>
+                ) : null}
+                <tr className="border-b border-dashed border-border">
+                  <td className="w-px whitespace-nowrap py-1.5 text-start">
+                    <span className="text-[12.5px] font-medium text-text">
+                      تقريب القيمة
+                    </span>
+                    <input
+                      dir="ltr"
+                      type="number"
+                      min={0}
+                      max={6}
+                      step={1}
+                      value={finalRoundDecimals}
+                      onChange={(e) => setFinalRoundDecimals(e.target.value)}
+                      className="ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading"
+                    />
+                  </td>
+                  <td className="w-[150px] pe-0 ps-[18px]" />
+                  <td className="py-1.5 text-start text-[10.5px] text-text-3">
                     {roundNote}
-                  </div>
-                </div>
-                <input
-                  dir="ltr"
-                  type="number"
-                  min={0}
-                  max={6}
-                  step={1}
-                  value={finalRoundDecimals}
-                  onChange={(e) => setFinalRoundDecimals(e.target.value)}
-                  className="w-[66px] rounded-[7px] border border-border-md p-[7px] text-center font-bold"
-                />
-              </div>
-              <div className="flex items-baseline justify-between gap-2.5 bg-gold-soft px-4 py-3.5">
-                <div className="text-sm font-extrabold text-heading">
-                  = القيمة النهائية
-                </div>
-                <div className="text-end">
-                  <div
+                  </td>
+                </tr>
+                <tr className="border-t-2 border-gold">
+                  <td className="w-px whitespace-nowrap pb-0.5 pt-3 text-start text-[13.5px] font-extrabold text-heading">
+                    = القيمة النهائية
+                  </td>
+                  <td
                     dir="ltr"
-                    className="text-[32px] font-extrabold tracking-[-0.02em] text-heading"
+                    className="w-[150px] pb-0.5 pe-0 ps-[18px] pt-2.5 text-start text-[26px] font-extrabold leading-[1.15] text-heading"
                   >
                     {fmt(finalLocal)}
-                  </div>
-                  <div className="mt-[3px] text-[11.5px] text-text-3">
-                    ريال سعودي · كتابةً: {amountWordsOrZero(finalLocal)}
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </td>
+                  <td className="pb-0.5 pt-3 text-start text-[10.5px] text-text-3">
+                    ريال سعودي
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-            {/* Final-opinion text — auto until edited */}
-            <div className="mb-2 flex items-center justify-between gap-2.5">
-              <span className="text-[12.5px] font-bold text-heading">
-                نص الرأي النهائي (مبرر استخدام الطرق)
-              </span>
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold",
-                    opinionDirty ? "text-red-text" : "text-gold-d",
-                  )}
-                >
-                  {opinionDirty
-                    ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
-                    : "يتحدث تلقائياً مع المدخلات"}
-                </span>
-                {opinionDirty ? (
-                  <GhostBtn disabled={saving} onClick={() => setMethodsRationale("")}>
-                    ↺ استرجاع النص التلقائي
-                  </GhostBtn>
-                ) : null}
-              </div>
-            </div>
             <textarea
               rows={6}
               value={opinionDirty ? methodsRationale : opinionAuto}
               onChange={(e) => setMethodsRationale(e.target.value)}
-              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
+              className="mt-[13px] w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
             />
-          </div>
 
           <div className="mt-[18px] flex flex-wrap gap-2.5">
             <PrimaryBtn
@@ -473,22 +426,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         </CardPad>
       </Card>
 
-      {gates ? (
-        <FinalOpinionGatesCard
-          gates={gates}
-          workflow={workflow}
-          saving={saving}
-        />
-      ) : null}
-
-      {/* Rule Q-6: two-stage issuance + deposit certificate */}
-      {issuance ? (
-        <FinalOpinionIssuanceCard
-          issuance={issuance}
-          workflow={workflow}
-          saving={saving}
-        />
-      ) : null}
+      {gates ? <FinalOpinionGatesCard gates={gates} /> : null}
     </>
   );
 });

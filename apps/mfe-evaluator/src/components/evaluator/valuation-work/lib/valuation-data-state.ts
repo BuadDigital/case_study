@@ -10,7 +10,7 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import {
   filterSelectionNearSubject,
   parseSubjectAreaSqm,
@@ -39,6 +39,72 @@ export function approachAvailability(
       settingsSaved &&
       (settings?.costApproachEnabled ?? true) &&
       (settings?.costApproachAllowed ?? true),
+  };
+}
+
+export type ApproachKind = "market" | "cost";
+
+/** Saved comparable/cost work — used to warn before hiding an approach tab. */
+export function approachWorkPresence(opts: {
+  adoptedMarketCount: number;
+  adoptedLandCount: number;
+  costLineCount: number;
+}): { hasMarketWork: boolean; hasCostWork: boolean } {
+  return {
+    hasMarketWork: opts.adoptedMarketCount > 0,
+    hasCostWork: opts.costLineCount > 0 || opts.adoptedLandCount > 0,
+  };
+}
+
+/** Approaches the next save would hide that already have work (data is kept). */
+export function approachesDisabledWithWork(input: {
+  savedMarketEnabled: boolean;
+  savedCostEnabled: boolean;
+  nextMarketEnabled: boolean;
+  nextCostEnabled: boolean;
+  hasMarketWork: boolean;
+  hasCostWork: boolean;
+}): ApproachKind[] {
+  const out: ApproachKind[] = [];
+  if (
+    input.savedMarketEnabled &&
+    !input.nextMarketEnabled &&
+    input.hasMarketWork
+  ) {
+    out.push("market");
+  }
+  if (input.savedCostEnabled && !input.nextCostEnabled && input.hasCostWork) {
+    out.push("cost");
+  }
+  return out;
+}
+
+export function disableApproachConfirmCopy(kinds: ApproachKind[]): string | null {
+  if (kinds.length === 0) return null;
+  const parts: string[] = [];
+  if (kinds.includes("market")) {
+    parts.push(
+      "سيُخفى تبويب طريقة المقارنة ولن يدخل الرأي النهائي. بيانات المقارنات تبقى إن أعدت تفعيل أسلوب السوق.",
+    );
+  }
+  if (kinds.includes("cost")) {
+    parts.push(
+      "سيُخفى تبويب طريقة المقاول ولن يدخل الرأي النهائي. بنود التكلفة ومقارنات الأرض تبقى إن أعدت تفعيل أسلوب التكلفة.",
+    );
+  }
+  return parts.join(" ");
+}
+
+/** Checkboxes start empty until the valuer picks an approach, or until a saved row is loaded. */
+export function initialApproachToggles(
+  settings: ValuationApproachSettingsDto | null,
+): { market: boolean; cost: boolean } {
+  if (!settings?.isSaved) return { market: false, cost: false };
+  return {
+    market: Boolean(settings.marketApproachEnabled),
+    cost:
+      Boolean(settings.costApproachEnabled) &&
+      (settings.costApproachAllowed ?? true),
   };
 }
 

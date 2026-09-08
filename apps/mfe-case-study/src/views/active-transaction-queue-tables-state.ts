@@ -39,6 +39,8 @@ export const EMPTY_PARTY_PROGRESS: Partial<Record<CaseStudyInfoPartyId, number>>
 export const ALL_TRANSACTIONS_SKELETON_COLS = 7;
 export const PRIMARY_SKELETON_COLS = 7;
 export const PARTY_QUEUE_SKELETON_COLS = 7;
+/** Appraisal queue: deed, type, city/district, PO, assigned date, parties, status, actions. */
+export const APPRAISAL_QUEUE_SKELETON_COLS = 8;
 
 /** Distribution table: 8 fixed columns plus the three party columns when shown. */
 export function distributionSkeletonCols(showPartyColumns: boolean): number {
@@ -131,6 +133,15 @@ export function propertyTypeLabel(
   return (
     property?.propertyType?.trim() || property?.classification?.trim() || ""
   );
+}
+
+/** Parent case-study task for a child queue row (appraisal / survey). */
+export function caseStudyParentForQueueTask(
+  task: WorkflowTask,
+  allTasks: WorkflowTask[],
+): WorkflowTask {
+  if (!task.parentTaskId) return task;
+  return allTasks.find((t) => t.id === task.parentTaskId) ?? task;
 }
 
 export type EngSurveyContact = {

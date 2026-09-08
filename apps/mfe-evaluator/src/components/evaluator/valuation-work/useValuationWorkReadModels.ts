@@ -15,6 +15,7 @@ import {
 } from "@platform/api-client";
 import {
   BANK_DISPLAY_LIMIT,
+  BANK_SEARCH_DISPLAY_LIMIT,
   buildBankDisplayRows,
   fetchBankCandidates,
   filterSelectionNearSubject,
@@ -53,6 +54,7 @@ export function useValuationWorkReadModels({
   reload,
   resolveBankFetchOpts,
   applyBankResult,
+  bankSearch,
 }: {
   hints: SubjectHints;
   loading: boolean;
@@ -61,6 +63,7 @@ export function useValuationWorkReadModels({
   landSelection: ValuationComparableSelectionListDto | null;
   candidates: ComparablePropertyDto[];
   bankSubjectCoords: SubjectCoords | null;
+  bankSearch: string;
   subjectArea: string;
   analysisNotes: string;
   cost: ValuationCostApproachDto | null;
@@ -72,6 +75,7 @@ export function useValuationWorkReadModels({
   applyBankResult: (
     rows: ComparablePropertyDto[],
     subjectCoords: SubjectCoords | null,
+    search?: string,
   ) => void;
 }) {
   const { property, intakeProperty } = hints;
@@ -138,8 +142,13 @@ export function useValuationWorkReadModels({
   );
 
   const autoNarrative = useMemo(
-    () => buildAutoNarrative(visibleAdoptedMarket, visibleFactorRows),
-    [visibleAdoptedMarket, visibleFactorRows],
+    () =>
+      buildAutoNarrative(
+        visibleAdoptedMarket,
+        visibleFactorRows,
+        selection?.factorRationales,
+      ),
+    [visibleAdoptedMarket, visibleFactorRows, selection?.factorRationales],
   );
   const narrativeDirty = analysisNotes.trim().length > 0;
 
@@ -199,6 +208,7 @@ export function useValuationWorkReadModels({
     reload,
   ]);
 
+  const searching = bankSearch.length > 0;
   const { rows: bankRows, distances: bankDistanceKm } = useMemo(
     () =>
       buildBankDisplayRows({
@@ -207,7 +217,8 @@ export function useValuationWorkReadModels({
         subjectCity: subjectCity || undefined,
         subjectCoords: subjectCoordsForBank,
         subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
-        limit: BANK_DISPLAY_LIMIT,
+        limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
+        nearbyOnly: !searching,
       }),
     [
       selection?.items,
@@ -216,6 +227,7 @@ export function useValuationWorkReadModels({
       subjectCoordsForBank,
       subjectArea,
       property?.area,
+      searching,
     ],
   );
 
@@ -232,7 +244,8 @@ export function useValuationWorkReadModels({
         subjectCity: subjectCity || undefined,
         subjectCoords: subjectCoordsForBank,
         subjectSqm: cost?.landAreaSqm ?? parseSubjectAreaSqm(subjectArea, property?.area),
-        limit: BANK_DISPLAY_LIMIT,
+        limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
+        nearbyOnly: !searching,
       }),
     [
       landSelection?.items,
@@ -242,6 +255,7 @@ export function useValuationWorkReadModels({
       cost?.landAreaSqm,
       subjectArea,
       property?.area,
+      searching,
     ],
   );
 
@@ -249,10 +263,12 @@ export function useValuationWorkReadModels({
 
   const subjectAreaRef = useRef(subjectArea);
   subjectAreaRef.current = subjectArea;
+  const searchGen = useRef(0);
   /** Bank search — fetches bank candidates only instead of a full screen reload (7 calls). */
   const onSearchBank = useCallback(
     (search: string) => {
       void (async () => {
+        const gen = ++searchGen.current;
         const config = apiConfig();
         if (!config) return;
         const bankOpts = await resolveBankFetchOpts(search);
@@ -261,8 +277,8 @@ export function useValuationWorkReadModels({
           property?.area,
         );
         const res = await fetchBankCandidates(config, bankOpts);
-        if (!res.ok) return;
-        applyBankResult(res.data, res.subjectCoords);
+        if (!res.ok || gen !== searchGen.current) return;
+        applyBankResult(res.data, res.subjectCoords, search);
       })();
     },
     [resolveBankFetchOpts, property?.area, applyBankResult],

@@ -1,4 +1,4 @@
-import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/app-data/case-study-form-data";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
+import type { CaseStudyFormAnswer } from "@platform/app-shared/app-data/case-study-form-model";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { isPartyQuestionVisible } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import type {
   EvaluatorChecklistAnswers,

@@ -9,6 +9,7 @@ import {
   PageGutter,
   PageShell,
   PageShellHeader,
+  GentleBusy,
   useToast,
 } from "@platform/ui-kit";
 import {
@@ -94,7 +95,9 @@ export function DifferenceFactorCatalogView() {
       <PageGutter>
         {error ? <Note tone="warn">{error}</Note> : null}
         {loading ? (
-          <p className="text-[13px] text-text-2">جاري التحميل…</p>
+          <GentleBusy>
+            <p className="text-[13px] text-text-2">جاري التحميل…</p>
+          </GentleBusy>
         ) : (
           <div className="flex max-w-4xl flex-col gap-3">
             <Note tone="info">

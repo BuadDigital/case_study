@@ -73,10 +73,44 @@ public static class MarketAdjustmentFactorKeys
     public static bool IsSequential(string? key) =>
         key is Financing or Market or TransactionType;
 
+    /// <summary>
+    /// Optional sequential rows stay out of the chain until the valuer ticks them.
+    /// Market conditions and difference factors stay on.
+    /// </summary>
+    public static bool IncludedByDefault(string? key) =>
+        key is not Financing and not TransactionType;
+
+    /// <summary>
+    /// Built-in difference keys keep a fixed Arabic label. Catalog extras and
+    /// <see cref="Custom"/> keep the label sent by the client.
+    /// </summary>
+    public static bool HasFixedStandardLabel(string? key) =>
+        key is Area or IdealArea or Location or Attraction or Access
+            or StreetCount or StreetLengths or PlotShape or Topography
+            or Zoning or Services or Restrictions or Development
+            || IsSequential(key);
+
     public static bool IsDifferenceFactor(string? key) =>
         key is Area or IdealArea or Location or Attraction or Access
             or StreetCount or StreetLengths or PlotShape or Topography
-            or Zoning or Services or Restrictions or Development or Custom;
+            or Zoning or Services or Restrictions or Development or Custom
+        || IsExtraCatalogKey(key);
+
+    /// <summary>
+    /// Admin catalog keys that are not in the built-in set (e.g. a finishing
+    /// factor). Letter/digit/underscore/hyphen, max 32 — same as the column.
+    /// </summary>
+    public static bool IsExtraCatalogKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key) || key.Length > 32) return false;
+        if (IsSequential(key) || HasFixedStandardLabel(key) || key == Custom) return false;
+        foreach (var c in key)
+        {
+            if (!(char.IsLetterOrDigit(c) || c is '_' or '-')) return false;
+        }
+
+        return true;
+    }
 
     public static bool IsKnown(string? key) =>
         IsSequential(key) || IsDifferenceFactor(key);

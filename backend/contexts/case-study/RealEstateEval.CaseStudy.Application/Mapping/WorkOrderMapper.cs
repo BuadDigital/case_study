@@ -28,6 +28,9 @@ public static class WorkOrderMapper
             ClientId = entity.ClientId,
             ClientNameAr = entity.Client?.NameAr,
             ReportUserClientIds = [.. WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)],
+            ValuationPurposeKey = entity.ValuationPurposeKey,
+            BasisOfValueKey = entity.BasisOfValueKey,
+            ValuePremiseKey = entity.ValuePremiseKey,
             Properties = entity.Properties
                 .OrderBy(p => p.DeedNumber)
                 .Select(ToPropertyDto)
@@ -117,7 +120,7 @@ public static class WorkOrderMapper
             PartitionMinutesDate = p.PartitionMinutesDate,
             FinishingType = p.FinishingType,
             FinishingStructure = p.FinishingStructure,
-            SpecialistReportExtrasJson = p.SpecialistReportExtrasJson,
+            SpecialistReportExtrasJson = SpecialistReportExtrasRules.ToWireJson(p),
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),

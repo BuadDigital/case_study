@@ -20,6 +20,7 @@ public class BuildingInventoryController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadInspectionContext)]
     public async Task<ActionResult<BuildingInventoryDto>> Get(
         string poNumber,
         Guid propertyId,

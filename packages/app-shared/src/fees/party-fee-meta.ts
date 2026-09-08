@@ -29,8 +29,10 @@ export function buildAssigneeStaffIndex(
 ): Map<string, StaffUser> {
   const byAssignee = new Map<string, StaffUser>();
   for (const user of staffUsers) {
-    const id = user.distributionAssigneeId?.trim();
-    if (id) byAssignee.set(id, user);
+    const assigneeId = user.distributionAssigneeId?.trim();
+    if (assigneeId) byAssignee.set(assigneeId, user);
+    const userId = user.id?.trim();
+    if (userId) byAssignee.set(userId, user);
   }
   return byAssignee;
 }

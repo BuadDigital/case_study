@@ -22,6 +22,84 @@ export type ReverseGeocodeDetail = {
   district?: string;
 };
 
+export type ReverseGeocodePayload = {
+  locality?: string;
+  city?: string;
+  countryName?: string;
+  principalSubdivision?: string;
+  plusCode?: string;
+  localityInfo?: {
+    administrative?: Array<{ name?: string; adminLevel?: number }>;
+    informative?: Array<{ name?: string; description?: string }>;
+  };
+};
+
+const HAYY_PREFIX = /^حي\s+/;
+const SKIP_PLACE_PREFIX =
+  /^(بلدية|أمانة|محافظة|منطقة|قارة|بحر|محيط|دولة)/;
+
+function cleanPlaceName(raw: string | undefined | null): string {
+  return (raw ?? "").trim().replace(HAYY_PREFIX, "").trim();
+}
+
+function isUsableDistrict(
+  name: string,
+  city: string,
+  region: string,
+  country: string,
+): boolean {
+  if (!name) return false;
+  if (name === city || name === region || name === country) return false;
+  if (SKIP_PLACE_PREFIX.test(name)) return false;
+  if (name.includes("/")) return false;
+  return true;
+}
+
+/** Pick city + neighbourhood from BigDataCloud (or similar) reverse-geocode JSON. */
+export function placeFromReverseGeocodePayload(data: ReverseGeocodePayload): {
+  city?: string;
+  district?: string;
+  formattedAddress?: string;
+} {
+  const admin = data.localityInfo?.administrative ?? [];
+  const byLevel = (level: number) =>
+    cleanPlaceName(admin.find((a) => a.adminLevel === level)?.name);
+
+  const region = cleanPlaceName(data.principalSubdivision);
+  const country = cleanPlaceName(data.countryName);
+  const city =
+    cleanPlaceName(data.city) ||
+    byLevel(8) ||
+    byLevel(6) ||
+    region ||
+    "";
+
+  const district =
+    [...admin]
+      .map((a) => ({
+        name: cleanPlaceName(a.name),
+        level: a.adminLevel ?? 0,
+      }))
+      .filter(
+        (a) =>
+          a.level >= 9 && isUsableDistrict(a.name, city, region, country),
+      )
+      .sort((a, b) => b.level - a.level)[0]?.name ||
+    (isUsableDistrict(cleanPlaceName(data.locality), city, region, country)
+      ? cleanPlaceName(data.locality)
+      : "");
+
+  const formattedAddress = [district, city, region]
+    .filter((p, i, arr) => p && arr.indexOf(p) === i)
+    .join("، ");
+
+  return {
+    city: city || undefined,
+    district: district || undefined,
+    formattedAddress: formattedAddress || data.plusCode || undefined,
+  };
+}
+
 /**
  * Client-side reverse geocode (no Google Geocoding API — avoids requiring that
  * billed/enabled product on the Maps key). Uses BigDataCloud's free client endpoint.
@@ -40,41 +118,9 @@ export async function reverseGeocodeLocation(
     url.searchParams.set("localityLanguage", "ar");
     const res = await fetch(url.toString());
     if (!res.ok) return base;
-    const data = (await res.json()) as {
-      locality?: string;
-      city?: string;
-      principalSubdivision?: string;
-      localityInfo?: {
-        administrative?: Array<{ name?: string; adminLevel?: number }>;
-      };
-      plusCode?: string;
-    };
-    const admin = data.localityInfo?.administrative ?? [];
-    const byLevel = (level: number) =>
-      admin.find((a) => a.adminLevel === level)?.name?.trim() || "";
-
-    const city =
-      data.city?.trim() ||
-      byLevel(8) ||
-      byLevel(6) ||
-      data.principalSubdivision?.trim() ||
-      "";
-    const district =
-      data.locality?.trim() ||
-      byLevel(9) ||
-      byLevel(10) ||
-      "";
-    const formattedAddress = [district, city, data.principalSubdivision]
-      .filter((p, i, arr) => p && arr.indexOf(p) === i)
-      .join("، ");
-
-    return {
-      lat,
-      lng,
-      formattedAddress: formattedAddress || data.plusCode || undefined,
-      city: city || undefined,
-      district: district && district !== city ? district : undefined,
-    };
+    const data = (await res.json()) as ReverseGeocodePayload;
+    const place = placeFromReverseGeocodePayload(data);
+    return { ...base, ...place };
   } catch {
     return base;
   }

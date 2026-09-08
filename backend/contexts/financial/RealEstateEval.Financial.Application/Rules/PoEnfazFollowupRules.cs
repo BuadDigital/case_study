@@ -3,9 +3,15 @@ using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Financial.Application.Rules;
 
-internal static class PoEnfazFollowupRules
+/// <summary>
+/// Follow-up and aging decisions of Enfaz receivables: the age buckets, the follow-up channel
+/// vocabulary, and what a recorded follow-up looks like. Pure — the service saves.
+/// </summary>
+public static class PoEnfazFollowupRules
 {
-    internal static (string Key, string Label) ResolveAgingBucket(int ageDays) =>
+    public const int MaxNotesLength = 2000;
+
+    public static (string Key, string Label) ResolveAgingBucket(int ageDays) =>
         ageDays switch
         {
             <= 30 => ("0_30", "0–30 يوماً"),
@@ -14,7 +20,7 @@ internal static class PoEnfazFollowupRules
             _ => ("90_plus", "أكثر من 90 يوماً"),
         };
 
-    internal static EnfazFollowupDto ToFollowupDto(PoEnfazFollowup f) => new()
+    public static EnfazFollowupDto ToFollowupDto(PoEnfazFollowup f) => new()
     {
         Id = f.Id,
         PoNumber = f.PoNumber,
@@ -26,7 +32,7 @@ internal static class PoEnfazFollowupRules
         CreatedAtUtc = f.CreatedAtUtc,
     };
 
-    internal static string NormalizeChannel(string? raw)
+    public static string NormalizeChannel(string? raw)
     {
         var c = (raw ?? "").Trim().ToLowerInvariant();
         return c switch
@@ -39,7 +45,7 @@ internal static class PoEnfazFollowupRules
         };
     }
 
-    internal static string ChannelLabel(string channel) => channel switch
+    public static string ChannelLabel(string channel) => channel switch
     {
         PoEnfazFollowupChannel.Email => "بريد",
         PoEnfazFollowupChannel.Portal => "بوابة إنفاذ",
@@ -47,4 +53,29 @@ internal static class PoEnfazFollowupRules
         PoEnfazFollowupChannel.Other => "أخرى",
         _ => "اتصال",
     };
+
+    /// <summary>A follow-up needs a PO and a note; null when both are present.</summary>
+    public static string? ValidateFollowupInput(string trimmedPoNumber, string trimmedNotes)
+    {
+        if (string.IsNullOrEmpty(trimmedPoNumber))
+            return "رقم أمر العمل مطلوب.";
+        return string.IsNullOrEmpty(trimmedNotes) ? "ملاحظات المتابعة إلزامية." : null;
+    }
+
+    /// <summary>The follow-up row: channel normalised, notes capped, dated now unless the caller said when.</summary>
+    public static PoEnfazFollowup BuildFollowup(
+        string trimmedPoNumber,
+        string trimmedNotes,
+        AddEnfazFollowupRequest request,
+        string actorUserId,
+        DateTime nowUtc) => new()
+        {
+            Id = Guid.NewGuid(),
+            PoNumber = trimmedPoNumber,
+            FollowedAtUtc = request.FollowedAtUtc?.ToUniversalTime() ?? nowUtc,
+            Channel = NormalizeChannel(request.Channel),
+            Notes = trimmedNotes.Length > MaxNotesLength ? trimmedNotes[..MaxNotesLength] : trimmedNotes,
+            CreatedByUserId = actorUserId ?? "",
+            CreatedAtUtc = nowUtc,
+        };
 }

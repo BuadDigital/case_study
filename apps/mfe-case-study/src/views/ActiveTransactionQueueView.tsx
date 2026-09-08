@@ -365,6 +365,8 @@ export function ActiveTransactionQueueView({
                     ctx={rowCtx}
                     filteredMeta={filteredPrimaryMeta}
                     tasks={tasks ?? EMPTY_TASKS}
+                    staffUsers={staffUsers}
+                    partyProgressByTask={partyProgressByTask}
                     openPropertyDetail={openPropertyDetailFromQueue}
                     statusColumnLabel={config.statusColumnLabel}
                   />

@@ -115,6 +115,9 @@ public class WorkOrderDto
     public string? ClientNameAr { get; set; }
  /// <summary>report users (0..n) from the client registry.</summary>
     public List<Guid> ReportUserClientIds { get; set; } = [];
+    public string? ValuationPurposeKey { get; set; }
+    public string? BasisOfValueKey { get; set; }
+    public string? ValuePremiseKey { get; set; }
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -151,6 +154,15 @@ public class CreateWorkOrderRequest
  /// <summary>report users (0..n); may include the client.</summary>
     public List<Guid>? ReportUserClientIds { get; set; }
 
+    [MaxLength(32)]
+    public string? ValuationPurposeKey { get; set; }
+
+    [MaxLength(32)]
+    public string? BasisOfValueKey { get; set; }
+
+    [MaxLength(32)]
+    public string? ValuePremiseKey { get; set; }
+
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
@@ -182,6 +194,15 @@ public class UpdateWorkOrderHeaderRequest
 
  /// <summary>report users (0..n); may include the client.</summary>
     public List<Guid>? ReportUserClientIds { get; set; }
+
+    [MaxLength(32)]
+    public string? ValuationPurposeKey { get; set; }
+
+    [MaxLength(32)]
+    public string? BasisOfValueKey { get; set; }
+
+    [MaxLength(32)]
+    public string? ValuePremiseKey { get; set; }
 }
 
 public class UpdatePropertyBourseRequest

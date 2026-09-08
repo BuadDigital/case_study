@@ -32,6 +32,7 @@ public interface IFailureService
 
     Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
     Task<(FailureRecordDto? Result, Dictionary<string, string>? Errors)> ReportBourseObstructionAsync(
@@ -89,16 +90,19 @@ public interface IFailureService
     Task<FailureRecordDto?> ResolveAsync(
         Guid id,
         ResolveFailureRequest request,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
     Task<FailureRecordDto?> ApproveAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
     Task<FailureRecordDto?> ReturnAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
     Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default);

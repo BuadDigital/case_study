@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -25,6 +26,11 @@ public static class WorkOrderValidator
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
         if (request.ClientId == Guid.Empty)
             errors["clientId"] = "العميل مطلوب";
+        ValidateValuationKeys(
+            request.ValuationPurposeKey,
+            request.BasisOfValueKey,
+            request.ValuePremiseKey,
+            errors);
         return errors;
     }
 
@@ -40,6 +46,11 @@ public static class WorkOrderValidator
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
         if (request.ClientId == Guid.Empty)
             errors["clientId"] = "العميل مطلوب";
+        ValidateValuationKeys(
+            request.ValuationPurposeKey,
+            request.BasisOfValueKey,
+            request.ValuePremiseKey,
+            errors);
         return errors;
     }
 
@@ -296,6 +307,28 @@ public static class WorkOrderValidator
         if (string.IsNullOrWhiteSpace(email)) return;
         if (!IsValidEmail(email))
             errors["assignmentSpecialistEmail"] = "صيغة الإيميل غير صالحة";
+    }
+
+    private static void ValidateValuationKeys(
+        string? purposeKey,
+        string? basisKey,
+        string? premiseKey,
+        Dictionary<string, string> errors)
+    {
+        var purpose = purposeKey?.Trim() ?? "";
+        var basis = basisKey?.Trim() ?? "";
+        var premise = premiseKey?.Trim() ?? "";
+        if (purpose.Length > 0 && !ValuationPurposeKeys.IsKnown(purpose))
+            errors["valuationPurposeKey"] = "الغرض من التقييم غير معروف";
+        if (basis.Length > 0 && !BasisOfValueKeys.IsKnown(basis))
+            errors["basisOfValueKey"] = "أساس القيمة غير معروف";
+        if (premise.Length > 0)
+        {
+            if (!ValuePremiseKeys.IsKnown(premise))
+                errors["valuePremiseKey"] = "فرضية القيمة غير معروفة";
+            else if (basis.Length > 0 && !ValuePremiseKeys.IsCompatible(basis, premise))
+                errors["valuePremiseKey"] = "فرضية القيمة غير متوافقة مع أساس القيمة المختار";
+        }
     }
 
     // Federated Validation — Here MailAddress and regex were in the identity context with two different acceptors.

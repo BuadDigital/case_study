@@ -1,9 +1,9 @@
 /** Map property documents ↔ report attachment keys (valuation lists). */
 
-import type { PropertyDetailDocumentEntry } from "@case-study/mfe/lib/app-data/property-detail-documents";
-import { printKeyForPropertyDocument } from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
+import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
+import { printKeyForPropertyDocument } from "@platform/app-shared/app-data/valuation-print-attachment-keys";
 
-export { printKeyForPropertyDocument } from "@case-study/mfe/lib/app-data/valuation-print-attachment-keys";
+export { printKeyForPropertyDocument } from "@platform/app-shared/app-data/valuation-print-attachment-keys";
 
 export type ValuationPrintAttachmentRow = {
   key: string;

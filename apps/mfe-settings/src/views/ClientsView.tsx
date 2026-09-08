@@ -24,7 +24,7 @@ import {
   ModalOverlay,
   ModalTitle,
   PageShell,
-  Spinner,
+  PageLoadingHint,
   Table,
   TBody,
   Td,
@@ -253,10 +253,7 @@ export function ClientsView() {
           </p>
         ) : null}
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-            <Spinner />
-            <span className="text-[13px]">جاري التحميل…</span>
-          </div>
+          <PageLoadingHint />
         ) : sorted.length === 0 && !error ? (
           <EmptyState line="لا يوجد عملاء بعد." />
         ) : !loading && !error ? (

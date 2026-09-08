@@ -71,8 +71,9 @@ public class WorkflowTaskService : IWorkflowTaskService
         ConfirmDistributionAsync(
             Guid id,
             ConfirmTaskDistributionRequest request,
+            string? actorUserId = null,
             CancellationToken cancellationToken = default) =>
-        _distribution.ConfirmDistributionAsync(id, request, cancellationToken);
+        _distribution.ConfirmDistributionAsync(id, request, actorUserId, cancellationToken);
 
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
@@ -127,6 +128,7 @@ public class WorkflowTaskService : IWorkflowTaskService
         ReopenCompletedWorkflowTaskRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
-        _lifecycle.ReopenCompletedAsync(id, request, actorRole, actorName, cancellationToken);
+        _lifecycle.ReopenCompletedAsync(id, request, actorRole, actorName, actorUserId, cancellationToken);
 }

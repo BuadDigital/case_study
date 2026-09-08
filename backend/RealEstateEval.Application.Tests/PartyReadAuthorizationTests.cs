@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RealEstateEval.Application.Abstractions;
@@ -209,7 +209,9 @@ public class PartyTaskSubmissionReadAuthorizationTests
             new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
-            recipients);
+            recipients,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

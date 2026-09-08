@@ -37,6 +37,21 @@ public static class ValuerCredentialRules
         return days is >= 0 and <= WarningDays;
     }
 
+    /// <summary>
+    /// Firm practice-license date (بيانات المنشأة) is the issuance source;
+    /// a personal date is only a fallback when the firm date is empty.
+    /// </summary>
+    public static string? FirstFilled(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                return value.Trim();
+        }
+
+        return null;
+    }
+
  /// <summary>Hard gate: both credentials must be present and not expired.</summary>
     public static bool AllowsIssuance(
         string? licenseExpiresAt,

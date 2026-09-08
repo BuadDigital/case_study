@@ -3,6 +3,7 @@ import { partyPackageFeedsInfath } from "../infath-upload-model";
 import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceAccepted,
+  isInspectorWorkspaceReviewLocked,
 } from "../inspector-workspace-data";
 import type { PropertyDetailPartySubmission } from "../property-detail-party-submission-types";
 
@@ -79,6 +80,33 @@ describe("inspection → إنفاذ acceptance gate", () => {
     expect(
       isInspectorWorkspaceAccepted({
         acceptedAtUtc: "2026-08-10T10:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("locks specialist review only after acceptance, and inspector after submit", () => {
+    expect(
+      isInspectorWorkspaceReviewLocked(
+        { status: "submitted", acceptedAtUtc: null },
+        { specialistReview: true },
+      ),
+    ).toBe(false);
+    expect(
+      isInspectorWorkspaceReviewLocked(
+        { status: "submitted", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },
+        { specialistReview: true },
+      ),
+    ).toBe(true);
+    expect(
+      isInspectorWorkspaceReviewLocked(
+        { status: "reopened", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },
+        { specialistReview: true },
+      ),
+    ).toBe(false);
+    expect(
+      isInspectorWorkspaceReviewLocked({
+        status: "submitted",
+        acceptedAtUtc: null,
       }),
     ).toBe(true);
   });

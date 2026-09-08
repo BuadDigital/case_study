@@ -196,10 +196,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             out var existing);
         if (notEditable is not null) return (null, notEditable);
 
-        var (extrasErrors, extras) = WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras(
+        var extrasErrors = SpecialistReportExtrasRules.ApplyFromWireJson(
+            existing!,
             specialistReportExtrasJson);
         if (extrasErrors is not null) return (null, extrasErrors);
-        existing!.SpecialistReportExtrasJson = extras;
 
         await _db.SaveChangesAsync(cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(existing), null);

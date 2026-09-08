@@ -32,7 +32,7 @@ import {
   Note,
   PageShell,
   Select,
-  Spinner,
+  PageLoadingHint,
   cn,
   opsDropzone,
   useToast,
@@ -189,7 +189,17 @@ export function OrganizationDataView() {
     };
     const res = await saveOrganizationSettings(config, {
       company: nextCompany,
-      evaluator,
+      evaluator: {
+        ...evaluator,
+        licenseNumber: filled(
+          evaluator.licenseNumber,
+          nextCompany.practiceLicenseNumber ?? "",
+        ),
+        licenseExpiresAt: filled(
+          nextCompany.practiceLicenseExpiresAt,
+          evaluator.licenseExpiresAt ?? "",
+        ),
+      },
     });
     setSaving(false);
     if (!res.ok) {
@@ -223,10 +233,7 @@ export function OrganizationDataView() {
   if (loading) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <div className="flex items-center justify-center gap-2 py-20 text-text-3">
-          <Spinner />
-          <span className="text-[13px]">جاري التحميل…</span>
-        </div>
+        <PageLoadingHint className="py-20" />
       </PageShell>
     );
   }

@@ -26,6 +26,7 @@ export type PrimaryDataTableRow = {
   propertySlot: string;
   city: string;
   district: string;
+  propertyType: string;
   remainingTime: RemainingTimeState;
 };
 
@@ -182,6 +183,7 @@ export function buildPrimaryDataTableRow(
     propertySlot: formatPrimaryDataPropertyLabel(task, property, record),
     city: fieldOrDash(property?.city),
     district: fieldOrDash(property?.district),
+    propertyType: fieldOrDash(property?.propertyType),
     remainingTime: resolveRemainingTime(record?.dueDateAt ?? "", now),
   };
 }

@@ -84,12 +84,16 @@ public static class ValuationReportFieldBuilder
         {
             case ValuationReportSectionKeys.ValuerIdentity:
                 d["name"] = org.Evaluator.Name;
-                d["licenseNumber"] = org.Evaluator.LicenseNumber;
+                d["licenseNumber"] = ValuerCredentialRules.FirstFilled(
+                    org.Evaluator.LicenseNumber,
+                    org.Company.PracticeLicenseNumber);
                 d["membershipNumber"] = org.Evaluator.MembershipNumber;
                 d["licenseIssuedAt"] = org.Evaluator.LicenseIssuedAt;
                 d["licenseExpiresHijri"] = org.Evaluator.LicenseExpiresHijri;
                 d["licenseExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
-                    org.Evaluator.LicenseExpiresAt);
+                    ValuerCredentialRules.FirstFilled(
+                        org.Company.PracticeLicenseExpiresAt,
+                        org.Evaluator.LicenseExpiresAt));
                 d["membershipExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
                     org.Evaluator.MembershipExpiresAt);
                 d["title"] = org.Evaluator.Title;

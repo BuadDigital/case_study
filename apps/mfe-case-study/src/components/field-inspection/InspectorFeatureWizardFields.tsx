@@ -20,6 +20,7 @@ import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescript
 import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
+  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
 import {
   MOVABLES_DESCRIPTION_KEY,
@@ -133,8 +134,9 @@ export function InspectorFeatureWizardFields({
                 aria-invalid={valueMissing || undefined}
                 disabled={disabled}
                 className={cn(
-                  INS_GRID_SELECT_CLASS,
-                  disabled && "cursor-default opacity-90",
+                  disabled
+                    ? cn(INSPECTOR_LOCKED_CONTROL_CLASS, "text-center")
+                    : INS_GRID_SELECT_CLASS,
                   (valueMissing || photoMissing) && invalidControlClass,
                 )}
                 value={rawVal}
@@ -183,8 +185,9 @@ export function InspectorFeatureWizardFields({
           </span>
           <input
             className={cn(
-              INS_GRID_NUMERIC_CLASS,
-              disabled && "cursor-default opacity-90",
+              disabled
+                ? cn(INSPECTOR_LOCKED_CONTROL_CLASS, "text-center tabular-nums [direction:ltr] [unicode-bidi:isolate]")
+                : INS_GRID_NUMERIC_CLASS,
             )}
             inputMode="numeric"
             disabled={disabled}

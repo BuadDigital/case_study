@@ -17,7 +17,14 @@ public sealed class GatewayReadinessOptions
  /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
     public int CacheSeconds { get; init; } = 5;
 
-    public string UpstreamHealthPath { get; init; } = "/health";
+    /// <summary>
+    /// Upstream probe path. <c>/ready</c> is each service's real readiness (database
+    /// reachable, migrations applied); <c>/health</c> is liveness only and would report a
+    /// service with a dead pool as ready.
+    /// </summary>
+    public string UpstreamHealthPath { get; init; } = DefaultUpstreamHealthPath;
+
+    public const string DefaultUpstreamHealthPath = "/ready";
 
  /// <summary>Empty means every cluster configured in <c>ReverseProxy:Clusters</c>.</summary>
     public IReadOnlyList<string> RequiredClusters { get; init; } = [];
@@ -63,7 +70,7 @@ public sealed class GatewayReadinessOptions
     private static string ReadHealthPath(string? configured)
     {
         if (string.IsNullOrWhiteSpace(configured))
-            return "/health";
+            return DefaultUpstreamHealthPath;
 
         var trimmed = configured.Trim();
         return trimmed.StartsWith('/') ? trimmed : "/" + trimmed;

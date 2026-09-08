@@ -73,6 +73,7 @@ public class PartyBillingStatementsController : ControllerBase
  /// See docs/architecture/pagination-contract.md §9.1.
  /// </summary>
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPartyPayables)]
     public async Task<IActionResult> List(
         [FromQuery] string? assigneeId = null,
         [FromQuery] string? status = null,
@@ -115,6 +116,7 @@ public class PartyBillingStatementsController : ControllerBase
  /// statement; a payee sees only its own, once issued.
  /// </summary>
     [HttpGet("{statementId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPartyPayables)]
     public async Task<ActionResult<PartyBillingStatementDto>> Get(
         Guid statementId,
         CancellationToken ct)

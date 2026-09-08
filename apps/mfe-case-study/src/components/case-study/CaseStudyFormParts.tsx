@@ -2,12 +2,11 @@
 
 import type { ReactNode } from "react";
 import { Button, FormGroup, Label, Note, Textarea, cn } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
-import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
   partyById,
   type CaseStudyInfoPartyId,
@@ -25,25 +24,37 @@ export function RemarksBlock({
   onChange,
   rows = 3,
   disabled = false,
+  id,
+  invalid = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   rows?: number;
   disabled?: boolean;
+  id?: string;
+  invalid?: boolean;
 }) {
   return (
     <FormGroup className="mb-0 border-0 pt-0">
-      <Label className="mb-1.5 text-[11px] font-semibold text-text-2">
+      <Label
+        htmlFor={id}
+        className="mb-1.5 text-[11px] font-semibold text-text-2"
+      >
         {label}
       </Label>
       <Textarea
+        id={id}
         rows={rows}
         placeholder="الملاحظات..."
         value={value}
         disabled={disabled}
+        aria-invalid={invalid || undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-[10px] border-border-md bg-surface"
+        className={cn(
+          "rounded-[10px] border-border-md bg-surface",
+          invalid && invalidControlClass,
+        )}
       />
     </FormGroup>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { rememberPropertyPoNumber } from "@platform/app-shared/storage/specialist-report-extras-sync";
+import { INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 import {
   loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
@@ -20,9 +21,11 @@ const OPTIONS: { value: SpecialistFinishingLevel; label: string }[] = [
 export function SpecialistValuationReportFinishingEditor({
   propertyId,
   poNumber,
+  readOnly = false,
 }: {
   propertyId: string;
   poNumber?: string;
+  readOnly?: boolean;
 }) {
   const [level, setLevel] = useState(() =>
     loadSpecialistFinishingLevel(propertyId),
@@ -48,9 +51,15 @@ export function SpecialistValuationReportFinishingEditor({
         المنشأة.
       </p>
       <select
-        className="w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-semibold text-text outline-none focus:border-ink"
+        className={
+          readOnly
+            ? INSPECTOR_LOCKED_CONTROL_CLASS
+            : "w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-semibold text-text outline-none focus:border-ink"
+        }
         value={level}
+        disabled={readOnly}
         onChange={(e) => {
+          if (readOnly) return;
           const next = e.target.value as SpecialistFinishingLevel;
           setLevel(next);
           saveSpecialistFinishingLevel(propertyId, next);

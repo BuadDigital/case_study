@@ -6,7 +6,6 @@ import {
   AppModal,
   Button,
   InlineLoadingSkeleton,
-  cn,
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
@@ -40,7 +39,7 @@ import {
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   isCommercialShopInspectionContext,
-  isInspectorWorkspaceLocked,
+  isInspectorWorkspaceReviewLocked,
   isLandInspectionContext,
   isMovablesPresent,
   isShopHiddenInspectorComponentKey,
@@ -50,6 +49,7 @@ import {
   parseInspectorCount,
   patchInspectorFeatureValues,
   restoreInspectorOriginalMapPin,
+  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
@@ -85,7 +85,10 @@ import {
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
-import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
+import {
+  finalizeInspectorWorkspace,
+  finalizeSpecialistInspectionAcceptance,
+} from "../../lib/app-data/finalize-field-inspection-submission";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
@@ -174,9 +177,14 @@ export function PropertyDetailInspectionTab({
           if (!inspectionTask) {
             throw new Error("لا توجد مهمة معاينة");
           }
-          return finalizeInspectorWorkspace(inspectionTask.id, idempotencyKey);
+          return serviceProofFromTransactionPhotos
+            ? finalizeSpecialistInspectionAcceptance(
+                inspectionTask.id,
+                idempotencyKey,
+              )
+            : finalizeInspectorWorkspace(inspectionTask.id, idempotencyKey);
         },
-        [inspectionTask],
+        [inspectionTask, serviceProofFromTransactionPhotos],
       ),
     );
 
@@ -277,9 +285,12 @@ export function PropertyDetailInspectionTab({
     return approximatePropertyGeo(property);
   }, [draft, property]);
 
-  const locked =
-    Boolean(draft && isInspectorWorkspaceLocked(draft.status)) &&
-    !serviceProofFromTransactionPhotos;
+  const locked = Boolean(
+    draft &&
+      isInspectorWorkspaceReviewLocked(draft, {
+        specialistReview: serviceProofFromTransactionPhotos,
+      }),
+  );
   const showEditFields = editMode && Boolean(draft) && !locked;
   const mapActor = serviceProofFromTransactionPhotos
     ? "specialist"
@@ -294,7 +305,8 @@ export function PropertyDetailInspectionTab({
       prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
     );
     void updateInspectorWorkspace(inspectionTask.id, patch, {
-      allowWhenSubmitted: serviceProofFromTransactionPhotos,
+      allowWhenSubmitted:
+        serviceProofFromTransactionPhotos && !locked,
     })
       .then((next) => {
         if (!next) return;
@@ -446,7 +458,10 @@ export function PropertyDetailInspectionTab({
       showToast(
         result.queued
           ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
-          : submitSuccessToast ?? "تم حفظ بيانات المعاينة وإرسالها.",
+          : submitSuccessToast ??
+            (serviceProofFromTransactionPhotos
+              ? "تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
+              : "تم حفظ بيانات المعاينة وإرسالها."),
         result.queued ? "info" : "success",
       );
       if (!result.queued) {
@@ -562,6 +577,11 @@ export function PropertyDetailInspectionTab({
           draft={draft}
           saving={submitBusy}
           confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
+          submitLabel={
+            serviceProofFromTransactionPhotos
+              ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL
+              : undefined
+          }
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}

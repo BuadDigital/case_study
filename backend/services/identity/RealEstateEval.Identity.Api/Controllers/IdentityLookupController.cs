@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -11,6 +12,7 @@ namespace RealEstateEval.Identity.Api.Controllers;
 public sealed class IdentityLookupController(IIdentityDirectory directory) : ControllerBase
 {
     [HttpGet("labels")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IReadOnlyList<UserLabelDto>>> Labels(
         [FromQuery] string ids,
         CancellationToken cancellationToken)
@@ -21,6 +23,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("assignee-labels")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IReadOnlyList<UserLabelDto>>> AssigneeLabels(
         [FromQuery] string ids,
         CancellationToken cancellationToken)
@@ -31,6 +34,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("compensation")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IdentityCompensationProfileDto>> Compensation(
         [FromQuery] string assigneeId,
         CancellationToken cancellationToken)
@@ -40,6 +44,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("user-id-by-assignee")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IdentityUserIdDto>> UserIdByAssignee(
         [FromQuery] string assigneeId,
         CancellationToken cancellationToken)
@@ -53,6 +58,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("user-id-by-email")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IdentityUserIdDto>> UserIdByEmail(
         [FromQuery] string email,
         CancellationToken cancellationToken)
@@ -64,6 +70,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("user-ids-by-assignees")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IReadOnlyList<UserLabelDto>>> UserIdsByAssignees(
         [FromQuery] string ids,
         CancellationToken cancellationToken)
@@ -74,6 +81,7 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     }
 
     [HttpGet("user-ids-by-role")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IdentityUserIdsDto>> UserIdsByRole(
         [FromQuery] string role,
         CancellationToken cancellationToken)

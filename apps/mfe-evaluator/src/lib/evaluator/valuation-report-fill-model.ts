@@ -13,17 +13,15 @@ import {
   valuationPurposeLabelArForAssignment,
   valuePremiseKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
-import type { PoIntakeRecord, PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import {
-  approximatePropertyGeo,
-  subClientIdFromReportUsers,
-} from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import { approximatePropertyGeo } from "@platform/app-shared/domain/property-geo";
 import {
   clientNameFromRecord,
   formatValuationReportUsers,
 } from "./valuation-report-users";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
-import { isLandInspectionContext } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   applyIvsDateToStandards,
   isNoExternalSpecialistAssumption,

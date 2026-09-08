@@ -76,6 +76,21 @@ public class ComparablePropertyListQueryRulesTests
         var id = Guid.NewGuid();
         Assert.Equal(id, ComparablePropertyListQueryRules.ResolveForPropertyId(id.ToString()));
     }
+
+    [Theory]
+    [InlineData("  PO-1 ", "PO-1")]
+    [InlineData("حي النرجس", "النرجس")]
+    [InlineData("النرجس", "النرجس")]
+    public void Search_trims_and_drops_a_leading_district_prefix(string q, string expected)
+    {
+        Assert.Equal(expected, ComparablePropertyListQueryRules.NormalizeSearch(q));
+    }
+
+    [Fact]
+    public void Blank_search_is_null()
+    {
+        Assert.Null(ComparablePropertyListQueryRules.NormalizeSearch("   "));
+    }
 }
 
 public class FailureListQueryRulesTests

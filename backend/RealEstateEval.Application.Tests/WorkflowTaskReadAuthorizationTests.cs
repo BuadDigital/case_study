@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
 
@@ -250,6 +251,60 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.False(rows[0].FieldInspectionAccepted);
         Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
+    }
+
+    [Fact]
+    public async Task List_copies_parent_distribution_onto_party_child_rows()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("56565656-5656-5656-5656-565656565656");
+        var propertyId = Guid.Parse("78787878-7878-7878-7878-787878787878");
+        var now = DateTime.UtcNow;
+        var distributionJson = WorkflowTaskMapper.SerializeDistribution(new TaskDistributionDraftDto
+        {
+            ValuationDepartment = true,
+            InspectorId = "fi-listed",
+            ValuatorId = "val-1",
+            CaseSpecialist = true,
+            CaseSpecialistId = "cs-1",
+        });
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-dist-child",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: propertyId,
+                distributionJson: distributionJson),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-dist-child",
+                now,
+                title: "appraisal",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "مقيم عقاري",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        Assert.Single(rows);
+        Assert.Equal("fi-listed", rows[0].Distribution?.InspectorId);
+        Assert.Equal("val-1", rows[0].Distribution?.ValuatorId);
     }
 
     [Fact]

@@ -59,4 +59,12 @@ public class ValuerCredentialRulesTests
     {
         Assert.Equal(warn, ValuerCredentialRules.IsWithinWarningWindow(expires, Today));
     }
+
+    [Fact]
+    public void FirstFilled_prefers_the_first_non_blank()
+    {
+        Assert.Equal("2027-03-10", ValuerCredentialRules.FirstFilled(null, " 2027-03-10 ", "2028-01-01"));
+        Assert.Equal("2028-01-01", ValuerCredentialRules.FirstFilled("", "  ", "2028-01-01"));
+        Assert.Null(ValuerCredentialRules.FirstFilled(null, "", "  "));
+    }
 }

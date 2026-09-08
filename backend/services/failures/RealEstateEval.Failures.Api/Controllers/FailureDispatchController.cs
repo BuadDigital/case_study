@@ -86,7 +86,11 @@ public sealed class FailureDispatchController(
         [FromBody] ResolveFailureRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await failures.ResolveAsync(id, request, cancellationToken);
+        var dto = await failures.ResolveAsync(
+            id,
+            request,
+            actorUserId: null,
+            cancellationToken);
         return dto is null ? this.BadRequestProblem("لا يمكن حل هذا التعذر") : Ok(dto);
     }
 

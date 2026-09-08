@@ -5,7 +5,8 @@ import {
   type FileAttachmentMetaDto,
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
-import type { InspectorWorkspaceDraft } from "@case-study/mfe/lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { pdfBlobToFirstPageDataUrl } from "@platform/app-shared/media/pdf-first-page-preview";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 
 /** Mirrors backend `AttachmentPrintRules` for client-side report fill. */
@@ -137,6 +138,13 @@ function classifyRows(
   return { photos, survey, deed, siteMaps };
 }
 
+function isPdfAttachment(row: FileAttachmentMetaDto): boolean {
+  return (
+    row.contentType.toLowerCase().includes("pdf") ||
+    row.fileName.toLowerCase().endsWith(".pdf")
+  );
+}
+
 async function toSlot(
   config: PrototypeModulesApiConfig,
   row: FileAttachmentMetaDto,
@@ -144,19 +152,50 @@ async function toSlot(
 ): Promise<ValuationReportSlotAttachment | null> {
   const blobRes = await downloadAttachmentBlob(config, row.id);
   if (!blobRes.ok) return null;
-  const url = await blobToDataUrl(blobRes.data);
-  const isImage = row.contentType.toLowerCase().startsWith("image/");
   const captured = slashCaptureDate(row.photoMetadata?.capturedAtUtc);
   const label = attachmentLabelAr(typeKey);
+  const labelAr = captured ? `${label} — ${captured}` : label;
+
+  // Rasterize PDF page 1 so §35/§36 actually show in the report (iframes hang print).
+  if (isPdfAttachment(row)) {
+    const preview = await pdfBlobToFirstPageDataUrl(blobRes.data, 1.75);
+    if (preview) {
+      return {
+        attachmentId: row.id,
+        url: preview,
+        contentType: "image/jpeg",
+        fileName: row.fileName,
+        labelAr,
+        isImage: true,
+        capturedAtDisplay: captured || undefined,
+      };
+    }
+  }
+
+  const url = await blobToDataUrl(blobRes.data);
+  const isImage = row.contentType.toLowerCase().startsWith("image/");
   return {
     attachmentId: row.id,
     url,
     contentType: row.contentType,
     fileName: row.fileName,
-    labelAr: captured ? `${label} — ${captured}` : label,
+    labelAr,
     isImage,
     capturedAtDisplay: captured || undefined,
   };
+}
+
+/** Engineering survey PDFs are scoped to the survey task id — not `<po>:<propertyId>`. */
+export function surveyReportAttachmentIdFromPayload(
+  payload: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!payload) return null;
+  const att = payload.surveyReportAttachment;
+  if (!att || typeof att !== "object") return null;
+  const id = String(
+    (att as { attachmentId?: unknown }).attachmentId ?? "",
+  ).trim();
+  return id || null;
 }
 
 /**
@@ -233,6 +272,11 @@ export async function loadValuationReportPrintAttachments(
   extras?: {
     /** Inspection photo ids from the inspector draft — complete the §34 slot budget. */
     inspectorPhotoIds?: string[];
+    /**
+     * Survey-report attachment ids from the engineering-office submission
+     * (`scopeKey` = survey task id — invisible to for-property).
+     */
+    surveyAttachmentIds?: string[];
   },
 ): Promise<{
   photos: ValuationReportSlotAttachment[];
@@ -273,6 +317,23 @@ export async function loadValuationReportPrintAttachments(
       if (meta.ok && photos.length < budget && !havePhoto.has(meta.data.id)) {
         havePhoto.add(meta.data.id);
         photos.push(meta.data);
+      }
+    }
+  }
+
+  const haveSurvey = new Set(survey.map((row) => row.id));
+  const surveyIds = (extras?.surveyAttachmentIds ?? []).filter(
+    (id) => !haveSurvey.has(id),
+  );
+  if (survey.length === 0 && surveyIds.length) {
+    const metas = await Promise.all(
+      surveyIds.map((id) => getAttachmentMeta(config, id)),
+    );
+    for (const meta of metas) {
+      if (meta.ok && !haveSurvey.has(meta.data.id)) {
+        haveSurvey.add(meta.data.id);
+        survey.push(meta.data);
+        break;
       }
     }
   }

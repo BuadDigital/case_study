@@ -124,7 +124,7 @@ public class SaveAdjustmentFactorRationaleRequest
     [Required, MaxLength(32)]
     public string FactorKey { get; init; } = "";
 
- /// <summary>Empty = clear factor rationale; non-empty is subject to the minimum length (Q-8-2).</summary>
+ /// <summary>Empty = clear factor rationale.</summary>
     [MaxLength(2000)]
     public string? RationaleAr { get; init; }
 }

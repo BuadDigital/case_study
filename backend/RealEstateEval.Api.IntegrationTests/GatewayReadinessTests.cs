@@ -20,7 +20,7 @@ public class GatewayReadinessOptionsTests
         Assert.True(options.Enabled);
         Assert.Equal(2, options.TimeoutSeconds);
         Assert.Equal(5, options.CacheSeconds);
-        Assert.Equal("/health", options.UpstreamHealthPath);
+        Assert.Equal("/ready", options.UpstreamHealthPath);
         Assert.Empty(options.RequiredClusters);
     }
 

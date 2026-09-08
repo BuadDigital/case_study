@@ -27,8 +27,8 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
-import { fetchInspectorWorkspace } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import { fetchBankCandidates } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {
@@ -36,7 +36,6 @@ import {
   MARKET_CONTEXT,
   buildFactorCatalog,
   officialValuationDateOf,
-  type ValuationWorkNavAvailability,
   type ValuationWorkPropertyHint,
 } from "./lib/shell-state";
 import {
@@ -60,7 +59,6 @@ export type ValuationWorkDataParams = {
   property?: ValuationWorkPropertyHint;
   intakeProperty?: PoPropertyIntake | null;
   onFinalOpinionChange?: (finalOpinionValue: number) => void;
-  onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
 };
 
 export function useValuationWorkData({
@@ -70,13 +68,10 @@ export function useValuationWorkData({
   property,
   intakeProperty = null,
   onFinalOpinionChange,
-  onNavAvailabilityChange,
 }: ValuationWorkDataParams) {
   const { showToast } = useToast();
   const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
   onFinalOpinionChangeRef.current = onFinalOpinionChange;
-  const onNavAvailabilityChangeRef = useRef(onNavAvailabilityChange);
-  onNavAvailabilityChangeRef.current = onNavAvailabilityChange;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,6 +86,7 @@ export function useValuationWorkData({
     useState<ValuationComparableSelectionListDto | null>(null);
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
   const [bankSubjectCoords, setBankSubjectCoords] = useState<SubjectCoords | null>(null);
+  const [bankSearch, setBankSearch] = useState("");
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -184,9 +180,14 @@ export function useValuationWorkData({
     ],
   );
   const applyBankResult = useCallback(
-    (rows: ComparablePropertyDto[], subjectCoords: SubjectCoords | null) => {
+    (
+      rows: ComparablePropertyDto[],
+      subjectCoords: SubjectCoords | null,
+      search = "",
+    ) => {
       setCandidates(rows);
       setBankSubjectCoords(subjectCoords);
+      setBankSearch(search.trim());
     },
     [],
   );
@@ -383,6 +384,7 @@ export function useValuationWorkData({
     landSelection,
     candidates,
     bankSubjectCoords,
+    bankSearch,
     subjectArea,
     analysisNotes,
     cost,
@@ -390,13 +392,6 @@ export function useValuationWorkData({
     resolveBankFetchOpts,
     applyBankResult,
   });
-
-  useEffect(() => {
-    onNavAvailabilityChangeRef.current?.({
-      market: marketEnabled,
-      cost: costEnabled,
-    });
-  }, [marketEnabled, costEnabled]);
 
   return {
     showToast,
@@ -427,6 +422,7 @@ export function useValuationWorkData({
     gates,
     officialValuationDate,
     reload,
+    bankSubjectCoords,
     ...sectionSaves,
     settingsSaved,
     marketEnabled,

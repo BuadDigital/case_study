@@ -51,25 +51,6 @@ public class AuthController : ControllerBase
             : Ok(session);
     }
 
-    /// <summary>
-    /// Redeems a one-time activation ticket and sets the account's first password.
-    /// Anonymous by necessity — the ticket itself is the proof of possession.
-    /// </summary>
-    [HttpPost("activate")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Activate(
-        [FromBody] ActivateAccountRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var (ok, error) = await _users.ActivateAccountAsync(request, cancellationToken);
-        return ok
-            ? NoContent()
-            : this.BadRequestProblem(error ?? "تعذر تفعيل الحساب.");
-    }
-
     [HttpGet("dev-login-users")]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<DevLoginUserDto>>> DevLoginUsers(

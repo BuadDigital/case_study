@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   Button,
   cn,
   RowMoreMenu,
+  useDeferredVisible,
+  useToast,
   type RowMoreMenuItem,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -37,6 +39,8 @@ import { canManageOperationsTasks } from "../../lib/app-data/operations-task-rol
 import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { FailureRaiseModal } from "../failures/FailureRaiseModal";
+import { isAllowedPropertyTab } from "./po-property-detail-tabs-state";
+import { buildPropertyDetailHeroMenuItems, CASE_STUDY_OPEN_PROGRESS_MESSAGE } from "./property-detail-hero-menu";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(
@@ -66,6 +70,8 @@ export function PoPropertyDetailTopbarActions({
   hideOpenCaseStudy?: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { showProgressToast, dismissToast } = useToast();
   const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
   const showFailure = canRaisePropertyFailure(role);
@@ -75,6 +81,11 @@ export function PoPropertyDetailTopbarActions({
   const isHero = variant === "hero";
   const btn = shellBtn;
   const [failureModalOpen, setFailureModalOpen] = useState(false);
+  const [openingCaseStudy, setOpeningCaseStudy] = useState(false);
+  const [navPending, startTransition] = useTransition();
+  const caseStudyToastIdRef = useRef<string | null>(null);
+  const caseStudyLoading = openingCaseStudy || navPending;
+  const showCaseStudyFeedback = useDeferredVisible(caseStudyLoading);
 
   const property = useMemo(
     () => record?.properties.find((item) => item.id === propertyId) ?? null,
@@ -186,17 +197,75 @@ export function PoPropertyDetailTopbarActions({
     ];
   }, [task, tasks, role, isHero, property, poNumber, propertyId]);
 
+  useEffect(() => {
+    return () => {
+      if (caseStudyToastIdRef.current) {
+        dismissToast(caseStudyToastIdRef.current);
+        caseStudyToastIdRef.current = null;
+      }
+    };
+  }, [dismissToast]);
+
+  useEffect(() => {
+    if (!openingCaseStudy) return;
+    if (searchParams.get("tab") === "report") {
+      setOpeningCaseStudy(false);
+    }
+  }, [openingCaseStudy, searchParams]);
+
+  useEffect(() => {
+    if (!showCaseStudyFeedback) {
+      if (caseStudyToastIdRef.current) {
+        dismissToast(caseStudyToastIdRef.current);
+        caseStudyToastIdRef.current = null;
+      }
+      return;
+    }
+    if (!caseStudyToastIdRef.current) {
+      caseStudyToastIdRef.current = showProgressToast(
+        CASE_STUDY_OPEN_PROGRESS_MESSAGE,
+      );
+    }
+  }, [showCaseStudyFeedback, showProgressToast, dismissToast]);
+
+  const openCaseStudy = useCallback(
+    (href: string) => {
+      if (caseStudyLoading) return;
+      setOpeningCaseStudy(true);
+      startTransition(() => {
+        router.push(href);
+      });
+    },
+    [caseStudyLoading, router],
+  );
+
   const heroMenuItems = useMemo((): RowMoreMenuItem[] => {
-    if (!isHero || !canOpenFailureModal) return [];
-    return [
-      {
-        id: "failure",
-        label: "تسجيل تعذر",
-        danger: true,
-        onClick: () => setFailureModalOpen(true),
-      },
-    ];
-  }, [isHero, canOpenFailureModal]);
+    if (!isHero) return [];
+    return buildPropertyDetailHeroMenuItems({
+      hideOpenCaseStudy,
+      caseStudyWorkspaceHref:
+        showCaseStudyLink && task ? caseStudyWorkspacePath(task.id) : null,
+      reportTabHref: isAllowedPropertyTab(role, "report")
+        ? poPropertyDetailPath(poNumber, propertyId, "report")
+        : null,
+      caseStudyBusy: showCaseStudyFeedback,
+      onNavigate: openCaseStudy,
+      onOpenFailure: canOpenFailureModal
+        ? () => setFailureModalOpen(true)
+        : undefined,
+    });
+  }, [
+    isHero,
+    hideOpenCaseStudy,
+    showCaseStudyLink,
+    task,
+    role,
+    poNumber,
+    propertyId,
+    showCaseStudyFeedback,
+    canOpenFailureModal,
+    openCaseStudy,
+  ]);
 
   if (!record || !property) return null;
 
@@ -221,6 +290,7 @@ export function PoPropertyDetailTopbarActions({
       <>
         <RowMoreMenu
           items={heroMenuItems}
+          busy={showCaseStudyFeedback}
           ariaLabel="إجراءات العقار"
           buttonClassName="border-border-md bg-surface text-text-2"
         />

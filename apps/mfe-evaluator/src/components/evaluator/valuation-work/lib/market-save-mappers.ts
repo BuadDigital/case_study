@@ -3,10 +3,12 @@ import type {
   ValuationComparableAdjustmentLineDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import {
   AUTO_AREA_KEY,
   FACTOR_REGISTRY,
   SEQUENTIAL_SET,
+  factorIncludedByDefault,
 } from "./factor-registry";
 
 // Derived from the factor registry — add a factor there once and it flows here automatically.
@@ -75,12 +77,12 @@ export function ensureLinesForSave(
   for (const f of factors) {
     if (!byKey.has(f.factorKey)) {
       byKey.set(f.factorKey, {
-        id: crypto.randomUUID(),
+        id: createClientId("adj"),
         factorKey: f.factorKey,
         labelAr: f.labelAr,
         percent: f.factorKey === "area" ? (item.market?.suggestedAreaAdjustmentPct ?? 0) : 0,
         rationale: "",
-        isIncluded: true,
+        isIncluded: factorIncludedByDefault(f.factorKey),
         sortOrder: byKey.size,
       });
     }
@@ -101,6 +103,8 @@ export function ensureLinesForSave(
 /**
  * Prepare an adjustment line for save: area is pinned to the auto suggestion; “suggested”
  * values (unentered comparable type) are zeroed so a suggestion does not become a permanent manual entry.
+ * IDs are always omitted — the API deletes previous rows then inserts, so reusing a stored
+ * id collides with the tracked-deleted entities.
  */
 export function lineForSave(
   item: ValuationComparableSelectionDto,
@@ -108,7 +112,7 @@ export function lineForSave(
   i: number,
 ) {
   return {
-    id: l.id,
+    id: null,
     factorKey: l.factorKey,
     labelAr: l.labelAr,
     percent:

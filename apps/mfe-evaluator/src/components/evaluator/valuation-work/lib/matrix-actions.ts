@@ -33,6 +33,7 @@ export type MatrixAction =
   | { type: "reset-weights" }
   | { type: "area-factor-change"; value: string }
   | { type: "add-factor"; factorKey: string; labelAr: string }
+  | { type: "rename-factor"; factorKey: string; labelAr: string }
   | { type: "remove-factor"; factorKey: string }
   | { type: "remove-sequential"; factorKey: string }
   | { type: "restore-sequential"; factorKey: string }
@@ -80,6 +81,11 @@ export type MatrixOps<TContext> = {
   resetWeights(context: TContext): Promise<boolean>;
   saveAreaFactorPct(value: string): Promise<unknown> | void;
   addDifferenceFactor(
+    factorKey: string,
+    labelAr: string,
+    context?: TContext,
+  ): Promise<unknown> | void;
+  renameDifferenceFactor(
     factorKey: string,
     labelAr: string,
     context?: TContext,
@@ -142,6 +148,9 @@ export async function runMatrixAction<TContext>(
       return true;
     case "add-factor":
       await ops.addDifferenceFactor(action.factorKey, action.labelAr, context);
+      return true;
+    case "rename-factor":
+      await ops.renameDifferenceFactor(action.factorKey, action.labelAr, context);
       return true;
     case "remove-factor":
       await ops.removeDifferenceFactor(action.factorKey, context);

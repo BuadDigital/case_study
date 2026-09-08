@@ -131,12 +131,23 @@ export function HoverPortalCard({
   );
 }
 
-export function TeamStack({ members }: { members: string[] }) {
-  if (members.length === 0) {
+export type TeamStackMember = string | { name: string; role?: string };
+
+function teamMemberName(member: TeamStackMember): string {
+  return typeof member === "string" ? member : member.name;
+}
+
+function teamMemberRole(member: TeamStackMember): string | undefined {
+  return typeof member === "string" ? undefined : member.role?.trim();
+}
+
+export function TeamStack({ members }: { members: TeamStackMember[] }) {
+  const rows = members.filter((member) => teamMemberName(member).trim());
+  if (rows.length === 0) {
     return <span className="font-normal text-text-3">—</span>;
   }
-  const shown = members.slice(0, 3);
-  const extra = members.length - shown.length;
+  const shown = rows.slice(0, 3);
+  const extra = rows.length - shown.length;
   return (
     <HoverPortalCard
       align="end"
@@ -144,41 +155,59 @@ export function TeamStack({ members }: { members: string[] }) {
       content={
         <>
           <div className="px-2 pb-1.5 pt-0.5 text-[11px] font-bold text-text-3">
-            فريق المعاملة ({members.length})
+            فريق المعاملة ({rows.length})
           </div>
-          {members.map((name, i) => (
-            <div
-              key={`pop-${name}-${i}`}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
-            >
-              <span
-                className="grid size-[26px] shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+          {rows.map((member, i) => {
+            const name = teamMemberName(member);
+            const role = teamMemberRole(member);
+            return (
+              <div
+                key={`pop-${name}-${i}`}
+                className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
               >
-                {teamInitial(name)}
-              </span>
-              <span className="whitespace-nowrap text-[13px] font-semibold text-heading">
-                {name}
-              </span>
-            </div>
-          ))}
+                <span
+                  className="grid size-[26px] shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+                  style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+                >
+                  {teamInitial(name)}
+                </span>
+                {role ? (
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-[11px] font-bold text-text-3">
+                      {role}
+                    </span>
+                    <span className="whitespace-nowrap text-[13px] font-semibold text-heading">
+                      {name}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="whitespace-nowrap text-[13px] font-semibold text-heading">
+                    {name}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </>
       }
     >
       <span className="inline-flex w-fit items-center">
-      {shown.map((name, i) => (
-        <span
-          key={`${name}-${i}`}
-          className={cn(
-            "grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white",
-            i > 0 && "-ms-2",
-          )}
-          style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
-          title={name}
-        >
-          {teamInitial(name)}
-        </span>
-      ))}
+      {shown.map((member, i) => {
+        const name = teamMemberName(member);
+        return (
+          <span
+            key={`${name}-${i}`}
+            className={cn(
+              "grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface text-[11px] font-bold text-white",
+              i > 0 && "-ms-2",
+            )}
+            style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+            title={teamMemberRole(member) ? `${teamMemberRole(member)} — ${name}` : name}
+          >
+            {teamInitial(name)}
+          </span>
+        );
+      })}
       {extra > 0 ? (
         <span className="-ms-2 grid size-7 shrink-0 place-items-center rounded-full border-2 border-surface bg-surface-2 text-[11px] font-bold text-heading">
           +{extra}

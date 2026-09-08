@@ -107,5 +107,8 @@ public class PoIntakeDraftDto
     public int ExpectedPropertyCount { get; init; } = 1;
     public string PropertiesRegion { get; init; } = "";
     public string WorkOrderDescription { get; init; } = "";
+    public string ValuationPurposeKey { get; init; } = "";
+    public string BasisOfValueKey { get; init; } = "";
+    public string ValuePremiseKey { get; init; } = "";
     public DateTime? UpdatedAtUtc { get; init; }
 }

@@ -43,7 +43,11 @@ Use three cooperating layers for mutating actions:
 1. Prefer **domain idempotency** first (unique index, “already exists → return existing”).
 2. Services using `UseRealEstateEvalServicePipeline` run **`CommandIdempotencyMiddleware`**:
    when `Idempotency-Key` is present on POST/PUT/PATCH/DELETE, successful (and 400/409)
-   responses are replayed for the same actor + path + key (24h TTL).
+   responses are replayed for the same actor + path + key (24h TTL). The one exception
+   (2026-09-06): a 409 raised by an `xmin` row-version race carries
+   `X-REE-Transient-Conflict: 1` (set by `GlobalExceptionHandlerMiddleware`) and is **not**
+   cached, because a replay of that key is exactly what clears it; `repositoryFetch` in
+   `@platform/api-client` retries such a 409 once before surfacing it.
 3. **Store:** hosts with `AddMessagingPersistence` use durable
    `messaging.CommandIdempotencyRecords` (`EfCommandIdempotencyStore`). Other hosts fall back to
    process-local `MemoryCommandIdempotencyStore`.

@@ -30,7 +30,7 @@ public sealed class CaseStudyFailureGate(
         failures.EnsureSystemInternalFailureAsync(
             poNumber,
             propertyId,
-            deedNumber,
+            deedNumber ?? "",
             problemKey,
             problemLabel,
             detail,
@@ -62,6 +62,7 @@ public sealed class CaseStudyFailureGate(
                     ResolutionReason = resolutionReason,
                     ContinueInstructions = continueInstructions,
                 },
+                actorUserId: null,
                 cancellationToken);
         }
     }

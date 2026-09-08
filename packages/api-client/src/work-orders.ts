@@ -133,6 +133,9 @@ export type WorkOrderDto = {
   clientId?: string | null;
   reportUserClientIds?: string[];
   clientNameAr?: string | null;
+  valuationPurposeKey?: string | null;
+  basisOfValueKey?: string | null;
+  valuePremiseKey?: string | null;
   properties: WorkOrderPropertyDto[];
 };
 
@@ -164,6 +167,9 @@ export type CreateWorkOrderRequest = {
   workOrderDescription?: string;
   clientId: string;
   reportUserClientIds?: string[];
+  valuationPurposeKey?: string | null;
+  basisOfValueKey?: string | null;
+  valuePremiseKey?: string | null;
   properties?: WorkOrderPropertyDto[];
 };
 
@@ -178,6 +184,9 @@ export type UpdateWorkOrderHeaderRequest = {
   workOrderDescription?: string;
   clientId: string;
   reportUserClientIds?: string[];
+  valuationPurposeKey?: string | null;
+  basisOfValueKey?: string | null;
+  valuePremiseKey?: string | null;
 };
 
 export type UpdatePropertyBourseRequest = {

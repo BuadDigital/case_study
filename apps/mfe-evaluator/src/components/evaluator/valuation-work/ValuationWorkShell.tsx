@@ -15,12 +15,16 @@ import {
   cn,
   opsLetterCard,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@case-study/mfe/lib/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
+import {
+  retrospectiveDraftFromSettings,
+  type EvaluatorRetrospectiveDraft,
+} from "../../../lib/evaluator/evaluator-validation";
 
 import {
   Card,
@@ -30,6 +34,8 @@ import {
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
+import { FinalOpinionIssuanceCard } from "./FinalOpinionParts";
+import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
 import {
   buildNavItems,
@@ -38,6 +44,7 @@ import {
 } from "./lib/shell-state";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
+import { useReportIssuanceWorkflow } from "./useReportIssuanceWorkflow";
 
 export type {
   ValuationWorkNavAvailability,
@@ -100,6 +107,7 @@ export type ValuationWorkShellProps = {
   embeddedInTopTabs?: boolean;
   /** Notify parent which approach tabs should appear (Rule Q-2). */
   onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
+  onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
 };
 
 /**
@@ -127,6 +135,7 @@ export function ValuationWorkShell({
   onScreenChange,
   embeddedInTopTabs = false,
   onNavAvailabilityChange,
+  onRetrospectiveDraftChange,
 }: ValuationWorkShellProps) {
   const [internalScreen, setInternalScreen] =
     useState<ValuationWorkScreenId>("basic");
@@ -147,7 +156,6 @@ export function ValuationWorkShell({
     property,
     intakeProperty,
     onFinalOpinionChange,
-    onNavAvailabilityChange,
   });
   const {
     loading,
@@ -189,6 +197,8 @@ export function ValuationWorkShell({
     landBankDistanceKm,
     subjectAreaNum,
     onSearchBank,
+    reload,
+    bankSubjectCoords,
   } = data;
 
   const {
@@ -201,15 +211,56 @@ export function ValuationWorkShell({
     dispatchLandMatrix,
   } = useValuationWorkCommands(data);
 
+  const issuanceWorkflow = useReportIssuanceWorkflow({
+    valuationRequestId,
+    allowsIssuance: gates?.allowsIssuance,
+  });
+
+  const [draftApproaches, setDraftApproaches] =
+    useState<ValuationWorkNavAvailability | null>(null);
+  const onDraftApproachesChange = useCallback(
+    (nav: ValuationWorkNavAvailability) => {
+      setDraftApproaches(nav);
+    },
+    [],
+  );
+  const marketTab =
+    draftApproaches != null ? draftApproaches.market : marketEnabled;
+  const costTab =
+    draftApproaches != null ? draftApproaches.cost : costEnabled;
+
+  useEffect(() => {
+    onNavAvailabilityChange?.({ market: marketTab, cost: costTab });
+  }, [costTab, marketTab, onNavAvailabilityChange]);
+
+  const comparableSeed = {
+    type: property?.propertyType || intakeProperty?.propertyType,
+    city: property?.city || intakeProperty?.city,
+    district:
+      property?.district || districtHint || intakeProperty?.district,
+    latitude:
+      bankSubjectCoords != null ? String(bankSubjectCoords.lat) : undefined,
+    longitude:
+      bankSubjectCoords != null ? String(bankSubjectCoords.lng) : undefined,
+  };
+  const onBankCreated = useCallback(() => {
+    void reload({ silent: true, scope: "full" });
+  }, [reload]);
+
   const navItems = buildNavItems({
-    marketEnabled,
-    costEnabled,
+    marketEnabled: marketTab,
+    costEnabled: costTab,
     adoptedMarketCount: visibleAdoptedMarket.length,
   });
   const effectiveScreen = resolveEffectiveScreen(navItems, screen);
 
-  /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost. */
+  /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost.
+   * Basics + review stay mounted so send-from-any-tab can scroll to their fields. */
   const visitedScreensRef = useRef<Set<ValuationWorkScreenId>>(new Set());
+  if (!loading) {
+    visitedScreensRef.current.add("basic");
+    visitedScreensRef.current.add("review");
+  }
   visitedScreensRef.current.add(effectiveScreen);
   const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
@@ -218,6 +269,12 @@ export function ValuationWorkShell({
     if (!screenControlled) return;
     if (screen !== effectiveScreen) onScreenChange?.(effectiveScreen);
   }, [effectiveScreen, onScreenChange, screen, screenControlled]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const fromSaved = retrospectiveDraftFromSettings(approachSettings);
+    if (fromSaved) onRetrospectiveDraftChange?.(fromSaved);
+  }, [approachSettings, loading, onRetrospectiveDraftChange]);
 
   /* ─── screens ─── */
   function renderMarket() {
@@ -232,7 +289,7 @@ export function ValuationWorkShell({
         </Card>
       );
     }
-    if (!marketEnabled) {
+    if (!marketTab) {
       return (
         <Card>
           <CardPad>
@@ -244,6 +301,42 @@ export function ValuationWorkShell({
       );
     }
 
+    const analysisCard = (
+      <Card>
+        <CardPad>
+          <div className="mb-3 flex items-center justify-between gap-2.5">
+            <span className="text-[14.5px] font-extrabold text-heading">
+              تحليل التسويات
+            </span>
+            <div className="flex items-center gap-2.5">
+              <span
+                className={cn(
+                  "text-[11px] font-semibold",
+                  narrativeDirty ? "text-red-text" : "text-gold-d",
+                )}
+              >
+                {narrativeDirty
+                  ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
+                  : "يتحدث تلقائياً مع المبررات"}
+              </span>
+              {narrativeDirty ? (
+                <GhostBtn disabled={saving} onClick={clearAnalysisNotes}>
+                  ↺ استرجاع النص التلقائي
+                </GhostBtn>
+              ) : null}
+            </div>
+          </div>
+          <textarea
+            rows={9}
+            value={narrativeDirty ? analysisNotes : autoNarrative}
+            onChange={(e) => setAnalysisNotes(e.target.value)}
+            onBlur={() => void saveSubjectArea()}
+            className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
+          />
+        </CardPad>
+      </Card>
+    );
+
     return (
       <>
         <ComparablesBankTable
@@ -253,6 +346,10 @@ export function ValuationWorkShell({
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
           onSaveOverride={onSaveBankOverride}
+          seed={comparableSeed}
+          sourceWorkOrderNumber={poNumber}
+          sourcePropertyId={propertyId}
+          onCreated={onBankCreated}
         />
 
         {selection ? (
@@ -272,49 +369,29 @@ export function ValuationWorkShell({
               subjectSpecs={subjectSpecs}
               canEditSubjectSpec
               dispatch={dispatchMarketMatrix}
-            />
+            >
+              {analysisCard}
+            </AdjustmentsMatrix>
           </Suspense>
+        ) : (
+          analysisCard
+        )}
+        {gates && settingsSaved ? (
+          <MethodologyAlertsPanel
+            gates={gates}
+            recon={recon}
+            valuationRequestId={valuationRequestId}
+            saving={saving}
+            onSavingChange={setSaving}
+            onReconSaved={onReconSaved}
+          />
         ) : null}
-
-        <Card>
-          <CardPad>
-            <div className="mb-3 flex items-center justify-between gap-2.5">
-              <span className="text-[14.5px] font-extrabold text-heading">
-                تحليل التسويات
-              </span>
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold",
-                    narrativeDirty ? "text-red-text" : "text-gold-d",
-                  )}
-                >
-                  {narrativeDirty
-                    ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
-                    : "يتحدث تلقائياً مع المبررات"}
-                </span>
-                {narrativeDirty ? (
-                  <GhostBtn disabled={saving} onClick={clearAnalysisNotes}>
-                    ↺ استرجاع النص التلقائي
-                  </GhostBtn>
-                ) : null}
-              </div>
-            </div>
-            <textarea
-              rows={9}
-              value={narrativeDirty ? analysisNotes : autoNarrative}
-              onChange={(e) => setAnalysisNotes(e.target.value)}
-              onBlur={() => void saveSubjectArea()}
-              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
-            />
-          </CardPad>
-        </Card>
       </>
     );
   }
 
   function renderCost() {
-    if (!settingsSaved || !costEnabled) {
+    if (!settingsSaved || !costTab) {
       return (
         <Card>
           <CardPad>
@@ -424,6 +501,10 @@ export function ValuationWorkShell({
           distanceKm={landBankDistanceKm}
           onAdopt={onAdoptLand}
           onSaveOverride={onSaveBankOverride}
+          seed={comparableSeed}
+          sourceWorkOrderNumber={poNumber}
+          sourcePropertyId={propertyId}
+          onCreated={onBankCreated}
         />
 
         {landSelection ? (
@@ -479,10 +560,17 @@ export function ValuationWorkShell({
             fieldErrors={fieldErrors}
             onDraftPatch={onDraftPatch}
             onReportChoicesPatch={onReportChoicesPatch}
+            onSettingsSaved={onSettingsSaved}
           />
         </Suspense>
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-          {showSubmit ? (
+        {issuanceWorkflow.issuance ? (
+          <FinalOpinionIssuanceCard
+            issuance={issuanceWorkflow.issuance}
+            workflow={issuanceWorkflow}
+          />
+        ) : null}
+        {showSubmit ? (
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
             <PrimaryBtn
               disabled={disabled || submitting}
               onClick={() => onSubmit?.()}
@@ -494,8 +582,8 @@ export function ValuationWorkShell({
                   : "اعتماد التقييم وإرسال للأخصائي"}
               </span>
             </PrimaryBtn>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </>
     );
   }
@@ -588,6 +676,13 @@ export function ValuationWorkShell({
               saving={saving}
               onSavingChange={setSaving}
               onSettingsSaved={onSettingsSaved}
+              fieldErrors={fieldErrors}
+              onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+              onDraftApproachesChange={onDraftApproachesChange}
+              hasMarketWork={visibleAdoptedMarket.length > 0}
+              hasCostWork={
+                (cost?.lines?.length ?? 0) > 0 || visibleAdoptedLand.length > 0
+              }
             />
           </Activity>
         ) : null}
@@ -597,7 +692,7 @@ export function ValuationWorkShell({
         {visitedScreensRef.current.has("cost") ? (
           <Activity mode={screenMode("cost")}>
             {renderCost()}
-            {settingsSaved && costEnabled ? (
+            {settingsSaved && costTab ? (
               <Suspense fallback={<InlineLoadingSkeleton />}>
                 <CostApproachSection
                   valuationRequestId={valuationRequestId}
@@ -646,6 +741,7 @@ export function ValuationWorkShell({
                   }
                   hasAdoptedMarket={visibleAdoptedMarket.length > 0}
                   assignmentType={assignmentType}
+                  poNumber={poNumber}
                   officialValuationDate={officialValuationDate}
                   saving={saving}
                   onSavingChange={setSaving}

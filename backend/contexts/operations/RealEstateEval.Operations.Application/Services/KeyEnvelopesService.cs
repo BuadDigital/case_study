@@ -16,7 +16,8 @@ namespace RealEstateEval.Operations.Application.Services;
 /// Key-envelope use cases: registration, field assignment confirmation, handoffs, court-access
 /// records, and the receipt-fee report. Persistence goes through
 /// <see cref="IKeyEnvelopeRepository"/>, so this file holds workflow only - no EF
-/// (solid-scorecard finding 1).
+/// (solid-scorecard finding 1). Handoffs live in <c>KeyEnvelopesService.Handoffs.cs</c>,
+/// DTO projection with linked properties in <c>KeyEnvelopesService.LinkedProperties.cs</c>.
 /// </summary>
 public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
 {
@@ -111,47 +112,14 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         var court = request.Court.Trim();
         var circuit = request.Circuit.Trim();
         var scenario = KeyEnvelopeLifecycleRules.NormalizeScenario(request.ReceiveScenario);
-        if (requestNumber.Length == 0) return (null, "رقم الطلب مطلوب");
-        if (court.Length == 0) return (null, "المحكمة مطلوبة");
-        if (circuit.Length == 0) return (null, "الدائرة مطلوبة");
+        var validationError = KeyEnvelopeRegistrationRules.ValidateRegistration(request, scenario);
+        if (validationError is not null) return (null, validationError);
 
-        if (scenario == KeyReceiveScenarios.Court)
+        foreach (var (attachmentId, missingError) in
+                 KeyEnvelopeRegistrationRules.AttachmentsToVerify(request))
         {
-            if (request.KeysCountActual < 1)
-                return (null, "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل");
-            if (request.PhotoAttachmentId is null || request.PhotoAttachmentId == Guid.Empty)
-                return (null, "صورة الظرف مطلوبة");
-            if (request.ReceiptAttachmentId is null || request.ReceiptAttachmentId == Guid.Empty)
-                return (null, "خطاب الاستلام مطلوب");
-        }
-        else if (scenario == KeyReceiveScenarios.Missing)
-        {
-            if (string.IsNullOrWhiteSpace(request.ContactPhones))
-                return (null, "أرقام التواصل مطلوبة عندما تكون المفاتيح غير موجودة");
-        }
-        else if (scenario == KeyReceiveScenarios.ThirdParty)
-        {
-            if (string.IsNullOrWhiteSpace(request.ContactPhones))
-                return (null, "بيانات الطرف المسلِّم مطلوبة");
-            if (request.ThirdPartyLetterAttachmentId is null
-                || request.ThirdPartyLetterAttachmentId == Guid.Empty)
-                return (null, "خطاب حامل المفتاح مطلوب");
-        }
-
-        if (request.ReceiptAttachmentId is { } rid && rid != Guid.Empty)
-        {
-            if (!await AttachmentExistsAsync(rid, cancellationToken))
-                return (null, "ملف خطاب الاستلام غير موجود");
-        }
-        if (request.PhotoAttachmentId is { } pid && pid != Guid.Empty)
-        {
-            if (!await AttachmentExistsAsync(pid, cancellationToken))
-                return (null, "ملف صورة الظرف غير موجود");
-        }
-        if (request.ThirdPartyLetterAttachmentId is { } tid && tid != Guid.Empty)
-        {
-            if (!await AttachmentExistsAsync(tid, cancellationToken))
-                return (null, "ملف خطاب الطرف الثالث غير موجود");
+            if (!await AttachmentExistsAsync(attachmentId, cancellationToken))
+                return (null, missingError);
         }
 
         Guid? operationsTaskId = null;
@@ -174,9 +142,9 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             actorUserId,
             actorDisplayName.Trim(),
             now,
-            EmptyToNull(request.ReceiptAttachmentId),
-            EmptyToNull(request.PhotoAttachmentId),
-            EmptyToNull(request.ThirdPartyLetterAttachmentId),
+            KeyEnvelopeRegistrationRules.EmptyToNull(request.ReceiptAttachmentId),
+            KeyEnvelopeRegistrationRules.EmptyToNull(request.PhotoAttachmentId),
+            KeyEnvelopeRegistrationRules.EmptyToNull(request.ThirdPartyLetterAttachmentId),
             Texts.NullIfBlank(request.ContactPhones),
             Texts.NullIfBlank(request.Notes),
             operationsTaskId);
@@ -240,9 +208,8 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         var deed = request.DeedNumber.Trim();
         if (deed.Length == 0) return (null, "رقم الصك مطلوب");
 
-        var exists = entity.Assignments.Any(a =>
-            string.Equals(a.DeedNumber, deed, StringComparison.OrdinalIgnoreCase));
-        if (exists) return (null, "الصك مُسند مسبقاً في هذا الظرف");
+        if (KeyEnvelopeRegistrationRules.IsDeedAlreadyAssigned(entity, deed))
+            return (null, "الصك مُسند مسبقاً في هذا الظرف");
 
         var now = _time.UtcNow();
         entity.AddPendingAssignment(
@@ -339,180 +306,6 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
-    public async Task<(KeyEnvelopeDto? Envelope, string? Error)> CreateHandoffAsync(
-        Guid envelopeId,
-        CreateKeyEnvelopeHandoffRequest request,
-        string actorUserId,
-        string actorDisplayName,
-        CancellationToken cancellationToken = default)
-    {
-        actorDisplayName = await _people.ResolveActorDisplayNameAsync(
-            actorUserId,
-            actorDisplayName,
-            cancellationToken);
-        var entity = await LoadEnvelopeOnlyAsync(envelopeId, cancellationToken);
-        if (entity is null) return (null, "الظرف غير موجود");
-
-        var kind = request.Kind.Trim().ToLowerInvariant();
-        if (kind is not (
-            KeyHandoffKinds.Internal or
-            KeyHandoffKinds.External or
-            KeyHandoffKinds.ReceiveBack or
-            KeyHandoffKinds.ReturnCourt))
-            return (null, "نوع المناولة غير صالح");
-
-        var fromParty = await _people.ResolvePartyLabelAsync(
-            request.FromParty,
-            actorUserId,
-            cancellationToken);
-        var toParty = await _people.ResolvePartyLabelAsync(
-            request.ToParty,
-            request.ToUserId,
-            cancellationToken);
-        if (fromParty.Length == 0 || toParty.Length == 0)
-            return (null, "من وإلى مطلوبان");
-
- // HTML parity: internal / return_court / receive_back need no letter.
- // External delivery requires proof file (or explicit letter fields).
-        var needsLetter = kind == KeyHandoffKinds.External;
-        if (needsLetter)
-        {
-            if (request.LetterAttachmentId is null || request.LetterAttachmentId == Guid.Empty)
-                return (null, "ملف إثبات التسليم مطلوب");
-            if (!await AttachmentExistsAsync(request.LetterAttachmentId.Value, cancellationToken))
-                return (null, "ملف إثبات التسليم غير موجود");
-        }
-
-        var now = _time.UtcNow();
-        var handoff = new KeyEnvelopeHandoff
-        {
-            Id = Guid.NewGuid(),
-            EnvelopeId = entity.Id,
-            Kind = kind,
-            FromParty = fromParty,
-            ToParty = toParty,
-            ToUserId = Texts.NullIfBlank(request.ToUserId),
-            LetterNumber = Texts.NullIfBlank(request.LetterNumber),
-            LetterAttachmentId = EmptyToNull(request.LetterAttachmentId),
-            Notes = Texts.NullIfBlank(request.Notes),
-            Status = kind == KeyHandoffKinds.Internal
-                ? KeyHandoffStatuses.PendingConfirm
-                : KeyHandoffStatuses.Completed,
-            CreatedByUserId = actorUserId,
-            CreatedByName = actorDisplayName.Trim(),
-            CreatedAtUtc = now,
-        };
-
-        if (kind != KeyHandoffKinds.Internal)
-        {
-            KeyEnvelopeLifecycleRules.ApplyHandoffStatus(entity, kind);
-            handoff.ConfirmedAtUtc = now;
-        }
-
-        await _repo.AddHandoffAsync(handoff, cancellationToken);
-        entity.Touch(now);
-        await AddTimelineAsync(
-            entity.Id,
-            KeyEnvelopeTimelineEvents.HandoffCreated,
-            KeyEnvelopeLifecycleRules.HandoffSummary(kind, fromParty, toParty),
-            actorUserId,
-            actorDisplayName,
-            now,
-            cancellationToken);
-
-        await SaveAndDetachAsync(cancellationToken);
-
-        var toUserId = Texts.NullIfBlank(request.ToUserId);
-        if (toUserId is not null)
-        {
-            await _notifications.CreateForUserAsync(
-                toUserId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "تسليم ظرف مفاتيح",
-                    Body = $"سُلّم إليك ظرف المفاتيح {entity.RequestNumber} من {fromParty}.",
-                    Tone = "info",
-                    Href = "/keys",
-                    Category = "workflow",
-                    EntityType = "property",
-                    EntityId = entity.Id.ToString(),
-                    SourceEvent = $"key-handoff-created:{handoff.Id}",
-                },
-                cancellationToken);
-        }
-
-        return (await GetAsync(envelopeId, cancellationToken), null);
-    }
-
-    public async Task<(KeyEnvelopeDto? Envelope, string? Error)> ConfirmHandoffAsync(
-        Guid envelopeId,
-        Guid handoffId,
-        string actorUserId,
-        string actorDisplayName,
-        CancellationToken cancellationToken = default)
-    {
-        actorDisplayName = await _people.ResolveActorDisplayNameAsync(
-            actorUserId,
-            actorDisplayName,
-            cancellationToken);
-        var entity = await LoadEnvelopeOnlyAsync(envelopeId, cancellationToken);
-        if (entity is null) return (null, "الظرف غير موجود");
-
-        var handoff = await _repo.FindHandoffAsync(envelopeId, handoffId, cancellationToken);
-        if (handoff is null) return (null, "المناولة غير موجودة");
-        if (handoff.Kind != KeyHandoffKinds.Internal)
-            return (null, "التأكيد مطلوب للتسليم الداخلي فقط");
-        if (handoff.Status != KeyHandoffStatuses.PendingConfirm)
-            return (null, "المناولة مؤكدة مسبقاً");
-
-        var now = _time.UtcNow();
-        handoff.Status = KeyHandoffStatuses.Confirmed;
-        handoff.ConfirmedByUserId = actorUserId;
-        handoff.ConfirmedByName = actorDisplayName.Trim();
-        handoff.ConfirmedAtUtc = now;
-        KeyEnvelopeLifecycleRules.ApplyHandoffStatus(entity, handoff.Kind);
-        entity.Touch(now);
-        await AddTimelineAsync(
-            entity.Id,
-            KeyEnvelopeTimelineEvents.HandoffConfirmed,
-            $"تأكيد استلام الظرف من {handoff.ToParty}",
-            actorUserId,
-            actorDisplayName,
-            now,
-            cancellationToken);
-        await AddTimelineAsync(
-            entity.Id,
-            KeyEnvelopeTimelineEvents.StatusChanged,
-            $"حالة الظرف → {entity.Status}",
-            actorUserId,
-            actorDisplayName,
-            now,
-            cancellationToken);
-
-        await SaveAndDetachAsync(cancellationToken);
-
-        var createdByUserId = Texts.NullIfBlank(handoff.CreatedByUserId);
-        if (createdByUserId is not null)
-        {
-            await _notifications.CreateForUserAsync(
-                createdByUserId,
-                new CreateUserNotificationRequest
-                {
-                    Title = "تأكيد استلام ظرف مفاتيح",
-                    Body = $"أكّد {actorDisplayName.Trim()} استلام ظرف المفاتيح {entity.RequestNumber}.",
-                    Tone = "success",
-                    Href = "/keys",
-                    Category = "workflow",
-                    EntityType = "property",
-                    EntityId = entity.Id.ToString(),
-                    SourceEvent = $"key-handoff-confirmed:{handoff.Id}",
-                },
-                cancellationToken);
-        }
-
-        return (await GetAsync(envelopeId, cancellationToken), null);
-    }
-
     private Task SaveAndDetachAsync(CancellationToken cancellationToken) =>
         _repo.SaveAndDetachAsync(cancellationToken);
 
@@ -565,79 +358,10 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             CreatedAtUtc = at,
         });
 
-    private async Task<IReadOnlyList<KeyEnvelopeDto>> MapManyAsync(
-        IReadOnlyList<KeyEnvelope> rows,
-        CancellationToken cancellationToken)
-    {
-        if (rows.Count == 0) return [];
-        var requestNumbers = rows
-            .Select(r => r.RequestNumber)
-            .Where(r => r.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        var linkedByRequest = await LoadLinkedByRequestNumbersAsync(
-            requestNumbers,
-            cancellationToken);
-        return await _people.WithResolvedPeopleAsync(
-            rows
-                .Select(row => KeyEnvelopeMapper.ToDto(
-                    row,
-                    linkedByRequest.GetValueOrDefault(row.RequestNumber) ?? []))
-                .ToList(),
-            cancellationToken);
-    }
-
-    private async Task<IReadOnlyList<KeyEnvelopeLinkedPropertyDto>> LoadLinkedAsync(
-        string requestNumber,
-        CancellationToken cancellationToken)
-    {
-        var key = requestNumber.Trim();
-        if (key.Length == 0) return [];
-        var map = await LoadLinkedByRequestNumbersAsync([key], cancellationToken);
-        return map.GetValueOrDefault(key) ?? [];
-    }
-
-    private async Task<Dictionary<string, IReadOnlyList<KeyEnvelopeLinkedPropertyDto>>>
-        LoadLinkedByRequestNumbersAsync(
-            IReadOnlyList<string> requestNumbers,
-            CancellationToken cancellationToken)
-    {
-        if (requestNumbers.Count == 0)
-            return new Dictionary<string, IReadOnlyList<KeyEnvelopeLinkedPropertyDto>>(
-                StringComparer.Ordinal);
-
-        var snapshots = await _caseStudy.ListPropertiesByRequestNumbersAsync(
-            requestNumbers,
-            cancellationToken);
-        var rows = snapshots
-            .Select(p => new KeyEnvelopeLinkedPropertyDto
-            {
-                PropertyId = p.Id,
-                PoNumber = p.PoNumber,
-                DeedNumber = p.DeedNumber,
-                OwnerName = p.OwnerName,
-                City = p.City,
-                Court = p.Court,
-                Circuit = p.Circuit,
-                RequestNumber = p.RequestNumber,
-            })
-            .ToList();
-
-        return rows
-            .GroupBy(r => r.RequestNumber, StringComparer.Ordinal)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<KeyEnvelopeLinkedPropertyDto>)g.ToList(),
-                StringComparer.Ordinal);
-    }
-
     private Task<bool> AttachmentExistsAsync(
         Guid id,
         CancellationToken cancellationToken) =>
         _attachments.ExistsAsync(id, cancellationToken);
-
-    private static Guid? EmptyToNull(Guid? id) =>
-        id is null || id == Guid.Empty ? null : id;
 
  /// <summary>
  /// Resolves the case specialist for a property's case-study parent task and

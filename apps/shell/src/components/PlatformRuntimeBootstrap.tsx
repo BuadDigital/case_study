@@ -6,6 +6,7 @@ import { ensurePartyOfficeBillingStatementsRegistered } from "@case-study/mfe/ex
 import { ensureEngineeringSurveyBridgeRegistered } from "@engineering-office/mfe/extensions/register-engineering-survey-bridge";
 import { ensureKeyEnvelopeFeesPanelRegistered } from "@keys/mfe/extensions/register-key-envelope-fees-slot";
 import { ensureFailuresCaseStudyBridgeRegistered } from "@case-study/mfe/extensions/register-failures-bridge";
+import { ensureEvaluatorCaseStudyBridgeRegistered } from "@case-study/mfe/extensions/register-evaluator-case-study-bridge";
 import { hydrateDomainStore } from "@platform/app-shared/storage/browser-domain-store";
 
 // Sync registration before any case-study queue/detail code runs.
@@ -18,6 +19,8 @@ ensureEngineeringSurveyBridgeRegistered();
 ensureKeyEnvelopeFeesPanelRegistered();
 // Supplies PO records + suspend action to the failures screen.
 ensureFailuresCaseStudyBridgeRegistered();
+// Supplies inspector/PO/form helpers + UI slots to the evaluator MFE.
+ensureEvaluatorCaseStudyBridgeRegistered();
 
 /** Hydrates domain IndexedDB once per app session. */
 export function PlatformRuntimeBootstrap() {

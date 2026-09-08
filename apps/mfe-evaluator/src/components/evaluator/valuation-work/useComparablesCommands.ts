@@ -109,12 +109,16 @@ export function useComparablesCommands(
   adoptRef.current = adopt;
   const saveBankOverrideRef = useRef(saveBankOverride);
   saveBankOverrideRef.current = saveBankOverride;
-  const onAdoptMarket = useCallback((comparableId: string, adopted: boolean) => {
-    void adoptRef.current(comparableId, adopted, MARKET_CONTEXT);
-  }, []);
-  const onAdoptLand = useCallback((comparableId: string, adopted: boolean) => {
-    void adoptRef.current(comparableId, adopted, LAND_WITHIN_COST);
-  }, []);
+  const onAdoptMarket = useCallback(
+    (comparableId: string, adopted: boolean) =>
+      adoptRef.current(comparableId, adopted, MARKET_CONTEXT),
+    [],
+  );
+  const onAdoptLand = useCallback(
+    (comparableId: string, adopted: boolean) =>
+      adoptRef.current(comparableId, adopted, LAND_WITHIN_COST),
+    [],
+  );
   const onSaveBankOverride = useCallback(
     (
       item: ValuationComparableSelectionDto,

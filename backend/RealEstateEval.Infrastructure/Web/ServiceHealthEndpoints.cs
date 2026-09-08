@@ -45,6 +45,13 @@ public sealed class DatabaseReadinessOptions
  /// <summary>Container healthchecks poll frequently; results are reused for this long.</summary>
     public int CacheSeconds { get; init; } = 5;
 
+ /// <summary>
+ /// Upper bound for each soft TCP probe. A refused or silently dropped port must not make
+ /// <c>/ready</c> slower than the gateway's upstream timeout (2 s by default): on this
+ /// Windows dev box a dual-stack connect to a closed <c>localhost</c> port took ~4 s.
+ /// </summary>
+    public int SoftProbeTimeoutMilliseconds { get; init; } = 750;
+
     public static DatabaseReadinessOptions FromConfiguration(
         IConfiguration configuration,
         IHostEnvironment environment)
@@ -54,9 +61,12 @@ public sealed class DatabaseReadinessOptions
         var options = new DatabaseReadinessOptions
         {
             CheckMigrations = section.GetValue("CheckMigrations", !environment.IsDevelopment()),
-            CheckRabbit = section.GetValue("CheckRabbit", false),
-            CheckRedis = section.GetValue("CheckRedis", false),
+            // Soft checks only ever add a status field to the body, so they are on by default;
+            // a host with the broker or cache disabled reports "disabled" and stays ready.
+            CheckRabbit = section.GetValue("CheckRabbit", true),
+            CheckRedis = section.GetValue("CheckRedis", true),
             CacheSeconds = section.GetValue("CacheSeconds", 5),
+            SoftProbeTimeoutMilliseconds = section.GetValue("SoftProbeTimeoutMilliseconds", 750),
         };
 
         options.Validate();
@@ -69,6 +79,12 @@ public sealed class DatabaseReadinessOptions
         {
             throw new InvalidOperationException(
                 $"{SectionName}:CacheSeconds must be between 0 and 300.");
+        }
+
+        if (SoftProbeTimeoutMilliseconds is < 50 or > 10_000)
+        {
+            throw new InvalidOperationException(
+                $"{SectionName}:SoftProbeTimeoutMilliseconds must be between 50 and 10000.");
         }
     }
 }
@@ -271,20 +287,13 @@ public static class ServiceHealthEndpoints
                     null);
             }
 
-            var rabbit = await ProbeRabbitSoftAsync(
-                services,
-                options,
-                serviceName,
-                logger,
-                cancellationToken);
-            var redis = await ProbeRedisSoftAsync(
-                services,
-                options,
-                serviceName,
-                logger,
-                cancellationToken);
+            // Soft probes run side by side and each is time-boxed, so a dead broker or cache
+            // costs at most one timeout, never the gateway's whole upstream budget.
+            var rabbitTask = ProbeRabbitSoftAsync(services, options, serviceName, logger, cancellationToken);
+            var redisTask = ProbeRedisSoftAsync(services, options, serviceName, logger, cancellationToken);
+            await Task.WhenAll(rabbitTask, redisTask);
 
-            return new DatabaseReadinessSnapshot(true, "ready", 0, rabbit, redis);
+            return new DatabaseReadinessSnapshot(true, "ready", 0, rabbitTask.Result, redisTask.Result);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -315,21 +324,55 @@ public static class ServiceHealthEndpoints
         if (!rabbit.Enabled)
             return "disabled";
 
+        return await TcpReachableAsync(
+            "RabbitMQ",
+            rabbit.Host,
+            rabbit.Port,
+            options,
+            serviceName,
+            logger,
+            cancellationToken);
+    }
+
+ /// <summary>
+ /// Time-boxed TCP reachability. <c>localhost</c> is probed as <c>127.0.0.1</c>: the
+ /// services themselves connect over IPv4 (see the UpstreamServices notes), and a dual-stack
+ /// connect that first stalls on <c>::1</c> reports the wrong answer slowly.
+ /// </summary>
+    private static async Task<string> TcpReachableAsync(
+        string dependency,
+        string host,
+        int port,
+        DatabaseReadinessOptions options,
+        string serviceName,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var target = host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            ? "127.0.0.1"
+            : host;
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(options.SoftProbeTimeoutMilliseconds);
+
         try
         {
             using var client = new TcpClient();
-            using var reg = cancellationToken.Register(() => client.Dispose());
-            await client.ConnectAsync(rabbit.Host, rabbit.Port, cancellationToken);
+            using var reg = timeout.Token.Register(() => client.Dispose());
+            await client.ConnectAsync(target, port, timeout.Token);
             return "reachable";
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            var timedOut = timeout.IsCancellationRequested;
             logger.LogWarning(
                 ex,
-                "Readiness for {Service}: RabbitMQ soft-check failed ({Host}:{Port}).",
+                "Readiness for {Service}: {Dependency} soft-check {Outcome} ({Host}:{Port}).",
                 serviceName,
-                rabbit.Host,
-                rabbit.Port);
+                dependency,
+                timedOut ? "timed out" : "failed",
+                target,
+                port);
             return "unreachable";
         }
     }
@@ -355,23 +398,14 @@ public static class ServiceHealthEndpoints
         if (!RedisTcpEndpoint.TryParse(redis.ConnectionString, out var host, out var port))
             return "not_configured";
 
-        try
-        {
-            using var client = new TcpClient();
-            using var reg = cancellationToken.Register(() => client.Dispose());
-            await client.ConnectAsync(host, port, cancellationToken);
-            return "reachable";
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(
-                ex,
-                "Readiness for {Service}: Redis soft-check failed ({Host}:{Port}).",
-                serviceName,
-                host,
-                port);
-            return "unreachable";
-        }
+        return await TcpReachableAsync(
+            "Redis",
+            host,
+            port,
+            options,
+            serviceName,
+            logger,
+            cancellationToken);
     }
 
  /// <summary>Single-flight cache so frequent probes do not fan out into the database.</summary>

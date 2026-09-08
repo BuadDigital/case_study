@@ -34,6 +34,7 @@ public interface IWorkflowTaskLifecycleCommands
         ReopenCompletedWorkflowTaskRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
     Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default);

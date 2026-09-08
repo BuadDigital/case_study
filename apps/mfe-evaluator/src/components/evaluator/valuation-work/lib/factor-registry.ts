@@ -19,6 +19,11 @@ export type FactorDescriptor = {
   alwaysPresent?: boolean;
   /** Deletable sequential factors — market conditions are not deleted. */
   deletable?: boolean;
+  /**
+   * When false, the include ✓ starts empty and the row stays out of the chain
+   * until the evaluator ticks it. Omitted means included.
+   */
+  includedByDefault?: boolean;
   /** Editable description / subject column cell (location is read from city/district). */
   specCell?: boolean;
   subjectCell?: FactorSubjectCell;
@@ -27,6 +32,25 @@ export type FactorDescriptor = {
 
 export const AUTO_AREA_KEY = "area";
 
+/** Minted custom difference factors — key max 32, extra-catalog charset. */
+export const CUSTOM_FACTOR_PREFIX = "c_";
+export const CUSTOM_FACTOR_LABEL = "عامل مخصص";
+
+/** Client-minted custom row (`c_1`) or the reserved `custom` key. */
+export function isCustomFactorKey(factorKey: string): boolean {
+  return factorKey === "custom" || factorKey.startsWith(CUSTOM_FACTOR_PREFIX);
+}
+
+/** Next unused `c_n` key among rows already on the table. */
+export function nextCustomFactorKey(existing: Iterable<string>): string {
+  const taken = new Set(existing);
+  for (let n = 1; n < 1000; n++) {
+    const key = `${CUSTOM_FACTOR_PREFIX}${n}`;
+    if (!taken.has(key)) return key;
+  }
+  return `${CUSTOM_FACTOR_PREFIX}${Date.now().toString(36)}`.slice(0, 32);
+}
+
 export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
   financing: {
     label: "تسوية شروط التمويل",
@@ -34,6 +58,7 @@ export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
     tip: "أثر شروط البيع والتمويل غير النقدية على السعر المرصود.",
     sequential: true,
     deletable: true,
+    includedByDefault: false,
   },
   market: {
     label: "تسوية ظروف السوق",
@@ -50,6 +75,7 @@ export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
     tip: "الفرق بين سعر المقارن وسعر السوق بحسب نوعه.",
     sequential: true,
     deletable: true,
+    includedByDefault: false,
     compNote: "kind-suggested",
   },
   area: {
@@ -115,4 +141,17 @@ export function factorMeta(factorKey: string, labelAr?: string) {
 /** Catalog factor with no entry here = standard difference factor with a description cell. */
 export function factorHasSpecCell(factorKey: string): boolean {
   return FACTOR_REGISTRY[factorKey]?.specCell !== false;
+}
+
+/** Optional sequential rows stay off until the evaluator ticks them. */
+export function factorIncludedByDefault(factorKey: string): boolean {
+  return FACTOR_REGISTRY[factorKey]?.includedByDefault !== false;
+}
+
+/** Missing line follows the factor default; a stored false stays excluded. */
+export function lineIsIncluded(
+  line: { isIncluded?: boolean } | null | undefined,
+  factorKey: string,
+): boolean {
+  return line ? line.isIncluded !== false : factorIncludedByDefault(factorKey);
 }

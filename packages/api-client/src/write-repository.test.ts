@@ -30,6 +30,42 @@ describe("API write repository", () => {
     expect(nativeFetch).toHaveBeenCalledTimes(4);
   });
 
+  it("retries a transient row-version conflict once and returns the second answer", async () => {
+    const nativeFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("{}", {
+          status: 409,
+          headers: { "X-REE-Transient-Conflict": "1" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", nativeFetch);
+
+    const response = await repositoryFetch("/api/resource", {
+      method: "POST",
+      body: JSON.stringify({ a: 1 }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(nativeFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a domain 409 or a non-conflict failure", async () => {
+    const nativeFetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 409 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }));
+    vi.stubGlobal("fetch", nativeFetch);
+
+    const conflict = await repositoryFetch("/api/resource", { method: "POST" });
+    const failure = await repositoryFetch("/api/resource", { method: "POST" });
+
+    expect(conflict.status).toBe(409);
+    expect(failure.status).toBe(500);
+    expect(nativeFetch).toHaveBeenCalledTimes(2);
+  });
+
   it("does not treat reads as writes", async () => {
     const nativeFetch = vi.fn(async () => new Response("[]"));
     vi.stubGlobal("fetch", nativeFetch);

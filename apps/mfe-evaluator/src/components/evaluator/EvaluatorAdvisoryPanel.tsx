@@ -9,8 +9,8 @@ import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
   PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
   type CaseStudyFormDraft,
-} from "@case-study/mfe/lib/app-data/case-study-form-model";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+} from "@platform/app-shared/app-data/case-study-form-model";
+import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
@@ -18,7 +18,7 @@ import {
   loadEvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-submission-model";
 import { fetchEvaluatorSubmissionSnapshot } from "../../lib/evaluator/evaluator-submission-reads";
-import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
+import { PartyRecallAdvisorySection } from "@platform/app-shared/components/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import {

@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { GentleLoadingCopy } from "./GentleBusy";
 import { cn } from "../lib/cn";
 import {
   emptyStateClassName,
@@ -147,7 +148,7 @@ export function EmptyState({
             : "text-[13px] text-text-3",
         )}
       >
-        {line}
+        <GentleLoadingCopy>{line}</GentleLoadingCopy>
       </p>
       {hint ? (
         <p

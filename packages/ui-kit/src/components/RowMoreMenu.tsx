@@ -11,12 +11,15 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/cn";
+import { Spinner } from "./Spinner";
 
 export type RowMoreMenuItem = {
   id: string;
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /** In-item spinner — tap is in progress (e.g. navigating). */
+  busy?: boolean;
   danger?: boolean;
   /** Outline icon shown before the label (RTL: ends up on the right). */
   icon?: ReactNode;
@@ -172,10 +175,13 @@ export function RowMoreMenu({
   items,
   ariaLabel = "المزيد",
   buttonClassName,
+  busy = false,
 }: {
   items: RowMoreMenuItem[];
   ariaLabel?: string;
   buttonClassName?: string;
+  /** Replace the kebab with a spinner while a menu action is in flight. */
+  busy?: boolean;
 }) {
   const menuId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -284,14 +290,19 @@ export function RowMoreMenu({
                 item.danger &&
                   "text-[#d9694f] hover:bg-[color-mix(in_srgb,#d9694f_10%,transparent)]",
               )}
-              disabled={item.disabled}
+              disabled={item.disabled || item.busy || busy}
+              aria-busy={item.busy || undefined}
               onClick={() => {
-                if (item.disabled) return;
+                if (item.disabled || item.busy || busy) return;
                 setOpen(false);
                 item.onClick();
               }}
             >
-              {item.icon ?? null}
+              {item.busy ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                (item.icon ?? null)
+              )}
               <span className="min-w-0">{item.label}</span>
             </button>
           </div>
@@ -310,13 +321,18 @@ export function RowMoreMenu({
         ref={btnRef}
         type="button"
         className={cn(moreBtnClass(open), buttonClassName)}
-        aria-label={ariaLabel}
+        aria-label={busy ? "جاري التحميل" : ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-busy={busy || undefined}
         aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        onClick={() => {
+          if (busy) return;
+          setOpen((v) => !v);
+        }}
       >
-        <KebabIcon />
+        {busy ? <Spinner className="size-3.5" /> : <KebabIcon />}
       </button>
       {mounted && menu ? createPortal(menu, document.body) : null}
     </div>

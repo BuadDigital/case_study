@@ -6,9 +6,11 @@ import { SpecialistValuationReportFinishingEditor } from "./SpecialistValuationR
 export function SpecialistValuationReportInputs({
   propertyId,
   poNumber,
+  readOnly = false,
 }: {
   propertyId: string;
   poNumber?: string;
+  readOnly?: boolean;
 }) {
   // Filled here by the specialist (case study → property valuation); shown read-only to the appraiser.
   return (
@@ -21,12 +23,14 @@ export function SpecialistValuationReportInputs({
         <span className="flex-1 border-t border-border" aria-hidden />
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-        يعبّئها الأخصائي من دراسة الحالة (تبويب تقييم العقار)، وتظهر للمقيّم للعرض
-        فقط.
+        {readOnly
+          ? "معتمدة — لا يمكن تعديلها بعد اعتماد مدخلات المعاين."
+          : "يعبّئها الأخصائي من دراسة الحالة (تبويب تقييم العقار)، وتظهر للمقيّم للعرض فقط."}
       </p>
       <SpecialistValuationReportFinishingEditor
         propertyId={propertyId}
         poNumber={poNumber}
+        readOnly={readOnly}
       />
     </div>
   );

@@ -7,8 +7,6 @@ import {
   applyValuationReportLiveFill,
   type ValuationReportLiveFill,
 } from "./valuation-report-live-fill";
-import { buildGoogleMapsHtmlBootstrap } from "./valuation-report-comparables-map";
-
 const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 
 export { escHtml } from "./html-escape";
@@ -82,6 +80,43 @@ function replaceImageSlots(dom: Document) {
     div.textContent = slot.getAttribute("placeholder") || "";
     slot.replaceWith(div);
   });
+}
+
+/** One «صور العقار» section — fold the old (1/2)+(2/2) pages if the template still splits them. */
+function mergePropertyPhotoSections(dom: Document) {
+  const first = dom.querySelector<HTMLElement>('[data-sec="34"]');
+  if (!first) return;
+
+  first.setAttribute("data-name", "صور العقار");
+  const heading = first.querySelector("h2");
+  if (heading) {
+    const num = heading.querySelector("span.n");
+    heading.replaceChildren();
+    if (num) heading.append(num, "صور العقار");
+    else heading.textContent = "صور العقار";
+  }
+
+  const second = dom.querySelector<HTMLElement>('[data-sec="34ب"]');
+  if (!second) return;
+
+  const destGrid =
+    first.querySelector<HTMLElement>(":scope > div") ?? first;
+  for (const slot of [
+    ...second.querySelectorAll("[id^='photo-'], [data-slot-id^='photo-']"),
+  ]) {
+    const id = slot.id || slot.getAttribute("data-slot-id") || "";
+    if (id && first.querySelector(`[id="${id}"]`)) continue;
+    destGrid.append(slot);
+  }
+
+  const page = second.closest("section.page.pg");
+  second.remove();
+  if (
+    page &&
+    !page.querySelector("[data-sec], [id^='photo-'], [data-slot-id^='photo-']")
+  ) {
+    page.remove();
+  }
 }
 
 function unwrapScIf(dom: Document) {
@@ -576,6 +611,7 @@ function parseTemplate(raw: string) {
     .replace(/url\(['"]?assets\/ejadah-letterhead\.png['"]?\)/g, "none")
     .replace(/assets\/ejadah-stamp\.png/g, BRAND_IDENTITY_DEFAULTS.stampUrl);
   replaceImageSlots(dom);
+  mergePropertyPhotoSections(dom);
   unwrapScIf(dom);
   dom.querySelectorAll("img").forEach((img) => {
     const src = (img.getAttribute("src") ?? "").trim();
@@ -603,13 +639,9 @@ export function prepareValuationReportV3Html(
 ): string {
   const { dom, authored } = parseTemplate(raw);
   applyMeta(dom, meta);
-  const mapsApiKey =
-    typeof process !== "undefined"
-      ? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || ""
-      : "";
-  // Screen: React hydrates hosts. Print/HTML tab: same hosts + inline Maps bootstrap.
-  const interactiveMaps =
-    mode === "screen" || (mode === "print" && Boolean(mapsApiKey));
+  // Live Google Maps belongs on screen only. Printing a blob tab that loads
+  // maps/api/js hangs Chrome on "Loading preview…" (19-page letterhead + tiles).
+  const interactiveMaps = mode === "screen";
   if (meta.live) {
     applyValuationReportLiveFill(dom, meta.live, {
       valuers: meta.valuers,
@@ -644,10 +676,6 @@ export function prepareValuationReportV3Html(
     .map((p) => p.outerHTML)
     .join("\n");
   const base = origin ? `<base href="${escHtml(`${origin.replace(/\/$/, "")}/`)}"/>` : "";
-  const mapsBootstrap =
-    mapsApiKey && interactiveMaps
-      ? buildGoogleMapsHtmlBootstrap(mapsApiKey)
-      : "";
 
   // No fonts.googleapis.com — LAN/HTTP print tabs often hang Chrome's
   // "Loading preview…" waiting on blocked or slow webfonts.
@@ -655,7 +683,7 @@ export function prepareValuationReportV3Html(
 ${base}
 <title>تقرير التقييم</title>
 <style>${printCss}\n${brandCss}\n${PRINT_CHROME}</style></head>
-<body class="val-rpt-v3">${pages}${mapsBootstrap}</body></html>`;
+<body class="val-rpt-v3">${pages}</body></html>`;
 }
 
 // The template (~20 pages) is stable for the session — fetch once to avoid a network round-trip on every

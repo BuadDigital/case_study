@@ -179,7 +179,7 @@ export function statusTone(
 export function statusLabel(status: string | undefined): string {
   if (status === "Active") return "نشط";
   if (status === "Disabled") return "معطّل";
-  if (status === "PendingActivation") return "بانتظار التفعيل";
+  if (status === "PendingActivation") return "بانتظار التفعيل (قديم)";
   if (status === "Locked") return "موقوف";
   return status || "—";
 }
@@ -187,7 +187,7 @@ export function statusLabel(status: string | undefined): string {
 /** Label of the row's second action button, by account status. */
 export function userToggleLabel(status: string | undefined): string {
   if (status === "Locked") return "فك القفل";
-  if (status === "PendingActivation") return "دعوة";
+  if (status === "PendingActivation") return "تفعيل";
   if (status === "Disabled") return "تفعيل";
   return "تعطيل";
 }
@@ -266,12 +266,6 @@ export function createUserErrorMessage(result: FailedResult): string {
   return result.kind === "network" ? NETWORK_MESSAGE : "تعذر إنشاء المستخدم.";
 }
 
-export function activationTicketErrorMessage(result: FailedResult): string {
-  return result.kind === "network"
-    ? NETWORK_MESSAGE
-    : (result.message ?? "تعذر إصدار دعوة التفعيل.");
-}
-
 export function deleteUserErrorMessage(result: FailedResult): string {
   return result.kind === "validation"
     ? (result.message ?? "تعذر تعطيل المستخدم.")
@@ -304,7 +298,6 @@ export function unlockErrorMessage(result: FailedResult): string {
 
 export const USER_TOASTS = {
   created: "تم إنشاء المستخدم بنجاح.",
-  ticketIssued: "تم إصدار دعوة التفعيل.",
   disabled: "تم تعطيل المستخدم.",
   edited: "تم حفظ التعديلات.",
   reactivated: "تم تفعيل المستخدم.",

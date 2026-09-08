@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
-  activationTicketErrorMessage,
   applyRoleChange,
   buildCreateStaffUserPayload,
   canDeleteUser,
@@ -155,12 +154,12 @@ describe("row presentation", () => {
     expect(statusTone("Disabled")).toBe("default");
     expect(statusLabel("Active")).toBe("نشط");
     expect(statusLabel("Disabled")).toBe("معطّل");
-    expect(statusLabel("PendingActivation")).toBe("بانتظار التفعيل");
+    expect(statusLabel("PendingActivation")).toBe("بانتظار التفعيل (قديم)");
     expect(statusLabel("Locked")).toBe("موقوف");
     expect(statusLabel(undefined)).toBe("—");
     expect(statusLabel("Weird")).toBe("Weird");
     expect(userToggleLabel("Locked")).toBe("فك القفل");
-    expect(userToggleLabel("PendingActivation")).toBe("دعوة");
+    expect(userToggleLabel("PendingActivation")).toBe("تفعيل");
     expect(userToggleLabel("Disabled")).toBe("تفعيل");
     expect(userToggleLabel("Active")).toBe("تعطيل");
   });
@@ -210,8 +209,6 @@ describe("dialog copy and API error mapping", () => {
   it("maps each failure kind to the screen's message", () => {
     expect(createUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
     expect(createUserErrorMessage({ kind: "server" })).toBe("تعذر إنشاء المستخدم.");
-    expect(activationTicketErrorMessage({ kind: "server", message: "m" })).toBe("m");
-    expect(activationTicketErrorMessage({ kind: "server" })).toBe("تعذر إصدار دعوة التفعيل.");
     expect(deleteUserErrorMessage({ kind: "validation", message: "v" })).toBe("v");
     expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذر تعطيل المستخدم.");
     expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");

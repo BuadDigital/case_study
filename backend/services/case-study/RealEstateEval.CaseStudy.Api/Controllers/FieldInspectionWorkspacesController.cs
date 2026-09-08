@@ -25,6 +25,7 @@ public class FieldInspectionWorkspacesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<IReadOnlyList<FieldInspectionWorkspaceListItemDto>>> List(
         CancellationToken ct)
     {

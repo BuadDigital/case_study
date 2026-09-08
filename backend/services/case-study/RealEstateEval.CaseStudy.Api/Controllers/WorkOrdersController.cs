@@ -35,6 +35,7 @@ public class WorkOrdersController : ControllerBase
  /// docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<IActionResult> List(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
@@ -69,6 +70,7 @@ public class WorkOrdersController : ControllerBase
     /// docs/architecture/pagination-contract.md §1.1.
     /// </summary>
     [HttpGet("counts")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<WorkOrderListCountsDto>> Counts(
         [FromQuery] string? q,
         [FromQuery] string? status,
@@ -81,6 +83,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("details")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<IReadOnlyList<WorkOrderDto>>> ListDetails(
         CancellationToken cancellationToken)
     {
@@ -90,6 +93,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("property-rows")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<IReadOnlyList<PropertyListItemDto>>> ListPropertyRows(
         CancellationToken cancellationToken)
     {
@@ -154,6 +158,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("{poNumber}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<WorkOrderDto>> Get(
         string poNumber,
         CancellationToken cancellationToken)
@@ -167,6 +172,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("{poNumber}/properties/{propertyId:guid}/timeline")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<IReadOnlyList<PropertyTimelineEventDto>>> GetPropertyTimeline(
         string poNumber,
         Guid propertyId,

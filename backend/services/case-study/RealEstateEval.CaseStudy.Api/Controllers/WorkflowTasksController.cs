@@ -40,6 +40,7 @@ public class WorkflowTasksController : ControllerBase
  /// before paging, so counts are the actor's. See docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<IActionResult> List(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
@@ -111,6 +112,7 @@ public class WorkflowTasksController : ControllerBase
         var (result, errors) = await _tasks.ConfirmDistributionAsync(
             id,
             request,
+            ActorClaims.Id(User),
             cancellationToken);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
@@ -221,6 +223,7 @@ public class WorkflowTasksController : ControllerBase
             request,
             await ActorPrototypeRoleAsync(cancellationToken),
             ActorName(),
+            ActorClaims.Id(User),
             cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");

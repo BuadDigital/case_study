@@ -96,8 +96,11 @@ test.describe("Field inspector: submit → specialist accept", () => {
     // cell instead so the row handler runs.
     await row.getByText("تنفيذ", { exact: true }).first().click();
 
+    // The row opens through a transition; on the dev server the first visit to
+    // the work route also compiles it, which is far longer than the default 5 s.
     await expect(page).toHaveURL(
       new RegExp(`/active-inspection/${tx.fieldInspection.id}$`),
+      { timeout: 60_000 },
     );
     const ws = workspace(page);
     await expect(ws).toBeVisible({ timeout: 60_000 });

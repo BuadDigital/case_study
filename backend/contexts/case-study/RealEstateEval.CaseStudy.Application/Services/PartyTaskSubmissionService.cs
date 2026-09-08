@@ -19,14 +19,6 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 /// </summary>
 public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
-    /// <summary>Party kinds that submit work through this service — everything but the parent.</summary>
-    private static readonly HashSet<WorkflowTaskKind> AllowedKinds =
-    [
-        WorkflowTaskKind.EngineeringSurvey,
-        WorkflowTaskKind.PropertyAppraisal,
-        WorkflowTaskKind.FieldInspection,
-    ];
-
     /// <summary>Case-specialist / supervisor inbox copy for a party's submit action, by task kind.</summary>
     private static readonly Dictionary<WorkflowTaskKind, (string Title, string Body)> SubmitNotificationText = new()
     {
@@ -47,6 +39,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IInspectorFeeService _inspectorFees;
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
+    private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
 
     public PartyTaskSubmissionService(
@@ -59,6 +53,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IInspectorFeeService inspectorFees,
         INotificationService notifications,
         INotificationRecipientResolver recipients,
+        IAuditLogWriter audit,
+        IAuditLogAppend auditLog,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -72,7 +68,11 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         _inspectorFees = inspectorFees;
         _notifications = notifications;
         _recipients = recipients;
+        _audit = audit;
+        _auditLog = auditLog;
     }
+
+    private static Dictionary<string, string> Error(string message) => PartyTaskSubmissionRules.Error(message);
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
         Guid taskId,
@@ -87,7 +87,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return await ToDtoAsync(entity, cancellationToken);
 
         var task = await _repo.GetTaskAsync(taskId, cancellationToken);
-        if (task is null || !AllowedKinds.Contains(task.Kind))
+        if (task is null || !PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return null;
 
         return await ToUnsavedDraftDtoAsync(task, cancellationToken);
@@ -116,7 +116,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var result = new List<PartyTaskSubmissionDto>(entities.Count);
         foreach (var entity in entities)
         {
-            var dto = ToDto(entity);
+            var dto = PartyTaskSubmissionRules.ToDto(entity);
             ApplyInspectionFlags(dto, entity, flagsByTask);
             result.Add(dto);
         }
@@ -133,20 +133,12 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, Error("المهمة غير موجودة"));
 
-        if (!AllowedKinds.Contains(task.Kind))
+        if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("نوع المهمة غير مدعوم"));
 
-        var canAssigneeWrite = actor is null
-            || PoRoleMatrixRules.CanWritePartyTask(
-                actor.PrototypeRole,
-                task.AssigneeId,
-                actor.UserId,
-                actor.DistributionAssigneeId);
-        var canStaffCorrectFieldInspection = actor is not null
-            && task.Kind == WorkflowTaskKind.FieldInspection
-            && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.PrototypeRole);
-
-        if (actor is not null && !canAssigneeWrite && !canStaffCorrectFieldInspection)
+        var canStaffCorrectFieldInspection =
+            PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(actor, task);
+        if (!PartyTaskSubmissionRules.MayWriteDraft(actor, task, canStaffCorrectFieldInspection))
             return (null, Error("ليس لديك صلاحية تعديل هذه المهمة"));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
@@ -211,7 +203,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, Error("المهمة غير موجودة"));
 
-        if (!AllowedKinds.Contains(task.Kind))
+        if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("نوع المهمة غير مدعوم"));
 
         if (actor is not null
@@ -262,14 +254,12 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.PropertyId is Guid propertyId)
         {
-            var actorLabel = entity.SubmittedByName
-                ?? (string.IsNullOrWhiteSpace(task.AssigneeName) ? null : task.AssigneeName);
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:submitted",
                 WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind),
-                actorLabel,
+                PartyTaskSubmissionRules.SubmittedActorLabel(entity, task),
                 "done",
                 now,
                 cancellationToken);
@@ -295,7 +285,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, Error("المهمة غير موجودة"));
 
-        if (!AllowedKinds.Contains(task.Kind))
+        if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("إعادة الفتح غير مدعومة لهذا النوع"));
 
         if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
@@ -352,7 +342,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task is null)
             return (null, Error("المهمة غير موجودة"));
 
-        if (!AllowedKinds.Contains(task.Kind))
+        if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("قبول المخرجات غير متاح لهذا النوع من المهام"));
 
         if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
@@ -365,7 +355,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (task.Status != WorkflowTaskStatus.Completed)
             return (null, Error("المهمة غير مكتملة بعد"));
 
-        var actorUserId = string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;
+        var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
@@ -402,20 +392,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await _repo.SaveChangesAsync(cancellationToken);
         }
 
-        var timelineTitle = task.Kind switch
-        {
-            WorkflowTaskKind.FieldInspection => "استلام بيانات المعاينة",
-            WorkflowTaskKind.PropertyAppraisal => "اعتماد تقرير التقييم",
-            _ => "قبول مخرجات الرفع المساحي",
-        };
-
         if (task.PropertyId is Guid propertyId)
         {
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:accepted",
-                timelineTitle,
+                PartyTaskSubmissionRules.AcceptedTimelineTitle(task.Kind),
                 entity.AcceptedByName ?? task.AssigneeName,
                 "done",
                 _time.UtcNow(),
@@ -425,208 +408,26 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (!alreadyAccepted)
             await NotifyPartyAcceptedAsync(task, cancellationToken);
 
+        if (!alreadyAccepted)
+        {
+            await _auditLog.AppendAsync(_audit.Create(
+                actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId,
+                action: "case-study.party-submission.accepted",
+                entityType: "PartyTaskSubmission",
+                entityId: taskId.ToString("D"),
+                before: new { status = "Submitted" },
+                after: new
+                {
+                    status = "Accepted",
+                    kind = task.Kind.ToString(),
+                    poNumber = task.PoNumber,
+                    acceptedBy = entity.AcceptedByName,
+                    acceptedAtUtc = entity.AcceptedAtUtc,
+                }), cancellationToken);
+        }
+
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
     // B2: Acceptance stamp Go to root — PartyTaskSubmission.Accept.
-
-    private static Dictionary<string, string> Error(string message) => new() { ["_"] = message };
-
-    private async Task<Dictionary<string, string>> ValidateForSubmitAsync(
-        PartyTaskSubmission entity,
-        CancellationToken cancellationToken)
-    {
-        var errors = PartyTaskSubmissionPayloadRules.ValidateForSubmit(entity);
-        var documentary = await ValidateDocumentaryGatesAsync(entity, cancellationToken);
-        foreach (var (key, message) in documentary)
-            errors[key] = message;
-
-        if (errors.Count > 0)
-            return errors;
-
-        try
-        {
-            using var doc = JsonDocument.Parse(entity.PayloadJson);
-            if (entity.Kind == WorkflowTaskKindValues.FieldInspection)
-            {
-                var attachmentErrors = await _fieldInspectionAttachments.VerifyAsync(
-                    entity.WorkflowTaskId,
-                    doc.RootElement,
-                    cancellationToken);
-                foreach (var (key, message) in attachmentErrors)
-                    errors[key] = message;
-            }
-        }
-        catch
-        {
-            errors["_"] = "بيانات الإرسال غير صالحة";
-        }
-
-        return errors;
-    }
-
-    private async Task<Dictionary<string, string>> ValidateDocumentaryGatesAsync(
-        PartyTaskSubmission entity,
-        CancellationToken cancellationToken)
-    {
-        var errors = new Dictionary<string, string>();
-        var bypass = DocumentaryWorkflowRules.RoleBypassesDocumentaryGates(
-            await _currentRole.ResolveAsync(cancellationToken));
-
-        WorkOrderProperty? property = null;
-        if (entity.PropertyId is Guid propertyId)
-            property = await _repo.GetPropertyWithContactsAsync(propertyId, cancellationToken);
-
-        var propertyIdStr = entity.PropertyId?.ToString() ?? "";
-        var hasActiveFailure = await _failures.HasActiveFailureAsync(
-            entity.PoNumber ?? "",
-            propertyIdStr,
-            cancellationToken);
-
-        using var doc = JsonDocument.Parse(entity.PayloadJson);
-        var root = doc.RootElement;
-
-        switch (entity.Kind)
-        {
-            case WorkflowTaskKindValues.EngineeringSurvey:
-            {
-                var inspectionCompleted = entity.PropertyId is Guid pid
-                    && (await SiblingInspectionFlagsAsync(
-                        entity.WorkflowTaskId, pid, includeAccepted: false, cancellationToken)).Completed;
-
-                var surveyBlock = DocumentaryWorkflowRules.SurveyWorkBlockReason(
-                    bypass,
-                    inspectionCompleted,
-                    hasActiveFailure);
-                if (surveyBlock is not null)
-                    errors["_documentary"] = surveyBlock;
-
-                PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted(
-                    errors,
-                    root,
-                    property?.PlanNumber,
-                    property?.PlotNumber);
-
-                var hasPhone = property is not null
-                    && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
-                var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
-                var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
-                    bypass,
-                    hasPhone,
-                    phoneWasPresent);
-                if (phoneBlock is not null
-                    && (PartyTaskSubmissionPayloadRules.HasNonEmpty(root, "siteLetterFileName")
-                        || PartyTaskSubmissionPayloadRules.GetBool(root, "siteConfirmed")))
-                {
-                    errors["siteLetterFileName"] = phoneBlock;
-                }
-                break;
-            }
-
-            case WorkflowTaskKindValues.FieldInspection:
-            {
-                // Informal map-URL access gate removed — tasks are not assigned without initial data.
-                // Key envelopes remain tracked (payload keyAvailable) but do not block submit.
-                var hasPhone = property is not null
-                    && DocumentaryWorkflowRules.HasAnyPartyPhone(property.Contacts);
-                var phoneWasPresent = PartyTaskSubmissionPayloadRules.GetBool(root, "declarationPhoneSatisfied");
-                var phoneBlock = DocumentaryWorkflowRules.DeclarationPhoneBlockReason(
-                    bypass,
-                    hasPhone,
-                    phoneWasPresent);
-                if (phoneBlock is not null && PartyTaskSubmissionPayloadRules.GetBool(root, "clientDeclarationSigned"))
-                    errors["clientDeclarationSigned"] = phoneBlock;
-                break;
-            }
-        }
-
-        return errors;
-    }
-
-    private async Task SyncFieldInspectionWorkspaceAsync(
-        PartyTaskSubmission entity,
-        CancellationToken cancellationToken)
-    {
-        using var doc = JsonDocument.Parse(entity.PayloadJson);
-        var projected = FieldInspectionWorkspaceProjector.Project(
-            entity, doc.RootElement, _time.UtcNow());
-        await _repo.UpsertFieldInspectionWorkspaceAsync(projected, cancellationToken);
-    }
-
-    private async Task<PartyTaskSubmissionDto> ToUnsavedDraftDtoAsync(
-        WorkflowTask task,
-        CancellationToken cancellationToken)
-    {
-        var dto = await ToDtoAsync(
-            new PartyTaskSubmission
-            {
-                Id = Guid.Empty,
-                WorkflowTaskId = task.Id,
-                Kind = task.Kind.ToDbValue(),
-                Status = PartyTaskSubmissionStatus.Draft,
-                PropertyId = task.PropertyId,
-                PoNumber = task.PoNumber,
-                PayloadJson = "{}",
-            },
-            cancellationToken);
-        dto.Id = "";
-        return dto;
-    }
-
-    private async Task<PartyTaskSubmissionDto> ToDtoAsync(
-        PartyTaskSubmission entity,
-        CancellationToken cancellationToken)
-    {
-        var dto = ToDto(entity);
-        if (!NeedsInspectionFlag(entity.Kind))
-            return dto;
-
-        var flags = entity.PropertyId is Guid propertyId
-            ? await SiblingInspectionFlagsAsync(
-                entity.WorkflowTaskId,
-                propertyId,
-                includeAccepted: entity.Kind == WorkflowTaskKindValues.PropertyAppraisal,
-                cancellationToken)
-            : (Completed: false, Accepted: false);
-
-        dto.FieldInspectionCompleted = flags.Completed;
-        if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
-            dto.FieldInspectionAccepted = flags.Accepted;
-
-        return dto;
-    }
-
-    private static PartyTaskSubmissionDto ToDto(PartyTaskSubmission entity)
-    {
-        JsonElement payload;
-        try
-        {
-            payload = JsonDocument.Parse(entity.PayloadJson).RootElement.Clone();
-        }
-        catch
-        {
-            payload = JsonDocument.Parse("{}").RootElement.Clone();
-        }
-
-        return new PartyTaskSubmissionDto
-        {
-            Id = entity.Id.ToString(),
-            TaskId = entity.WorkflowTaskId.ToString(),
-            Kind = entity.Kind,
-            Status = entity.Status,
-            PropertyId = entity.PropertyId?.ToString(),
-            PoNumber = entity.PoNumber,
-            Payload = payload,
-            ReturnNote = entity.ReturnNote,
-            SubmittedAtUtc = entity.SubmittedAtUtc?.ToString("O"),
-            AcceptedAtUtc = entity.AcceptedAtUtc?.ToString("O"),
-            SubmittedByUserId = entity.SubmittedByUserId,
-            SubmittedByName = entity.SubmittedByName,
-            AcceptedByUserId = entity.AcceptedByUserId,
-            AcceptedByName = entity.AcceptedByName,
-            ReopenedByUserId = entity.ReopenedByUserId,
-            ReopenedByName = entity.ReopenedByName,
-            UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
-        };
-    }
 }

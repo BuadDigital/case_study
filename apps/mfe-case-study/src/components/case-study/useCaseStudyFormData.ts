@@ -119,6 +119,11 @@ export function useCaseStudyFormData({
   const [missingAnswerKeys, setMissingAnswerKeys] = useState<Set<string>>(
     () => new Set(),
   );
+  const [formFieldErrors, setFormFieldErrors] = useState<{
+    deedRemarks?: boolean;
+    deedNature?: boolean;
+    deedNatureNotes?: boolean;
+  }>({});
   const { data: workflowTasks } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users;
@@ -342,6 +347,9 @@ export function useCaseStudyFormData({
     setSaving,
     missingAnswerKeys,
     setMissingAnswerKeys,
+    formFieldErrors,
+    setFormFieldErrors,
+    property,
     // Party contributions.
     partyAnswersByKey,
     partyContribCount,

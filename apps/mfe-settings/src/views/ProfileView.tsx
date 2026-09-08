@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAuthSession } from "@platform/auth-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import { Note, Spinner } from "@platform/ui-kit";
+import { Note, PageLoadingHint } from "@platform/ui-kit";
 import { UserProfileContent } from "../components/UserProfileContent";
 import { PushNotificationSettings } from "../components/PushNotificationSettings";
 import { fetchCurrentStaffProfile } from "../lib/users-api";
@@ -60,10 +60,7 @@ export function ProfileView() {
     >
       <section className="h-fit w-full overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5 max-lg:rounded-[14px] max-lg:p-3.5">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-text-3">
-            <Spinner />
-            <span className="text-[13px]">جاري تحميل البروفايل…</span>
-          </div>
+          <PageLoadingHint className="py-10" label="جاري تحميل البروفايل…" />
         ) : error ? (
           <Note tone="danger">{error}</Note>
         ) : user ? (

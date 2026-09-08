@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   AppModal,
   Button,
@@ -7,7 +8,7 @@ import {
 } from "@platform/ui-kit";
 import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import { UNSAVED_CONFIRM_MSG } from "@platform/app-shared/registration/registration-utils";
+import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
 import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
 import { AssignmentTypeFields } from "@case-study/mfe/components/po-intake/AssignmentTypeFields";
 import { AssignmentValuationFields } from "@case-study/mfe/components/po-intake/AssignmentValuationFields";
@@ -24,13 +25,23 @@ export function PoIntakeModal({
   onComplete: (record: PoIntakeRecord) => void;
 }) {
   const form = usePoIntakeForm(onComplete);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) setDiscardOpen(false);
+  }, [open]);
 
   function requestClose() {
-    if (form.isDirty && !window.confirm(UNSAVED_CONFIRM_MSG)) return;
+    if (form.saving || discardOpen) return;
+    if (form.isDirty) {
+      setDiscardOpen(true);
+      return;
+    }
     onClose();
   }
 
   return (
+    <>
     <AppModal
       open={open}
       title="تسجيل أمر عمل (PO) جديد"
@@ -115,6 +126,12 @@ export function PoIntakeModal({
             idPrefix="po_modal"
             assignmentType={form.assignmentType}
             subClientId={form.subClientId}
+            purposeKey={form.valuationPurposeKey}
+            basisKey={form.basisOfValueKey}
+            premiseKey={form.valuePremiseKey}
+            onPurposeChange={form.setValuationPurposeKey}
+            onBasisChange={form.setBasisOfValueKey}
+            onPremiseChange={form.setValuePremiseKey}
           />
           <RegField
             id="expected_property_count_modal"
@@ -143,5 +160,14 @@ export function PoIntakeModal({
         </div>
       </RegistrationFormCard>
     </AppModal>
+    <UnsavedChangesDialog
+      open={discardOpen}
+      onStay={() => setDiscardOpen(false)}
+      onLeave={() => {
+        setDiscardOpen(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }

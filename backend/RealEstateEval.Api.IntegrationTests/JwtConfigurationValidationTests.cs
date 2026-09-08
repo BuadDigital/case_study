@@ -45,6 +45,51 @@ public class JwtConfigurationValidationTests
         services.AddRealEstateEvalJwt(configuration, environment);
     }
 
+    [Fact]
+    public void AddJwt_registers_previous_signing_key_for_validation_window()
+    {
+        const string current =
+            "production-current-key-with-more-than-sixty-four-characters-and-no-placeholder-aaaa";
+        const string previous =
+            "production-previous-key-with-more-than-sixty-four-characters-and-no-placeholder-bbbb";
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Issuer"] = "RealEstateEval",
+                ["Jwt:Audience"] = "RealEstateEval",
+                ["Jwt:SigningKey"] = current,
+                ["Jwt:PreviousSigningKey"] = previous,
+            })
+            .Build();
+        var services = new ServiceCollection();
+        var environment = new TestHostEnvironment(Environments.Production);
+
+        services.AddRealEstateEvalJwt(configuration, environment);
+        // Build succeeds only when both keys pass production validation.
+        Assert.NotNull(services);
+    }
+
+    [Fact]
+    public void AddJwt_rejects_placeholder_previous_key_in_production()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Issuer"] = "RealEstateEval",
+                ["Jwt:Audience"] = "RealEstateEval",
+                ["Jwt:SigningKey"] =
+                    "production-current-key-with-more-than-sixty-four-characters-and-no-placeholder-aaaa",
+                ["Jwt:PreviousSigningKey"] =
+                    "CHANGE_ME_IN_PRODUCTION_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_123456789",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        var environment = new TestHostEnvironment(Environments.Production);
+
+        Assert.Throws<InvalidOperationException>(
+            () => services.AddRealEstateEvalJwt(configuration, environment));
+    }
+
     private static IConfiguration BuildConfiguration(string? signingKey)
     {
         return new ConfigurationBuilder()

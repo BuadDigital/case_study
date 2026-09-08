@@ -110,10 +110,31 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>Structural system: concrete | metal | mixed | other.</summary>
     public string? FinishingStructure { get; set; }
 
- /// <summary>
- /// JSON bag for specialist valuation extras that are not first-class columns yet:
- /// ESG groups, search-scope notes, print attachment keys, Infath deposit draft.
- /// </summary>
+    /// <summary>
+    /// Specialist finishing level (valuation report) — distinct from intake
+    /// <see cref="FinishingType"/>. luxury | medium | ordinary | none.
+    /// </summary>
+    public string? SpecialistFinishingLevel { get; set; }
+
+    /// <summary>Search-scope notes written by the case specialist.</summary>
+    public string? SearchScopeNotes { get; set; }
+
+    /// <summary>JSON array of print attachment keys selected for the report package.</summary>
+    public string? PrintAttachmentKeysJson { get; set; }
+
+    /// <summary>Infath deposit code (draft until Enfaz handover).</summary>
+    public string? InfathDepositCode { get; set; }
+
+    /// <summary>Infath deposit certificate file name / label.</summary>
+    public string? InfathDepositCertificateName { get; set; }
+
+    /// <summary>ESG groups JSON (env / soc / gov) for the specialist valuation report.</summary>
+    public string? SpecialistEsgJson { get; set; }
+
+    /// <summary>
+    /// Dual-write / legacy wire bag for specialist extras. Source of truth is the first-class
+    /// columns above; the API still exposes this shape for the frontend hydrate path.
+    /// </summary>
     public string? SpecialistReportExtrasJson { get; set; }
 
  /// <summary>Are there buildings/structures to value? yes | no | ""</summary>

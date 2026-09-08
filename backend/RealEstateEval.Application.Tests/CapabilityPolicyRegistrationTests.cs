@@ -34,10 +34,82 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.WriteComparableBank,
                      CapabilityPolicyNames.ReadComparableBank,
                      CapabilityPolicyNames.ListDistributionAssignees,
+                     CapabilityPolicyNames.ManagePartyFeePricing,
+                     CapabilityPolicyNames.ReadCaseStudyWorkspace,
+                     CapabilityPolicyNames.ReadAttachments,
+                     CapabilityPolicyNames.ReadIdentityDirectory,
+                     CapabilityPolicyNames.ReadPartyPayables,
+                     CapabilityPolicyNames.ReadInspectionContext,
                  })
         {
             Assert.NotNull(await policyProvider.GetPolicyAsync(composite));
         }
+    }
+
+    [Fact]
+    public async Task Case_staff_and_parties_read_the_case_study_workspace()
+    {
+        var authorization = BuildAuthorizationService();
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageWorkOrders),
+            resource: null,
+            CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageFinancial),
+            resource: null,
+            CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+    }
+
+    [Fact]
+    public async Task Attachment_readers_cover_operational_and_party_caps()
+    {
+        var authorization = BuildAuthorizationService();
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReadAttachments)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageWorkOrders),
+            resource: null,
+            CapabilityPolicyNames.ReadAttachments)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageUsers),
+            resource: null,
+            CapabilityPolicyNames.ReadAttachments)).Succeeded);
+    }
+
+    [Fact]
+    public async Task Party_payables_and_inspection_context_composites()
+    {
+        var authorization = BuildAuthorizationService();
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReadPartyPayables)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageFinancial),
+            resource: null,
+            CapabilityPolicyNames.ReadPartyPayables)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageAttachments),
+            resource: null,
+            CapabilityPolicyNames.ReadPartyPayables)).Succeeded);
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitValuationReport),
+            resource: null,
+            CapabilityPolicyNames.ReadInspectionContext)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageFinancial),
+            resource: null,
+            CapabilityPolicyNames.ReadInspectionContext)).Succeeded);
     }
 
     /// <summary>

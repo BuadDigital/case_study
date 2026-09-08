@@ -122,14 +122,16 @@ public class WorkOrderPropertyWriteRulesTests
         var invalid = WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras("{not json");
         Assert.Equal("صيغة JSON غير صالحة", invalid.Errors!["specialistReportExtrasJson"]);
 
-        var tooBig = "[\"" + new string('x', 70_000) + "\"]";
+        var tooBig = "{\"searchScopeNotes\":\"" + new string('x', 70_000) + "\"}";
         Assert.Equal(
             "حجم البيانات أكبر من المسموح",
             WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras(tooBig).Errors!["specialistReportExtrasJson"]);
 
-        var ok = WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras("  {\"a\":1}  ");
+        var ok = WorkOrderPropertyWriteRules.ValidateSpecialistReportExtras(
+            """  {"finishing":"medium","searchScopeNotes":"n"}  """);
         Assert.Null(ok.Errors);
-        Assert.Equal("{\"a\":1}", ok.Value);
+        Assert.Contains("medium", ok.Value);
+        Assert.Contains("searchScopeNotes", ok.Value);
     }
 
     [Fact]

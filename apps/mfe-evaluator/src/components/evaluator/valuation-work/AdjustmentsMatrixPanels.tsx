@@ -6,7 +6,7 @@ import { panelCardClass } from "./AdjustmentsMatrixCells";
 import type { MatrixAlert, MatrixBasisView } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
 
-/** The three-column output strip under the matrix — market indicator, raw. */
+/** Output strip under the matrix — unit rate, then the unrounded approach value. */
 export function MatrixOutputsPanel({
   basisView,
   weightedPricePerSqm,
@@ -14,7 +14,7 @@ export function MatrixOutputsPanel({
   basisView: MatrixBasisView;
   weightedPricePerSqm: number | null;
 }) {
-  const { isUnit, pricePerSqmDisplay, opinionRaw, opinionFinal } = basisView;
+  const { isUnit, pricePerSqmDisplay, opinionRaw } = basisView;
   return (
     <div className={cn(panelCardClass, "flex items-stretch")}>
       <div className="flex-1 border-e border-border px-[22px] py-[18px]">
@@ -38,8 +38,9 @@ export function MatrixOutputsPanel({
           ر.س/م²
         </div>
       </div>
-      <div className="flex-1 border-e border-border px-[22px] py-[18px]">
-        <div className="mb-[9px] text-[12px] font-medium text-text-2">
+      <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
+        <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
+        <div className="mb-[9px] text-[12px] font-bold text-heading">
           {isUnit ? "قيمة الأرض قبل التقريب" : "قيمة العقار قبل التقريب"}
         </div>
         <div
@@ -53,19 +54,7 @@ export function MatrixOutputsPanel({
             ? "سعر المتر بعد التسوية × مساحة العقار"
             : "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)"}
         </div>
-      </div>
-      <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
-        <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
-        <div className="mb-[9px] text-[12px] font-bold text-heading">
-          مؤشر أسلوب السوق (خام)
-        </div>
-        <div
-          dir="ltr"
-          className="text-start text-[24px] font-extrabold leading-none text-heading"
-        >
-          {fmt(opinionFinal)}
-        </div>
-        <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
+        <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
           بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
         </div>
       </div>

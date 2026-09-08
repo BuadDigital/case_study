@@ -361,9 +361,9 @@ function CopyFromPriorTransactionForm({
                 </span>
               </div>
               <div>
-                التصنيف:{" "}
+                نوع العقار / الاستخدام:{" "}
                 <span className="font-medium text-text">
-                  {[hit.classification, hit.propertyType]
+                  {[hit.propertyType, hit.classification]
                     .filter(Boolean)
                     .join(" / ") || "—"}
                 </span>

@@ -13,7 +13,7 @@ import {
   cn,
   EmptyState,
   PageShell,
-  Spinner,
+  PageLoadingHint,
   Table,
   TBody,
   Td,
@@ -159,10 +159,7 @@ export function LocationsPendingView() {
           </p>
         ) : null}
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-            <Spinner />
-            <span className="text-[13px]">جاري التحميل…</span>
-          </div>
+          <PageLoadingHint />
         ) : items.length === 0 && !loadError ? (
           <EmptyState line="لا توجد مسميات بانتظار المراجعة." />
         ) : !loading && !loadError ? (

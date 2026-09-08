@@ -1,14 +1,13 @@
-import {
-  listComparableProperties,
-  suggestComparablePropertiesByProximity,
+import { listComparableProperties,suggestComparablePropertiesByProximity, 
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { approximatePropertyGeo, hasDistrictGeo } from "@case-study/mfe/lib/app-data/po-intake-boundaries";
-import { coordsFromLocationMapUrl } from "@case-study/mfe/lib/app-data/map-live-records";
+import { approximatePropertyGeo, hasDistrictGeo } from "@platform/app-shared/domain/property-geo";
+import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
 
 export const BANK_CANDIDATE_POOL = 40;
 export const BANK_DISPLAY_LIMIT = 6;
+export const BANK_SEARCH_DISPLAY_LIMIT = 24;
 /** Prefer comps inside this radius when the subject has coordinates. */
 export const PREFERRED_RADIUS_KM = 3;
 /** Maximum distance from subject when coordinates are known. */
@@ -190,6 +189,14 @@ export function resolveSubjectCoordsForBank(opts: {
   district?: string | null;
   deedNumber?: string | null;
 }): { lat: number; lng: number } | null {
+  if (
+    opts.latitude != null &&
+    opts.longitude != null &&
+    hasUsableCoords(opts.latitude, opts.longitude)
+  ) {
+    return { lat: opts.latitude, lng: opts.longitude };
+  }
+
   const fromUrl = coordsFromLocationMapUrl(opts.locationMapUrl);
   if (fromUrl) return fromUrl;
 
@@ -197,17 +204,8 @@ export function resolveSubjectCoordsForBank(opts: {
   const district = opts.district?.trim();
   const deedNumber = opts.deedNumber?.trim() || city || "";
 
-  // Property intake city+district wins over field-inspection GPS when district is known.
   if (city && district && hasDistrictGeo(city, district)) {
     return approximatePropertyGeo({ city, district, deedNumber });
-  }
-
-  if (
-    opts.latitude != null &&
-    opts.longitude != null &&
-    hasUsableCoords(opts.latitude, opts.longitude)
-  ) {
-    return { lat: opts.latitude, lng: opts.longitude };
   }
 
   if (city) {
@@ -283,8 +281,9 @@ function finalizeBankResultFromItems(
   items: RankedItem[],
   subjectSqm: number | null,
   subjectCoords: { lat: number; lng: number } | null,
+  limit = BANK_DISPLAY_LIMIT,
 ): BankCandidatesResult {
-  const ranked = rankBankCandidates(items, subjectSqm);
+  const ranked = rankBankCandidates(items, subjectSqm, limit);
   const rankedIds = new Set(ranked.map((c) => c.id));
   const rankedItems = items.filter((row) => rankedIds.has(row.comparable.id));
   return {
@@ -395,20 +394,17 @@ export async function fetchBankCandidates(
   if (search) {
     const rows = await listBankPool(config, {
       q: search,
-      city: opts.city || undefined,
       propertyId: opts.propertyId || undefined,
-      propertyType: opts.propertyType || undefined,
     });
-    let items: RankedItem[] = rows.map((comparable) => ({ comparable }));
-    if (subjectCoords) {
-      items = attachDistances(
-        rows,
-        subjectCoords.lat,
-        subjectCoords.lng,
-      );
-    }
-    items = filterNearSubject(items, opts.city, subjectCoords);
-    return finalizeBankResultFromItems(items, opts.subjectSqm, subjectCoords);
+    let items: RankedItem[] = subjectCoords
+      ? attachDistances(rows, subjectCoords.lat, subjectCoords.lng)
+      : rows.map((comparable) => ({ comparable }));
+    return finalizeBankResultFromItems(
+      items,
+      opts.subjectSqm,
+      subjectCoords,
+      BANK_SEARCH_DISPLAY_LIMIT,
+    );
   }
 
   if (subjectCoords) {
@@ -464,7 +460,7 @@ export type BankDisplayRow = {
   item?: ValuationComparableSelectionDto;
 };
 
-/** Merge selection + candidates — only near-subject rows, nearest first. */
+/** Merge selection + candidates — nearby rows by default, or search hits when nearbyOnly is false. */
 export function buildBankDisplayRows(opts: {
   selectionItems: ValuationComparableSelectionDto[];
   candidates: ComparablePropertyDto[];
@@ -472,17 +468,28 @@ export function buildBankDisplayRows(opts: {
   subjectCoords?: { lat: number; lng: number } | null;
   subjectSqm?: number | null;
   limit?: number;
+  nearbyOnly?: boolean;
 }): { rows: BankDisplayRow[]; distances: Record<string, number> } {
   const limit = opts.limit ?? BANK_DISPLAY_LIMIT;
+  const nearbyOnly = opts.nearbyOnly !== false;
   const itemByCompId = new Map<string, ValuationComparableSelectionDto>();
   const compById = new Map<string, ComparablePropertyDto>();
 
-  for (const item of opts.selectionItems) {
-    compById.set(item.comparable.id, item.comparable);
-    itemByCompId.set(item.comparable.id, item);
+  if (nearbyOnly) {
+    for (const item of opts.selectionItems) {
+      compById.set(item.comparable.id, item.comparable);
+      itemByCompId.set(item.comparable.id, item);
+    }
   }
   for (const comp of opts.candidates) {
     if (!compById.has(comp.id)) compById.set(comp.id, comp);
+  }
+  if (!nearbyOnly) {
+    const candidateIds = new Set(opts.candidates.map((c) => c.id));
+    for (const item of opts.selectionItems) {
+      if (!candidateIds.has(item.comparable.id)) continue;
+      itemByCompId.set(item.comparable.id, item);
+    }
   }
 
   const ranked: RankedItem[] = [...compById.values()].map((comparable) => {
@@ -501,11 +508,9 @@ export function buildBankDisplayRows(opts: {
     return { comparable, distanceKm };
   });
 
-  const eligible = filterNearSubject(
-    ranked,
-    opts.subjectCity,
-    opts.subjectCoords,
-  );
+  const eligible = nearbyOnly
+    ? filterNearSubject(ranked, opts.subjectCity, opts.subjectCoords)
+    : ranked;
 
   const ordered = [...eligible]
     .sort((a, b) => {

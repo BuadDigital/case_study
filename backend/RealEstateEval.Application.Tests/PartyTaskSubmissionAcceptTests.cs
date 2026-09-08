@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -29,7 +29,8 @@ public class PartyTaskSubmissionAcceptTests
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
         SeedAcceptedableSurvey(db);
-        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var audit = new RecordingAuditLogAppend();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, audit);
 
         var (result, errors) = await service.AcceptAsync(
             TaskId,
@@ -43,6 +44,11 @@ public class PartyTaskSubmissionAcceptTests
         Assert.Null(errors);
         Assert.NotNull(result);
         Assert.False(string.IsNullOrWhiteSpace(result!.AcceptedAtUtc));
+        Assert.Contains(
+            audit.Entries,
+            e => e.Action == "case-study.party-submission.accepted"
+                && e.EntityType == "PartyTaskSubmission"
+                && e.ActorId == "specialist-1");
 
         var entity = await db.PartyTaskSubmissions.AsNoTracking()
             .SingleAsync(s => s.WorkflowTaskId == TaskId);
@@ -192,7 +198,11 @@ public class PartyTaskSubmissionAcceptTests
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"party-accept-{Guid.NewGuid():N}");
 
-    private static PartyTaskSubmissionService CreateService(CaseStudyDbContext db, FailuresDbContext failures, OperationsDbContext __)
+    private static PartyTaskSubmissionService CreateService(
+        CaseStudyDbContext db,
+        FailuresDbContext failures,
+        OperationsDbContext __,
+        RecordingAuditLogAppend? audit = null)
     {
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
         var (notifications, recipients) = TestInspectorFeeServiceFactory.CreateNotificationDeps(db);
@@ -205,7 +215,9 @@ public class PartyTaskSubmissionAcceptTests
             new HttpCurrentPrototypeRoleResolver(new NullHttpContextAccessor(), new NullPermissionService()),
             TestInspectorFeeServiceFactory.Create(db),
             notifications,
-            recipients);
+            recipients,
+            new AuditLogWriter(),
+            audit ?? new RecordingAuditLogAppend());
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

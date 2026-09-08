@@ -12,6 +12,7 @@ import {
   saveAdjustmentFactorRationale,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { isCustomFactorKey } from "./lib/factor-registry";
 import {
   AUTO_AREA_KEYS,
   SEQUENTIAL_KEYS,
@@ -29,6 +30,7 @@ import {
   linesWithDescription,
   linesWithFactorAppended,
   linesWithIncluded,
+  linesWithLabel,
   linesWithRationaleOverride,
   linesWithoutFactor,
   manualWeightPatch,
@@ -171,10 +173,6 @@ export function useAdjustmentsMatrixCommands(
     }
     // Rule Q-8-1: one factor-level justification — single request instead of per-comparable fan-out;
     // Line justifications stay as per-comparable overrides edited from the comparable cell.
-    if (isJustificationTooShort(text)) {
-      showToast(JUSTIFICATION_TOO_SHORT_MESSAGE, "error");
-      return;
-    }
     setSaving(true);
     const res = await saveAdjustmentFactorRationale(ctx.config, ctx.valuationRequestId, {
       selectionContext: context,
@@ -255,6 +253,26 @@ export function useAdjustmentsMatrixCommands(
     });
   }
 
+  async function renameDifferenceFactor(
+    factorKey: string,
+    labelAr: string,
+    context: string = MARKET_CONTEXT,
+  ) {
+    const ctx = unlocked();
+    if (!ctx) return;
+    if (!isCustomFactorKey(factorKey)) return;
+    const next = labelAr.trim();
+    if (!next) {
+      showToast("تسمية العامل المضاف مطلوبة", "error");
+      return;
+    }
+    await saveMany(ctx, {
+      items: adoptedFor(context),
+      linesFor: (item) => linesWithLabel(item, factorKey, next),
+      errorMessage: "تعذّر تسمية العامل",
+    });
+  }
+
   async function removeDifferenceFactor(
     factorKey: string,
     context: string = MARKET_CONTEXT,
@@ -282,6 +300,7 @@ export function useAdjustmentsMatrixCommands(
     resetWeights,
     saveAreaFactorPct: approach.saveAreaFactorPct,
     addDifferenceFactor,
+    renameDifferenceFactor,
     removeDifferenceFactor,
     removeSequentialFactor,
     restoreSequentialFactor,

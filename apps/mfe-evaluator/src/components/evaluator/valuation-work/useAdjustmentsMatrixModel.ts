@@ -43,11 +43,6 @@ export function useAdjustmentsMatrixModel({
 
   const saveRationale = (factorKey: string, text: string) =>
     dispatch({ type: "save-rationale", factorKey, text });
-  const saveLineRationale = (
-    selectionId: string,
-    factorKey: string,
-    text: string,
-  ) => void dispatch({ type: "save-line-rationale", selectionId, factorKey, text });
 
   // js-index-maps: line index per (comparable, factor) instead of find() in every cell each render.
   const linesByItem = useMemo(() => {
@@ -71,12 +66,6 @@ export function useAdjustmentsMatrixModel({
     return 0;
   };
 
-  // Cache of per-factor override lines — cleared when adopted set / lines change.
-  const overridesCacheRef = useMemo(
-    () => new Map<string, { id: string; label: string; value: string }[]>(),
-    [adopted, linesByItem],
-  );
-
   const factorKeysFromData = useMemo(
     () => factorKeysFromLines(adopted),
     [adopted],
@@ -93,30 +82,13 @@ export function useAdjustmentsMatrixModel({
     lineOf(adopted[0]!, factorKey)?.rationale ??
     "";
 
-  /** Rule Q-8-1: per-comparable override lines — shown under the factor justification on demand.
-      Cached per factor — used to allocate a new object array for every JustCell each render (js-cache-function-results). */
-  const overridesFor = (factorKey: string) => {
-    let cached = overridesCacheRef.get(factorKey);
-    if (!cached) {
-      cached = adopted.map((item, i) => ({
-        id: item.id,
-        label: `مقارن ${i + 1}`,
-        value: lineOf(item, factorKey)?.rationale ?? "",
-      }));
-      overridesCacheRef.set(factorKey, cached);
-    }
-    return cached;
-  };
-
   return {
     confirmDelete,
     setConfirmDelete,
     saveRationale,
-    saveLineRationale,
     lineOf,
     linePct,
     justValue,
-    overridesFor,
     basisView: matrixBasisView(selection, adopted, subjectArea),
     sequentialKeys,
     removedSequential,

@@ -5,6 +5,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from "react";
+import { GentleLoadingCopy } from "./GentleBusy";
 import {
   cx,
   tableClassName,
@@ -164,7 +165,7 @@ export function TableEmptyRow({
         colSpan={colSpan}
         className="!py-10 text-center text-[13px] text-text-3"
       >
-        {children}
+        <GentleLoadingCopy>{children}</GentleLoadingCopy>
       </Td>
     </Tr>
   );

@@ -8,7 +8,7 @@ import {
   dispatchWorkflowSubmitted,
   EVALUATOR_SUBMITTED_EVENT,
 } from "@platform/app-shared/app-data/party-workflow-events";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
+import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
 import { ensureOpenValuationRequestByProperty } from "@platform/api-client";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {

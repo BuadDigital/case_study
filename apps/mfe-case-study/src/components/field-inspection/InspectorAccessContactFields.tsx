@@ -24,6 +24,7 @@ import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
+  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
 import { InspectorSiteLocationAckButton } from "./InspectorSiteLocationAckButton";
 
@@ -202,11 +203,11 @@ export function InspectorAccessContactFields({
 
   const controlClass = (invalid?: boolean) =>
     cn(
-      EDIT_CONTROL_CLASS,
+      editable ? EDIT_CONTROL_CLASS : INSPECTOR_LOCKED_CONTROL_CLASS,
       layout === "desktop" && "h-[38px]",
       layout === "mobile" && "h-12",
       invalid && invalidControlClass,
-      !editable && "cursor-default opacity-90",
+      !editable && "cursor-default",
     );
 
   const actionBtnClass = cn(

@@ -9,16 +9,55 @@ import { parseEvaluatorAmount } from "./value-estimation";
 
 export type EvaluatorValidationErrors = Record<string, string>;
 
-/** Document order on the valuation tab for scroll + first message. */
+export type EvaluatorRetrospectiveDraft = {
+  mode: string;
+  kind: "single" | "range";
+  date: string;
+  dateEnd: string;
+};
+
+export function retrospectiveDraftFromSettings(settings: {
+  valuationDateMode?: string | null;
+  retrospectiveDate?: string | null;
+  retrospectiveDateEnd?: string | null;
+} | null | undefined): EvaluatorRetrospectiveDraft | null {
+  if (!settings) return null;
+  const dateEnd = (settings.retrospectiveDateEnd ?? "").trim();
+  return {
+    mode: settings.valuationDateMode ?? "",
+    kind: dateEnd ? "range" : "single",
+    date: (settings.retrospectiveDate ?? "").trim(),
+    dateEnd,
+  };
+}
+
+/** Document order: basics (retro dates) then review-tab send fields. */
 const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
+  { key: "retrospective_date", targetId: "as-retro-date" },
+  { key: "retrospective_date_from", targetId: "as-retro-date-from" },
+  { key: "retrospective_date_to", targetId: "as-retro-date-to" },
   { key: "land_value", targetId: "inf-land" },
   { key: "building_value", targetId: "inf-building" },
-  { key: "evaluator_price", targetId: "inf-total" },
-  { key: "forced_sale_discount", targetId: "inf-discount" },
+  { key: "evaluator_price", targetId: "final-inf-total" },
+  { key: "forced_sale_discount", targetId: "final-inf-discount" },
   { key: "asset_data_confirmed", targetId: "val-asset-data" },
   { key: "independence_declared", targetId: "inf-independence" },
   { key: "report_workers", targetId: "inf-workers" },
 ] as const;
+
+const RETRO_DATE_TARGET_IDS = new Set([
+  "as-retro-date",
+  "as-retro-date-from",
+  "as-retro-date-to",
+]);
+
+export function evaluatorWorkScreenForErrorTarget(
+  targetId: string | null,
+): "basic" | "market" | "cost" | "final" | "review" {
+  if (targetId && RETRO_DATE_TARGET_IDS.has(targetId)) return "basic";
+  if (targetId === "inf-land" || targetId === "inf-building") return "final";
+  return "review";
+}
 
 export const EVALUATOR_INFATH_ERROR_KEYS = [
   "independence_declared",
@@ -46,6 +85,7 @@ export function validateEvaluatorSubmission(input: {
   reportWorkers?: EvaluatorReportWorker[];
   /** When approaches panel is source of truth — skip manual land/building. */
   skipManualLandBuilding?: boolean;
+  retrospective?: EvaluatorRetrospectiveDraft | null;
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -55,7 +95,25 @@ export function validateEvaluatorSubmission(input: {
     forcedSaleDiscountPct = "",
     valueBasisKey = "",
     skipManualLandBuilding = false,
+    retrospective,
   } = input;
+
+  if (retrospective?.mode === "retrospective") {
+    const date = retrospective.date.trim();
+    const dateEnd = retrospective.dateEnd.trim();
+    if (retrospective.kind === "range") {
+      if (!date) {
+        errors.retrospective_date_from = "تاريخ الأثر الرجعي إلزامي";
+      } else if (!dateEnd) {
+        errors.retrospective_date_to = "حدّد تاريخ نهاية الفترة";
+      } else if (dateEnd < date) {
+        errors.retrospective_date_to =
+          "تاريخ النهاية يجب ألا يسبق تاريخ البداية";
+      }
+    } else if (!date) {
+      errors.retrospective_date = "تاريخ الأثر الرجعي إلزامي";
+    }
+  }
 
   if (!skipManualLandBuilding) {
     const land = parseEvaluatorAmount(landValue);

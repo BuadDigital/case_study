@@ -382,6 +382,7 @@ export function InspectorWorkspaceSubmitFooter({
   draft,
   saving,
   confirmInvalid = false,
+  submitLabel = "حفظ وإرسال",
   onPatch,
   onSubmit,
   onCancel,
@@ -389,6 +390,7 @@ export function InspectorWorkspaceSubmitFooter({
   draft: InspectorWorkspaceDraft;
   saving: boolean;
   confirmInvalid?: boolean;
+  submitLabel?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -419,7 +421,7 @@ export function InspectorWorkspaceSubmitFooter({
         disabled={saving || !draft.inspectionConfirmed}
         onClick={onSubmit}
       >
-        حفظ وإرسال
+        {submitLabel}
       </Button>
       <Button
         type="button"

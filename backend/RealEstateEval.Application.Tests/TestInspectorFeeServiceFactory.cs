@@ -238,10 +238,20 @@ internal static class TestInspectorFeeServiceFactory
             notifications,
             recipients,
             timeline,
-            NoOpValuationDispatch.Instance);
+            NoOpValuationDispatch.Instance,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
         var cascade = new WorkflowTaskCascadeCleanup(caseStudy, fees);
         var lifecycle = new WorkflowTaskLifecycleCommands(
-            new WorkflowTaskLifecycleRepository(caseStudy), fees, timeline, cascade, slots, notifications, recipients);
+            new WorkflowTaskLifecycleRepository(caseStudy),
+            fees,
+            timeline,
+            cascade,
+            slots,
+            notifications,
+            recipients,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
         return new WorkflowTaskService(query, slots, distribution, lifecycle);
     }
 

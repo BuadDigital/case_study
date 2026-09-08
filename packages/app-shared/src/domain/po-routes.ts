@@ -46,6 +46,11 @@ export function poPropertyFailurePath(poNumber: string, propertyId: string): str
   return `${poPropertyPath(poNumber, propertyId)}/failure`;
 }
 
+/** Full-page workspace for the property appraiser (property valuation). */
+export function propertyAppraisalWorkspacePath(taskId: string): string {
+  return `/property-appraisal/${encodeURIComponent(taskId)}`;
+}
+
 export function decodePoParam(value: string): string {
   try {
     return decodeURIComponent(value);

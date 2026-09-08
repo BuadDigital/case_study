@@ -6,7 +6,7 @@
  * shared `ConfirmActionModal` handles every confirm step.
  */
 
-import { Button, Input, Note, PageShell, Spinner } from "@platform/ui-kit";
+import { Button, Input, Note, PageLoadingHint, PageShell, Spinner } from "@platform/ui-kit";
 import { ConfirmActionModal } from "../components/ConfirmActionModal";
 import { addValuerBlockedTitle } from "./valuers-roster-state";
 import { useValuersRosterWorkflow } from "./useValuersRosterWorkflow";
@@ -33,10 +33,7 @@ export function ValuersRosterView() {
   if (loading) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <div className="flex items-center justify-center gap-2 py-20 text-text-3">
-          <Spinner />
-          <span className="text-[13px]">جاري التحميل…</span>
-        </div>
+        <PageLoadingHint className="py-20" />
       </PageShell>
     );
   }
@@ -56,7 +53,8 @@ export function ValuersRosterView() {
       ) : null}
       <Note className="mt-0">
         هذا هو السجل الأساسي للمقيّمين — «المشاركون في إعداد التقرير» و«بيانات المقيم المعتمد» في
-        قوائم التقييم يُختاران من هذه القائمة.
+        قوائم التقييم يُختاران من هذه القائمة. ترخيص مزاولة المنشأة يُقرأ من «بيانات المنشأة»؛
+        هنا سريان عضوية كل مقيّم.
       </Note>
 
       <div className="mb-3 mt-3 flex flex-wrap gap-2.5">

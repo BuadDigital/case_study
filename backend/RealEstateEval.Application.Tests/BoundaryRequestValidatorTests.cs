@@ -1,4 +1,4 @@
-﻿using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Validation;
 using RealEstateEval.Domain;
 using RealEstateEval.Attachments.Application.Validation;
@@ -23,16 +23,6 @@ public class BoundaryRequestValidatorTests
         var result = new UsernameLoginRequestValidator().Validate(new UsernameLoginRequest());
 
         Assert.Contains(result.Errors, error => error.PropertyName == "username");
-    }
-
-    [Fact]
-    public void Activation_rejects_missing_ticket_and_password()
-    {
-        var result = new ActivateAccountRequestValidator().Validate(new ActivateAccountRequest());
-
-        Assert.Contains(result.Errors, error => error.PropertyName == "userName");
-        Assert.Contains(result.Errors, error => error.PropertyName == "token");
-        Assert.Contains(result.Errors, error => error.PropertyName == "newPassword");
     }
 
     [Fact]
@@ -160,12 +150,6 @@ public class BoundaryRequestValidatorTests
 
         Assert.True(result.IsValid);
     }
-
-    [Fact]
-    public void Activation_ticket_rejects_blank_user_id() =>
-        Assert.False(new IssueActivationTicketRequestValidator()
-            .Validate(new IssueActivationTicketRequest())
-            .IsValid);
 
     [Fact]
     public void Attachment_rejects_missing_metadata_and_content()

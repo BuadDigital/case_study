@@ -9,6 +9,7 @@ import type {
 
 import {
   AUTO_AREA_KEY,
+  FACTOR_REGISTRY,
   SEQUENTIAL_KEYS,
   SEQUENTIAL_SET,
   factorDescriptor,
@@ -105,17 +106,21 @@ export function matrixFactorRows(
   };
 }
 
-/** Catalog factors not already on the table — the “add factor” row options. */
+/** Catalog + default difference factors not already on the table — the “add factor” row options. */
 export function addableFactorOptions(
   catalogFactors: { factorKey: string; labelAr: string }[] | undefined,
   differenceKeys: string[],
 ): { factorKey: string; labelAr: string }[] {
-  return (catalogFactors ?? []).filter(
-    (f) =>
-      !differenceKeys.includes(f.factorKey) &&
-      !SEQUENTIAL_SET.has(f.factorKey) &&
-      f.factorKey !== AUTO_AREA_KEY,
-  );
+  const byKey = new Map<string, { factorKey: string; labelAr: string }>();
+  for (const [factorKey, d] of Object.entries(FACTOR_REGISTRY)) {
+    if (d.sequential || factorKey === AUTO_AREA_KEY) continue;
+    byKey.set(factorKey, { factorKey, labelAr: d.label });
+  }
+  for (const f of catalogFactors ?? []) {
+    if (SEQUENTIAL_SET.has(f.factorKey) || f.factorKey === AUTO_AREA_KEY) continue;
+    byKey.set(f.factorKey, f);
+  }
+  return [...byKey.values()].filter((f) => !differenceKeys.includes(f.factorKey));
 }
 
 export function afterWeightValue(item: ValuationComparableSelectionDto): number {

@@ -20,6 +20,7 @@ public class InspectionLimitsController : ControllerBase
     public InspectionLimitsController(IInspectionLimitsService limits) => _limits = limits;
 
     [HttpGet]
+    [Authorize(Policy = CapabilityPolicyNames.ReadInspectionContext)]
     public async Task<ActionResult<InspectionLimitsDto>> Get(
         string poNumber,
         Guid propertyId,

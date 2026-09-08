@@ -1,7 +1,7 @@
 "use client";
 
-/** Appraiser upload tab — shared prototype task/PO queries (same keys as shell). */
+/** Appraiser upload tab — shared prototype task/PO queries (via case-study bridge). */
 export {
   usePoRecordQuery,
   useWorkflowTasksQuery,
-} from "@case-study/mfe/query/case-study-queries";
+} from "../lib/case-study-bridge";

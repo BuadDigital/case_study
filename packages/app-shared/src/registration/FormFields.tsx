@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
+import { invalidControlClass } from "../form-ux";
 
 function FieldWrap({
   label,
@@ -104,6 +105,7 @@ export function RegField({
         maxLength={maxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
+        className={cn(error && invalidControlClass)}
       />
     </FieldWrap>
   );
@@ -163,6 +165,7 @@ export function RegTextarea({
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
+        className={cn(error && invalidControlClass)}
       />
     </FieldWrap>
   );
@@ -214,7 +217,10 @@ export function RegSelect({
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={!busy && error ? true : undefined}
         aria-busy={busy || undefined}
-        className="disabled:cursor-not-allowed disabled:opacity-65"
+        className={cn(
+          "disabled:cursor-not-allowed disabled:opacity-65",
+          !busy && error && invalidControlClass,
+        )}
       >
         <option value="">
           {busy ? "جاري التحميل…" : (placeholder ?? "اختر...")}

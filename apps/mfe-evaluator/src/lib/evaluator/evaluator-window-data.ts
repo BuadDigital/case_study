@@ -5,7 +5,7 @@ import {
   valuationPurposeKeyForAssignment,
   VALUE_BASIS_OPTIONS,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
-import { ESG_NONE_NOTES } from "@case-study/mfe/lib/app-data/valuation-report-specialist-esg";
+import { ESG_NONE_NOTES } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 
 export type EvaluatorSubmissionStatus =
   | "draft"

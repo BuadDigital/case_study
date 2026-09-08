@@ -5,7 +5,21 @@
  */
 import { caseStudyAnswerKey, type CaseStudyFormAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-form-data";
 import { emptyCaseStudyFormDraft, type CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
-import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import {
+  CASE_STUDY_DEED_NATURE_MATCH_ID,
+  CASE_STUDY_DEED_NATURE_NOTES_ID,
+  CASE_STUDY_DEED_REMARKS_ID,
+  caseStudyQuestionTargetId,
+} from "../../lib/app-data/case-study-form-ux";
+import {
+  deedNatureMatchRequiresNotes,
+  isDeedNatureMatchChosen,
+  normalizeDeedNatureMatchOutcome,
+} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
+import {
+  propertyHasRegisteredTitle,
+  type PoPropertyIntake,
+} from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
@@ -137,4 +151,89 @@ export function collectMissingCaseStudyAnswers(
     });
   });
   return { missing, firstMissingKey, firstMissingStep };
+}
+
+export type CaseStudyFormScrollTarget = {
+  targetId: string;
+  step: number;
+  message: string;
+  /** Blocks submit (deed remarks / match gate). Matrix gaps still allow confirm. */
+  blocking: boolean;
+  invalidDeedRemarks?: boolean;
+  invalidDeedNature?: boolean;
+  invalidDeedNatureNotes?: boolean;
+};
+
+/** First incomplete control in form order: deed remarks, nature match, then matrix. */
+export function firstCaseStudyFormScrollTarget(args: {
+  draft: CaseStudyFormDraft;
+  sectionQuestions: SectionQuestions;
+  isQuestionVisible: QuestionVisibilityPredicate;
+  property: PoPropertyIntake | null;
+  isParty: boolean;
+}): CaseStudyFormScrollTarget | null {
+  const { draft, sectionQuestions, isQuestionVisible, property, isParty } = args;
+
+  if (!isParty) {
+    const deedNonMatch = deedNonMatchAnswerKeys(
+      draft.answers,
+      sectionQuestions,
+      isQuestionVisible,
+    );
+    if (deedNonMatch.length > 0 && !String(draft.deedRemarks ?? "").trim()) {
+      return {
+        targetId: CASE_STUDY_DEED_REMARKS_ID,
+        step: 0,
+        message:
+          "الملاحظات إلزامية عند إجابة «غير مطابق» في أسئلة الصك — أكمل ملاحظات قسم الصك.",
+        blocking: true,
+        invalidDeedRemarks: true,
+      };
+    }
+
+    const skipMatch =
+      property != null && propertyHasRegisteredTitle(property);
+    if (!skipMatch) {
+      // Submit gate uses IsChosen (not IsKnown) — empty is draft-ok on the API.
+      const outcome = normalizeDeedNatureMatchOutcome(
+        draft.deedNatureMatchOutcome,
+      );
+      if (!isDeedNatureMatchChosen(outcome)) {
+        return {
+          targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
+          step: 1,
+          message: "اختر مخرج مطابقة الصك على الطبيعة.",
+          blocking: true,
+          invalidDeedNature: true,
+        };
+      }
+      if (
+        deedNatureMatchRequiresNotes(outcome) &&
+        !String(draft.deedNatureMatchNotes ?? "").trim()
+      ) {
+        return {
+          targetId: CASE_STUDY_DEED_NATURE_NOTES_ID,
+          step: 1,
+          message: "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر».",
+          blocking: true,
+          invalidDeedNatureNotes: true,
+        };
+      }
+    }
+  }
+
+  const { firstMissingKey, firstMissingStep } = collectMissingCaseStudyAnswers(
+    draft.answers,
+    sectionQuestions,
+    isQuestionVisible,
+  );
+  if (firstMissingKey) {
+    return {
+      targetId: caseStudyQuestionTargetId(firstMissingKey),
+      step: firstMissingStep ?? draft.currentStep,
+      message: "",
+      blocking: false,
+    };
+  }
+  return null;
 }

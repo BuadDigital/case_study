@@ -445,7 +445,7 @@ type Result<T> =
   | { ok: true; data: T }
   | {
       ok: false;
-      kind: "auth" | "network" | "server" | "validation" | "not_found";
+      kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict";
       message?: string;
       errors?: Record<string, string>;
     };
@@ -456,6 +456,14 @@ function headers(token: string): HeadersInit {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+}
+
+function firstValidationMessage(
+  errors?: Record<string, string | string[]>,
+): string | undefined {
+  if (!errors) return undefined;
+  const first = Object.values(errors)[0];
+  return Array.isArray(first) ? first[0] : first;
 }
 
 
@@ -590,19 +598,40 @@ export async function saveValuationComparableMarket(
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) {
+      return {
+        ok: false,
+        kind: "auth",
+        message: "ليست لديك صلاحية حفظ التسويات",
+      };
+    }
+    if (res.status === 409) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "conflict",
+        message:
+          payload?.detail ??
+          payload?.message ??
+          "تم تحديث السجل من طلب آخر. حدّث الصفحة ثم أعد المحاولة.",
+      };
+    }
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
+        errors?: Record<string, string | string[]>;
         message?: string;
       } | null;
       return {
         ok: false,
         kind: "validation",
         message:
-          payload?.errors
-            ? Object.values(payload.errors)[0]
-            : payload?.message ?? "بيانات التسوية غير صالحة",
-        errors: payload?.errors,
+          firstValidationMessage(payload?.errors) ??
+          payload?.message ??
+          "بيانات التسوية غير صالحة",
+        errors: payload?.errors as Record<string, string> | undefined,
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };
@@ -615,7 +644,7 @@ export async function saveValuationComparableMarket(
   }
 }
 
-/** Q-8-1: save/clear single adjustment-factor justification — empty clears; min 10 chars (Q-8-2). */
+/** Q-8-1: save/clear single adjustment-factor justification — empty clears. */
 export async function saveAdjustmentFactorRationale(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,

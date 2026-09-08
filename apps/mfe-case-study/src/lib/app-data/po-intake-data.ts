@@ -109,6 +109,7 @@ export {
   hasBourseDetailFields,
   formatPropertyLocation,
   formatPropertyTypeLine,
+  PROPERTY_TYPE_USAGE_LABEL,
   type PoPropertyIntake,
   type PoIntakeRecord,
   emptyProperty,

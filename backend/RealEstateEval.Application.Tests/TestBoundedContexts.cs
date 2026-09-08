@@ -107,7 +107,9 @@ internal static class TestBoundedContexts
             new CaseStudyFailureCommands(cs, tasks, timeline),
             notifications,
             recipients,
-            labels);
+            labels,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
     }
 
     public static FailureService CreateFailureService(
@@ -132,7 +134,9 @@ internal static class TestBoundedContexts
             new CaseStudyFailureCommands(cs, tasks, timeline),
             notifications,
             recipients,
-            labels);
+            labels,
+            new AuditLogWriter(),
+            new RecordingAuditLogAppend());
     }
 
     public static PropertyAccessHoldService CreateAccessHolds(

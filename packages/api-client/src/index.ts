@@ -25,21 +25,16 @@ export {
 } from "./write-repository";
 
 export {
-  activateAccount,
   createStaffUser,
   deleteStaffUser,
-  issueActivationTicket,
   listDistributionAssignees,
   listUsers,
   unlockStaffUser,
   updateStaffUser,
-  type ActivateAccountResult,
-  type ActivationTicket,
   type CreateStaffUserRequest,
   type CreateStaffUserResponse,
   type CreateStaffUserResult,
   type DeleteStaffUserResult,
-  type IssueActivationTicketResult,
   type ListUsersResult,
   type UnlockStaffUserResult,
   type UpdateStaffUserRequest,

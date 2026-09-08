@@ -25,6 +25,16 @@ describe("assignee display name", () => {
     expect(isUsableAssigneeDisplayName("عبدالله عبدالمانع")).toBe(true);
   });
 
+  it("resolves staff by user id when assignee id is the account id", () => {
+    expect(
+      resolveAssigneeDisplayName({
+        assigneeName: "مقيم عقاري",
+        assigneeId: "u1",
+        staffUsers: staff,
+      }),
+    ).toBe("عبدالله عبدالمانع");
+  });
+
   it("resolves staff when stored name is bad or is the assignee id", () => {
     expect(
       resolveAssigneeDisplayName({

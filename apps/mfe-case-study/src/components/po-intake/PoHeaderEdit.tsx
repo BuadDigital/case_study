@@ -25,6 +25,10 @@ import {
 } from "../../lib/domain/po-intake/po-field-error-targets";
 import { Label, Note } from "@platform/ui-kit";
 import { listClients, type ClientDto } from "@platform/api-client";
+import {
+  assignmentValuationDefaults,
+  resolveAssignmentValuationKeys,
+} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import { AssignmentTypeFields } from "./AssignmentTypeFields";
 import { AssignmentValuationFields } from "./AssignmentValuationFields";
@@ -91,6 +95,16 @@ export function PoHeaderEdit({
   const [subClientId, setSubClientId] = useState(
     subClientIdFromReportUsers(record.reportUserClientIds),
   );
+  const initialValuation = resolveAssignmentValuationKeys(record.assignmentType, {
+    purposeKey: record.valuationPurposeKey,
+    basisKey: record.basisOfValueKey,
+    premiseKey: record.valuePremiseKey,
+  });
+  const [valuationPurposeKey, setValuationPurposeKey] = useState(
+    initialValuation.purposeKey,
+  );
+  const [basisOfValueKey, setBasisOfValueKey] = useState(initialValuation.basisKey);
+  const [valuePremiseKey, setValuePremiseKey] = useState(initialValuation.premiseKey);
   const [clients, setClients] = useState<ClientDto[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -126,6 +140,9 @@ export function PoHeaderEdit({
     assignmentSpecialistEmail.trim() !== record.assignmentSpecialistEmail ||
     workOrderDescription.trim() !== (record.workOrderDescription ?? "").trim() ||
     clientId !== (record.clientId ?? "") ||
+    valuationPurposeKey !== (record.valuationPurposeKey ?? initialValuation.purposeKey) ||
+    basisOfValueKey !== (record.basisOfValueKey ?? initialValuation.basisKey) ||
+    valuePremiseKey !== (record.valuePremiseKey ?? initialValuation.premiseKey) ||
     reportUserClientIdsForAssignment(
       assignmentType,
       clientId,
@@ -179,6 +196,9 @@ export function PoHeaderEdit({
       expectedPropertyCount: Math.max(1, count || 1),
       workOrderDescription: workOrderDescription.trim(),
       clientId: clientId.trim(),
+      valuationPurposeKey,
+      basisOfValueKey,
+      valuePremiseKey,
       reportUserClientIds: reportUserClientIdsForAssignment(
         assignmentType,
         clientId,
@@ -231,7 +251,13 @@ export function PoHeaderEdit({
           <AssignmentTypeFields
             value={assignmentType}
             error={fieldErrors.assignmentType}
-            onChange={(v) => setAssignmentType(v)}
+            onChange={(v) => {
+              setAssignmentType(v);
+              const defaults = assignmentValuationDefaults(v, subClientId);
+              setValuationPurposeKey(defaults.purposeKey);
+              setBasisOfValueKey(defaults.basisKey);
+              setValuePremiseKey(defaults.premiseKey);
+            }}
           />
           <PoWorkOrderPartyFields
             idPrefix="po_edit"
@@ -249,6 +275,12 @@ export function PoHeaderEdit({
             idPrefix="po_edit"
             assignmentType={assignmentType}
             subClientId={subClientId}
+            purposeKey={valuationPurposeKey}
+            basisKey={basisOfValueKey}
+            premiseKey={valuePremiseKey}
+            onPurposeChange={setValuationPurposeKey}
+            onBasisChange={setBasisOfValueKey}
+            onPremiseChange={setValuePremiseKey}
           />
           <RegField
             id="po_specialist_edit"

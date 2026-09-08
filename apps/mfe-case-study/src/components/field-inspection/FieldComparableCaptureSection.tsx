@@ -24,7 +24,9 @@ import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import {
   comparableDealLabel,
   comparableDraftToUpsert,
+  comparableEntryReady,
   emptyComparableEntryDraft,
+  parseComparableCoords,
 } from "../../lib/comparable-entry";
 import { ComparablePropertyEntryFields } from "../comparables/ComparablePropertyEntryFields";
 
@@ -86,9 +88,6 @@ function cellValue(
 export function FieldComparableCaptureSection({
   latitude,
   longitude,
-  city,
-  district,
-  propertyType,
   poNumber,
   propertyId,
   disabled,
@@ -109,15 +108,10 @@ export function FieldComparableCaptureSection({
   const [cols, setCols] = useState<ValuationListItemDto[]>([]);
   const [items, setItems] = useState<PropertyComparableLinkItemDto[]>([]);
   const [sessionRows, setSessionRows] = useState<ComparablePropertyDto[]>([]);
-  const [draft, setDraft] = useState(() =>
-    emptyComparableEntryDraft({
-      type: propertyType,
-      city,
-      district,
-      latitude,
-      longitude,
-    }),
-  );
+  const [draft, setDraft] = useState(() => emptyComparableEntryDraft());
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+  const subjectPin = parseComparableCoords(latitude, longitude);
 
   const reload = useCallback(async () => {
     const config = workOrdersApiConfig();
@@ -143,20 +137,13 @@ export function FieldComparableCaptureSection({
     void reload();
   }, [reload]);
 
-  useEffect(() => {
-    setDraft((prev) => ({
-      ...prev,
-      comparablePropertyType: prev.comparablePropertyType || propertyType || "",
-      city: prev.city || city || "",
-      district: prev.district || district || "",
-      latitude: prev.latitude || latitude || "",
-      longitude: prev.longitude || longitude || "",
-    }));
-  }, [propertyType, city, district, latitude, longitude]);
-
   async function save() {
     const config = workOrdersApiConfig();
     if (!config) return;
+    if (!comparableEntryReady(draft, locationConfirmed)) {
+      showToast("أكمل الموقع والنوع والسعر والمساحة والتاريخ قبل الحفظ", "error");
+      return;
+    }
     setSaving(true);
     const res = await createComparableProperty(
       config,
@@ -178,15 +165,8 @@ export function FieldComparableCaptureSection({
         : "حُفظ المقارن في البنك ورُبط بهذا العقار",
       anomaly ? "error" : "success",
     );
-    setDraft(
-      emptyComparableEntryDraft({
-        type: propertyType,
-        city,
-        district,
-        latitude,
-        longitude,
-      }),
-    );
+    setDraft(emptyComparableEntryDraft());
+    setLocationConfirmed(false);
     setOpen(false);
     if (propertyId) {
       await reload();
@@ -220,7 +200,16 @@ export function FieldComparableCaptureSection({
           size="sm"
           variant="primary"
           disabled={disabled}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => {
+            setOpen((v) => {
+              if (!v) {
+                setDraft(emptyComparableEntryDraft());
+                setLocationConfirmed(false);
+                setFormKey((n) => n + 1);
+              }
+              return !v;
+            });
+          }}
         >
           {open ? "إغلاق النموذج" : "إضافة مقارن"}
         </Button>
@@ -229,9 +218,12 @@ export function FieldComparableCaptureSection({
       {open ? (
         <div className="mt-3 rounded-md border border-border bg-surface p-3">
           <ComparablePropertyEntryFields
+            key={formKey}
             draft={draft}
             disabled={saving || disabled}
+            subjectPin={subjectPin}
             onChange={setDraft}
+            onLocationConfirmedChange={setLocationConfirmed}
           />
           <div className="mt-2">
             <Button
@@ -239,7 +231,11 @@ export function FieldComparableCaptureSection({
               size="sm"
               variant="primary"
               loading={saving}
-              disabled={saving || disabled}
+              disabled={
+                saving ||
+                disabled ||
+                !comparableEntryReady(draft, locationConfirmed)
+              }
               onClick={() => void save()}
             >
               حفظ في بنك العقارات

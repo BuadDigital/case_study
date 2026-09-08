@@ -9,10 +9,11 @@ import { cacheIssuedValuationReport } from "./evaluator-report-attachments";
 import { reservedValuationReportNumber } from "./valuation-report-number";
 
 function openFailureMessage(
-  kind: "auth" | "network" | "server" | "validation" | "not_found",
+  kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict",
 ): string {
   if (kind === "auth") return "تعذّر فتح طلب التقييم — تحقق من تسجيل الدخول.";
   if (kind === "network") return "تعذّر الاتصال بخدمة التقييم.";
+  if (kind === "conflict") return "طلب التقييم متعارض مع تحديث آخر — أعد المحاولة.";
   return "تعذّر فتح طلب التقييم لهذه المعاملة.";
 }
 

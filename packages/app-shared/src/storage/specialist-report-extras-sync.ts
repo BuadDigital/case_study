@@ -1,6 +1,8 @@
 /**
- * Server-backed specialist valuation extras (ESG, finishing notes in JSON bag,
- * search scope, print keys, Infath deposit). IndexedDB remains an offline cache.
+ * Server-backed specialist valuation extras (ESG, finishing, search scope,
+ * print keys, Infath deposit). API wire shape stays a JSON bag; the case-study
+ * DB stores first-class columns and projects this bag on read. IndexedDB remains
+ * an offline cache.
  */
 
 import { updateSpecialistReportExtras } from "@platform/api-client";

@@ -7,6 +7,7 @@ import type {
   ValuationCostApproachDto,
   ValuationCostLineDto,
 } from "@platform/api-client";
+import { createClientId } from "@platform/app-shared/lib/create-client-id";
 
 import {
   COST_ITEM_OPTIONS,
@@ -113,7 +114,7 @@ export function costLinesFromInventory(
   lines: CostSeedInventoryLine[],
 ): ValuationCostLineDto[] {
   return lines.map((l, i) => ({
-    id: crypto.randomUUID(),
+    id: createClientId("cost"),
     sourceInventoryLineId: l.id ?? null,
     structureKind: l.structureKind || "other",
     itemKey:
@@ -146,7 +147,7 @@ export function blankCostLine(
   partial: Partial<ValuationCostLineDto>,
 ): ValuationCostLineDto {
   return {
-    id: crypto.randomUUID(),
+    id: createClientId("cost"),
     sourceInventoryLineId: null,
     structureKind: "other",
     itemKey: "custom",
