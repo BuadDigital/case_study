@@ -7,8 +7,6 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import { CaseStudyReportActions } from "./CaseStudyReportActions";
 import { CaseStudyProgressDonut } from "./CaseStudyProgressDonut";
-import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
   partyById,
   type CaseStudyInfoPartyId,

@@ -12,6 +12,11 @@ import {
   caseStudyQuestionTargetId,
 } from "../../lib/app-data/case-study-form-ux";
 import {
+  deedNatureMatchRequiresNotes,
+  isDeedNatureMatchChosen,
+  normalizeDeedNatureMatchOutcome,
+} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
+import {
   propertyHasRegisteredTitle,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
@@ -148,8 +153,6 @@ export function collectMissingCaseStudyAnswers(
   return { missing, firstMissingKey, firstMissingStep };
 }
 
-const DEED_NATURE_KNOWN = new Set(["matched", "differences", "impediment"]);
-
 export type CaseStudyFormScrollTarget = {
   targetId: string;
   step: number;
@@ -191,8 +194,11 @@ export function firstCaseStudyFormScrollTarget(args: {
     const skipMatch =
       property != null && propertyHasRegisteredTitle(property);
     if (!skipMatch) {
-      const outcome = (draft.deedNatureMatchOutcome ?? "").trim().toLowerCase();
-      if (!DEED_NATURE_KNOWN.has(outcome)) {
+      // Submit gate uses IsChosen (not IsKnown) — empty is draft-ok on the API.
+      const outcome = normalizeDeedNatureMatchOutcome(
+        draft.deedNatureMatchOutcome,
+      );
+      if (!isDeedNatureMatchChosen(outcome)) {
         return {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
           step: 1,
@@ -202,7 +208,7 @@ export function firstCaseStudyFormScrollTarget(args: {
         };
       }
       if (
-        (outcome === "differences" || outcome === "impediment") &&
+        deedNatureMatchRequiresNotes(outcome) &&
         !String(draft.deedNatureMatchNotes ?? "").trim()
       ) {
         return {

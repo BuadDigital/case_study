@@ -1,3 +1,4 @@
+import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { describe, expect, it } from "vitest";
 import { emptyCaseStudyFormDraft } from "../../../lib/app-data/case-study-form-model";
 import { caseStudyAnswerKey } from "../../../lib/app-data/case-study-form-data";
@@ -46,7 +47,7 @@ describe("firstCaseStudyFormScrollTarget", () => {
     const draft = emptyCaseStudyFormDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
     draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    draft.deedNatureMatchOutcome = "differences";
+    draft.deedNatureMatchOutcome = DeedNatureMatchOutcomes.Differences;
     const hit = firstCaseStudyFormScrollTarget({
       draft,
       sectionQuestions: sections,

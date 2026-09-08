@@ -77,24 +77,11 @@ public class CaseStudyFormService : ICaseStudyFormService
         CaseStudyFormActor? actor = null,
         CancellationToken cancellationToken = default)
     {
- // gate integrity — unknown outcomes rejected; discrepancy/failure need written notes.
-        var matchOutcome = (form.DeedNatureMatchOutcome ?? "").Trim().ToLowerInvariant();
-        if (!DeedNatureMatchOutcomes.IsKnown(matchOutcome))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["deedNatureMatchOutcome"] = "مخرج المطابقة غير معروف",
-            });
-        }
-
-        if (matchOutcome is DeedNatureMatchOutcomes.Differences or DeedNatureMatchOutcomes.Impediment
-            && string.IsNullOrWhiteSpace(form.DeedNatureMatchNotes))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر»",
-            });
-        }
+        var matchErrors = CaseStudyFormDeedNatureMatchRules.ValidateForSave(
+            form.DeedNatureMatchOutcome,
+            form.DeedNatureMatchNotes);
+        if (matchErrors is not null)
+            return (null, matchErrors);
 
  // Autosave / multi-tab can race on xmin — retry with a fresh load instead of 409 noise.
         const int maxAttempts = 3;

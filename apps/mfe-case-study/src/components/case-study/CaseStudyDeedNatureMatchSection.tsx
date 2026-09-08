@@ -8,13 +8,11 @@ import {
   cn,
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import {
+  DEED_NATURE_MATCH_OPTIONS,
+  deedNatureMatchRequiresNotes,
+} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
-
-const MATCH_OPTIONS = [
-  { value: "matched" as const, label: "مطابق" },
-  { value: "differences" as const, label: "فروق" },
-  { value: "impediment" as const, label: "مرشح تعذر" },
-];
 
 /**
  * Deed↔nature match gate — valuation spec.
@@ -34,7 +32,7 @@ export function CaseStudyDeedNatureMatchSection({
   notesInvalid?: boolean;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
-  const needsNotes = outcome === "differences" || outcome === "impediment";
+  const needsNotes = deedNatureMatchRequiresNotes(outcome);
 
   return (
     <section
@@ -60,7 +58,7 @@ export function CaseStudyDeedNatureMatchSection({
             مخرج المطابقة
           </Label>
           <div className="flex flex-wrap gap-2">
-            {MATCH_OPTIONS.map((opt) => {
+            {DEED_NATURE_MATCH_OPTIONS.map((opt) => {
               const on = outcome === opt.value;
               return (
                 <label

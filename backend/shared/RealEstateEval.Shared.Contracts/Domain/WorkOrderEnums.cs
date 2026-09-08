@@ -67,10 +67,34 @@ public static class DeedNatureMatchOutcomes
     public const string Matched = "matched";
     public const string Differences = "differences";
     public const string Impediment = "impediment";
+
+    public static string Normalize(string? value) =>
+        (value ?? "").Trim().ToLowerInvariant();
+
+    /// <summary>
+    /// Vocabulary check for draft saves — <see cref="Unset"/> (empty) is allowed.
+    /// Unknown tokens are rejected. Prefer <see cref="IsChosen"/> for submit / valuation gates.
+    /// </summary>
     public static bool IsKnown(string? value)
     {
-        var n = value?.Trim() ?? "";
+        var n = Normalize(value);
         return n is Unset or Matched or Differences or Impediment;
+    }
+
+    /// <summary>
+    /// Specialist chose a concrete outcome. Empty is not chosen — used by FE submit
+    /// and valuation issuance for traditional deeds.
+    /// </summary>
+    public static bool IsChosen(string? value)
+    {
+        var n = Normalize(value);
+        return n is Matched or Differences or Impediment;
+    }
+
+    public static bool RequiresNotes(string? value)
+    {
+        var n = Normalize(value);
+        return n is Differences or Impediment;
     }
 }
 
