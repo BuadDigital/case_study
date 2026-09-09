@@ -507,9 +507,22 @@ export function EvaluatorWindow({
   );
 
   const syncFinalOpinion = useCallback(
-    (value: number) => {
+    (
+      value: number,
+      extras?: {
+        liquidationDiscountPct: number;
+        liquidationDiscountApplied: boolean;
+      },
+    ) => {
       if (!Number.isFinite(value) || value <= 0) return;
-      onDraftPatch({ evaluatorPrice: String(Math.round(value)) });
+      onDraftPatch({
+        evaluatorPrice: String(Math.round(value)),
+        ...(extras?.liquidationDiscountApplied
+          ? {
+              forcedSaleDiscountPct: String(extras.liquidationDiscountPct ?? 0),
+            }
+          : {}),
+      });
     },
     [onDraftPatch],
   );

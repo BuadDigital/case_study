@@ -15,8 +15,9 @@ import {
 import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 
 /**
- * Deed↔nature match gate — valuation spec.
- * Required for traditional deeds before the calc engine; registered title skips it.
+ * Specialist review of deed↔nature match. Parties (inspector / engineering
+ * office) or a prior survey propose; the specialist adopts or amends.
+ * Lives on تبويب تقييم العقار — the case-study report is issued after valuation.
  */
 export function CaseStudyDeedNatureMatchSection({
   draft,
@@ -24,15 +25,23 @@ export function CaseStudyDeedNatureMatchSection({
   onPatch,
   outcomeInvalid,
   notesInvalid,
+  sourceLabelAr,
+  suggestedOutcome,
+  onAdoptSuggestion,
 }: {
-  draft: CaseStudyFormDraft;
+  draft: Pick<CaseStudyFormDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
   onPatch: (patch: Partial<CaseStudyFormDraft>) => void;
   outcomeInvalid?: boolean;
   notesInvalid?: boolean;
+  sourceLabelAr?: string;
+  suggestedOutcome?: string;
+  onAdoptSuggestion?: () => void;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
   const needsNotes = deedNatureMatchRequiresNotes(outcome);
+  const canAdopt =
+    Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
 
   return (
     <section
@@ -50,12 +59,31 @@ export function CaseStudyDeedNatureMatchSection({
 
       <div className="grid gap-3.5 px-4 py-3.5">
         <Note tone="info">
-          الحدود تُطبع من الصك؛ الرفع المساحي للمطابقة فقط. أي اختلاف غير محسوم يوقف مسار التقييم (بوابة جودة).
+          مصدر المطابقة: المعاين، أو المكتب الهندسي إن وُزّع، أو رفع مساحي سابق.
+          الأخصائي يعتمد الاقتراح أو يعدّله هنا (تبويب تقييم العقار). تقرير دراسة
+          الحالة بعد انتهاء التقييم.
         </Note>
+
+        {sourceLabelAr ? (
+          <p className="m-0 text-[12px] leading-relaxed text-text-2">
+            {sourceLabelAr}
+          </p>
+        ) : null}
+
+        {canAdopt ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onAdoptSuggestion}
+            className="w-fit cursor-pointer rounded-[var(--radius-sm)] border border-gold bg-gold-soft px-3 py-[7px] text-[12px] font-bold text-gold-d disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            اعتماد اقتراح الطرف
+          </button>
+        ) : null}
 
         <FormGroup>
           <Label className="mb-2 text-[11px] font-semibold text-text-2">
-            مخرج المطابقة
+            اعتماد الأخصائي
           </Label>
           <div className="flex flex-wrap gap-2">
             {DEED_NATURE_MATCH_OPTIONS.map((opt) => {

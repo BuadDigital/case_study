@@ -13,28 +13,29 @@ import {
   cn,
   opsBtnPrimary,
   opsFldControl,
-  opsTfLbl,
   useToast,
 } from "@platform/ui-kit";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "../../lib/case-study-bridge";
+import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
-import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
-import {
-  basisOfValueKeyForAssignment,
-} from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
 import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import {
+  EXTERNAL_SPECIALIST_USED_LABEL,
+  assumptionsAfterSpecialistChoice,
+  resolveNoSpecialistClause,
+  specialAssumptionRows,
+} from "../../lib/evaluator/special-assumption-rows";
+import {
   buildValuationPrintAttachmentRows,
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
-import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
+import { ValCard } from "./EvaluatorHtmlPrimitives";
 import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
 import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
@@ -42,12 +43,11 @@ import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lis
 
 const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
 
-/** Final review: delivery opinion, special assumptions, ESG + attachments (appraiser). */
+/** Final review: asset confirmation, special assumptions, ESG + attachments (appraiser). */
 export function EvaluatorFinalReviewTab({
   draft,
   disabled = false,
   property,
-  assignmentType,
   valuationRequestId: knownValuationRequestId,
   approachSettings: approachSettingsFromShell,
   onDraftPatch,
@@ -58,7 +58,6 @@ export function EvaluatorFinalReviewTab({
   draft: EvaluatorSubmission;
   disabled?: boolean;
   property?: PoPropertyIntake | null;
-  assignmentType?: string | null;
   /** From ValuationWorkShell when present — avoids a second ensure-open for the same property. */
   valuationRequestId?: string | null;
   /**
@@ -67,8 +66,6 @@ export function EvaluatorFinalReviewTab({
    */
   approachSettings?: ValuationApproachSettingsDto | null;
   onDraftPatch?: (patch: {
-    evaluatorPrice?: string;
-    forcedSaleDiscountPct?: string;
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
   }) => void;
@@ -77,7 +74,6 @@ export function EvaluatorFinalReviewTab({
   fieldErrors?: Record<string, string>;
 }) {
   const { showToast } = useToast();
-  const { data: record } = usePoRecordQuery(draft.poNumber);
   const choices = draft.reportChoices ?? emptyReportChoices();
 
   // Valuation lists from the shared query — previously a duplicate GET with final-opinion.
@@ -107,18 +103,6 @@ export function EvaluatorFinalReviewTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const assignmentTypeResolved =
-    assignmentType ?? record?.assignmentType ?? null;
-  const assignmentSubClientId = subClientIdFromReportUsers(
-    record?.reportUserClientIds,
-  );
-  const liquidation = assignmentTypeResolved
-    ? basisOfValueKeyForAssignment(
-        assignmentTypeResolved,
-        assignmentSubClientId,
-      ) === "liquidation"
-    : choices.valueBasisKey === "liquidation";
 
   const propertyId = property?.id ?? draft.propertyId;
 
@@ -163,19 +147,16 @@ export function EvaluatorFinalReviewTab({
   const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
     const library = s.assumptionLibrary ?? [];
     const loaded = s.selectedAssumptions ?? [];
-    const visible = library.filter(
-      (clause) =>
-        !s.externalSpecialistUsed || !isNoExternalSpecialistAssumption(clause),
-    );
     const useAll = loaded.length === 0;
+    const noSpecialistClause = resolveNoSpecialistClause(library);
     setSpecialistUsed(s.externalSpecialistUsed);
     setSpecialistDetails(s.externalSpecialistDetails ?? "");
     setAssumptions(
-      useAll
-        ? visible
-        : s.externalSpecialistUsed
-          ? loaded.filter((x) => !isNoExternalSpecialistAssumption(x))
-          : loaded,
+      assumptionsAfterSpecialistChoice({
+        specialistUsed: s.externalSpecialistUsed,
+        assumptions: useAll ? library : loaded,
+        noSpecialistClause,
+      }),
     );
   }, []);
 
@@ -253,32 +234,25 @@ export function EvaluatorFinalReviewTab({
     void loadAssumptions();
   }, [loadAssumptions]);
 
-  const visibleLibrary = useMemo(() => {
+  const assumptionRows = useMemo(() => {
     const library = settings?.assumptionLibrary ?? [];
     const extras = assumptions.filter((a) => !library.includes(a));
-    const base = library.filter(
-      (clause) =>
-        !specialistUsed || !isNoExternalSpecialistAssumption(clause),
-    );
-    return [...base, ...extras];
-  }, [assumptions, settings?.assumptionLibrary, specialistUsed]);
+    return specialAssumptionRows(library, extras);
+  }, [assumptions, settings?.assumptionLibrary]);
+
+  const noSpecialistClause = resolveNoSpecialistClause(
+    settings?.assumptionLibrary ?? [],
+  );
 
   function applySpecialistUsed(used: boolean) {
     setSpecialistUsed(used);
-    if (used) {
-      setAssumptions((prev) =>
-        prev.filter((x) => !isNoExternalSpecialistAssumption(x)),
-      );
-      return;
-    }
-    const clause = (settings?.assumptionLibrary ?? []).find(
-      isNoExternalSpecialistAssumption,
+    setAssumptions((prev) =>
+      assumptionsAfterSpecialistChoice({
+        specialistUsed: used,
+        assumptions: prev,
+        noSpecialistClause,
+      }),
     );
-    if (clause) {
-      setAssumptions((prev) =>
-        prev.includes(clause) ? prev : [...prev, clause],
-      );
-    }
   }
 
   async function saveAssumptions() {
@@ -289,9 +263,11 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSaving(true);
-    const selected = specialistUsed
-      ? assumptions.filter((x) => !isNoExternalSpecialistAssumption(x))
-      : assumptions;
+    const selected = assumptionsAfterSpecialistChoice({
+      specialistUsed,
+      assumptions,
+      noSpecialistClause,
+    });
     const res = await saveValuationApproachSettings(
       config,
       settings.valuationRequestId,
@@ -342,63 +318,6 @@ export function EvaluatorFinalReviewTab({
         <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
       ) : null}
 
-      <ValCard title="رأي القيمة عند التسليم">
-        <p className={noteClassName}>
-          يُملأ تلقائياً من شاشة «رأي القيمة النهائي» في تقييم العقار. عدّله هنا فقط
-          إن لزم قبل الإرسال.
-        </p>
-        <ValFieldsGrid min={160}>
-          <div className="min-w-0">
-            <label className={opsTfLbl} htmlFor="final-inf-total">
-              رأي القيمة (ر.س.)
-            </label>
-            <input
-              id="final-inf-total"
-              className={cn(
-                opsFldControl,
-                err("evaluator_price") && invalidControlClass,
-              )}
-              disabled={disabled}
-              dir="ltr"
-              value={draft.evaluatorPrice}
-              onChange={(e) =>
-                onDraftPatch?.({ evaluatorPrice: e.target.value })
-              }
-            />
-            {err("evaluator_price") ? (
-              <p className="mt-1 text-[11px] text-danger-text">
-                {err("evaluator_price")}
-              </p>
-            ) : null}
-          </div>
-          {liquidation ? (
-            <div className="min-w-0">
-              <label className={opsTfLbl} htmlFor="final-inf-discount">
-                خصم التصفية ٪
-              </label>
-              <input
-                id="final-inf-discount"
-                className={cn(
-                  opsFldControl,
-                  err("forced_sale_discount") && invalidControlClass,
-                )}
-                disabled={disabled}
-                dir="ltr"
-                value={draft.forcedSaleDiscountPct}
-                onChange={(e) =>
-                  onDraftPatch?.({ forcedSaleDiscountPct: e.target.value })
-                }
-              />
-              {err("forced_sale_discount") ? (
-                <p className="mt-1 text-[11px] text-danger-text">
-                  {err("forced_sale_discount")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </ValFieldsGrid>
-      </ValCard>
-
       <ValCard title="مراجعة بيانات الأصل">
         <p className={noteClassName}>
           أكّد مطابقة بيانات الأصل للمعاينة، أو دوّن ملاحظات التباين إن وُجدت.
@@ -446,48 +365,81 @@ export function EvaluatorFinalReviewTab({
           أزل العبارة التي لا تصح على هذا العقار، أو أضف بنداً إضافياً. يُحفظ مع
           إعدادات التقييم ويُطبع المُبقى فقط.
         </p>
-        <label className="mb-2 flex items-center gap-2 text-[12.5px] text-text">
-          <input
-            type="checkbox"
-            className="size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-            disabled={disabled || saving}
-            checked={specialistUsed}
-            onChange={(e) => applySpecialistUsed(e.target.checked)}
-          />
-          استُعين بأخصائي خارجي
-        </label>
-        {specialistUsed ? (
-          <input
-            placeholder="الأخصائي، دوره، ونتيجته"
-            value={specialistDetails}
-            disabled={disabled || saving}
-            onChange={(e) => setSpecialistDetails(e.target.value)}
-            className={cn(opsFldControl, "mb-3 font-medium")}
-          />
-        ) : null}
-        {visibleLibrary.length > 0 ? (
+        {assumptionRows.length > 0 ? (
           <div className="mb-3 overflow-hidden rounded-[var(--radius)] border border-border">
-            {visibleLibrary.map((clause) => (
-              <label
-                key={clause}
-                className="flex cursor-pointer items-start gap-2.5 border-b border-border bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors last:border-b-0 hover:bg-row-hover"
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                  disabled={disabled || saving}
-                  checked={assumptions.includes(clause)}
-                  onChange={(e) =>
-                    setAssumptions((prev) =>
-                      e.target.checked
-                        ? [...prev, clause]
-                        : prev.filter((x) => x !== clause),
-                    )
-                  }
-                />
-                <span>{clause}</span>
-              </label>
-            ))}
+            {assumptionRows.map((row) => {
+              if (row.kind === "specialist-used") {
+                return (
+                  <div
+                    key={row.key}
+                    className="border-b border-border bg-surface last:border-b-0"
+                  >
+                    <label className="flex cursor-pointer items-start gap-2.5 px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors hover:bg-row-hover">
+                      <input
+                        type="radio"
+                        name="val-specialist-assumption"
+                        className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
+                        disabled={disabled || saving}
+                        checked={specialistUsed}
+                        onChange={() => applySpecialistUsed(true)}
+                      />
+                      <span>{EXTERNAL_SPECIALIST_USED_LABEL}</span>
+                    </label>
+                    {specialistUsed ? (
+                      <div className="pe-3 ps-10 pb-2.5">
+                        <label
+                          className="mb-1 block text-[11px] text-text-2"
+                          htmlFor="val-specialist-details"
+                        >
+                          وصف الاستعانة بالأخصائي
+                        </label>
+                        <input
+                          id="val-specialist-details"
+                          placeholder="الأخصائي، دوره، ونتيجته"
+                          value={specialistDetails}
+                          disabled={disabled || saving}
+                          onChange={(e) => setSpecialistDetails(e.target.value)}
+                          className={cn(opsFldControl, "font-medium")}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
+              const isNoSpecialist = isNoExternalSpecialistAssumption(row.text);
+              return (
+                <label
+                  key={row.key}
+                  className="flex cursor-pointer items-start gap-2.5 border-b border-border bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors last:border-b-0 hover:bg-row-hover"
+                >
+                  <input
+                    type={isNoSpecialist ? "radio" : "checkbox"}
+                    name={
+                      isNoSpecialist ? "val-specialist-assumption" : undefined
+                    }
+                    className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
+                    disabled={disabled || saving}
+                    checked={
+                      isNoSpecialist
+                        ? !specialistUsed
+                        : assumptions.includes(row.text)
+                    }
+                    onChange={(e) => {
+                      if (isNoSpecialist) {
+                        applySpecialistUsed(false);
+                        return;
+                      }
+                      setAssumptions((prev) =>
+                        e.target.checked
+                          ? [...prev, row.text]
+                          : prev.filter((x) => x !== row.text),
+                      );
+                    }}
+                  />
+                  <span>{row.text}</span>
+                </label>
+              );
+            })}
           </div>
         ) : (
           <p className="mb-3 text-[12px] text-text-3">
@@ -508,14 +460,16 @@ export function EvaluatorFinalReviewTab({
             disabled={disabled || saving || !freeAssumption.trim()}
             onClick={() => {
               const t = freeAssumption.trim();
-              if (
-                t &&
-                !assumptions.includes(t) &&
-                !(
-                  specialistUsed &&
-                  isNoExternalSpecialistAssumption(t)
-                )
-              ) {
+              if (!t || t === EXTERNAL_SPECIALIST_USED_LABEL) {
+                setFreeAssumption("");
+                return;
+              }
+              if (isNoExternalSpecialistAssumption(t)) {
+                applySpecialistUsed(false);
+                setFreeAssumption("");
+                return;
+              }
+              if (!assumptions.includes(t)) {
                 setAssumptions((prev) => [...prev, t]);
               }
               setFreeAssumption("");

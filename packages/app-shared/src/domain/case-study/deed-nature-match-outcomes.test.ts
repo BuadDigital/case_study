@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DeedNatureMatchOutcomes,
+  deedNatureMatchAllowsDownstreamWork,
   deedNatureMatchRequiresNotes,
   isDeedNatureMatchChosen,
   isDeedNatureMatchKnown,
@@ -43,6 +44,23 @@ describe("deed-nature-match-outcomes", () => {
     expect(
       deedNatureMatchRequiresNotes(
         normalizeDeedNatureMatchOutcome(" DIFFERENCES "),
+      ),
+    ).toBe(true);
+  });
+
+  it("unlocks downstream work only for registered title or matched", () => {
+    expect(deedNatureMatchAllowsDownstreamWork(true, "")).toBe(true);
+    expect(deedNatureMatchAllowsDownstreamWork(false, "")).toBe(false);
+    expect(
+      deedNatureMatchAllowsDownstreamWork(
+        false,
+        DeedNatureMatchOutcomes.Differences,
+      ),
+    ).toBe(false);
+    expect(
+      deedNatureMatchAllowsDownstreamWork(
+        false,
+        DeedNatureMatchOutcomes.Matched,
       ),
     ).toBe(true);
   });

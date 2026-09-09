@@ -31,7 +31,7 @@ export function retrospectiveDraftFromSettings(settings: {
   };
 }
 
-/** Document order: basics (retro dates) then review-tab send fields. */
+/** Document order: basics (retro dates), final-opinion value, then review-tab send fields. */
 const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "retrospective_date", targetId: "as-retro-date" },
   { key: "retrospective_date_from", targetId: "as-retro-date-from" },
@@ -51,11 +51,18 @@ const RETRO_DATE_TARGET_IDS = new Set([
   "as-retro-date-to",
 ]);
 
+const FINAL_OPINION_TARGET_IDS = new Set([
+  "inf-land",
+  "inf-building",
+  "final-inf-total",
+  "final-inf-discount",
+]);
+
 export function evaluatorWorkScreenForErrorTarget(
   targetId: string | null,
 ): "basic" | "market" | "cost" | "final" | "review" {
   if (targetId && RETRO_DATE_TARGET_IDS.has(targetId)) return "basic";
-  if (targetId === "inf-land" || targetId === "inf-building") return "final";
+  if (targetId && FINAL_OPINION_TARGET_IDS.has(targetId)) return "final";
   return "review";
 }
 

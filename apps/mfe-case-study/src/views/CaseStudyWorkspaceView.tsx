@@ -17,6 +17,7 @@ import {
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
+import { CaseStudyDeedNatureMatchReview } from "../components/case-study/CaseStudyDeedNatureMatchReview";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -49,6 +50,8 @@ import { usePropertyDetailDocuments } from "../query/property-detail-documents-q
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
+import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT } from "../lib/case-study-workspace-events";
+import { migrateDistribution } from "../lib/app-data/tasks-storage";
 
 export type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
@@ -175,6 +178,9 @@ function CaseStudyAppraisalPanel({
   }, [inspectionTask, inspectionReloadKey]);
 
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
+  const engineeringAssigned = migrateDistribution(
+    caseStudyTask.distribution,
+  ).engineeringOffice;
   const appraisalTaskId = relatedTaskId(
     tasks,
     property.id,
@@ -228,6 +234,15 @@ function CaseStudyAppraisalPanel({
 
   return (
     <div className="pt-5">
+      <CaseStudyDeedNatureMatchReview
+        caseStudyTaskId={caseStudyTask.id}
+        property={property}
+        poNumber={poNumber}
+        surveyTaskId={surveyTaskId}
+        inspectionTaskId={inspectionTaskId}
+        engineeringAssigned={engineeringAssigned}
+        readOnly={caseStudyTask.status === "completed"}
+      />
       <section className="mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
@@ -356,6 +371,19 @@ export function CaseStudyWorkspaceView({
   const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">(
     "study",
   );
+  useEffect(() => {
+    const openAppraisal = () => setWorkspaceTab("appraisal");
+    window.addEventListener(
+      CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
+      openAppraisal,
+    );
+    return () => {
+      window.removeEventListener(
+        CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
+        openAppraisal,
+      );
+    };
+  }, []);
   /**
    * Documents and photos load only once a tab that shows them has been opened —
    * the study form never triggers the attachment fan-out. A visited tab stays

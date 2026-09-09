@@ -17,7 +17,6 @@ import {
   caseStudyAnswerKey,
 } from "../../lib/app-data/case-study-form-data";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
-import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
   partyById,
@@ -170,7 +169,6 @@ export function CaseStudyForm({
       (!isParty && draft.status === "submitted") ||
       (isParty && (draft.status === "submitted" || parentFormSubmitted)),
   );
-
   const matrixTableProps = {
     canEditKey,
     visibleKey: isQuestionVisible,
@@ -341,20 +339,6 @@ export function CaseStudyForm({
               ) : undefined
             }
           />
-          {!isParty ? (
-            <CaseStudyDeedNatureMatchSection
-              draft={draft}
-              disabled={isFormReadOnly}
-              outcomeInvalid={Boolean(formFieldErrors.deedNature)}
-              notesInvalid={Boolean(formFieldErrors.deedNatureNotes)}
-              onPatch={(p) => {
-                if (p.deedNatureMatchOutcome !== undefined)
-                  patch("deedNatureMatchOutcome", p.deedNatureMatchOutcome);
-                if (p.deedNatureMatchNotes !== undefined)
-                  patch("deedNatureMatchNotes", p.deedNatureMatchNotes);
-              }}
-            />
-          ) : null}
           {!isParty && isLastVisibleStep ? (
             <SpecialistClosingCards reportModel={reportModel} />
           ) : null}

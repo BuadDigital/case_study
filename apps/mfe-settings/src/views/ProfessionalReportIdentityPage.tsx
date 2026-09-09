@@ -88,18 +88,44 @@ export function ProfessionalReportIdentityPage({
               </Auto>
               <K>رقم ترخيص مزاولة المهنة</K>
               <Auto>
-                <bdi>{filled(ev.licenseNumber, htmlEv.licenseNumber ?? "")}</bdi>
+                <bdi>
+                  {filled(
+                    ev.licenseNumber,
+                    filled(
+                      org?.company.practiceLicenseNumber,
+                      htmlEv.licenseNumber ?? "",
+                    ),
+                  )}
+                </bdi>
               </Auto>
             </tr>
             <tr>
               <K>تاريخ الإصدار</K>
               <Auto>
-                <bdi>{filled(ev.licenseIssuedAt, htmlEv.licenseIssuedAt ?? "")}</bdi>
+                <bdi>
+                  {slashDate(
+                    filled(
+                      org?.company.practiceLicenseIssuedAt,
+                      filled(ev.licenseIssuedAt, htmlEv.licenseIssuedAt ?? ""),
+                    ),
+                  )}
+                </bdi>
               </Auto>
               <K>تاريخ الانتهاء</K>
               <Auto>
                 <bdi>
-                  {filled(ev.licenseExpiresHijri, htmlEv.licenseExpiresHijri ?? "")}
+                  {slashDate(
+                    filled(
+                      org?.company.practiceLicenseExpiresAt,
+                      filled(
+                        ev.licenseExpiresAt,
+                        filled(
+                          ev.licenseExpiresHijri,
+                          htmlEv.licenseExpiresHijri ?? "",
+                        ),
+                      ),
+                    ),
+                  )}
                 </bdi>
               </Auto>
             </tr>

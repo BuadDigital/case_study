@@ -250,6 +250,19 @@ describe("Field inspection frontend/backend rule parity", () => {
     ).toBe("ins-property-photos");
   });
 
+  it("still requires حالة البناء when the inspector recorded a villa on a land PO", () => {
+    const draft = completeDraft();
+    draft.featureValues.assetSubject = "فيلا";
+    draft.featureValues.propertyUsage = "سكني";
+    draft.featureValues.buildState = "";
+
+    const errors = validateInspectorWorkspace(draft, {
+      propertyType: "ارض",
+      classification: "سكني",
+    });
+    expect(errors.emptyFeatureKeys ?? []).toContain("buildState");
+  });
+
   it("skips building feature fields and component photos on vacant land", () => {
     const draft = completeDraft();
     draft.featureValues.assetSubject = "أرض";

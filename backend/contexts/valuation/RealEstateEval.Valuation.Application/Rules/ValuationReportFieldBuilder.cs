@@ -88,7 +88,10 @@ public static class ValuationReportFieldBuilder
                     org.Evaluator.LicenseNumber,
                     org.Company.PracticeLicenseNumber);
                 d["membershipNumber"] = org.Evaluator.MembershipNumber;
-                d["licenseIssuedAt"] = org.Evaluator.LicenseIssuedAt;
+                d["licenseIssuedAt"] = ValuationReportDisplayRules.FormatIsoDateString(
+                    ValuerCredentialRules.FirstFilled(
+                        org.Company.PracticeLicenseIssuedAt,
+                        org.Evaluator.LicenseIssuedAt));
                 d["licenseExpiresHijri"] = org.Evaluator.LicenseExpiresHijri;
                 d["licenseExpiresAt"] = ValuationReportDisplayRules.FormatIsoDateString(
                     ValuerCredentialRules.FirstFilled(

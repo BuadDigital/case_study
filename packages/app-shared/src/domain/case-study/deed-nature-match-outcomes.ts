@@ -2,8 +2,10 @@
  * Deed↔nature match outcomes — keep in sync with
  * `RealEstateEval.Shared.Contracts.Domain.DeedNatureMatchOutcomes`.
  *
- * Draft saves allow Unset (empty). Specialist submit for traditional deeds
- * requires a chosen outcome (`isDeedNatureMatchChosen`).
+ * Draft saves allow Unset (empty). Traditional deeds: downstream work
+ * (valuation calc and the case-study report) requires `matched`.
+ * Registered title skips the gate. فروق / مرشح تعذر is an impediment path,
+ * not a report.
  */
 
 export const DeedNatureMatchOutcomes = {
@@ -41,7 +43,7 @@ export function isDeedNatureMatchKnown(
   );
 }
 
-/** Specialist chose a concrete outcome (submit gate). Unset is not chosen. */
+/** Specialist chose a concrete outcome. Unset is not chosen. */
 export function isDeedNatureMatchChosen(
   value: string | null | undefined,
 ): boolean {
@@ -50,6 +52,20 @@ export function isDeedNatureMatchChosen(
     n === DeedNatureMatchOutcomes.Matched ||
     n === DeedNatureMatchOutcomes.Differences ||
     n === DeedNatureMatchOutcomes.Impediment
+  );
+}
+
+/**
+ * Registered title always passes. Traditional deed: only `matched` unlocks
+ * valuation calc and the case-study report.
+ */
+export function deedNatureMatchAllowsDownstreamWork(
+  registeredTitle: boolean,
+  outcome: string | null | undefined,
+): boolean {
+  if (registeredTitle) return true;
+  return (
+    normalizeDeedNatureMatchOutcome(outcome) === DeedNatureMatchOutcomes.Matched
   );
 }
 

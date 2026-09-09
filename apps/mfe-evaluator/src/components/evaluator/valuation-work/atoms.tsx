@@ -12,12 +12,15 @@ import {
 export function Card({
   children,
   className,
+  id,
 }: {
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
     <div
+      id={id}
       className={cn(opsLetterCard, "mb-5", className)}
     >
       {children}

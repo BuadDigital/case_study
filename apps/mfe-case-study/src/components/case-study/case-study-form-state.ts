@@ -12,6 +12,7 @@ import {
   caseStudyQuestionTargetId,
 } from "../../lib/app-data/case-study-form-ux";
 import {
+  deedNatureMatchAllowsDownstreamWork,
   deedNatureMatchRequiresNotes,
   isDeedNatureMatchChosen,
   normalizeDeedNatureMatchOutcome,
@@ -201,8 +202,9 @@ export function firstCaseStudyFormScrollTarget(args: {
       if (!isDeedNatureMatchChosen(outcome)) {
         return {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
-          step: 1,
-          message: "اختر مخرج مطابقة الصك على الطبيعة.",
+          step: 0,
+          message:
+            "اعتمد مطابقة الصك على الطبيعة من تبويب تقييم العقار قبل رفع تقرير دراسة الحالة.",
           blocking: true,
           invalidDeedNature: true,
         };
@@ -213,10 +215,25 @@ export function firstCaseStudyFormScrollTarget(args: {
       ) {
         return {
           targetId: CASE_STUDY_DEED_NATURE_NOTES_ID,
-          step: 1,
+          step: 0,
           message: "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر».",
           blocking: true,
           invalidDeedNatureNotes: true,
+        };
+      }
+      if (
+        !deedNatureMatchAllowsDownstreamWork(
+          false,
+          outcome,
+        )
+      ) {
+        return {
+          targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
+          step: 0,
+          message:
+            "مخرج المطابقة ليس مطابقًا — اعتمد أو عدّل من تبويب تقييم العقار. الفروق والتعذر مسار تعذر.",
+          blocking: true,
+          invalidDeedNature: true,
         };
       }
     }

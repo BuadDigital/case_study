@@ -17,7 +17,9 @@ import {
 import { apiConfig } from "./lib/shell-utils";
 import {
   costBasisUnitSettingsBody,
+  finalOpinionSyncExtrasFromRecon,
   hasPositiveFinalOpinion,
+  type FinalOpinionChangeHandler,
 } from "./lib/valuation-data-state";
 
 type SilentReload = (opts?: {
@@ -49,7 +51,7 @@ export function useValuationSectionSaves({
   valuationRequestIdRef: { current: string | null };
   reloadRef: { current: SilentReload };
   onFinalOpinionChangeRef: {
-    current: ((finalOpinionValue: number) => void) | undefined;
+    current: FinalOpinionChangeHandler | undefined;
   };
 }) {
   /** After cost save: update the batch and silent-reload — no loading-skeleton flash. */
@@ -65,7 +67,10 @@ export function useValuationSectionSaves({
     (dto: ValuationReconciliationDto) => {
       setRecon(dto);
       if (hasPositiveFinalOpinion(dto.finalOpinionValue)) {
-        onFinalOpinionChangeRef.current?.(dto.finalOpinionValue);
+        onFinalOpinionChangeRef.current?.(
+          dto.finalOpinionValue,
+          finalOpinionSyncExtrasFromRecon(dto),
+        );
       }
       void reloadRef.current({ silent: true, scope: "derived" });
     },

@@ -1,4 +1,5 @@
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
@@ -38,6 +39,11 @@ public interface ICaseStudyFormRepository
     /// <summary>Tracked party forms of the given tasks; edits persist on <see cref="SaveChangesAsync"/>.</summary>
     Task<IReadOnlyList<CaseStudyForm>> ListPartyFormsForUpdateAsync(
         IReadOnlyCollection<Guid> taskIds,
+        CancellationToken cancellationToken);
+
+    /// <summary>Deed kind of the work-order property, or null when the row is missing.</summary>
+    Task<DeedKind?> GetPropertyDeedKindAsync(
+        Guid propertyId,
         CancellationToken cancellationToken);
 
     void AddForm(CaseStudyForm form);

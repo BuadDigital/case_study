@@ -112,7 +112,7 @@ describe("validateEvaluatorSubmission", () => {
 });
 
 describe("firstEvaluatorErrorTarget", () => {
-  it("points at the review-tab controls that exist on submit", () => {
+  it("points value errors at the final-opinion tab and asset review at send", () => {
     expect(
       firstEvaluatorErrorTarget({
         evaluator_price: "مطلوب",
@@ -128,9 +128,11 @@ describe("firstEvaluatorErrorTarget", () => {
         asset_data_confirmed: "أكّد المراجعة",
       }),
     ).toBe("val-asset-data");
-    expect(evaluatorWorkScreenForErrorTarget("final-inf-total")).toBe("review");
+    expect(evaluatorWorkScreenForErrorTarget("inf-land")).toBe("final");
+    expect(evaluatorWorkScreenForErrorTarget("inf-building")).toBe("final");
+    expect(evaluatorWorkScreenForErrorTarget("final-inf-total")).toBe("final");
     expect(evaluatorWorkScreenForErrorTarget("final-inf-discount")).toBe(
-      "review",
+      "final",
     );
     expect(evaluatorWorkScreenForErrorTarget("val-asset-data")).toBe("review");
   });

@@ -195,6 +195,60 @@ export function slashDateFromIso(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
 }
 
+export function firstFilled(
+  ...values: Array<string | null | undefined>
+): string {
+  for (const value of values) {
+    const t = (value ?? "").trim();
+    if (t) return t;
+  }
+  return "";
+}
+
+/** Display ISO yyyy-MM-dd as yyyy/MM/dd; leave Hijri or already-slashed text. */
+export function displayLicenseDate(
+  ...values: Array<string | null | undefined>
+): string {
+  const raw = firstFilled(...values);
+  return slashDateFromIso(raw) || raw;
+}
+
+/**
+ * Practice-license cells next to «رقم ترخيص مزاولة المهنة».
+ * Firm dates from بيانات المنشأة win; personal evaluator dates are fallback.
+ */
+export function certifiedPracticeLicenseFromOrg(org: {
+  company?: {
+    practiceLicenseNumber?: string | null;
+    practiceLicenseIssuedAt?: string | null;
+    practiceLicenseExpiresAt?: string | null;
+  } | null;
+  evaluator?: {
+    licenseNumber?: string | null;
+    licenseIssuedAt?: string | null;
+    licenseExpiresAt?: string | null;
+    licenseExpiresHijri?: string | null;
+  } | null;
+}): { number: string; issuedAt: string; expiresAt: string } {
+  const company = org.company ?? {};
+  const evaluator = org.evaluator ?? {};
+  return {
+    number: firstFilled(
+      evaluator.licenseNumber,
+      company.practiceLicenseNumber,
+    ),
+    issuedAt: displayLicenseDate(
+      company.practiceLicenseIssuedAt,
+      evaluator.licenseIssuedAt,
+    ),
+    expiresAt: displayLicenseDate(
+      company.practiceLicenseExpiresAt,
+      evaluator.licenseExpiresAt,
+      evaluator.licenseExpiresHijri,
+    ),
+  };
+}
+
 function joinCoords(inspector?: InspectorWorkspaceDraft | null): string {
   const lat = (inspector?.mapLatitude ?? "").trim();
   const lng = (inspector?.mapLongitude ?? "").trim();
@@ -780,8 +834,12 @@ export function buildValuationReportLiveFill(input: {
     ""
   ).trim();
   cells["رقم العضوية"] = membershipNo || "—";
-  cells["تاريخ الإصدار"] = dash(input.certifiedIssuedAt ?? "");
-  cells["تاريخ الانتهاء"] = dash(input.certifiedExpires ?? "");
+  cells["تاريخ الإصدار"] = dash(
+    displayLicenseDate(input.certifiedIssuedAt),
+  );
+  cells["تاريخ الانتهاء"] = dash(
+    displayLicenseDate(input.certifiedExpires),
+  );
   cells["فرع التقييم"] = dash(input.valuationBranch ?? "");
   const memCat = membershipCategoryLabel(input.certifiedMembershipCategory);
   cells["فئة العضوية"] = memCat || "—";

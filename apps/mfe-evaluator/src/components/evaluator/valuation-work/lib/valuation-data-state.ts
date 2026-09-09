@@ -258,6 +258,27 @@ export function hasPositiveFinalOpinion(value: unknown): value is number {
   return typeof value === "number" && value > 0;
 }
 
+/** Liquidation extras copied from reconciliation into the evaluator submit draft. */
+export type FinalOpinionDraftSyncExtras = {
+  liquidationDiscountPct: number;
+  liquidationDiscountApplied: boolean;
+};
+
+export type FinalOpinionChangeHandler = (
+  finalOpinionValue: number,
+  extras?: FinalOpinionDraftSyncExtras,
+) => void;
+
+export function finalOpinionSyncExtrasFromRecon(dto: {
+  liquidationDiscountPct: number;
+  liquidationDiscountApplied: boolean;
+}): FinalOpinionDraftSyncExtras {
+  return {
+    liquidationDiscountPct: dto.liquidationDiscountPct,
+    liquidationDiscountApplied: dto.liquidationDiscountApplied,
+  };
+}
+
 /** Cost basis/unit saved from the cost screen — layered on the last saved settings. */
 export function costBasisUnitSettingsBody(
   s: ValuationApproachSettingsDto,

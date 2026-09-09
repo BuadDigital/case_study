@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
@@ -58,6 +59,18 @@ public sealed class CaseStudyFormRepository(CaseStudyDbContext db) : ICaseStudyF
         await db.CaseStudyForms
             .Where(f => f.IsPartyForm && taskIds.Contains(f.TaskId))
             .ToListAsync(cancellationToken);
+
+    public async Task<DeedKind?> GetPropertyDeedKindAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var kind = await db.WorkOrderProperties
+            .AsNoTracking()
+            .Where(p => p.Id == propertyId)
+            .Select(p => (DeedKind?)p.DeedKind)
+            .FirstOrDefaultAsync(cancellationToken);
+        return kind;
+    }
 
     public void AddForm(CaseStudyForm form) => db.CaseStudyForms.Add(form);
 

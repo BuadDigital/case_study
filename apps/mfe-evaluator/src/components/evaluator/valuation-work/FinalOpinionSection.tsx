@@ -15,6 +15,7 @@ import {
   Tr,
   cn,
 } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 import {
   Card,
@@ -27,6 +28,7 @@ import {
   FinalOpinionGatesCard,
 } from "./FinalOpinionParts";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
+import { deedNatureMatchBlocksValuation } from "./lib/deed-nature-match-gate";
 
 /** Invoice line from the interactive-form spec — label | value | note. */
 function OpinionInvoiceRow({
@@ -83,6 +85,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   assignmentType,
   poNumber,
   officialValuationDate,
+  fieldErrors,
   saving,
   onSavingChange,
   onReconSaved,
@@ -97,6 +100,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   assignmentType?: string;
   poNumber?: string;
   officialValuationDate: string | null;
+  fieldErrors?: Record<string, string>;
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
   onReconSaved: (dto: ValuationReconciliationDto) => void;
@@ -137,6 +141,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     saveReconciliation,
     openReportPreview,
   } = workflow;
+  const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
 
   return (
     <>
@@ -271,7 +276,13 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         </>
       ) : null}
 
-      <Card className="relative overflow-hidden">
+      <Card
+        id="final-inf-total"
+        className={cn(
+          "relative overflow-hidden",
+          fieldErrors?.evaluator_price && invalidControlClass,
+        )}
+      >
         <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
         <CardPad>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-4">
@@ -344,6 +355,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         − خصم البيع القسري
                       </span>
                       <input
+                        id="final-inf-discount"
                         dir="ltr"
                         type="number"
                         min={0}
@@ -353,7 +365,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         onChange={(e) =>
                           setLiquidationDiscountPct(e.target.value)
                         }
-                        className="ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading"
+                        className={cn(
+                          "ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading",
+                          fieldErrors?.forced_sale_discount &&
+                            invalidControlClass,
+                        )}
                       />
                     </td>
                     <td
@@ -404,6 +420,16 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 </tr>
               </tbody>
             </table>
+            {fieldErrors?.evaluator_price ? (
+              <p className="mt-2 text-[11px] text-danger-text">
+                {fieldErrors.evaluator_price}
+              </p>
+            ) : null}
+            {fieldErrors?.forced_sale_discount ? (
+              <p className="mt-2 text-[11px] text-danger-text">
+                {fieldErrors.forced_sale_discount}
+              </p>
+            ) : null}
 
             <textarea
               rows={6}
@@ -414,7 +440,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
 
           <div className="mt-[18px] flex flex-wrap gap-2.5">
             <PrimaryBtn
-              disabled={saving || reconMethods.length === 0}
+              disabled={saving || reconMethods.length === 0 || matchBlocksCalc}
               onClick={() => void saveReconciliation()}
             >
               {sole ? "حفظ الرأي النهائي" : "حفظ التوفيق والرأي النهائي"}

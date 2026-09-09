@@ -119,6 +119,12 @@ export async function loadEngineeringSurveySubmissionSnapshot(
     eastBoundaryLengthM: String(payload.eastBoundaryLengthM ?? ""),
     westBoundary: String(payload.westBoundary ?? ""),
     westBoundaryLengthM: String(payload.westBoundaryLengthM ?? ""),
+    deedMatchesNature:
+      payload.deedMatchesNature === "yes" || payload.deedMatchesNature === true
+        ? "yes"
+        : payload.deedMatchesNature === "no" || payload.deedMatchesNature === false
+          ? "no"
+          : null,
     surveyNotes: String(payload.surveyNotes ?? ""),
     transactionNote: String(payload.transactionNote ?? ""),
     updatedAtUtc:

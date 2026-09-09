@@ -11,6 +11,7 @@ import {
 import {
   applyValuationReportLiveFill,
   buildValuationReportLiveFill,
+  certifiedPracticeLicenseFromOrg,
 } from "../valuation-report-live-fill";
 
 function poRecord(over: Record<string, unknown> = {}) {
@@ -92,6 +93,45 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["فرضية القيمة"]).toBe("استخدام حالي (من القائمة)");
     expect(fill.basisDefinition).toBe("تعريف أساس السوق من القائمة");
     expect(fill.basisDefinition).not.toMatch(/قيمة التصفية/);
+  });
+
+  it("prints firm practice-license issue and expiry from settings dates", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const empty = buildValuationReportLiveFill({ draft });
+    expect(empty.cells["تاريخ الإصدار"]).toBe("—");
+    expect(empty.cells["تاريخ الانتهاء"]).toBe("—");
+
+    const fill = buildValuationReportLiveFill({
+      draft,
+      certifiedLicense: "1302",
+      certifiedIssuedAt: "2022-03-10",
+      certifiedExpires: "2027-03-10",
+    });
+    expect(fill.cells["رقم ترخيص مزاولة المهنة"]).toBe("1302");
+    expect(fill.cells["تاريخ الإصدار"]).toBe("2022/03/10");
+    expect(fill.cells["تاريخ الانتهاء"]).toBe("2027/03/10");
+  });
+
+  it("prefers firm practice-license dates over empty personal evaluator dates", () => {
+    const hit = certifiedPracticeLicenseFromOrg({
+      company: {
+        practiceLicenseNumber: "1302",
+        practiceLicenseIssuedAt: "2022-03-10",
+        practiceLicenseExpiresAt: "2027-03-10",
+      },
+      evaluator: {
+        licenseNumber: "",
+        licenseIssuedAt: "",
+        licenseExpiresHijri: "",
+      },
+    });
+    expect(hit.number).toBe("1302");
+    expect(hit.issuedAt).toBe("2022/03/10");
+    expect(hit.expiresAt).toBe("2027/03/10");
   });
 
   it("falls back to static maps when list labels are absent", () => {

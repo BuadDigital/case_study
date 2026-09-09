@@ -27,6 +27,7 @@ import {
   collectMissingCaseStudyAnswers,
   firstCaseStudyFormScrollTarget,
 } from "./case-study-form-state";
+import { openCaseStudyAppraisalTab } from "../../lib/case-study-workspace-events";
 import type { CaseStudyFormData } from "./useCaseStudyFormData";
 
 export function useCaseStudyFormCommands(data: CaseStudyFormData) {
@@ -280,8 +281,12 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
           deedNature: gate.invalidDeedNature,
           deedNatureNotes: gate.invalidDeedNatureNotes,
         });
-        if (gate.step !== draft.currentStep) goStep(gate.step);
-        scheduleScrollToCaseStudyField(gate.targetId, 200);
+        if (gate.invalidDeedNature || gate.invalidDeedNatureNotes) {
+          openCaseStudyAppraisalTab();
+        } else {
+          if (gate.step !== draft.currentStep) goStep(gate.step);
+          scheduleScrollToCaseStudyField(gate.targetId, 200);
+        }
         showToast(gate.message, "error");
         return;
       }

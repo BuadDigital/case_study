@@ -328,7 +328,11 @@ const LAND_HIDDEN_FEATURE_KEY_SET = new Set<string>(
 
 const SHOP_SUBJECT_RE = /محل\s*تجار|\bshop\b/i;
 
-/** Vacant land: PO type/classification, inspector origin, or vacant-land checkbox. */
+/**
+ * Vacant land: inspector origin wins once chosen. PO type/classification only
+ * seed the form before الأصل محل التقييم is set — they must not wipe building
+ * fields when the inspector recorded a villa on a PO typed as أرض.
+ */
 export function isLandInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -336,8 +340,10 @@ export function isLandInspectionContext(input: {
   vacantLand?: boolean;
 }): boolean {
   if (input.vacantLand) return true;
-  return [input.assetSubject, input.classification, input.propertyType].some(
-    (value) => textLooksLikeVacantLand(value),
+  const origin = (input.assetSubject ?? "").trim();
+  if (origin) return textLooksLikeVacantLand(origin);
+  return [input.classification, input.propertyType].some((value) =>
+    textLooksLikeVacantLand(value),
   );
 }
 

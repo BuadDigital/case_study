@@ -38,15 +38,18 @@ import {
   officialValuationDateOf,
   type ValuationWorkPropertyHint,
 } from "./lib/shell-state";
+import { deedNatureMatchBlocksValuation } from "./lib/deed-nature-match-gate";
 import {
   approachAvailability,
   buildBankFetchOptions,
+  finalOpinionSyncExtrasFromRecon,
   hasPositiveFinalOpinion,
   initialSubjectArea,
   inspectorPinOf,
   openFailureMessage,
   openRequestBody,
   subjectAreaSyncPlan,
+  type FinalOpinionChangeHandler,
   type SubjectCoords,
 } from "./lib/valuation-data-state";
 import { useValuationSectionSaves } from "./useValuationSectionSaves";
@@ -58,7 +61,7 @@ export type ValuationWorkDataParams = {
   districtHint?: string;
   property?: ValuationWorkPropertyHint;
   intakeProperty?: PoPropertyIntake | null;
-  onFinalOpinionChange?: (finalOpinionValue: number) => void;
+  onFinalOpinionChange?: FinalOpinionChangeHandler;
 };
 
 export function useValuationWorkData({
@@ -325,7 +328,10 @@ export function useValuationWorkData({
       // Hydrate reconciliation drafts inside FinalOpinionSection — new key on every full load.
       if (hydrateEdits) setReconHydrateKey((k) => k + 1);
       if (hasPositiveFinalOpinion(reconRes.data.finalOpinionValue)) {
-        onFinalOpinionChangeRef.current?.(reconRes.data.finalOpinionValue);
+        onFinalOpinionChangeRef.current?.(
+          reconRes.data.finalOpinionValue,
+          finalOpinionSyncExtrasFromRecon(reconRes.data),
+        );
       }
     } else {
       setRecon(null);
@@ -374,7 +380,7 @@ export function useValuationWorkData({
 
   const { settingsSaved, marketEnabled, costEnabled } =
     approachAvailability(approachSettings);
-  const adjustmentsLocked = false;
+  const adjustmentsLocked = deedNatureMatchBlocksValuation(gates);
 
   const readModels = useValuationWorkReadModels({
     hints: { districtHint, property, intakeProperty },
