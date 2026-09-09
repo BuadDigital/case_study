@@ -311,6 +311,10 @@ export type ValuationReportSurveyBounds = {
 
 export type ValuationReportLiveFill = {
   cells: Record<string, string>;
+  /** Saved approach-settings decision; never inferred from stale cost data. */
+  costApproachEnabled: boolean;
+  /** Cost scope from approach settings; hides §20 while retaining building-cost sheets. */
+  costBuildingOnly: boolean;
   scopeBasis: string;
   scopeClient: string;
   basisDefinition: string;
@@ -392,6 +396,9 @@ export type ValuationReportLiveFill = {
 
 export function buildValuationReportLiveFill(input: {
   draft: EvaluatorSubmission;
+  /** Source of truth is the saved approach settings, not the presence of cost rows. */
+  costApproachEnabled?: boolean;
+  costScopeKey?: string | null;
   record?: PoIntakeRecord | null;
   property?: PoPropertyIntake | null;
   inspector?: InspectorWorkspaceDraft | null;
@@ -488,9 +495,13 @@ export function buildValuationReportLiveFill(input: {
   const isLiquidation = keys.valueBasisKey === "liquidation";
   const isLand = isLandInspectionContext({
     vacantLand: inspector?.vacantLand,
-    assetSubject: inspector?.featureValues?.assetSubject,
+    assetSubject:
+      property?.inspectedPropertyType ??
+      inspector?.featureValues?.assetSubject,
     classification: property?.classification,
-    propertyType: property?.propertyType,
+    propertyType:
+      property?.effectivePropertyType ??
+      property?.propertyType,
   });
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
   const licenseDate =
@@ -522,9 +533,11 @@ export function buildValuationReportLiveFill(input: {
     "نوع التقرير": dash(input.reportType),
     "عملة التقييم": dash(input.currency),
     "نوع العقار": dash(
-      property?.propertyType ||
-        property?.classification ||
+      property?.effectivePropertyType ||
+        property?.inspectedPropertyType ||
         inspector?.featureValues?.assetSubject ||
+        property?.propertyType ||
+        property?.classification ||
         inspector?.featureValues?.propertyUsage,
     ),
     "أساليب التقييم المستخدمة": dash(methodsUsed(choices)),
@@ -962,6 +975,8 @@ export function buildValuationReportLiveFill(input: {
 
   return {
     cells,
+    costApproachEnabled: input.costApproachEnabled === true,
+    costBuildingOnly: input.costScopeKey === "building_only",
     scopeBasis: basis,
     scopeClient: client,
     basisDefinition: resolveBasisDefinition(

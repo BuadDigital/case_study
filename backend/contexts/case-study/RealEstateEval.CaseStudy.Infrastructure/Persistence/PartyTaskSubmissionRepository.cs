@@ -99,6 +99,25 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
+    public async Task SetInspectedPropertyTypeAsync(
+        Guid propertyId,
+        string inspectedPropertyType,
+        bool isLand,
+        CancellationToken cancellationToken)
+    {
+        var property = await db.WorkOrderProperties
+            .Include(p => p.BuildingInventoryLines)
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is null) return;
+
+        property.InspectedPropertyType = inspectedPropertyType.Trim();
+        if (!isLand) return;
+
+        property.HasStructuresToValue = HasStructuresToValueValues.No;
+        if (property.BuildingInventoryLines.Count > 0)
+            db.BuildingInventoryLines.RemoveRange(property.BuildingInventoryLines);
+    }
+
     public void Add(PartyTaskSubmission submission) => db.PartyTaskSubmissions.Add(submission);
 
     public async Task UpsertFieldInspectionWorkspaceAsync(

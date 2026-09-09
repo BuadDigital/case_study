@@ -18,6 +18,8 @@ import {
 import {
   isLandInspectionContext,
   isCommercialShopInspectionContext,
+  resolvedInspectorAssetSubject,
+  submittedInspectorAssetIsLand,
   visibleInspectorFeatureFields,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
@@ -111,15 +113,30 @@ export function InspectorWorkspaceWizard({
   );
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
-  const isLand = isLandInspectionContext({
-    vacantLand: draft.vacantLand,
+  const initialAssetSubject =
+    property.propertyType?.trim() || property.classification?.trim() || "";
+  const roleOwnedAssetSubject = resolvedInspectorAssetSubject({
+    status: draft.status,
     assetSubject: draft.featureValues.assetSubject,
-    classification: property.classification,
-    propertyType: property.propertyType,
+    initialAssetSubject,
   });
+  const isLand = serviceProofFromTransactionPhotos
+    ? submittedInspectorAssetIsLand({
+        status: draft.status,
+        assetSubject: draft.featureValues.assetSubject,
+        initialAssetSubject,
+      })
+    : isLandInspectionContext({
+        vacantLand: draft.vacantLand,
+        assetSubject: draft.featureValues.assetSubject,
+        classification: property.classification,
+        propertyType: property.propertyType,
+      });
   const isShop = isCommercialShopInspectionContext({
     vacantLand: draft.vacantLand,
-    assetSubject: draft.featureValues.assetSubject,
+    assetSubject: serviceProofFromTransactionPhotos
+      ? roleOwnedAssetSubject
+      : draft.featureValues.assetSubject,
     classification: property.classification,
     propertyType: property.propertyType,
   });
@@ -267,6 +284,9 @@ export function InspectorWorkspaceWizard({
               movablesDescriptionError={fieldErrors.movablesDescription}
               occupancyDescriptionError={fieldErrors.occupancyDescription}
               disabled={!editable}
+              readOnlyFeatureKeys={
+                serviceProofFromTransactionPhotos ? ["assetSubject"] : []
+              }
               onPatch={onPatch}
             />
             </div>

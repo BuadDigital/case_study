@@ -365,6 +365,30 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع العقار"]).toBe("أرض");
   });
 
+  it("uses the promoted inspected type over the initial property type", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: {
+        propertyType: "فيلا",
+        inspectedPropertyType: "أرض",
+        effectivePropertyType: "أرض",
+        city: "",
+        deedNumber: "",
+      } as never,
+      inspector: {
+        featureValues: { assetSubject: "فيلا" },
+      } as never,
+    });
+
+    expect(fill.isLand).toBe(true);
+    expect(fill.cells["نوع العقار"]).toBe("أرض");
+  });
+
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
@@ -447,6 +471,7 @@ describe("valuation report live fill from intake", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
+      costApproachEnabled: true,
       property: { area: "390", city: "", deedNumber: "" } as never,
       cost: {
         landUnitRateFromMarket: 2000,
@@ -486,6 +511,7 @@ describe("valuation report live fill from intake", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
+      costApproachEnabled: true,
       cost: {
         directCostTotal: 379_000,
         lines: [
@@ -551,6 +577,7 @@ describe("valuation report live fill from intake", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
+      costApproachEnabled: true,
       cost: {
         directCostTotal: 800_000,
         indirectRatesSumPct: 15,
@@ -601,6 +628,7 @@ describe("valuation report live fill from intake", () => {
     });
     const fill = buildValuationReportLiveFill({
       draft,
+      costApproachEnabled: true,
       inspector: { propertyAgeYears: "10" } as never,
       cost: {
         actualAgeYears: 10,

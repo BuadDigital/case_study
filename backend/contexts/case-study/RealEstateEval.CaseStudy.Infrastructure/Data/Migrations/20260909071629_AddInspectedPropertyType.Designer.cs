@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
@@ -11,9 +12,11 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrations
 {
     [DbContext(typeof(CaseStudyDbContext))]
-    partial class CaseStudyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909071629_AddInspectedPropertyType")]
+    partial class AddInspectedPropertyType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

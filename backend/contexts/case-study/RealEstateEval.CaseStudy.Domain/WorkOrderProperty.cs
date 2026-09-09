@@ -77,7 +77,13 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>City catalog ref.</summary>
     public Guid? CityId { get; set; }
     public string Classification { get; set; } = "";
+    /// <summary>Initial type recorded during intake/bourse; retained for audit.</summary>
     public string PropertyType { get; set; } = "";
+    /// <summary>
+    /// Operational type confirmed by the field inspector on submission.
+    /// Null until the first completed field inspection.
+    /// </summary>
+    public string? InspectedPropertyType { get; set; }
     public string? AssignmentDocFileName { get; set; }
     public string? DelegationLetterFileName { get; set; }
  /// <summary>JSON array of filenames.</summary>

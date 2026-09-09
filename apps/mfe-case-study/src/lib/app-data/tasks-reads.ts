@@ -15,7 +15,10 @@ import {
   partyAccountForViewer,
 } from "./distribution-parties";
 import { ROLES, type StaffUser } from "@platform/app-shared/app-data/constants";
-import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import type {
+  WorkflowTask,
+  WorkflowTaskKind,
+} from "@platform/app-shared/workflow/task-types";
 import {
   dtoToTask,
   migrateDistribution,
@@ -117,6 +120,35 @@ export function caseStudyTaskForProperty(
       t.poNumber.trim() === poNumber.trim() &&
       t.propertyId === propertyId,
   );
+}
+
+const FAMILY_CHILD_KIND_ORDER: WorkflowTaskKind[] = [
+  "property-appraisal",
+  "field-inspection",
+  "engineering-survey",
+];
+
+/**
+ * Parent case-study task when the viewer can see it; otherwise the party's own
+ * child row (appraiser / inspector / survey) so assigned-party names still
+ * resolve from coalesced parent distribution.
+ */
+export function caseStudyFamilyTaskForProperty(
+  poNumber: string,
+  propertyId: string,
+  list: WorkflowTask[],
+): WorkflowTask | undefined {
+  const parent = caseStudyTaskForProperty(poNumber, propertyId, list);
+  if (parent) return parent;
+  const po = poNumber.trim();
+  const matches = list.filter(
+    (t) => t.poNumber.trim() === po && t.propertyId === propertyId,
+  );
+  for (const kind of FAMILY_CHILD_KIND_ORDER) {
+    const found = matches.find((t) => t.kind === kind);
+    if (found) return found;
+  }
+  return matches[0];
 }
 
 export function compareWorkflowTasks(

@@ -213,7 +213,12 @@ export type PoPropertyIntake = {
   /** Districts catalog — district ref (optional until approved). */
   districtId: string;
   classification: string;
+  /** Initial type captured before field inspection. */
   propertyType: string;
+  /** Type confirmed by the field inspector on submission. */
+  inspectedPropertyType?: string;
+  /** Confirmed type when present, otherwise the initial type. */
+  effectivePropertyType?: string;
   assignmentDocFileNames: string[];
   delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
@@ -317,6 +322,8 @@ export function emptyProperty(): PoPropertyIntake {
     districtId: "",
     classification: "",
     propertyType: "",
+    inspectedPropertyType: "",
+    effectivePropertyType: "",
     assignmentDocFileNames: [],
     delegationLetterFileNames: [],
     otherDocumentFileNames: [],

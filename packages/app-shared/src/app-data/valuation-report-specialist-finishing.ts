@@ -4,6 +4,10 @@ import {
   loadSpecialistReportExtrasBag,
   patchSpecialistReportExtras,
 } from "@platform/app-shared/storage/specialist-report-extras-sync";
+import {
+  submittedInspectorAssetIsLand,
+  type InspectorWorkspaceStatus,
+} from "./inspector-workspace-data";
 
 export type SpecialistFinishingLevel =
   | ""
@@ -28,6 +32,18 @@ export function normalizeSpecialistFinishingLevel(
     return v;
   }
   return "";
+}
+
+/** Building finishing is inapplicable to land, including stale saved values. */
+export function specialistFinishingLevelForInspection(
+  level: SpecialistFinishingLevel,
+  inspection: {
+    status: InspectorWorkspaceStatus;
+    assetSubject?: string | null;
+    initialAssetSubject?: string | null;
+  },
+): SpecialistFinishingLevel {
+  return submittedInspectorAssetIsLand(inspection) ? "" : level;
 }
 
 export function loadSpecialistFinishingLevel(

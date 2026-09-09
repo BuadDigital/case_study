@@ -33,7 +33,9 @@ import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-a
 import {
   CASE_STUDY_SPECIALIST_FEATURE_KEYS,
   isInspectorWorkspaceAccepted,
+  submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
+  type InspectorWorkspaceStatus,
 } from "../lib/app-data/inspector-workspace-data";
 import { reopenInspectorWorkspace } from "../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
@@ -52,6 +54,11 @@ import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
 import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT } from "../lib/case-study-workspace-events";
 import { migrateDistribution } from "../lib/app-data/tasks-storage";
+import {
+  loadSpecialistFinishingLevel,
+  saveSpecialistFinishingLevel,
+  specialistFinishingLevelForInspection,
+} from "../lib/app-data/valuation-report-specialist-finishing";
 
 export type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
@@ -101,9 +108,10 @@ function CaseStudyAppraisalPanel({
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returning, setReturning] = useState(false);
-  const [inspectionPackageStatus, setInspectionPackageStatus] = useState<
-    string | null
-  >(null);
+  const [inspectionPackageStatus, setInspectionPackageStatus] =
+    useState<InspectorWorkspaceStatus | null>(null);
+  const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
+  const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] = useState(false);
   const [inspectionAccepted, setInspectionAccepted] = useState(false);
   const [inspectionReturnNote, setInspectionReturnNote] = useState<string | null>(
     null,
@@ -152,6 +160,8 @@ function CaseStudyAppraisalPanel({
   useEffect(() => {
     if (!inspectionTask) {
       setInspectionPackageStatus(null);
+      setInspectionAssetSubject("");
+      setInspectionSnapshotLoaded(false);
       setInspectionAccepted(false);
       setInspectionReturnNote(null);
       return;
@@ -161,6 +171,8 @@ function CaseStudyAppraisalPanel({
       void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((draft) => {
         if (cancelled) return;
         setInspectionPackageStatus(draft?.status ?? null);
+        setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
+        setInspectionSnapshotLoaded(true);
         setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
         setInspectionReturnNote(draft?.returnNote?.trim() || null);
       });
@@ -176,6 +188,33 @@ function CaseStudyAppraisalPanel({
       );
     };
   }, [inspectionTask, inspectionReloadKey]);
+
+  const inspectionUsesLand = submittedInspectorAssetIsLand({
+    status: inspectionPackageStatus ?? "draft",
+    assetSubject: inspectionAssetSubject,
+    initialAssetSubject:
+      property.propertyType?.trim() || property.classification?.trim() || "",
+  });
+
+  useEffect(() => {
+    if (!inspectionSnapshotLoaded) return;
+    const stored = loadSpecialistFinishingLevel(property.id);
+    const applicable = specialistFinishingLevelForInspection(stored, {
+      status: inspectionPackageStatus ?? "draft",
+      assetSubject: inspectionAssetSubject,
+      initialAssetSubject:
+        property.propertyType?.trim() || property.classification?.trim() || "",
+    });
+    if (!stored || applicable) return;
+    saveSpecialistFinishingLevel(property.id, "");
+  }, [
+    inspectionAssetSubject,
+    inspectionPackageStatus,
+    inspectionSnapshotLoaded,
+    property.classification,
+    property.id,
+    property.propertyType,
+  ]);
 
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
   const engineeringAssigned = migrateDistribution(
@@ -324,6 +363,15 @@ function CaseStudyAppraisalPanel({
           />
         ) : null}
 
+        {inspectionPackageStatus === "submitted" &&
+        inspectionAssetSubject.trim() &&
+        inspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
+            ميدانياً: {inspectionAssetSubject.trim()}
+          </div>
+        ) : null}
+
         {inspectionTask && inspectionCard ? (
           <PropertyDetailInspectionTab
             key={`${inspectionTask.id}:${inspectionReloadKey}`}
@@ -336,13 +384,15 @@ function CaseStudyAppraisalPanel({
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
             submitSuccessToast="تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
-            submitFooterAfter={
+            submitFooterAfter={!inspectionUsesLand ? (
               <SpecialistValuationReportInputs
                 propertyId={property.id}
                 poNumber={poNumber}
                 readOnly={inspectionAccepted}
               />
-            }
+            ) : (
+              <></>
+            )}
             onSubmitted={() => {
               setInspectionAccepted(true);
               setInspectionReloadKey((n) => n + 1);

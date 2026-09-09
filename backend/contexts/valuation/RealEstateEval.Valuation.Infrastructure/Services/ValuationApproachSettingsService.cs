@@ -36,11 +36,13 @@ public sealed class ValuationApproachSettingsService(
         var row = await db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
-        var (hasStructures, assignmentType) = await PropertyContextAsync(vr, cancellationToken);
+        var (hasStructures, assignmentType, effectivePropertyType) =
+            await PropertyContextAsync(vr, cancellationToken);
         return ToDto(
             vr,
             row,
             hasStructures,
+            effectivePropertyType,
             assignmentType,
             await AssumptionLibraryAsync(cancellationToken));
     }
@@ -88,7 +90,8 @@ public sealed class ValuationApproachSettingsService(
         if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
             return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
 
-        var (hasStructures, assignmentType) = await PropertyContextAsync(vr, cancellationToken);
+        var (hasStructures, assignmentType, effectivePropertyType) =
+            await PropertyContextAsync(vr, cancellationToken);
         DateOnly? retroDate = null;
         if (DateOnly.TryParse(request.RetrospectiveDate?.Trim(), out var parsedRetro))
             retroDate = parsedRetro;
@@ -102,7 +105,7 @@ public sealed class ValuationApproachSettingsService(
             request.IncomeApproachEnabled,
             request.CostBasisKey,
             request.CostMeasurementUnitKey,
-            vr.PropertyType,
+            effectivePropertyType,
             hasStructures,
             request.ValuationPurposeKey,
             request.ValuationPurposeNote,
@@ -161,48 +164,61 @@ public sealed class ValuationApproachSettingsService(
         row.UpdatedAtUtc = _time.UtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
-        return (ToDto(vr, row, hasStructures, assignmentType, await AssumptionLibraryAsync(cancellationToken)), null);
+        return (ToDto(
+            vr,
+            row,
+            hasStructures,
+            effectivePropertyType,
+            assignmentType,
+            await AssumptionLibraryAsync(cancellationToken)), null);
     }
 
  /// <summary>Scoping question "are there buildings/structures to value?" + assignment type from the work-order property.</summary>
-    private async Task<(bool HasStructures, AssignmentType AssignmentType)> PropertyContextAsync(
+    private async Task<(bool HasStructures, AssignmentType AssignmentType, string EffectivePropertyType)> PropertyContextAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)
     {
         var propertyGuid = vr.PropertyId;
         if (propertyGuid == Guid.Empty)
-            return (false, AssignmentType.Execution);
+            return (false, AssignmentType.Execution, vr.PropertyType);
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
         var hasStructures = string.Equals(
             context?.HasStructuresToValue.Trim(),
             "yes",
             StringComparison.OrdinalIgnoreCase);
-        return (hasStructures, context?.AssignmentTypeValue() ?? AssignmentType.Execution);
+        return (
+            hasStructures,
+            context?.AssignmentTypeValue() ?? AssignmentType.Execution,
+            context?.EffectivePropertyType() ?? vr.PropertyType);
     }
 
     private static ValuationApproachSettingsDto ToDto(
         ValuationRequest vr,
         ValuationApproachSettings? row,
         bool hasStructures,
+        string effectivePropertyType,
         AssignmentType assignmentType,
         IReadOnlyList<string> assumptionLibrary)
     {
         var effective = row
-            ?? ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
+            ?? ValuationApproachSettingsRules.Defaults(vr.Id, effectivePropertyType, hasStructures);
         var purposeKey = string.IsNullOrWhiteSpace(effective.ValuationPurposeKey)
             ? AssignmentValuationDefaults.PurposeKey(assignmentType)
             : effective.ValuationPurposeKey;
+        var costAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
+            effectivePropertyType,
+            hasStructures);
         return new ValuationApproachSettingsDto
         {
             ValuationRequestId = vr.Id,
             PropertyId = vr.PropertyId.ToString("D"),
-            PropertyType = vr.PropertyType,
-            IsLandPropertyType = ValuationApproachSettingsRules.IsLandPropertyType(vr.PropertyType),
+            PropertyType = effectivePropertyType,
+            InitialPropertyType = vr.PropertyType,
+            IsLandPropertyType = ValuationApproachSettingsRules.IsLandPropertyType(effectivePropertyType),
             HasStructuresToValue = hasStructures,
-            CostApproachAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
-                vr.PropertyType, hasStructures),
+            CostApproachAllowed = costAllowed,
             MarketApproachEnabled = effective.MarketApproachEnabled,
-            CostApproachEnabled = effective.CostApproachEnabled,
+            CostApproachEnabled = costAllowed && effective.CostApproachEnabled,
             IncomeApproachEnabled = effective.IncomeApproachEnabled,
             CostBasisKey = effective.CostBasisKey,
             CostBasisLabelAr = CostBasisKeys.LabelAr(effective.CostBasisKey),

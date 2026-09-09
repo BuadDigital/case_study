@@ -163,6 +163,39 @@ export function textLooksLikeVacantLand(
   return normalized.includes("ارض") || /\bland\b/.test(normalized);
 }
 
+/**
+ * The inspector owns the submitted subject-asset value. Before submission,
+ * consumers must keep using the transaction's initial type.
+ */
+export function resolvedInspectorAssetSubject(input: {
+  status: InspectorWorkspaceStatus;
+  assetSubject?: string | null;
+  initialAssetSubject?: string | null;
+}): string {
+  return input.status === "submitted"
+    ? (input.assetSubject ?? "").trim()
+    : (input.initialAssetSubject ?? "").trim();
+}
+
+export function submittedInspectorAssetIsLand(input: {
+  status: InspectorWorkspaceStatus;
+  assetSubject?: string | null;
+  initialAssetSubject?: string | null;
+}): boolean {
+  return textLooksLikeVacantLand(resolvedInspectorAssetSubject(input));
+}
+
+/** Specialist corrections may not overwrite inspector-owned subject asset. */
+export function preserveInspectorOwnedFeatureValues(
+  current: Record<string, string>,
+  requested: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...requested,
+    assetSubject: current.assetSubject ?? "",
+  };
+}
+
 export function patchInspectorFeatureValues(
   featureValues: Record<string, string>,
   key: string,

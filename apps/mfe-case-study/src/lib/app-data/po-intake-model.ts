@@ -125,6 +125,12 @@ export function dtoToProperty(
     districtId: "",
     classification: dto.classification ?? "",
     propertyType: dto.propertyType ?? "",
+    inspectedPropertyType: dto.inspectedPropertyType ?? "",
+    effectivePropertyType:
+      dto.effectivePropertyType ??
+      dto.inspectedPropertyType ??
+      dto.propertyType ??
+      "",
     assignmentDocFileNames: dto.assignmentDocFileNames ?? [],
     delegationLetterFileNames: dto.delegationLetterFileNames ?? [],
     otherDocumentFileNames: dto.otherDocumentFileNames ?? [],

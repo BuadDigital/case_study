@@ -62,7 +62,7 @@ public sealed class ValuationIssuanceGateService(
             if (context is not null)
             {
                 deedKind = context.DeedKindValue();
-                propertyType = context.PropertyType.Trim();
+                propertyType = context.EffectivePropertyType();
                 hasStructures = string.Equals(
                     context.HasStructuresToValue.Trim(),
                     "yes",
@@ -99,8 +99,11 @@ public sealed class ValuationIssuanceGateService(
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
-        var costApproachEnabled = approachSettings?.CostApproachEnabled
-            ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
+        var costApproachAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
+            string.IsNullOrWhiteSpace(propertyType) ? vr.PropertyType : propertyType,
+            hasStructures);
+        var costApproachEnabled = costApproachAllowed
+            && (approachSettings?.CostApproachEnabled ?? true);
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(approachSettings?.CostScopeKey);

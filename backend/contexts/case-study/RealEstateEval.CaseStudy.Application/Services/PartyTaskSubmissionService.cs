@@ -160,6 +160,22 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             if (!canStaffCorrectFieldInspection)
                 return (null, Error("لا يمكن تعديل إرسال مُكتمل"));
 
+            var submittedType =
+                InspectedPropertyTypeRules.FromPayload(entity.PayloadJson);
+            var correctedType =
+                InspectedPropertyTypeRules.FromPayload(payloadJson);
+            if (!string.Equals(
+                    submittedType,
+                    correctedType,
+                    StringComparison.Ordinal))
+            {
+                return (null, new Dictionary<string, string>
+                {
+                    ["assetSubject"] =
+                        "نوع العقار الميداني يملكه المعاين؛ أعد المهمة للتصحيح",
+                });
+            }
+
             // Keep package submitted while case staff corrects fields (map pin, etc.).
             payloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(
                 payloadJson,
@@ -223,6 +239,22 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (entity.Status is PartyTaskSubmissionStatus.Submitted)
             return (await ToDtoAsync(entity, cancellationToken), null);
 
+        string? inspectedPropertyType = null;
+        if (task.Kind == WorkflowTaskKind.FieldInspection)
+        {
+            inspectedPropertyType = InspectedPropertyTypeRules.FromPayload(entity.PayloadJson);
+            if (inspectedPropertyType is null)
+            {
+                return (null, new Dictionary<string, string>
+                {
+                    ["assetSubject"] = "الأصل محل التقييم مطلوب ويجب اختياره من القائمة",
+                });
+            }
+            entity.PayloadJson = InspectedPropertyTypeRules.NormalizePayloadForSubmission(
+                entity.PayloadJson,
+                inspectedPropertyType);
+        }
+
         var validationErrors = await ValidateForSubmitAsync(entity, cancellationToken);
         if (validationErrors.Count > 0)
             return (null, validationErrors);
@@ -240,6 +272,15 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         await _repo.ExecuteInTransactionAsync(
             async ct =>
             {
+                if (task.PropertyId is Guid inspectedPropertyId
+                    && inspectedPropertyType is not null)
+                {
+                    await _repo.SetInspectedPropertyTypeAsync(
+                        inspectedPropertyId,
+                        inspectedPropertyType,
+                        InspectedPropertyTypeRules.IsLand(inspectedPropertyType),
+                        ct);
+                }
                 await _repo.SaveChangesAsync(ct);
                 await _tasks.PatchAsync(
                     taskId,

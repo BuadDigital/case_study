@@ -203,19 +203,24 @@ public static class ValuationApproachSettingsRules
  /// </summary>
     public static bool IsLandPropertyType(string? propertyType)
     {
-        var v = (propertyType ?? "").Trim();
-        return v.Contains("أرض", StringComparison.Ordinal)
+        var v = (propertyType ?? "")
+            .Replace("أ", "ا")
+            .Replace("إ", "ا")
+            .Replace("آ", "ا")
+            .Replace("ٱ", "ا")
+            .Trim();
+        return v.Contains("ارض", StringComparison.Ordinal)
             || v.Equals("land", StringComparison.OrdinalIgnoreCase);
     }
 
  /// <summary>
- /// Q-3 amended (v2 spec §3): land **without structures** alone is not valued by cost —
- /// land with structures (fences or annexes) opens cost for structure lines only.
+ /// The inspector-confirmed land type disables the building cost approach.
+ /// Residual structure rows may remain stored but never participate in valuation.
  /// </summary>
     public static bool CanEnableCostApproach(string? propertyType, bool hasStructuresToValue) =>
-        !IsLandPropertyType(propertyType) || hasStructuresToValue;
+        !IsLandPropertyType(propertyType);
 
- /// <summary>Defaults when no row was saved yet: both current approaches on, except cost for bare land.</summary>
+ /// <summary>Defaults when no row was saved yet: both current approaches on, except cost for land.</summary>
     public static ValuationApproachSettings Defaults(
         Guid valuationRequestId,
         string? propertyType,

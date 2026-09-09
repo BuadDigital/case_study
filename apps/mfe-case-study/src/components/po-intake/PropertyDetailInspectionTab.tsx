@@ -48,6 +48,7 @@ import {
   newObservationId,
   parseInspectorCount,
   patchInspectorFeatureValues,
+  preserveInspectorOwnedFeatureValues,
   restoreInspectorOriginalMapPin,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   visibleInspectorFeatureFields,
@@ -298,13 +299,23 @@ export function PropertyDetailInspectionTab({
 
   function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
     if (!inspectionTask || locked) return;
+    const safePatch =
+      serviceProofFromTransactionPhotos && draft && patch.featureValues
+        ? {
+            ...patch,
+            featureValues: preserveInspectorOwnedFeatureValues(
+              draft.featureValues,
+              patch.featureValues,
+            ),
+          }
+        : patch;
     setFieldErrors({});
     setFormError(null);
     // Update the controlled inputs immediately — network save is debounced.
     setDraft((prev) =>
-      prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
+      prev ? mergeInspectorWorkspacePatch(prev, safePatch) : prev,
     );
-    void updateInspectorWorkspace(inspectionTask.id, patch, {
+    void updateInspectorWorkspace(inspectionTask.id, safePatch, {
       allowWhenSubmitted:
         serviceProofFromTransactionPhotos && !locked,
     })

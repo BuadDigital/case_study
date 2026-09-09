@@ -104,6 +104,10 @@ public static class WorkOrderMapper
             CityId = p.CityId,
             Classification = p.Classification,
             PropertyType = p.PropertyType,
+            InspectedPropertyType = p.InspectedPropertyType,
+            EffectivePropertyType = InspectedPropertyTypeRules.Effective(
+                p.PropertyType,
+                p.InspectedPropertyType),
             AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),
             DelegationLetterFileNames = ParseFileNameList(p.DelegationLetterFileName),
             OtherDocumentFileNames = ParseFileNameList(p.OtherDocumentFileNames),

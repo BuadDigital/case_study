@@ -155,7 +155,7 @@ export function buildCaseStudyTracks(
             children,
             kind as Exclude<WorkflowTaskKind, "case-study-property">,
           ) ?? (parent.kind === kind ? parent : undefined));
-    const state =
+    let state =
       kind === "parent"
         ? parent.status === "completed" || parent.phase === "done"
           ? PropertyListRowStatuses.Done
@@ -163,6 +163,9 @@ export function buildCaseStudyTracks(
             ? PropertyListRowStatuses.Progress
             : PropertyListRowStatuses.New
         : trackStateFromTask(child, spawned);
+    if (id === "inspection" && !child && parent.fieldInspectionCompleted) {
+      state = PropertyListRowStatuses.Done;
+    }
     const distName = distributionAssignee(distribution, id, staffUsers);
     const assigneeName = resolveAssigneeDisplayName({
       assigneeName: child?.assigneeName,

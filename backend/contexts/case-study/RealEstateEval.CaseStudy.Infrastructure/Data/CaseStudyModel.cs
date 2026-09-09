@@ -77,6 +77,8 @@ public static class CaseStudyModel
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
+            e.Property(x => x.PropertyType).HasMaxLength(128);
+            e.Property(x => x.InspectedPropertyType).HasMaxLength(128);
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.HasStructuresToValue), TriStateAnswers);
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);

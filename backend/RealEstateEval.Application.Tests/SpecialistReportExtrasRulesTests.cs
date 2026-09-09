@@ -56,6 +56,24 @@ public class SpecialistReportExtrasRulesTests
     }
 
     [Fact]
+    public void Apply_drops_finishing_for_inspector_confirmed_land()
+    {
+        var entity = new WorkOrderProperty
+        {
+            PropertyType = "فيلا",
+            InspectedPropertyType = "أرض",
+        };
+
+        Assert.Null(SpecialistReportExtrasRules.ApplyFromWireJson(
+            entity,
+            """{"finishing":"luxury"}"""));
+        Assert.Null(entity.SpecialistFinishingLevel);
+        Assert.DoesNotContain(
+            "finishing",
+            SpecialistReportExtrasRules.ToWireJson(entity) ?? "");
+    }
+
+    [Fact]
     public void Apply_rejects_invalid_json()
     {
         var entity = new WorkOrderProperty();

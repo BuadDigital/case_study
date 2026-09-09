@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   isLandInspectionContext,
+  preserveInspectorOwnedFeatureValues,
+  resolvedInspectorAssetSubject,
   sanitizeInspectorDraftForLand,
+  submittedInspectorAssetIsLand,
   type InspectorWorkspaceDraft,
 } from "../inspector-workspace-data";
 
@@ -54,6 +57,51 @@ describe("isLandInspectionContext", () => {
         propertyType: "ارض",
       }),
     ).toBe(true);
+  });
+});
+
+describe("submitted inspector type ownership", () => {
+  it("uses the initial type until the inspector submits", () => {
+    expect(
+      resolvedInspectorAssetSubject({
+        status: "draft",
+        assetSubject: "أرض",
+        initialAssetSubject: "فيلا",
+      }),
+    ).toBe("فيلا");
+    expect(
+      resolvedInspectorAssetSubject({
+        status: "reopened",
+        assetSubject: "أرض",
+        initialAssetSubject: "فيلا",
+      }),
+    ).toBe("فيلا");
+  });
+
+  it("uses the inspector type only for a submitted package", () => {
+    expect(
+      submittedInspectorAssetIsLand({
+        status: "submitted",
+        assetSubject: "أرض",
+        initialAssetSubject: "فيلا",
+      }),
+    ).toBe(true);
+    expect(
+      submittedInspectorAssetIsLand({
+        status: "draft",
+        assetSubject: "أرض",
+        initialAssetSubject: "فيلا",
+      }),
+    ).toBe(false);
+  });
+
+  it("preserves assetSubject while applying specialist feature corrections", () => {
+    expect(
+      preserveInspectorOwnedFeatureValues(
+        { assetSubject: "أرض", zoneStatus: "غير موقوفة" },
+        { assetSubject: "فيلا", zoneStatus: "موقوفة" },
+      ),
+    ).toEqual({ assetSubject: "أرض", zoneStatus: "موقوفة" });
   });
 });
 

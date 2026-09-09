@@ -349,12 +349,15 @@ export type SaveValuationComparableMarketRequest = {
 export type ValuationApproachSettingsDto = {
   valuationRequestId: string;
   propertyId: string;
+  /** Operational type (inspector-confirmed when available). */
   propertyType: string;
+  /** Original type captured when the valuation request was opened. */
+  initialPropertyType?: string;
   /** Property type is land (any classification). */
   isLandPropertyType: boolean;
   /** Scope question: are there buildings/improvements to value? */
   hasStructuresToValue: boolean;
-  /** Q-3 (revised): land with no improvements alone disables the cost approach. */
+  /** Inspector-confirmed land disables the cost approach. */
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;

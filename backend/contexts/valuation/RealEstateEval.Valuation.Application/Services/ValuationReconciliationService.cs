@@ -57,27 +57,33 @@ public sealed class ValuationReconciliationService(
         CancellationToken cancellationToken)
     {
         var settings = await repo.GetApproachSettingsAsync(vr.Id, cancellationToken);
-        if (settings is null)
+        var hasStructures = false;
+        var effectivePropertyType = vr.PropertyType;
+        var propertyGuid = vr.PropertyId;
+        if (propertyGuid != Guid.Empty)
         {
-            var hasStructures = false;
-            var propertyGuid = vr.PropertyId;
-            if (propertyGuid != Guid.Empty)
-            {
-                var context = await caseStudy.GetValuationPropertyContextAsync(
-                    propertyGuid,
-                    cancellationToken);
-                hasStructures = string.Equals(
-                    context?.HasStructuresToValue.Trim(),
-                    "yes",
-                    StringComparison.OrdinalIgnoreCase);
-            }
-
-            settings = ValuationApproachSettingsRules.Defaults(vr.Id, vr.PropertyType, hasStructures);
+            var context = await caseStudy.GetValuationPropertyContextAsync(
+                propertyGuid,
+                cancellationToken);
+            hasStructures = string.Equals(
+                context?.HasStructuresToValue.Trim(),
+                "yes",
+                StringComparison.OrdinalIgnoreCase);
+            effectivePropertyType =
+                context?.EffectivePropertyType() ?? vr.PropertyType;
         }
 
+        settings ??= ValuationApproachSettingsRules.Defaults(
+            vr.Id,
+            effectivePropertyType,
+            hasStructures);
+        var costEnabled = settings.CostApproachEnabled
+            && ValuationApproachSettingsRules.CanEnableCostApproach(
+                effectivePropertyType,
+                hasStructures);
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
-            settings.CostApproachEnabled);
+            costEnabled);
     }
 
     private async Task<(AssignmentType AssignmentType, string? BasisOfValueKey, string? ValuePremiseKey)>

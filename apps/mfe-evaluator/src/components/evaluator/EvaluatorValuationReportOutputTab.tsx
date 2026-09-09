@@ -374,6 +374,12 @@ export function EvaluatorValuationReportOutputTab({
           draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
         live: buildValuationReportLiveFill({
           draft,
+          costApproachEnabled: Boolean(
+            approachSettings?.isSaved &&
+              approachSettings.costApproachEnabled &&
+              (approachSettings.costApproachAllowed ?? true),
+          ),
+          costScopeKey: approachSettings?.costScopeKey,
           record,
           property,
           inspector,

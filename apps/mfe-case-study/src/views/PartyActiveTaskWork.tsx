@@ -584,8 +584,14 @@ export function PartyActiveTaskWork({
               propertyIndex={propertyIndex + 1}
               hideOpenCaseStudy
             />
-            <div className={opsContentPanel}>
-              {appraisalWork}
+            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div className={opsContentPanel}>
+                {appraisalWork}
+              </div>
+              <PropertyTransactionTimeline
+                record={record}
+                property={property}
+              />
             </div>
           </PageShell>
         </div>
