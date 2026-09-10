@@ -423,7 +423,9 @@ public class FieldInspectionSubmissionIntegrationTests
           "hasAnnex": "لا",
           "showroomCount": "",
           "wellCount": "",
-          "featureValues": {},
+          "featureValues": {
+            "assetSubject": "فيلا"
+          },
           "featurePhotoAttachments": {},
           "componentPhotoAttachments": { "showroom": null, "well": null },
           "observations": [],
