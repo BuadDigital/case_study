@@ -171,6 +171,7 @@ public class CaseStudyValuationDispatchTests
             PropertyType = "فيلا",
             Classification = "سكني",
             IdentifierType = PropertyIdentifierType.RealEstateRegistration,
+            DeedKind = DeedKind.RegisteredTitle,
             DeedNumber = "1234567890",
         });
         db.WorkflowTasks.AddRange(
