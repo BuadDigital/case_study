@@ -2,6 +2,7 @@ import {
   CASE_STUDY_REPORT_SUBTITLE,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_REMARKS_HINT,
+  caseStudyHeaderLogoImage,
   caseStudySignatureImage,
   caseStudyStampImage,
 } from "./case-study-form-data";
@@ -51,12 +52,16 @@ function renderWatermarkHtml(): string {
 }
 
 function renderPageChrome(): string {
+  const logo = caseStudyHeaderLogoImage();
+  const logoHtml = logo
+    ? `<img class="csrd-header-logo-img" src="${escapeCaseStudyReportHtml(logo)}" alt="" />`
+    : `<div class="csrd-header-wordmark">EJADAH<span class="csrd-header-wordmark-dot">.</span></div>
+      <div class="csrd-header-sub">PROFESSIONAL</div>`;
   return `
 <div class="csrd-header" aria-hidden="true">
   <div class="csrd-header-placeholder">
     <div class="csrd-header-logo">
-      <div class="csrd-header-wordmark">EJADAH<span class="csrd-header-wordmark-dot">.</span></div>
-      <div class="csrd-header-sub">PROFESSIONAL</div>
+      ${logoHtml}
     </div>
     <div class="csrd-header-divider"></div>
     <div class="csrd-header-service">
@@ -223,6 +228,7 @@ body {
 .csrd-header { position:absolute; top:0; right:0; left:0; height:var(--header-h); z-index:200; background:#fff; overflow:hidden; }
 .csrd-header-placeholder { width:100%; height:100%; display:flex; border-bottom:3px solid var(--gold); }
 .csrd-header-logo { background:var(--navy); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 14px; min-width:55mm; gap:3px; }
+.csrd-header-logo-img { max-width:48mm; max-height:14mm; object-fit:contain; display:block; }
 .csrd-header-wordmark { color:#fff; font-size:20pt; font-weight:700; line-height:1; }
 .csrd-header-wordmark-dot { color:var(--gold); }
 .csrd-header-sub { color:var(--gold); font-size:7.5pt; font-weight:600; letter-spacing:3px; }

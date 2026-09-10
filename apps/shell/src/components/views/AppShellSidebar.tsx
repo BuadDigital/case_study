@@ -5,7 +5,7 @@ import type { PageId, RoleId } from "@platform/types";
 import type { ActiveTransactionNavItem } from "@platform/app-shared/app-data/active-transactions";
 import type { SettingsNavTreeNode } from "@platform/app-shared/app-data/system-settings-nav";
 import type { FinanceNavArea } from "@platform/app-shared/app-data/financial-nav";
-import { EjadaLogo } from "@/components/views/EjadaLogo";
+import { BrandLogo } from "@/components/views/BrandLogo";
 import {
   CloseIcon,
   NavRailSeparator,
@@ -127,7 +127,7 @@ export function AppShellSidebar({
             desktopRail && "lg:px-2 lg:pb-3 lg:pt-4",
           )}
         >
-          <EjadaLogo
+          <BrandLogo
             className={cn(
               "h-auto w-[155px] max-w-full transition-[width] duration-200",
               desktopRail && "lg:w-11",

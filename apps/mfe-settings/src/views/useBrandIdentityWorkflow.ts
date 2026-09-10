@@ -1,18 +1,13 @@
 "use client";
 
 /**
- * Brand-identity workflow: load/save branding, per-asset dirty tracking,
- * confirm dialogs and the letterhead zoom/drag/pan interaction. Pure
- * decisions live in `brand-identity-state.ts`; regions render the bag.
+ * Brand-identity workflow — autosave like the valuers roster: size and margin edits save
+ * after a short typing pause, uploads and resets save right after their confirmation. Each
+ * card saves only its own fields, one save at a time, and reports its status. Letterhead
+ * zoom lives in `useBrandLetterheadZoom`; pure decisions in `brand-identity-state.ts`.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BRAND_IDENTITY_DEFAULTS,
   getOrganizationSettings,
@@ -20,67 +15,80 @@ import {
   type OrganizationBrandingSettings,
 } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { todayIso } from "@platform/app-shared/format/date";
 import { useToast } from "@platform/ui-kit";
 import type { ConfirmActionSpec } from "../components/ConfirmActionModal";
-import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
+import { refreshOrgCache } from "../lib/org-settings-ui";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 import {
-  applyConfirmCopy,
-  applyToast,
-  BRAND_APPLY_TARGETS,
-  BRAND_DELETE_TARGETS,
+  AUTOSAVE_DELAY_MS,
+  BRAND_CARD_LABELS,
+  BRAND_KEYS,
+  BRAND_RESET_TARGETS,
   BRAND_UPLOAD_TARGETS,
   brandAssetView,
-  CLEAN_BRAND_DIRTY,
-  DELETE_CONFIRM_COPY,
-  DELETE_TOAST,
-  dragToMm,
-  isTypingTarget,
+  cardSaveBlocker,
+  cmFromInput,
+  IDLE_SAVE_STATUS,
+  isBrandCardDefault,
+  letterheadMarginError,
   letterheadMetaText,
-  LH_GUIDES,
   lhFieldValue,
-  lhGuidePercent,
   LOAD_FAILED_MESSAGE,
   LOGIN_REQUIRED_MESSAGE,
   logoMetaText,
+  resetConfirmCopy,
+  resetToast,
   SAVE_FAILED_TOAST,
   stampMetaText,
+  stampSizePatch,
   uploadConfirmCopy,
   uploadFileHint,
   uploadToast,
-  type BrandDeleteTargetId,
-  type BrandDirty,
+  withCardFields,
+  type BrandChangeContext,
   type BrandKey,
   type BrandUploadTargetId,
-  type LhDragAxis,
-  type LhGuideKey,
+  type CardSaveStatus,
 } from "./brand-identity-state";
+import { pickBrandImage } from "./brand-image-picker";
+import { useBrandLetterheadZoom } from "./useBrandLetterheadZoom";
 
 export type BrandIdentityWorkflow = ReturnType<typeof useBrandIdentityWorkflow>;
 
 export function useBrandIdentityWorkflow() {
   const { showToast } = useToast();
   const canEdit = useCapability("manage-system-config");
-  const [brand, setBrand] = useState<OrganizationBrandingSettings>(
-    BRAND_IDENTITY_DEFAULTS,
-  );
+  const { viewerDisplayName } = useAppAccess();
+  const [brand, setBrand] = useState<OrganizationBrandingSettings>(BRAND_IDENTITY_DEFAULTS);
+  const [saved, setSaved] = useState<OrganizationBrandingSettings>(BRAND_IDENTITY_DEFAULTS);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lhZoom, setLhZoom] = useState(false);
-  const [lhPan, setLhPan] = useState(false);
-  const [lhX, setLhX] = useState(0);
-  const [lhY, setLhY] = useState(0);
   const [modal, setModal] = useState<ConfirmActionSpec | null>(null);
-  const lhZoomRef = useRef<HTMLDivElement>(null);
-  const lhPaperRef = useRef<HTMLDivElement>(null);
-  const [dirty, setDirty] = useState<BrandDirty>(CLEAN_BRAND_DIRTY);
+  const [status, setStatus] = useState<Record<BrandKey, CardSaveStatus>>(IDLE_SAVE_STATUS);
+  const [stampLocked, setStampLocked] = useState(true);
+  const [stampRatio, setStampRatio] = useState<number | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  const mark = useCallback((key: BrandKey, next: OrganizationBrandingSettings) => {
-    setBrand(next);
-    setDirty((d) => ({ ...d, [key]: true }));
+  // Timers and queued saves run after later renders — they read the latest values from here.
+  const latest = useRef({ brand, saved });
+  latest.current = { brand, saved };
+  const timers = useRef<Partial<Record<BrandKey, number>>>({});
+  const revisions = useRef<Record<BrandKey, number>>({ logo: 0, stamp: 0, sig: 0, lh: 0 });
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+
+  const view = useMemo(() => brandAssetView(brand), [brand]);
+  const busy = BRAND_KEYS.some((key) => ["pending", "saving"].includes(status[key].state));
+
+  const setCardStatus = useCallback((key: BrandKey, next: CardSaveStatus) => {
+    setStatus((s) => ({ ...s, [key]: next }));
   }, []);
+
+  const zoom = useBrandLetterheadZoom({
+    canEdit,
+    onGuideCommitted: (key, value) => editCard("lh", { ...latest.current.brand, [key]: value }),
+  });
 
   const reload = useCallback(async () => {
     const config = organizationSettingsApiConfig();
@@ -98,202 +106,200 @@ export function useBrandIdentityWorkflow() {
     }
     setError(null);
     setBrand(res.data.branding);
-    setDirty(CLEAN_BRAND_DIRTY);
+    setSaved(res.data.branding);
+    setStatus(IDLE_SAVE_STATUS);
   }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  // Zoom mode: lock body scroll, hold Space to pan the page.
-  useEffect(() => {
-    if (!lhZoom) {
-      setLhPan(false);
-      return;
-    }
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const down = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || isTypingTarget(e.target)) return;
-      e.preventDefault();
-      if (!e.repeat) setLhPan(true);
-    };
-    const up = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || isTypingTarget(e.target)) return;
-      e.preventDefault();
-      setLhPan(false);
-    };
-
-    window.addEventListener("keydown", down, { capture: true });
-    window.addEventListener("keyup", up, { capture: true });
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", down, { capture: true });
-      window.removeEventListener("keyup", up, { capture: true });
-    };
-  }, [lhZoom]);
-
-  async function persist(
-    next: OrganizationBrandingSettings,
+  /**
+   * Queue one card's save behind any save in flight, so every save starts from the
+   * previous save's result. Returns whether it was saved.
+   */
+  function saveCard(
     key: BrandKey,
-    toast: string,
-  ) {
-    const config = organizationSettingsApiConfig();
-    if (!config) return;
-    setSaving(true);
-    const res = await saveOrganizationSettings(config, { branding: next });
-    setSaving(false);
-    if (!res.ok) {
-      showToast(res.message ?? SAVE_FAILED_TOAST, "error");
-      return;
-    }
-    setBrand(res.data.branding);
-    setDirty((d) => ({ ...d, [key]: false }));
-    await refreshOrgCache();
-    showToast(toast, "success");
+    options: { draft?: OrganizationBrandingSettings; toast?: string } = {},
+  ): Promise<boolean> {
+    const run = async () => {
+      const draft = options.draft ?? latest.current.brand;
+      const blocker = cardSaveBlocker(key, brandAssetView(draft));
+      if (blocker) {
+        setCardStatus(key, { state: "blocked", message: blocker });
+        return false;
+      }
+      const config = organizationSettingsApiConfig();
+      if (!config) return false;
+
+      const revision = revisions.current[key];
+      setCardStatus(key, { state: "saving" });
+      const res = await saveOrganizationSettings(config, {
+        branding: withCardFields(latest.current.saved, draft, key),
+      });
+      if (!res.ok) {
+        const message = res.message ?? SAVE_FAILED_TOAST;
+        setCardStatus(key, { state: "error", message });
+        if (options.toast) showToast(message, "error");
+        return false;
+      }
+
+      const server = res.data.branding;
+      latest.current.saved = server;
+      setSaved(server);
+      // A newer edit to this card is already waiting for its own save — keep it.
+      if (revisions.current[key] === revision) {
+        setBrand((current) => withCardFields(current, server, key));
+        setCardStatus(key, { state: "saved" });
+      }
+      await refreshOrgCache();
+      if (options.toast) showToast(options.toast, "success");
+      return true;
+    };
+    const next = queue.current.then(run, run);
+    queue.current = next.catch(() => undefined);
+    return next;
   }
 
-  /** "اعتماد وتطبيق" on one card — payload is built now, persisted on confirm. */
-  function applyAsset(key: BrandKey) {
-    const target = BRAND_APPLY_TARGETS[key];
-    const next = target.payload(brand, todayIso());
-    setModal({
-      ...applyConfirmCopy(target.label, target.hint),
-      onConfirm: () => void persist(next, key, applyToast(target.label)),
-    });
+  /** A size / margin edit: shown now, saved after the typing pause. */
+  function editCard(key: BrandKey, next: OrganizationBrandingSettings) {
+    latest.current.brand = next;
+    setBrand(next);
+    revisions.current[key] += 1;
+    setCardStatus(key, { state: "pending" });
+    window.clearTimeout(timers.current[key]);
+    timers.current[key] = window.setTimeout(() => {
+      delete timers.current[key];
+      void saveCard(key);
+    }, AUTOSAVE_DELAY_MS);
   }
 
-  /** Pick a file, show it immediately (dirty), then confirm before persisting. */
+  // Leaving the screen saves whatever is still waiting on its typing pause.
+  useEffect(
+    () => () => {
+      for (const key of BRAND_KEYS) {
+        if (timers.current[key] === undefined) continue;
+        window.clearTimeout(timers.current[key]);
+        void saveCard(key);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount flush reads refs only
+    [],
+  );
+
+  // Closing or reloading the tab mid-save asks first.
+  useEffect(() => {
+    if (!busy) return;
+    const guard = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [busy]);
+
+  function changeContext(): BrandChangeContext {
+    return {
+      today: todayIso(),
+      actor: viewerDisplayName?.trim() || "مسؤول النظام",
+      saved: latest.current.saved,
+    };
+  }
+
+  /** Pick and check a file, show it, confirm, then save — cancel puts the card back. */
   function uploadAsset(id: BrandUploadTargetId) {
-    pickImage((url, name, kb) => {
+    if (!canEdit) return;
+    pickBrandImage(id, (picked) => {
+      if (!picked.ok) {
+        showToast(picked.error, "error");
+        return;
+      }
       const target = BRAND_UPLOAD_TARGETS[id];
-      const next = { ...brand, ...target.patch(url, todayIso()) };
+      const before = latest.current.brand;
+      const statusBefore = status[target.key];
+      const next = { ...before, ...target.patch(picked.dataUrl, changeContext()) };
       setBrand(next);
-      setDirty((d) => ({ ...d, [target.key]: true }));
+      if (id === "stamp") setStampRatio(null);
       setModal({
-        ...uploadConfirmCopy(target.label, target.hint, uploadFileHint(name, kb)),
-        onConfirm: () => void persist(next, target.key, uploadToast(target.label)),
+        ...uploadConfirmCopy(target.label, target.hint, uploadFileHint(picked.name, picked.kb)),
+        onConfirm: () => {
+          revisions.current[target.key] += 1;
+          void saveCard(target.key, { draft: next, toast: uploadToast(target.label) });
+        },
+        onCancel: () => {
+          setBrand((b) => withCardFields(b, before, target.key));
+          setCardStatus(target.key, statusBefore);
+        },
       });
     });
   }
 
-  function deleteAsset(id: BrandDeleteTargetId) {
-    const { key, patch } = BRAND_DELETE_TARGETS[id];
+  /** Put one card back to the system defaults — confirmed, then saved. */
+  function resetAsset(key: BrandKey) {
+    const label = BRAND_CARD_LABELS[key];
     setModal({
-      ...DELETE_CONFIRM_COPY,
+      ...resetConfirmCopy(label),
+      danger: true,
       onConfirm: () => {
-        const next = { ...brand, ...patch };
-        void persist(next, key, DELETE_TOAST);
+        window.clearTimeout(timers.current[key]);
+        delete timers.current[key];
+        const next = { ...latest.current.brand, ...BRAND_RESET_TARGETS[key](changeContext()) };
+        latest.current.brand = next;
+        setBrand(next);
+        revisions.current[key] += 1;
+        void saveCard(key, { draft: next, toast: resetToast(label) });
       },
     });
   }
 
-  /** Marks one card dirty with a partial branding patch (stamp / signature sizes). */
-  function patchAsset(key: BrandKey, patch: Partial<OrganizationBrandingSettings>) {
-    mark(key, { ...brand, ...patch });
+  function setStampSize(axis: "width" | "height", raw: string) {
+    const cm = cmFromInput(raw);
+    if (cm == null) return;
+    editCard("stamp", {
+      ...brand,
+      ...stampSizePatch(axis, cm, stampLocked ? stampRatio : null),
+    });
+  }
+
+  function setSignatureHeight(raw: string) {
+    const cm = cmFromInput(raw);
+    if (cm == null) return;
+    editCard("sig", { ...brand, signatureHeightCm: cm });
   }
 
   function patchLh(field: keyof OrganizationBrandingSettings, value: string) {
-    mark("lh", { ...brand, [field]: lhFieldValue(value) });
-  }
-
-  function paintLhGuide(key: LhGuideKey, n: number) {
-    const root = lhZoomRef.current;
-    if (!root) return;
-    root.style.setProperty(LH_GUIDES[key].cssVar, lhGuidePercent(key, n));
-    const field = root.querySelector<HTMLInputElement>(`[data-lh-input="${key}"]`);
-    if (field) field.value = String(n);
-  }
-
-  function startDrag(
-    ev: ReactMouseEvent<HTMLDivElement>,
-    key: LhGuideKey,
-    axis: LhDragAxis,
-  ) {
-    ev.preventDefault();
-    const box = ev.currentTarget.parentElement?.getBoundingClientRect();
-    if (!box) return;
-    let dragged = 0;
-    let moved = false;
-    const move = (e: MouseEvent) => {
-      dragged = dragToMm(axis, e.clientX, e.clientY, box);
-      moved = true;
-      paintLhGuide(key, dragged);
-    };
-    const up = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-      if (!moved) return;
-      setBrand((b) => ({ ...b, [key]: dragged }));
-      setDirty((d) => ({ ...d, lh: true }));
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  }
-
-  function startPan(ev: ReactMouseEvent) {
-    ev.preventDefault();
-    const sx = ev.clientX;
-    const sy = ev.clientY;
-    const ox = lhX;
-    const oy = lhY;
-    let nx = ox;
-    let ny = oy;
-    const move = (e: MouseEvent) => {
-      nx = ox + (e.clientX - sx);
-      ny = oy + (e.clientY - sy);
-      const paper = lhPaperRef.current;
-      if (paper) paper.style.transform = `translate(${nx}px, ${ny}px)`;
-    };
-    const up = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-      setLhX(nx);
-      setLhY(ny);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  }
-
-  function openZoom() {
-    setLhZoom(true);
-    setLhX(0);
-    setLhY(0);
-  }
-
-  function closeZoom() {
-    setLhPan(false);
-    setLhZoom(false);
+    editCard("lh", { ...brand, [field]: lhFieldValue(value) });
   }
 
   return {
     canEdit,
     brand,
     loading,
-    saving,
     error,
-    dirty,
+    status,
+    busy,
+    retrySave: (key: BrandKey) => void saveCard(key, { toast: "تم الحفظ." }),
     modal,
     closeModal: () => setModal(null),
-    view: brandAssetView(brand),
+    view,
     logoMeta: logoMetaText(brand),
     stampMeta: stampMetaText(brand),
     lhMeta: letterheadMetaText(brand),
-    applyAsset,
+    marginError: letterheadMarginError(view),
+    isDefault: (key: BrandKey) => isBrandCardDefault(key, brand),
     uploadAsset,
-    deleteAsset,
-    patchAsset,
+    resetAsset,
+    setStampSize,
+    setSignatureHeight,
     patchLh,
-    lhZoom,
-    lhPan,
-    lhX,
-    lhY,
-    lhZoomRef,
-    lhPaperRef,
-    openZoom,
-    closeZoom,
-    startDrag,
-    startPan,
+    stampLocked,
+    setStampLocked,
+    stampRatio,
+    onStampImageLoaded: (width: number, height: number) =>
+      setStampRatio(width > 0 && height > 0 ? height / width : null),
+    previewOpen,
+    openPreview: () => setPreviewOpen(true),
+    closePreview: () => setPreviewOpen(false),
+    zoom,
   };
 }

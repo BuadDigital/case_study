@@ -202,7 +202,7 @@ describe("valuation report live fill attachments and glossary", () => {
     const frame = photoFig?.querySelector(".attach-fig-frame");
     expect(frame?.getAttribute("style") ?? "").toMatch(/height\s*:\s*100px/i);
     expect(photoFig?.querySelector("figcaption")?.textContent).toContain("صور العقار");
-    expect(dom.querySelector("#photo-2")?.textContent).toBe("—");
+    expect(dom.querySelector("#photo-2")).toBeNull();
     expect(dom.querySelector("iframe.attach-pdf")).toBeNull();
     expect(dom.querySelector(".attach-pdf-note")?.textContent).toContain(
       "survey.pdf",
@@ -282,6 +282,7 @@ describe("valuation report live fill attachments and glossary", () => {
     );
     const slot = dom.querySelector("image-slot#deed");
     expect(slot?.getAttribute("src")).toBe("data:image/jpeg;base64,ccc");
+    expect(slot?.hasAttribute("readonly")).toBe(true);
     expect(slot?.getAttribute("data-view-s")).toBe("1.4");
     expect(slot?.getAttribute("data-view-x")).toBe("10");
     expect(slot?.getAttribute("data-view-y")).toBe("-5");

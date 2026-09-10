@@ -1,0 +1,29 @@
+{
+  "$comment": "Contract for the governed property document registry. Backend: backend/shared/RealEstateEval.Shared.Contracts/Domain/PropertyDocumentTypes.cs. Frontend: packages/app-shared/src/domain/property-documents/property-document-types.ts. Both sides are tested against this file; change all three together.",
+  "governedScope": "property-document",
+  "unlistedKey": "unlisted",
+  "reviewStatuses": ["pending", "approved", "rejected"],
+  "groups": ["ownership", "assignment", "contracts", "engineering", "movables", "photos", "outputs", "unlisted"],
+  "types": [
+    { "key": "deed", "labelAr": "صك الملكية", "group": "ownership", "appliesTo": "all", "defaultRequired": true, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-deed-ownership"] },
+    { "key": "bourse-deed", "labelAr": "صورة الصك من البورصة", "group": "ownership", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": "deed", "legacyScopes": ["property-bourse-deed"] },
+    { "key": "real-estate-registry", "labelAr": "السجل العقاري", "group": "ownership", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": "deed", "legacyScopes": ["property-registry"] },
+    { "key": "boundaries-document", "labelAr": "مستند الحدود", "group": "ownership", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-boundaries"] },
+    { "key": "assignment-letter", "labelAr": "خطاب الإسناد", "group": "assignment", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-decree"] },
+    { "key": "delegation-letter", "labelAr": "خطاب التفويض", "group": "assignment", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-delegation"] },
+    { "key": "owner-identity", "labelAr": "هوية المالك / الوكالة", "group": "assignment", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "lease-contract", "labelAr": "عقد الإيجار", "group": "contracts", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "survey", "labelAr": "التقرير المساحي", "group": "engineering", "appliesTo": "land", "defaultRequired": true, "uploadableFromTab": false, "pdfOnly": true, "countsAs": null, "legacyScopes": ["engineering-survey-report"] },
+    { "key": "site-letter", "labelAr": "خطاب إقرار صحة الموقع", "group": "engineering", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": true, "countsAs": null, "legacyScopes": ["engineering-site-letter"] },
+    { "key": "building-permit", "labelAr": "رخصة البناء", "group": "engineering", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "zoning-sketch", "labelAr": "الكروكي التنظيمي", "group": "engineering", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "completion-certificate", "labelAr": "شهادة إتمام البناء", "group": "engineering", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "utility-bills", "labelAr": "فواتير الخدمات", "group": "engineering", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "movables-inventory", "labelAr": "قائمة حصر المنقولات", "group": "movables", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "movables-valuation-report", "labelAr": "تقرير تقييم المنقولات", "group": "movables", "appliesTo": "built", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": [] },
+    { "key": "inspection-photo", "labelAr": "صور المعاينة", "group": "photos", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": false, "countsAs": null, "legacyScopes": ["field-inspection-photo"] },
+    { "key": "valuation-report", "labelAr": "تقرير التقييم", "group": "outputs", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": true, "countsAs": null, "legacyScopes": ["evaluator-report"] },
+    { "key": "deposit-certificate", "labelAr": "شهادة الإيداع", "group": "outputs", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": false, "pdfOnly": false, "countsAs": null, "legacyScopes": ["evaluator-deposit-certificate"] },
+    { "key": "unlisted", "labelAr": "مستند غير معرّف", "group": "unlisted", "appliesTo": "all", "defaultRequired": false, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-other"] }
+  ]
+}

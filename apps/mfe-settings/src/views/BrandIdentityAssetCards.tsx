@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Brand-identity top row: logo, stamp and signature cards. Each card reads
- * the workflow bag and calls its upload / delete / apply actions.
+ * Brand-identity top row: logo, stamp and signature cards, and the shared card footer
+ * (meta · autosave status). Each card reads the workflow bag and calls its actions.
  */
 
+import type { ReactNode } from "react";
 import {
   Button,
   Card,
@@ -12,10 +13,11 @@ import {
   CardHeader,
   Input,
   Label,
+  Spinner,
   cn,
   opsDropzone,
 } from "@platform/ui-kit";
-import { signatureHeightFromInput } from "./brand-identity-state";
+import { saveStatusLabel, type BrandKey } from "./brand-identity-state";
 import type { BrandIdentityWorkflow } from "./useBrandIdentityWorkflow";
 
 export const BRAND_FIELD_CLS = "h-[30px] text-xs";
@@ -31,9 +33,69 @@ const PREVIEW_IMG_STYLE = {
   userSelect: "none",
 } as const;
 
+const STATUS_TONE_CLS = {
+  muted: "text-text-3",
+  progress: "text-text-2",
+  ok: "text-[#2f7a4d]",
+  danger: "text-danger-text",
+} as const;
+
+/** Footer shared by every card: what is on file, and the card's autosave status. */
+export function BrandCardFooter({
+  workflow,
+  cardKey,
+  meta,
+}: {
+  workflow: BrandIdentityWorkflow;
+  cardKey: BrandKey;
+  meta: ReactNode;
+}) {
+  const { status, retrySave } = workflow;
+  const cardStatus = status[cardKey];
+  const label = saveStatusLabel(cardStatus);
+  return (
+    <div className={BRAND_CARD_FOOT_CLS}>
+      <span className="min-w-0">{meta}</span>
+      {label.text ? (
+        <span
+          role="status"
+          className={cn("flex items-center gap-1.5 text-[11.5px] font-semibold", STATUS_TONE_CLS[label.tone])}
+        >
+          {cardStatus.state === "saving" ? <Spinner /> : null}
+          {label.text}
+          {cardStatus.state === "error" ? (
+            <Button variant="ghost" size="sm" onClick={() => retrySave(cardKey)}>
+              إعادة المحاولة
+            </Button>
+          ) : null}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ResetDefaultButton({
+  workflow,
+  cardKey,
+}: {
+  workflow: BrandIdentityWorkflow;
+  cardKey: BrandKey;
+}) {
+  const { canEdit, status, isDefault, resetAsset } = workflow;
+  return (
+    <Button
+      variant="dangerOutline"
+      size="sm"
+      disabled={!canEdit || status[cardKey].state === "saving" || isDefault(cardKey)}
+      onClick={() => resetAsset(cardKey)}
+    >
+      استعادة الافتراضي
+    </Button>
+  );
+}
+
 export function BrandLogoCard({ workflow }: { workflow: BrandIdentityWorkflow }) {
-  const { canEdit, dirty, saving, view, logoMeta, uploadAsset, deleteAsset, applyAsset } =
-    workflow;
+  const { canEdit, view, logoMeta, uploadAsset } = workflow;
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>
@@ -43,82 +105,74 @@ export function BrandLogoCard({ workflow }: { workflow: BrandIdentityWorkflow })
         <div className="mb-3 grid grid-cols-2 gap-2.5">
           <div>
             <div className={cn(opsDropzone, "h-[110px]")}>
-              <img src={view.logoColor} alt="الشعار الملون" style={{ height: 40 }} />
+              <img
+                src={view.logoColor}
+                alt="الشعار الملون"
+                style={{ maxHeight: 64, maxWidth: "90%", objectFit: "contain" }}
+              />
             </div>
             <div className="mt-1.5 text-[11.5px] text-text-2">
-              الشعار الملون — للخلفيات الفاتحة
+              الملون — للخلفيات الفاتحة (صفحة الدخول على الجوال)
             </div>
-            <div className="mt-1.5 flex gap-1.5">
-              <Button
-                variant="default"
-                size="sm"
-                disabled={!canEdit}
-                onClick={() => uploadAsset("logoColor")}
-              >
-                استبدال
-              </Button>
-              <Button
-                variant="dangerOutline"
-                size="sm"
-                disabled={!canEdit}
-                onClick={() => deleteAsset("logoColor")}
-              >
-                حذف
-              </Button>
-            </div>
+            <Button
+              className="mt-1.5"
+              variant="default"
+              size="sm"
+              disabled={!canEdit}
+              onClick={() => uploadAsset("logoColor")}
+            >
+              استبدال
+            </Button>
           </div>
           <div>
             <div
               className="grid h-[110px] place-items-center rounded-lg border border-dashed border-border-md"
               style={{ background: "var(--ink)" }}
             >
-              <img src={view.logoWhite} alt="الشعار الأبيض" style={{ height: 40 }} />
+              <img
+                src={view.logoWhite}
+                alt="الشعار الأبيض"
+                style={{ maxHeight: 64, maxWidth: "90%", objectFit: "contain" }}
+              />
             </div>
             <div className="mt-1.5 text-[11.5px] text-text-2">
-              الشعار الأبيض — للخلفيات الداكنة
+              الأبيض — القائمة الجانبية وصفحة الدخول وترويسة تقرير دراسة الحالة
             </div>
-            <div className="mt-1.5 flex gap-1.5">
-              <Button
-                variant="default"
-                size="sm"
-                disabled={!canEdit}
-                onClick={() => uploadAsset("logoWhite")}
-              >
-                استبدال
-              </Button>
-              <Button
-                variant="dangerOutline"
-                size="sm"
-                disabled={!canEdit}
-                onClick={() => deleteAsset("logoWhite")}
-              >
-                حذف
-              </Button>
-            </div>
+            <Button
+              className="mt-1.5"
+              variant="default"
+              size="sm"
+              disabled={!canEdit}
+              onClick={() => uploadAsset("logoWhite")}
+            >
+              استبدال
+            </Button>
           </div>
         </div>
-        <div className="mt-auto text-xs leading-relaxed text-text-2">
-          المقاس الملزم: متجه SVG — ارتفاع <bdi className="font-[inherit]">48px</bdi> في
-          الترويسة. لكل نسخة رفع مستقل.
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-2">
+          <p className="m-0 text-xs leading-relaxed text-text-2">
+            PNG أو SVG بخلفية شفافة، حتى 512KB لكل نسخة.
+          </p>
+          <ResetDefaultButton workflow={workflow} cardKey="logo" />
         </div>
       </CardBody>
-      <div className={BRAND_CARD_FOOT_CLS}>
-        <span>{logoMeta}</span>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!canEdit || !dirty.logo || saving}
-          onClick={() => applyAsset("logo")}
-        >
-          اعتماد وتطبيق
-        </Button>
-      </div>
+      <BrandCardFooter workflow={workflow} cardKey="logo" meta={logoMeta} />
     </Card>
   );
 }
 
 export function BrandStampCard({ workflow }: { workflow: BrandIdentityWorkflow }) {
-  const { canEdit, dirty, saving, view, uploadAsset, applyAsset, patchAsset } = workflow;
+  const {
+    canEdit,
+    view,
+    stampMeta,
+    stampLocked,
+    setStampLocked,
+    stampRatio,
+    setStampSize,
+    uploadAsset,
+    onStampImageLoaded,
+  } = workflow;
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>
@@ -131,39 +185,63 @@ export function BrandStampCard({ workflow }: { workflow: BrandIdentityWorkflow }
             alt="ختم المنشأة"
             draggable={false}
             style={PREVIEW_IMG_STYLE}
+            onLoad={(e) =>
+              onStampImageLoaded(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+            }
           />
         </div>
         <div className="grid min-w-[14rem] flex-1 grid-cols-2 gap-2.5">
           <div className="flex flex-col">
-            <Label size="field">عرض الختم في A4 (cm)</Label>
+            <Label size="field" htmlFor="brand-stamp-width">
+              عرض الختم (cm)
+            </Label>
             <Input
+              id="brand-stamp-width"
               className={BRAND_FIELD_CLS}
               type="number"
               dir="ltr"
+              min={0.5}
+              max={20}
+              step={0.1}
               disabled={!canEdit}
               value={String(view.stampW)}
-              onChange={(e) =>
-                patchAsset("stamp", { stampWidthCm: Number(e.target.value) })
-              }
+              onChange={(e) => setStampSize("width", e.target.value)}
             />
           </div>
           <div className="flex flex-col">
-            <Label size="field">ارتفاع الختم في A4 (cm)</Label>
+            <Label size="field" htmlFor="brand-stamp-height">
+              ارتفاع الختم (cm)
+            </Label>
             <Input
+              id="brand-stamp-height"
               className={BRAND_FIELD_CLS}
               type="number"
               dir="ltr"
+              min={0.5}
+              max={20}
+              step={0.1}
               disabled={!canEdit}
               value={String(view.stampH)}
-              onChange={(e) =>
-                patchAsset("stamp", { stampHeightCm: Number(e.target.value) })
-              }
+              onChange={(e) => setStampSize("height", e.target.value)}
             />
           </div>
-          <p className="col-span-2 m-0 text-[11.5px] leading-relaxed text-text-3">
-            المقاس يسري على الصفحات المطبوعة فقط — رفع الختم نفسه من هنا.
-          </p>
-          <div className="col-span-2">
+          <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[11.5px] text-text-2">
+            <input
+              type="checkbox"
+              className="size-4 accent-[var(--ink)]"
+              checked={stampLocked}
+              disabled={!canEdit}
+              onChange={(e) => setStampLocked(e.target.checked)}
+            />
+            قفل نسبة الصورة
+            {stampRatio ? (
+              <span className="text-text-3" dir="ltr">
+                (1 : {stampRatio.toFixed(2)})
+              </span>
+            ) : null}
+          </label>
+          <p className="col-span-2 m-0 text-[11px] leading-relaxed text-text-3">{stampMeta}</p>
+          <div className="col-span-2 flex flex-wrap gap-1.5">
             <Button
               variant="default"
               size="sm"
@@ -172,26 +250,21 @@ export function BrandStampCard({ workflow }: { workflow: BrandIdentityWorkflow }
             >
               رفع ختم جديد
             </Button>
+            <ResetDefaultButton workflow={workflow} cardKey="stamp" />
           </div>
         </div>
       </CardBody>
-      <div className={BRAND_CARD_FOOT_CLS}>
-        <span>يُطبع في قسم الاعتماد (27) من كل تقرير</span>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!canEdit || !dirty.stamp || saving}
-          onClick={() => applyAsset("stamp")}
-        >
-          اعتماد وتطبيق
-        </Button>
-      </div>
+      <BrandCardFooter
+        workflow={workflow}
+        cardKey="stamp"
+        meta="يُطبع في قسم الاعتماد (27) من كل تقرير"
+      />
     </Card>
   );
 }
 
 export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkflow }) {
-  const { canEdit, dirty, saving, view, uploadAsset, applyAsset, patchAsset } = workflow;
+  const { canEdit, view, setSignatureHeight, uploadAsset } = workflow;
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>
@@ -208,8 +281,11 @@ export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkfl
         </div>
         <div className="grid min-w-[14rem] flex-1 grid-cols-1 gap-2.5">
           <div className="flex max-w-[12rem] flex-col">
-            <Label size="field">ارتفاع التوقيع في A4 (cm)</Label>
+            <Label size="field" htmlFor="brand-signature-height">
+              ارتفاع التوقيع (cm)
+            </Label>
             <Input
+              id="brand-signature-height"
               className={BRAND_FIELD_CLS}
               type="number"
               dir="ltr"
@@ -218,18 +294,14 @@ export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkfl
               step={0.1}
               disabled={!canEdit}
               value={String(view.sigH)}
-              onChange={(e) => {
-                const n = signatureHeightFromInput(e.target.value);
-                if (n == null) return;
-                patchAsset("sig", { signatureHeightCm: n });
-              }}
+              onChange={(e) => setSignatureHeight(e.target.value)}
             />
           </div>
           <p className="m-0 text-[11.5px] leading-relaxed text-text-3">
-            توقيع الاعتماد فقط — التحكم بالارتفاع (مثل 1.5) والعرض يتناسب مع
-            الصورة. تواقيع المشاركين في التقرير بارتفاع ثابت 1.5 سم دون ضبط.
+            توقيع الاعتماد فقط — العرض يتناسب مع الصورة. تواقيع المشاركين في التقرير بارتفاع
+            ثابت 1.5 سم.
           </p>
-          <div>
+          <div className="flex flex-wrap gap-1.5">
             <Button
               variant="default"
               size="sm"
@@ -238,20 +310,17 @@ export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkfl
             >
               رفع توقيع جديد
             </Button>
+            <ResetDefaultButton workflow={workflow} cardKey="sig" />
           </div>
         </div>
       </CardBody>
-      <div className={BRAND_CARD_FOOT_CLS}>
-        <span>يُطبع في إعتماد التقرير (27) — تواقيع المشاركين (26) بارتفاع ثابت 1.5 سم</span>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!canEdit || !dirty.sig || saving}
-          onClick={() => applyAsset("sig")}
-        >
-          اعتماد وتطبيق
-        </Button>
-      </div>
+      <BrandCardFooter
+        workflow={workflow}
+        cardKey="sig"
+        meta="يُطبع في إعتماد التقرير (27) — تواقيع المشاركين (26) بارتفاع ثابت 1.5 سم"
+      />
     </Card>
   );
 }
+
+export { ResetDefaultButton };

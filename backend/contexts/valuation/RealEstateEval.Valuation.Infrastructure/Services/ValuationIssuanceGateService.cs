@@ -47,6 +47,7 @@ public sealed class ValuationIssuanceGateService(
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
         var hasStructures = false;
         var propertyType = "";
+        string? poNumber = null;
  // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
@@ -63,6 +64,7 @@ public sealed class ValuationIssuanceGateService(
             {
                 deedKind = context.DeedKindValue();
                 propertyType = context.EffectivePropertyType();
+                poNumber = context.PoNumber;
                 hasStructures = string.Equals(
                     context.HasStructuresToValue.Trim(),
                     "yes",
@@ -156,7 +158,7 @@ public sealed class ValuationIssuanceGateService(
                 recon?.WeightsSumTo100 ?? false),
             ValuationIssuanceGateRules.FinalOpinion(recon?.FinalOpinionValue ?? 0m),
             ValuationIssuanceGateRules.RequiredAttachments(
-                await FindMissingRequiredAttachmentLabelsAsync(propertyId, propertyType, cancellationToken)),
+                await FindMissingRequiredAttachmentLabelsAsync(propertyId, poNumber, propertyType, cancellationToken)),
         };
 
         var resolutions = (recon?.MethodologyAlertOverrides ?? [])
@@ -285,10 +287,13 @@ public sealed class ValuationIssuanceGateService(
 
  /// <summary>
  /// For every active dictionary type marked required (and matching the property
- /// type, when linked), at least one upload whose scope maps to that type must exist.
+ /// type, when linked), at least one classified upload of that type — or of a type
+ /// that counts as it, e.g. the bourse deed image for the deed — must exist.
+ /// Unlisted documents never satisfy a requirement.
  /// </summary>
     private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
         string propertyId,
+        string? poNumber,
         string propertyType,
         CancellationToken cancellationToken)
     {
@@ -297,21 +302,39 @@ public sealed class ValuationIssuanceGateService(
         var dictionary = await printDictionary.GetAsync(cancellationToken);
         var required = dictionary.Types
             .Where(t => t.IsActive && t.IsRequired)
-            .Where(t => t.PropertyTypeKeys.Count == 0
-                || t.PropertyTypeKeys.Any(k =>
-                    string.Equals(k?.Trim(), propertyType, StringComparison.OrdinalIgnoreCase)))
+            .Where(t => AppliesToPropertyType(t.PropertyTypeKeys, propertyType))
             .ToList();
         if (required.Count == 0) return [];
 
-        var presentKeys = (await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken))
-            .Select(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope))
-            .Where(k => !string.IsNullOrWhiteSpace(k))
-            .Select(k => k!.Trim().ToLowerInvariant())
-            .ToHashSet(StringComparer.Ordinal);
+ // Intake documents are keyed «PO:propertyId»; party uploads use the property id itself.
+        var needles = new List<string> { propertyId };
+        if (!string.IsNullOrWhiteSpace(poNumber))
+            needles.Add($"{poNumber.Trim()}:{propertyId}");
+
+        var presentKeys = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<Guid>();
+        foreach (var needle in needles)
+        {
+            foreach (var a in await attachments.ListForPropertyAsync(needle, actor: null, cancellationToken))
+            {
+                if (!seen.Add(a.Id)) continue;
+                var type = PropertyDocumentTypes.Resolve(a.DocumentTypeKey, a.Scope, a.ScopeKey);
+                if (type is null || type.Key == PropertyDocumentTypes.UnlistedKey) continue;
+                presentKeys.Add(type.Key);
+                presentKeys.Add(type.RequirementKey);
+            }
+        }
 
         return required
             .Where(t => !presentKeys.Contains(t.Key.Trim().ToLowerInvariant()))
             .Select(t => t.LabelAr)
             .ToList();
+    }
+
+    private static bool AppliesToPropertyType(IReadOnlyList<string> propertyTypeKeys, string propertyType)
+    {
+        var keys = PropertyDocumentTypes.NormalizePropertyTypeKeys(propertyTypeKeys);
+        return keys.Count == 0
+            || keys.Any(k => string.Equals(k, propertyType?.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

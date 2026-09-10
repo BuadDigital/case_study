@@ -597,6 +597,15 @@ const SCREEN_CHROME = `
 .val-rpt-screen [data-sec="26"] table.ctr td.num{
   text-align:center!important;vertical-align:middle!important;
 }
+.val-rpt-screen td.v[data-rpt-missing],
+.val-rpt-screen td.num[data-rpt-missing]{
+  background:color-mix(in srgb,var(--danger,#b42318) 12%,#fff)!important;
+  outline:2px solid var(--danger,#b42318)!important;
+  outline-offset:1px;
+  color:var(--danger-text,#b42318)!important;
+  font-weight:700;
+  cursor:help;
+}
 `;
 
 function scopeCss(css: string, scope: string): string {
@@ -655,7 +664,7 @@ export function prepareValuationReportV3Html(
   meta: ValuationReportV3Meta = {},
   mode: ValuationReportV3Mode = "print",
 ): string {
-  // Screen keeps live <image-slot> so the appraiser can Edit / pan / scale like the HTML template.
+  // Screen keeps live <image-slot> for framed display; upload/reframe is disabled in the app preview.
   const { dom, authored } = parseTemplate(raw, mode === "screen");
   applyMeta(dom, meta);
   // Live Google Maps belongs on screen only. Printing a blob tab that loads

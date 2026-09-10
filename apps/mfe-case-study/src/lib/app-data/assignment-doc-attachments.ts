@@ -73,6 +73,12 @@ export type CachedAssignmentDoc = {
 
 export type DocCacheResult = { ok: true } | { ok: false; error: string };
 
+/** Name + reason the server requires for a document outside the defined list («other»). */
+export type UnlistedDocumentDetails = {
+  customDocumentLabel: string;
+  customDocumentReason: string;
+};
+
 const docCache = new Map<string, CachedAssignmentDoc[]>();
 const writeGeneration = new Map<string, number>();
 const cacheListeners = new Set<() => void>();
@@ -230,7 +236,7 @@ async function writeCachedDoc(
   poNumber: string,
   propertyId: string,
   file: File,
-  options?: { replaceAll?: boolean },
+  options?: { replaceAll?: boolean; unlisted?: UnlistedDocumentDetails },
 ): Promise<DocCacheResult> {
   if (!poNumber.trim() || !propertyId) {
     return { ok: false, error: "بيانات العقار ناقصة." };
@@ -319,6 +325,8 @@ async function writeCachedDoc(
       contentType: payload.mimeType,
       contentBase64: await fileToBase64(uploadFile),
       photoMetadata,
+      customDocumentLabel: options?.unlisted?.customDocumentLabel ?? null,
+      customDocumentReason: options?.unlisted?.customDocumentReason ?? null,
     });
 
     if (!isCurrentGeneration(key, generation)) {
@@ -328,7 +336,10 @@ async function writeCachedDoc(
     if (!upload.ok) {
       return {
         ok: false,
-        error: "تعذّر رفع الملف — تحقق من الاتصال وحاول مجدداً.",
+        error:
+          upload.kind === "validation" && upload.message
+            ? upload.message
+            : "تعذّر رفع الملف — تحقق من الاتصال وحاول مجدداً.",
       };
     }
     payload.attachmentId = upload.data.id;
@@ -392,13 +403,16 @@ export async function cacheBourseDeedImageDoc(
   });
 }
 
+/** «Other documents» are unlisted: the server keeps them for review with the name and reason. */
 export async function cacheOtherPropertyDoc(
   poNumber: string,
   propertyId: string,
   file: File,
+  unlisted: UnlistedDocumentDetails,
 ): Promise<DocCacheResult> {
   return writeCachedDoc("other", poNumber, propertyId, file, {
     replaceAll: false,
+    unlisted,
   });
 }
 
@@ -848,6 +862,9 @@ export async function clonePropertyDocumentsFromPrior(
           fileName: meta.fileName,
           contentType: meta.contentType || "application/octet-stream",
           contentBase64,
+          // Unlisted copies keep the original name + reason (the server requires them).
+          customDocumentLabel: meta.customDocumentLabel ?? null,
+          customDocumentReason: meta.customDocumentReason ?? null,
         });
         if (!upload.ok) return null;
         upsertCachedDoc(targetCacheKey, {

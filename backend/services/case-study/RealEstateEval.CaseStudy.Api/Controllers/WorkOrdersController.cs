@@ -405,6 +405,42 @@ public class WorkOrdersController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Appraiser / case staff: notify primary-data specialist that an intake field
+    /// shown on the valuation report is still empty (e.g. رقم الطلب).
+    /// </summary>
+    [HttpPost("{poNumber}/properties/{propertyId:guid}/notify-intake-gap")]
+    public async Task<ActionResult<NotifyIntakeFieldGapResultDto>> NotifyIntakeFieldGap(
+        string poNumber,
+        Guid propertyId,
+        [FromBody] NotifyIntakeFieldGapRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        var role = perms?.PrototypeRole;
+        var canNotify =
+            PoRoleMatrixRules.CanEditProperty(role)
+            || string.Equals(role, "real-estate-appraiser", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "report-preparer", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "section-supervisor", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "general-manager", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
+        if (!canNotify)
+            return this.ForbiddenProblem("ليس لديك صلاحية لإرسال إشعار نقص البيانات");
+
+        var actorName = ActorClaims.DisplayName(User);
+        var (count, error) = await _workOrders.NotifyIntakeFieldGapAsync(
+            poNumber,
+            propertyId,
+            request ?? new NotifyIntakeFieldGapRequest(),
+            actorName,
+            cancellationToken);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(new NotifyIntakeFieldGapResultDto { NotifiedCount = count });
+    }
+
     private async Task<PermissionsDto?> ActorAsync(CancellationToken cancellationToken)
     {
         var userId = ActorClaims.Id(User);

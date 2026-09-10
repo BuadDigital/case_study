@@ -26,8 +26,11 @@ public static class AttachmentUploadRules
 
     private static readonly HashSet<string> ImageOrPdfScopes = new(StringComparer.OrdinalIgnoreCase)
     {
+        PropertyDocumentTypes.GovernedScope,
         "property-decree",
         "property-delegation",
+        "property-deed-ownership",
+        "property-bourse-deed",
         "property-other",
         "property-registry",
         "property-boundaries",

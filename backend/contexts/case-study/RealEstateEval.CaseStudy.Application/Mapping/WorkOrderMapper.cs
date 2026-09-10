@@ -155,7 +155,8 @@ public static class WorkOrderMapper
     public static WorkOrderListItemDto ToListItem(
         WorkOrder entity,
         IReadOnlyDictionary<Guid, bool>? studiedByProperty = null,
-        bool hasEnfazInvoice = false)
+        bool hasEnfazInvoice = false,
+        int progressPct = 0)
     {
         var liveProperties = entity.Properties.Where(p => !p.IsRemoved).ToList();
         var studiedCount = liveProperties.Count(p =>
@@ -170,6 +171,7 @@ public static class WorkOrderMapper
             PropertyCount = liveProperties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
             CompletedCount = studiedCount,
+            ProgressPct = Math.Clamp(progressPct, 0, 100),
             Status = WorkOrderListStatus.Resolve(
                 entity.LifecycleStatus,
                 entity.ExpectedPropertyCount,

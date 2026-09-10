@@ -2,6 +2,7 @@ import {
   CASE_STUDY_REPORT_SUBTITLE,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_REMARKS_HINT,
+  caseStudyHeaderLogoImage,
   caseStudySignatureImage,
   caseStudyStampImage,
 } from "../../lib/app-data/case-study-form-data";
@@ -38,14 +39,22 @@ function Cb({ checked }: { checked: boolean }) {
 }
 
 function PageHeader() {
+  const logo = caseStudyHeaderLogoImage();
   return (
     <div className="csrd-header" aria-hidden="true">
       <div className="csrd-header-placeholder">
         <div className="csrd-header-logo">
-          <div className="csrd-header-wordmark">
-            EJADAH<span className="csrd-header-wordmark-dot">.</span>
-          </div>
-          <div className="csrd-header-sub">PROFESSIONAL</div>
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- organization logo (data URL)
+            <img className="csrd-header-logo-img" src={logo} alt="" />
+          ) : (
+            <>
+              <div className="csrd-header-wordmark">
+                EJADAH<span className="csrd-header-wordmark-dot">.</span>
+              </div>
+              <div className="csrd-header-sub">PROFESSIONAL</div>
+            </>
+          )}
         </div>
         <div className="csrd-header-divider" />
         <div className="csrd-header-service">

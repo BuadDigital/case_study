@@ -23,7 +23,7 @@ public sealed class ValuationPrintableAttachmentLookup(IAttachmentLookup attachm
         var all = await attachments.ListForPropertyAsync(propertyId, actor: null, cancellationToken);
 
         var routed = all
-            .Where(a => AttachmentPrintRules.TypeKeyFromScope(a.Scope) is not null)
+            .Where(a => AttachmentPrintRules.TypeKeyFor(a.Scope, a.DocumentTypeKey, a.ScopeKey) is not null)
             .OrderBy(a => a.CreatedAtUtc)
             .Take(MaxPrintable)
             .Select(a => new ReportAttachmentRef(a.Id, a.ContentType))

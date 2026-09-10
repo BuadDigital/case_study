@@ -68,6 +68,7 @@ export {
   updateWorkOrderHeader,
   updateWorkOrderProperty,
   updateSpecialistReportExtras,
+  notifyIntakeFieldGap,
   workOrderExists,
   type ApiErr,
   type ApiOk,
@@ -90,6 +91,8 @@ export {
   type PropertyListRowDto,
   type WorkOrderPropertyDto,
   type WorkOrdersApiConfig,
+  type NotifyIntakeFieldGapRequest,
+  type NotifyIntakeFieldGapResultDto,
 } from "./work-orders";
 
 export {
@@ -295,8 +298,12 @@ export {
   rejectEvaluatorRecallApi,
   requestEvaluatorRecallApi,
   saveFailureTypesCatalog,
+  reviewAttachmentDocument,
+  setAttachmentDocumentType,
   uploadAttachment,
   upsertPropertyCourtAccess,
+  type ReviewAttachmentDocumentRequest,
+  type SetAttachmentDocumentTypeRequest,
   type CreateKeyEnvelopeHandoffRequest,
   type CreateKeyEnvelopeRequest,
   type ConfirmKeyAssignmentRequest,
@@ -548,6 +555,11 @@ export {
   type OrganizationValuationReportSettings,
   type SaveOrganizationSettingsRequest,
 } from "./organization-settings";
+export {
+  customBrandLogoUrl,
+  getOrganizationBrandLogos,
+  type OrganizationBrandLogosDto,
+} from "./organization-brand-logos";
 
 export {
   getValuationLists,

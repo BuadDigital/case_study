@@ -194,6 +194,55 @@ public static class TransactionStateRules
         && Evaluate(input).Stages
             .First(s => s.Key == Stages.PartyWork).Status == Statuses.Completed;
 
+    /// <summary>
+    /// 0–100 workflow progress for list bars: foundational stages + party completion
+    /// share + closing stages. Not the same as «دراسات مكتملة».
+    /// </summary>
+    public static int ProgressPercent(Input input) =>
+        ProgressPercent(Evaluate(input));
+
+    public static int ProgressPercent(Result result)
+    {
+        if (result.Stages.Count == 0)
+            return 0;
+
+        double score = 0;
+        foreach (var stage in result.Stages)
+        {
+            if (stage.Key == Stages.PartyWork)
+            {
+                if (result.Parties.Count == 0)
+                    continue;
+                score += result.Parties.Average(PartyProgressWeight);
+                continue;
+            }
+
+            score += StageProgressWeight(stage.Status);
+        }
+
+        return (int)Math.Round(
+            100.0 * score / result.Stages.Count,
+            MidpointRounding.AwayFromZero);
+    }
+
+    private static double StageProgressWeight(string status) =>
+        status switch
+        {
+            Statuses.Completed => 1.0,
+            Statuses.InProgress => 0.5,
+            Statuses.WaitingOnParty => 0.15,
+            _ => 0.0,
+        };
+
+    private static double PartyProgressWeight(PartyState party) =>
+        party.Status switch
+        {
+            Statuses.Completed => 1.0,
+            Statuses.InProgress => 0.5,
+            Statuses.WaitingOnParty => 0.15,
+            _ => 0.0,
+        };
+
  /// <summary>Enfaz upload package (Q-9/Q-14): required contents of the complete delivery.</summary>
     public static IReadOnlyList<string> HandoverPackageAr(bool hasSurvey) =>
         hasSurvey

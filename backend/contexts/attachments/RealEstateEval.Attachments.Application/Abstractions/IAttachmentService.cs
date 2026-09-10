@@ -29,4 +29,18 @@ public interface IAttachmentService
         Guid id,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
+
+ /// <summary>Re-type a documents-tab upload. (null, null) = not found / not visible.</summary>
+    Task<(FileAttachmentMetaDto? Meta, string? Error)> SetDocumentTypeAsync(
+        Guid id,
+        SetAttachmentDocumentTypeRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>Approve / reject an unlisted document. (null, null) = not found / not visible.</summary>
+    Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewDocumentAsync(
+        Guid id,
+        ReviewAttachmentDocumentRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
 }

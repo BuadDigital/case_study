@@ -403,6 +403,13 @@
   flex-shrink: 0;
 }
 
+.csrd-header-logo-img {
+  display: block;
+  max-width: 48mm;
+  max-height: 14mm;
+  object-fit: contain;
+}
+
 .csrd-header-wordmark {
   color: var(--white);
   font-size: 20pt;

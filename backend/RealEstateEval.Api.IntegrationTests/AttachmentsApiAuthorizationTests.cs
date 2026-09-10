@@ -291,6 +291,20 @@ internal sealed class StubAttachmentService : IAttachmentService
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult(false);
+
+    public Task<(FileAttachmentMetaDto? Meta, string? Error)> SetDocumentTypeAsync(
+        Guid id,
+        SetAttachmentDocumentTypeRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));
+
+    public Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewDocumentAsync(
+        Guid id,
+        ReviewAttachmentDocumentRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));
 }
 
 internal sealed class SeededAttachmentLookup : IAttachmentLookup

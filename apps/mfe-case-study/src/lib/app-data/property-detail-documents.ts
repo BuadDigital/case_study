@@ -8,6 +8,7 @@ import {
   getCachedEvaluatorDepositCertificate,
   getCachedEvaluatorReport,
 } from "../evaluator-bridge";
+import { downloadDocumentFile } from "@platform/app-shared/app-data/download-document-file";
 import {
   getCachedPropertyDocMatching,
   isImageMime,
@@ -15,19 +16,19 @@ import {
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
   INSPECTOR_FEATURE_FIELDS,
+  inspectorFreePhotoCategoryMeta,
   listServiceAmenityPhotoSlots,
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
-import { INSPECTOR_FREE_PHOTO_CATEGORIES } from "./inspector-workspace-data";
 
 /** Free photos store the category key; the specialist sees its Arabic label. */
 function freePhotoCategoryLabel(category: string | null | undefined): string {
+  const known = inspectorFreePhotoCategoryMeta(category);
+  if (known) return known.label;
   const key = category?.trim();
-  if (!key) return "صورة إضافية";
-  const known = INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key);
-  return known ? `صورة إضافية — ${known.label}` : key;
+  return key || "صورة إضافية";
 }
 import { loadInspectorWorkspace } from "./inspector-workspace-model";
 
@@ -110,6 +111,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: "intake-reg",
+      documentTypeKey: "real-estate-registry",
       name: "السجل العقاري",
       fileName: name,
       source,
@@ -130,6 +132,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: `intake-assignment-${index}-${name}`,
+      documentTypeKey: "assignment-letter",
       name: property.assignmentDocFileNames.length > 1
         ? `خطاب الإسناد (${index + 1})`
         : "خطاب الإسناد",
@@ -151,6 +154,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: "intake-deed-ownership",
+      documentTypeKey: "deed",
       name: "صورة وثيقة التملك (الصك)",
       fileName: name,
       source,
@@ -170,6 +174,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: "intake-bourse-deed",
+      documentTypeKey: "bourse-deed",
       name: "صورة الصك من البورصة",
       fileName: name,
       source: "استعلام البورصة",
@@ -190,6 +195,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: `intake-delegation-${index}-${name}`,
+      documentTypeKey: "delegation-letter",
       name: property.delegationLetterFileNames.length > 1
         ? `خطاب التفويض (${index + 1})`
         : "خطاب التفويض",
@@ -214,6 +220,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: "intake-boundaries",
+      documentTypeKey: "boundaries-document",
       name: "مستند الحدود",
       fileName: name,
       source,
@@ -234,6 +241,7 @@ export function collectIntakeDocuments(input: {
     );
     pushEntry(docs, {
       id: `intake-other-${i}`,
+      documentTypeKey: "unlisted",
       name: "مستند إضافي",
       fileName: trimmed,
       source,
@@ -260,6 +268,7 @@ function mapEngineeringDoc(
     attachmentId: doc.attachment.attachmentId,
     engineeringField: doc.field,
     engineeringTaskId: surveyTaskId,
+    documentTypeKey: doc.field === "surveyReport" ? "survey" : "site-letter",
   };
 }
 
@@ -281,6 +290,7 @@ export function collectAppraisalDocuments(
   if (cached?.fileName?.trim()) {
     docs.push({
       id: "appraisal-report",
+      documentTypeKey: "valuation-report",
       name: "تقرير التقييم",
       fileName: cached.fileName.trim(),
       source: "المقيّم العقاري",
@@ -293,6 +303,7 @@ export function collectAppraisalDocuments(
   if (deposit?.fileName?.trim()) {
     docs.push({
       id: "appraisal-deposit-certificate",
+      documentTypeKey: "deposit-certificate",
       name: "شهادة الإيداع",
       fileName: deposit.fileName.trim(),
       source: "المقيّم العقاري",
@@ -333,6 +344,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
         const kindLabel = def.kind === "service" ? "خدمة" : "مرفق";
         pushEntry(docs, {
           id: `inspection-photo-${def.id}-${photo.id}`,
+          documentTypeKey: "inspection-photo",
           name:
             slot.photos.length > 1
               ? `${kindLabel}: ${def.label} ${i + 1}`
@@ -364,6 +376,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       const photoRef = `free:${photo.id}`;
       pushEntry(docs, {
         id: `inspection-free-${photo.id}`,
+        documentTypeKey: "inspection-photo",
         name: freePhotoCategoryLabel(photo.category),
         fileName: photo.fileName,
         source,
@@ -389,6 +402,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const photoRef = `feature:${key}`;
     pushEntry(docs, {
       id: `inspection-feature-${key}`,
+      documentTypeKey: "inspection-photo",
       name: `صورة توثيقية — ${inspectorFeaturePhotoLabel(key)}`,
       fileName: attachment.fileName,
       source,
@@ -405,6 +419,8 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const photoRef = `component:${key}`;
     pushEntry(docs, {
       id: `inspection-component-${key}`,
+      // The permit is a document even when the inspector photographs it.
+      documentTypeKey: key === "buildLicense" ? "building-permit" : "inspection-photo",
       name: inspectorComponentPhotoLabel(key),
       fileName: attachment.fileName,
       source,
@@ -419,6 +435,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const photoRef = `observation:${obs.id}`;
     pushEntry(docs, {
       id: `inspection-observation-${obs.id}`,
+      documentTypeKey: "inspection-photo",
       name: obs.category.trim() || obs.text.trim() || "ملاحظة موثّقة",
       fileName: obs.photo.fileName,
       source,
@@ -441,6 +458,37 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   { id: "appraisal", title: "المقيّم العقاري" },
   { id: "inspection", title: "المعاين الميداني" },
 ];
+
+export const GOVERNED_DOCUMENTS_SECTION = {
+  id: "governed",
+  title: "مستندات العقار",
+} as const;
+
+/**
+ * Adds the documents-tab uploads (scope `property-document`) as their own section right
+ * after the intake documents, so every consumer of the property documents — the valuer's
+ * report attachments included — sees them. Files already listed by a source are skipped.
+ */
+export function withGovernedDocumentsSection(
+  sections: PropertyDetailDocumentSection[],
+  governed: readonly PropertyDetailDocumentEntry[] | null | undefined,
+): PropertyDetailDocumentSection[] {
+  const listed = new Set(
+    sections.flatMap((section) =>
+      section.documents.map((doc) => doc.attachmentId).filter(Boolean),
+    ),
+  );
+  const documents = (governed ?? []).filter(
+    (doc) => doc.governed && !(doc.attachmentId && listed.has(doc.attachmentId)),
+  );
+  if (documents.length === 0) return sections;
+
+  const section = { ...GOVERNED_DOCUMENTS_SECTION, documents };
+  const intakeIndex = sections.findIndex((s) => s.id === "intake");
+  const next = [...sections];
+  next.splice(intakeIndex + 1, 0, section);
+  return next;
+}
 
 function sectionIdForSource(source: string): string {
   if (source === "البيانات الأولية") return "intake";
@@ -558,12 +606,10 @@ export function downloadPropertyDetailDocument(
     );
     return;
   }
-  if (!entry.dataUrl) return;
-  const link = document.createElement("a");
-  link.href = entry.dataUrl;
-  link.download = entry.fileName;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  void downloadDocumentFile({
+    fileName: entry.fileName,
+    dataUrl: entry.dataUrl,
+    // Rows listed from metadata only (e.g. documents-tab uploads) fetch the file on demand.
+    attachmentId: entry.attachmentId ?? entry.inspectionPhoto?.attachment.attachmentId,
+  });
 }

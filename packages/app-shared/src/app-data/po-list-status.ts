@@ -54,12 +54,16 @@ export function isPoListStatusTerminal(status: PoListStatus): boolean {
   );
 }
 
-/** Progress bar: share of properties whose case study is done (form uploaded to system). */
+/** Progress bar: prefer API workflow progress; else share of completed case studies. */
 export function poProgressPct(
   _registered: number | undefined,
   studied: number | undefined,
   expected: number | undefined,
+  workflowPct?: number | null,
 ): number {
+  if (workflowPct != null && Number.isFinite(workflowPct)) {
+    return Math.min(100, Math.max(0, Math.round(workflowPct)));
+  }
   const done = Math.max(0, Number(studied) || 0);
   const exp = Math.max(0, Number(expected) || 0);
   if (exp <= 0) return 0;

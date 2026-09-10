@@ -26,12 +26,17 @@ function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
   const expected = item.expectedPropertyCount || item.propertyCount || 0;
   const specialist = item.assignmentSpecialist?.trim() || "";
   const project = item.workOrderDescription?.trim() || undefined;
+  const progressPct =
+    typeof item.progressPct === "number" && Number.isFinite(item.progressPct)
+      ? Math.min(100, Math.max(0, Math.round(item.progressPct)))
+      : undefined;
   return {
     id: item.poNumber,
     type: item.assignmentType || "—",
     count: expected,
     registered: item.propertyCount ?? 0,
     done: item.completedCount ?? 0,
+    progressPct,
     status: normalizePoListStatus(item.status),
     date: item.receivedFromEnfathAt,
     dueDate: item.dueDateAt,

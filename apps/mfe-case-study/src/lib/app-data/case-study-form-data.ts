@@ -1,4 +1,5 @@
 import { todayIso } from "@platform/app-shared/format/date";
+import { BRAND_IDENTITY_DEFAULTS, customBrandLogoUrl } from "@platform/api-client";
 /** Question banks for the case-study form — labels from the field dictionary (API) with local defaults. */
 
 import {
@@ -40,6 +41,16 @@ export function caseStudySignatureImage(): string {
 }
 export function caseStudyStampImage(): string {
   return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;
+}
+/**
+ * Uploaded white logo for the navy header block (الهوية البصرية), or null to keep the
+ * built-in EJADAH wordmark.
+ */
+export function caseStudyHeaderLogoImage(): string | null {
+  return customBrandLogoUrl(
+    getCachedOrganizationBranding()?.logoWhiteUrl,
+    BRAND_IDENTITY_DEFAULTS.logoWhiteUrl,
+  );
 }
 
 /** Fixed text under deed and survey tables — matches the paper form. */

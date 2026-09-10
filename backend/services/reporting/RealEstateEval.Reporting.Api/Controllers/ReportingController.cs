@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Failures.Application.Contracts;
 using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Reporting.Api.Services;
 using RealEstateEval.Shared.Web.Authorization;
@@ -29,11 +30,16 @@ public class ReportingController : ControllerBase
 
     private readonly IReportingUpstreamClient _upstream;
     private readonly ApiResponseCache _cache;
+    private readonly ILogger<ReportingController> _logger;
 
-    public ReportingController(IReportingUpstreamClient upstream, ApiResponseCache cache)
+    public ReportingController(
+        IReportingUpstreamClient upstream,
+        ApiResponseCache cache,
+        ILogger<ReportingController> logger)
     {
         _upstream = upstream;
         _cache = cache;
+        _logger = logger;
     }
 
     [HttpGet("dashboard")]
@@ -50,8 +56,16 @@ public class ReportingController : ControllerBase
 
     private async Task<ReportingDashboardDto> BuildDashboardAsync(CancellationToken ct)
     {
-        var opsMetricsTask = _upstream.GetOpsMetricsAsync(ct);
-        var allTasks = await _upstream.GetWorkflowTasksAsync(ct);
+        var opsMetricsTask = SoftGetAsync(
+            _upstream.GetOpsMetricsAsync,
+            new DashboardOpsMetricsDto(),
+            "ops-metrics",
+            ct);
+        var allTasks = await SoftGetAsync(
+            _upstream.GetWorkflowTasksAsync,
+            Array.Empty<WorkflowTaskDto>(),
+            "workflow-tasks",
+            ct);
 
         var valuationRows = BuildRecentValuationRequests(allTasks);
 
@@ -93,7 +107,12 @@ public class ReportingController : ControllerBase
  // Government-review workflow surface removed; keep DTO slot empty for API compat.
         var governmentReviews = Array.Empty<ReportingGovernmentReviewRowDto>();
 
-        var failures = (await _upstream.GetFailuresAsync(ct))
+        var failureRecords = await SoftGetAsync(
+            _upstream.GetFailuresAsync,
+            Array.Empty<FailureRecordDto>(),
+            "failures",
+            ct);
+        var failures = failureRecords
             .Where(f => f.Status is not "resolved" and not "suspended")
             .OrderByDescending(f => f.UpdatedAt)
             .Take(6)
@@ -109,7 +128,11 @@ public class ReportingController : ControllerBase
             })
             .ToList();
 
-        var feesSummary = await _upstream.GetInspectorFeesSummaryAsync(ct);
+        var feesSummary = await SoftGetAsync(
+            _upstream.GetInspectorFeesSummaryAsync,
+            new InspectorFeesSummaryDto(),
+            "inspector-fees",
+            ct);
         var feeRows = feesSummary.Rows
             .Where(r => r.BillingStatus is not "disbursed")
             .OrderByDescending(r => r.UpdatedAtUtc ?? DateTime.MinValue)
@@ -138,6 +161,11 @@ public class ReportingController : ControllerBase
         };
 
         var ops = await opsMetricsTask;
+        var fieldInspection = await SoftGetAsync(
+            _upstream.GetFieldInspectionSummaryAsync,
+            new FieldInspectionWorkspaceSummaryDto(),
+            "field-inspection-summary",
+            ct);
         return new ReportingDashboardDto
         {
             RecentValuationRequests = valuationRows,
@@ -146,10 +174,30 @@ public class ReportingController : ControllerBase
             PartyFeesOverview = partyFeesOverview,
             TeamFieldMembers = teamField,
             SpecialistLoad = specialistLoad,
-            FieldInspectionProgress = await _upstream.GetFieldInspectionSummaryAsync(ct),
+            FieldInspectionProgress = fieldInspection,
             StageDwell = ops.StageDwell,
             CompletionTrend = ops.CompletionTrend,
         };
+    }
+
+    private async Task<T> SoftGetAsync<T>(
+        Func<CancellationToken, Task<T>> factory,
+        T fallback,
+        string upstreamName,
+        CancellationToken ct)
+    {
+        try
+        {
+            return await factory(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                ex,
+                "Reporting dashboard upstream {UpstreamName} failed; returning empty section.",
+                upstreamName);
+            return fallback;
+        }
     }
 
     private static List<ValuationRequestDto> BuildRecentValuationRequests(

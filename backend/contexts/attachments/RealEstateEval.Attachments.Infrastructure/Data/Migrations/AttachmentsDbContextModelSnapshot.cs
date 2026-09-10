@@ -36,10 +36,37 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CustomDocumentLabel")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("CustomDocumentReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("DocumentTypeKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ReviewStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Scope")
                         .IsRequired()
@@ -67,7 +94,10 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
 
                     b.HasIndex("Scope", "ScopeKey");
 
-                    b.ToTable("FileAttachments", "attachments");
+                    b.ToTable("FileAttachments", "attachments", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileAttachments_ReviewStatus", "\"ReviewStatus\" IS NULL OR \"ReviewStatus\" IN ('pending', 'approved', 'rejected')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>

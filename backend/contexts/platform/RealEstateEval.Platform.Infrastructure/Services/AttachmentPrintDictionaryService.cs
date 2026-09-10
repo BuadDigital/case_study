@@ -171,6 +171,8 @@ public sealed class AttachmentPrintDictionaryService
                 state.Lists[ValuationListIds.Attachments] = FromPrintTypes(NormalizePrint(types));
         }
 
+        state.Lists[ValuationListIds.Attachments] = ValuationListsSeed.WithRegistryAttachments(
+            state.Lists.GetValueOrDefault(ValuationListIds.Attachments) ?? []);
         return state;
     }
 
@@ -232,19 +234,11 @@ public sealed class AttachmentPrintDictionaryService
         IReadOnlyList<string>? keys,
         string? cell)
     {
-        var fromKeys = (keys ?? [])
-            .Select(x => x.Trim())
-            .Where(x => x.Length > 0 && x != "الكل")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var fromKeys = PropertyDocumentTypes.NormalizePropertyTypeKeys(keys ?? []);
         if (fromKeys.Count > 0)
             return fromKeys;
-        var fromCell = (cell ?? "")
-            .Split(['،', ',', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(x => x != "الكل")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-        return fromCell;
+        return PropertyDocumentTypes.NormalizePropertyTypeKeys(
+            (cell ?? "").Split(['،', ',', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
     private static List<AttachmentPrintTypeDto> NormalizePrint(
@@ -264,11 +258,7 @@ public sealed class AttachmentPrintDictionaryService
                 Id = string.IsNullOrWhiteSpace(t.Id) ? key : t.Id.Trim(),
                 Key = key,
                 LabelAr = label,
-                PropertyTypeKeys = (t.PropertyTypeKeys ?? [])
-                    .Select(x => x.Trim())
-                    .Where(x => x.Length > 0)
-                    .Distinct(StringComparer.Ordinal)
-                    .ToList(),
+                PropertyTypeKeys = PropertyDocumentTypes.NormalizePropertyTypeKeys(t.PropertyTypeKeys ?? []),
                 IsRequired = t.IsRequired,
                 IsSystemDefault = t.IsSystemDefault,
                 SortOrder = t.SortOrder > 0 ? t.SortOrder : order,
