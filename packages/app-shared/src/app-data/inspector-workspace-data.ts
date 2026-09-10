@@ -635,7 +635,7 @@ export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] = [
   { key: "other", label: "أخرى", icon: "ti-photo" },
 ];
 
-export type InspectorComponentPhotoKey = "showroom" | "well";
+export type InspectorComponentPhotoKey = "showroom" | "well" | "buildLicense";
 
 export type InspectorComponentPhotoAttachments = Record<
   InspectorComponentPhotoKey,
@@ -643,7 +643,7 @@ export type InspectorComponentPhotoAttachments = Record<
 >;
 
 function emptyComponentPhotoAttachments(): InspectorComponentPhotoAttachments {
-  return { showroom: null, well: null };
+  return { showroom: null, well: null, buildLicense: null };
 }
 
 export type InspectorWorkspaceDraft = {
@@ -902,6 +902,25 @@ export function isInspectorWorkspaceAccepted(
   const stamp = draft?.acceptedAtUtc;
   return typeof stamp === "string" && stamp.trim().length > 0;
 }
+
+/**
+ * Appraiser-facing property description — only after specialist acceptance of
+ * the inspector package. Before that, returns empty so report/glance UIs do
+ * not leak the inspector's draft wording.
+ */
+export function approvedInspectorPropertyDescription(
+  draft:
+    | Pick<InspectorWorkspaceDraft, "propertyDescription" | "acceptedAtUtc">
+    | null
+    | undefined,
+): string {
+  if (!isInspectorWorkspaceAccepted(draft)) return "";
+  return (draft?.propertyDescription ?? "").trim();
+}
+
+/** Placeholder when the appraiser opens the report before specialist accept. */
+export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
+  "يظهر وصف العقار للمقيم بعد اعتماد الأخصائي لمدخلات المعاين.";
 
 /**
  * Inspector cannot edit after submit. Specialist may correct a submitted

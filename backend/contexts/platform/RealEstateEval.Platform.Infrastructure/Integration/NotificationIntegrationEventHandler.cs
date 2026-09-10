@@ -66,6 +66,17 @@ public sealed class NotificationIntegrationEventHandler
             return;
         }
 
+        if (string.Equals(eventType, IntegrationEventTypes.ValuationWorkflowNotice, StringComparison.Ordinal))
+        {
+            var payload = payloadElement.Deserialize<ValuationWorkflowNoticePayload>(JsonOpts);
+            if (payload is not null)
+            {
+                await HandleValuationWorkflowNoticeAsync(payload, eventId, cancellationToken);
+            }
+
+            return;
+        }
+
         if (string.Equals(eventType, IntegrationEventTypes.ValuationRequestCreated, StringComparison.Ordinal))
         {
             var payload = payloadElement.Deserialize<ValuationRequestCreatedPayload>(JsonOpts);
@@ -191,6 +202,67 @@ public sealed class NotificationIntegrationEventHandler
         var count = await _notifications.CreateForUsersAsync(recipientIds, request, cancellationToken);
         _logger.LogInformation(
             "ValuationRequestCreated: created notifications for {Count} users on property {PropertyId}",
+            count,
+            propertyId);
+    }
+
+    /// <summary>
+    /// Valuation knows the property, not who is assigned to it — this resolves the addressed
+    /// audience to open task assignees and writes their inbox rows.
+    /// </summary>
+    private async Task HandleValuationWorkflowNoticeAsync(
+        ValuationWorkflowNoticePayload payload,
+        string? eventId,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(payload.PropertyId, out var propertyId))
+            return;
+        if (string.IsNullOrWhiteSpace(payload.Title))
+            return;
+
+        WorkflowTaskKind[] kinds = payload.Audience switch
+        {
+            ValuationNoticeAudiences.CaseSpecialist => [WorkflowTaskKind.CaseStudyProperty],
+            ValuationNoticeAudiences.Appraiser => [WorkflowTaskKind.PropertyAppraisal],
+            _ => [],
+        };
+        if (kinds.Length == 0)
+        {
+            _logger.LogWarning(
+                "ValuationWorkflowNotice: unknown audience {Audience} for property {PropertyId}",
+                payload.Audience,
+                propertyId);
+            return;
+        }
+
+        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
+            propertyId,
+            kinds,
+            cancellationToken);
+        if (recipientIds.Count == 0)
+        {
+            _logger.LogInformation(
+                "ValuationWorkflowNotice: no {Audience} to notify for property {PropertyId}",
+                payload.Audience,
+                propertyId);
+            return;
+        }
+
+        var request = new CreateUserNotificationRequest
+        {
+            Title = payload.Title,
+            Body = payload.Body,
+            Tone = NotificationContract.Tones.Normalize(payload.Tone),
+            Href = payload.Href,
+            Category = NotificationContract.Categories.Workflow,
+            EntityType = NotificationContract.EntityTypes.Property,
+            EntityId = payload.PropertyId,
+            SourceEvent = BuildSourceEvent(IntegrationEventTypes.ValuationWorkflowNotice, eventId),
+        };
+
+        var count = await _notifications.CreateForUsersAsync(recipientIds, request, cancellationToken);
+        _logger.LogInformation(
+            "ValuationWorkflowNotice: created notifications for {Count} users on property {PropertyId}",
             count,
             propertyId);
     }

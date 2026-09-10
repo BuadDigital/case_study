@@ -67,3 +67,28 @@ export function assumptionsAfterSpecialistChoice(input: {
     ? stripped
     : [...stripped, input.noSpecialistClause];
 }
+
+/**
+ * True when there is no real saved selection yet — empty, or only the
+ * auto-injected «لم يستعن…» clause from an older approach-settings save.
+ */
+export function shouldUseDefaultSpecialAssumptions(
+  selected: readonly string[],
+): boolean {
+  if (selected.length === 0) return true;
+  return selected.every(isNoExternalSpecialistAssumption);
+}
+
+/** All library clauses on by default (respecting the specialist exclusive pair). */
+export function defaultSelectedSpecialAssumptions(
+  library: readonly string[],
+  specialistUsed: boolean,
+): string[] {
+  const noSpecialistClause = resolveNoSpecialistClause(library);
+  const base = library.length > 0 ? [...library] : [noSpecialistClause];
+  return assumptionsAfterSpecialistChoice({
+    specialistUsed,
+    assumptions: base,
+    noSpecialistClause,
+  });
+}

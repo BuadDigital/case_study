@@ -66,4 +66,24 @@ public sealed class InspectedPropertyTypeRulesTests
         Assert.Contains("\"buildState\":\"\"", result);
         Assert.DoesNotContain("building.jpg", result);
     }
+
+    [Fact]
+    public void FromPayload_DetectsStaffAttemptToChangeInspectorOwnedType()
+    {
+        const string submitted =
+            """{"featureValues":{"assetSubject":"فيلا","facade":"شمالية"},"propertyDescription":"وصف المعاين"}""";
+        const string corrected =
+            """{"featureValues":{"assetSubject":"أرض","facade":"غربية"},"propertyDescription":"وصف الأخصائي"}""";
+
+        Assert.Equal("فيلا", InspectedPropertyTypeRules.FromPayload(submitted));
+        Assert.Equal("أرض", InspectedPropertyTypeRules.FromPayload(corrected));
+        Assert.False(string.Equals(
+            InspectedPropertyTypeRules.FromPayload(submitted),
+            InspectedPropertyTypeRules.FromPayload(corrected),
+            StringComparison.Ordinal));
+        Assert.Equal(
+            "فيلا",
+            InspectedPropertyTypeRules.FromPayload(
+                """{"featureValues":{"assetSubject":"فيلا","facade":"غربية"},"propertyDescription":"وصف الأخصائي"}"""));
+    }
 }

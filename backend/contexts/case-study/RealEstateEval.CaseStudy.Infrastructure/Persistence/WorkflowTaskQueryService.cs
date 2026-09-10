@@ -43,7 +43,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             null,
             take,
             cancellationToken);
-        await EnrichFieldInspectionCompletedAsync(dtos, cancellationToken);
+        await EnrichSiblingPartyFlagsAsync(dtos, cancellationToken);
         return dtos;
     }
 
@@ -73,7 +73,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         var rows = VisibleOrderedTasks(query, actor);
         var total = await rows.CountAsync(cancellationToken);
         var items = await MaterializeAsync(rows, skip, take, cancellationToken);
-        await EnrichFieldInspectionCompletedAsync(items, cancellationToken);
+        await EnrichSiblingPartyFlagsAsync(items, cancellationToken);
 
         return new PagedResultDto<WorkflowTaskDto>
         {
@@ -285,12 +285,13 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 
  /// <summary>
  /// Marks engineering-survey DTOs with sibling field-inspection completed, and
- /// property-appraisal DTOs with completed + specialist-accepted. Populated so
- /// EO/appraiser unlock works without seeing the inspection task row
- /// (party visibility hides it). Query is scoped to parent+property pairs
- /// present in the page (no full-table scan).
+ /// property-appraisal DTOs with completed + specialist-accepted plus sibling
+ /// engineering-survey completed. Populated so EO/appraiser unlock and the
+ /// parties rail work without seeing the sibling task rows (party visibility
+ /// hides them). Queries are scoped to parent+property pairs present in the
+ /// page (no full-table scan).
  /// </summary>
-    internal async Task EnrichFieldInspectionCompletedAsync(
+    internal async Task EnrichSiblingPartyFlagsAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
         CancellationToken cancellationToken)
     {
@@ -362,6 +363,33 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                     return preferred.Id.ToString();
                 });
 
+        // The appraiser never sees the engineering-survey row, so its completion
+        // is mirrored onto the appraisal DTO the same way the inspection is.
+        var appraisalParentIds = targets
+            .Where(t => t.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+            .Select(t => Guid.TryParse(t.ParentTaskId, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .ToHashSet();
+
+        var surveyCompleted = appraisalParentIds.Count == 0
+            ? new HashSet<(string Parent, string Prop)>()
+            : (await _caseStudy.WorkflowTasks.AsNoTracking()
+                .Where(t =>
+                    t.Kind == WorkflowTaskKind.EngineeringSurvey
+                    && t.Status == WorkflowTaskStatus.Completed
+                    && t.ParentTaskId != null
+                    && appraisalParentIds.Contains(t.ParentTaskId.Value)
+                    && t.PropertyId != null
+                    && propertyIds.Contains(t.PropertyId.Value))
+                .Select(t => new
+                {
+                    ParentId = t.ParentTaskId!.Value,
+                    PropertyId = t.PropertyId!.Value,
+                })
+                .ToListAsync(cancellationToken))
+                .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
+                .ToHashSet();
+
         foreach (var target in targets)
         {
             var key = (target.ParentTaskId!, target.PropertyId!);
@@ -369,7 +397,10 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             if (preferredIdByKey.TryGetValue(key, out var inspectionTaskId))
                 target.FieldInspectionTaskId = inspectionTaskId;
             if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+            {
                 target.FieldInspectionAccepted = accepted.Contains(key);
+                target.EngineeringSurveyCompleted = surveyCompleted.Contains(key);
+            }
         }
     }
 }

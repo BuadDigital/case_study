@@ -1008,6 +1008,56 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.ToTable("ValuationReportIssuances", "valuation");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportPdf", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Renderer")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ReportNumber")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValuationRequestId", "CreatedAtUtc");
+
+                    b.ToTable("ValuationReportPdfs", "valuation");
+                });
+
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1199,6 +1249,15 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportIssuance", b =>
+                {
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", null)
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportPdf", b =>
                 {
                     b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", null)
                         .WithMany()

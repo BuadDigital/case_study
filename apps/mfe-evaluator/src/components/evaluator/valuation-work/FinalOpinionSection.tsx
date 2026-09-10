@@ -20,13 +20,9 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   Card,
   CardPad,
-  GhostBtn,
   PrimaryBtn,
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
-import {
-  FinalOpinionGatesCard,
-} from "./FinalOpinionParts";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 import { deedNatureMatchBlocksValuation } from "./lib/deed-nature-match-gate";
 
@@ -70,9 +66,9 @@ function OpinionInvoiceRow({
 }
 
 /**
- * Final-opinion screen — reconciliation table, the value-opinion card, and
- * issuance gates. Drafts live in `useFinalOpinionWorkflow`. The Q-6 issuance
- * cycle lives on المراجعة النهائية; methodology alerts live on طريقة المقارنة.
+ * Final-opinion screen — reconciliation table and the value-opinion card.
+ * Drafts live in `useFinalOpinionWorkflow`. The Q-6 issuance cycle lives on
+ * المراجعة النهائية; methodology alerts live on طريقة المقارنة.
  */
 export const FinalOpinionSection = memo(function FinalOpinionSection({
   valuationRequestId,
@@ -139,7 +135,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     opinionAuto,
     opinionDirty,
     saveReconciliation,
-    openReportPreview,
   } = workflow;
   const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
 
@@ -438,21 +433,16 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               className="mt-[13px] w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
             />
 
-          <div className="mt-[18px] flex flex-wrap gap-2.5">
+            <div className="mt-[18px] flex flex-wrap gap-2.5">
             <PrimaryBtn
               disabled={saving || reconMethods.length === 0 || matchBlocksCalc}
               onClick={() => void saveReconciliation()}
             >
               {sole ? "حفظ الرأي النهائي" : "حفظ التوفيق والرأي النهائي"}
             </PrimaryBtn>
-            <GhostBtn disabled={saving} onClick={() => void openReportPreview()}>
-              معاينة التقرير
-            </GhostBtn>
           </div>
         </CardPad>
       </Card>
-
-      {gates ? <FinalOpinionGatesCard gates={gates} /> : null}
     </>
   );
 });

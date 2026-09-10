@@ -1,3 +1,4 @@
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Platform.Application.Abstractions;
@@ -22,19 +23,23 @@ public sealed partial class RegionsService : IRegionsService
     private readonly ILocationCatalogRepository _repo;
     private readonly ILocationCatalogSeedSource _seed;
     private readonly IResponseCache _cache;
+ /// <summary>Absent in hosts that only read the catalog — suggestion outcomes stay silent there.</summary>
+    private readonly INotificationService? _notifications;
     private readonly TimeProvider _time;
 
     public RegionsService(
         ILocationCatalogRepository repo,
         ILocationCatalogSeedSource seed,
         IResponseCache cache,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        INotificationService? notifications = null)
     {
         _time = time ?? TimeProvider.System;
 
         _repo = repo;
         _seed = seed;
         _cache = cache;
+        _notifications = notifications;
     }
 
     public async Task<IReadOnlyList<SelectableRegionDto>> ListSelectableRegionsAsync(

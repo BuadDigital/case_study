@@ -28,14 +28,19 @@ import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import {
   EXTERNAL_SPECIALIST_USED_LABEL,
   assumptionsAfterSpecialistChoice,
+  defaultSelectedSpecialAssumptions,
   resolveNoSpecialistClause,
+  shouldUseDefaultSpecialAssumptions,
   specialAssumptionRows,
 } from "../../lib/evaluator/special-assumption-rows";
+import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 import {
   buildValuationPrintAttachmentRows,
+  resolvePrintAttachmentOrder,
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
+import { FinalOpinionExtraAttachmentsCard } from "./valuation-work/FinalOpinionParts";
 import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
 import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
@@ -142,26 +147,35 @@ export function EvaluatorFinalReviewTab({
       }),
     [attachmentCatalog, choices.printAttachmentKeys, propertyDocuments],
   );
+  const printOrderKeys = useMemo(
+    () =>
+      resolvePrintAttachmentOrder(
+        printRows.map((row) => row.key),
+        choices.printAttachmentOrder,
+      ),
+    [printRows, choices.printAttachmentOrder],
+  );
 
   /** Seed assumptions list from settings — shared by standalone and shell modes. */
   const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
     const library = s.assumptionLibrary ?? [];
     const loaded = s.selectedAssumptions ?? [];
-    const useAll = loaded.length === 0;
     const noSpecialistClause = resolveNoSpecialistClause(library);
     setSpecialistUsed(s.externalSpecialistUsed);
     setSpecialistDetails(s.externalSpecialistDetails ?? "");
     setAssumptions(
-      assumptionsAfterSpecialistChoice({
-        specialistUsed: s.externalSpecialistUsed,
-        assumptions: useAll ? library : loaded,
-        noSpecialistClause,
-      }),
+      shouldUseDefaultSpecialAssumptions(loaded)
+        ? defaultSelectedSpecialAssumptions(library, s.externalSpecialistUsed)
+        : assumptionsAfterSpecialistChoice({
+            specialistUsed: s.externalSpecialistUsed,
+            assumptions: loaded,
+            noSpecialistClause,
+          }),
     );
   }, []);
 
-  // Shell mode: settings come from parent — no duplicate fetch; seed once per request so
-  // user edits are not overwritten when the shell reloads settings.
+  // Shell mode: settings come from parent — no duplicate fetch; seed once per
+  // request (or when the server selection changes) so local edits are not wiped.
   const seededForRequestRef = useRef<string | null>(null);
   useEffect(() => {
     if (approachSettingsFromShell === undefined) return;
@@ -173,7 +187,12 @@ export function EvaluatorFinalReviewTab({
     }
     setError(null);
     setSettings(approachSettingsFromShell);
-    const seedKey = knownValuationRequestId ?? propertyId;
+    const loaded = approachSettingsFromShell.selectedAssumptions ?? [];
+    const seedKey = `${knownValuationRequestId ?? propertyId}:${
+      shouldUseDefaultSpecialAssumptions(loaded)
+        ? "default-all"
+        : loaded.join("\u0001")
+    }`;
     if (seededForRequestRef.current === seedKey) return;
     seededForRequestRef.current = seedKey;
     seedAssumptions(approachSettingsFromShell);
@@ -318,48 +337,6 @@ export function EvaluatorFinalReviewTab({
         <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
       ) : null}
 
-      <ValCard title="مراجعة بيانات الأصل">
-        <p className={noteClassName}>
-          أكّد مطابقة بيانات الأصل للمعاينة، أو دوّن ملاحظات التباين إن وُجدت.
-        </p>
-        <div
-          id="val-asset-data"
-          className={cn(
-            "rounded-[10px] border border-border bg-surface px-3.5 py-3",
-            err("asset_data_confirmed") && invalidControlClass,
-          )}
-        >
-          <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-text">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
-              disabled={disabled}
-              checked={Boolean(draft.assetDataConfirmed)}
-              onChange={(e) =>
-                onDraftPatch?.({ assetDataConfirmed: e.target.checked })
-              }
-            />
-            <span>أكّدت مراجعة بيانات الأصل ومطابقتها للواقع</span>
-          </label>
-          <textarea
-            id="val-asset-variance-notes"
-            disabled={disabled}
-            rows={3}
-            placeholder="ملاحظات التباين (إلزامية إن لم تُؤكَّد المراجعة)"
-            value={draft.assetDataVarianceNotes}
-            onChange={(e) =>
-              onDraftPatch?.({ assetDataVarianceNotes: e.target.value })
-            }
-            className={cn(opsFldControl, "mt-2.5 min-h-[72px] resize-y")}
-          />
-          {err("asset_data_confirmed") ? (
-            <p className="mt-1.5 text-[11px] text-danger-text">
-              {err("asset_data_confirmed")}
-            </p>
-          ) : null}
-        </div>
-      </ValCard>
-
       <ValCard title="الافتراضات الخاصة">
         <p className={noteClassName}>
           أزل العبارة التي لا تصح على هذا العقار، أو أضف بنداً إضافياً. يُحفظ مع
@@ -498,23 +475,31 @@ export function EvaluatorFinalReviewTab({
           esgSoc={choices.esgSoc}
           esgGov={choices.esgGov}
           disabled={disabled}
+          invalidGroups={
+            err("esg_impact_notes")
+              ? esgGroupsMissingImpactDescription(choices)
+              : undefined
+          }
           onPatch={(patch) => onReportChoicesPatch?.(patch)}
         />
+        {err("esg_impact_notes") ? (
+          <p className="mt-2 mb-0 text-[11px] text-danger-text">
+            {err("esg_impact_notes")}
+          </p>
+        ) : null}
       </ValCard>
 
       <ValCard title="مرفقات التقرير">
-        <p className={noteClassName}>
-          يحدّدها المقيّم في المراجعة النهائية وتُطبع في تقرير التقييم، وترتبط بما
-          هو متوفر في مستندات العقار.
-        </p>
-        <ValuationReportAttachmentsEditor
-          rows={printRows}
-          selectedKeys={choices.printAttachmentKeys}
-          disabled={disabled}
-          onChange={(printAttachmentKeys) =>
-            onReportChoicesPatch?.({ printAttachmentKeys })
-          }
-        />
+        <div className="flex flex-col gap-2">
+          <ValuationReportAttachmentsEditor
+            rows={printRows}
+            selectedKeys={choices.printAttachmentKeys}
+            orderKeys={printOrderKeys}
+            disabled={disabled}
+            onChange={(patch) => onReportChoicesPatch?.(patch)}
+          />
+          <FinalOpinionExtraAttachmentsCard disabled={disabled} />
+        </div>
       </ValCard>
     </div>
   );

@@ -48,6 +48,8 @@ export type WorkflowTaskDto = {
   fieldInspectionAccepted?: boolean | null;
   /** Completed sibling field-inspection task id (server; for loading facts without list visibility). */
   fieldInspectionTaskId?: string | null;
+  /** Property-appraisal: sibling engineering-survey completed (server). */
+  engineeringSurveyCompleted?: boolean | null;
   /*
    * The five PO-record columns of the task's property, joined server-side
    * (pagination-contract §2, "The PO-record columns on the row"). All optional

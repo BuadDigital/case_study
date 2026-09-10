@@ -448,6 +448,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (!alreadyAccepted)
             await NotifyPartyAcceptedAsync(task, cancellationToken);
+            if (task.Kind == WorkflowTaskKind.FieldInspection)
+                await NotifySiblingsInspectionAcceptedAsync(task, cancellationToken);
 
         if (!alreadyAccepted)
         {

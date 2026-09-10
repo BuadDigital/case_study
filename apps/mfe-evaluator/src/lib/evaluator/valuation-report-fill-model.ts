@@ -21,7 +21,10 @@ import {
   formatValuationReportUsers,
 } from "./valuation-report-users";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  approvedInspectorPropertyDescription,
+  isLandInspectionContext,
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   applyIvsDateToStandards,
   isNoExternalSpecialistAssumption,
@@ -348,12 +351,18 @@ export type ValuationReportLiveFill = {
   reportWorkers: EvaluatorReportWorker[];
   /** §26 — assigned appraiser from work-order dispatch (fourth column). */
   assignedAppraiserName: string;
-  /** §34 — up to 12 field photos (data URLs). */
-  photoSlots: ValuationReportSlotAttachment[];
+  /** §34 — up to 12 field photos (data URLs); null keeps that HTML slot empty. */
+  photoSlots: Array<ValuationReportSlotAttachment | null>;
   /** §35 — survey document (image or PDF data URL). */
   surveySlot: ValuationReportSlotAttachment | null;
   /** §36 — deed document. */
   deedSlot: ValuationReportSlotAttachment | null;
+  /** Pan/scale per slot id (image-slot {s,x,y}). */
+  slotFrames: Record<string, { s: number; x: number; y: number }>;
+  /** Final-review attachment row order (catalog keys). */
+  printAttachmentOrder: string[];
+  /** Selected attachment keys for print inclusion. */
+  printAttachmentKeys: string[];
   /** §18 — uploaded site map or generated map from coords. */
   comparableMapSlot: ValuationReportSlotAttachment | null;
   /** §18 — pins for interactive Google Map in screen preview. */
@@ -390,7 +399,9 @@ export type ValuationReportLiveFill = {
   reportDateSlash: string;
   /** §33 — "city - district" instead of the hardcoded "Jeddah - Al Sawari". */
   locationLabel: string;
-  /** §33 — close-up map: generated SVG when an uploaded satellite map is available. */
+  /** §33 upper — uploaded site map; print adds a Google hybrid view (zoom 15) when none. */
+  satelliteMapSlot: ValuationReportSlotAttachment | null;
+  /** §33 lower — Google satellite close-up (zoom 18); produced only at print time. */
   closeupMapSlot: ValuationReportSlotAttachment | null;
 };
 
@@ -399,6 +410,8 @@ export function buildValuationReportLiveFill(input: {
   /** Source of truth is the saved approach settings, not the presence of cost rows. */
   costApproachEnabled?: boolean;
   costScopeKey?: string | null;
+  /** "replacement" (default/إحلال) | "reproduction" (إعادة الإنتاج) — the appraiser's choice on البيانات الأساسية. */
+  costBasisKey?: string | null;
   record?: PoIntakeRecord | null;
   property?: PoPropertyIntake | null;
   inspector?: InspectorWorkspaceDraft | null;
@@ -428,7 +441,7 @@ export function buildValuationReportLiveFill(input: {
   /** Assigned appraiser from work-order dispatch — fourth participants column. */
   assignedAppraiserName?: string | null;
   survey?: ValuationReportSurveyBounds | null;
-  photoSlots?: ValuationReportSlotAttachment[] | null;
+  photoSlots?: Array<ValuationReportSlotAttachment | null> | null;
   surveySlot?: ValuationReportSlotAttachment | null;
   deedSlot?: ValuationReportSlotAttachment | null;
   /** Prefer uploaded site-map; else generate from subject + adopted comps. */
@@ -603,7 +616,7 @@ export function buildValuationReportLiveFill(input: {
     "قيمة العقار": dash(price ? formatAmountNumberDisplay(price) : ""),
     "نسبة خصم التصفية المنظمة": "—",
     "مبرر معامل التصفية": "—",
-    "وصف العقار": dash(inspector?.propertyDescription),
+    "وصف العقار": dash(approvedInspectorPropertyDescription(inspector)),
   };
 
   const areas = areasFromInventory(input.inventoryLines, inspector);
@@ -754,6 +767,10 @@ export function buildValuationReportLiveFill(input: {
   const finLevel = finishingLevelLabel(choices.finishingLevel);
   if (finLevel) cells["مستوى التشطيب"] = finLevel;
 
+  cells["التأثيرات البيئية"] = dash(esgCell(choices.esgEnv));
+  cells["التأثيرات الاجتماعية"] = dash(esgCell(choices.esgSoc));
+  cells["تأثيرات الحوكمة"] = dash(esgCell(choices.esgGov));
+  // Legacy factor labels (older HTML templates) still resolve to the group notes.
   cells["كفاءة الطاقة"] = dash(esgCell(choices.esgEnv));
   cells["أخطار الموقع والمناخ"] = dash(esgCell(choices.esgEnv));
   cells["المباني الخضراء"] = dash(esgCell(choices.esgEnv));
@@ -960,18 +977,12 @@ export function buildValuationReportLiveFill(input: {
         }
       : null);
 
-  // §33 — when the uploaded map occupies the satellite slot, the generator goes to the close-up slot.
-  const closeupMapSlot: ValuationReportSlotAttachment | null =
-    input.siteMapSlot && generatedMap
-      ? {
-          attachmentId: "generated-closeup-map",
-          url: generatedMap.url,
-          contentType: generatedMap.contentType,
-          fileName: generatedMap.fileName.replace("comparables", "closeup"),
-          labelAr: "صورة مقربة للموقع",
-          isImage: true,
-        }
-      : null;
+  // §33 — the uploaded site map occupies the satellite slot; both Google views
+  // (hybrid zoom 15 / satellite zoom 18) are fetched at print time by
+  // materializePrintMapSlots. Screen preview mounts live Google maps instead.
+  const satelliteMapSlot: ValuationReportSlotAttachment | null =
+    input.siteMapSlot ?? null;
+  const closeupMapSlot: ValuationReportSlotAttachment | null = null;
 
   return {
     cells,
@@ -989,7 +1000,9 @@ export function buildValuationReportLiveFill(input: {
         ? "طريقة المقارنة"
         : "غير مستخدم",
       choices.costMethodKey && choices.costMethodKey !== "__unused__"
-        ? "طريقة التكلفة (الإحلال)"
+        ? input.costBasisKey === "reproduction"
+          ? "طريقة التكلفة (إعادة الإنتاج)"
+          : "طريقة التكلفة (الإحلال)"
         : "غير مستخدم",
       choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__"
         ? "رسملة الدخل"
@@ -1165,12 +1178,15 @@ export function buildValuationReportLiveFill(input: {
           : "—",
     isLiquidation,
     isLand,
-    propertyDescription: (inspector?.propertyDescription ?? "").trim(),
+    propertyDescription: approvedInspectorPropertyDescription(inspector),
     reportWorkers: draft.reportWorkers ?? [],
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
     photoSlots: input.photoSlots ?? [],
     surveySlot: input.surveySlot ?? null,
     deedSlot: input.deedSlot ?? null,
+    slotFrames: { ...(choices.reportSlotFrames ?? {}) },
+    printAttachmentOrder: [...(choices.printAttachmentOrder ?? [])],
+    printAttachmentKeys: [...(choices.printAttachmentKeys ?? [])],
     comparableMapSlot,
     comparablesMapPins: mapPins,
     searchScopeNotes: (draft.searchScopeNotes ?? "").trim(),
@@ -1200,6 +1216,7 @@ export function buildValuationReportLiveFill(input: {
       .map((s) => (s ?? "").trim())
       .filter(Boolean)
       .join(" - "),
+    satelliteMapSlot,
     closeupMapSlot,
     finishingLevel:
       choices.finishingLevel || input.finishingLevel || "",

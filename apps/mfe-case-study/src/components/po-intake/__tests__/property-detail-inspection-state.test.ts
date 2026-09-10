@@ -116,7 +116,7 @@ describe("component count with photo", () => {
   const attachment: InspectorPhotoAttachment = {
     fileName: "showroom.jpg",
   } as InspectorPhotoAttachment;
-  const attachments = { showroom: attachment, well: null };
+  const attachments = { showroom: attachment, well: null, buildLicense: null };
 
   it("derives keys, refs and nouns per component", () => {
     expect(componentPhotoRef("showroom")).toBe("component:showroom");
@@ -137,6 +137,7 @@ describe("component count with photo", () => {
     expect(patch.componentPhotoAttachments).toEqual({
       showroom: attachment,
       well: attachment,
+      buildLicense: null,
     });
     expect(attachments.well).toBeNull();
   });
@@ -152,7 +153,7 @@ describe("component count with photo", () => {
     expect(componentCountPatch("showroom", "0", attachments)).toEqual({
       patch: {
         showroomCount: "0",
-        componentPhotoAttachments: { showroom: null, well: null },
+        componentPhotoAttachments: { showroom: null, well: null, buildLicense: null },
       },
       clearsPhoto: true,
     });

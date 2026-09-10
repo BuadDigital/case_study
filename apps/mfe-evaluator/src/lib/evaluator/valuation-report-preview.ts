@@ -9,7 +9,13 @@ export async function openValuationReportPreview(
   try {
     await openApprovedValuationReportPreview(doc, extras);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "تعذّر فتح القالب المعتمد";
+    // Keep the message only when it's genuinely Arabic (a deliberate error string this
+    // codebase throws); a raw browser/network exception is English and confuses the reader.
+    const isArabic = err instanceof Error && /[؀-ۿ]/.test(err.message);
+    if (err instanceof Error && !isArabic) {
+      console.warn("[evaluator] approved template preview failed:", err);
+    }
+    const message = isArabic ? (err as Error).message : "تعذّر فتح القالب المعتمد";
     // "noopener" in features makes window.open return null — open with a handle then clear opener.
     const w = window.open("", "_blank", "width=900,height=1000");
     if (!w) throw err;

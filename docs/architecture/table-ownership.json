@@ -1154,6 +1154,21 @@
       "note": "ق-6: two-phase issuance — frozen report snapshot, deposit PDF, deposit certificate + code, final PDF."
     },
     {
+      "table": "ValuationReportPdfs",
+      "schema": "valuation",
+      "dbSet": "ValuationReportPdfs",
+      "entity": "ValuationReportPdf",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Rendered report PDFs (browser-built print HTML → Gotenberg) behind signed .pdf?k= links; newest three per request kept."
+    },
+    {
       "table": "ValuationMarketApproaches",
       "schema": "valuation",
       "dbSet": "ValuationMarketApproaches",

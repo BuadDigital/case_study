@@ -250,12 +250,8 @@ export function EvaluatorWindow({
           }
         })
         .catch((err: unknown) => {
-          showToast(
-            err instanceof Error
-              ? err.message
-              : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى",
-            "error",
-          );
+          if (err instanceof Error) console.warn("[evaluator] autosave failed:", err);
+          showToast("تعذّر حفظ مسودة التقييم — حاول مرة أخرى", "error");
         });
     },
     [locked, task.id, showToast],
@@ -340,6 +336,7 @@ export function EvaluatorWindow({
       assetDataVarianceNotes: draft.assetDataVarianceNotes,
       independenceDeclared: draft.independenceDeclared,
       reportWorkers: draft.reportWorkers,
+      reportChoices: draft.reportChoices,
       skipManualLandBuilding: approachesOn,
       retrospective: retrospectiveRef.current,
     });
@@ -368,10 +365,14 @@ export function EvaluatorWindow({
             open.data.id,
           );
           if (gatesRes.ok && !gatesRes.data.allowsIssuance) {
-            const reason =
-              gatesRes.data.blockingReasonsAr[0] ??
-              "شروط الإصدار غير مستوفاة";
-            const message = `الاعتماد ممنوع — ${reason}`;
+            // Show every reason, not just the first — otherwise the appraiser fixes one,
+            // resubmits, hits the next, and repeats a trial-and-error loop.
+            const reasons = gatesRes.data.blockingReasonsAr;
+            const reasonText = reasons.length
+              ? reasons.slice(0, 4).join("؛ ") +
+                (reasons.length > 4 ? ` وغيرها (${reasons.length - 4} أخرى)` : "")
+              : "شروط الإصدار غير مستوفاة";
+            const message = `الاعتماد ممنوع — ${reasonText}`;
             setFormError(message);
             showToast(message, "error");
             setActiveTab("review");
@@ -410,10 +411,8 @@ export function EvaluatorWindow({
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
+        if (err instanceof Error) console.warn("[evaluator] submit save failed:", err);
+        const message = "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
         setFormError(message);
         showToast(message, "error");
         return false;
@@ -702,6 +701,7 @@ export function EvaluatorWindow({
                   inspectionTaskId={summary.inspectionTaskId}
                   surveyTaskId={summary.surveyTaskId}
                   assignedAppraiserName={assignedAppraiserName}
+                  onReportChoicesPatch={onReportChoicesPatch}
                 />
               </Activity>
             ) : null}

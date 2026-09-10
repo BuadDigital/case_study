@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   activeValuationListOptions,
-  getValuationReportDocument,
   getWorkOrder,
   saveValuationReconciliation,
   type ValuationCostApproachDto,
@@ -41,7 +40,7 @@ export type FinalOpinionWorkflowArgs = {
 
 /**
  * Owns the final-opinion screen: the reconciliation drafts and their
- * hydration, the live value calc, the reconciliation save, and report preview.
+ * hydration, the live value calc, and the reconciliation save.
  */
 export function useFinalOpinionWorkflow({
   valuationRequestId,
@@ -205,27 +204,6 @@ export function useFinalOpinionWorkflow({
     onReconSaved(res.data);
   }
 
-  async function openReportPreview() {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    onSavingChange(true);
-    const res = await getValuationReportDocument(config, valuationRequestId);
-    onSavingChange(false);
-    if (!res.ok) {
-      showToast("تعذّر تحميل استعراض تقرير التقييم", "error");
-      return;
-    }
-    try {
-      // Lazy load — preview builder is fetched on first click, not with the screen bundle.
-      const { openValuationReportPreview } = await import(
-        "../../../lib/evaluator/valuation-report-preview"
-      );
-      await openValuationReportPreview(res.data);
-    } catch {
-      showToast("تعذّر فتح استعراض تقرير التقييم", "error");
-    }
-  }
-
   const sole = recon && !recon.meetsMultiMethodGate;
   const {
     weightSumLocal,
@@ -276,7 +254,6 @@ export function useFinalOpinionWorkflow({
     opinionDirty,
     // Commands.
     saveReconciliation,
-    openReportPreview,
   };
 }
 

@@ -1,4 +1,7 @@
 using RealEstateEval.Application;
+using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Notifications;
+using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Platform.Application.Contracts;
 using RealEstateEval.Platform.Application.Rules;
 using RealEstateEval.Platform.Domain;
@@ -48,6 +51,8 @@ public sealed partial class RegionsService
 
         await _repo.SaveChangesAsync(cancellationToken);
         await InvalidateCatalogCache(cancellationToken);
+
+        await NotifySuggesterAsync(city.CreatedByUserId, action, city.NameAr, "المدينة", city.Id, cancellationToken);
     }
 
     public async Task ReviewDistrictAsync(
@@ -81,5 +86,47 @@ public sealed partial class RegionsService
         }
 
         await _repo.SaveChangesAsync(cancellationToken);
+
+        await NotifySuggesterAsync(
+            district.CreatedByUserId, action, district.NameAr, "الحي", district.Id, cancellationToken);
+    }
+
+    /// <summary>
+    /// Closes the loop on a suggestion: whoever proposed the row hears the outcome. A merge is
+    /// the rejection-shaped case — their row is retired onto an existing one.
+    /// </summary>
+    private async Task NotifySuggesterAsync(
+        string? suggestedByUserId,
+        string action,
+        string finalName,
+        string kindLabel,
+        Guid entityId,
+        CancellationToken cancellationToken)
+    {
+        var userId = suggestedByUserId?.Trim();
+        if (_notifications is null || string.IsNullOrWhiteSpace(userId)) return;
+
+        var request = action == LocationCatalogRules.ActionMerge
+            ? ReturnedForCorrectionNotice.Build(
+                title: $"دُمج اقتراح {kindLabel}",
+                summary: $"دُمج اقتراحك على سجل قائم باسم «{finalName}»",
+                reason: null,
+                href: "/location-pending",
+                category: NotificationContract.Categories.System,
+                entityType: null,
+                entityId: entityId.ToString(),
+                sourceEvent: $"location-suggestion-merged:{entityId}")
+            : new CreateUserNotificationRequest
+            {
+                Title = $"اعتُمد اقتراح {kindLabel}",
+                Body = $"اعتُمد اقتراحك باسم «{finalName}».",
+                Tone = NotificationContract.Tones.Success,
+                Href = "/location-pending",
+                Category = NotificationContract.Categories.System,
+                EntityId = entityId.ToString(),
+                SourceEvent = $"location-suggestion-approved:{entityId}",
+            };
+
+        await _notifications.CreateForUserAsync(userId, request, cancellationToken);
     }
 }

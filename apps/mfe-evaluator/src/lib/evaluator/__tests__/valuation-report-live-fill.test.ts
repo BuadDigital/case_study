@@ -389,6 +389,33 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع العقار"]).toBe("أرض");
   });
 
+  it("hides inspector property description until specialist acceptance", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const pending = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        propertyDescription: "وصف من المعاين",
+        acceptedAtUtc: null,
+      } as never,
+    });
+    expect(pending.propertyDescription).toBe("");
+    expect(pending.cells["وصف العقار"]).toBe("—");
+
+    const accepted = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        propertyDescription: "وصف من المعاين",
+        acceptedAtUtc: "2026-09-09T08:00:00.000Z",
+      } as never,
+    });
+    expect(accepted.propertyDescription).toBe("وصف من المعاين");
+    expect(accepted.cells["وصف العقار"]).toBe("وصف من المعاين");
+  });
+
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",

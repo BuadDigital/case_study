@@ -59,6 +59,31 @@ services:
       timeout: 3s
       retries: 10
 
+  # HTML → PDF (Chromium) for valuation report `.pdf?k=…` links. The valuation service posts the
+  # browser-built report HTML here (PdfRenderer:BaseUrl = http://127.0.0.1:3010 in dev).
+  # Host port 3010 because Next dev already owns 3000. The deny list blocks every http(s)
+  # fetch from rendered pages (SSRF guard); the report is self-contained (data URLs).
+  # The `file:` half is Gotenberg's own default, restated because an explicit --chromium-deny-list
+  # REPLACES the default instead of extending it — dropping it would let posted HTML iframe
+  # arbitrary container files into the PDF. Pin ≥8.32.0: that is where the route-scoped
+  # AllowedFilePrefixes default-deny (GHSA-g924-cjx7-2rjw) landed as the second file:// guard.
+  gotenberg:
+    image: gotenberg/gotenberg:8.36.0
+    container_name: ree-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - '--chromium-deny-list=^(?:file:(?!//\/tmp/)|https?://).*'
+      - "--api-timeout=120s"
+    ports:
+      - "3010:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   jaeger:
     image: jaegertracing/all-in-one:1.60
     container_name: ree-jaeger

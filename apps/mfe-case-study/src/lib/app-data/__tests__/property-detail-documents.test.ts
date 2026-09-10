@@ -48,6 +48,10 @@ describe("collectFieldInspectionDocumentsFromSubmission", () => {
           fileName: "well.jpg",
           mimeType: "image/jpeg",
         },
+        buildLicense: {
+          fileName: "license.jpg",
+          mimeType: "image/jpeg",
+        },
       },
     };
 
@@ -58,6 +62,8 @@ describe("collectFieldInspectionDocumentsFromSubmission", () => {
     expect(names).toContain("صورة توثيقية — يوجد مسبح");
     expect(names).toContain("صورة المعرض");
     expect(names).toContain("صورة البئر");
+    expect(names).toContain("رخصة البناء");
     expect(names.some((n) => /facade|hasPool/i.test(n))).toBe(false);
   });
 });
+

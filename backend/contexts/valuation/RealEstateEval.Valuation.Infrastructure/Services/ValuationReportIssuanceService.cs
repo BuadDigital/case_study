@@ -9,6 +9,7 @@ using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
+using RealEstateEval.Shared.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
@@ -25,7 +26,8 @@ public sealed class ValuationReportIssuanceService(
     TimeProvider? time = null,
     ILogger<ValuationReportIssuanceService>? logger = null,
     IAuditLogWriter? audit = null,
-    IAuditLogAppend? auditLog = null)
+    IAuditLogAppend? auditLog = null,
+    IValuationEventPublisher? events = null)
     : IValuationReportIssuanceService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -252,6 +254,25 @@ public sealed class ValuationReportIssuanceService(
         // Reverses professional-step completion — request reopens and holds the property until the new cycle.
         vr.ReopenReport(_time.UtcNow());
         await db.SaveChangesAsync(cancellationToken);
+
+        // The reopen starts a new cycle on the appraiser's desk — Platform resolves the property's
+        // appraiser and writes the inbox row (Valuation has no assignee directory of its own).
+        if (events is not null)
+        {
+            var reopenReason = (request.Reason ?? "").Trim();
+            await events.PublishAsync(
+                IntegrationEventTypes.ValuationWorkflowNotice,
+                new ValuationWorkflowNoticePayload(
+                    vr.PropertyId.ToString("D"),
+                    ValuationNoticeAudiences.Appraiser,
+                    "إعادة فتح إصدار التقرير",
+                    reopenReason.Length == 0
+                        ? "أُعيد فتح إصدار التقرير بعد الإيداع — تبدأ دورة إصدار جديدة."
+                        : $"أُعيد فتح إصدار التقرير بعد الإيداع: {reopenReason}",
+                    NotificationContract.Tones.Warn,
+                    "/property-appraisal"),
+                cancellationToken);
+        }
 
         // 2-B: every reopen leaves an audit entry with actor and reason — best-effort after the main save.
         if (audit is not null && auditLog is not null)

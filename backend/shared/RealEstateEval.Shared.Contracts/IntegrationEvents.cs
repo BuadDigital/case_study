@@ -13,6 +13,14 @@ public static class IntegrationEventTypes
     public const string ValuationReportSubmitted = "valuation.report.submitted.v1";
     public const string NotificationUsersRequested = "notification.users.requested.v1";
     public const string NotificationUserCreated = "notification.user.created.v1";
+    public const string ValuationWorkflowNotice = "valuation.workflow.notice.v1";
+}
+
+/// <summary>Audiences a <see cref="ValuationWorkflowNoticePayload"/> can address.</summary>
+public static class ValuationNoticeAudiences
+{
+    public const string Appraiser = "appraiser";
+    public const string CaseSpecialist = "case-specialist";
 }
 
 public sealed record ValuationRequestCreatedPayload(
@@ -25,6 +33,19 @@ public sealed record ValuationReportSubmittedPayload(
     string PropertyId,
     string DisplayId,
     string Appraiser);
+
+/// <summary>
+/// A valuation-side workflow event that has to reach a party Valuation cannot address itself:
+/// it knows the property, not the assignees. Platform resolves <paramref name="Audience"/> to
+/// the open task assignees and writes the inbox rows.
+/// </summary>
+public sealed record ValuationWorkflowNoticePayload(
+    string PropertyId,
+    string Audience,
+    string Title,
+    string Body,
+    string Tone,
+    string Href);
 
 /// <summary>
 /// Requests that Platform, the notification inbox owner, persist one notification for

@@ -894,7 +894,7 @@ export function buildFromFieldInspection(
   }
 
   const remarks: PropertyDetailPartySubmission["remarks"] = [];
-  if (submission.propertyDescription.trim()) {
+  if (inspectionAccepted && submission.propertyDescription.trim()) {
     remarks.push({
       label: INFATH_FIELD_LABELS.propertyDescription,
       value: submission.propertyDescription.trim(),

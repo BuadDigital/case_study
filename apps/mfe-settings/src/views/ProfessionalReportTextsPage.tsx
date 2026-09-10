@@ -109,8 +109,7 @@ export function ProfessionalReportTextsPage({
         <table>
           <thead>
             <tr>
-              <th style={{ width: "16%" }}>المجموعة</th>
-              <th style={{ width: "26%" }}>العوامل المتاحة للاختيار</th>
+              <th style={{ width: "28%" }}>المجموعة</th>
               <th>وصف الأثر</th>
             </tr>
           </thead>
@@ -119,32 +118,19 @@ export function ProfessionalReportTextsPage({
               <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
                 التأثيرات البيئية
               </td>
-              <td className="v">
-                كفاءة الطاقة · أخطار الموقع والمناخ · المباني الخضراء
-                <div className="esg-or">أو «لا يوجد»</div>
-              </td>
-              <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
+              <Auto>إدخال — يكتبه المقيّم عند وجود تأثير، وإلا نص «لا يوجد»</Auto>
             </tr>
             <tr>
               <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
                 التأثيرات الاجتماعية
               </td>
-              <td className="v">
-                جودة التصاميم ورفاهية المسكن · الإسهام المجتمعي للعقار · الخدمات المتوفرة في
-                الموقع
-                <div className="esg-or">أو «لا يوجد»</div>
-              </td>
-              <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
+              <Auto>إدخال — يكتبه المقيّم عند وجود تأثير، وإلا نص «لا يوجد»</Auto>
             </tr>
             <tr>
               <td className="k" style={{ whiteSpace: "normal", verticalAlign: "middle" }}>
                 تأثيرات الحوكمة
               </td>
-              <td className="v">
-                الامتثال التنظيمي · الإدارة الفعالة لبيانات العقار · مقومات تشغيل العقار
-                <div className="esg-or">أو «لا يوجد»</div>
-              </td>
-              <Auto>إدخال — يكتبه الأخصائي عند وجود تأثير</Auto>
+              <Auto>إدخال — يكتبه المقيّم عند وجود تأثير، وإلا نص «لا يوجد»</Auto>
             </tr>
           </tbody>
         </table>

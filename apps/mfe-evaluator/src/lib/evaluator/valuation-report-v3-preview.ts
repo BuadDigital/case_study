@@ -11,6 +11,7 @@ const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 
 export { escHtml } from "./html-escape";
 import { escHtml } from "./html-escape";
+import { PRINT_FONT_FACE_CSS } from "./valuation-report-print-assets";
 
 export type ValuationReportV3Meta = {
   reportNo?: string;
@@ -525,6 +526,7 @@ const TOKEN_ROOT = `:root{--ink:#102b4e;--gold:#a4906f;--gold-d:#8c7857;--bg:#f5
 
 const PRINT_CHROME = `
 ${TOKEN_ROOT}
+${PRINT_FONT_FACE_CSS}
 html,body{margin:0;direction:rtl}
 .val-rpt-v3{
   background:var(--bg);
@@ -555,6 +557,8 @@ html,body{margin:0;direction:rtl}
   html,body{margin:0;padding:0;background:#fff}
   .val-rpt-v3{background:#fff;padding:0}
   .val-rpt-v3 .page.pg{box-shadow:none;border-radius:0;margin:0;page-break-after:always}
+  /* A forced break after the final sheet yields a trailing blank page in Chromium's PDF. */
+  .val-rpt-v3 .page.pg:last-of-type{page-break-after:auto}
 }
 `;
 
@@ -616,7 +620,7 @@ function scopeCss(css: string, scope: string): string {
   });
 }
 
-function parseTemplate(raw: string) {
+function parseTemplate(raw: string, keepImageSlots: boolean) {
   const parser = new DOMParser();
   const dom = parser.parseFromString(raw, "text/html");
   const authored = [...dom.querySelectorAll("style")]
@@ -624,7 +628,7 @@ function parseTemplate(raw: string) {
     .join("\n")
     .replace(/url\(['"]?assets\/ejadah-letterhead\.png['"]?\)/g, "none")
     .replace(/assets\/ejadah-stamp\.png/g, BRAND_IDENTITY_DEFAULTS.stampUrl);
-  replaceImageSlots(dom);
+  if (!keepImageSlots) replaceImageSlots(dom);
   mergePropertyPhotoSections(dom);
   unwrapScIf(dom);
   dom.querySelectorAll("img").forEach((img) => {
@@ -651,7 +655,8 @@ export function prepareValuationReportV3Html(
   meta: ValuationReportV3Meta = {},
   mode: ValuationReportV3Mode = "print",
 ): string {
-  const { dom, authored } = parseTemplate(raw);
+  // Screen keeps live <image-slot> so the appraiser can Edit / pan / scale like the HTML template.
+  const { dom, authored } = parseTemplate(raw, mode === "screen");
   applyMeta(dom, meta);
   // Live Google Maps belongs on screen only. Printing a blob tab that loads
   // maps/api/js hangs Chrome on "Loading preview…" (19-page letterhead + tiles).

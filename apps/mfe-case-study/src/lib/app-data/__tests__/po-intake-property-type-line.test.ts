@@ -28,4 +28,15 @@ describe("formatPropertyTypeLine", () => {
       }),
     ).toBe("سكني");
   });
+
+  it("prefers the inspector-confirmed type over the initial intake type", () => {
+    expect(
+      formatPropertyTypeLine({
+        propertyType: "ارض",
+        classification: "سكني",
+        inspectedPropertyType: "فيلا",
+        effectivePropertyType: "فيلا",
+      }),
+    ).toBe("فيلا / سكني");
+  });
 });

@@ -213,6 +213,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
 
         var now = _time.UtcNow();
         var changed = new List<WorkflowTask>();
+        var replaced = new List<(WorkflowTask Child, string AssigneeId)>();
         var timelineEvents = new List<PropertyTimelineRecordRequest>();
 
         if (distribution.CaseSpecialist)
@@ -247,8 +248,12 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
 
             var newName = WorkflowTaskPhaseRules.ResolveName(names, spec.Kind, spec.FallbackName);
+            // Captured before Assign overwrites it — the outgoing party has to be told too.
+            var replacedAssigneeId = child.AssigneeId?.Trim();
             child.Assign(newAssigneeId, newName, spec.Role, now);
             changed.Add(child);
+            if (!string.IsNullOrWhiteSpace(replacedAssigneeId))
+                replaced.Add((child, replacedAssigneeId));
 
             if (parent.PropertyId is Guid propertyId)
             {
@@ -273,6 +278,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         {
             var deed = await ParentDeedAsync(parent, cancellationToken);
             await NotifyDistributionAssignedAsync(parent, changed, deed, cancellationToken);
+            await NotifyAssignmentReplacedAsync(parent, replaced, deed, reason, cancellationToken);
         }
 
         if (distribution.CaseSpecialist &&

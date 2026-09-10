@@ -407,6 +407,13 @@ public partial class FailureService : IFailureService
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusActive, cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
 
+        // Submit and approve both notify the PO specialists; a return is the third outcome of
+        // the same record and used to be the only silent one.
+        await NotifyPoSpecialistsAsync(
+            entity.PoNumber,
+            FailureRules.ReturnedNotification(entity, finalNote),
+            cancellationToken);
+
         await AppendFailureAuditAsync(
             actorUserId,
             "failure.returned",

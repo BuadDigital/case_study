@@ -214,6 +214,7 @@ function readComponentPhotoAttachments(
   const record = value as Record<string, unknown>;
   return {
     showroom: readPhotoAttachment(record.showroom),
+    buildLicense: readPhotoAttachment(record.buildLicense),
     well: readPhotoAttachment(record.well),
   };
 }

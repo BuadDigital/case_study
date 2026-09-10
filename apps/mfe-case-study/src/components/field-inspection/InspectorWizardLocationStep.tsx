@@ -178,8 +178,32 @@ export function InspectorWizardLocationStep({
             {fieldErrors.mapLatitude}
           </p>
         ) : null}
-        <span id="ins-date" className="sr-only" />
-        <span id="ins-time" className="sr-only" />
+        <div className="mt-3">
+          <InsFieldsGrid min={150}>
+            <InsEditField
+              id="ins-date"
+              label="تاريخ المعاينة"
+              type="date"
+              ltr
+              value={draft.inspectionDate}
+              onChange={(v) => onPatch({ inspectionDate: v })}
+              disabled={!editable}
+              invalid={Boolean(fieldErrors.inspectionDate)}
+              errorMessage={fieldErrors.inspectionDate}
+            />
+            <InsEditField
+              id="ins-time"
+              label="وقت المعاينة"
+              type="time"
+              ltr
+              value={draft.inspectionTime}
+              onChange={(v) => onPatch({ inspectionTime: v })}
+              disabled={!editable}
+              invalid={Boolean(fieldErrors.inspectionTime)}
+              errorMessage={fieldErrors.inspectionTime}
+            />
+          </InsFieldsGrid>
+        </div>
         </div>
       </InsCard>
 

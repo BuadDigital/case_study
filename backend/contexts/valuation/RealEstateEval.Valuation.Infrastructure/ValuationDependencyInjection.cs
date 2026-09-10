@@ -59,6 +59,13 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // Q-6: two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
+        // Report PDF links: browser-rendered HTML → Gotenberg (Chromium) → stored PDF behind a signed key.
+        services.Configure<PdfRendererOptions>(configuration.GetSection("PdfRenderer"));
+        services.Configure<ReportPdfLinkOptions>(configuration.GetSection("ReportPdfLinks"));
+        services.AddHttpClient<IHtmlPdfRenderer, GotenbergHtmlPdfRenderer>(client =>
+            client.Timeout = TimeSpan.FromSeconds(180));
+        services.AddSingleton<IReportLinkSigner, ReportLinkSigner>();
+        services.AddScoped<IValuationReportPdfService, ValuationReportPdfService>();
         services.AddScoped<IValuationRequestLookup, ValuationRequestLookup>();
         services.AddScoped<IValuationPrintableAttachmentLookup, ValuationPrintableAttachmentLookup>();
         services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();

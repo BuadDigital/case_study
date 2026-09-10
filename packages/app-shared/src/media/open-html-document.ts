@@ -1,14 +1,24 @@
 /** Open generated HTML in a new tab (works with popup blockers + noopener). */
 export function openHtmlDocumentInNewTab(
   html: string,
-  options?: { print?: boolean; waitForImages?: boolean; waitForFonts?: boolean },
+  options?: {
+    print?: boolean;
+    waitForImages?: boolean;
+    waitForFonts?: boolean;
+    /**
+     * A tab the caller already opened synchronously inside the click handler.
+     * Callers that await network work before they have the HTML pass this so the
+     * popup blocker (transient activation expires after ~5 s) cannot bite.
+     */
+    target?: Window | null;
+  },
 ): boolean {
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
   // Open about:blank synchronously so we can detect popup blockers. Using
   // noopener in window.open() returns null even on success in modern browsers.
-  const win = window.open("about:blank", "_blank");
+  const win = options?.target ?? window.open("about:blank", "_blank");
   if (!win) {
     URL.revokeObjectURL(url);
     return false;

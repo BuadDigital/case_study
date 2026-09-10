@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const composeFile = path.join(root, "infra", "docker-compose.yml");
-const services = ["postgres", "rabbitmq", "redis"];
+const services = ["postgres", "rabbitmq", "redis", "gotenberg"];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -70,7 +70,7 @@ function runDockerCompose(args) {
   });
 }
 
-console.log("[dev-infra] starting postgres, rabbitmq, redis…");
+console.log("[dev-infra] starting postgres, rabbitmq, redis, gotenberg…");
 await runDockerCompose(["up", "-d", ...services]);
 
 await waitForRabbitMq();
@@ -91,10 +91,13 @@ for (let i = 0; i < 20; i++) {
   }
 }
 
+await waitForHttp("http://127.0.0.1:3010/health", "gotenberg (pdf renderer)", 90_000);
+
 console.log("");
 console.log("[dev-infra] infrastructure ready");
 console.log("  postgres  127.0.0.1:5433  (postgres / Admin / nine realestate_eval_* databases — see docs/DATABASE_OVERVIEW.md)");
 console.log("  rabbitmq  localhost:5672  (dev / dev)  management :15672");
 console.log("  redis     localhost:6379");
+console.log("  gotenberg 127.0.0.1:3010  (HTML → PDF for valuation report links)");
 console.log("");
 console.log("Next: npm run dev:api:run   then   npm run dev");

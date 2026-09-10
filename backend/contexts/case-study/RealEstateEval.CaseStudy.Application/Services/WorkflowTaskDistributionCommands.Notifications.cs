@@ -37,6 +37,39 @@ public sealed partial class WorkflowTaskDistributionCommands
             cancellationToken);
     }
 
+    /// <summary>
+    /// Tells each party that lost a child task in a redistribution. Assignees who kept work on
+    /// the same PO still get this per task — the notice names the task, not the transaction.
+    /// </summary>
+    private async Task NotifyAssignmentReplacedAsync(
+        WorkflowTask parent,
+        IReadOnlyCollection<(WorkflowTask Child, string AssigneeId)> replaced,
+        string deed,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        if (replaced.Count == 0) return;
+
+        var assigneeIds = replaced
+            .Select(r => r.AssigneeId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
+            assigneeIds,
+            cancellationToken);
+        if (usersByAssignee.Count == 0) return;
+
+        var refLabel = WorkflowTaskDistributionRules.RefLabel(deed, parent.PoNumber);
+        foreach (var (child, assigneeId) in replaced)
+        {
+            if (!usersByAssignee.TryGetValue(assigneeId, out var userId)) continue;
+            await _notifications.CreateForUserAsync(
+                userId,
+                WorkflowTaskDistributionRules.AssignmentReplacedRequest(child, refLabel, reason),
+                cancellationToken);
+        }
+    }
+
     private async Task NotifyDistributionAssignedAsync(
         WorkflowTask parent,
         IReadOnlyCollection<WorkflowTask> children,

@@ -1,5 +1,7 @@
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Notifications;
+using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Application.Rules;
 
@@ -134,6 +136,27 @@ public partial class PartyBillingStatementService
         statement.Status = PartyBillingStatementStatus.Issued;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // The rejection wipes the submitted invoice fields, so the payee has nothing left on
+        // screen to tell them what happened — the reason only reaches them here.
+        var payeeUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
+            statement.AssigneeId,
+            cancellationToken);
+        if (!string.IsNullOrWhiteSpace(payeeUserId))
+        {
+            await _notifications.CreateForUserAsync(
+                payeeUserId,
+                ReturnedForCorrectionNotice.Build(
+                    title: "إعادة الفاتورة للتصحيح",
+                    summary: $"أُعيدت فاتورتك على الكشف {statement.ReferenceNumber} للتصحيح",
+                    reason: reason,
+                    href: "/party-fees?variant=engineering-survey",
+                    category: NotificationContract.Categories.Financial,
+                    entityType: null,
+                    entityId: statement.Id.ToString(),
+                    sourceEvent: $"vendor-invoice-returned:{statement.Id}:{rejected.Count}"),
+                cancellationToken);
+        }
 
         return (await GetStatementAsync(statementId, cancellationToken), null);
     }

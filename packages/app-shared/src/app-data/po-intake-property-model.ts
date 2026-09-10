@@ -139,9 +139,14 @@ export const PROPERTY_TYPE_USAGE_LABEL = "نوع العقار / الاستخدا
 
 export function formatPropertyTypeLine(property: Pick<
   PoPropertyIntake,
-  "classification" | "propertyType"
+  "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType"
 >): string {
-  const type = property.propertyType.trim();
+  // After field inspection, the inspector-confirmed type wins operationally.
+  const type = (
+    property.effectivePropertyType?.trim() ||
+    property.inspectedPropertyType?.trim() ||
+    property.propertyType.trim()
+  );
   const usage = property.classification.trim();
   if (type && usage && type !== usage) return `${type} / ${usage}`;
   return type || usage || "";

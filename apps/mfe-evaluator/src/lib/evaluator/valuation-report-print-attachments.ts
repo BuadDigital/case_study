@@ -277,15 +277,27 @@ export async function loadValuationReportPrintAttachments(
      * (`scopeKey` = survey task id — invisible to for-property).
      */
     surveyAttachmentIds?: string[];
+    /** Preferred attachment ids chosen on final review (deed / survey / site-map). */
+    preferredAttachmentIds?: Partial<
+      Record<"deed" | "survey" | "site-map", string>
+    > & {
+      /** Ordered ids for photo-1…N; empty string keeps that slot blank. */
+      photoSlotIds?: string[];
+      /**
+       * When true, do not fall back to the first available deed/survey/photo —
+       * only the preferred ids (or blanks) are used.
+       */
+      strict?: boolean;
+    };
   },
 ): Promise<{
-  photos: ValuationReportSlotAttachment[];
+  photos: Array<ValuationReportSlotAttachment | null>;
   survey: ValuationReportSlotAttachment | null;
   deed: ValuationReportSlotAttachment | null;
   siteMap: ValuationReportSlotAttachment | null;
 }> {
   const empty = {
-    photos: [] as ValuationReportSlotAttachment[],
+    photos: [] as Array<ValuationReportSlotAttachment | null>,
     survey: null as ValuationReportSlotAttachment | null,
     deed: null as ValuationReportSlotAttachment | null,
     siteMap: null as ValuationReportSlotAttachment | null,
@@ -338,16 +350,74 @@ export async function loadValuationReportPrintAttachments(
     }
   }
 
-  const photoSlots = (
-    await Promise.all(photos.map((row) => toSlot(config, row, "photo")))
-  ).filter((x): x is ValuationReportSlotAttachment => Boolean(x));
+  const preferred = extras?.preferredAttachmentIds ?? {};
+  const strict = preferred.strict === true;
 
-  const surveySlot = survey[0]
-    ? await toSlot(config, survey[0], "survey")
+  const pick = (
+    rows: FileAttachmentMetaDto[],
+    preferredId: string | undefined,
+  ): FileAttachmentMetaDto | undefined => {
+    const id = (preferredId ?? "").trim();
+    if (strict) {
+      if (!id) return undefined;
+      return rows.find((row) => row.id === id);
+    }
+    if (!rows.length) return undefined;
+    if (!id) return rows[0];
+    return rows.find((row) => row.id === id) ?? rows[0];
+  };
+
+  async function ensurePreferred(
+    rows: FileAttachmentMetaDto[],
+    preferredId: string | undefined,
+  ): Promise<FileAttachmentMetaDto[]> {
+    const id = (preferredId ?? "").trim();
+    if (!id || rows.some((row) => row.id === id)) return rows;
+    const meta = await getAttachmentMeta(config, id);
+    if (!meta.ok) return rows;
+    return [meta.data, ...rows];
+  }
+
+  async function slotFromId(
+    id: string | undefined,
+    typeKey: string,
+  ): Promise<ValuationReportSlotAttachment | null> {
+    const trimmed = (id ?? "").trim();
+    if (!trimmed) return null;
+    const known = [...photos, ...survey, ...deed, ...siteMaps].find(
+      (row) => row.id === trimmed,
+    );
+    if (known) return toSlot(config, known, typeKey);
+    const meta = await getAttachmentMeta(config, trimmed);
+    if (!meta.ok) return null;
+    return toSlot(config, meta.data, typeKey);
+  }
+
+  let photoSlots: Array<ValuationReportSlotAttachment | null>;
+  if (Array.isArray(preferred.photoSlotIds)) {
+    photoSlots = await Promise.all(
+      preferred.photoSlotIds.map((id) => slotFromId(id, "photo")),
+    );
+  } else {
+    photoSlots = (
+      await Promise.all(photos.map((row) => toSlot(config, row, "photo")))
+    ).filter((x): x is ValuationReportSlotAttachment => Boolean(x));
+  }
+
+  const surveyRows = await ensurePreferred(survey, preferred.survey);
+  const deedRows = await ensurePreferred(deed, preferred.deed);
+  const siteMapRows = await ensurePreferred(siteMaps, preferred["site-map"]);
+
+  const surveyPick = pick(surveyRows, preferred.survey);
+  const deedPick = pick(deedRows, preferred.deed);
+  const siteMapPick = pick(siteMapRows, preferred["site-map"]);
+
+  const surveySlot = surveyPick
+    ? await toSlot(config, surveyPick, "survey")
     : null;
-  const deedSlot = deed[0] ? await toSlot(config, deed[0], "deed") : null;
-  const siteMapSlot = siteMaps[0]
-    ? await toSlot(config, siteMaps[0], "site-map")
+  const deedSlot = deedPick ? await toSlot(config, deedPick, "deed") : null;
+  const siteMapSlot = siteMapPick
+    ? await toSlot(config, siteMapPick, "site-map")
     : null;
 
   return {

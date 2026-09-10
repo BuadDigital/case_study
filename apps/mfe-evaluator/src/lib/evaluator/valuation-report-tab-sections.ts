@@ -902,15 +902,9 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
     n: "30",
     title: "العوامل البيئية والاجتماعية والحوكمة (ESG)",
     fields: [
-      { id: "esg-energy", label: "كفاءة الطاقة", span: 2 },
-      { id: "esg-climate", label: "أخطار الموقع والمناخ", span: 2 },
-      { id: "esg-green", label: "المباني الخضراء", span: 2 },
-      { id: "esg-design", label: "جودة التصاميم ورفاهية المسكن", span: 2 },
-      { id: "esg-community", label: "الإسهام المجتمعي للعقار", span: 2 },
-      { id: "esg-services", label: "الخدمات المتوفرة في الموقع", span: 2 },
-      { id: "esg-compliance", label: "الامتثال التنظيمي", span: 2 },
-      { id: "esg-data", label: "الإدارة الفعالة لبيانات العقار", span: 2 },
-      { id: "esg-ops", label: "مقومات تشغيل العقار", span: 2 },
+      { id: "esg-env", label: "التأثيرات البيئية", span: 2 },
+      { id: "esg-soc", label: "التأثيرات الاجتماعية", span: 2 },
+      { id: "esg-gov", label: "تأثيرات الحوكمة", span: 2 },
     ],
   },
   {

@@ -1,3 +1,4 @@
+using RealEstateEval.Shared.Contracts;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -388,7 +389,50 @@ public class WorkOrderService : IWorkOrderService
 
         entity.LifecycleStatus = lifecycleStatus;
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Party queues do not clear themselves — without this the inspector, office and
+        // appraiser keep working a transaction that is no longer live.
+        await NotifyPartiesLifecycleStoppedAsync(entity.PoNumber, lifecycleStatus, cancellationToken);
         return (true, null);
+    }
+
+    /// <summary>
+    /// Tells everyone still holding open work on the PO that it was cancelled or stopped.
+    /// Best-effort: the lifecycle change is already committed.
+    /// </summary>
+    private async Task NotifyPartiesLifecycleStoppedAsync(
+        string poNumber,
+        string lifecycleStatus,
+        CancellationToken cancellationToken)
+    {
+        var recipients = await _recipients.ResolveAssigneeUserIdsForPoAsync(
+            poNumber,
+            [
+                WorkflowTaskKind.CaseStudyProperty,
+                WorkflowTaskKind.FieldInspection,
+                WorkflowTaskKind.EngineeringSurvey,
+                WorkflowTaskKind.PropertyAppraisal,
+            ],
+            cancellationToken);
+        if (recipients.Count == 0) return;
+
+        var cancelled = lifecycleStatus == WorkOrderLifecycleStatus.Cancelled;
+        await _notifications.CreateForUsersAsync(
+            recipients,
+            new CreateUserNotificationRequest
+            {
+                Title = cancelled ? "أمر عمل ملغى" : "أمر عمل متوقف",
+                Body = cancelled
+                    ? $"أُلغي أمر العمل {poNumber} — أوقف العمل على مهامه."
+                    : $"أُوقف أمر العمل {poNumber} — لا تتابع مهامه حتى إشعار آخر.",
+                Tone = NotificationContract.Tones.Warn,
+                Href = $"/po/{Uri.EscapeDataString(poNumber)}/property",
+                Category = NotificationContract.Categories.Workflow,
+                EntityType = NotificationContract.EntityTypes.WorkOrder,
+                EntityId = poNumber,
+                SourceEvent = $"work-order-{lifecycleStatus}:{poNumber}",
+            },
+            cancellationToken);
     }
 
     private async Task<Dictionary<string, string>?> RequireActiveClientAsync(
