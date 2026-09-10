@@ -37,6 +37,7 @@ import {
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   type InspectorWorkspaceStatus,
 } from "../lib/app-data/inspector-workspace-data";
+import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { reopenInspectorWorkspace } from "../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
 import {
@@ -383,6 +384,7 @@ function CaseStudyAppraisalPanel({
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
+            caseStudyDef={partyTaskPageDef("active-inspection") ?? undefined}
             submitSuccessToast="تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
             submitFooterAfter={!inspectionUsesLand ? (
               <SpecialistValuationReportInputs

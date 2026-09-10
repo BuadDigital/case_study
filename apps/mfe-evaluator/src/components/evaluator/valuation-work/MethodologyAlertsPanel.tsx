@@ -210,8 +210,8 @@ function MethodologyAlertRow({
           {ov.overrideRationale.trim().length > 0 &&
           ov.overrideRationale.trim().length < JUSTIFICATION_MIN_LENGTH ? (
             <span className="text-[10.5px] font-semibold text-danger">
-              المبرر الصوري لا يفك التنبيه — الحد الأدنى{" "}
-              {JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)
+              هذا المبرر غير كافٍ لتجاوز التنبيه — اكتب سبباً حقيقياً لا يقل عن{" "}
+              {JUSTIFICATION_MIN_LENGTH} أحرف.
             </span>
           ) : null}
         </>

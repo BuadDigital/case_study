@@ -193,6 +193,7 @@ export function FieldInspectionWorkBody({
           layout={layout}
           mobile={mobile}
           poNumber={task.poNumber}
+          property={property}
         />
 
         {!boundariesUnavailable && property ? (

@@ -35,7 +35,6 @@ import {
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
-import { FinalOpinionIssuanceCard } from "./FinalOpinionParts";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
 import {
@@ -46,7 +45,6 @@ import {
 import type { FinalOpinionChangeHandler } from "./lib/valuation-data-state";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
-import { useReportIssuanceWorkflow } from "./useReportIssuanceWorkflow";
 import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 
 export type {
@@ -216,10 +214,6 @@ export function ValuationWorkShell({
     dispatchLandMatrix,
   } = useValuationWorkCommands(data);
 
-  const issuanceWorkflow = useReportIssuanceWorkflow({
-    valuationRequestId,
-    allowsIssuance: gates?.allowsIssuance,
-  });
   const matchWaitDetail = deedNatureMatchGateDetail(gates);
 
   const [draftApproaches, setDraftApproaches] =
@@ -568,12 +562,6 @@ export function ValuationWorkShell({
             onSettingsSaved={onSettingsSaved}
           />
         </Suspense>
-        {issuanceWorkflow.issuance ? (
-          <FinalOpinionIssuanceCard
-            issuance={issuanceWorkflow.issuance}
-            workflow={issuanceWorkflow}
-          />
-        ) : null}
         {showSubmit ? (
           <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
             <PrimaryBtn

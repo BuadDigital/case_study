@@ -24,10 +24,11 @@ public class PropertyComparableLinkListDto
 
 public class LinkPropertyComparableRequest
 {
-    [Required]
+    // AddValidation is off for this service, so these messages reach the caller verbatim.
+    [Required(ErrorMessage = "العقار مطلوب.")]
     public Guid PropertyId { get; init; }
 
-    [Required]
+    [Required(ErrorMessage = "العقار المقارن مطلوب.")]
     public Guid ComparablePropertyId { get; init; }
 
     [MaxLength(2000)]

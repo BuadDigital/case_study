@@ -17,6 +17,11 @@ import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organizat
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  approvedInspectorPropertyDescription,
+  PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT,
+  isInspectorWorkspaceAccepted,
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
@@ -387,7 +392,11 @@ export function EvaluatorValuationReportTab({
           <PropertyDetailMediaGlance
             property={property}
             primaryPhoto={primaryPhoto}
-            inspectorDescription={inspector?.propertyDescription}
+            inspectorDescription={
+              isInspectorWorkspaceAccepted(inspector)
+                ? approvedInspectorPropertyDescription(inspector) || undefined
+                : PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT
+            }
             latitude={inspector?.mapLatitude}
             longitude={inspector?.mapLongitude}
             showCoordinates={false}

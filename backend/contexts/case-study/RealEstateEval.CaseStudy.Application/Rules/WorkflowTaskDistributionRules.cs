@@ -1,3 +1,4 @@
+using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
@@ -182,6 +183,32 @@ public static class WorkflowTaskDistributionRules
             EntityType = "task",
             EntityId = parent.Id.ToString(),
             SourceEvent = $"distribution-assigned-specialist:{parent.Id}",
+        };
+    }
+
+    /// <summary>
+    /// Redistribution overwrites the child's assignee, so the party who held it keeps the work
+    /// in their queue unless they are told. Mirrors the displaced-assignee notice that delete
+    /// and revert-phase already send.
+    /// </summary>
+    public static CreateUserNotificationRequest AssignmentReplacedRequest(
+        WorkflowTask child,
+        string refLabel,
+        string? reason)
+    {
+        var note = (reason ?? "").Trim();
+        var work = WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind);
+        var body = $"أُعيد إسناد {work} على {refLabel} إلى طرف آخر — لم تعد المهمة ضمن أعمالك";
+        return new CreateUserNotificationRequest
+        {
+            Title = "أُلغي إسنادك",
+            Body = note.Length == 0 ? $"{body}." : $"{body}: {note}",
+            Tone = NotificationContract.Tones.Warn,
+            Href = "/operations-tasks",
+            Category = NotificationContract.Categories.Workflow,
+            EntityType = NotificationContract.EntityTypes.Task,
+            EntityId = child.Id.ToString(),
+            SourceEvent = $"distribution-replaced:{child.Id}:{child.UpdatedAtUtc:O}",
         };
     }
 

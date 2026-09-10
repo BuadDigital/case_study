@@ -1085,7 +1085,9 @@
       this._ring.style.display = mask ? 'none' : '';
 
       // Controls and reframe entry gate on this so share links stay read-only.
-      const editable = !!(window.omelette && window.omelette.writeFile);
+      // Evaluator report preview sets window.__ejadahImageSlotsEditable without omelette.
+      const editable = !!(window.omelette && window.omelette.writeFile)
+        || !!(window).__ejadahImageSlotsEditable;
       this.toggleAttribute('data-editable', editable);
       this._sub.style.display = editable ? '' : 'none';
 
@@ -1095,6 +1097,18 @@
       // (Claude wrote it into the HTML) so it passes through unchanged.
       let stored = this.id ? getSlot(this.id) : this._local;
       if (stored && stored.u && !/^data:image\//i.test(stored.u)) stored = null;
+      // App-persisted frame from evaluator (data-view-*) when sidecar has no entry.
+      if (!stored && this.hasAttribute('data-view-s')) {
+        const s = Number(this.getAttribute('data-view-s'));
+        const x = Number(this.getAttribute('data-view-x'));
+        const y = Number(this.getAttribute('data-view-y'));
+        stored = {
+          u: null,
+          s: Number.isFinite(s) ? s : 1,
+          x: Number.isFinite(x) ? x : 0,
+          y: Number.isFinite(y) ? y : 0,
+        };
+      }
       const srcAttr = this.getAttribute('src') || '';
       this._userUrl = (stored && stored.u) || null;
       const url = this._userUrl || srcAttr;

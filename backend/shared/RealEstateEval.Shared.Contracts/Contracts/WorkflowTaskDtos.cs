@@ -53,6 +53,13 @@ public class WorkflowTaskDto
     public bool? FieldInspectionAccepted { get; set; }
 
  /// <summary>
+ /// Property-appraisal: sibling engineering-survey workflow task is completed.
+ /// Populated on list so the appraiser's parties rail reports the survey without
+ /// seeing its task row (party visibility hides it).
+ /// </summary>
+    public bool? EngineeringSurveyCompleted { get; set; }
+
+ /// <summary>
  /// Engineering-survey / property-appraisal: id of the completed sibling field-inspection task.
  /// Populated on list so parties can load inspection facts without seeing the sibling row.
  /// Prefer specialist-accepted inspection when several completed siblings exist.

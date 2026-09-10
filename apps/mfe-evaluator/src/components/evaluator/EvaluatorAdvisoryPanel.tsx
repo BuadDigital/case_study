@@ -96,11 +96,9 @@ export function EvaluatorAdvisoryPanel({
     }).catch((err: unknown) => {
       if (!cancelled) {
         setPartyDraft(null);
-        setPartyDraftError(
-          err instanceof Error
-            ? err.message
-            : "تعذّر تحميل إجابات دراسة الحالة للمقيم",
-        );
+        // Always Arabic to the user — a fetch/network exception is English/technical.
+        if (err instanceof Error) console.warn("[evaluator] party draft load failed:", err);
+        setPartyDraftError("تعذّر تحميل إجابات دراسة الحالة للمقيم — حاول مرة أخرى");
       }
     });
     return () => {
@@ -126,11 +124,8 @@ export function EvaluatorAdvisoryPanel({
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setPrefetchError(
-            err instanceof Error
-              ? err.message
-              : "تعذّر تحميل بيانات التقييم من الخادم",
-          );
+          if (err instanceof Error) console.warn("[evaluator] submission prefetch failed:", err);
+          setPrefetchError("تعذّر تحميل بيانات التقييم من الخادم — حاول مرة أخرى");
           setLoadingSubmission(false);
         }
       });

@@ -64,3 +64,6 @@ backend/_build_check/
 
 # Local croquis training crops (pure-ink). Do not commit large binaries.
 datasets/osoul-croquis/
+
+# Playwright storageState dumps — these hold live session JWTs.
+auth-*.json

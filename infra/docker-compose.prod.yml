@@ -81,6 +81,28 @@ services:
       timeout: 3s
       retries: 5
 
+  # HTML → PDF (Chromium) for valuation report `.pdf?k=…` links — internal only, no secrets.
+  # The deny list blocks every http(s) fetch from rendered pages (SSRF guard); the report HTML
+  # the valuation service posts is self-contained (images and fonts as data URLs).
+  # The `file:` half is Gotenberg's own default, restated because an explicit --chromium-deny-list
+  # REPLACES the default instead of extending it — dropping it would let posted HTML iframe
+  # arbitrary container files into the PDF. Pin ≥8.32.0: that is where the route-scoped
+  # AllowedFilePrefixes default-deny (GHSA-g924-cjx7-2rjw) landed as the second file:// guard.
+  gotenberg:
+    image: gotenberg/gotenberg:8.36.0
+    container_name: ree-prod-gotenberg
+    restart: always
+    command:
+      - "gotenberg"
+      - '--chromium-deny-list=^(?:file:(?!//\/tmp/)|https?://).*'
+      - "--api-timeout=120s"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   jaeger:
     image: jaegertracing/all-in-one:1.60
     container_name: ree-prod-jaeger
@@ -382,6 +404,8 @@ services:
       # A9: Case Study reads via HTTP. Deliberately no depends_on case-study —
       # case-study already depends_on valuation; calls happen at request time.
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
+      # Report PDF links: HTML → PDF through the internal Gotenberg container.
+      PdfRenderer__BaseUrl: http://gotenberg:3000
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION: Host=postgres;Port=5432;Database=realestate_eval_prod_valuation;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
@@ -399,6 +423,8 @@ services:
       attachments:
         condition: service_healthy
       platform:
+        condition: service_healthy
+      gotenberg:
         condition: service_healthy
       otel-collector:
         condition: service_started

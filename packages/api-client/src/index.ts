@@ -685,6 +685,15 @@ export {
   type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
 } from "./valuation-comparable-selections";
+export {
+  createValuationReportPdf,
+  getLatestValuationReportPdfLink,
+  valuationReportPdfAbsoluteUrl,
+  type ValuationReportPdfApiConfig,
+  type ValuationReportPdfError,
+  type ValuationReportPdfLinkDto,
+  type ValuationReportPdfResult,
+} from "./valuation-report-pdf";
 
 export {
   getInspectionLimits,

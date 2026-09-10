@@ -7,15 +7,57 @@
  */
 import { cn, FormRow, Input } from "@platform/ui-kit";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { InsDualCalendarDateField } from "../po-intake/PropertyDetailInspectionParts";
+import {
+  EditableFeaturePhotoCell,
+  InsDualCalendarDateField,
+} from "../po-intake/PropertyDetailInspectionParts";
 import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
 import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import { uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
 import { INSPECTOR_BUILDING_AREA_INPUTS } from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+
+/** Photo-of-the-license attach/replace control — mirrors the feature-photo cell. */
+function BuildLicensePhotoField({
+  draft,
+  deedNumber,
+  disabled,
+  persist,
+}: {
+  draft: InspectorWorkspaceDraft;
+  deedNumber: string | null | undefined;
+  disabled: boolean;
+  persist: (patch: Partial<InspectorWorkspaceDraft>) => void;
+}) {
+  return (
+    <EditableFeaturePhotoCell
+      needsPhoto
+      hasPhoto={Boolean(draft.componentPhotoAttachments.buildLicense?.attachmentId)}
+      disabled={disabled}
+      onUpload={async (file) => {
+        const result = await uploadInspectorPhotoFromFile(
+          draft.taskId,
+          "component:buildLicense",
+          file,
+          { draft, deedNumber },
+        );
+        if (!result.ok) throw new Error(result.error);
+        persist({
+          componentPhotoAttachments: {
+            ...draft.componentPhotoAttachments,
+            buildLicense: result.attachment,
+          },
+        });
+        return true;
+      }}
+    />
+  );
+}
 
 export function InspectorBuildingAreasCard({
   activeStep,
@@ -26,6 +68,7 @@ export function InspectorBuildingAreasCard({
   mobile,
   persist,
   poNumber,
+  property,
   propertyId,
   workLocked,
 }: Pick<
@@ -37,6 +80,8 @@ export function InspectorBuildingAreasCard({
   layout: "desktop" | "mobile";
   mobile: boolean;
   poNumber: string;
+  /** Deed number for the EXIF stamp burned into the licence photo — optional. */
+  property?: PoPropertyIntake | null;
 }) {
   return (
     <InspectorCard
@@ -95,6 +140,15 @@ export function InspectorBuildingAreasCard({
             disabled={locked}
             onChange={(v) => persist({ buildLicenseDate: v })}
           />
+          <div>
+            <MobileFieldLabel>صورة رخصة البناء</MobileFieldLabel>
+            <BuildLicensePhotoField
+              draft={draft}
+              deedNumber={property?.deedNumber}
+              disabled={locked}
+              persist={persist}
+            />
+          </div>
         </div>
       ) : (
         <FormRow className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,6 +185,15 @@ export function InspectorBuildingAreasCard({
             disabled={locked}
             onChange={(v) => persist({ buildLicenseDate: v })}
           />
+          <div className="flex flex-col gap-1">
+            <span className="text-[12px] font-semibold text-text-2">صورة رخصة البناء</span>
+            <BuildLicensePhotoField
+              draft={draft}
+              deedNumber={property?.deedNumber}
+              disabled={locked}
+              persist={persist}
+            />
+          </div>
         </FormRow>
       )}
       <BuildingInventorySection

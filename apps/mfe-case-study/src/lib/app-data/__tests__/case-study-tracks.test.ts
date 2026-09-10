@@ -163,4 +163,44 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
     expect(byKey.survey.label).toBe("لم يُعيَّن");
     expect(byKey.survey.badge).toBe("معطّل");
   });
+
+  it("reads the mirrored survey flag when the sibling task is not visible", () => {
+    // The appraiser's /api/workflow-tasks returns property-appraisal rows only,
+    // so the survey row's state can only come from the server-mirrored flag.
+    const appraisalTask = (engineeringSurveyCompleted: boolean) =>
+      task({
+        id: "val-1",
+        kind: "property-appraisal",
+        parentTaskId: "parent-1",
+        assigneeRole: "real-estate-appraiser",
+        assigneeName: "مقيم عقاري",
+        assigneeId: "val-abdullah",
+        fieldInspectionCompleted: true,
+        engineeringSurveyCompleted,
+        distribution: {
+          governmentAuditor: false,
+          governmentAuditorId: "",
+          valuationDepartment: true,
+          inspectorId: "fi-ahmed",
+          valuatorId: "val-abdullah",
+          engineeringOffice: true,
+          engineeringOfficeId: "eo-jeddah",
+          caseSpecialist: true,
+          caseSpecialistId: "cs-1",
+        },
+      });
+
+    const badgeFor = (completed: boolean) => {
+      const appraisal = appraisalTask(completed);
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal]) ?? null,
+        allTasks: [appraisal],
+        staffUsers: staff,
+      });
+      return rows.find((r) => r.key === "survey")?.badge;
+    };
+
+    expect(badgeFor(true)).toBe("مكتمل");
+    expect(badgeFor(false)).toBe("لم يبدأ");
+  });
 });

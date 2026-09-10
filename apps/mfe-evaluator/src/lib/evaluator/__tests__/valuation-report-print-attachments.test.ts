@@ -11,7 +11,11 @@ import {
   applyValuationReportLiveFill,
   buildValuationReportLiveFill,
 } from "../valuation-report-live-fill";
-import { createEvaluatorDraft } from "../evaluator-window-data";
+import {
+  createEvaluatorDraft,
+  emptyReportChoices,
+} from "../evaluator-window-data";
+import { fillImageSlot } from "../valuation-report-live-fill-dom";
 
 describe("valuation-report-print-attachments", () => {
   it("maps scopes like AttachmentPrintRules", () => {
@@ -195,7 +199,8 @@ describe("valuation report live fill attachments and glossary", () => {
     expect(photoImg).toBeTruthy();
     // Caption must sit outside the image height box (not clipped under the next grid row).
     expect(photoFig?.getAttribute("style") ?? "").not.toMatch(/height\s*:\s*100px/i);
-    expect(photoImg?.getAttribute("style") ?? "").toMatch(/height\s*:\s*100px/i);
+    const frame = photoFig?.querySelector(".attach-fig-frame");
+    expect(frame?.getAttribute("style") ?? "").toMatch(/height\s*:\s*100px/i);
     expect(photoFig?.querySelector("figcaption")?.textContent).toContain("صور العقار");
     expect(dom.querySelector("#photo-2")?.textContent).toBe("—");
     expect(dom.querySelector("iframe.attach-pdf")).toBeNull();
@@ -239,5 +244,46 @@ describe("valuation report live fill attachments and glossary", () => {
     expect(dom.querySelector('[data-sec="37"] td:last-child')?.textContent).toBe(
       "قالب",
     );
+  });
+
+  it("keeps live image-slot elements and applies frame attrs for screen fill", () => {
+    const d = draft();
+    d.reportChoices = {
+      ...emptyReportChoices(),
+      reportSlotFrames: {
+        deed: { s: 1.4, x: 10, y: -5 },
+      },
+    };
+    const fill = buildValuationReportLiveFill({
+      draft: d,
+      deedSlot: {
+        attachmentId: "d1",
+        url: "data:image/jpeg;base64,ccc",
+        contentType: "image/jpeg",
+        fileName: "deed.jpg",
+        labelAr: "الصك",
+        isImage: true,
+      },
+    });
+    expect(fill.slotFrames.deed).toEqual({ s: 1.4, x: 10, y: -5 });
+
+    const dom = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body>
+        <image-slot id="deed" placeholder="صك"></image-slot>
+      </body></html>`,
+      "text/html",
+    );
+    fillImageSlot(
+      dom,
+      "deed",
+      fill.deedSlot,
+      "صك",
+      fill.slotFrames.deed,
+    );
+    const slot = dom.querySelector("image-slot#deed");
+    expect(slot?.getAttribute("src")).toBe("data:image/jpeg;base64,ccc");
+    expect(slot?.getAttribute("data-view-s")).toBe("1.4");
+    expect(slot?.getAttribute("data-view-x")).toBe("10");
+    expect(slot?.getAttribute("data-view-y")).toBe("-5");
   });
 });

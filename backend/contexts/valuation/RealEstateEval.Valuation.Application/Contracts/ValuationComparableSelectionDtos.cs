@@ -425,7 +425,13 @@ public class SaveValuationReconciliationRequest
 {
     public IReadOnlyList<SaveValuationReconciliationMethodRequest> Methods { get; init; } = [];
 
-    [Required, MaxLength(4000)]
+    // AddValidation is off for this service (ServiceModule.ConfigureHostOptions), so these
+    // DataAnnotations messages are what the appraiser sees verbatim — they must be Arabic, not
+    // ASP.NET's default English "The X field is required." (found leaking through in practice
+    // from MethodologyAlertsPanel.tsx, which saves the whole reconciliation just to persist an
+    // alert override, before the appraiser has ever visited "رأي القيمة النهائي" to fill this in).
+    [Required(ErrorMessage = "مبرر استخدام طرق التقييم مطلوب — عبّئه في تبويب «رأي القيمة النهائي» أولاً.")]
+    [MaxLength(4000, ErrorMessage = "مبرر استخدام طرق التقييم طويل جدًا — الحد الأقصى 4000 حرف.")]
     public string MethodsRationale { get; init; } = "";
 
  /// <summary>0–6; round to nearest 10^n — applied once on final opinion.</summary>

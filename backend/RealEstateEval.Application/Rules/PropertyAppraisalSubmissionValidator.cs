@@ -16,14 +16,6 @@ public static class PropertyAppraisalSubmissionValidator
         if (!HasNonEmpty(root, "evaluatorPrice"))
             errors["evaluatorPrice"] = "سعر التقييم مطلوب";
 
-        var assetConfirmed = GetBool(root, "assetDataConfirmed");
-        var hasVarianceNotes = HasNonEmpty(root, "assetDataVarianceNotes");
-        if (!assetConfirmed && !hasVarianceNotes)
-        {
-            errors["asset_data_confirmed"] =
-                "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
-        }
-
         if (!GetBool(root, "independenceDeclared"))
         {
             errors["independence_declared"] =

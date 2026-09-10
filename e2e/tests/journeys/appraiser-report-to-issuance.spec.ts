@@ -4,7 +4,8 @@
  *
  * UI-driven:  the evaluator workspace — «بدء التقييم» (the first real save,
  *             PUT …/approach-settings), the screen tabs it unlocks
- *             (طريقة المقارنة / طريقة المقاول), the final-opinion screen, and
+ *             (طريقة المقارنة / طريقة المقاول), the final-opinion screen,
+ *             «المراجعة النهائية», and
  *             the specialist's «تقييم العقار» tab with its final-report panel
  *             (stage badge + either the PDF iframe or the documented empty
  *             state).
@@ -67,6 +68,19 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     // The market/cost screens are gated on a saved settings draft.
     await expect(tabs.getByRole("tab", { name: "طريقة المقارنة" })).toHaveCount(0);
 
+    // Both approaches start unchecked on a fresh request — the first save is
+    // refused client-side ("يلزم تفعيل أسلوب واحد على الأقل") until one is picked.
+    // The settings fetch re-hydrates these toggles when it lands, discarding a
+    // tick made before it, so hold the pair until it survives a re-render.
+    const marketBox = page.getByRole("checkbox", { name: "أسلوب السوق" });
+    const costBox = page.getByRole("checkbox", { name: "أسلوب التكلفة" });
+    await expect(async () => {
+      if (!(await marketBox.isChecked())) await marketBox.check();
+      if (!(await costBox.isChecked())) await costBox.check();
+      expect(await marketBox.isChecked()).toBe(true);
+      expect(await costBox.isChecked()).toBe(true);
+    }).toPass({ timeout: 30_000 });
+
     const start = page.getByRole("button", { name: "بدء التقييم" }).first();
     await expect(start).toBeVisible({ timeout: 60_000 });
 
@@ -99,9 +113,13 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     await expect(page.getByText("الرأي النهائي للقيمة").first()).toBeVisible({
       timeout: 60_000,
     });
-    await expect(
-      page.getByText("اعتماد التقييم — شروط الإصدار").first(),
-    ).toBeVisible({ timeout: 60_000 });
+
+    // Issuance no longer lives on this screen: the gates card moved off the
+    // final-opinion screen and the Q-6 cycle is part of «المراجعة النهائية».
+    await tabs.getByRole("tab", { name: "المراجعة النهائية" }).click();
+    await expect(page.getByText("الافتراضات الخاصة").first()).toBeVisible({
+      timeout: 60_000,
+    });
   });
 
   test("specialist opens the property's «تقييم العقار» tab", async ({ page }) => {

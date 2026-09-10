@@ -128,6 +128,10 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
         ? dto.fieldInspectionAccepted
         : undefined,
     fieldInspectionTaskId: dto.fieldInspectionTaskId?.trim() || undefined,
+    engineeringSurveyCompleted:
+      typeof dto.engineeringSurveyCompleted === "boolean"
+        ? dto.engineeringSurveyCompleted
+        : undefined,
     // The five PO-record columns the server joins onto every row
     // (pagination-contract §2) — absent-as-null becomes absent-as-undefined.
     deedNumber: dto.deedNumber?.trim() || undefined,

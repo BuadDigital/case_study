@@ -172,6 +172,23 @@ public static class ValuationModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // Rendered report PDFs behind signed `.pdf?k=` links — immutable rows, newest wins, few kept.
+        builder.Entity<ValuationReportPdf>(e =>
+        {
+            e.ToTable("ValuationReportPdfs", DatabaseSchemas.Valuation);
+            e.Property(x => x.ReportNumber).HasMaxLength(128).IsRequired();
+            e.Property(x => x.FileName).HasMaxLength(160).IsRequired();
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Renderer).HasMaxLength(64).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(128);
+            e.HasIndex(x => new { x.ValuationRequestId, x.CreatedAtUtc });
+            e.HasOne<ValuationRequest>()
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Q-8-1: one factor-level rationale covers all comparables; adjustment row holds the override only.
         builder.Entity<ValuationAdjustmentFactorRationale>(e =>
         {

@@ -38,6 +38,7 @@ const FEATURE_FIELD_LABEL_BY_KEY = Object.fromEntries(
 const COMPONENT_PHOTO_LABEL_BY_KEY: Record<string, string> = {
   showroom: "صورة المعرض",
   well: "صورة البئر",
+  buildLicense: "رخصة البناء",
 };
 
 /** Arabic label for inspector feature photo keys (never show camelCase keys in UI). */
@@ -443,6 +444,8 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
 
 function sectionIdForSource(source: string): string {
   if (source === "البيانات الأولية") return "intake";
+  // Bug fix: bourse-deed lookups were silently dropped — this source did not map to any section.
+  if (source === "استعلام البورصة") return "intake";
   if (source === "المكتب الهندسي") return "engineering";
   if (source === "المقيّم العقاري") return "appraisal";
   if (source === "المعاين الميداني") return "inspection";

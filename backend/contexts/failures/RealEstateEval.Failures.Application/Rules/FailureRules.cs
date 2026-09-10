@@ -1,3 +1,5 @@
+using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Application.Notifications;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
@@ -302,6 +304,23 @@ public static class FailureRules
             EntityId = failure.Id.ToString(),
             SourceEvent = $"failure-approved:{failure.Id}",
         };
+
+    /// <summary>
+    /// The third outcome of a submitted تعذر, alongside <see cref="ApprovedNotification"/> —
+    /// the reviewer's note is mandatory upstream, so it always travels with the notice.
+    /// </summary>
+    public static CreateUserNotificationRequest ReturnedNotification(
+        PropertyFailure failure,
+        string? finalNote) =>
+        ReturnedForCorrectionNotice.Build(
+            title: "إعادة التعذر للتصحيح",
+            summary: $"أُعيد تعذر أمر العمل {failure.PoNumber} للتصحيح",
+            reason: finalNote,
+            href: "/failures",
+            category: NotificationContract.Categories.Failures,
+            entityType: NotificationContract.EntityTypes.Failure,
+            entityId: failure.Id.ToString(),
+            sourceEvent: $"failure-returned:{failure.Id}");
 
     public static CreateUserNotificationRequest CaseStudyBlockedNotification(
         Guid taskId,

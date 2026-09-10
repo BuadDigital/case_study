@@ -117,15 +117,15 @@ test.describe("Specialist: intake → distribution", () => {
     const rail = page.locator('aside[aria-label="الجدول الزمني للمعاملة"]');
     await expect(rail).toBeVisible({ timeout: 60_000 });
     await expect(rail.getByText("حالة الأطراف")).toBeVisible();
-    await expect(rail.locator('[title="المعاين"]')).toHaveText(
-      ASSIGNEE_NAMES.fieldInspector,
-    );
-    await expect(rail.locator('[title="المكتب الهندسي"]')).toHaveText(
+    // Each party row stacks the assignee name over its role label (the role used
+    // to be a `title` tooltip until it was promoted to a visible line).
+    const partyName = (role: string) =>
+      rail.locator(`span:has(> span:text-is("${role}"))`).locator("span").first();
+    await expect(partyName("المعاين")).toHaveText(ASSIGNEE_NAMES.fieldInspector);
+    await expect(partyName("المكتب الهندسي")).toHaveText(
       ASSIGNEE_NAMES.engineeringOffice,
     );
-    await expect(rail.locator('[title="المقيّم"]')).toHaveText(
-      ASSIGNEE_NAMES.appraiser,
-    );
+    await expect(partyName("المقيّم")).toHaveText(ASSIGNEE_NAMES.appraiser);
 
     // The timeline records the distribution itself.
     await expect(rail.getByText("توزيع المعاملة")).toBeVisible();

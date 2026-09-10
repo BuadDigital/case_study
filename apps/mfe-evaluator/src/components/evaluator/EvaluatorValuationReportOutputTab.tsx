@@ -16,6 +16,10 @@ import {
   listClients,
   listValuationComparableSelections,
   ensureOpenValuationRequestByProperty,
+  createValuationReportPdf,
+  valuationReportPdfAbsoluteUrl,
+  type ValuationReportPdfLinkDto,
+  type ValuationReportPdfResult,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   type BuildingInventoryLineDto,
   type ClientDto,
@@ -34,7 +38,10 @@ import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
-import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
+import type {
+  EvaluatorReportChoices,
+  EvaluatorSubmission,
+} from "../../lib/evaluator/evaluator-window-data";
 import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report-v3-preview";
 import {
   assignmentValuationFromPo,
@@ -48,10 +55,87 @@ import {
   surveyReportAttachmentIdFromPayload,
   type ValuationReportSlotAttachment,
 } from "../../lib/evaluator/valuation-report-print-attachments";
-import type { ComparablesMapPin } from "../../lib/evaluator/valuation-report-comparables-map";
+import {
+  materializePrintMapSlots,
+  printMapsNotice,
+  type ComparablesMapPin,
+} from "../../lib/evaluator/valuation-report-comparables-map";
+import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
+
+declare global {
+  interface Window {
+    __ejadahImageSlotsEditable?: boolean;
+    omelette?: {
+      writeFile?: (path: string, content: string) => void | Promise<void>;
+    };
+  }
+}
+
+let imageSlotScriptPromise: Promise<void> | null = null;
+
+function ensureImageSlotCustomElement(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (customElements.get("image-slot")) return Promise.resolve();
+  if (imageSlotScriptPromise) return imageSlotScriptPromise;
+  imageSlotScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-ejadah-image-slot]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("image-slot")), {
+        once: true,
+      });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "/ejadah/image-slot.js";
+    script.async = true;
+    script.dataset.ejadahImageSlot = "1";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("تعذّر تحميل image-slot.js"));
+    document.head.appendChild(script);
+  });
+  return imageSlotScriptPromise;
+}
+
+/**
+ * Some errors thrown in this file already carry a real Arabic message the developer wrote
+ * on purpose (e.g. the template-fetch failure in valuation-report-v3-preview.ts). A raw
+ * browser/network exception ("Failed to fetch", "NetworkError…") is English and should not
+ * reach the appraiser — keep the message only when it's actually Arabic, otherwise show the
+ * clear fallback and log the real cause for diagnostics.
+ */
+export function arabicErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && /[؀-ۿ]/.test(err.message)) return err.message;
+  if (err instanceof Error) console.warn("[evaluator] report output tab error:", err);
+  return fallback;
+}
+
+/** Appraiser-facing text for a failed `.pdf?k=…` link request. */
+export function pdfLinkErrorMessage(
+  res: Exclude<ValuationReportPdfResult, { ok: true }>,
+): string {
+  switch (res.kind) {
+    case "auth":
+      return "انتهت الجلسة — سجّل الدخول من جديد ثم أعد المحاولة.";
+    case "forbidden":
+      return "لا تملك صلاحية إنشاء رابط PDF لهذا التقرير.";
+    case "not_found":
+      return "طلب التقييم غير موجود.";
+    case "too_large":
+      return "حجم التقرير كبير جداً — قلّل عدد الصور المرفقة ثم أعد المحاولة.";
+    case "invalid":
+    case "renderer_unavailable":
+    case "render_failed":
+      return res.message || "تعذّر إنشاء رابط PDF — حاول مرة أخرى.";
+    default:
+      return "تعذّر إنشاء رابط PDF — حاول مرة أخرى.";
+  }
+}
 
 /** Old shortened defaults — replace with HTML v3 full copy when still stored in org settings. */
 const LEGACY_SHORT_FINISHING = new Set([
@@ -70,6 +154,8 @@ async function loadValuationApproaches(
   config: ValuationApiConfig,
   property: PoPropertyIntake | null | undefined,
 ): Promise<{
+  /** Open valuation request for this property — target of the report PDF link endpoint. */
+  valuationRequestId: string | null;
   market: ValuationComparableSelectionListDto | null;
   landMarket: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
@@ -78,7 +164,14 @@ async function loadValuationApproaches(
 }> {
   const propertyId = (property?.id ?? "").trim();
   if (!propertyId) {
-    return { market: null, landMarket: null, cost: null, recon: null, settings: null };
+    return {
+      valuationRequestId: null,
+      market: null,
+      landMarket: null,
+      cost: null,
+      recon: null,
+      settings: null,
+    };
   }
   const open = await ensureOpenValuationRequestByProperty(config, {
     propId: propertyId,
@@ -87,7 +180,14 @@ async function loadValuationApproaches(
     appraiser: "—",
   });
   if (!open.ok) {
-    return { market: null, landMarket: null, cost: null, recon: null, settings: null };
+    return {
+      valuationRequestId: null,
+      market: null,
+      landMarket: null,
+      cost: null,
+      recon: null,
+      settings: null,
+    };
   }
   const [sel, landSel, costRes, reconRes, settingsRes] = await Promise.all([
     listValuationComparableSelections(config, open.data.id, "market"),
@@ -97,6 +197,7 @@ async function loadValuationApproaches(
     getValuationApproachSettings(config, open.data.id),
   ]);
   return {
+    valuationRequestId: open.data.id,
     market: sel.ok ? sel.data : null,
     landMarket: landSel.ok ? landSel.data : null,
     cost: costRes.ok ? costRes.data : null,
@@ -173,7 +274,7 @@ async function loadReportOutputBundle(input: {
     ? fetchInspectorWorkspace(input.inspectionTaskId)
     : Promise.resolve(null);
   const emptyAttach = {
-    photos: [] as ValuationReportSlotAttachment[],
+    photos: [] as Array<ValuationReportSlotAttachment | null>,
     survey: null as ValuationReportSlotAttachment | null,
     deed: null as ValuationReportSlotAttachment | null,
     siteMap: null as ValuationReportSlotAttachment | null,
@@ -262,6 +363,7 @@ export function EvaluatorValuationReportOutputTab({
   inspectionTaskId,
   surveyTaskId,
   assignedAppraiserName,
+  onReportChoicesPatch,
 }: {
   draft: EvaluatorSubmission;
   property?: PoPropertyIntake | null;
@@ -269,12 +371,19 @@ export function EvaluatorValuationReportOutputTab({
   surveyTaskId?: string | null;
   /** From work-order dispatch — printed as a fourth participants column. */
   assignedAppraiserName?: string | null;
+  onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
 }) {
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const clients = EMPTY_OUTPUT_CLIENTS;
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  /** Why the last print copy fell back from Google maps (Static Maps API not enabled on the key). */
+  const [mapNotice, setMapNotice] = useState<string | null>(null);
+  /** Last rendered `.pdf?k=…` link for this report (server-side PDF of the print copy). */
+  const [pdfLink, setPdfLink] = useState<ValuationReportPdfLinkDto | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfCopied, setPdfCopied] = useState(false);
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
@@ -380,6 +489,7 @@ export function EvaluatorValuationReportOutputTab({
               (approachSettings.costApproachAllowed ?? true),
           ),
           costScopeKey: approachSettings?.costScopeKey,
+          costBasisKey: approachSettings?.costBasisKey,
           record,
           property,
           inspector,
@@ -500,9 +610,7 @@ export function EvaluatorValuationReportOutputTab({
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "تعذّر تحميل تقرير التقييم",
-          );
+          setError(arabicErrorMessage(err, "تعذّر تحميل تقرير التقييم"));
         }
       });
     return () => {
@@ -512,35 +620,128 @@ export function EvaluatorValuationReportOutputTab({
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
   }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess]);
 
-  const print = useCallback(async () => {
-    setPrinting(true);
-    try {
-      const loaded = await ensureOrganizationSettingsLoaded({ force: true });
-      if (loaded) setOrg(loaded);
+  /** Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it. */
+  const preparePrintHtml = useCallback(
+    async (loaded: OrganizationSettingsDto | null) => {
+      const baseMeta = buildReportMeta(loaded);
+      let live = baseMeta.live;
+      if (live) {
+        // Print cannot run Google Maps JS — fetch Static Maps images for §18 / §33 instead.
+        const { diagnostics, ...mapSlots } = await materializePrintMapSlots({
+          pins: live.comparablesMapPins ?? [],
+          comparableMapSlot: live.comparableMapSlot,
+          satelliteMapSlot: live.satelliteMapSlot,
+          closeupMapSlot: live.closeupMapSlot,
+        });
+        live = { ...live, ...mapSlots };
+        // Google's refusal text names the missing API — keep it in the console for ops.
+        if (diagnostics.denialReason && !diagnostics.googleAvailable) {
+          console.warn(
+            "[valuation-report] Google Static Maps refused:",
+            diagnostics.denialReason,
+          );
+        }
+        setMapNotice(printMapsNotice(diagnostics));
+      }
       const html = await fetchValuationReportV3Html(
         {
-          ...buildReportMeta(loaded),
+          ...baseMeta,
+          live,
           branding: loaded?.branding ?? org?.branding ?? null,
           valuers: loaded?.valuers ?? org?.valuers ?? [],
         },
         "print",
       );
-      const opened = openHtmlDocumentInNewTab(html, {
+      return { html, reportNo: (baseMeta.reportNo ?? "").trim() };
+    },
+    [buildReportMeta, org],
+  );
+
+  const print = useCallback(async () => {
+    // Open the tab now, inside the click's transient activation: the Static Maps fetches
+    // below can take a few seconds and a late window.open would be blocked as a popup.
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) {
+      setError("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");
+      return;
+    }
+    setPrinting(true);
+    try {
+      const loaded = await ensureOrganizationSettingsLoaded({ force: true });
+      if (loaded) setOrg(loaded);
+      const { html } = await preparePrintHtml(loaded);
+      openHtmlDocumentInNewTab(html, {
         print: true,
         waitForImages: true,
         waitForFonts: false,
+        target: tab,
       });
-      if (!opened) {
-        setError("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");
-      }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "تعذّر تجهيز نسخة الطباعة",
-      );
+      tab.close();
+      setError(arabicErrorMessage(err, "تعذّر تجهيز نسخة الطباعة"));
     } finally {
       setPrinting(false);
     }
-  }, [buildReportMeta, org]);
+  }, [preparePrintHtml]);
+
+  const pdfRequestId = outputBundle?.approaches?.valuationRequestId ?? null;
+
+  /**
+   * Server-rendered PDF behind a shareable `…/{reportNo}.pdf?k=…` link: the same print
+   * HTML, made self-contained (assets as data URLs), converted by the valuation service.
+   */
+  const createPdfLink = useCallback(async () => {
+    const session = getAuthSession();
+    if (!pdfRequestId || !session?.token) {
+      setError("لا يمكن إنشاء رابط PDF قبل فتح طلب التقييم لهذا العقار.");
+      return;
+    }
+    // Open the tab synchronously (popup blockers) and navigate it once the PDF exists.
+    const tab = window.open("about:blank", "_blank");
+    setPdfBusy(true);
+    setPdfCopied(false);
+    try {
+      const loaded = await ensureOrganizationSettingsLoaded({ force: true });
+      if (loaded) setOrg(loaded);
+      const { html, reportNo } = await preparePrintHtml(loaded);
+      const selfContained = await inlinePrintHtmlAssets(html, {
+        token: session.token,
+        apiBase: getApiBase(),
+      });
+      const res = await createValuationReportPdf(
+        { token: session.token, baseUrl: getApiBase() },
+        pdfRequestId,
+        { html: selfContained, reportNumber: reportNo },
+      );
+      if (!res.ok) {
+        tab?.close();
+        setError(pdfLinkErrorMessage(res));
+        return;
+      }
+      setPdfLink(res.data);
+      setError(null);
+      const url = valuationReportPdfAbsoluteUrl(res.data);
+      if (tab) tab.location.href = url;
+      else window.open(url, "_blank", "noopener");
+    } catch (err: unknown) {
+      tab?.close();
+      setError(arabicErrorMessage(err, "تعذّر إنشاء رابط PDF"));
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [pdfRequestId, preparePrintHtml]);
+
+  const copyPdfLink = useCallback(async () => {
+    if (!pdfLink) return;
+    const url = valuationReportPdfAbsoluteUrl(pdfLink);
+    try {
+      await navigator.clipboard.writeText(url);
+      setPdfCopied(true);
+      window.setTimeout(() => setPdfCopied(false), 2500);
+    } catch {
+      window.prompt("انسخ الرابط:", url);
+    }
+  }, [pdfLink]);
 
   useEffect(() => {
     if (!screenHtml) return;
@@ -607,6 +808,77 @@ export function EvaluatorValuationReportOutputTab({
     };
   }, [screenHtml]);
 
+  // Enable HTML image-slot Edit / pan / scale in the report preview (same as valuation-report-v3.html).
+  useEffect(() => {
+    if (!screenHtml) return;
+    let cancelled = false;
+    const reportRoot = document.querySelector(".rpt-ref");
+    if (!reportRoot) return;
+
+    window.__ejadahImageSlotsEditable = true;
+    const prevWrite = window.omelette?.writeFile;
+    window.omelette = {
+      ...(window.omelette ?? {}),
+      writeFile: (path, content) => {
+        if (String(path).includes("image-slots.state")) {
+          try {
+            const parsed = JSON.parse(content) as Record<
+              string,
+              string | { u?: string; s?: number; x?: number; y?: number }
+            >;
+            const nextFrames: Record<string, { s: number; x: number; y: number }> =
+              {
+                ...(draft.reportChoices?.reportSlotFrames ?? {}),
+              };
+            for (const [id, value] of Object.entries(parsed)) {
+              if (!value || typeof value === "string") continue;
+              nextFrames[id] = {
+                s: typeof value.s === "number" ? value.s : 1,
+                x: typeof value.x === "number" ? value.x : 0,
+                y: typeof value.y === "number" ? value.y : 0,
+              };
+            }
+            onReportChoicesPatch?.({ reportSlotFrames: nextFrames });
+          } catch {
+            /* ignore malformed sidecar writes */
+          }
+          return;
+        }
+        return prevWrite?.(path, content);
+      },
+    };
+
+    void ensureImageSlotCustomElement()
+      .then(() => {
+        if (cancelled) return;
+        // Re-run attributeChanged / connected logic after upgrade.
+        reportRoot.querySelectorAll("image-slot").forEach((node) => {
+          const el = node as HTMLElement & { attributeChangedCallback?: unknown };
+          // Nudge upgrade: toggle a data attr so filled slots re-apply view.
+          const src = el.getAttribute("src");
+          if (src) {
+            el.setAttribute("src", src);
+          }
+        });
+      })
+      .catch(() => {
+        /* preview still works without reframe */
+      });
+
+    return () => {
+      cancelled = true;
+      window.__ejadahImageSlotsEditable = false;
+      if (window.omelette) {
+        if (prevWrite) window.omelette.writeFile = prevWrite;
+        else delete window.omelette.writeFile;
+      }
+    };
+  }, [
+    screenHtml,
+    draft.reportChoices?.reportSlotFrames,
+    onReportChoicesPatch,
+  ]);
+
   if (error && !screenHtml) {
     return <p className="m-0 text-[13px] text-[#b42318]">{error}</p>;
   }
@@ -621,19 +893,72 @@ export function EvaluatorValuationReportOutputTab({
 
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={printing}
+          disabled={pdfBusy || printing || !pdfRequestId}
+          title="ينشئ ملف PDF على الخادم ويفتحه من رابط ينتهي بـ .pdf يمكن مشاركته"
+          onClick={() => void createPdfLink()}
+        >
+          {pdfBusy ? "جاري إنشاء PDF…" : "رابط PDF"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={printing || pdfBusy}
           onClick={() => void print()}
         >
           {printing ? "جاري التجهيز…" : "طباعة / PDF"}
         </Button>
       </div>
+      {pdfLink ? (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-[#e6e1d6] bg-[#faf8f3] px-3 py-2 text-[12px] text-[#3a3f4d]"
+          data-testid="report-pdf-link"
+        >
+          <span className="font-semibold text-[#102b4e]">{pdfLink.fileName}</span>
+          <input
+            readOnly
+            dir="ltr"
+            value={valuationReportPdfAbsoluteUrl(pdfLink)}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-[240px] flex-1 rounded border border-[#ddd8cc] bg-white px-2 py-1 text-[11px] text-[#3a3f4d]"
+            aria-label="رابط ملف PDF"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void copyPdfLink()}
+          >
+            {pdfCopied ? "تم النسخ" : "نسخ الرابط"}
+          </Button>
+          <a
+            href={valuationReportPdfAbsoluteUrl(pdfLink)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#102b4e] underline"
+          >
+            فتح
+          </a>
+          <span className="text-text-3">
+            صالح حتى {pdfLink.expiresAtUtc.slice(0, 10)}
+          </span>
+        </div>
+      ) : null}
       {error ? (
         <p className="mb-3 mt-0 text-[13px] text-[#b42318]">{error}</p>
+      ) : null}
+      {mapNotice ? (
+        <p
+          className="mb-3 mt-0 text-[12px] leading-relaxed text-[#8a5a00]"
+          data-testid="report-map-notice"
+        >
+          {mapNotice}
+        </p>
       ) : null}
       <div
         className="rpt-ref min-w-0"

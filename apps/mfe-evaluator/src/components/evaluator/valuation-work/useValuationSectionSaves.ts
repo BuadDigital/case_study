@@ -102,7 +102,7 @@ export function useValuationSectionSaves({
       );
       setSaving(false);
       if (!res.ok) {
-        showToast(res.message ?? "تعذّر بدء التقييم", "error");
+        showToast(res.message ?? "تعذّر حفظ أساس ووحدة التكلفة", "error");
         return;
       }
       showToast("تم حفظ أساس ووحدة التكلفة", "success");

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  approvedInspectorPropertyDescription,
   isLandInspectionContext,
   preserveInspectorOwnedFeatureValues,
   resolvedInspectorAssetSubject,
@@ -102,6 +103,27 @@ describe("submitted inspector type ownership", () => {
         { assetSubject: "فيلا", zoneStatus: "موقوفة" },
       ),
     ).toEqual({ assetSubject: "أرض", zoneStatus: "موقوفة" });
+  });
+
+  it("exposes property description to appraisers only after specialist accept", () => {
+    expect(
+      approvedInspectorPropertyDescription({
+        propertyDescription: "وصف المعاين",
+        acceptedAtUtc: null,
+      }),
+    ).toBe("");
+    expect(
+      approvedInspectorPropertyDescription({
+        propertyDescription: "وصف المعاين",
+        acceptedAtUtc: "  ",
+      }),
+    ).toBe("");
+    expect(
+      approvedInspectorPropertyDescription({
+        propertyDescription: "  وصف معتمد  ",
+        acceptedAtUtc: "2026-09-09T08:00:00.000Z",
+      }),
+    ).toBe("وصف معتمد");
   });
 });
 

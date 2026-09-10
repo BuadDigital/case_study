@@ -30,6 +30,10 @@ import {
   disableApproachConfirmCopy,
   initialApproachToggles,
 } from "./lib/valuation-data-state";
+import {
+  defaultSelectedSpecialAssumptions,
+  shouldUseDefaultSpecialAssumptions,
+} from "../../../lib/evaluator/special-assumption-rows";
 
 /**
  * Basics screen — owns valuation settings drafts (approaches, scope, basis,
@@ -104,16 +108,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     setAsRetroKind(settings.retrospectiveDateEnd?.trim() ? "range" : "single");
     const loadedAssumptions = settings.selectedAssumptions ?? [];
     const library = settings.assumptionLibrary ?? [];
-    const visibleLibrary = library.filter(
-      (clause) =>
-        !settings.externalSpecialistUsed ||
-        !isNoExternalSpecialistAssumption(clause),
-    );
     // When no saved selection exists: all special-assumption items are selected by default.
-    const useAllByDefault = loadedAssumptions.length === 0;
     setAsAssumptions(
-      useAllByDefault
-        ? visibleLibrary
+      shouldUseDefaultSpecialAssumptions(loadedAssumptions)
+        ? defaultSelectedSpecialAssumptions(
+            library,
+            settings.externalSpecialistUsed,
+          )
         : settings.externalSpecialistUsed
           ? loadedAssumptions.filter((x) => !isNoExternalSpecialistAssumption(x))
           : loadedAssumptions,
@@ -149,7 +150,15 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
 
   async function saveApproachSettings() {
     const config = apiConfig();
-    if (!config || !valuationRequestId) return;
+    if (!config || !valuationRequestId) {
+      // Otherwise the click does nothing at all — no toast, no saving indicator — and the
+      // appraiser has no way to know their edits were never sent.
+      showToast(
+        "تعذّر حفظ الأساليب — الجلسة غير متاحة حالياً. أعد تحميل الصفحة أو سجّل الدخول من جديد.",
+        "error",
+      );
+      return;
+    }
     if (asDateMode === "retrospective") {
       if (!asRetroDate.trim()) {
         showToast("تاريخ الأثر الرجعي إلزامي", "error");
@@ -185,7 +194,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     const specialistDetails = latest.ok
       ? latest.data.externalSpecialistDetails
       : settings?.externalSpecialistDetails;
-    if (specialistUsed) {
+    // Empty / auto-only «لم يستعن…» means never customized — persist the full library.
+    if (shouldUseDefaultSpecialAssumptions(selectedAssumptions)) {
+      selectedAssumptions = defaultSelectedSpecialAssumptions(
+        library,
+        specialistUsed,
+      );
+    } else if (specialistUsed) {
       selectedAssumptions = selectedAssumptions.filter(
         (x) => !isNoExternalSpecialistAssumption(x),
       );
@@ -194,13 +209,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
       if (clause && !selectedAssumptions.includes(clause)) {
         selectedAssumptions = [...selectedAssumptions, clause];
       }
-    }
-    // When no saved selection remains after load: all visible items by default.
-    if (selectedAssumptions.length === 0 && library.length > 0) {
-      selectedAssumptions = library.filter(
-        (clause) =>
-          !specialistUsed || !isNoExternalSpecialistAssumption(clause),
-      );
     }
     const res = await saveValuationApproachSettings(config, valuationRequestId, {
       marketApproachEnabled: asMarketEnabled,
@@ -226,7 +234,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     });
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ الأساليب", "error");
+      const fallback =
+        res.kind === "auth"
+          ? "انتهت صلاحية الجلسة — سجّل الدخول من جديد ثم أعد الحفظ."
+          : res.kind === "network"
+            ? "تعذّر الاتصال بالخادم — تحقق من اتصالك بالإنترنت وأعد المحاولة."
+            : "تعذّر حفظ الأساليب — أعد المحاولة بعد قليل، وإن تكرر الخطأ تواصل مع الدعم الفني.";
+      showToast(res.message ?? fallback, "error");
       return;
     }
     showToast(

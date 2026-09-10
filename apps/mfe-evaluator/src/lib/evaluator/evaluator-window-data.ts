@@ -97,6 +97,17 @@ export type EvaluatorReportChoices = {
   esgSoc: EvaluatorEsgGroup;
   esgGov: EvaluatorEsgGroup;
   printAttachmentKeys: string[];
+  /** Display / print order of attachment rows (all catalog keys). */
+  printAttachmentOrder: string[];
+  /** Preferred property-document / attachment id per print key (deed, survey…). */
+  printAttachmentDocIds: Record<string, string>;
+  /**
+   * HTML report image-slot assignments: slot id (`photo-1`, `deed`, `survey-report`)
+   * → attachment id.
+   */
+  reportSlotAssignments: Record<string, string>;
+  /** Pan/scale frame per HTML image-slot id — same {s,x,y} as image-slot.js. */
+  reportSlotFrames: Record<string, { s: number; x: number; y: number }>;
   incomeAnnual: string;
   incomeVacancyPct: string;
   incomeOpexPct: string;
@@ -112,6 +123,45 @@ const EMPTY_ESG: EvaluatorEsgGroup = {
 
 function defaultEsgGroup(noneNotes: string): EvaluatorEsgGroup {
   return { none: true, selected: [], notes: noneNotes };
+}
+
+function normalizeStringRecord(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string" && value.trim()) {
+      out[key] = value.trim();
+    }
+  }
+  return out;
+}
+
+function normalizeSlotFrames(
+  raw: unknown,
+): Record<string, { s: number; x: number; y: number }> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, { s: number; x: number; y: number }> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as { s?: unknown; x?: unknown; y?: unknown };
+    const s = typeof row.s === "number" && Number.isFinite(row.s) ? row.s : 1;
+    const x = typeof row.x === "number" && Number.isFinite(row.x) ? row.x : 0;
+    const y = typeof row.y === "number" && Number.isFinite(row.y) ? row.y : 0;
+    out[key] = { s, x, y };
+  }
+  return out;
+}
+
+/** Migrate legacy printAttachmentDocIds into HTML slot ids when slots are empty. */
+function coalesceReportSlotAssignments(
+  slots: Record<string, string>,
+  legacyDocIds: Record<string, string>,
+): Record<string, string> {
+  if (Object.keys(slots).length > 0) return slots;
+  const out: Record<string, string> = {};
+  if (legacyDocIds.deed) out.deed = legacyDocIds.deed;
+  if (legacyDocIds.survey) out["survey-report"] = legacyDocIds.survey;
+  return out;
 }
 
 export { defaultPremiseKeyForBasis };
@@ -156,6 +206,10 @@ export function emptyReportChoices(): EvaluatorReportChoices {
     esgSoc: defaultEsgGroup(ESG_NONE_NOTES.soc),
     esgGov: defaultEsgGroup(ESG_NONE_NOTES.gov),
     printAttachmentKeys: [],
+    printAttachmentOrder: [],
+    printAttachmentDocIds: {},
+    reportSlotAssignments: {},
+    reportSlotFrames: {},
     incomeAnnual: "",
     incomeVacancyPct: "",
     incomeOpexPct: "",
@@ -211,6 +265,28 @@ export function normalizeReportChoices(raw: unknown): EvaluatorReportChoices {
     printAttachmentKeys: Array.isArray(row.printAttachmentKeys)
       ? row.printAttachmentKeys.filter((x): x is string => typeof x === "string")
       : [],
+    printAttachmentOrder: Array.isArray(
+      (row as { printAttachmentOrder?: unknown }).printAttachmentOrder,
+    )
+      ? (
+          (row as { printAttachmentOrder?: unknown[] }).printAttachmentOrder ??
+          []
+        ).filter((x): x is string => typeof x === "string")
+      : [],
+    printAttachmentDocIds: normalizeStringRecord(
+      (row as { printAttachmentDocIds?: unknown }).printAttachmentDocIds,
+    ),
+    reportSlotAssignments: coalesceReportSlotAssignments(
+      normalizeStringRecord(
+        (row as { reportSlotAssignments?: unknown }).reportSlotAssignments,
+      ),
+      normalizeStringRecord(
+        (row as { printAttachmentDocIds?: unknown }).printAttachmentDocIds,
+      ),
+    ),
+    reportSlotFrames: normalizeSlotFrames(
+      (row as { reportSlotFrames?: unknown }).reportSlotFrames,
+    ),
     incomeAnnual: typeof row.incomeAnnual === "string" ? row.incomeAnnual : "",
     incomeVacancyPct:
       typeof row.incomeVacancyPct === "string" ? row.incomeVacancyPct : "",

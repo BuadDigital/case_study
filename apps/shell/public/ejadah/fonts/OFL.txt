@@ -1,0 +1,9 @@
+Tajawal (Regular 400, Medium 500, Bold 700) — Arabic and Latin subsets.
+
+Copyright 2016 The Tajawal Project Authors (https://github.com/Gue3bara/Tajawal), Boutros International.
+Licensed under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL).
+
+These woff2 files were downloaded from Google Fonts (https://fonts.google.com/specimen/Tajawal,
+https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700) and are embedded into the
+printed valuation report (screen print tab + server-side PDF rendering) so the PDF uses the same
+typeface the appraiser sees on screen.

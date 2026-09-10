@@ -16,6 +16,52 @@ import {
   subjectOnlyMapPins,
   type ComparablesMapPin,
 } from "./valuation-report-comparables-map";
+import {
+  PRINT_ATTACHMENT_REPORT_SECTIONS,
+  isPrintAttachmentIncluded,
+} from "./valuation-report-property-attachments";
+
+/** Reorder / hide deed & survey pages from final-review row order + selection. */
+export function applyPrintAttachmentPagePlacement(
+  dom: Document,
+  printAttachmentOrder: string[] | null | undefined,
+  printAttachmentKeys: string[] | null | undefined,
+) {
+  const order = printAttachmentOrder ?? [];
+  const selected = printAttachmentKeys ?? [];
+  const knownKeys = Object.keys(PRINT_ATTACHMENT_REPORT_SECTIONS);
+
+  if (selected.length > 0) {
+    for (const typeKey of knownKeys) {
+      if (selected.includes(typeKey)) continue;
+      const meta = PRINT_ATTACHMENT_REPORT_SECTIONS[typeKey];
+      if (!meta) continue;
+      const sec = dom.querySelector(`[data-sec="${meta.sec}"]`);
+      if (!sec) continue;
+      const page = sec.closest("section.page") ?? sec;
+      page.remove();
+    }
+  }
+
+  const orderedTypeKeys = (
+    order.length > 0 ? order : knownKeys
+  ).filter((key) => knownKeys.includes(key));
+  if (orderedTypeKeys.length === 0) return;
+
+  const anchorSec = dom.querySelector('[data-sec="37"]');
+  const anchor = anchorSec?.closest("section.page") ?? anchorSec;
+  if (!anchor?.parentNode) return;
+
+  for (const typeKey of orderedTypeKeys) {
+    if (selected.length > 0 && !selected.includes(typeKey)) continue;
+    const meta = PRINT_ATTACHMENT_REPORT_SECTIONS[typeKey];
+    if (!meta) continue;
+    const sec = dom.querySelector(`[data-sec="${meta.sec}"]`);
+    if (!sec) continue;
+    const page = sec.closest("section.page") ?? sec;
+    anchor.parentNode.insertBefore(page, anchor);
+  }
+}
 
 export function blankValueCells(root: ParentNode) {
   root.querySelectorAll("tr").forEach((tr) => {
@@ -624,12 +670,39 @@ export function fillImageSlot(
   slotId: string,
   item: ValuationReportSlotAttachment | null | undefined,
   emptyLabel: string,
+  frame?: { s: number; x: number; y: number } | null,
 ) {
   const el =
     dom.getElementById(slotId) ||
     dom.querySelector(`[data-slot-id="${slotId}"]`);
   if (!el) return;
   const style = el.getAttribute("style") ?? "";
+  const tag = el.tagName.toLowerCase();
+
+  // Screen preview keeps live <image-slot> — same Edit / pan / scale as the HTML template.
+  if (tag === "image-slot") {
+    if (item?.url && item.isImage) {
+      el.setAttribute("src", item.url);
+      el.setAttribute("placeholder", emptyLabel);
+      if (frame) {
+        el.setAttribute("data-view-s", String(frame.s));
+        el.setAttribute("data-view-x", String(frame.x));
+        el.setAttribute("data-view-y", String(frame.y));
+      } else {
+        el.removeAttribute("data-view-s");
+        el.removeAttribute("data-view-x");
+        el.removeAttribute("data-view-y");
+      }
+      return;
+    }
+    if (!item?.url) {
+      el.removeAttribute("src");
+      el.setAttribute("placeholder", emptyLabel);
+      return;
+    }
+    // Non-image (PDF…): replace custom element with the static note below.
+  }
+
   if (!item?.url) {
     el.className = "image-ph";
     el.replaceChildren();
@@ -641,32 +714,53 @@ export function fillImageSlot(
     const { wrapStyle, mediaHeight } = splitSlotBoxStyle(style);
     const wrap = dom.createElement("figure");
     wrap.className = "attach-fig";
+    wrap.setAttribute("data-slot-id", slotId);
     wrap.style.cssText = [
       wrapStyle || "width:100%",
       "margin:0",
-      "overflow:visible",
+      "overflow:hidden",
       "display:flex",
       "flex-direction:column",
+      "position:relative",
     ]
       .filter(Boolean)
       .join(";");
+    const frameBox = dom.createElement("div");
+    frameBox.className = "attach-fig-frame";
+    frameBox.style.cssText = [
+      "position:relative",
+      "width:100%",
+      mediaHeight ? `height:${mediaHeight}` : "height:218px",
+      "overflow:hidden",
+      "background:#faf8f3",
+      "border-radius:2px",
+    ].join(";");
     const img = dom.createElement("img");
     img.src = item.url;
     img.alt = item.labelAr || item.fileName || emptyLabel;
     const fit = item.contentType.includes("svg") ? "contain" : "cover";
+    const s = frame?.s && frame.s > 0 ? frame.s : 1;
+    const x = frame?.x ?? 0;
+    const y = frame?.y ?? 0;
+    // Mirror image-slot framing: center + % offset + scale.
     img.style.cssText = [
+      "position:absolute",
+      "left:50%",
+      "top:50%",
       "width:100%",
-      mediaHeight ? `height:${mediaHeight}` : "height:auto",
+      "height:100%",
       `object-fit:${fit}`,
+      `transform:translate(calc(-50% + ${x}%), calc(-50% + ${y}%)) scale(${s})`,
+      "transform-origin:center center",
       "display:block",
-      "background:#faf8f3",
-      "border-radius:2px",
+      "max-width:none",
     ].join(";");
     const cap = dom.createElement("figcaption");
     cap.style.cssText =
       "font-size:9px;margin-top:4px;color:#3a3f4d;line-height:1.35;flex:0 0 auto";
     cap.textContent = item.labelAr || item.fileName || emptyLabel;
-    wrap.append(img, cap);
+    frameBox.append(img);
+    wrap.append(frameBox, cap);
     el.replaceWith(wrap);
     return;
   }
@@ -1010,7 +1104,8 @@ export function fillLocationMapsSlots(
     "map-satellite",
     SATELLITE_MAP_HOST_ID,
     pins,
-    fill.comparableMapSlot,
+    // Uploaded site map, or the print-time Google hybrid view. Never the §18 comps map.
+    fill.satelliteMapSlot,
     "خريطة الأقمار الصناعية — تُرفق صورة الموقع",
     "خريطة الأقمار الصناعية",
     interactive,
@@ -1021,9 +1116,9 @@ export function fillLocationMapsSlots(
     "map-closeup",
     CLOSEUP_MAP_HOST_ID,
     pins,
-    fill.closeupMapSlot ?? fill.comparableMapSlot,
+    fill.closeupMapSlot,
     "صورة مقربة للموقع — تُرفق صورة",
-    "خريطة الموقع العام",
+    "صورة مقربة للموقع",
     interactive,
     { zoom: 18, mapType: "satellite", heightPx: 300 },
   );
@@ -1034,6 +1129,12 @@ export function fillAttachmentAndGlossarySections(
   fill: ValuationReportLiveFill,
   options?: { interactiveComparablesMap?: boolean },
 ) {
+  applyPrintAttachmentPagePlacement(
+    dom,
+    fill.printAttachmentOrder,
+    fill.printAttachmentKeys,
+  );
+
   fillComparablesMapSlot(
     dom,
     fill.comparableMapSlot,
@@ -1043,26 +1144,40 @@ export function fillAttachmentAndGlossarySections(
   );
 
   const photos = fill.photoSlots ?? [];
+  const frames = fill.slotFrames ?? {};
   for (let i = 0; i < 12; i++) {
+    const id = `photo-${i + 1}`;
     fillImageSlot(
       dom,
-      `photo-${i + 1}`,
+      id,
       photos[i] ?? null,
       "—",
+      frames[id] ?? null,
     );
   }
+
+  const includeSurvey = isPrintAttachmentIncluded(
+    fill.printAttachmentKeys,
+    "survey",
+  );
+  const includeDeed = isPrintAttachmentIncluded(
+    fill.printAttachmentKeys,
+    "deed",
+  );
 
   fillImageSlot(
     dom,
     "survey-report",
-    fill.surveySlot,
+    includeSurvey ? fill.surveySlot : null,
     "التقرير المساحي — يُرفق مستند الرفع المساحي",
+    frames["survey-report"] ?? null,
   );
   fillImageSlot(
     dom,
     "deed",
-    fill.deedSlot,
+    includeDeed ? fill.deedSlot : null,
     "صك الملكية — تُرفق صورة الصك",
+    frames.deed ?? null,
   );
 
   fillResearchScopeSection(

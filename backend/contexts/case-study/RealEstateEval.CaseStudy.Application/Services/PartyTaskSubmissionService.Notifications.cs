@@ -167,6 +167,51 @@ public partial class PartyTaskSubmissionService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Acceptance — not submission — is what actually opens the siblings' gates: the appraiser
+    /// starts on <c>FieldInspectionAccepted</c>, and the survey office works from an accepted
+    /// package. Submission already told them work had started; this tells them it is theirs now.
+    /// </summary>
+    private async Task NotifySiblingsInspectionAcceptedAsync(
+        WorkflowTask inspectionTask,
+        CancellationToken cancellationToken)
+    {
+        var refLabel = inspectionTask.PoNumber?.Trim();
+        var suffix = string.IsNullOrEmpty(refLabel) ? "" : $" على {refLabel}";
+
+        var appraisal = await FindSiblingAsync(
+            inspectionTask,
+            WorkflowTaskKind.PropertyAppraisal,
+            cancellationToken);
+        if (appraisal is not null)
+        {
+            await NotifyPartyAssigneeAsync(
+                appraisal,
+                title: "اعتُمدت المعاينة — يمكن بدء التقييم",
+                body: $"استلم الأخصائي بيانات المعاينة{suffix}. رُفع الحجب عن التقييم.",
+                tone: "success",
+                sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
+                href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
+                cancellationToken);
+        }
+
+        var survey = await FindSiblingAsync(
+            inspectionTask,
+            WorkflowTaskKind.EngineeringSurvey,
+            cancellationToken);
+        if (survey is not null && !survey.IsTerminal)
+        {
+            await NotifyPartyAssigneeAsync(
+                survey,
+                title: "اعتُمدت المعاينة — يمكن بدء الرفع المساحي",
+                body: $"استلم الأخصائي بيانات المعاينة{suffix}. يمكنك بدء الرفع المساحي.",
+                tone: "success",
+                sourceEvent: $"field-inspection-accepted-survey:{inspectionTask.Id}",
+                href: $"/active-survey/{Uri.EscapeDataString(survey.Id.ToString())}",
+                cancellationToken);
+        }
+    }
+
     private async Task<WorkflowTask?> FindSiblingAsync(
         WorkflowTask task,
         WorkflowTaskKind kind,

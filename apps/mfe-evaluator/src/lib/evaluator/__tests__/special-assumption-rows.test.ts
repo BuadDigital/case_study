@@ -3,7 +3,9 @@ import {
   DEFAULT_NO_EXTERNAL_SPECIALIST_ASSUMPTION,
   EXTERNAL_SPECIALIST_USED_LABEL,
   assumptionsAfterSpecialistChoice,
+  defaultSelectedSpecialAssumptions,
   resolveNoSpecialistClause,
+  shouldUseDefaultSpecialAssumptions,
   specialAssumptionRows,
 } from "../special-assumption-rows";
 
@@ -78,5 +80,30 @@ describe("resolveNoSpecialistClause", () => {
     const custom = "لم يستعن المقيّم بأي أخصائي خارجي في هذه المهمة.";
     expect(resolveNoSpecialistClause(["ESG", custom])).toBe(custom);
     expect(resolveNoSpecialistClause(["ESG"])).toBe(noSpecialist);
+  });
+});
+
+describe("defaultSelectedSpecialAssumptions", () => {
+  it("treats empty or auto-only no-specialist as needing the full library", () => {
+    expect(shouldUseDefaultSpecialAssumptions([])).toBe(true);
+    expect(shouldUseDefaultSpecialAssumptions([noSpecialist])).toBe(true);
+    expect(shouldUseDefaultSpecialAssumptions(["ESG", noSpecialist])).toBe(
+      false,
+    );
+  });
+
+  it("checks every library clause by default including no-specialist", () => {
+    expect(
+      defaultSelectedSpecialAssumptions(
+        ["ESG", "معاينة", noSpecialist, "أرض"],
+        false,
+      ),
+    ).toEqual(["ESG", "معاينة", "أرض", noSpecialist]);
+  });
+
+  it("omits the no-specialist clause when an external specialist is used", () => {
+    expect(
+      defaultSelectedSpecialAssumptions(["ESG", noSpecialist, "أرض"], true),
+    ).toEqual(["ESG", "أرض"]);
   });
 });

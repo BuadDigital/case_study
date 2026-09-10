@@ -4,7 +4,11 @@ import {
   resolveFirstErrorTarget,
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
-import type { EvaluatorReportWorker } from "./evaluator-window-data";
+import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
+import type {
+  EvaluatorReportChoices,
+  EvaluatorReportWorker,
+} from "./evaluator-window-data";
 import { parseEvaluatorAmount } from "./value-estimation";
 
 export type EvaluatorValidationErrors = Record<string, string>;
@@ -40,7 +44,7 @@ const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "building_value", targetId: "inf-building" },
   { key: "evaluator_price", targetId: "final-inf-total" },
   { key: "forced_sale_discount", targetId: "final-inf-discount" },
-  { key: "asset_data_confirmed", targetId: "val-asset-data" },
+  { key: "esg_impact_notes", targetId: "val-esg" },
   { key: "independence_declared", targetId: "inf-independence" },
   { key: "report_workers", targetId: "inf-workers" },
 ] as const;
@@ -90,6 +94,10 @@ export function validateEvaluatorSubmission(input: {
   assetDataVarianceNotes?: string;
   independenceDeclared?: boolean;
   reportWorkers?: EvaluatorReportWorker[];
+  reportChoices?: Pick<
+    EvaluatorReportChoices,
+    "esgEnv" | "esgSoc" | "esgGov"
+  > | null;
   /** When approaches panel is source of truth — skip manual land/building. */
   skipManualLandBuilding?: boolean;
   retrospective?: EvaluatorRetrospectiveDraft | null;
@@ -103,6 +111,7 @@ export function validateEvaluatorSubmission(input: {
     valueBasisKey = "",
     skipManualLandBuilding = false,
     retrospective,
+    reportChoices,
   } = input;
 
   if (retrospective?.mode === "retrospective") {
@@ -156,11 +165,12 @@ export function validateEvaluatorSubmission(input: {
       "مطلوب إدخال إجمالي قيمة العقار — رقم موجب أكبر من صفر.";
   }
 
-  const assetConfirmed = Boolean(input.assetDataConfirmed);
-  const varianceNotes = (input.assetDataVarianceNotes ?? "").trim();
-  if (!assetConfirmed && !varianceNotes) {
-    errors.asset_data_confirmed =
-      "أكّد مراجعة بيانات الأصل، أو دوّن ملاحظات التباين إن وُجدت.";
+  if (
+    reportChoices &&
+    esgGroupsMissingImpactDescription(reportChoices).length > 0
+  ) {
+    errors.esg_impact_notes =
+      "عند اختيار «يوجد تأثير» في ESG يجب كتابة وصف الأثر.";
   }
 
   return errors;

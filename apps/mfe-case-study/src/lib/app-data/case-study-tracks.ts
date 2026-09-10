@@ -163,7 +163,12 @@ export function buildCaseStudyTracks(
             ? PropertyListRowStatuses.Progress
             : PropertyListRowStatuses.New
         : trackStateFromTask(child, spawned);
+    // Party visibility hides the sibling rows from the appraiser, so a track with
+    // no child falls back to the completion flag the server mirrors onto the row.
     if (id === "inspection" && !child && parent.fieldInspectionCompleted) {
+      state = PropertyListRowStatuses.Done;
+    }
+    if (id === "survey" && !child && parent.engineeringSurveyCompleted) {
       state = PropertyListRowStatuses.Done;
     }
     const distName = distributionAssignee(distribution, id, staffUsers);
