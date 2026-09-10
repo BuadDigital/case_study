@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
 
@@ -176,6 +177,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             Area = property.Area,
             Classification = property.Classification,
             PropertyType = property.PropertyType,
+            InspectedPropertyType = property.InspectedPropertyType,
             PlanNumber = property.PlanNumber,
             PlanName = property.PlanName,
             PlotNumber = property.PlotNumber,
@@ -200,7 +202,10 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             WestFacadeFinishing = property.WestFacadeFinishing,
             FinishingType = property.FinishingType,
             FinishingStructure = property.FinishingStructure,
-            HasStructuresToValue = property.HasStructuresToValue,
+            HasStructuresToValue =
+                InspectedPropertyTypeRules.IsLand(property.InspectedPropertyType)
+                    ? HasStructuresToValueValues.No
+                    : property.HasStructuresToValue,
             InspectionScopeKey = property.InspectionScopeKey,
             InspectionRestrictionReason = property.InspectionRestrictionReason,
             UninspectedUnitsJson = property.UninspectedUnitsJson,

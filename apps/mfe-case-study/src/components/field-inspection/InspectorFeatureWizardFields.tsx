@@ -65,6 +65,7 @@ export function InspectorFeatureWizardFields({
   occupancyDescriptionError,
   hidePhotos = false,
   disabled = false,
+  readOnlyFeatureKeys = [],
   onPatch,
 }: {
   fields: InspectorFeatureField[];
@@ -77,8 +78,11 @@ export function InspectorFeatureWizardFields({
   /** Field Inspection Workspace design — no per-feature photo column. */
   hidePhotos?: boolean;
   disabled?: boolean;
+  /** Fields owned by another role and therefore visible but immutable here. */
+  readOnlyFeatureKeys?: readonly string[];
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
+  const readOnlyKeys = new Set(readOnlyFeatureKeys);
   const selectFields = fields.filter(
     (f) => f.options.length > 3 && !f.options.includes("نعم"),
   );
@@ -91,7 +95,7 @@ export function InspectorFeatureWizardFields({
   );
 
   function setFeature(key: string, next: string) {
-    if (disabled) return;
+    if (disabled || readOnlyKeys.has(key)) return;
     const photoRef = `feature:${key}`;
     onPatch({
       featureValues: patchInspectorFeatureValues(draft.featureValues, key, next),
@@ -119,6 +123,7 @@ export function InspectorFeatureWizardFields({
     <div className="flex flex-col gap-3.5">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
         {selectFields.map((field) => {
+          const fieldDisabled = disabled || readOnlyKeys.has(field.key);
           const rawVal = draft.featureValues[field.key]?.trim() ?? "";
           const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
           const needsPhoto = inspectorFeatureRequiresPhoto(field, rawVal);
@@ -132,9 +137,9 @@ export function InspectorFeatureWizardFields({
               <select
                 id={`ins-feature-select-${field.key}`}
                 aria-invalid={valueMissing || undefined}
-                disabled={disabled}
+                disabled={fieldDisabled}
                 className={cn(
-                  disabled
+                  fieldDisabled
                     ? cn(INSPECTOR_LOCKED_CONTROL_CLASS, "text-center")
                     : INS_GRID_SELECT_CLASS,
                   (valueMissing || photoMissing) && invalidControlClass,
@@ -202,6 +207,7 @@ export function InspectorFeatureWizardFields({
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {choiceFields.map((field) => {
+          const fieldDisabled = disabled || readOnlyKeys.has(field.key);
           const rawVal = draft.featureValues[field.key]?.trim() ?? "";
           const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
           const needsPhoto = inspectorFeatureRequiresPhoto(field, rawVal);
@@ -221,8 +227,8 @@ export function InspectorFeatureWizardFields({
                   <button
                     key={opt}
                     type="button"
-                    disabled={disabled}
-                    className={chipStyle(rawVal === opt, disabled)}
+                    disabled={fieldDisabled}
+                    className={chipStyle(rawVal === opt, fieldDisabled)}
                     onClick={() => setFeature(field.key, opt)}
                   >
                     {opt}
@@ -280,6 +286,7 @@ export function InspectorFeatureWizardFields({
         <div className="border-t border-border pt-3">
           <div className="flex flex-wrap items-center gap-2">
             {boolFields.map((field) => {
+              const fieldDisabled = disabled || readOnlyKeys.has(field.key);
               const on = (draft.featureValues[field.key] ?? "") === "نعم";
               const needsPhoto = inspectorFeatureRequiresPhoto(field, on ? "نعم" : "لا");
               const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
@@ -292,8 +299,8 @@ export function InspectorFeatureWizardFields({
                 >
                   <button
                     type="button"
-                    disabled={disabled}
-                    className={boolPillStyle(on, disabled)}
+                    disabled={fieldDisabled}
+                    className={boolPillStyle(on, fieldDisabled)}
                     onClick={() => setFeature(field.key, on ? "لا" : "نعم")}
                   >
                     <svg

@@ -32,7 +32,6 @@ export type PropertyDetailPartyStatusRow = {
 function timelineBadgeForParty(
   enabled: boolean,
   state: CaseStudyTrackState,
-  roleKey: string,
 ): { badge: string; badgeClass: PropertyDetailPartyStatusRow["badgeClass"] } {
   if (!enabled) {
     return { badge: "معطّل", badgeClass: "pd-badge-gray" };
@@ -43,10 +42,7 @@ function timelineBadgeForParty(
   if (state === "progress") {
     return { badge: "قيد التنفيذ", badgeClass: "pd-badge-amber" };
   }
-  if (roleKey === "inspection") {
-    return { badge: "لم يبدأ", badgeClass: "pd-badge-amber" };
-  }
-  return { badge: "غير معيّن", badgeClass: "pd-badge-gray" };
+  return { badge: "لم يبدأ", badgeClass: "pd-badge-amber" };
 }
 
 /** Party cards for property detail — assigned work parties only (no case specialist). */
@@ -135,7 +131,7 @@ export function buildPropertyDetailTimelinePartyRows(input: {
       key: def.key,
       label: name,
       role: def.role,
-      ...timelineBadgeForParty(enabled, state, def.key),
+      ...timelineBadgeForParty(enabled, state),
     };
   });
 }

@@ -92,6 +92,7 @@ export type EngineeringSurveySubmissionSnapshot = {
   eastBoundaryLengthM: string;
   westBoundary: string;
   westBoundaryLengthM: string;
+  deedMatchesNature: "yes" | "no" | null;
   surveyNotes: string;
   /** Note for the «Note» tab in the engineering-office workspace */
   transactionNote: string;

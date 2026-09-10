@@ -39,6 +39,7 @@ import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report
 import {
   assignmentValuationFromPo,
   buildValuationReportLiveFill,
+  certifiedPracticeLicenseFromOrg,
   type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
 import {
@@ -359,6 +360,8 @@ export function EvaluatorValuationReportOutputTab({
   const buildReportMeta = useCallback(
     (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
       const ev = loaded?.evaluator ?? {};
+      const company = loaded?.company ?? {};
+      const practice = certifiedPracticeLicenseFromOrg({ company, evaluator: ev });
       const vr = { ...REPORT_DEFAULTS, ...(loaded?.valuationReport ?? {}) };
       const specialistFinishing = loadSpecialistFinishingLevel(
         property?.id ?? draft.propertyId,
@@ -371,6 +374,12 @@ export function EvaluatorValuationReportOutputTab({
           draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
         live: buildValuationReportLiveFill({
           draft,
+          costApproachEnabled: Boolean(
+            approachSettings?.isSaved &&
+              approachSettings.costApproachEnabled &&
+              (approachSettings.costApproachAllowed ?? true),
+          ),
+          costScopeKey: approachSettings?.costScopeKey,
           record,
           property,
           inspector,
@@ -384,12 +393,12 @@ export function EvaluatorValuationReportOutputTab({
           basisLabel: listLabels.basis,
           premiseLabel: listLabels.premise,
           basisDefinition: listLabels.basisDefinition,
-          // No sample fallback — org settings or "—" in the report.
+          // Firm practice license from بيانات المنشأة — no sample fallback.
           certifiedName: ev.name,
-          certifiedLicense: ev.licenseNumber,
+          certifiedLicense: practice.number,
           certifiedMembershipNumber: ev.membershipNumber,
-          certifiedIssuedAt: ev.licenseIssuedAt,
-          certifiedExpires: ev.licenseExpiresHijri,
+          certifiedIssuedAt: practice.issuedAt,
+          certifiedExpires: practice.expiresAt,
           certifiedMembershipCategory: ev.membershipCategory,
           certifiedTitle: ev.title,
           certifiedMembershipExpires: ev.membershipExpiresAt,

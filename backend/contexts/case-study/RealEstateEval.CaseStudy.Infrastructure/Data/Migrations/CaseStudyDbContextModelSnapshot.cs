@@ -1051,6 +1051,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<string>("PrintAttachmentKeysJson")
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("InspectedPropertyType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("PropertyType")
                         .IsRequired()
                         .HasMaxLength(128)

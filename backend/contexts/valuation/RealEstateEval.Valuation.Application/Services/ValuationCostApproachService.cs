@@ -59,6 +59,7 @@ public sealed class ValuationCostApproachService(
         var approachSettings = await repo.GetApproachSettingsAsync(
             valuationRequestId, cancellationToken);
         var hasStructures = false;
+        var effectivePropertyType = vr.PropertyType;
         var propertyGuid = vr.PropertyId;
         if (propertyGuid != Guid.Empty)
         {
@@ -69,15 +70,21 @@ public sealed class ValuationCostApproachService(
                 context?.HasStructuresToValue.Trim(),
                 "yes",
                 StringComparison.OrdinalIgnoreCase);
+            effectivePropertyType = context?.EffectivePropertyType() ?? vr.PropertyType;
         }
 
-        var costEnabled = approachSettings?.CostApproachEnabled
-            ?? ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures);
+        var costAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
+            effectivePropertyType,
+            hasStructures);
+        var costEnabled = costAllowed
+            && (approachSettings?.CostApproachEnabled ?? true);
         if (!costEnabled)
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = !ValuationApproachSettingsRules.CanEnableCostApproach(vr.PropertyType, hasStructures)
+                ["_"] = !ValuationApproachSettingsRules.CanEnableCostApproach(
+                    effectivePropertyType,
+                    hasStructures)
                     ? "ق-3: أرض بلا إنشاءات لا تُقيَّم بالتكلفة — أسلوب التكلفة لا ينطبق"
                     : "أسلوب التكلفة غير مفعَّل في إعدادات التقييم (شاشة 1)",
             });

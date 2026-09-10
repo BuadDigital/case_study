@@ -66,6 +66,20 @@ function renumberPages(dom: Document) {
   });
 }
 
+/** Drop sheets emptied by conditional section removal before calculating page totals. */
+function removeEmptyPages(dom: Document) {
+  dom.querySelectorAll("section.page.pg").forEach((page) => {
+    const content = page.cloneNode(true) as Element;
+    content
+      .querySelectorAll(".pg-meta, .pg-num, .lh-slice")
+      .forEach((node) => node.remove());
+    const hasContent =
+      Boolean((content.textContent ?? "").trim()) ||
+      Boolean(content.querySelector("img, image-slot, .image-ph, table, [data-sec]"));
+    if (!hasContent) page.remove();
+  });
+}
+
 function replaceImageSlots(dom: Document) {
   dom.querySelectorAll("image-slot").forEach((slot) => {
     const div = dom.createElement("div");
@@ -648,6 +662,7 @@ export function prepareValuationReportV3Html(
       valuationBranch: meta.live.cells["فرع التقييم"] || undefined,
       interactiveComparablesMap: interactiveMaps,
     });
+    removeEmptyPages(dom);
   }
   renumberPages(dom);
   const branding = meta.branding ?? BRAND_IDENTITY_DEFAULTS;

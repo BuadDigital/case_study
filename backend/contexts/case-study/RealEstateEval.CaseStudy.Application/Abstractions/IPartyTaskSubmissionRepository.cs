@@ -57,6 +57,16 @@ public interface IPartyTaskSubmissionRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Stages the inspector-confirmed property type. Vacant land also clears
+    /// active building inventory so stale intake data cannot drive valuation.
+    /// </summary>
+    Task SetInspectedPropertyTypeAsync(
+        Guid propertyId,
+        string inspectedPropertyType,
+        bool isLand,
+        CancellationToken cancellationToken);
+
     void Add(PartyTaskSubmission submission);
 
     /// <summary>

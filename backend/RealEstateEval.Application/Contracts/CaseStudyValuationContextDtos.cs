@@ -37,7 +37,14 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string District { get; set; } = "";
     public string? Area { get; set; }
     public string Classification { get; set; } = "";
+    /// <summary>Initial type captured before field inspection.</summary>
     public string PropertyType { get; set; } = "";
+    /// <summary>Type confirmed when the field inspector submitted the inspection.</summary>
+    public string? InspectedPropertyType { get; set; }
+    public string EffectivePropertyType() =>
+        string.IsNullOrWhiteSpace(InspectedPropertyType)
+            ? PropertyType.Trim()
+            : InspectedPropertyType.Trim();
     public string? PlanNumber { get; set; }
     public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
@@ -115,7 +122,7 @@ public sealed class CaseStudyValuationPropertyContextDto
         District = District,
         Area = Area,
         Classification = Classification,
-        PropertyType = PropertyType,
+        PropertyType = EffectivePropertyType(),
         PlanNumber = PlanNumber,
         PlanName = PlanName,
         PlotNumber = PlotNumber,

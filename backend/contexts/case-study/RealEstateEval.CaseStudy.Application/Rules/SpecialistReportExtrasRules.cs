@@ -104,7 +104,14 @@ public static class SpecialistReportExtrasRules
             return new Dictionary<string, string> { ["esg"] = esgJson.Error };
         }
 
-        entity.SpecialistFinishingLevel = finishing;
+        // A stale building finishing answer must not leak into land reports.
+        entity.SpecialistFinishingLevel =
+            InspectedPropertyTypeRules.IsLand(
+                InspectedPropertyTypeRules.Effective(
+                    entity.PropertyType,
+                    entity.InspectedPropertyType))
+                ? null
+                : finishing;
         entity.SearchScopeNotes = searchScope.Value;
         entity.PrintAttachmentKeysJson = printKeysJson.Value;
         entity.InfathDepositCode = depositCode.Value;

@@ -91,7 +91,12 @@ export type WorkOrderPropertyDto = {
   regionId?: string;
   cityId?: string;
   classification?: string;
+  /** Initial type captured during intake/bourse. */
   propertyType?: string;
+  /** Type confirmed by the field inspector on submission. */
+  inspectedPropertyType?: string | null;
+  /** Inspector-confirmed type, falling back to the initial type. */
+  effectivePropertyType?: string;
   assignmentDocFileNames?: string[];
   delegationLetterFileNames?: string[];
   otherDocumentFileNames?: string[];

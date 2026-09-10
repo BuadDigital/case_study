@@ -175,6 +175,34 @@ public class CaseStudyFormService : ICaseStudyFormService
 
         if (!party
             && string.Equals(form.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(previousStatus, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase))
+        {
+            var propertyId = Guid.TryParse(form.PropertyId, out var parsed)
+                ? parsed
+                : entity.PropertyId;
+            if (propertyId is not Guid pid || pid == Guid.Empty)
+            {
+                var task = await _db.GetTaskAsync(taskId, cancellationToken);
+                propertyId = task?.PropertyId;
+            }
+
+            var deedKind = DeedKind.Traditional;
+            if (propertyId is Guid matchPid && matchPid != Guid.Empty)
+            {
+                deedKind = await _db.GetPropertyDeedKindAsync(matchPid, cancellationToken)
+                    ?? DeedKind.Traditional;
+            }
+
+            var submitMatchErrors = CaseStudyFormDeedNatureMatchRules.ValidateForSubmit(
+                form.DeedNatureMatchOutcome,
+                form.DeedNatureMatchNotes,
+                deedKind);
+            if (submitMatchErrors is not null)
+                return (null, submitMatchErrors);
+        }
+
+        if (!party
+            && string.Equals(form.Status, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(previousStatus, FormStatusSubmitted, StringComparison.OrdinalIgnoreCase)
             && _comparableLinks is not null)
         {

@@ -29,6 +29,7 @@ import {
 import {
   Card,
   CardPad,
+  CardTitle,
   GhostBtn,
   PrimaryBtn,
 } from "./atoms";
@@ -42,9 +43,11 @@ import {
   resolveEffectiveScreen,
   type ValuationWorkScreenId,
 } from "./lib/shell-state";
+import type { FinalOpinionChangeHandler } from "./lib/valuation-data-state";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
 import { useReportIssuanceWorkflow } from "./useReportIssuanceWorkflow";
+import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 
 export type {
   ValuationWorkNavAvailability,
@@ -85,7 +88,7 @@ export type ValuationWorkShellProps = {
   poNumber?: string;
   assignmentType?: string;
   districtHint?: string;
-  onFinalOpinionChange?: (finalOpinionValue: number) => void;
+  onFinalOpinionChange?: FinalOpinionChangeHandler;
   property?: ValuationWorkPropertyHint;
   /** Full intake row when available (final-review screen). */
   intakeProperty?: PoPropertyIntake | null;
@@ -95,6 +98,8 @@ export type ValuationWorkShellProps = {
   onDraftPatch?: (patch: {
     evaluatorPrice?: string;
     forcedSaleDiscountPct?: string;
+    assetDataConfirmed?: boolean;
+    assetDataVarianceNotes?: string;
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSubmit?: () => void;
@@ -215,6 +220,7 @@ export function ValuationWorkShell({
     valuationRequestId,
     allowsIssuance: gates?.allowsIssuance,
   });
+  const matchWaitDetail = deedNatureMatchGateDetail(gates);
 
   const [draftApproaches, setDraftApproaches] =
     useState<ValuationWorkNavAvailability | null>(null);
@@ -554,7 +560,6 @@ export function ValuationWorkShell({
             draft={reviewDraft}
             disabled={disabled}
             property={intakeProperty}
-            assignmentType={assignmentType}
             valuationRequestId={valuationRequestId}
             approachSettings={approachSettings}
             fieldErrors={fieldErrors}
@@ -627,6 +632,23 @@ export function ValuationWorkShell({
               })}
           </nav>
         </div>
+      ) : null}
+
+      {adjustmentsLocked ? (
+        <Card>
+          <CardPad>
+            <CardTitle>بانتظار مطابقة الصك على الطبيعة</CardTitle>
+            <p className="m-0 text-[13px] leading-relaxed text-text">
+              صك تقليدي: حساب القيمة بعد أن يعتمد دارس الحالة مطابقة المعاين أو
+              المكتب الهندسي (أو الرفع المساحي السابق) من تبويب تقييم العقار.
+              {matchWaitDetail ? (
+                <span className="mt-1 block text-[12px] text-text-2">
+                  {matchWaitDetail}
+                </span>
+              ) : null}
+            </p>
+          </CardPad>
+        </Card>
       ) : null}
 
       <div
@@ -709,6 +731,7 @@ export function ValuationWorkShell({
                   )}
                   costBasisKey={approachSettings?.costBasisKey || "replacement"}
                   saving={saving}
+                  locked={adjustmentsLocked}
                   onSavingChange={setSaving}
                   onCostSaved={onCostSaved}
                 />
@@ -743,6 +766,7 @@ export function ValuationWorkShell({
                   assignmentType={assignmentType}
                   poNumber={poNumber}
                   officialValuationDate={officialValuationDate}
+                  fieldErrors={fieldErrors}
                   saving={saving}
                   onSavingChange={setSaving}
                   onReconSaved={onReconSaved}

@@ -8,6 +8,7 @@ public class ValuationApproachSettingsRulesTests
 {
     [Theory]
     [InlineData("أرض", true)]
+    [InlineData("ارض", true)]
     [InlineData("أرض سكنية", true)]
     [InlineData("land", true)]
     [InlineData("فيلا", false)]
@@ -21,22 +22,21 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Cost_approach_allowed_for_land_with_structures_only()
+    public void Cost_approach_is_disabled_for_land_even_with_stale_structures()
     {
- // Q-3 amended (v2 spec §3): fenced land = structures ⟵ cost opens for those lines.
         Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", false));
-        Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
+        Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("فيلا", false));
 
         var walledLand = ValuationApproachSettingsRules.Defaults(
             Guid.NewGuid(), "أرض سكنية", hasStructuresToValue: true);
-        Assert.True(walledLand.CostApproachEnabled);
+        Assert.False(walledLand.CostApproachEnabled);
 
         var errors = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "أرض",
             hasStructuresToValue: true,
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
-        Assert.Empty(errors);
+        Assert.Contains("costApproachEnabled", errors.Keys);
     }
 
     [Fact]

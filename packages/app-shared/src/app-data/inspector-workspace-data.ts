@@ -163,6 +163,39 @@ export function textLooksLikeVacantLand(
   return normalized.includes("ارض") || /\bland\b/.test(normalized);
 }
 
+/**
+ * The inspector owns the submitted subject-asset value. Before submission,
+ * consumers must keep using the transaction's initial type.
+ */
+export function resolvedInspectorAssetSubject(input: {
+  status: InspectorWorkspaceStatus;
+  assetSubject?: string | null;
+  initialAssetSubject?: string | null;
+}): string {
+  return input.status === "submitted"
+    ? (input.assetSubject ?? "").trim()
+    : (input.initialAssetSubject ?? "").trim();
+}
+
+export function submittedInspectorAssetIsLand(input: {
+  status: InspectorWorkspaceStatus;
+  assetSubject?: string | null;
+  initialAssetSubject?: string | null;
+}): boolean {
+  return textLooksLikeVacantLand(resolvedInspectorAssetSubject(input));
+}
+
+/** Specialist corrections may not overwrite inspector-owned subject asset. */
+export function preserveInspectorOwnedFeatureValues(
+  current: Record<string, string>,
+  requested: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...requested,
+    assetSubject: current.assetSubject ?? "",
+  };
+}
+
 export function patchInspectorFeatureValues(
   featureValues: Record<string, string>,
   key: string,
@@ -328,7 +361,11 @@ const LAND_HIDDEN_FEATURE_KEY_SET = new Set<string>(
 
 const SHOP_SUBJECT_RE = /محل\s*تجار|\bshop\b/i;
 
-/** Vacant land: PO type/classification, inspector origin, or vacant-land checkbox. */
+/**
+ * Vacant land: inspector origin wins once chosen. PO type/classification only
+ * seed the form before الأصل محل التقييم is set — they must not wipe building
+ * fields when the inspector recorded a villa on a PO typed as أرض.
+ */
 export function isLandInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -336,8 +373,10 @@ export function isLandInspectionContext(input: {
   vacantLand?: boolean;
 }): boolean {
   if (input.vacantLand) return true;
-  return [input.assetSubject, input.classification, input.propertyType].some(
-    (value) => textLooksLikeVacantLand(value),
+  const origin = (input.assetSubject ?? "").trim();
+  if (origin) return textLooksLikeVacantLand(origin);
+  return [input.classification, input.propertyType].some((value) =>
+    textLooksLikeVacantLand(value),
   );
 }
 

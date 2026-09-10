@@ -5,6 +5,8 @@ import {
   buildCaseStudyPartyAssignees,
   caseStudyFamilyParentId,
 } from "../case-study-tracks";
+import { buildPropertyDetailTimelinePartyRows } from "../property-detail-parties";
+import { caseStudyFamilyTaskForProperty } from "../tasks-reads";
 
 const staff: StaffUser[] = [
   {
@@ -96,5 +98,69 @@ describe("buildCaseStudyPartyAssignees", () => {
     expect(byTrack.inspection.enabled).toBe(true);
     expect(byTrack.inspection.name).toBe("أحمد سعيد");
     expect(byTrack.survey.enabled).toBe(false);
+  });
+});
+
+describe("caseStudyFamilyTaskForProperty", () => {
+  it("prefers the parent case-study task when it is in the list", () => {
+    const parent = task({ id: "parent-1", kind: "case-study-property" });
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+    });
+    expect(
+      caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal, parent])?.id,
+    ).toBe("parent-1");
+  });
+
+  it("falls back to the appraisal child when the parent is hidden from the viewer", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+    });
+    expect(
+      caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal])?.id,
+    ).toBe("val-1");
+  });
+});
+
+describe("buildPropertyDetailTimelinePartyRows", () => {
+  it("shows assigned names from an appraisal-only task list", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      fieldInspectionCompleted: true,
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: false,
+        engineeringOfficeId: "",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+
+    const rows = buildPropertyDetailTimelinePartyRows({
+      task: caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal]) ?? null,
+      allTasks: [appraisal],
+      staffUsers: staff,
+    });
+    const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
+
+    expect(byKey.appraisal.label).toBe("عبدالله الكثيري");
+    expect(byKey.appraisal.badge).toBe("قيد التنفيذ");
+    expect(byKey.inspection.label).toBe("أحمد سعيد");
+    expect(byKey.inspection.badge).toBe("مكتمل");
+    expect(byKey.survey.label).toBe("لم يُعيَّن");
+    expect(byKey.survey.badge).toBe("معطّل");
   });
 });

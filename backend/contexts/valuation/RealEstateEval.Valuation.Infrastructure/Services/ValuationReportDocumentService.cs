@@ -89,8 +89,12 @@ public sealed class ValuationReportDocumentService(
         }
 
         var marketUsed = (market?.AdoptedCount ?? 0) > 0 || (market?.MarketOpinionValue ?? 0m) > 0m;
-        var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
-            || (cost?.Lines.Count ?? 0) > 0;
+        var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
+        var costUsed = approachSettings?.CostApproachEnabled == true
+            && ValuationApproachSettingsRules.CanEnableCostApproach(
+                prop?.PropertyType ?? vr.PropertyType,
+                hasStructures);
         const bool incomeUsed = false;
 
         var visible = ValuationReportSectionCatalog.ResolveVisible(
@@ -98,9 +102,6 @@ public sealed class ValuationReportDocumentService(
             marketUsed,
             costUsed,
             incomeUsed);
-
-        var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
         var reservedDate = vr.RequestDate;

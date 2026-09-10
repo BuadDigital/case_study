@@ -42,4 +42,39 @@ public class CaseStudyFormDeedNatureMatchRulesTests
         Assert.True(DeedNatureMatchOutcomes.RequiresNotes(DeedNatureMatchOutcomes.Differences));
         Assert.False(DeedNatureMatchOutcomes.RequiresNotes(DeedNatureMatchOutcomes.Matched));
     }
+
+    [Fact]
+    public void ValidateForSubmit_allows_registered_title_without_match()
+    {
+        Assert.Null(
+            CaseStudyFormDeedNatureMatchRules.ValidateForSubmit(
+                "",
+                null,
+                DeedKind.RegisteredTitle));
+    }
+
+    [Fact]
+    public void ValidateForSubmit_allows_traditional_when_matched()
+    {
+        Assert.Null(
+            CaseStudyFormDeedNatureMatchRules.ValidateForSubmit(
+                DeedNatureMatchOutcomes.Matched,
+                null,
+                DeedKind.Traditional));
+    }
+
+    [Theory]
+    [InlineData(DeedNatureMatchOutcomes.Unset)]
+    [InlineData(DeedNatureMatchOutcomes.Differences)]
+    [InlineData(DeedNatureMatchOutcomes.Impediment)]
+    public void ValidateForSubmit_blocks_traditional_unless_matched(string outcome)
+    {
+        var notes = outcome == DeedNatureMatchOutcomes.Unset ? null : "شرح";
+        var errors = CaseStudyFormDeedNatureMatchRules.ValidateForSubmit(
+            outcome,
+            notes,
+            DeedKind.Traditional);
+        Assert.NotNull(errors);
+        Assert.Equal(CaseStudyFormDeedNatureMatchRules.SubmitBlockedAr, errors!["_"]);
+    }
 }

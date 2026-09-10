@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BRAND_IDENTITY_DEFAULTS } from "@platform/api-client";
 import { prepareValuationReportV3Html } from "../valuation-report-v3-preview";
+import { buildValuationReportLiveFill } from "../valuation-report-live-fill";
+import { createEvaluatorDraft } from "../evaluator-window-data";
 
 const SAMPLE = `<!DOCTYPE html><html><head><style>
 .pg{padding:46mm 16mm 32mm 16mm;background:#fff url('assets/ejadah-letterhead.png')}
@@ -86,6 +88,86 @@ describe("valuation report v3 header meta and page numbers", () => {
     expect(html).toContain("التاريخ: 2026/08/26");
     expect(html).toContain("رمز إيداع التقرير: DEP-99");
     expect(html).not.toContain("047789");
+  });
+
+  it("removes land-only building content and renumbers the remaining sheets", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const live = buildValuationReportLiveFill({
+      draft,
+      costApproachEnabled: true,
+      costScopeKey: "building_only",
+      property: {
+        classification: "أرض",
+        propertyType: "أرض سكنية",
+        area: "500",
+        city: "جدة",
+        deedNumber: "1",
+      } as never,
+    });
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg">
+        <section data-sec="6"><table><tr><td class="k">نوع العقار</td><td class="v">فيلا</td><td class="k">حالة العقار</td><td class="v">جيد</td></tr></table></section>
+        <section data-sec="7"><table>
+          <tr><td class="k">رقم رخصة البناء وتاريخها</td><td class="v">123</td><td class="k">محضر التجزئة</td><td class="v">—</td></tr>
+          <tr><td class="k">حالة البناء</td><td class="v">جيد</td><td class="k">حالة الإشغال</td><td class="v">شاغر</td></tr>
+        </table></section>
+        <section data-sec="8"><table><tr><th>الجهة</th><th>الحد</th><th>طول الضلع</th><th>الواجهات</th></tr><tr><td>شمال</td><td>شارع</td><td>20</td><td>حجر</td></tr></table></section>
+        <section data-sec="9"><table><tr><td class="k">مساحة الأرض (حسب الصك)</td><td class="v">400</td></tr></table><table><tr><th>الدور</th><th>المساحة</th></tr><tr><td>الدور الأرضي</td><td>200</td></tr><tr><td>مجموع مسطحات البناء</td><td>200</td></tr></table></section>
+        <div class="pg-num">صفحة 1 من 4</div>
+      </section>
+      <section class="page pg"><section data-sec="10">10</section><section data-sec="11">11</section><section data-sec="12">12</section><section data-sec="13">13</section><div class="pg-num">صفحة 2 من 4</div></section>
+      <section class="page pg"><section data-sec="20">20</section><div class="pg-num">صفحة 3 من 4</div></section>
+      <section class="page pg"><section data-sec="21">21</section><section data-sec="22">22</section><section data-sec="23">23</section><div class="pg-num">صفحة 4 من 4</div></section>`,
+      { live },
+      "screen",
+    );
+
+    for (const id of ["10", "11", "12", "13", "20"]) {
+      expect(html).not.toContain(`data-sec="${id}"`);
+    }
+    for (const id of ["21", "22", "23"]) {
+      expect(html).toContain(`data-sec="${id}"`);
+    }
+    expect(html).toContain("مساحة الأرض (حسب الصك)");
+    expect(html).not.toContain("مجموع مسطحات البناء");
+    expect(html).not.toContain("رقم رخصة البناء وتاريخها");
+    expect(html).not.toContain("حالة العقار");
+    expect(html).not.toContain("حالة الإشغال");
+    expect(html).not.toContain("الواجهات");
+    expect(html).toContain("صفحة 1 من 2");
+    expect(html).toContain("صفحة 2 من 2");
+    expect(html).not.toContain("من 4");
+  });
+
+  it("hides all cost sheets when approach settings disable cost despite stale data", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const live = buildValuationReportLiveFill({
+      draft,
+      costApproachEnabled: false,
+      cost: {
+        landValueFromMarket: 800_000,
+        directCostTotal: 900_000,
+      } as never,
+    });
+    const html = prepareValuationReportV3Html(
+      `<section class="page pg"><section data-sec="6">بيانات الأصل</section><div class="pg-num">صفحة 1 من 2</div></section>
+       <section class="page pg"><section data-sec="20">قديم</section><section data-sec="21">قديم</section><section data-sec="22">قديم</section><section data-sec="23">قديم</section><div class="pg-num">صفحة 2 من 2</div></section>`,
+      { live },
+      "screen",
+    );
+    for (const id of ["20", "21", "22", "23"]) {
+      expect(html).not.toContain(`data-sec="${id}"`);
+    }
+    expect(html).not.toContain("قديم");
+    expect(html).toContain("صفحة 1 من 1");
   });
 });
 

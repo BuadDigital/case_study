@@ -64,9 +64,9 @@ public sealed class PriorValuationBankFeeder(
         {
             Id = id,
             ReferenceCode = $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}",
-            ComparablePropertyType = string.IsNullOrWhiteSpace(context.PropertyType)
+            ComparablePropertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
                 ? vr.PropertyType ?? ""
-                : context.PropertyType,
+                : context.EffectivePropertyType(),
             TransactionKind = ComparableTransactionKinds.Executed,
             Source = ComparableSources.PriorValuation,
             Latitude = lat,

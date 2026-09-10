@@ -42,6 +42,7 @@ export {
 } from "./tasks-model";
 
 export {
+  caseStudyFamilyTaskForProperty,
   caseStudyTaskForProperty,
   compareWorkflowTasks,
   loadWorkflowTasks,

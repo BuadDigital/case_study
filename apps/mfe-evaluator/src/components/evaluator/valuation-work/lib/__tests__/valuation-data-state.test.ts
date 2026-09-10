@@ -14,6 +14,7 @@ import {
   costBasisUnitSettingsBody,
   farAdoptedItems,
   hasPositiveFinalOpinion,
+  finalOpinionSyncExtrasFromRecon,
   initialSubjectArea,
   inspectorPinOf,
   openFailureMessage,
@@ -330,6 +331,20 @@ describe("hasPositiveFinalOpinion", () => {
     expect(hasPositiveFinalOpinion(0)).toBe(false);
     expect(hasPositiveFinalOpinion(null)).toBe(false);
     expect(hasPositiveFinalOpinion("5")).toBe(false);
+  });
+});
+
+describe("finalOpinionSyncExtrasFromRecon", () => {
+  it("copies liquidation fields for the submit draft", () => {
+    expect(
+      finalOpinionSyncExtrasFromRecon({
+        liquidationDiscountPct: 15,
+        liquidationDiscountApplied: true,
+      }),
+    ).toEqual({
+      liquidationDiscountPct: 15,
+      liquidationDiscountApplied: true,
+    });
   });
 });
 

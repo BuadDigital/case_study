@@ -34,6 +34,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   isApartmentProperty,
   costBasisKey,
   saving,
+  locked = false,
   onSavingChange,
   onCostSaved,
 }: {
@@ -46,6 +47,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   isApartmentProperty: boolean;
   costBasisKey: string;
   saving: boolean;
+  locked?: boolean;
   onSavingChange: (saving: boolean) => void;
   onCostSaved: (dto: ValuationCostApproachDto) => void;
 }) {
@@ -95,7 +97,7 @@ export const CostApproachSection = memo(function CostApproachSection({
             من صف «اختر البند» في نهاية كل مجموعة
           </span>
         </div>
-        <GhostBtn disabled={saving} onClick={() => void seedCostFromInventory()}>
+        <GhostBtn disabled={saving || locked} onClick={() => void seedCostFromInventory()}>
           سحب من حصر المباني
         </GhostBtn>
       </div>
@@ -133,7 +135,7 @@ export const CostApproachSection = memo(function CostApproachSection({
 
       <CostAlertsCard alerts={costAlerts} />
 
-      <PrimaryBtn disabled={saving} onClick={() => void saveCost()}>
+      <PrimaryBtn disabled={saving || locked} onClick={() => void saveCost()}>
         حفظ أسلوب التكلفة
       </PrimaryBtn>
     </>

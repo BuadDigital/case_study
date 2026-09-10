@@ -195,6 +195,60 @@ export function slashDateFromIso(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
 }
 
+export function firstFilled(
+  ...values: Array<string | null | undefined>
+): string {
+  for (const value of values) {
+    const t = (value ?? "").trim();
+    if (t) return t;
+  }
+  return "";
+}
+
+/** Display ISO yyyy-MM-dd as yyyy/MM/dd; leave Hijri or already-slashed text. */
+export function displayLicenseDate(
+  ...values: Array<string | null | undefined>
+): string {
+  const raw = firstFilled(...values);
+  return slashDateFromIso(raw) || raw;
+}
+
+/**
+ * Practice-license cells next to «رقم ترخيص مزاولة المهنة».
+ * Firm dates from بيانات المنشأة win; personal evaluator dates are fallback.
+ */
+export function certifiedPracticeLicenseFromOrg(org: {
+  company?: {
+    practiceLicenseNumber?: string | null;
+    practiceLicenseIssuedAt?: string | null;
+    practiceLicenseExpiresAt?: string | null;
+  } | null;
+  evaluator?: {
+    licenseNumber?: string | null;
+    licenseIssuedAt?: string | null;
+    licenseExpiresAt?: string | null;
+    licenseExpiresHijri?: string | null;
+  } | null;
+}): { number: string; issuedAt: string; expiresAt: string } {
+  const company = org.company ?? {};
+  const evaluator = org.evaluator ?? {};
+  return {
+    number: firstFilled(
+      evaluator.licenseNumber,
+      company.practiceLicenseNumber,
+    ),
+    issuedAt: displayLicenseDate(
+      company.practiceLicenseIssuedAt,
+      evaluator.licenseIssuedAt,
+    ),
+    expiresAt: displayLicenseDate(
+      company.practiceLicenseExpiresAt,
+      evaluator.licenseExpiresAt,
+      evaluator.licenseExpiresHijri,
+    ),
+  };
+}
+
 function joinCoords(inspector?: InspectorWorkspaceDraft | null): string {
   const lat = (inspector?.mapLatitude ?? "").trim();
   const lng = (inspector?.mapLongitude ?? "").trim();
@@ -257,6 +311,10 @@ export type ValuationReportSurveyBounds = {
 
 export type ValuationReportLiveFill = {
   cells: Record<string, string>;
+  /** Saved approach-settings decision; never inferred from stale cost data. */
+  costApproachEnabled: boolean;
+  /** Cost scope from approach settings; hides §20 while retaining building-cost sheets. */
+  costBuildingOnly: boolean;
   scopeBasis: string;
   scopeClient: string;
   basisDefinition: string;
@@ -338,6 +396,9 @@ export type ValuationReportLiveFill = {
 
 export function buildValuationReportLiveFill(input: {
   draft: EvaluatorSubmission;
+  /** Source of truth is the saved approach settings, not the presence of cost rows. */
+  costApproachEnabled?: boolean;
+  costScopeKey?: string | null;
   record?: PoIntakeRecord | null;
   property?: PoPropertyIntake | null;
   inspector?: InspectorWorkspaceDraft | null;
@@ -434,9 +495,13 @@ export function buildValuationReportLiveFill(input: {
   const isLiquidation = keys.valueBasisKey === "liquidation";
   const isLand = isLandInspectionContext({
     vacantLand: inspector?.vacantLand,
-    assetSubject: inspector?.featureValues?.assetSubject,
+    assetSubject:
+      property?.inspectedPropertyType ??
+      inspector?.featureValues?.assetSubject,
     classification: property?.classification,
-    propertyType: property?.propertyType,
+    propertyType:
+      property?.effectivePropertyType ??
+      property?.propertyType,
   });
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
   const licenseDate =
@@ -468,9 +533,11 @@ export function buildValuationReportLiveFill(input: {
     "نوع التقرير": dash(input.reportType),
     "عملة التقييم": dash(input.currency),
     "نوع العقار": dash(
-      property?.propertyType ||
-        property?.classification ||
+      property?.effectivePropertyType ||
+        property?.inspectedPropertyType ||
         inspector?.featureValues?.assetSubject ||
+        property?.propertyType ||
+        property?.classification ||
         inspector?.featureValues?.propertyUsage,
     ),
     "أساليب التقييم المستخدمة": dash(methodsUsed(choices)),
@@ -780,8 +847,12 @@ export function buildValuationReportLiveFill(input: {
     ""
   ).trim();
   cells["رقم العضوية"] = membershipNo || "—";
-  cells["تاريخ الإصدار"] = dash(input.certifiedIssuedAt ?? "");
-  cells["تاريخ الانتهاء"] = dash(input.certifiedExpires ?? "");
+  cells["تاريخ الإصدار"] = dash(
+    displayLicenseDate(input.certifiedIssuedAt),
+  );
+  cells["تاريخ الانتهاء"] = dash(
+    displayLicenseDate(input.certifiedExpires),
+  );
   cells["فرع التقييم"] = dash(input.valuationBranch ?? "");
   const memCat = membershipCategoryLabel(input.certifiedMembershipCategory);
   cells["فئة العضوية"] = memCat || "—";
@@ -904,6 +975,8 @@ export function buildValuationReportLiveFill(input: {
 
   return {
     cells,
+    costApproachEnabled: input.costApproachEnabled === true,
+    costBuildingOnly: input.costScopeKey === "building_only",
     scopeBasis: basis,
     scopeClient: client,
     basisDefinition: resolveBasisDefinition(

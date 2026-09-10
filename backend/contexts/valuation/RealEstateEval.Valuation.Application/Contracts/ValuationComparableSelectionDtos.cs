@@ -493,12 +493,15 @@ public class ValuationApproachSettingsDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
+    /// <summary>Operational type (inspector-confirmed when available).</summary>
     public string PropertyType { get; init; } = "";
+    /// <summary>Original type captured when the valuation request was opened.</summary>
+    public string InitialPropertyType { get; init; } = "";
  /// <summary>Property type is "land" (any classification).</summary>
     public bool IsLandPropertyType { get; init; }
  /// <summary>Scoping question: are there buildings/structures that must be valued?</summary>
     public bool HasStructuresToValue { get; init; }
- /// <summary>Q-3 (amended): bare land with no structures alone disables the cost approach.</summary>
+ /// <summary>Inspector-confirmed land disables the cost approach.</summary>
     public bool CostApproachAllowed { get; init; } = true;
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;

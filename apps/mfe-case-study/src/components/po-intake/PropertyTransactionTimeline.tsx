@@ -18,7 +18,7 @@ import {
 import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
+import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -155,7 +155,7 @@ export function PropertyTransactionTimeline({
   });
 
   const task = useMemo(
-    () => caseStudyTaskForProperty(poNumber, property.id, tasks),
+    () => caseStudyFamilyTaskForProperty(poNumber, property.id, tasks),
     [poNumber, property.id, tasks],
   );
 
@@ -183,6 +183,62 @@ export function PropertyTransactionTimeline({
       className="flex w-full min-w-0 max-w-[250px] shrink-0 flex-col gap-3 max-lg:max-w-none"
       aria-label="الجدول الزمني للمعاملة"
     >
+      <SideCard title="حالة الأطراف">
+        <div className="grid gap-[9px]">
+          {partyRows.map((row) => (
+            <div key={row.key} className="flex min-w-0 items-center gap-2">
+              <PartyRing
+                progress={partyRingProgress(row.badgeClass)}
+                color={partyRingColor(row.badgeClass)}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[11.5px] font-semibold text-text">
+                  {row.label}
+                </span>
+                <span className="block truncate text-[10px] text-text-3">
+                  {row.role}
+                </span>
+              </span>
+              <DetailBadge
+                tone={badgeToneFromClass(row.badgeClass)}
+                className="px-1.5 py-px text-[10px]"
+              >
+                {row.badge}
+              </DetailBadge>
+            </div>
+          ))}
+        </div>
+      </SideCard>
+
+      <SideCard title="مواعيد مهمة">
+        <div className="grid gap-[7px]">
+          <div className="flex justify-between gap-2 text-[11.5px]">
+            <span className="text-text-2">الاستحقاق</span>
+            <span className="font-bold text-heading">
+              {record.dueDateAt ? (
+                <bdi dir="ltr" className={ltrValueClass}>
+                  {formatDateAr(record.dueDateAt)}
+                </bdi>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between gap-2 text-[11.5px]">
+            <span className="text-text-2">استلام إنفاذ</span>
+            <span className="font-bold text-heading">
+              {record.receivedFromEnfathAt ? (
+                <bdi dir="ltr" className={ltrValueClass}>
+                  {formatDateAr(record.receivedFromEnfathAt)}
+                </bdi>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
+        </div>
+      </SideCard>
+
       <SideCard title="الجدول الزمني" icon={<ClockIcon />}>
         {displayEvents.length === 0 ? (
           <p className="m-0 text-xs text-text-3">لا توجد أحداث مسجّلة بعد.</p>
@@ -223,60 +279,6 @@ export function PropertyTransactionTimeline({
             ))}
           </div>
         )}
-      </SideCard>
-
-      <SideCard title="حالة الأطراف">
-        <div className="grid gap-[9px]">
-          {partyRows.map((row) => (
-            <div key={row.key} className="flex min-w-0 items-center gap-2">
-              <PartyRing
-                progress={partyRingProgress(row.badgeClass)}
-                color={partyRingColor(row.badgeClass)}
-              />
-              <span
-                className="min-w-0 flex-1 truncate text-[11.5px] text-text-2"
-                title={row.role}
-              >
-                {row.label}
-              </span>
-              <DetailBadge
-                tone={badgeToneFromClass(row.badgeClass)}
-                className="px-1.5 py-px text-[10px]"
-              >
-                {row.badge}
-              </DetailBadge>
-            </div>
-          ))}
-        </div>
-      </SideCard>
-
-      <SideCard title="مواعيد مهمة">
-        <div className="grid gap-[7px]">
-          <div className="flex justify-between gap-2 text-[11.5px]">
-            <span className="text-text-2">الاستحقاق</span>
-            <span className="font-bold text-heading">
-              {record.dueDateAt ? (
-                <bdi dir="ltr" className={ltrValueClass}>
-                  {formatDateAr(record.dueDateAt)}
-                </bdi>
-              ) : (
-                "—"
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between gap-2 text-[11.5px]">
-            <span className="text-text-2">استلام إنفاذ</span>
-            <span className="font-bold text-heading">
-              {record.receivedFromEnfathAt ? (
-                <bdi dir="ltr" className={ltrValueClass}>
-                  {formatDateAr(record.receivedFromEnfathAt)}
-                </bdi>
-              ) : (
-                "—"
-              )}
-            </span>
-          </div>
-        </div>
       </SideCard>
     </aside>
   );

@@ -71,7 +71,12 @@ public class WorkOrderPropertyDto
     public Guid? RegionId { get; set; }
     public Guid? CityId { get; set; }
     public string Classification { get; set; } = "";
+    /// <summary>Initial type captured during intake/bourse.</summary>
     public string PropertyType { get; set; } = "";
+    /// <summary>Type confirmed by the field inspector on the latest submission.</summary>
+    public string? InspectedPropertyType { get; set; }
+    /// <summary>Inspector-confirmed type when present, otherwise the initial type.</summary>
+    public string EffectivePropertyType { get; set; } = "";
     public List<string> AssignmentDocFileNames { get; set; } = [];
     public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];

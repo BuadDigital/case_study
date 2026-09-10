@@ -39,11 +39,12 @@ describe("firstCaseStudyFormScrollTarget", () => {
       isParty: false,
     });
     expect(hit?.targetId).toBe("cs-deed-nature-match");
-    expect(hit?.step).toBe(1);
+    expect(hit?.step).toBe(0);
     expect(hit?.blocking).toBe(true);
+    expect(hit?.message).toMatch(/تقييم العقار/);
   });
 
-  it("sends the specialist to match notes when الفروق lacks an explanation", () => {
+  it("sends the specialist to match notes when فروق lacks an explanation", () => {
     const draft = emptyCaseStudyFormDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
     draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
@@ -56,7 +57,26 @@ describe("firstCaseStudyFormScrollTarget", () => {
       isParty: false,
     });
     expect(hit?.targetId).toBe("deed-nature-match-notes");
+    expect(hit?.step).toBe(0);
     expect(hit?.blocking).toBe(true);
+  });
+
+  it("blocks the case-study report when the match is فروق with notes", () => {
+    const draft = emptyCaseStudyFormDraft("t1");
+    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
+    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
+    draft.deedNatureMatchOutcome = DeedNatureMatchOutcomes.Differences;
+    draft.deedNatureMatchNotes = "فرق في الحد الشمالي";
+    const hit = firstCaseStudyFormScrollTarget({
+      draft,
+      sectionQuestions: sections,
+      isQuestionVisible: () => true,
+      property: traditionalProperty,
+      isParty: false,
+    });
+    expect(hit?.targetId).toBe("cs-deed-nature-match");
+    expect(hit?.blocking).toBe(true);
+    expect(hit?.message).toMatch(/مسار تعذر/);
   });
 
   it("sends the specialist to deed remarks when غير مطابق has no note", () => {

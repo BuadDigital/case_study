@@ -120,6 +120,95 @@ export function resolveReportParticipants(
   return [...fixed, participantFromRoster(assignee, roster, "معد")];
 }
 
+function removeSections(dom: Document, ids: readonly string[]) {
+  ids.forEach((id) => dom.querySelector(`[data-sec="${id}"]`)?.remove());
+}
+
+function removeLabeledPairs(dom: Document, labels: ReadonlySet<string>) {
+  dom.querySelectorAll("td.k").forEach((labelCell) => {
+    if (!labels.has(normLabel(labelCell.textContent ?? ""))) return;
+    const row = labelCell.closest("tr");
+    const valueCell = labelCell.nextElementSibling;
+    labelCell.remove();
+    if (
+      valueCell &&
+      (valueCell.classList.contains("v") ||
+        valueCell.classList.contains("num"))
+    ) {
+      valueCell.remove();
+    }
+    if (row && row.children.length === 0) row.remove();
+  });
+}
+
+function keepLandAreaOnly(dom: Document) {
+  const areaSection = dom.querySelector('[data-sec="9"]');
+  if (!areaSection) return;
+  areaSection.querySelectorAll("table").forEach((table) => {
+    const landRows = [...table.querySelectorAll("tr")].filter((row) =>
+      [...row.querySelectorAll("td.k")].some((cell) =>
+        normLabel(cell.textContent ?? "").startsWith("مساحة الأرض"),
+      ),
+    );
+    if (landRows.length === 0) {
+      table.remove();
+      return;
+    }
+    const keep = new Set(landRows);
+    table.querySelectorAll("tr").forEach((row) => {
+      if (!keep.has(row)) row.remove();
+    });
+  });
+}
+
+function removeFacadeColumn(dom: Document) {
+  const bounds = dom.querySelector('[data-sec="8"]');
+  if (!bounds) return;
+  for (const table of bounds.querySelectorAll("table")) {
+    const header = [...table.querySelectorAll("tr")][0];
+    const index = header
+      ? [...header.children].findIndex((cell) =>
+          normLabel(cell.textContent ?? "").includes("الواجهات"),
+        )
+      : -1;
+    if (index < 0) continue;
+    table.querySelectorAll("tr").forEach((row) => {
+      row.children[index]?.remove();
+    });
+  }
+}
+
+function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill) {
+  if (!fill.costApproachEnabled) {
+    removeSections(dom, ["20", "21", "22", "23"]);
+  } else if (fill.costBuildingOnly) {
+    removeSections(dom, ["20"]);
+  }
+
+  if (!fill.isLand) return;
+  removeSections(dom, ["10", "11", "12", "13"]);
+  removeLabeledPairs(
+    dom,
+    new Set([
+      "رخصة البناء",
+      "رقم رخصة البناء وتاريخها",
+      "عمر البناء",
+      "عمر العقار",
+      "حالة البناء",
+      "حالة العقار",
+      "حالة الإشغال",
+      "العمر الفعلي",
+      "تشطيب الواجهات",
+      "تشطيب الواجهة الشمالية",
+      "تشطيب الواجهة الشرقية",
+      "تشطيب الواجهة الجنوبية",
+      "تشطيب الواجهة الغربية",
+    ]),
+  );
+  keepLandAreaOnly(dom);
+  removeFacadeColumn(dom);
+}
+
 export function applyValuationReportLiveFill(
   dom: Document,
   fill: ValuationReportLiveFill,
@@ -129,6 +218,8 @@ export function applyValuationReportLiveFill(
     interactiveComparablesMap?: boolean;
   },
 ): void {
+  applyStructuralVisibility(dom, fill);
+
   SAMPLE_SECS.forEach((id) => {
     const sec = dom.querySelector(`[data-sec="${id}"]`);
     if (sec) blankValueCells(sec);
@@ -137,23 +228,6 @@ export function applyValuationReportLiveFill(
   const map = new Map(
     Object.entries(fill.cells).map(([k, v]) => [normLabel(k), v]),
   );
-  if (fill.isLand) {
-    const ageLabels = new Set(["عمر البناء", "عمر العقار", "العمر الفعلي"]);
-    dom.querySelectorAll("td.k").forEach((labelCell) => {
-      if (!ageLabels.has(normLabel(labelCell.textContent ?? ""))) return;
-      const row = labelCell.closest("tr");
-      const next = labelCell.nextElementSibling;
-      if (
-        next &&
-        (next.classList.contains("v") || next.classList.contains("num")) &&
-        row
-      ) {
-        labelCell.remove();
-        next.remove();
-        if (![...row.querySelectorAll("td")].length) row.remove();
-      }
-    });
-  }
   dom.querySelectorAll("td.k").forEach((labelCell) => {
     const label = normLabel(labelCell.textContent ?? "");
     if (!map.has(label)) return;
@@ -199,7 +273,7 @@ export function applyValuationReportLiveFill(
   if (bounds) fillBoundaries(bounds, fill.boundaries);
 
   const areas = dom.querySelector('[data-sec="9"]');
-  if (areas) rebuildTwoColSheet(areas, fill.areaRows, "num");
+  if (areas && !fill.isLand) rebuildTwoColSheet(areas, fill.areaRows, "num");
 
   const build = dom.querySelector('[data-sec="10"]');
   if (build) rebuildTwoColSheet(build, fill.buildDescRows, "v");
