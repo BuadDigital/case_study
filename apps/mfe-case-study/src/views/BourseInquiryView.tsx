@@ -74,6 +74,7 @@ import { caseStudyTaskForProperty } from "../lib/app-data/tasks-storage";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import { DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -228,7 +229,10 @@ export function BourseInquiryView() {
     if (!selected) return;
 
     if (!deedVitality) {
-      setFormError("اختر حالة الصك: فعال أو غير فعال.");
+      const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };
+      setFieldErrors(errors);
+      setFormError(DEED_VITALITY_REQUIRED_ERROR);
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
 
@@ -539,7 +543,18 @@ export function BourseInquiryView() {
                     showIntroNote={false}
                     showDeedVitalityFlow
                     deedVitality={deedVitality}
-                    onDeedVitalityChange={setDeedVitality}
+                    onDeedVitalityChange={(value) => {
+                      setDeedVitality(value);
+                      setFieldErrors((e) => {
+                        if (!e.deedVitality) return e;
+                        const next = { ...e };
+                        delete next.deedVitality;
+                        return next;
+                      });
+                      setFormError((cur) =>
+                        cur === DEED_VITALITY_REQUIRED_ERROR ? null : cur,
+                      );
+                    }}
                     obstructionReason={obstructionReason}
                     onObstructionReasonChange={(v) => {
                       setObstructionReason(v);

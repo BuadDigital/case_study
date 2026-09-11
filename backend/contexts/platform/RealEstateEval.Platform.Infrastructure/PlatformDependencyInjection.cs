@@ -50,6 +50,7 @@ public static class PlatformDependencyInjection
         services.AddScoped<ICaseStudyInfoRolesConfigService, CaseStudyInfoRolesConfigService>();
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
+        services.AddScoped<IOrganizationSettingsGapService, OrganizationSettingsGapService>();
         services.AddScoped<IOtpDeliveryService, OtpDeliveryService>();
         services.AddScoped<IFieldSyncStatusService, FieldSyncStatusService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();

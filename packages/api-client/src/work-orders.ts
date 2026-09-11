@@ -905,13 +905,69 @@ export async function updateSpecialistReportExtras(
 export type NotifyIntakeFieldGapRequest = {
   fieldLabel: string;
   fieldKey?: string;
+  /** Who supplies the field: the assignment specialist, the field inspector or the engineering office. */
+  source?: "intake" | "inspector" | "survey";
 };
 
 export type NotifyIntakeFieldGapResultDto = {
   notifiedCount: number;
+  /** Display name of the person notified. */
+  recipientName: string;
 };
 
-/** Appraiser → primary-data specialist: missing intake field on the valuation report. */
+/** The person who supplies one kind of property information on the valuation report. */
+export type FieldGapResponsibleDto = {
+  name: string;
+  roleLabel: string;
+  canNotify: boolean;
+};
+
+export type WorkOrderFieldSourcesDto = {
+  intake: FieldGapResponsibleDto;
+  inspector: FieldGapResponsibleDto;
+  survey: FieldGapResponsibleDto;
+};
+
+function fieldGapResponsible(raw: unknown): FieldGapResponsibleDto {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  return {
+    name: typeof row.name === "string" ? row.name.trim() : "",
+    roleLabel: typeof row.roleLabel === "string" ? row.roleLabel.trim() : "",
+    canNotify: row.canNotify === true,
+  };
+}
+
+/** Who supplies the property's intake, inspection and survey information (report notify prompt). */
+export async function getWorkOrderFieldSources(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+): Promise<ApiOk<WorkOrderFieldSourcesDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/field-sources`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return {
+      ok: true,
+      data: {
+        intake: fieldGapResponsible(raw.intake),
+        inspector: fieldGapResponsible(raw.inspector),
+        survey: fieldGapResponsible(raw.survey),
+      },
+    };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Appraiser → primary-data specialist / inspector: a field the valuation report prints empty. */
 export async function notifyIntakeFieldGap(
   config: WorkOrdersApiConfig,
   poNumber: string,

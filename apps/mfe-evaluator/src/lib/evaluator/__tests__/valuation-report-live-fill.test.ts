@@ -1253,4 +1253,30 @@ describe("report org texts and frozen template artifacts", () => {
     expect(dom.querySelector('[data-sec="31"]')?.textContent).toContain("2026/08/27");
     expect(dom.querySelector('[data-sec="31"]')?.textContent).not.toContain("2026/06/03");
   });
+
+  it("fills {{reportDate}} in org terms and nests '- ' lines under the clause above", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    draft.appraisalDate = "2026-08-27";
+    const termsText =
+      "صالحة لمدة (90) يومًا من تاريخ التقرير ({{reportDate}})، وأي تغير.\n" +
+      "للمباني والعقارات القائمة:\n- بند فرعي أول.\n- بند فرعي ثانٍ.\nبند أخير.";
+    const fill = buildValuationReportLiveFill({ draft, termsText });
+    const dom = domFor(`<section class="sec" data-sec="31"><ul><li>بند عيّنة</li></ul></section>`);
+    applyValuationReportLiveFill(dom, fill);
+    const top = [...dom.querySelectorAll('[data-sec="31"] > ul > li')];
+    expect(top).toHaveLength(3);
+    expect(top[0]?.textContent).toContain("(2026/08/27)");
+    const nested = [...top[1]!.querySelectorAll("ul > li")].map((li) => li.textContent);
+    expect(nested).toEqual(["بند فرعي أول.", "بند فرعي ثانٍ."]);
+    expect(top[2]?.textContent).toBe("بند أخير.");
+
+    draft.appraisalDate = "";
+    draft.reportIssueDate = "";
+    const undated = buildValuationReportLiveFill({ draft, termsText });
+    expect(undated.termsBullets[0]).toBe("صالحة لمدة (90) يومًا من تاريخ التقرير، وأي تغير.");
+  });
 });

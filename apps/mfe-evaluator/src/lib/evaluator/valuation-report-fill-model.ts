@@ -69,6 +69,7 @@ import {
 import { escHtml } from "./html-escape";
 import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
 import {
+  applyReportDateToken,
   linesFromOrgText,
   pairsFromOrgLines,
 } from "./valuation-report-print-attachments";
@@ -330,6 +331,8 @@ export type ValuationReportLiveFill = {
     len: string;
     face: string;
   }>;
+  /** §8 — the engineering survey supplies boundaries when a survey task exists, else intake. */
+  boundariesSource?: "survey" | "intake";
   areaRows: Array<{ key: string; values: string[] }>;
   buildDescRows: Array<{ key: string; values: string[] }>;
   serviceRows: Array<{ key: string; values: string[] }>;
@@ -348,6 +351,8 @@ export type ValuationReportLiveFill = {
   finalDisplay: string;
   finalWords: string;
   isLiquidation: boolean;
+  /** §25 liquidation discount printed (liquidation basis or discount applied in reconciliation). */
+  liquidationDiscountOn?: boolean;
   isLand: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
@@ -1010,6 +1015,7 @@ export function buildValuationReportLiveFill(input: {
         ? "رسملة الدخل"
         : "غير مستخدم",
     ],
+    boundariesSource: input.survey ? "survey" : "intake",
     boundaries: [
       {
         name: "الشمالية",
@@ -1179,6 +1185,7 @@ export function buildValuationReportLiveFill(input: {
           ? `فقط ${amountToArabicWords(priceN)} ريال سعودي لا غير`
           : "—",
     isLiquidation,
+    liquidationDiscountOn: liqOn,
     isLand,
     propertyDescription: approvedInspectorPropertyDescription(inspector),
     reportWorkers: draft.reportWorkers ?? [],
@@ -1209,7 +1216,12 @@ export function buildValuationReportLiveFill(input: {
       ),
     ),
     independenceParagraphs: linesFromOrgText(input.independenceText),
-    termsBullets: linesFromOrgText(input.termsText),
+    termsBullets: linesFromOrgText(
+      applyReportDateToken(
+        input.termsText,
+        slashDateFromIso(draft.appraisalDate || draft.reportIssueDate),
+      ),
+    ),
     restrictionsBullets: linesFromOrgText(input.restrictionsText),
     reportDateSlash: slashDateFromIso(
       draft.appraisalDate || draft.reportIssueDate,

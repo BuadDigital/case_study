@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { poPropertyErrorTargetId } from "../po-field-error-targets";
+import {
+  firstPoPropertyErrorTarget,
+  poPropertyErrorTargetId,
+} from "../po-field-error-targets";
 
 describe("poPropertyErrorTargetId", () => {
   const prop = { id: "p1", identifierType: "deed" as const };
@@ -11,6 +14,16 @@ describe("poPropertyErrorTargetId", () => {
     expect(poPropertyErrorTargetId("northBoundaryLengthM", prop)).toBe(
       "bnd_len_northBoundaryLengthM",
     );
+  });
+
+  it("sends a missing «حالة الصك» to its pill group before any other field", () => {
+    expect(poPropertyErrorTargetId("deedVitality", prop)).toBe("deed_vitality");
+    expect(
+      firstPoPropertyErrorTarget(
+        { city: "المدينة مطلوبة", deedVitality: "اختر حالة الصك" },
+        prop,
+      ),
+    ).toBe("deed_vitality");
   });
 
   it("keeps deed and contact targets", () => {

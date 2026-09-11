@@ -289,7 +289,10 @@ export function useMyTaskWorkCommands({
       return;
     }
     if (!deedVitality) {
+      const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };
+      setFieldErrors(errors);
       setFormError(DEED_VITALITY_REQUIRED_ERROR);
+      scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
     if (deedVitality === "inactive") {

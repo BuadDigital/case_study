@@ -8,14 +8,13 @@ import {
   Note,
   PageShell,
   PanelSkeleton,
-  Tab,
-  TabBar,
   cn,
   formControlClassName,
   opsContentPanel,
   useToast,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
+import { CaseStudyWorkspaceStepNav } from "../components/case-study/CaseStudyWorkspaceStepNav";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
 import { CaseStudyDeedNatureMatchReview } from "../components/case-study/CaseStudyDeedNatureMatchReview";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
@@ -566,23 +565,10 @@ export function CaseStudyWorkspaceView({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
           <div className={opsContentPanel}>
-            <TabBar
-              className="mx-[-20px] mb-0 border-b border-border bg-transparent px-3.5"
-              aria-label="أقسام دراسة الحالة"
-            >
-              <Tab
-                active={workspaceTab === "study"}
-                onClick={() => setWorkspaceTab("study")}
-              >
-                نموذج الدراسة
-              </Tab>
-              <Tab
-                active={workspaceTab === "appraisal"}
-                onClick={() => setWorkspaceTab("appraisal")}
-              >
-                تقييم العقار
-              </Tab>
-            </TabBar>
+            <CaseStudyWorkspaceStepNav
+              active={workspaceTab}
+              onSelect={setWorkspaceTab}
+            />
             {workspaceTab === "study" ? (
               <CaseStudyForm
                 taskId={taskId}

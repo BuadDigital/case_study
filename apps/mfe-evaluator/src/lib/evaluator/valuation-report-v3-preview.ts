@@ -20,6 +20,8 @@ export type ValuationReportV3Meta = {
   branding?: OrganizationBrandingSettings | null;
   valuers?: OrganizationValuerRosterEntry[] | null;
   live?: ValuationReportLiveFill | null;
+  /** Red missing-field marks (appraiser's report tab). False for read-only embeds. Default true. */
+  markMissingFields?: boolean;
 };
 
 function pageOrigin(): string {
@@ -604,7 +606,16 @@ const SCREEN_CHROME = `
   outline-offset:1px;
   color:var(--danger-text,#b42318)!important;
   font-weight:700;
-  cursor:help;
+  cursor:pointer;
+  transition:background-color .15s ease;
+}
+.val-rpt-screen td.v[data-rpt-missing]:hover,
+.val-rpt-screen td.num[data-rpt-missing]:hover,
+.val-rpt-screen td[data-rpt-missing][data-rpt-missing-open]{
+  background:color-mix(in srgb,var(--danger,#b42318) 24%,#fff)!important;
+}
+.val-rpt-screen td[data-rpt-missing][data-rpt-missing-notified]{
+  outline-style:dashed!important;
 }
 `;
 
@@ -675,6 +686,7 @@ export function prepareValuationReportV3Html(
       valuers: meta.valuers,
       valuationBranch: meta.live.cells["فرع التقييم"] || undefined,
       interactiveComparablesMap: interactiveMaps,
+      markMissingFields: meta.markMissingFields,
     });
     removeEmptyPages(dom);
   }
@@ -733,6 +745,13 @@ function fetchTemplateText(): Promise<string> {
     });
   }
   return templateTextPromise;
+}
+
+/** Start the template download early (report tab mount) so it runs beside the data requests. */
+export function prefetchValuationReportTemplate(): void {
+  void fetchTemplateText().catch(() => {
+    /* the real build retries and shows its own error */
+  });
 }
 
 export async function fetchValuationReportV3Html(

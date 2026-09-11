@@ -3,7 +3,16 @@
  * Shell registers the impl at app boot; case-study calls through here.
  */
 
+import type { ComponentType } from "react";
+import type { PoPropertyIntake } from "../app-data/po-intake-data";
 import type { WorkflowTask } from "../workflow/task-types";
+
+/** Read-only valuation report as the appraiser sees it, embedded in the property page. */
+export type EvaluatorValuationReportPreviewProps = {
+  appraisalTask: WorkflowTask;
+  allTasks: WorkflowTask[];
+  property: PoPropertyIntake;
+};
 
 export type EvaluatorQueueStatusGroup =
   | "open"
@@ -86,6 +95,7 @@ export type EvaluatorRuntimeBridge = {
     taskId: string,
     options?: { overwriteLinked?: boolean },
   ) => Promise<void> | void;
+  ValuationReportPreview?: ComponentType<EvaluatorValuationReportPreviewProps>;
 };
 
 let bridge: EvaluatorRuntimeBridge | null = null;

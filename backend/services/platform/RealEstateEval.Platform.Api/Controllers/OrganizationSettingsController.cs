@@ -13,6 +13,7 @@ namespace RealEstateEval.Platform.Api.Controllers;
 [Authorize]
 public sealed class OrganizationSettingsController(
     IOrganizationSettingsService settings,
+    IOrganizationSettingsGapService gaps,
     IOtpDeliveryService otpDelivery) : ControllerBase
 {
     [HttpGet]
@@ -33,6 +34,29 @@ public sealed class OrganizationSettingsController(
             LogoColorUrl = string.IsNullOrWhiteSpace(branding.LogoColorUrl) ? null : branding.LogoColorUrl,
             LogoWhiteUrl = string.IsNullOrWhiteSpace(branding.LogoWhiteUrl) ? null : branding.LogoWhiteUrl,
             UpdatedAt = branding.LogoUpdatedAt,
+        });
+    }
+
+    /// <summary>Who last changed each settings section the valuation report reads.</summary>
+    [HttpGet("section-editors")]
+    public async Task<ActionResult<OrganizationSettingsSectionEditorsDto>> SectionEditors(CancellationToken ct)
+        => Ok(await gaps.GetSectionEditorsAsync(ct));
+
+    /// <summary>Valuation report: ask the last editor of a settings section to fill an empty value.</summary>
+    [HttpPost("notify-gap")]
+    public async Task<ActionResult<NotifyOrganizationSettingsGapResultDto>> NotifyGap(
+        [FromBody] NotifyOrganizationSettingsGapRequest request,
+        CancellationToken ct)
+    {
+        var (count, recipient, error) = await gaps.NotifyAsync(
+            request ?? new NotifyOrganizationSettingsGapRequest(),
+            ActorClaims.DisplayName(User),
+            ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(new NotifyOrganizationSettingsGapResultDto
+        {
+            NotifiedCount = count,
+            RecipientName = recipient,
         });
     }
 

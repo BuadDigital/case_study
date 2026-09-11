@@ -36,6 +36,7 @@ import {
 import { usePoRecordQuery } from "../query/case-study-queries";
 import {
   canShowPrimarySave,
+  DEED_VITALITY_REQUIRED_ERROR,
   DISTRIBUTION_SAVE_ERROR,
   resolveTaskWorkScreen,
   resolveTaskWorkSteps,
@@ -171,6 +172,18 @@ export function useMyTaskWorkWorkflow({
     setObstructionReasonError(undefined);
   }, []);
 
+  /** Picking «حالة الصك» clears its red mark and the matching top note. */
+  const chooseDeedVitality = useCallback((value: BourseDeedVitality) => {
+    setDeedVitality(value);
+    setFieldErrors((e) => {
+      if (!e.deedVitality) return e;
+      const next = { ...e };
+      delete next.deedVitality;
+      return next;
+    });
+    setFormError((cur) => (cur === DEED_VITALITY_REQUIRED_ERROR ? null : cur));
+  }, []);
+
   const showEngineering = engineeringOfficeAvailable(property, hasPriorSurvey);
   const engineeringHint = engineeringOfficeUnavailableReason(property, hasPriorSurvey);
 
@@ -241,7 +254,7 @@ export function useMyTaskWorkWorkflow({
     formError,
     submitBusy,
     deedVitality,
-    setDeedVitality,
+    setDeedVitality: chooseDeedVitality,
     obstructionReason,
     onObstructionReasonChange,
     obstructionReasonError,

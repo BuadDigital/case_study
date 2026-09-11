@@ -48,13 +48,10 @@ import {
   scrubFrozenDates,
   syncNumberedRows,
 } from "./valuation-report-live-fill-dom";
-import { markReportMissingIntakeFields } from "./valuation-report-missing-intake";
-import type { ReportMissingIntakeLink } from "./valuation-report-missing-intake";
-export type { ReportMissingIntakeLink } from "./valuation-report-missing-intake";
-export {
-  markReportMissingIntakeFields,
-  reportMissingIntakeLinksFromCells,
-} from "./valuation-report-missing-intake";
+import {
+  markReportMissingFields,
+  type ReportMissingField,
+} from "./valuation-report-missing-fields";
 
 function peopleNameMatch(a: string, b: string): boolean {
   const n = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -224,8 +221,10 @@ export function applyValuationReportLiveFill(
     valuers?: OrganizationValuerRosterEntry[] | null;
     valuationBranch?: string;
     interactiveComparablesMap?: boolean;
+    /** False skips the red missing-field marks (read-only embeds). Default true. */
+    markMissingFields?: boolean;
   },
-): ReportMissingIntakeLink[] {
+): ReportMissingField[] {
   applyStructuralVisibility(dom, fill);
 
   SAMPLE_SECS.forEach((id) => {
@@ -397,9 +396,8 @@ export function applyValuationReportLiveFill(
   // §33 — real location and satellite/close-up maps (interactive Google on screen).
   const mapsSec = dom.querySelector('[data-sec="33"]');
   if (mapsSec) {
-    if (fill.locationLabel) {
-      fillKeyedInSection(mapsSec, "الموقع", fill.locationLabel);
-    }
+    // Always overwrite — an empty city/district must not leave the template's sample location.
+    fillKeyedInSection(mapsSec, "الموقع", fill.locationLabel || "—");
     const coords = fill.cells["إحداثيات الموقع"];
     if (coords) {
       fillKeyedInSection(mapsSec, "إحداثيات الموقع", coords);
@@ -412,5 +410,5 @@ export function applyValuationReportLiveFill(
   });
   fillFinishingLevelSection(dom.querySelector('[data-sec="12"]'), fill);
 
-  return markReportMissingIntakeFields(dom, fill.cells);
+  return extras?.markMissingFields === false ? [] : markReportMissingFields(dom, fill);
 }

@@ -483,7 +483,10 @@ public static class ValuationReportFieldBuilder
                 : lists!.IvsEffectiveDate.Trim();
             clipped = clipped.Replace("{{ivsDate}}", date, StringComparison.Ordinal);
         }
-        return clipped;
+        // The report date is only known to the live report; this server body drops the aside.
+        return clipped
+            .Replace(" ({{reportDate}})", "", StringComparison.Ordinal)
+            .Replace("{{reportDate}}", "", StringComparison.Ordinal);
     }
 
     public static string FormatEnabledList(ValuationListsDto? lists, string listId)

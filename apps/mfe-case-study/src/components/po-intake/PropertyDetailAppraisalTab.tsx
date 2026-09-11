@@ -3,23 +3,27 @@
 import { EmptyState } from "./PropertyDetailFields";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
-import { PropertyDetailValuationFinalReport } from "./PropertyDetailValuationFinalReport";
+import { evaluatorValuationReportPreview } from "../../lib/evaluator-bridge";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
 
 /**
- * Property-detail appraisal tab — package review bar plus the valuation report itself
- * (final issued copy, deposit copy, or live draft preview).
+ * Property-detail appraisal tab — package review bar plus the valuation report exactly as
+ * the appraiser sees it in «تقرير التقييم» (read-only).
  */
 export function PropertyDetailAppraisalTab({
-  propertyId,
-  appraisalTaskId,
+  property,
+  appraisalTask,
+  tasks,
   appraisalCard,
   submission,
   onReviewChanged,
 }: {
-  propertyId: string;
-  appraisalTaskId?: string | null;
+  property: PoPropertyIntake;
+  appraisalTask?: WorkflowTask | null;
+  tasks: WorkflowTask[];
   appraisalCard: PropertyDetailPartyCard | null;
   submission: PropertyDetailPartySubmission | null;
   onReviewChanged?: () => void;
@@ -36,11 +40,12 @@ export function PropertyDetailAppraisalTab({
   const returnRemark = submission?.remarks.find(
     (r) => r.label === "ملاحظة الإرجاع",
   )?.value;
+  const ValuationReport = evaluatorValuationReportPreview();
 
   return (
     <>
       <PropertyDetailPartyPackageReview
-        taskId={appraisalTaskId}
+        taskId={appraisalTask?.id}
         submissionStatus={submission?.packageStatus ?? "draft"}
         acceptedAtUtc={submission?.acceptedAtUtc}
         acceptedByName={submission?.acceptedByName}
@@ -57,7 +62,18 @@ export function PropertyDetailAppraisalTab({
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
-      <PropertyDetailValuationFinalReport propertyId={propertyId} />
+      {appraisalTask && ValuationReport ? (
+        <ValuationReport
+          appraisalTask={appraisalTask}
+          allTasks={tasks}
+          property={property}
+        />
+      ) : (
+        <EmptyState
+          title="تقرير التقييم غير متاح بعد"
+          sub="يظهر تقرير التقييم هنا بعد فتح مهمة التقييم للعقار."
+        />
+      )}
     </>
   );
 }

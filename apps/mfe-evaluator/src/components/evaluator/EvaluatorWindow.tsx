@@ -62,6 +62,7 @@ import {
   type ValuationWorkScreenId,
 } from "./EvaluatorComparableSelectionPanel";
 import { PrimaryBtn } from "./valuation-work/atoms";
+import { ValuationReportLoading } from "./ValuationReportLoading";
 
 export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
 
@@ -95,11 +96,8 @@ const EvaluatorValuationReportOutputTab = dynamic(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex justify-center py-10">
-        <Spinner />
-      </div>
-    ),
+    // Same line the tab shows while its data loads — one loader, not two in a row.
+    loading: () => <ValuationReportLoading />,
   },
 );
 
@@ -310,6 +308,13 @@ export function EvaluatorWindow({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
+  }, []);
+
+  // Fetch the report code while the appraiser works on the other tabs, so opening
+  // «تقرير التقييم» waits only for its data — the hover preload fired too late to help.
+  useEffect(() => {
+    const id = window.setTimeout(preloadValuationReportOutputTab, 1500);
+    return () => window.clearTimeout(id);
   }, []);
 
   const submit = useCallback(async (): Promise<boolean> => {
@@ -702,6 +707,7 @@ export function EvaluatorWindow({
                   surveyTaskId={summary.surveyTaskId}
                   assignedAppraiserName={assignedAppraiserName}
                   onReportChoicesPatch={onReportChoicesPatch}
+                  onNavigateTab={onTabChange}
                 />
               </Activity>
             ) : null}

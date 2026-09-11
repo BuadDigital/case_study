@@ -208,9 +208,21 @@ export function PoListView() {
               aria-label="بحث أوامر العمل"
               className="max-lg:min-w-0 max-lg:flex-1"
               endAdornment={
-                search.trim() && searchModeLabel ? (
-                  <span className="pointer-events-none absolute inset-inline-end-2.5 top-1/2 -translate-y-1/2 rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
-                    {searchModeLabel}
+                search.trim() ? (
+                  <span className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+                    {searchModeLabel ? (
+                      <span className="pointer-events-none whitespace-nowrap rounded-full bg-info-bg px-2 py-0.5 text-[10px] font-medium text-info-text">
+                        {searchModeLabel}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="مسح البحث"
+                      className="grid size-5 place-items-center rounded-full text-[13px] leading-none text-text-3 transition-colors hover:bg-surface hover:text-text"
+                      onClick={() => setSearch("")}
+                    >
+                      ×
+                    </button>
                   </span>
                 ) : null
               }

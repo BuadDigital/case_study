@@ -8,7 +8,13 @@ import {
   tryGetEvaluatorRuntimeBridge,
   withEvaluatorBridge,
 } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
+import type { EvaluatorRuntimeBridge } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+
+/** The appraiser's valuation report (read-only), or null before the shell registers it. */
+export function evaluatorValuationReportPreview(): EvaluatorRuntimeBridge["ValuationReportPreview"] | null {
+  return tryGetEvaluatorRuntimeBridge()?.ValuationReportPreview ?? null;
+}
 
 export function filterAppraiserListedTasks(
   tasks: WorkflowTask[],

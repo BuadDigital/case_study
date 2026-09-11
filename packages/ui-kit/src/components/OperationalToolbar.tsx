@@ -67,7 +67,10 @@ export function OperationalToolbarSearch({
       <input
         className={cn(
           operationalToolbarSearchInputClassName,
-          endAdornment ? "pe-[6.25rem]" : null,
+          // Room for the adornment; the native search «×» would land mid-field beside it.
+          endAdornment
+            ? "pe-[8.5rem] [&::-webkit-search-cancel-button]:appearance-none"
+            : null,
           inputClassName,
         )}
         {...props}

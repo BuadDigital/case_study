@@ -72,11 +72,23 @@ export function PoPropertyBourseForm({
   return (
     <>
       {showDeedVitalityFlow ? (
-        <div className="col-span-full w-full">
+        <div
+          id="deed_vitality"
+          className={cn(
+            "col-span-full mb-2 w-full rounded-lg p-1",
+            fieldErrors.deedVitality &&
+              "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+          )}
+        >
           <Label className="mb-1 text-[11px]">
             حالة الصك <span className="text-danger-text">*</span>
           </Label>
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          {fieldErrors.deedVitality ? (
+            <p className="m-0 mb-1.5 text-[10px] text-danger-text" role="alert">
+              {fieldErrors.deedVitality}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               className={pillClass(deedVitality === "active")}
