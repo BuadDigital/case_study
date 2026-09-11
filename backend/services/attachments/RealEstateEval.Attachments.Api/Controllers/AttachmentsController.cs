@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Attachments.Application.Contracts;
@@ -70,6 +72,13 @@ public class AttachmentsController : ControllerBase
         var userId = ActorClaims.Id(User);
         if (userId is "unknown") userId = "";
 
+        if (string.Equals(request.Scope?.Trim(), PropertyDocumentTypes.GovernedScope, StringComparison.Ordinal))
+        {
+            var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+            if (!PoRoleMatrixRules.CanUploadPropertyDocuments(actor?.PrototypeRole))
+                return this.ForbiddenProblem("رفع مستندات العقار متاح للأخصائي ومشرف القسم");
+        }
+
         var (meta, error) = await _attachments.UploadAsync(request, userId, ct);
         if (error is not null)
         {
@@ -82,6 +91,38 @@ public class AttachmentsController : ControllerBase
         }
 
         return CreatedAtAction(nameof(Download), new { id = meta!.Id }, meta);
+    }
+
+    [HttpPut("{id:guid}/document-type")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
+    public async Task<ActionResult<FileAttachmentMetaDto>> SetDocumentType(
+        Guid id,
+        [FromBody] SetAttachmentDocumentTypeRequest request,
+        CancellationToken ct)
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (!PoRoleMatrixRules.CanUploadPropertyDocuments(actor?.PrototypeRole))
+            return this.ForbiddenProblem("تصنيف مستندات العقار متاح للأخصائي ومشرف القسم");
+
+        var (meta, error) = await _attachments.SetDocumentTypeAsync(id, request, actor, ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return meta is null ? NotFound() : Ok(meta);
+    }
+
+    [HttpPost("{id:guid}/review")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
+    public async Task<ActionResult<FileAttachmentMetaDto>> ReviewDocument(
+        Guid id,
+        [FromBody] ReviewAttachmentDocumentRequest request,
+        CancellationToken ct)
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (!PoRoleMatrixRules.CanReviewUnlistedDocuments(actor?.PrototypeRole))
+            return this.ForbiddenProblem("مراجعة المستندات غير المعرّفة متاحة لمشرف القسم والإدارة");
+
+        var (meta, error) = await _attachments.ReviewDocumentAsync(id, request, actor, ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return meta is null ? NotFound() : Ok(meta);
     }
 
     [HttpGet("lookup")]

@@ -21,6 +21,17 @@ export type PropertyDetailDocumentEntry = {
     photoRef: string;
     attachment: InspectorPhotoAttachment;
   };
+  /** Governed registry key (`property-document-types.ts`) the row belongs to. */
+  documentTypeKey?: string;
+  /** Uploaded from the documents tab itself (scope `property-document`) — deletable there. */
+  governed?: boolean;
+  /** Documents outside the defined list: the uploader's name + reason and the review state. */
+  unlisted?: {
+    customLabel: string;
+    customReason: string;
+    reviewStatus: "pending" | "approved" | "rejected";
+    reviewNote?: string | null;
+  };
 };
 
 export type PropertyDetailDocumentSection = {

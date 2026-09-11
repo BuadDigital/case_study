@@ -19,6 +19,23 @@ public sealed class OrganizationSettingsController(
     public async Task<ActionResult<OrganizationSettingsDto>> Get(CancellationToken ct)
         => Ok(await settings.GetAsync(ct));
 
+    /// <summary>
+    /// Uploaded logos only — the login page shows them before anyone signs in, so nothing
+    /// else from the settings is exposed here.
+    /// </summary>
+    [HttpGet("brand-logos")]
+    [AllowAnonymous]
+    public async Task<ActionResult<OrganizationBrandLogosDto>> BrandLogos(CancellationToken ct)
+    {
+        var branding = (await settings.GetAsync(ct)).Branding;
+        return Ok(new OrganizationBrandLogosDto
+        {
+            LogoColorUrl = string.IsNullOrWhiteSpace(branding.LogoColorUrl) ? null : branding.LogoColorUrl,
+            LogoWhiteUrl = string.IsNullOrWhiteSpace(branding.LogoWhiteUrl) ? null : branding.LogoWhiteUrl,
+            UpdatedAt = branding.LogoUpdatedAt,
+        });
+    }
+
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
     public async Task<ActionResult<OrganizationSettingsDto>> Save(

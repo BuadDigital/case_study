@@ -323,7 +323,7 @@ public sealed class ValuationReportDocumentService(
 
         foreach (var a in rows)
         {
-            var typeKey = AttachmentPrintRules.TypeKeyFromScope(a.Scope);
+            var typeKey = AttachmentPrintRules.TypeKeyFor(a.Scope, a.DocumentTypeKey, a.ScopeKey);
             if (string.IsNullOrWhiteSpace(typeKey))
                 continue;
 

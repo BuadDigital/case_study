@@ -356,7 +356,7 @@ export function poListRowView(
     deedEntry,
     studied,
     expected,
-    pct: poProgressPct(registered, studied, expected),
+    pct: poProgressPct(registered, studied, expected, p.progressPct),
     urgent: isDueUrgent(p.dueDate, p.status),
     target:
       deedEntry || match?.propertyId

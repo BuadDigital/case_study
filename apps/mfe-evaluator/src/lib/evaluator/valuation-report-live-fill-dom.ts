@@ -679,8 +679,10 @@ export function fillImageSlot(
   const style = el.getAttribute("style") ?? "";
   const tag = el.tagName.toLowerCase();
 
-  // Screen preview keeps live <image-slot> — same Edit / pan / scale as the HTML template.
+  // Screen preview keeps live <image-slot> for framed display (read-only in app).
   if (tag === "image-slot") {
+    el.setAttribute("readonly", "");
+    el.setAttribute("data-readonly", "");
     if (item?.url && item.isImage) {
       el.setAttribute("src", item.url);
       el.setAttribute("placeholder", emptyLabel);
@@ -696,18 +698,16 @@ export function fillImageSlot(
       return;
     }
     if (!item?.url) {
-      el.removeAttribute("src");
-      el.setAttribute("placeholder", emptyLabel);
+      // No image for this slot — remove so the report never shows empty uploadable boxes.
+      el.remove();
       return;
     }
     // Non-image (PDF…): replace custom element with the static note below.
   }
 
   if (!item?.url) {
-    el.className = "image-ph";
-    el.replaceChildren();
-    el.textContent = emptyLabel;
-    if (style) el.setAttribute("style", style);
+    // Empty photo / attachment slots are omitted from the filled report.
+    el.remove();
     return;
   }
   if (item.isImage) {

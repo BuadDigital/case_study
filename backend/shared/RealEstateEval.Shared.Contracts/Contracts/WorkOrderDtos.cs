@@ -280,6 +280,11 @@ public class WorkOrderListItemDto
  /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
     public int CompletedCount { get; set; }
+    /// <summary>
+    /// 0–100 workflow progress across live properties (stages + parties), for the list bar.
+    /// Distinct from <see cref="CompletedCount"/> (case-study forms submitted).
+    /// </summary>
+    public int ProgressPct { get; set; }
     public string Status { get; set; } = WorkOrderListStatus.New;
     public string PromulgationDate { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
@@ -371,6 +376,23 @@ public class UpdateSpecialistReportExtrasRequest
 {
     /// <summary>JSON object string, or null/empty to clear.</summary>
     public string? SpecialistReportExtrasJson { get; set; }
+}
+
+/// <summary>Appraiser asks primary-data / case specialist to fill a missing intake field.</summary>
+public class NotifyIntakeFieldGapRequest
+{
+    /// <summary>Arabic label as shown on the report (e.g. رقم الطلب).</summary>
+    [MaxLength(120)]
+    public string FieldLabel { get; set; } = "";
+
+    /// <summary>Stable key for dedupe (e.g. requestNumber).</summary>
+    [MaxLength(64)]
+    public string? FieldKey { get; set; }
+}
+
+public class NotifyIntakeFieldGapResultDto
+{
+    public int NotifiedCount { get; set; }
 }
 
 public class DeleteWorkOrderPropertyRequest

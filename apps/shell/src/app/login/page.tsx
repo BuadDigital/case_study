@@ -23,7 +23,7 @@ import {
 import { defaultLandingPath } from "@platform/app-shared/app-data/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/app-data/permissions-pages";
 import { cn, useToast } from "@platform/ui-kit";
-import { EjadaLogo } from "@/components/views/EjadaLogo";
+import { BrandLogo } from "@/components/views/BrandLogo";
 
 type LoginResponse = {
   token: string;
@@ -367,7 +367,7 @@ export default function LoginPage() {
         />
         {asideWatermarkSvg}
         <div className="relative flex items-center gap-3.5">
-          <EjadaLogo variant="onDark" className="h-auto w-[150px]" />
+          <BrandLogo variant="onDark" className="h-auto w-[150px]" />
         </div>
         <div className="relative mt-[34px] mb-5 h-[3px] w-[46px] rounded-full bg-gold-2" />
         <div className="relative max-w-[15ch] text-[30px] font-extrabold leading-[1.5] tracking-[-0.01em]">
@@ -384,7 +384,7 @@ export default function LoginPage() {
 
       <main className="flex items-center justify-center bg-surface px-[26px] py-10 max-[899px]:px-[22px] max-[899px]:py-11">
         <div className="w-full max-w-[392px]">
-          <EjadaLogo
+          <BrandLogo
             variant="onLight"
             className="mx-auto mb-[26px] hidden h-auto w-[150px] max-[899px]:block"
           />

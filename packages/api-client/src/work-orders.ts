@@ -150,6 +150,8 @@ export type WorkOrderListItemDto = {
   propertyCount: number;
   expectedPropertyCount: number;
   completedCount: number;
+  /** 0–100 workflow progress for the list bar (stages + parties). */
+  progressPct?: number;
   status: string;
   promulgationDate: string;
   receivedFromEnfathAt: string;
@@ -895,6 +897,58 @@ export async function updateSpecialistReportExtras(
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as WorkOrderPropertyDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type NotifyIntakeFieldGapRequest = {
+  fieldLabel: string;
+  fieldKey?: string;
+};
+
+export type NotifyIntakeFieldGapResultDto = {
+  notifiedCount: number;
+};
+
+/** Appraiser → primary-data specialist: missing intake field on the valuation report. */
+export async function notifyIntakeFieldGap(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+  body: NotifyIntakeFieldGapRequest,
+): Promise<ApiOk<NotifyIntakeFieldGapResultDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/notify-intake-gap`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify(body),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        error?: string;
+        title?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        errors: {
+          _: payload?.error ?? payload?.title ?? "تعذّر إرسال الإشعار",
+        },
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return {
+      ok: true,
+      data: (await res.json()) as NotifyIntakeFieldGapResultDto,
+    };
   } catch {
     return { ok: false, kind: "network" };
   }

@@ -44,6 +44,26 @@ public static class PoRoleMatrixRules
             || role is "case-specialist" or "section-supervisor" or "general-manager";
     }
 
+ /// <summary>
+ /// Upload / classify governed documents from the property documents tab
+ /// (matches frontend <c>canUploadPropertyDocuments</c>).
+ /// </summary>
+    public static bool CanUploadPropertyDocuments(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role) || role is "case-specialist" or "section-supervisor";
+    }
+
+ /// <summary>
+ /// Approve / reject documents uploaded outside the defined list
+ /// (matches frontend <c>canReviewUnlistedDocuments</c>).
+ /// </summary>
+    public static bool CanReviewUnlistedDocuments(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role) || role is "section-supervisor" or "general-manager";
+    }
+
  /// <summary>Operations-task managers (matches frontend <c>canManageOperationsTasks</c>).</summary>
     public static bool CanManageOperationsTasks(string? prototypeRole)
     {

@@ -47,11 +47,11 @@ public sealed class OrganizationCompanySettingsDto
     public string? Address { get; init; }
     public string? CommercialRegistration { get; init; }
     /// <summary>The facility’s practice license number (the Authority).</summary>
-    public string? PracticeLicenseNumber { get; init; }
+    public string? PracticeLicenseNumber { get; init; } = "1302";
     /// <summary>ISO date — Issuance of the establishment’s license to operate.</summary>
-    public string? PracticeLicenseIssuedAt { get; init; }
+    public string? PracticeLicenseIssuedAt { get; init; } = "2022-03-10";
     /// <summary>ISO date — expiration of the establishment’s license to practice.</summary>
-    public string? PracticeLicenseExpiresAt { get; init; }
+    public string? PracticeLicenseExpiresAt { get; init; } = "2027-03-10";
     /// <summary>Certified Appraiser reference from the Appraiser registry (certified or row ID).</summary>
     public string? CertifiedValuerId { get; init; }
     public string? Email { get; init; }

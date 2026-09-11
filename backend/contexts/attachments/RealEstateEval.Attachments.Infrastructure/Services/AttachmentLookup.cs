@@ -81,29 +81,8 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
                 .Where(p => rowIds.Contains(p.PhotoId))
                 .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
 
-        return rows.Select(row =>
-        {
-            photos.TryGetValue(row.Id, out var photo);
-            return new FileAttachmentMetaDto
-            {
-                Id = row.Id,
-                Scope = row.Scope,
-                ScopeKey = row.ScopeKey,
-                FileName = row.FileName,
-                ContentType = row.ContentType,
-                SizeBytes = row.SizeBytes,
-                CreatedAtUtc = row.CreatedAtUtc,
-                PhotoMetadata = photo is null
-                    ? null
-                    : new PhotoMetadataDto
-                    {
-                        Latitude = photo.Latitude,
-                        Longitude = photo.Longitude,
-                        CapturedAtUtc = photo.CapturedAtUtc,
-                        DistanceM = photo.DistanceM,
-                        Flag = photo.Flag,
-                    },
-            };
-        }).ToList();
+        return rows
+            .Select(row => AttachmentMetaMapper.ToMeta(row, photos.GetValueOrDefault(row.Id)))
+            .ToList();
     }
 }

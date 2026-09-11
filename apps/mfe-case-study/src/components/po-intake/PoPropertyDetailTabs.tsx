@@ -205,7 +205,11 @@ export function PoPropertyDetailTabs({
 
           {visitedTabsRef.current.has("documents") ? (
             <Activity mode={tabMode("documents")}>
-              <DocumentsTab sections={propertyDocumentSections} />
+              <DocumentsTab
+                sections={propertyDocumentSections}
+                property={property}
+                poNumber={poNumber}
+              />
             </Activity>
           ) : null}
 

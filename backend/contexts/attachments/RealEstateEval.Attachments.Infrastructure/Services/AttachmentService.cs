@@ -14,7 +14,7 @@ using RealEstateEval.Attachments.Application.Rules;
 
 namespace RealEstateEval.Attachments.Infrastructure.Services;
 
-public sealed class AttachmentService : IAttachmentService
+public sealed partial class AttachmentService : IAttachmentService
 {
     private const string BlobContainer = "attachments";
     private const int MaxAttachmentsPerScope = 200;
@@ -101,6 +101,15 @@ public sealed class AttachmentService : IAttachmentService
         if (inspection.Error is not null)
             return (null, inspection.Error);
 
+        var documentType = PropertyDocumentUploadRules.Resolve(
+            request.Scope,
+            request.ScopeKey,
+            request.DocumentTypeKey,
+            request.CustomDocumentLabel,
+            request.CustomDocumentReason);
+        if (documentType.Error is not null)
+            return (null, documentType.Error);
+
         var id = Guid.NewGuid();
         var safeName = inspection.FileName;
 
@@ -123,6 +132,7 @@ public sealed class AttachmentService : IAttachmentService
             UploadedByUserId = uploadedByUserId,
             CreatedAtUtc = _time.UtcNow(),
         };
+        ApplyDocumentType(row, documentType);
         _db.FileAttachments.Add(row);
 
         if (request.PhotoMetadata is not null
@@ -200,26 +210,8 @@ public sealed class AttachmentService : IAttachmentService
     private static FileAttachmentMetaDto ToMeta(
         FileAttachment row,
         PhotoMetadata? photo = null,
-        string? contentTypeOverride = null) => new()
-    {
-        Id = row.Id,
-        Scope = row.Scope,
-        ScopeKey = row.ScopeKey,
-        FileName = row.FileName,
-        ContentType = contentTypeOverride ?? row.ContentType,
-        SizeBytes = row.SizeBytes,
-        CreatedAtUtc = row.CreatedAtUtc,
-        PhotoMetadata = photo is null
-            ? null
-            : new PhotoMetadataDto
-            {
-                Latitude = photo.Latitude,
-                Longitude = photo.Longitude,
-                CapturedAtUtc = photo.CapturedAtUtc,
-                DistanceM = photo.DistanceM,
-                Flag = photo.Flag,
-            },
-    };
+        string? contentTypeOverride = null) =>
+        AttachmentMetaMapper.ToMeta(row, photo, contentTypeOverride);
 
     /// <summary>
     /// JSON binds ISO timestamps as Unspecified; Npgsql rejects that for timestamptz.

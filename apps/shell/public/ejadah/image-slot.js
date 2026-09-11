@@ -568,7 +568,10 @@
       this._subFn = () => this._render();
       // Shadow-DOM listeners live with the shadow DOM — bound once here so
       // disconnect/reconnect (e.g. React remount) doesn't stack handlers.
-      this._empty.addEventListener('click', () => this._input.click());
+      this._empty.addEventListener('click', () => {
+        if (!this.hasAttribute('data-editable')) return;
+        this._input.click();
+      });
       root.addEventListener('click', (e) => {
         const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
         if (!act) return;
@@ -590,6 +593,10 @@
         }
       });
       this._input.addEventListener('change', () => {
+        if (!this.hasAttribute('data-editable')) {
+          this._input.value = '';
+          return;
+        }
         const f = this._input.files && this._input.files[0];
         if (f) this._ingest(f);
         this._input.value = '';
@@ -831,7 +838,11 @@
     }
 
     // Public: host's "Import from computer" calls this to run local browse.
-    openFilePicker() { this._exitReframe(true); this._input.click(); }
+    openFilePicker() {
+      if (!this.hasAttribute('data-editable')) return;
+      this._exitReframe(true);
+      this._input.click();
+    }
 
     // A src write is a newer intent for this slot's content — the host
     // pick path (setImageSlotImage) or an agent edit — so it must win
@@ -856,6 +867,10 @@
     // add/remove symmetric and the depth counter correct.
     handleEvent(e) {
       if (e.type === 'dragenter' || e.type === 'dragover') {
+        if (!this.hasAttribute('data-editable')) {
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
+          return;
+        }
         // Without preventDefault the browser never fires 'drop'.
         e.preventDefault();
         e.stopPropagation();
@@ -871,12 +886,14 @@
         e.stopPropagation();
         this._depth = 0;
         this.removeAttribute('data-over');
+        if (!this.hasAttribute('data-editable')) return;
         const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
         if (f) this._ingest(f);
       }
     }
 
     async _ingest(file) {
+      if (!this.hasAttribute('data-editable')) return;
       this._setError(null);
       if (!file || ACCEPT.indexOf(file.type) < 0) {
         this._setError('Drop a PNG, JPEG, WebP, or AVIF image.');
@@ -1084,10 +1101,14 @@
       this._ring.style.borderRadius = mask ? '' : radius;
       this._ring.style.display = mask ? 'none' : '';
 
-      // Controls and reframe entry gate on this so share links stay read-only.
-      // Evaluator report preview sets window.__ejadahImageSlotsEditable without omelette.
-      const editable = !!(window.omelette && window.omelette.writeFile)
-        || !!(window).__ejadahImageSlotsEditable;
+      // Controls and reframe entry gate on this so share links / report preview stay read-only.
+      // `readonly` on the host is a hard lock (valuation report never uploads here).
+      // Only omelette (HTML template authoring) or an explicit editable flag enables upload.
+      const locked = this.hasAttribute('readonly') || this.hasAttribute('data-readonly');
+      const editable = !locked && (
+        !!(window.omelette && window.omelette.writeFile)
+        || !!(window).__ejadahImageSlotsEditable
+      );
       this.toggleAttribute('data-editable', editable);
       this._sub.style.display = editable ? '' : 'none';
 

@@ -9,7 +9,8 @@ import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,
 } from "../lib/evaluator-bridge";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useGovernedPropertyDocumentsQuery } from "./governed-property-documents-query";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
   prefetchPropertyDocAttachments,
@@ -20,6 +21,7 @@ import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspe
 import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-reads";
 import {
   collectPropertyDetailDocumentSections,
+  withGovernedDocumentsSection,
   type PropertyDetailDocumentSection,
 } from "../lib/app-data/property-detail-documents";
 import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
@@ -127,5 +129,16 @@ export function usePropertyDetailDocuments(input: {
     inspectionTaskId,
   ]);
 
-  return sections;
+  // Documents-tab uploads share this react-query cache with the tab, so an upload there
+  // shows up here (and in the valuer's report attachments) after one invalidation.
+  const governed = useGovernedPropertyDocumentsQuery({
+    poNumber,
+    propertyId: property.id,
+    enabled,
+  });
+
+  return useMemo(
+    () => (enabled ? withGovernedDocumentsSection(sections, governed.data) : sections),
+    [enabled, sections, governed.data],
+  );
 }

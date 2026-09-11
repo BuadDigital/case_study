@@ -11,11 +11,11 @@ import {
   cacheAssignmentDoc,
   cacheDeedOwnershipDoc,
   cacheDelegationDoc,
-  cacheOtherPropertyDoc,
   cacheRegistryDoc,
   clearCachedPropertyDoc,
   removeCachedPropertyDoc,
 } from "../../lib/app-data/assignment-doc-attachments";
+import { PoPropertyUnlistedDocumentField } from "./PoPropertyUnlistedDocumentField";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import {
   withoutFileName,
@@ -195,42 +195,10 @@ export function PoPropertyEnfathDocumentFields({
       ) : null}
 
       {showOtherDocs ? (
-        <PropertyFileUploadField
-          id={`other_docs_${property.id}`}
-          label="مستندات أخرى (اختياري)"
-          fileNames={property.otherDocumentFileNames}
+        <PoPropertyUnlistedDocumentField
+          property={property}
+          onPatch={onPatch}
           attachPo={attachPo}
-          propertyId={property.id}
-          docKind="other"
-          multiple
-          onUpload={(file) => {
-            onPatch("otherDocumentFileNames", [
-              ...property.otherDocumentFileNames,
-              file.name,
-            ]);
-            if (attachPo) {
-              void cacheOtherPropertyDoc(attachPo, property.id, file)
-                .then((result) => {
-                  if (!result.ok) showToast(result.error, "error");
-                })
-                .catch(() => {
-                  showToast(
-                    "تعذّر حفظ المستند الإضافي — حاول مرة أخرى",
-                    "error",
-                  );
-                });
-            }
-          }}
-          onRemove={(name) => {
-            onPatch(
-              "otherDocumentFileNames",
-              withoutFileName(property.otherDocumentFileNames, name),
-            );
-            if (attachPo) {
-              void removeCachedPropertyDoc("other", attachPo, property.id, name);
-            }
-          }}
-          onClear={() => onPatch("otherDocumentFileNames", [])}
         />
       ) : null}
     </>

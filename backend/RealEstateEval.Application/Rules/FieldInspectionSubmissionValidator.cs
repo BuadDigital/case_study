@@ -24,6 +24,12 @@ public static class FieldInspectionSubmissionValidator
         "21.543300,39.172800",
     };
 
+    private static readonly HashSet<string> PrimaryFreePhotoCategories = new(StringComparer.Ordinal)
+    {
+        "exterior",
+        "interior",
+    };
+
     private static readonly HashSet<string> LandHiddenFeatureKeys = new(StringComparer.Ordinal)
     {
         "facade",
@@ -425,8 +431,12 @@ public static class FieldInspectionSubmissionValidator
         var count = 0;
         foreach (var photo in freePhotos.EnumerateArray())
         {
-            if (string.IsNullOrWhiteSpace(ReadString(photo, "category")))
+            var category = ReadString(photo, "category");
+            if (string.IsNullOrWhiteSpace(category) ||
+                !PrimaryFreePhotoCategories.Contains(category))
+            {
                 count++;
+            }
         }
 
         return count;

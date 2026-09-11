@@ -1,7 +1,11 @@
 /** Map property documents ↔ report attachment keys (valuation lists). */
 
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
-import { printKeyForPropertyDocument } from "@platform/app-shared/app-data/valuation-print-attachment-keys";
+import {
+  REPORT_PRINTABLE_ATTACHMENT_KEYS,
+  printKeyForPropertyDocument,
+} from "@platform/app-shared/app-data/valuation-print-attachment-keys";
+import { findPropertyDocumentType } from "@platform/app-shared/domain/property-documents/property-document-types";
 
 export { printKeyForPropertyDocument } from "@platform/app-shared/app-data/valuation-print-attachment-keys";
 
@@ -12,7 +16,19 @@ export type ValuationPrintAttachmentRow = {
   docs: PropertyDetailDocumentEntry[];
   available: boolean;
   selected: boolean;
+  /**
+   * Has a place in the printed report — the valuer can select and order it. Other governed
+   * document types on the property are listed read-only for reference.
+   */
+  printable: boolean;
 };
+
+/** Admin rows outside the document registry keep their old selectable behaviour. */
+function isPrintableAttachmentKey(key: string): boolean {
+  return (
+    REPORT_PRINTABLE_ATTACHMENT_KEYS.includes(key) || !findPropertyDocumentType(key)
+  );
+}
 
 const FALLBACK_LABELS: Record<string, string> = {
   deed: "صك الملكية",
@@ -30,7 +46,9 @@ export function buildValuationPrintAttachmentRows(input: {
   const selected = new Set(selectedKeys);
   const byKey = new Map<string, PropertyDetailDocumentEntry[]>();
   for (const doc of input.documents) {
-    const key = printKeyForPropertyDocument(doc);
+    // Printable documents group under their report key (bourse deed → deed); other typed
+    // documents under their own type so the valuer can still read them.
+    const key = printKeyForPropertyDocument(doc) ?? doc.documentTypeKey?.trim() ?? null;
     if (!key) continue;
     const list = byKey.get(key) ?? [];
     list.push(doc);
@@ -46,17 +64,22 @@ export function buildValuationPrintAttachmentRows(input: {
           isRequired: false,
         }));
 
-  const rows: ValuationPrintAttachmentRow[] = catalog.map((row) => {
-    const docs = byKey.get(row.key) ?? [];
-    return {
-      key: row.key,
-      name: row.name,
-      isRequired: Boolean(row.isRequired),
-      docs,
-      available: docs.length > 0,
-      selected: selected.has(row.key),
-    };
-  });
+  const rows: ValuationPrintAttachmentRow[] = catalog
+    // Non-printable document types appear only once something of that type is on file.
+    .filter((row) => isPrintableAttachmentKey(row.key) || byKey.has(row.key))
+    .map((row) => {
+      const docs = byKey.get(row.key) ?? [];
+      const printable = isPrintableAttachmentKey(row.key);
+      return {
+        key: row.key,
+        name: row.name,
+        isRequired: Boolean(row.isRequired),
+        docs,
+        available: docs.length > 0,
+        selected: printable && selected.has(row.key),
+        printable,
+      };
+    });
 
   for (const key of selected) {
     if (rows.some((r) => r.key === key)) continue;
@@ -68,6 +91,7 @@ export function buildValuationPrintAttachmentRows(input: {
       docs,
       available: docs.length > 0,
       selected: true,
+      printable: true,
     });
   }
 

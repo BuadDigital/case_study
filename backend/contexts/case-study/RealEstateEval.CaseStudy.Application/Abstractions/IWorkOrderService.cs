@@ -89,4 +89,15 @@ public interface IWorkOrderService
         CancellationToken cancellationToken);
     Task<(bool Ok, string? Error)> CancelAsync(string poNumber, CancellationToken cancellationToken);
     Task<(bool Ok, string? Error)> StopAsync(string poNumber, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Appraiser → primary-data specialist: notify that a report intake field is empty
+    /// (e.g. رقم الطلب) and must be completed on the property.
+    /// </summary>
+    Task<(int NotifiedCount, string? Error)> NotifyIntakeFieldGapAsync(
+        string poNumber,
+        Guid propertyId,
+        NotifyIntakeFieldGapRequest request,
+        string? actorDisplayName,
+        CancellationToken cancellationToken);
 }

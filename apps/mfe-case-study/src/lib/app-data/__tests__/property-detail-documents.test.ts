@@ -1,8 +1,50 @@
 import { describe, expect, it } from "vitest";
+import type {
+  PropertyDetailDocumentEntry,
+  PropertyDetailDocumentSection,
+} from "@platform/app-shared/app-data/property-detail-document-types";
 import {
   collectFieldInspectionDocumentsFromSubmission,
   inspectorFeaturePhotoLabel,
+  withGovernedDocumentsSection,
 } from "../property-detail-documents";
+
+describe("withGovernedDocumentsSection", () => {
+  const entry = (
+    id: string,
+    extra: Partial<PropertyDetailDocumentEntry> = {},
+  ): PropertyDetailDocumentEntry => ({
+    id,
+    name: id,
+    fileName: `${id}.pdf`,
+    source: "مستندات العقار",
+    kind: "pdf",
+    attachmentId: `att-${id}`,
+    ...extra,
+  });
+  const sections: PropertyDetailDocumentSection[] = [
+    { id: "intake", title: "البيانات الأولية", documents: [entry("reg")] },
+    { id: "engineering", title: "المكتب الهندسي", documents: [entry("survey")] },
+  ];
+
+  it("adds documents-tab uploads right after the intake section", () => {
+    const next = withGovernedDocumentsSection(sections, [
+      entry("lease", { governed: true, documentTypeKey: "lease-contract" }),
+    ]);
+
+    expect(next.map((s) => s.id)).toEqual(["intake", "governed", "engineering"]);
+    expect(next[1]!.documents.map((d) => d.id)).toEqual(["lease"]);
+  });
+
+  it("skips intake «other documents» rows and files already listed", () => {
+    const next = withGovernedDocumentsSection(sections, [
+      entry("other", { governed: false, documentTypeKey: "unlisted" }),
+      entry("reg", { governed: true, documentTypeKey: "real-estate-registry" }),
+    ]);
+
+    expect(next).toBe(sections);
+  });
+});
 import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
 
 describe("inspectorFeaturePhotoLabel", () => {

@@ -628,12 +628,53 @@ export type InspectorFreePhotoCategory = {
   icon: string;
 };
 
-/** Categories for residual free-photo tagging. */
+/** Primary buckets for general property photography (upload zones). */
+export const INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR = "exterior";
+export const INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR = "interior";
+
+/** Categories for residual free-photo tagging / upload zones. */
 export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] = [
-  { key: "service", label: "خدمة", icon: "ti-plug" },
-  { key: "amenity", label: "مرفق", icon: "ti-map-pin" },
-  { key: "other", label: "أخرى", icon: "ti-photo" },
+  {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR,
+    label: "صور خارجية",
+    icon: "ti-building",
+  },
+  {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR,
+    label: "صور داخلية",
+    icon: "ti-home",
+  },
 ];
+
+/** Older drafts may still carry these tags — keep labels for display/reclassify. */
+export const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
+  [
+    { key: "service", label: "خدمة", icon: "ti-plug" },
+    { key: "amenity", label: "مرفق", icon: "ti-map-pin" },
+    { key: "other", label: "أخرى", icon: "ti-photo" },
+  ];
+
+export function inspectorFreePhotoCategoryMeta(
+  category: string | null | undefined,
+): InspectorFreePhotoCategory | undefined {
+  const key = category?.trim();
+  if (!key) return undefined;
+  return (
+    INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key) ??
+    INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.find((cat) => cat.key === key)
+  );
+}
+
+export function isInspectorPrimaryFreePhotoCategory(
+  category: string | null | undefined,
+): category is
+  | typeof INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
+  | typeof INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR {
+  return (
+    category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR ||
+    category === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR
+  );
+}
 
 export type InspectorComponentPhotoKey = "showroom" | "well" | "buildLicense";
 
@@ -1221,7 +1262,9 @@ export function listInspectorPhotoValidationIssues(
     issues.push(`${pendingApproval} صورة بانتظار الاعتماد`);
   }
 
-  const untagged = draft.freePhotos.filter((photo) => !photo.category).length;
+  const untagged = draft.freePhotos.filter(
+    (photo) => !isInspectorPrimaryFreePhotoCategory(photo.category),
+  ).length;
   if (!options?.specialistProofServicesOnly && untagged > 0) {
     issues.push(`${untagged} صورة إضافية بحاجة لتعريف`);
   }

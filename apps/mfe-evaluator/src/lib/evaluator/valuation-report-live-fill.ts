@@ -48,6 +48,13 @@ import {
   scrubFrozenDates,
   syncNumberedRows,
 } from "./valuation-report-live-fill-dom";
+import { markReportMissingIntakeFields } from "./valuation-report-missing-intake";
+import type { ReportMissingIntakeLink } from "./valuation-report-missing-intake";
+export type { ReportMissingIntakeLink } from "./valuation-report-missing-intake";
+export {
+  markReportMissingIntakeFields,
+  reportMissingIntakeLinksFromCells,
+} from "./valuation-report-missing-intake";
 
 function peopleNameMatch(a: string, b: string): boolean {
   const n = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -186,7 +193,8 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
   }
 
   if (!fill.isLand) return;
-  removeSections(dom, ["10", "11", "12", "13"]);
+  // Building-only sections — vacant land has no on-site meters/utilities table either.
+  removeSections(dom, ["10", "11", "12", "13", "14"]);
   removeLabeledPairs(
     dom,
     new Set([
@@ -217,7 +225,7 @@ export function applyValuationReportLiveFill(
     valuationBranch?: string;
     interactiveComparablesMap?: boolean;
   },
-): void {
+): ReportMissingIntakeLink[] {
   applyStructuralVisibility(dom, fill);
 
   SAMPLE_SECS.forEach((id) => {
@@ -403,4 +411,6 @@ export function applyValuationReportLiveFill(
     interactiveComparablesMap: extras?.interactiveComparablesMap,
   });
   fillFinishingLevelSection(dom.querySelector('[data-sec="12"]'), fill);
+
+  return markReportMissingIntakeFields(dom, fill.cells);
 }

@@ -510,14 +510,16 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             ? []
             : await _db.WorkflowTasks
                 .AsNoTracking()
-                .Where(t => poNumbers.Contains(t.PoNumber)
-                    && t.Kind == CaseStudyPropertyKind
-                    && t.PropertyId != null
-                    && propertyIds.Contains(t.PropertyId.Value))
+                .Where(t => t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
                 .ToListAsync(cancellationToken);
 
-        var studiedByProperty = caseStudyTasks
+        var tasksByProperty = caseStudyTasks
             .Where(t => t.PropertyId.HasValue)
+            .GroupBy(t => t.PropertyId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<WorkflowTask>)g.ToList());
+
+        var studiedByProperty = caseStudyTasks
+            .Where(t => t.PropertyId.HasValue && t.Kind == CaseStudyPropertyKind)
             .GroupBy(t => t.PropertyId!.Value)
             .ToDictionary(
                 g => g.Key,
@@ -537,16 +539,79 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         return orders
             .Select(w =>
             {
+                var progressPct = AveragePropertyProgressPct(w, tasksByProperty);
                 var item = WorkOrderMapper.ToListItem(
                     w,
                     studiedByProperty,
-                    billedPos.Contains(w.PoNumber.Trim()));
+                    billedPos.Contains(w.PoNumber.Trim()),
+                    progressPct);
                 item.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(
                     item.AssignmentSpecialist,
                     specialistNames);
                 return item;
             })
             .ToList();
+    }
+
+    private static int AveragePropertyProgressPct(
+        WorkOrder order,
+        IReadOnlyDictionary<Guid, IReadOnlyList<WorkflowTask>> tasksByProperty)
+    {
+        var live = order.Properties.Where(p => !p.IsRemoved).ToList();
+        if (live.Count == 0)
+            return 0;
+
+        var sum = 0;
+        foreach (var property in live)
+        {
+            tasksByProperty.TryGetValue(property.Id, out var tasks);
+            tasks ??= [];
+            sum += TransactionStateRules.ProgressPercent(
+                BuildTransactionProgressInput(property, tasks));
+        }
+
+        return (int)Math.Round(sum / (double)live.Count, MidpointRounding.AwayFromZero);
+    }
+
+    private static TransactionStateRules.Input BuildTransactionProgressInput(
+        WorkOrderProperty property,
+        IReadOnlyList<WorkflowTask> tasks)
+    {
+        var parent = tasks
+            .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .FirstOrDefault();
+
+        TransactionStateRules.PartyFacts FactsFor(WorkflowTaskKind kind)
+        {
+            var task = tasks
+                .Where(t => t.Kind == kind && t.Status != WorkflowTaskStatus.Cancelled)
+                .OrderByDescending(t => t.CreatedAtUtc)
+                .FirstOrDefault();
+            return new TransactionStateRules.PartyFacts(
+                Assigned: task is not null,
+                Completed: task?.Status == WorkflowTaskStatus.Completed);
+        }
+
+        var hasSurvey = tasks.Any(t =>
+            t.Kind == WorkflowTaskKind.EngineeringSurvey
+            && t.Status != WorkflowTaskStatus.Cancelled);
+        var appraiser = FactsFor(WorkflowTaskKind.PropertyAppraisal);
+        // List path skips open-valuation lookup; treat completed appraisal as closed for bar fill.
+        var valuationClosed = appraiser.Completed;
+
+        return new TransactionStateRules.Input(
+            ParentPhase: (parent?.Phase ?? WorkflowTaskPhase.Enfath).ToDbValue(),
+            Inspector: FactsFor(WorkflowTaskKind.FieldInspection),
+            Appraiser: appraiser,
+            EngineeringOffice: hasSurvey
+                ? FactsFor(WorkflowTaskKind.EngineeringSurvey)
+                : null,
+            CaseSpecialist: new TransactionStateRules.PartyFacts(
+                Assigned: parent is not null,
+                Completed: parent?.Status == WorkflowTaskStatus.Completed),
+            ValuationReportClosed: valuationClosed,
+            EnfazHandedOver: property.EnfazHandoverAtUtc is not null);
     }
 
     private async Task<IReadOnlyList<WorkOrderDto>> WithResolvedSpecialistsAsync(

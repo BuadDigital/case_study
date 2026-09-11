@@ -12,6 +12,13 @@ public class FileAttachmentMetaDto
     public long SizeBytes { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public PhotoMetadataDto? PhotoMetadata { get; init; }
+    /// <summary>Registry key (<c>PropertyDocumentTypes</c>) — null for non-property uploads.</summary>
+    public string? DocumentTypeKey { get; init; }
+    public string? CustomDocumentLabel { get; init; }
+    public string? CustomDocumentReason { get; init; }
+    public string? ReviewStatus { get; init; }
+    public string? ReviewNote { get; init; }
+    public DateTime? ReviewedAtUtc { get; init; }
 }
 
 public sealed class AttachmentRefDto
@@ -41,6 +48,36 @@ public class UploadAttachmentRequest
 
  /// <summary>Optional EXIF extracted on-device before compression.</summary>
     public PhotoMetadataInput? PhotoMetadata { get; init; }
+
+ /// <summary>Registry type — required on the governed <c>property-document</c> scope.</summary>
+    [MaxLength(64)]
+    public string? DocumentTypeKey { get; init; }
+ /// <summary>Name of a document outside the defined list.</summary>
+    [MaxLength(128)]
+    public string? CustomDocumentLabel { get; init; }
+ /// <summary>Why a document outside the defined list is needed.</summary>
+    [MaxLength(512)]
+    public string? CustomDocumentReason { get; init; }
+}
+
+/// <summary>Classify a documents-tab upload onto a registry type, or mark it as unlisted.</summary>
+public sealed class SetAttachmentDocumentTypeRequest
+{
+    [Required, MaxLength(64)]
+    public string DocumentTypeKey { get; init; } = "";
+    [MaxLength(128)]
+    public string? CustomDocumentLabel { get; init; }
+    [MaxLength(512)]
+    public string? CustomDocumentReason { get; init; }
+}
+
+/// <summary>Approve or reject a document uploaded outside the defined list.</summary>
+public sealed class ReviewAttachmentDocumentRequest
+{
+    [Required, MaxLength(16)]
+    public string Decision { get; init; } = "";
+    [MaxLength(512)]
+    public string? Note { get; init; }
 }
 
 public class PhotoMetadataInput

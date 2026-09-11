@@ -53,6 +53,30 @@ export function canViewPropertyTimelineRail(role: RoleId): boolean {
   return canRaisePropertyFailure(role);
 }
 
+/**
+ * Upload / classify governed documents from the property documents tab —
+ * mirrors backend `PoRoleMatrixRules.CanUploadPropertyDocuments`.
+ */
+export function canUploadPropertyDocuments(role: RoleId): boolean {
+  return (
+    isSuperAdmin(role) ||
+    role === "case-specialist" ||
+    role === "section-supervisor"
+  );
+}
+
+/**
+ * Approve / reject documents uploaded outside the defined list —
+ * mirrors backend `PoRoleMatrixRules.CanReviewUnlistedDocuments`.
+ */
+export function canReviewUnlistedDocuments(role: RoleId): boolean {
+  return (
+    isSuperAdmin(role) ||
+    role === "section-supervisor" ||
+    role === "general-manager"
+  );
+}
+
 /** Reassign case-study parties — section-supervisor+ permission. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (

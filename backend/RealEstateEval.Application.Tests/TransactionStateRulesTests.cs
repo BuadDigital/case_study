@@ -180,4 +180,30 @@ public class TransactionStateRulesTests
             p => Assert.Equal(Statuses.NotStarted, p.Status));
         Assert.Equal(Statuses.NotStarted, result.OverallStatus);
     }
+
+    [Fact]
+    public void Progress_percent_rises_with_completed_parties_before_valuation()
+    {
+        var early = ProgressPercent(BaseInput(phase: "enfath"));
+        Assert.True(early is > 0 and < 40, $"early={early}");
+
+        var afterParties = ProgressPercent(BaseInput(
+            phase: "case_study",
+            inspector: new PartyFacts(true, true),
+            appraiser: new PartyFacts(true, false),
+            office: new PartyFacts(true, true),
+            specialist: new PartyFacts(true, false)));
+        Assert.True(afterParties is >= 55 and < 85, $"afterParties={afterParties}");
+        Assert.True(afterParties > early);
+
+        var closed = ProgressPercent(BaseInput(
+            phase: "done",
+            inspector: new PartyFacts(true, true),
+            appraiser: new PartyFacts(true, true),
+            office: new PartyFacts(true, true),
+            specialist: new PartyFacts(true, true),
+            valuationClosed: true,
+            handedOver: true));
+        Assert.Equal(100, closed);
+    }
 }

@@ -542,9 +542,28 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       taxNumber: (company.taxNumber ?? company.TaxNumber ?? null) as string | null,
       address: (company.address ?? company.Address ?? null) as string | null,
       commercialRegistration: (company.commercialRegistration ?? company.CommercialRegistration ?? null) as string | null,
-      practiceLicenseNumber: (company.practiceLicenseNumber ?? company.PracticeLicenseNumber ?? null) as string | null,
-      practiceLicenseIssuedAt: (company.practiceLicenseIssuedAt ?? company.PracticeLicenseIssuedAt ?? null) as string | null,
-      practiceLicenseExpiresAt: (company.practiceLicenseExpiresAt ?? company.PracticeLicenseExpiresAt ?? null) as string | null,
+      practiceLicenseNumber: (() => {
+        const v = String(
+          company.practiceLicenseNumber ?? company.PracticeLicenseNumber ?? "",
+        ).trim();
+        return v || ORG_COMPANY_DEFAULTS.practiceLicenseNumber || null;
+      })(),
+      practiceLicenseIssuedAt: (() => {
+        const v = String(
+          company.practiceLicenseIssuedAt ??
+            company.PracticeLicenseIssuedAt ??
+            "",
+        ).trim();
+        return v || ORG_COMPANY_DEFAULTS.practiceLicenseIssuedAt || null;
+      })(),
+      practiceLicenseExpiresAt: (() => {
+        const v = String(
+          company.practiceLicenseExpiresAt ??
+            company.PracticeLicenseExpiresAt ??
+            "",
+        ).trim();
+        return v || ORG_COMPANY_DEFAULTS.practiceLicenseExpiresAt || null;
+      })(),
       certifiedValuerId: (company.certifiedValuerId ?? company.CertifiedValuerId ?? null) as string | null,
       email: (company.email ?? company.Email ?? null) as string | null,
       phone: (company.phone ?? company.Phone ?? null) as string | null,
@@ -671,12 +690,13 @@ export async function saveOrganizationSettings(
     if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
         error?: string;
       } | null;
       return {
         ok: false,
         kind: "validation",
-        message: payload?.error ?? "بيانات غير صالحة",
+        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };
@@ -708,12 +728,13 @@ export async function testOrganizationCommunication(
     if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
         error?: string;
       } | null;
       return {
         ok: false,
         kind: "validation",
-        message: payload?.error ?? "بيانات غير صالحة",
+        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };

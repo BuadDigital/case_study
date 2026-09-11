@@ -1,23 +1,46 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Attachments.Domain;
 
 /// <summary>
-/// Routes property-library uploads onto valuation-report sections from the upload scope.
+/// Routes property-library uploads onto valuation-report sections — from the stored document
+/// type when there is one, else from the upload scope.
 /// </summary>
 public static class AttachmentPrintRules
 {
-    public static string? TypeKeyFromScope(string? scope)
+    /// <summary>Print type of an upload whose document type may not be stored yet.</summary>
+    public static string? TypeKeyFromScope(string? scope) => TypeKeyFor(scope, null);
+
+    /// <summary>
+    /// Registry types decide first: an assignment or delegation letter is never printed as the
+    /// deed. Scopes the registry does not know keep the older name-based routing.
+    /// </summary>
+    public static string? TypeKeyFor(string? scope, string? documentTypeKey, string? scopeKey = null)
+    {
+        var type = PropertyDocumentTypes.Resolve(documentTypeKey, scope, scopeKey);
+        return type is not null ? PrintTypeKey(type.Key) : LegacyTypeKeyFromScope(scope);
+    }
+
+    /// <summary>Report section family of a registry document type; null when it is not printed.</summary>
+    public static string? PrintTypeKey(string? documentTypeKey) =>
+        (documentTypeKey ?? "").Trim().ToLowerInvariant() switch
+        {
+            "deed" or "bourse-deed" or "real-estate-registry" => "deed",
+            "survey" => "survey",
+            "inspection-photo" => "photo",
+            "site-letter" => "site-map",
+            "building-permit" => "building-permit",
+            "zoning-sketch" => "zoning-sketch",
+            _ => null,
+        };
+
+    private static string? LegacyTypeKeyFromScope(string? scope)
     {
         var s = (scope ?? "").Trim().ToLowerInvariant();
         return s switch
         {
-            "property-decree" or "property-deed-ownership" or "property-registry"
-                or "property-delegation" or "property-bourse-deed" => "deed",
-            "engineering-survey-report" or "property-boundaries" => "survey",
-            "field-inspection-photo" => "photo",
-            "engineering-site-letter" => "site-map",
             _ when s.Contains("photo", StringComparison.Ordinal) => "photo",
             _ when s.Contains("deed", StringComparison.Ordinal)
-                || s.Contains("decree", StringComparison.Ordinal)
                 || s.Contains("registry", StringComparison.Ordinal) => "deed",
             _ when s.Contains("survey", StringComparison.Ordinal)
                 || s.Contains("boundar", StringComparison.Ordinal) => "survey",

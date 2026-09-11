@@ -16,6 +16,10 @@ export type ConfirmActionSpec = {
   body: string;
   confirm: string;
   onConfirm: () => void;
+  /** Runs when the user dismisses the dialog instead (e.g. undo a previewed upload). */
+  onCancel?: () => void;
+  /** Destructive styling for the confirm button. */
+  danger?: boolean;
 };
 
 /**
@@ -32,8 +36,12 @@ export function ConfirmActionModal({
   onClose: () => void;
 }) {
   if (!modal) return null;
+  const cancel = () => {
+    modal.onCancel?.();
+    onClose();
+  };
   return (
-    <ModalOverlay onClick={onClose}>
+    <ModalOverlay onClick={cancel}>
       <ModalCard
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -47,11 +55,11 @@ export function ConfirmActionModal({
           <p className="m-0 text-[13px] leading-relaxed text-text-2">{modal.body}</p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={cancel}>
             إلغاء
           </Button>
           <Button
-            variant="primary"
+            variant={modal.danger ? "danger" : "primary"}
             onClick={() => {
               const fn = modal.onConfirm;
               onClose();

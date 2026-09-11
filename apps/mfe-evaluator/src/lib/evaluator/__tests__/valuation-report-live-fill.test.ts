@@ -134,6 +134,24 @@ describe("valuation report live fill from intake", () => {
     expect(hit.expiresAt).toBe("2027/03/10");
   });
 
+  it("uses منشأة defaults when company practice-license dates are empty", () => {
+    const hit = certifiedPracticeLicenseFromOrg({
+      company: {
+        practiceLicenseNumber: "",
+        practiceLicenseIssuedAt: "",
+        practiceLicenseExpiresAt: "",
+      },
+      evaluator: {
+        licenseNumber: "9999",
+        licenseIssuedAt: "2010-01-01",
+        licenseExpiresAt: "2011-01-01",
+      },
+    });
+    expect(hit.number).toBe("1302");
+    expect(hit.issuedAt).toBe("2022/03/10");
+    expect(hit.expiresAt).toBe("2027/03/10");
+  });
+
   it("falls back to static maps when list labels are absent", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
@@ -387,6 +405,43 @@ describe("valuation report live fill from intake", () => {
 
     expect(fill.isLand).toBe(true);
     expect(fill.cells["نوع العقار"]).toBe("أرض");
+  });
+
+  it("removes on-site services section 14 for vacant land", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: {
+        propertyType: "أرض",
+        inspectedPropertyType: "أرض",
+        effectivePropertyType: "أرض",
+        classification: "أرض",
+        city: "المدينة المنورة",
+        deedNumber: "940115012717",
+      } as never,
+      inspector: {
+        vacantLand: true,
+        featureValues: { assetSubject: "أرض" },
+      } as never,
+    });
+    expect(fill.isLand).toBe(true);
+
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="10"><h2>تفاصيل البناء</h2></section>
+       <section data-sec="14"><h2>الخدمات والمرافق المتوفرة بالعقار</h2>
+         <table><tr><td class="k">كهرباء</td><td class="v">غير متوفر</td></tr></table>
+       </section>
+       <section data-sec="15"><h2>المحيط المؤثر</h2></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="10"]')).toBeNull();
+    expect(dom.querySelector('[data-sec="14"]')).toBeNull();
+    expect(dom.querySelector('[data-sec="15"]')).not.toBeNull();
   });
 
   it("hides inspector property description until specialist acceptance", () => {

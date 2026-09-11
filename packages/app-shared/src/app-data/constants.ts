@@ -366,6 +366,11 @@ export type PoRow = {
   registered: number;
   /** Completed case studies. */
   done: number;
+  /**
+   * Workflow progress 0–100 from the API (stages + parties).
+   * When set, the list bar prefers this over done/expected.
+   */
+  progressPct?: number;
   status: PoListStatus;
   date: string;
   dueDate: string;

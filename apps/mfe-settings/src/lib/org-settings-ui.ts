@@ -26,5 +26,8 @@ export async function refreshOrgCache(): Promise<void> {
       "@platform/app-shared/organization/organization-settings-cache"
     );
   clearOrganizationSettingsCache();
-  await ensureOrganizationSettingsLoaded();
+  const { refreshBrandLogos } = await import(
+    "@platform/app-shared/organization/brand-logos"
+  );
+  await Promise.all([ensureOrganizationSettingsLoaded(), refreshBrandLogos()]);
 }

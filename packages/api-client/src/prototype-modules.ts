@@ -755,6 +755,13 @@ export type FileAttachmentMetaDto = {
   sizeBytes: number;
   createdAtUtc: string;
   photoMetadata?: PhotoMetadataDto | null;
+  /** Registry key (`PropertyDocumentTypes`) — null for non-property uploads. */
+  documentTypeKey?: string | null;
+  customDocumentLabel?: string | null;
+  customDocumentReason?: string | null;
+  reviewStatus?: "pending" | "approved" | "rejected" | null;
+  reviewNote?: string | null;
+  reviewedAtUtc?: string | null;
 };
 
 type PhotoMetadataDto = {
@@ -781,7 +788,83 @@ export type UploadAttachmentRequest = {
   contentBase64: string;
   /** EXIF extracted on-device before compression. */
   photoMetadata?: PhotoMetadataInput | null;
+  /** Registry type — required on the governed `property-document` scope. */
+  documentTypeKey?: string | null;
+  /** Name + reason of a document outside the defined list. */
+  customDocumentLabel?: string | null;
+  customDocumentReason?: string | null;
 };
+
+export type SetAttachmentDocumentTypeRequest = {
+  documentTypeKey: string;
+  customDocumentLabel?: string | null;
+  customDocumentReason?: string | null;
+};
+
+export type ReviewAttachmentDocumentRequest = {
+  decision: "approved" | "rejected";
+  note?: string | null;
+};
+
+async function sendAttachmentDocumentChange(
+  config: PrototypeModulesApiConfig,
+  path: string,
+  method: "PUT" | "POST",
+  body: unknown,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers: headers(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400 || res.status === 403) {
+      const problem = (await res.json().catch(() => null)) as
+        | { detail?: string; error?: string }
+        | null;
+      return {
+        ok: false,
+        kind: res.status === 403 ? "forbidden" : "validation",
+        message: problem?.detail ?? problem?.error,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await parseJson<FileAttachmentMetaDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Re-type a documents-tab upload onto a registry type, or mark it unlisted (name + reason). */
+export function setAttachmentDocumentType(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: SetAttachmentDocumentTypeRequest,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
+  return sendAttachmentDocumentChange(
+    config,
+    `/api/attachments/${encodeURIComponent(id)}/document-type`,
+    "PUT",
+    body,
+  );
+}
+
+/** Approve or reject a document uploaded outside the defined list. */
+export function reviewAttachmentDocument(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: ReviewAttachmentDocumentRequest,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
+  return sendAttachmentDocumentChange(
+    config,
+    `/api/attachments/${encodeURIComponent(id)}/review`,
+    "POST",
+    body,
+  );
+}
 
 export async function listAttachments(
   config: PrototypeModulesApiConfig,
@@ -837,16 +920,15 @@ export async function uploadAttachment(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 400) {
-      // The server rejects on content, not on the declared type — pass the reason through
+    if (res.status === 400 || res.status === 403) {
+      // The server rejects on content, document type or role — pass the reason through
       // so the user learns which rule fired instead of seeing a generic failure.
       const problem = (await res.json().catch(() => null)) as
         | { detail?: string; error?: string }
         | null;
       return {
         ok: false,
-        kind: "validation",
+        kind: res.status === 403 ? "forbidden" : "validation",
         message: problem?.detail ?? problem?.error,
       };
     }

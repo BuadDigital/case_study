@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Platform.Application.Abstractions;
+using RealEstateEval.Platform.Application.Rules;
 using RealEstateEval.Platform.Domain;
 using RealEstateEval.Valuation.Domain;
 
@@ -67,7 +68,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         ValidateSla(next.Sla);
         ValidateCommunications(next.Communications);
         ValidateValuation(next.Valuation);
-        ValidateBranding(next.Branding);
+        OrganizationBrandingRules.Validate(next.Branding);
 
         var row = await _repo.FindSettingsAsync(cancellationToken);
         var now = _time.UtcNow();
@@ -106,8 +107,8 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 "ORGANIZATION_SETTINGS_SAVED",
                 "organization_settings",
                 row.Id.ToString(),
-                MaskSecrets(current),
-                MaskSecrets(next)),
+                OrganizationBrandingRules.ForAudit(MaskSecrets(current)),
+                OrganizationBrandingRules.ForAudit(MaskSecrets(next))),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
         return MaskSecrets(next);
@@ -209,30 +210,6 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
             throw new ArgumentOutOfRangeException(nameof(v.MarketValueRoundDecimals), "أسّ تقريب قيمة السوق يجب أن يكون بين 0 و 6.");
     }
 
-    private static void ValidateBranding(OrganizationBrandingSettingsDto b)
-    {
-        static void Mm(decimal? v, string name, decimal max)
-        {
-            if (v is null) return;
-            if (v.Value < 0 || v.Value > max)
-                throw new ArgumentOutOfRangeException(name, $"قيمة {name} خارج النطاق.");
-        }
-
-        if (b.StampWidthCm is > 0 and (< 0.5m or > 20m))
-            throw new ArgumentOutOfRangeException(nameof(b.StampWidthCm), "عرض الختم يجب أن يكون بين 0.5 و 20 سم.");
-        if (b.StampHeightCm is > 0 and (< 0.5m or > 20m))
-            throw new ArgumentOutOfRangeException(nameof(b.StampHeightCm), "ارتفاع الختم يجب أن يكون بين 0.5 و 20 سم.");
-        if (b.SignatureWidthCm is > 0 and (< 0.5m or > 20m))
-            throw new ArgumentOutOfRangeException(nameof(b.SignatureWidthCm), "عرض التوقيع يجب أن يكون بين 0.5 و 20 سم.");
-        if (b.SignatureHeightCm is > 0 and (< 0.5m or > 20m))
-            throw new ArgumentOutOfRangeException(nameof(b.SignatureHeightCm), "ارتفاع التوقيع يجب أن يكون بين 0.5 و 20 سم.");
-        Mm(b.LetterheadHeadMm, "الهامش الأعلى", 297);
-        Mm(b.LetterheadFootTopMm, "الهامش الأسفل", 297);
-        Mm(b.LetterheadPadMm, "الهامش الأيسر", 210);
-        Mm(b.LetterheadPadStartMm, "الهامش الأيمن", 210);
-        Mm(b.LetterheadStripMm, "شريط الكليشة", 210);
-    }
-
     private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
     {
         var provider = (c.OtpProvider ?? "dev-log").Trim().ToLowerInvariant();
@@ -244,7 +221,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
 
     private OrganizationSettingsDto Defaults() => new()
     {
-        Company = new OrganizationCompanySettingsDto(),
+        Company = NormalizeCompany(new OrganizationCompanySettingsDto()),
         Evaluator = new OrganizationEvaluatorSettingsDto(),
         Valuers = [],
         Branding = new OrganizationBrandingSettingsDto(),
@@ -263,13 +240,14 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 ?? Defaults();
             return new OrganizationSettingsDto
             {
-                Company = dto.Company ?? new OrganizationCompanySettingsDto(),
+                // Empty practice-license dates in old JSON blobs are filled here — UI defaults
+                // used to paint over nulls without ever writing them back to SettingsJson.
+                Company = NormalizeCompany(dto.Company),
                 Evaluator = dto.Evaluator ?? new OrganizationEvaluatorSettingsDto(),
                 Valuers = NormalizeValuers(dto.Valuers),
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
                 Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
- // They were dropped here and the saved values were lost when reading - Correction.
                 Valuation = dto.Valuation ?? new OrganizationValuationSettingsDto(),
                 ValuationReport = NormalizeValuationReport(
                     dto.ValuationReport ?? new OrganizationValuationReportSettingsDto()),
@@ -401,7 +379,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         SaveOrganizationSettingsRequest request) =>
         new()
         {
-            Company = request.Company ?? current.Company,
+            Company = NormalizeCompany(request.Company ?? current.Company),
             Evaluator = request.Evaluator ?? current.Evaluator,
             Valuers = request.Valuers is null
                 ? NormalizeValuers(current.Valuers)
@@ -414,6 +392,42 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 request.ValuationReport ?? current.ValuationReport),
             UpdatedAtUtc = _time.UtcNow(),
         };
+
+    /// <summary>
+    /// Firm practice-license fields — same defaults as frontend ORG_COMPANY_DEFAULTS.
+    /// Old SettingsJson rows often omit these keys; without this the API returns null while
+    /// the settings UI paints defaults that never get written until an explicit company save.
+    /// </summary>
+    private static OrganizationCompanySettingsDto NormalizeCompany(
+        OrganizationCompanySettingsDto? company)
+    {
+        var c = company ?? new OrganizationCompanySettingsDto();
+        return new OrganizationCompanySettingsDto
+        {
+            Name = string.IsNullOrWhiteSpace(c.Name)
+                ? "شركة إجادة المهنية للتقييم العقاري"
+                : c.Name.Trim(),
+            TaxNumber = BlankToNull(c.TaxNumber),
+            Address = BlankToNull(c.Address),
+            CommercialRegistration = BlankToNull(c.CommercialRegistration),
+            PracticeLicenseNumber = string.IsNullOrWhiteSpace(c.PracticeLicenseNumber)
+                ? "1302"
+                : c.PracticeLicenseNumber.Trim(),
+            PracticeLicenseIssuedAt = string.IsNullOrWhiteSpace(c.PracticeLicenseIssuedAt)
+                ? "2022-03-10"
+                : c.PracticeLicenseIssuedAt.Trim(),
+            PracticeLicenseExpiresAt = string.IsNullOrWhiteSpace(c.PracticeLicenseExpiresAt)
+                ? "2027-03-10"
+                : c.PracticeLicenseExpiresAt.Trim(),
+            CertifiedValuerId = BlankToNull(c.CertifiedValuerId),
+            Email = BlankToNull(c.Email),
+            Phone = BlankToNull(c.Phone),
+            Website = BlankToNull(c.Website),
+        };
+    }
+
+    private static string? BlankToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>Valuation Report text: blank ⟵ template default; trim long fields.</summary>
     private static OrganizationValuationReportSettingsDto NormalizeValuationReport(

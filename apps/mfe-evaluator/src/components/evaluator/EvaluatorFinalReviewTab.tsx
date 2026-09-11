@@ -40,7 +40,6 @@ import {
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
-import { FinalOpinionExtraAttachmentsCard } from "./valuation-work/FinalOpinionParts";
 import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
 import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
@@ -150,7 +149,7 @@ export function EvaluatorFinalReviewTab({
   const printOrderKeys = useMemo(
     () =>
       resolvePrintAttachmentOrder(
-        printRows.map((row) => row.key),
+        printRows.filter((row) => row.printable).map((row) => row.key),
         choices.printAttachmentOrder,
       ),
     [printRows, choices.printAttachmentOrder],
@@ -490,16 +489,14 @@ export function EvaluatorFinalReviewTab({
       </ValCard>
 
       <ValCard title="مرفقات التقرير">
-        <div className="flex flex-col gap-2">
-          <ValuationReportAttachmentsEditor
-            rows={printRows}
-            selectedKeys={choices.printAttachmentKeys}
-            orderKeys={printOrderKeys}
-            disabled={disabled}
-            onChange={(patch) => onReportChoicesPatch?.(patch)}
-          />
-          <FinalOpinionExtraAttachmentsCard disabled={disabled} />
-        </div>
+        {/* Documents come from the property's documents tab — no uploads from the valuer's screen. */}
+        <ValuationReportAttachmentsEditor
+          rows={printRows}
+          selectedKeys={choices.printAttachmentKeys}
+          orderKeys={printOrderKeys}
+          disabled={disabled}
+          onChange={(patch) => onReportChoicesPatch?.(patch)}
+        />
       </ValCard>
     </div>
   );

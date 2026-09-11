@@ -154,12 +154,21 @@ function formatMoney(n: number): string {
   return fmt(n, 0);
 }
 
+/**
+ * Typed documents match by their governed type only (so «تقرير تقييم المنقولات» is never taken
+ * for the valuation report); untyped rows still match by name.
+ */
 function findDoc(
   sections: PropertyDetailDocumentSection[],
   matchers: (name: string) => boolean,
+  typeKeys: readonly string[] = [],
 ): PropertyDetailDocumentEntry | null {
   for (const section of sections) {
     for (const doc of section.documents) {
+      if (doc.documentTypeKey) {
+        if (typeKeys.includes(doc.documentTypeKey)) return doc;
+        continue;
+      }
       if (matchers(doc.name) || matchers(doc.fileName)) return doc;
     }
   }
@@ -172,9 +181,17 @@ function buildAttachments(
   depositCertificateName?: string | null,
 ): InfathUploadAttachment[] {
   const caseStudy = findDoc(sections, (n) => n.includes("دراسة"));
-  const appraisal = findDoc(sections, (n) => n.includes("تقييم"));
-  const survey = findDoc(sections, (n) => n.includes("رفع") || n.includes("مساح"));
-  const deed = findDoc(sections, (n) => n.includes("صك") || n.includes("سجل"));
+  const appraisal = findDoc(sections, (n) => n.includes("تقييم"), ["valuation-report"]);
+  const survey = findDoc(
+    sections,
+    (n) => n.includes("رفع") || n.includes("مساح"),
+    ["survey"],
+  );
+  const deed = findDoc(
+    sections,
+    (n) => n.includes("صك") || n.includes("سجل"),
+    ["deed", "bourse-deed", "real-estate-registry"],
+  );
 
   const items: InfathUploadAttachment[] = [
     {

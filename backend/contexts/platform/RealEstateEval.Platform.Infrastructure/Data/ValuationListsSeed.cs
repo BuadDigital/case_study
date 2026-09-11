@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Platform.Infrastructure.Data;
 
@@ -170,32 +171,54 @@ internal static class ValuationListsSeed
         ];
     }
 
+    /// <summary>
+    /// Report attachments = the configurable property document types. Keys come from
+    /// <see cref="PropertyDocumentTypes"/>; admins edit label, requiredness and property types.
+    /// </summary>
     private static List<ValuationListItemDto> Attachments()
     {
         var i = 0;
-        ValuationListItemDto A(string key, string name, bool required, string property, int usage) =>
-            new()
-            {
-                Id = key,
-                Key = key,
-                Name = name,
-                Cells = [required ? "إلزامي" : "اختياري", property],
-                IsEnabled = true,
-                DefaultName = name,
-                Usage = usage,
-                SortOrder = ++i,
-                IsSystemDefault = true,
-                IsRequired = required,
-                PropertyTypeKeys = property is "الكل" or "" ? [] : [property],
-            };
+        return PropertyDocumentTypes.All
+            .Where(t => t.IsConfigurable)
+            .Select(t => AttachmentRow(t, ++i))
+            .ToList();
+    }
 
-        return
-        [
-            A("deed", "صك الملكية", true, "الكل", 240),
-            A("survey", "التقرير المساحي", true, "أرض", 105),
-            A("zoning-sketch", "كروكي الموقع", false, "الكل", 77),
-            A("building-permit", "رخصة البناء", true, "مبني", 131),
-        ];
+    /// <summary>
+    /// A stored list predates some registry types — append each missing one with its defaults,
+    /// after the admin's own rows, so every governed type is configurable.
+    /// </summary>
+    internal static List<ValuationListItemDto> WithRegistryAttachments(IReadOnlyList<ValuationListItemDto> rows)
+    {
+        var present = rows.Select(r => r.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var nextOrder = rows.Count == 0 ? 0 : rows.Max(r => r.SortOrder);
+        var merged = rows.ToList();
+        foreach (var type in PropertyDocumentTypes.All.Where(t => t.IsConfigurable && !present.Contains(t.Key)))
+            merged.Add(AttachmentRow(type, ++nextOrder));
+        return merged;
+    }
+
+    private static ValuationListItemDto AttachmentRow(PropertyDocumentType type, int sortOrder)
+    {
+        var propertyKeys = PropertyDocumentTypes.DefaultPropertyTypeKeys(type);
+        return new ValuationListItemDto
+        {
+            Id = type.Key,
+            Key = type.Key,
+            Name = type.LabelAr,
+            Cells =
+            [
+                type.DefaultRequired ? "إلزامي" : "اختياري",
+                propertyKeys.Count == 0 ? "الكل" : string.Join("، ", propertyKeys),
+            ],
+            IsEnabled = true,
+            DefaultName = type.LabelAr,
+            Usage = 0,
+            SortOrder = sortOrder,
+            IsSystemDefault = true,
+            IsRequired = type.DefaultRequired,
+            PropertyTypeKeys = propertyKeys,
+        };
     }
 
     private static List<ValuationListItemDto> Glossary()

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Spinner } from "@platform/ui-kit";
+import { Button, Note, Spinner, useToast } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   getApiBase,
   getBuildingInventory,
@@ -18,6 +19,7 @@ import {
   ensureOpenValuationRequestByProperty,
   createValuationReportPdf,
   valuationReportPdfAbsoluteUrl,
+  notifyIntakeFieldGap,
   type ValuationReportPdfLinkDto,
   type ValuationReportPdfResult,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
@@ -47,6 +49,8 @@ import {
   assignmentValuationFromPo,
   buildValuationReportLiveFill,
   certifiedPracticeLicenseFromOrg,
+  reportMissingIntakeLinksFromCells,
+  type ReportMissingIntakeLink,
   type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
 import {
@@ -68,9 +72,6 @@ type ValuationApiConfig = { token: string; baseUrl: string };
 declare global {
   interface Window {
     __ejadahImageSlotsEditable?: boolean;
-    omelette?: {
-      writeFile?: (path: string, content: string) => void | Promise<void>;
-    };
   }
 }
 
@@ -583,6 +584,54 @@ export function EvaluatorValuationReportOutputTab({
     ],
   );
 
+  const missingIntakeLinks = useMemo((): ReportMissingIntakeLink[] => {
+    if (!outputQuery.isSuccess) return [];
+    const loaded = org;
+    try {
+      const meta = buildReportMeta(loaded);
+      return reportMissingIntakeLinksFromCells(meta.live.cells);
+    } catch {
+      return [];
+    }
+  }, [buildReportMeta, org, outputQuery.isSuccess]);
+
+  const { showToast } = useToast();
+  const [notifyingKey, setNotifyingKey] = useState<string | null>(null);
+
+  const notifyMissingIntake = useCallback(
+    async (item: ReportMissingIntakeLink) => {
+      const config = apiConfig();
+      const po = draft.poNumber?.trim() ?? "";
+      const propertyId = property?.id?.trim() ?? "";
+      if (!config || !po || !propertyId) {
+        showToast("تعذّر تحديد أمر العمل أو العقار لإرسال الإشعار", "error");
+        return;
+      }
+      setNotifyingKey(item.fieldKey);
+      const res = await notifyIntakeFieldGap(config, po, propertyId, {
+        fieldLabel: item.label,
+        fieldKey: item.fieldKey,
+      });
+      setNotifyingKey(null);
+      if (!res.ok) {
+        const msg =
+          res.kind === "validation"
+            ? Object.values(res.errors ?? {})[0]
+            : res.kind === "forbidden"
+              ? "ليس لديك صلاحية لإرسال إشعار نقص البيانات"
+              : "تعذّر إرسال الإشعار — أعد المحاولة";
+        showToast(String(msg ?? "تعذّر إرسال الإشعار"), "error");
+        return;
+      }
+      showToast(
+        res.data.notifiedCount > 1
+          ? `تم إشعار ${res.data.notifiedCount} من مسؤولي البيانات الأولية بنقص «${item.label}»`
+          : `تم إشعار البيانات الأولية بنقص «${item.label}»`,
+        "success",
+      );
+    },
+    [draft.poNumber, property?.id, showToast],
+  );
 
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
@@ -808,76 +857,34 @@ export function EvaluatorValuationReportOutputTab({
     };
   }, [screenHtml]);
 
-  // Enable HTML image-slot Edit / pan / scale in the report preview (same as valuation-report-v3.html).
+  // Screen report is read-only: show filled <image-slot> images, never browse/upload/reframe.
   useEffect(() => {
     if (!screenHtml) return;
     let cancelled = false;
     const reportRoot = document.querySelector(".rpt-ref");
     if (!reportRoot) return;
 
-    window.__ejadahImageSlotsEditable = true;
-    const prevWrite = window.omelette?.writeFile;
-    window.omelette = {
-      ...(window.omelette ?? {}),
-      writeFile: (path, content) => {
-        if (String(path).includes("image-slots.state")) {
-          try {
-            const parsed = JSON.parse(content) as Record<
-              string,
-              string | { u?: string; s?: number; x?: number; y?: number }
-            >;
-            const nextFrames: Record<string, { s: number; x: number; y: number }> =
-              {
-                ...(draft.reportChoices?.reportSlotFrames ?? {}),
-              };
-            for (const [id, value] of Object.entries(parsed)) {
-              if (!value || typeof value === "string") continue;
-              nextFrames[id] = {
-                s: typeof value.s === "number" ? value.s : 1,
-                x: typeof value.x === "number" ? value.x : 0,
-                y: typeof value.y === "number" ? value.y : 0,
-              };
-            }
-            onReportChoicesPatch?.({ reportSlotFrames: nextFrames });
-          } catch {
-            /* ignore malformed sidecar writes */
-          }
-          return;
-        }
-        return prevWrite?.(path, content);
-      },
-    };
+    window.__ejadahImageSlotsEditable = false;
 
     void ensureImageSlotCustomElement()
       .then(() => {
         if (cancelled) return;
-        // Re-run attributeChanged / connected logic after upgrade.
         reportRoot.querySelectorAll("image-slot").forEach((node) => {
-          const el = node as HTMLElement & { attributeChangedCallback?: unknown };
-          // Nudge upgrade: toggle a data attr so filled slots re-apply view.
+          const el = node as HTMLElement;
+          el.removeAttribute("data-editable");
           const src = el.getAttribute("src");
-          if (src) {
-            el.setAttribute("src", src);
-          }
+          if (src) el.setAttribute("src", src);
         });
       })
       .catch(() => {
-        /* preview still works without reframe */
+        /* preview still works without custom element upgrade */
       });
 
     return () => {
       cancelled = true;
       window.__ejadahImageSlotsEditable = false;
-      if (window.omelette) {
-        if (prevWrite) window.omelette.writeFile = prevWrite;
-        else delete window.omelette.writeFile;
-      }
     };
-  }, [
-    screenHtml,
-    draft.reportChoices?.reportSlotFrames,
-    onReportChoicesPatch,
-  ]);
+  }, [screenHtml]);
 
   if (error && !screenHtml) {
     return <p className="m-0 text-[13px] text-[#b42318]">{error}</p>;
@@ -959,6 +966,41 @@ export function EvaluatorValuationReportOutputTab({
         >
           {mapNotice}
         </p>
+      ) : null}
+      {missingIntakeLinks.length > 0 ? (
+        <Note
+          tone="warn"
+          role="alert"
+          className="mb-3"
+          data-testid="report-missing-intake"
+        >
+          <div className="flex flex-col gap-2">
+            <p className="m-0 font-semibold">
+              حقول ناقصة من البيانات الأولية — تم تمييزها بالأحمر في التقرير.
+            </p>
+            <p className="m-0 text-[11px] text-text-2">
+              أرسل إشعاراً لمسؤول البيانات الأولية لاستكمال الحقل:
+            </p>
+            <div className="flex flex-col gap-2">
+              {missingIntakeLinks.map((item) => (
+                <button
+                  key={item.targetId}
+                  type="button"
+                  disabled={notifyingKey === item.fieldKey}
+                  className="flex w-full items-start justify-between gap-3 rounded-xl border border-[#F5C2C7] bg-white px-3 py-2 text-right text-[11px] text-danger-text transition-colors hover:bg-[#FFF5F5] disabled:opacity-60"
+                  onClick={() => void notifyMissingIntake(item)}
+                >
+                  <span className="min-w-0 flex-1 leading-5 break-words">
+                    {item.message}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-text-3">
+                    {notifyingKey === item.fieldKey ? "جاري الإرسال…" : "إشعار"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Note>
       ) : null}
       <div
         className="rpt-ref min-w-0"

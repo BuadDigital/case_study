@@ -29,6 +29,7 @@ import {
   applyIvsDateToStandards,
   isNoExternalSpecialistAssumption,
   type BuildingInventoryLineDto,
+  ORG_COMPANY_DEFAULTS,
   type ClientDto,
   type OrganizationValuerRosterEntry,
   type ValuationComparableSelectionListDto,
@@ -218,7 +219,9 @@ export function displayLicenseDate(
 
 /**
  * Practice-license cells next to «رقم ترخيص مزاولة المهنة».
- * Firm dates from بيانات المنشأة win; personal evaluator dates are fallback.
+ * Always from بيانات المنشأة (saved company fields, else ORG_COMPANY_DEFAULTS —
+ * same fallback the settings UI shows). Personal evaluator license dates are
+ * not used for these report cells.
  */
 export function certifiedPracticeLicenseFromOrg(org: {
   company?: {
@@ -234,20 +237,19 @@ export function certifiedPracticeLicenseFromOrg(org: {
   } | null;
 }): { number: string; issuedAt: string; expiresAt: string } {
   const company = org.company ?? {};
-  const evaluator = org.evaluator ?? {};
+  const firm = ORG_COMPANY_DEFAULTS;
   return {
     number: firstFilled(
-      evaluator.licenseNumber,
       company.practiceLicenseNumber,
+      firm.practiceLicenseNumber,
     ),
     issuedAt: displayLicenseDate(
       company.practiceLicenseIssuedAt,
-      evaluator.licenseIssuedAt,
+      firm.practiceLicenseIssuedAt,
     ),
     expiresAt: displayLicenseDate(
       company.practiceLicenseExpiresAt,
-      evaluator.licenseExpiresAt,
-      evaluator.licenseExpiresHijri,
+      firm.practiceLicenseExpiresAt,
     ),
   };
 }
