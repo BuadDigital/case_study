@@ -33,6 +33,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
+        services.AddScoped<IFieldGapNotificationService, FieldGapNotificationService>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IBuildingInventoryRepository, BuildingInventoryRepository>();

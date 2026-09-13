@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Note, Spinner, useToast } from "@platform/ui-kit";
+import { Button } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
-import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   getApiBase,
   getBuildingInventory,
@@ -19,7 +18,6 @@ import {
   ensureOpenValuationRequestByProperty,
   createValuationReportPdf,
   valuationReportPdfAbsoluteUrl,
-  notifyIntakeFieldGap,
   type ValuationReportPdfLinkDto,
   type ValuationReportPdfResult,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
@@ -44,13 +42,15 @@ import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
-import { fetchValuationReportV3Html } from "../../lib/evaluator/valuation-report-v3-preview";
+import {
+  fetchValuationReportV3Html,
+  prefetchValuationReportTemplate,
+} from "../../lib/evaluator/valuation-report-v3-preview";
+import { ValuationReportLoading } from "./ValuationReportLoading";
 import {
   assignmentValuationFromPo,
   buildValuationReportLiveFill,
   certifiedPracticeLicenseFromOrg,
-  reportMissingIntakeLinksFromCells,
-  type ReportMissingIntakeLink,
   type ValuationReportSurveyBounds,
 } from "../../lib/evaluator/valuation-report-live-fill";
 import {
@@ -66,6 +66,8 @@ import {
 } from "../../lib/evaluator/valuation-report-comparables-map";
 import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
+import { ReportMissingFieldPrompt } from "./ReportMissingFieldPrompt";
+import type { ReportAppraiserTab } from "../../lib/evaluator/valuation-report-missing-fields";
 
 type ValuationApiConfig = { token: string; baseUrl: string };
 
@@ -365,6 +367,9 @@ export function EvaluatorValuationReportOutputTab({
   surveyTaskId,
   assignedAppraiserName,
   onReportChoicesPatch,
+  onNavigateTab,
+  showActions = true,
+  showMissingFields = true,
 }: {
   draft: EvaluatorSubmission;
   property?: PoPropertyIntake | null;
@@ -373,7 +378,20 @@ export function EvaluatorValuationReportOutputTab({
   /** From work-order dispatch — printed as a fourth participants column. */
   assignedAppraiserName?: string | null;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
+  /** A red appraiser field in the report opens the evaluator tab that completes it. */
+  onNavigateTab?: (tab: ReportAppraiserTab) => void;
+  /** False on read-only embeds (property page): no PDF link / print toolbar. */
+  showActions?: boolean;
+  /** False on read-only embeds (property page): no red missing-field marks or notify prompt. */
+  showMissingFields?: boolean;
 }) {
+  const reportRef = useRef<HTMLDivElement>(null);
+  // Template and organization settings don't depend on the property data — start them
+  // now, beside the data bundle, instead of after it (both are cached for the build).
+  useEffect(() => {
+    prefetchValuationReportTemplate();
+    void ensureOrganizationSettingsLoaded().catch(() => null);
+  }, []);
   const [screenHtml, setScreenHtml] = useState<string | null>(null);
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const clients = EMPTY_OUTPUT_CLIENTS;
@@ -584,55 +602,6 @@ export function EvaluatorValuationReportOutputTab({
     ],
   );
 
-  const missingIntakeLinks = useMemo((): ReportMissingIntakeLink[] => {
-    if (!outputQuery.isSuccess) return [];
-    const loaded = org;
-    try {
-      const meta = buildReportMeta(loaded);
-      return reportMissingIntakeLinksFromCells(meta.live.cells);
-    } catch {
-      return [];
-    }
-  }, [buildReportMeta, org, outputQuery.isSuccess]);
-
-  const { showToast } = useToast();
-  const [notifyingKey, setNotifyingKey] = useState<string | null>(null);
-
-  const notifyMissingIntake = useCallback(
-    async (item: ReportMissingIntakeLink) => {
-      const config = apiConfig();
-      const po = draft.poNumber?.trim() ?? "";
-      const propertyId = property?.id?.trim() ?? "";
-      if (!config || !po || !propertyId) {
-        showToast("تعذّر تحديد أمر العمل أو العقار لإرسال الإشعار", "error");
-        return;
-      }
-      setNotifyingKey(item.fieldKey);
-      const res = await notifyIntakeFieldGap(config, po, propertyId, {
-        fieldLabel: item.label,
-        fieldKey: item.fieldKey,
-      });
-      setNotifyingKey(null);
-      if (!res.ok) {
-        const msg =
-          res.kind === "validation"
-            ? Object.values(res.errors ?? {})[0]
-            : res.kind === "forbidden"
-              ? "ليس لديك صلاحية لإرسال إشعار نقص البيانات"
-              : "تعذّر إرسال الإشعار — أعد المحاولة";
-        showToast(String(msg ?? "تعذّر إرسال الإشعار"), "error");
-        return;
-      }
-      showToast(
-        res.data.notifiedCount > 1
-          ? `تم إشعار ${res.data.notifiedCount} من مسؤولي البيانات الأولية بنقص «${item.label}»`
-          : `تم إشعار البيانات الأولية بنقص «${item.label}»`,
-        "success",
-      );
-    },
-    [draft.poNumber, property?.id, showToast],
-  );
-
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
     // Do not build the report before the output bundle arrives — previously built empty
@@ -650,6 +619,7 @@ export function EvaluatorValuationReportOutputTab({
             ...buildReportMeta(loaded),
             branding: loaded?.branding ?? null,
             valuers: loaded?.valuers ?? [],
+            markMissingFields: showMissingFields,
           },
           "screen",
         );
@@ -667,7 +637,7 @@ export function EvaluatorValuationReportOutputTab({
     };
     // Intentionally omit `org`: this effect loads org and builds HTML.
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
-  }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess]);
+  }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess, showMissingFields]);
 
   /** Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it. */
   const preparePrintHtml = useCallback(
@@ -889,38 +859,33 @@ export function EvaluatorValuationReportOutputTab({
   if (error && !screenHtml) {
     return <p className="m-0 text-[13px] text-[#b42318]">{error}</p>;
   }
-  if (!screenHtml) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-[13px] text-text-3">
-        <Spinner />
-        <span>جاري تجهيز تقرير التقييم…</span>
-      </div>
-    );
-  }
+  if (!screenHtml) return <ValuationReportLoading />;
 
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pdfBusy || printing || !pdfRequestId}
-          title="ينشئ ملف PDF على الخادم ويفتحه من رابط ينتهي بـ .pdf يمكن مشاركته"
-          onClick={() => void createPdfLink()}
-        >
-          {pdfBusy ? "جاري إنشاء PDF…" : "رابط PDF"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={printing || pdfBusy}
-          onClick={() => void print()}
-        >
-          {printing ? "جاري التجهيز…" : "طباعة / PDF"}
-        </Button>
-      </div>
+      {showActions ? (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pdfBusy || printing || !pdfRequestId}
+            title="ينشئ ملف PDF على الخادم ويفتحه من رابط ينتهي بـ .pdf يمكن مشاركته"
+            onClick={() => void createPdfLink()}
+          >
+            {pdfBusy ? "جاري إنشاء PDF…" : "رابط PDF"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={printing || pdfBusy}
+            onClick={() => void print()}
+          >
+            {printing ? "جاري التجهيز…" : "طباعة / PDF"}
+          </Button>
+        </div>
+      ) : null}
       {pdfLink ? (
         <div
           className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-[#e6e1d6] bg-[#faf8f3] px-3 py-2 text-[12px] text-[#3a3f4d]"
@@ -967,45 +932,20 @@ export function EvaluatorValuationReportOutputTab({
           {mapNotice}
         </p>
       ) : null}
-      {missingIntakeLinks.length > 0 ? (
-        <Note
-          tone="warn"
-          role="alert"
-          className="mb-3"
-          data-testid="report-missing-intake"
-        >
-          <div className="flex flex-col gap-2">
-            <p className="m-0 font-semibold">
-              حقول ناقصة من البيانات الأولية — تم تمييزها بالأحمر في التقرير.
-            </p>
-            <p className="m-0 text-[11px] text-text-2">
-              أرسل إشعاراً لمسؤول البيانات الأولية لاستكمال الحقل:
-            </p>
-            <div className="flex flex-col gap-2">
-              {missingIntakeLinks.map((item) => (
-                <button
-                  key={item.targetId}
-                  type="button"
-                  disabled={notifyingKey === item.fieldKey}
-                  className="flex w-full items-start justify-between gap-3 rounded-xl border border-[#F5C2C7] bg-white px-3 py-2 text-right text-[11px] text-danger-text transition-colors hover:bg-[#FFF5F5] disabled:opacity-60"
-                  onClick={() => void notifyMissingIntake(item)}
-                >
-                  <span className="min-w-0 flex-1 leading-5 break-words">
-                    {item.message}
-                  </span>
-                  <span className="shrink-0 text-[10px] text-text-3">
-                    {notifyingKey === item.fieldKey ? "جاري الإرسال…" : "إشعار"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Note>
-      ) : null}
       <div
+        ref={reportRef}
         className="rpt-ref min-w-0"
         dangerouslySetInnerHTML={{ __html: screenHtml }}
       />
+      {showMissingFields ? (
+        <ReportMissingFieldPrompt
+          rootRef={reportRef}
+          html={screenHtml}
+          poNumber={draft.poNumber ?? ""}
+          propertyId={property?.id ?? ""}
+          onNavigateTab={onNavigateTab}
+        />
+      ) : null}
     </div>
   );
 }

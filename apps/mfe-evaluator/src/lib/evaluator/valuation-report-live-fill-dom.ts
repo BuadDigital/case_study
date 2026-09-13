@@ -853,10 +853,24 @@ export function fillBulletListSection(
   if (!ul) return;
   const doc = sec.ownerDocument;
   ul.replaceChildren();
+  // A line starting with "- " is a sub-clause of the bullet above it (e.g. §31 «للمباني والعقارات القائمة:»).
+  let parent: Element | null = null;
   for (const text of bullets) {
+    const sub = /^-\s+/.exec(text);
     const li = doc.createElement("li");
+    if (sub && parent) {
+      let nested = parent.querySelector("ul");
+      if (!nested) {
+        nested = doc.createElement("ul");
+        parent.appendChild(nested);
+      }
+      li.textContent = text.slice(sub[0].length);
+      nested.appendChild(li);
+      continue;
+    }
     li.textContent = text;
     ul.appendChild(li);
+    parent = li;
   }
 }
 

@@ -45,6 +45,13 @@ import {
   useSubmitValuationReportMutation,
   useValuationRequestsQuery,
 } from "../query/valuation-queries";
+import { useValuationRequestPropertyRowsQuery } from "../query/valuation-request-properties";
+import {
+  valuationRequestPropertiesById,
+  valuationRequestSearchText,
+  valuationRequestTypeLabel,
+  type ValuationRequestProperty,
+} from "../lib/valuation-request-property";
 
 function SearchIcon() {
   return (
@@ -57,6 +64,39 @@ function SearchIcon() {
 
 function isValuationMgr(role: RoleId) {
   return isSuperAdmin(role) || role === "general-manager";
+}
+
+/** Deed number + work order for the request's property; «عقار محذوف» when it no longer exists. */
+function RequestPropertyCell({
+  property,
+  propertiesLoaded,
+}: {
+  property: ValuationRequestProperty | undefined;
+  propertiesLoaded: boolean;
+}) {
+  if (property) {
+    return (
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold text-primary-light" dir="ltr">
+          {property.deed || "—"}
+        </div>
+        {property.poNumber ? (
+          <div className="mt-0.5 text-[11px] text-text-3" dir="ltr">
+            {property.poNumber}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+  if (!propertiesLoaded) return <span className="text-text-3">…</span>;
+  return (
+    <span
+      className="text-[12px] font-semibold text-red"
+      title="العقار المرتبط بهذا الطلب لم يعد موجوداً في أوامر العمل"
+    >
+      عقار محذوف
+    </span>
+  );
 }
 
 const mobileLoadingSkeleton = (
@@ -79,6 +119,7 @@ export function ValuationRequestsView() {
   const mgr = isValuationMgr(role);
   const isApp = role === "real-estate-appraiser";
   const { data: vr = [], isPending } = useValuationRequestsQuery();
+  const propertyRowsQuery = useValuationRequestPropertyRowsQuery();
   const submitReport = useSubmitValuationReportMutation();
   const submitImpediment = useSubmitValuationImpedimentMutation();
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
@@ -88,6 +129,13 @@ export function ValuationRequestsView() {
   const deferredSearch = useDeferredValue(search);
   // After hydration mount only one tree (table or cards) — both used to build together.
   const isDesktopViewport = useViewportDesktop();
+
+  const propertiesById = useMemo(
+    () => valuationRequestPropertiesById(propertyRowsQuery.data ?? []),
+    [propertyRowsQuery.data],
+  );
+  // Only call a property «deleted» once the rows actually loaded.
+  const propertiesLoaded = propertyRowsQuery.isSuccess;
 
   const { done, prog, failed } = useMemo(() => {
     let done = 0;
@@ -104,19 +152,14 @@ export function ValuationRequestsView() {
 
   const rows = useMemo(() => {
     const q = deferredSearch.trim();
-    // Short-circuit predicates instead of join(" ") — was array + string per row per keystroke.
     return vr.filter((v) => {
       const okS = status === "all" || v.status === status;
       const okQ =
         !q ||
-        v.id.includes(q) ||
-        v.propId.includes(q) ||
-        v.area.includes(q) ||
-        v.type.includes(q) ||
-        v.appraiser.includes(q);
+        valuationRequestSearchText(v, propertiesById.get(v.propId)).includes(q);
       return okS && okQ;
     });
-  }, [vr, deferredSearch, status]);
+  }, [vr, deferredSearch, status, propertiesById]);
 
   const handleSubmitReport = async (recordId: string) => {
     const ok = window.confirm("تأكيد رفع تقرير التقييم وإرساله لدراسة الحالة؟");
@@ -270,14 +313,14 @@ export function ValuationRequestsView() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative flex items-center">
-              <span className="pointer-events-none absolute inset-inline-start-3 text-text-3">
+              <span className="pointer-events-none absolute start-3 text-text-3">
                 <SearchIcon />
               </span>
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="رقم الطلب أو العقار أو المنطقة..."
+                placeholder="رقم الطلب أو الصك أو أمر العمل..."
                 className={cn(
                   "w-[240px] rounded-lg border border-border-md bg-surface py-[9px] pe-3.5 ps-9 text-[13px] outline-none transition",
                   "focus:border-gold focus:shadow-[0_0_0_3px_rgba(164,144,111,.22)]",
@@ -326,16 +369,23 @@ export function ValuationRequestsView() {
                 </Td>
               </Tr>
             ) : (
-              rows.map((v) => (
+              rows.map((v) => {
+                const property = propertiesById.get(v.propId);
+                return (
                 <Tr key={v.recordId} hoverable={false}>
                   <Td className="font-bold text-[color-mix(in_srgb,var(--gold)_55%,#12284C)]">
                     {v.id}
                   </Td>
-                  <Td className="text-primary-light">{v.propId}</Td>
+                  <Td>
+                    <RequestPropertyCell
+                      property={property}
+                      propertiesLoaded={propertiesLoaded}
+                    />
+                  </Td>
                   <Td>{v.area}</Td>
                   <Td>
                     <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-0.5 text-[12px] font-medium text-text-2">
-                      {v.type}
+                      {valuationRequestTypeLabel(v.type, property)}
                     </span>
                   </Td>
                   <Td>
@@ -392,7 +442,8 @@ export function ValuationRequestsView() {
                     </div>
                   </Td>
                 </Tr>
-              ))
+                );
+              })
             )}
           </TBody>
         </Table>
@@ -410,6 +461,7 @@ export function ValuationRequestsView() {
           ) : (
             <ul className="m-0 flex list-none flex-col gap-3 p-0">
               {rows.map((v) => {
+                const property = propertiesById.get(v.propId);
                 const tone =
                   v.status === "fail"
                     ? "border-s-red"
@@ -432,15 +484,18 @@ export function ValuationRequestsView() {
                         <div className="text-[14px] font-bold text-heading">
                           {v.id}
                         </div>
-                        <div className="mt-0.5 text-[12px] text-text-2" dir="ltr">
-                          {v.propId}
+                        <div className="mt-0.5">
+                          <RequestPropertyCell
+                            property={property}
+                            propertiesLoaded={propertiesLoaded}
+                          />
                         </div>
                       </div>
                       <StatusBadge status={v.status} />
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
                       <span>{v.area || "—"}</span>
-                      <span>{v.type || "—"}</span>
+                      <span>{valuationRequestTypeLabel(v.type, property)}</span>
                       <span>{v.appraiser || "بدون مقيم"}</span>
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-2">

@@ -69,6 +69,9 @@ export {
   updateWorkOrderProperty,
   updateSpecialistReportExtras,
   notifyIntakeFieldGap,
+  getWorkOrderFieldSources,
+  type FieldGapResponsibleDto,
+  type WorkOrderFieldSourcesDto,
   workOrderExists,
   type ApiErr,
   type ApiOk,
@@ -529,8 +532,13 @@ export {
 
 export {
   getOrganizationSettings,
+  getOrganizationSettingsSectionEditors,
+  notifyOrganizationSettingsGap,
   saveOrganizationSettings,
   testOrganizationCommunication,
+  type NotifyOrganizationSettingsGapRequest,
+  type OrganizationSettingsSectionEditor,
+  type OrganizationSettingsSectionEditorsDto,
   emptyValuationReportSettings,
   VALUATION_REPORT_HTML_DEFAULTS,
   isNoExternalSpecialistAssumption,

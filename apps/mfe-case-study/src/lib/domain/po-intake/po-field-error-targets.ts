@@ -17,6 +17,7 @@ import {
 
 /** Top→bottom order for property edit / task work forms. */
 export const PO_PROPERTY_ERROR_KEY_ORDER = [
+  "deedVitality",
   "deedNumber",
   "realEstateRegNumber",
   "realEstateRegDate",
@@ -66,6 +67,8 @@ export function poPropertyErrorTargetId(
   }
 
   switch (key) {
+    case "deedVitality":
+      return "deed_vitality";
     case "deedNumber":
       return isBourse ? "deed_number_bourse" : "deed_number";
     case "requestNumber":

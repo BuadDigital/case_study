@@ -1,10 +1,10 @@
 import {
-  downloadAttachmentBlob,
   getAttachmentMeta,
   listAttachmentsForProperty,
   type FileAttachmentMetaDto,
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
+import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { pdfBlobToFirstPageDataUrl } from "@platform/app-shared/media/pdf-first-page-preview";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
@@ -150,7 +150,8 @@ async function toSlot(
   row: FileAttachmentMetaDto,
   typeKey: string,
 ): Promise<ValuationReportSlotAttachment | null> {
-  const blobRes = await downloadAttachmentBlob(config, row.id);
+  // Shared per-id cache: the inspector photo previews on the same screen already downloaded these.
+  const blobRes = await downloadAttachmentBlobOnce(config, row.id);
   if (!blobRes.ok) return null;
   const captured = slashCaptureDate(row.photoMetadata?.capturedAtUtc);
   const label = attachmentLabelAr(typeKey);
@@ -393,32 +394,30 @@ export async function loadValuationReportPrintAttachments(
     return toSlot(config, meta.data, typeKey);
   }
 
-  let photoSlots: Array<ValuationReportSlotAttachment | null>;
-  if (Array.isArray(preferred.photoSlotIds)) {
-    photoSlots = await Promise.all(
-      preferred.photoSlotIds.map((id) => slotFromId(id, "photo")),
-    );
-  } else {
-    photoSlots = (
-      await Promise.all(photos.map((row) => toSlot(config, row, "photo")))
-    ).filter((x): x is ValuationReportSlotAttachment => Boolean(x));
+  const photoSlotsTask: Promise<Array<ValuationReportSlotAttachment | null>> =
+    Array.isArray(preferred.photoSlotIds)
+      ? Promise.all(preferred.photoSlotIds.map((id) => slotFromId(id, "photo")))
+      : Promise.all(photos.map((row) => toSlot(config, row, "photo"))).then(
+          (slots) =>
+            slots.filter((x): x is ValuationReportSlotAttachment => Boolean(x)),
+        );
+
+  async function documentSlot(
+    rows: FileAttachmentMetaDto[],
+    preferredId: string | undefined,
+    typeKey: string,
+  ): Promise<ValuationReportSlotAttachment | null> {
+    const chosen = pick(await ensurePreferred(rows, preferredId), preferredId);
+    return chosen ? toSlot(config, chosen, typeKey) : null;
   }
 
-  const surveyRows = await ensurePreferred(survey, preferred.survey);
-  const deedRows = await ensurePreferred(deed, preferred.deed);
-  const siteMapRows = await ensurePreferred(siteMaps, preferred["site-map"]);
-
-  const surveyPick = pick(surveyRows, preferred.survey);
-  const deedPick = pick(deedRows, preferred.deed);
-  const siteMapPick = pick(siteMapRows, preferred["site-map"]);
-
-  const surveySlot = surveyPick
-    ? await toSlot(config, surveyPick, "survey")
-    : null;
-  const deedSlot = deedPick ? await toSlot(config, deedPick, "deed") : null;
-  const siteMapSlot = siteMapPick
-    ? await toSlot(config, siteMapPick, "site-map")
-    : null;
+  // Photos, survey, deed and site map download side by side — each used to wait for the previous one.
+  const [photoSlots, surveySlot, deedSlot, siteMapSlot] = await Promise.all([
+    photoSlotsTask,
+    documentSlot(survey, preferred.survey, "survey"),
+    documentSlot(deed, preferred.deed, "deed"),
+    documentSlot(siteMaps, preferred["site-map"], "site-map"),
+  ]);
 
   return {
     photos: photoSlots,
@@ -435,6 +434,16 @@ export function linesFromOrgText(
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+/** Fills `{{reportDate}}` in org report text; with no date yet the "({{reportDate}})" aside is dropped. */
+export function applyReportDateToken(
+  text: string | null | undefined,
+  reportDateSlash: string,
+): string {
+  const source = text ?? "";
+  if (reportDateSlash) return source.replaceAll("{{reportDate}}", reportDateSlash);
+  return source.replace(/\s*\(\{\{reportDate\}\}\)/g, "").replaceAll("{{reportDate}}", "");
 }
 
 export function pairsFromOrgLines(

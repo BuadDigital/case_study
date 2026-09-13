@@ -6,6 +6,7 @@
  * Call once from the shell at boot.
  */
 
+import dynamic from "next/dynamic";
 import { registerEvaluatorRuntimeBridge } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
@@ -33,6 +34,16 @@ import { loadEvaluatorSubmission } from "../lib/evaluator/evaluator-submission-m
 import { fetchEvaluatorSubmission } from "../lib/evaluator/evaluator-submission-reads";
 import { syncEvaluatorChecklistFromPartyCaseStudy } from "../lib/evaluator/evaluator-submission-commands";
 import type { EvaluatorChecklistAnswers } from "../lib/evaluator/evaluator-window-data";
+import { ValuationReportLoading } from "../components/evaluator/ValuationReportLoading";
+
+/** The report module is heavy (template, maps) — load it only when a property page shows it. */
+const ValuationReportPreview = dynamic(
+  () =>
+    import("../components/evaluator/EvaluatorValuationReportPreview").then(
+      (m) => m.EvaluatorValuationReportPreview,
+    ),
+  { ssr: false, loading: () => ValuationReportLoading() },
+);
 
 let registered = false;
 
@@ -95,5 +106,6 @@ export function ensureEvaluatorRuntimeBridgeRegistered(): void {
     syncEvaluatorChecklistFromPartyCaseStudy: (taskId, options) => {
       void syncEvaluatorChecklistFromPartyCaseStudy(taskId, options);
     },
+    ValuationReportPreview,
   });
 }

@@ -322,15 +322,27 @@ export const VALUATION_REPORT_HTML_DEFAULTS: OrganizationValuationReportSettings
     "قاعدة البيانات الداخلية وسجلات عمليات التقييم الداخلية للشركة.\n" +
     "الهيئة العامة للإحصاء فيما يخص دراسة السوق في المنطقة وفي المملكة بشكل عام.\n" +
     "الاسترشاد بالأدلة الاسترشادية والمناهج والإصدارات الصادرة عن الهيئة السعودية للمقيمين المعتمدين.",
+  /** §31 — `{{reportDate}}` is the report date; a line starting with "- " is a sub-clause of the line above. */
   terms:
     "اعتمد المقيم على صحة وسلامة صكوك الملكية والمستندات القانونية المقدمة من العميل دون التحقق من أصولها لدى الجهات المختصة، ويفترض التقرير خلو العقار من أي التزامات او عوائق قانونية لم يتم الإفصاح عنها.\n" +
     "يقتصر دور المقيم على المعاينة البصرية الظاهرية للموقع، لذا فإن المقيم والشركة يخليان مسؤوليتهما عن أي عيوب إنشائية خفية، أو أعطال في الأنظمة الميكانيكية والكهربائية، أو وجود مواد خطرة ومضرة بالبيئة لا يمكن كشفها إلا بالفحص الهندسي المتخصص.\n" +
     "لا يغطي هذا التقييم أي دراسات تتعلق بتربة الأرض أو خصائصها الجيولوجية والزلازل، ولا يتحمل المقيم مسؤولية أي أضرار ناتجة عن طبيعة الأرض ما لم تكن ظاهرة ومؤثرة وقت المعاينة.\n" +
-    "أُعد هذا التقرير لخدمة العميل والمستخدمين المقصودين فقط وللغرض المذكور في متنه، ولا يتحمل المقيم أي مسؤولية تجاه أي طرف ثالث يعتمد على التقرير دون موافقة خطية مسبقة من الشركة.\n" +
-    "تعتبر القيمة التقديرية مرتبطة بظروف السوق وقت المعاينة، وهي صالحة لمدة (90) يومًا فقط من تاريخ التقرير، وأي تغير في ظروف السوق أو الاستخدام الحالي للعقار قد يؤدي إلى بطلان هذا التقدير.\n" +
+    "أُعد هذا التقرير لخدمة العميل والمستخدمين المقصودين فقط وللغرض المذكور في متنه، ولا يتحمل المقيم أي مسؤولية تجاه أي طرف ثالث يعتمد على التقرير دون موافقة خطية مسبقة من الشركة، كما تم التأكيد على ذلك في بند «القيود على الاستخدام والنشر».\n" +
+    "يُمنع منعًا باتًا نشر، أو تداول، أو إعادة إصدار التقرير، أو أي جزء منه في المراسلات، أو المطبوعات، أو الوسائط الإلكترونية دون إذن كتابي صريح من شركة إجادة المهنية للتقييم، كما تم التأكيد على ذلك في بند «القيود على الاستخدام والنشر».\n" +
+    "لا يلزم هذا التقرير المقيم أو الشركة بالمثول أمام الجهات القضائية أو تقديم شهادة رسمية بخصوص محتواه، ما لم يتم الاتفاق على ذلك مسبقًا وبترتيبات تعاقدية منفصلة.\n" +
+    "تعتبر القيمة التقديرية مرتبطة بظروف السوق وقت المعاينة، وهي صالحة لمدة (90) يومًا فقط من تاريخ التقرير ({{reportDate}})، وأي تغير في ظروف السوق أو الاستخدام الحالي للعقار قد يؤدي إلى بطلان هذا التقدير.\n" +
+    "جميع التوقعات المتعلقة بالدخل والمصروفات والتدفقات النقدية هي تقديرات مبنية على بيانات السوق الراهنة، ولا تُعد ضمانًا لتحقيق نتائج مماثلة في المستقبل نظرًا للمتغيرات الاقتصادية المحتملة (للعقارات المدرة للدخل، والتي تم استخدام طرق وأساليب الدخل لتقييمها).\n" +
     "تم إعداد هذا التقرير وفق معايير التقييم الدولية (IVS) وبحياد تام، دون وجود أي مصالح مشتركة أو مكاسب شخصية للمقيم في العقار محل الدراسة.\n" +
     "لا يعتبر هذا التقرير مستندًا نظاميًا مكتملًا إلا إذا تم اعتماده بختم الشركة الرسمي وتوقيع المقيم المعتمد.\n" +
-    "تُعد القيمة الواردة في هذا التقرير قيمة تقديرية وفق أساس القيمة المحدد في نطاق العمل.",
+    "تُعد القيمة الواردة في هذا التقرير قيمة تقديرية وفق أساس القيمة المحدد في نطاق العمل.\n" +
+    "هذا التقرير ملكية حصرية لـ«شركة إجادة المهنية للتقييم (شركة شخص واحد)»، ويقتصر استخدامه على أغراض التقييم العقاري المحددة فيه، ويُحظر استغلاله في أي سياق آخر دون إذن مسبق، كما تم التأكيد على ذلك في بند «القيود على الاستخدام والنشر».\n" +
+    "لا تتحمل شركة إجادة المهنية للتقييم أي مسؤولية قانونية أو فنية تتعلق بالتحقق من صحة أو سلامة صكوك وعقود الملكية الخاصة بالعقار محل التقييم، حيث تقع مسؤولية صحة المستندات المقدمة على عاتق العميل.\n" +
+    "تُخلي الشركة والمقيم مسؤوليتهما التامة عن أي خسائر مادية أو تبعات نظامية قد تنشأ عن استخدام هذا التقرير من قبل أطراف ثالثة أو في غير الغرض الذي أُعد لأجله.\n" +
+    "تقع على عاتق طالب التقييم، التحقق من البيانات المقدمة ومن صحتها، والتأكد من تقديم جميع الشواهد والبيانات التي قد تؤثر على قيمة العقار.\n" +
+    "للمباني والعقارات القائمة:\n" +
+    "- يتم تقدير تكلفة المباني وعمر البناء الافتراضي حسب وضع السوق الحالي وبالاسترشاد بدليل الأسعار الاسترشادية الصادر من الهيئة السعودية للمقيمين المعتمدين.\n" +
+    "- يتم افتراض ان تكاليف البناء تشمل التكاليف المباشرة والغير مباشرة بحسب السعر السائد في السوق.\n" +
+    "لا تعكس القيمة الواردة في تقرير التقييم أي قيمة ضريبية أو تسويقية قد تصبح مستحقة الدفع أو ناتجة من التصرف في العقار أو جزء من العقار.",
   restrictions:
     "أُعد هذا التقرير حصريًا للغرض المحدد فيه، ولا يجوز استخدامه أو الاقتباس منه أو الإشارة إليه لأي غرض آخر غير الذي صُدر من أجله.\n" +
     "يُصنف هذا التقرير كوثيقة سرية للغاية، وهو مخصص لاستخدام العميل والمستخدمين المقصودين المسمَّين بالتقرير فقط، ولا يجوز تقديمه لأي طرف ثالث دون موافقة خطية صريحة ومسبقة من الشركة.\n" +
@@ -704,6 +716,103 @@ export async function saveOrganizationSettings(
     return { ok: true, data: normalizeSettings(raw) };
   } catch (err) {
     if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Last person who changed a settings section the valuation report reads. */
+export type OrganizationSettingsSectionEditor = {
+  name: string;
+  canNotify: boolean;
+  editedAtUtc: string | null;
+};
+
+export type OrganizationSettingsSectionEditorsDto = {
+  company: OrganizationSettingsSectionEditor;
+  evaluator: OrganizationSettingsSectionEditor;
+  report: OrganizationSettingsSectionEditor;
+};
+
+function sectionEditor(raw: unknown): OrganizationSettingsSectionEditor {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  return {
+    name: typeof row.name === "string" ? row.name.trim() : "",
+    canNotify: row.canNotify === true,
+    editedAtUtc: typeof row.editedAtUtc === "string" ? row.editedAtUtc : null,
+  };
+}
+
+export async function getOrganizationSettingsSectionEditors(
+  config: OrganizationSettingsApiConfig,
+): Promise<OrganizationSettingsResult<OrganizationSettingsSectionEditorsDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/organization-settings/section-editors`, {
+      headers: { Authorization: `Bearer ${config.token}`, Accept: "application/json" },
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return {
+      ok: true,
+      data: {
+        company: sectionEditor(raw.company),
+        evaluator: sectionEditor(raw.evaluator),
+        report: sectionEditor(raw.report),
+      },
+    };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type NotifyOrganizationSettingsGapRequest = {
+  section: "company" | "evaluator" | "report";
+  fieldLabel: string;
+  fieldKey?: string;
+  poNumber?: string;
+};
+
+/** Valuation report: ask the last editor of a settings section to fill an empty value. */
+export async function notifyOrganizationSettingsGap(
+  config: OrganizationSettingsApiConfig,
+  body: NotifyOrganizationSettingsGapRequest,
+): Promise<OrganizationSettingsResult<{ notifiedCount: number; recipientName: string }>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/organization-settings/notify-gap`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        error?: string;
+        title?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.detail ?? payload?.error ?? payload?.title,
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return {
+      ok: true,
+      data: {
+        notifiedCount: typeof raw.notifiedCount === "number" ? raw.notifiedCount : 0,
+        recipientName: typeof raw.recipientName === "string" ? raw.recipientName.trim() : "",
+      },
+    };
+  } catch {
     return { ok: false, kind: "network" };
   }
 }

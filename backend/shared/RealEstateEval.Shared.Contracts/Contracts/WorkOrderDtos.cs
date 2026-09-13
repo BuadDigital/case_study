@@ -388,11 +388,35 @@ public class NotifyIntakeFieldGapRequest
     /// <summary>Stable key for dedupe (e.g. requestNumber).</summary>
     [MaxLength(64)]
     public string? FieldKey { get; set; }
+
+    /// <summary>Who supplies the field: <c>intake</c> (default), <c>inspector</c> or <c>survey</c>.</summary>
+    [MaxLength(16)]
+    public string? Source { get; set; }
 }
 
 public class NotifyIntakeFieldGapResultDto
 {
     public int NotifiedCount { get; set; }
+
+    /// <summary>Display name of the person notified.</summary>
+    public string RecipientName { get; set; } = "";
+}
+
+/// <summary>The person who supplies one kind of property information on the valuation report.</summary>
+public class FieldGapResponsibleDto
+{
+    public string Name { get; set; } = "";
+    public string RoleLabel { get; set; } = "";
+
+    /// <summary>False when no assignee exists or the assignee maps to no user.</summary>
+    public bool CanNotify { get; set; }
+}
+
+public class FieldGapSourcesDto
+{
+    public FieldGapResponsibleDto Intake { get; set; } = new();
+    public FieldGapResponsibleDto Inspector { get; set; } = new();
+    public FieldGapResponsibleDto Survey { get; set; } = new();
 }
 
 public class DeleteWorkOrderPropertyRequest

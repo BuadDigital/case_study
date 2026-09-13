@@ -405,8 +405,9 @@ export function PoPropertyDetailTabs({
           {visitedTabsRef.current.has("appraisal") ? (
             <Activity mode={tabMode("appraisal")}>
             <PropertyDetailAppraisalTab
-              propertyId={property.id}
-              appraisalTaskId={appraisalTask?.id}
+              property={property}
+              appraisalTask={appraisalTask}
+              tasks={tasks}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
               onReviewChanged={() => {

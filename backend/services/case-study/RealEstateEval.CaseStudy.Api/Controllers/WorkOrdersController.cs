@@ -18,15 +18,18 @@ public class WorkOrdersController : ControllerBase
     private readonly IWorkOrderService _workOrders;
     private readonly IPropertyTimelineService _timeline;
     private readonly IPermissionService _permissions;
+    private readonly IFieldGapNotificationService _fieldGaps;
 
     public WorkOrdersController(
         IWorkOrderService workOrders,
         IPropertyTimelineService timeline,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IFieldGapNotificationService fieldGaps)
     {
         _workOrders = workOrders;
         _timeline = timeline;
         _permissions = permissions;
+        _fieldGaps = fieldGaps;
     }
 
  /// <summary>
@@ -406,8 +409,26 @@ public class WorkOrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Appraiser / case staff: notify primary-data specialist that an intake field
-    /// shown on the valuation report is still empty (e.g. رقم الطلب).
+    /// Valuation report: who supplies the property's intake, inspection and survey information,
+    /// shown in the prompt before notifying them about an empty field.
+    /// </summary>
+    [HttpGet("{poNumber}/properties/{propertyId:guid}/field-sources")]
+    public async Task<ActionResult<FieldGapSourcesDto>> FieldSources(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var denied = await DenyFieldGapNotifyAsync(cancellationToken);
+        if (denied is not null) return denied;
+
+        var (sources, error) = await _fieldGaps.GetSourcesAsync(poNumber, propertyId, cancellationToken);
+        if (sources is null) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        return Ok(sources);
+    }
+
+    /// <summary>
+    /// Appraiser / case staff: notify the person who supplies an empty valuation-report field
+    /// (assignment specialist, field inspector or engineering office).
     /// </summary>
     [HttpPost("{poNumber}/properties/{propertyId:guid}/notify-intake-gap")]
     public async Task<ActionResult<NotifyIntakeFieldGapResultDto>> NotifyIntakeFieldGap(
@@ -415,6 +436,25 @@ public class WorkOrdersController : ControllerBase
         Guid propertyId,
         [FromBody] NotifyIntakeFieldGapRequest request,
         CancellationToken cancellationToken)
+    {
+        var denied = await DenyFieldGapNotifyAsync(cancellationToken);
+        if (denied is not null) return denied;
+
+        var (count, recipient, error) = await _fieldGaps.NotifyAsync(
+            poNumber,
+            propertyId,
+            request ?? new NotifyIntakeFieldGapRequest(),
+            ActorClaims.DisplayName(User),
+            cancellationToken);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(new NotifyIntakeFieldGapResultDto
+        {
+            NotifiedCount = count,
+            RecipientName = recipient,
+        });
+    }
+
+    private async Task<ActionResult?> DenyFieldGapNotifyAsync(CancellationToken cancellationToken)
     {
         var userId = ActorClaims.Id(User);
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
@@ -427,18 +467,9 @@ public class WorkOrdersController : ControllerBase
             || string.Equals(role, "section-supervisor", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "general-manager", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
-        if (!canNotify)
-            return this.ForbiddenProblem("ليس لديك صلاحية لإرسال إشعار نقص البيانات");
-
-        var actorName = ActorClaims.DisplayName(User);
-        var (count, error) = await _workOrders.NotifyIntakeFieldGapAsync(
-            poNumber,
-            propertyId,
-            request ?? new NotifyIntakeFieldGapRequest(),
-            actorName,
-            cancellationToken);
-        if (error is not null) return this.BadRequestProblem(error);
-        return Ok(new NotifyIntakeFieldGapResultDto { NotifiedCount = count });
+        return canNotify
+            ? null
+            : this.ForbiddenProblem("ليس لديك صلاحية لإرسال إشعار نقص البيانات");
     }
 
     private async Task<PermissionsDto?> ActorAsync(CancellationToken cancellationToken)
