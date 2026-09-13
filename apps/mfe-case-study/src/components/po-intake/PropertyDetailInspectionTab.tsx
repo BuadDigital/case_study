@@ -58,12 +58,17 @@ import {
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
-import {
-  parsePlacedMapPin,
-} from "@platform/app-shared/media/photo-location";
+import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
+import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import { loadEngineeringSurveySubmissionAsync } from "@engineering-office/mfe/lib/engineering-survey-submission-reads";
 import { updateEngineeringSurveyDraft } from "@engineering-office/mfe/lib/engineering-survey-submission-commands";
-import { engineeringActivePinOf } from "@engineering-office/mfe/lib/engineering-survey-inspector-pin";
+import {
+  engineeringActivePinOf,
+  LOCATION_PIN_MISMATCH_NOTE_PREFIX,
+} from "@engineering-office/mfe/lib/engineering-survey-inspector-pin";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
+import { resolveFailure } from "@failures/mfe/lib/failures-repository";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
@@ -158,6 +163,7 @@ export function PropertyDetailInspectionTab({
   submitSuccessToast?: string;
 }) {
   const { showToast } = useToast();
+  const { data: failures = [] } = useFailuresQuery();
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -320,6 +326,48 @@ export function PropertyDetailInspectionTab({
     );
   }, [draft, engineeringMapPin, mapActor]);
 
+  const resolveLocationPinMismatchFailure = useCallback(
+    async (choiceLabel: string) => {
+      if (mapActor !== "specialist") return;
+      const poNumber =
+        inspectionTask?.poNumber?.trim() || surveyTask?.poNumber?.trim() || "";
+      const propertyId = property.id?.trim() || "";
+      if (!poNumber || !propertyId) return;
+      const match = failuresForProperty(failures, {
+        poNumber,
+        propertyId,
+        deedNumber: property.deedNumber,
+      }).find(
+        (f) =>
+          isActiveFailureStatus(f.status) &&
+          f.problemTypeId === "unknown-location" &&
+          f.internalNote.includes(LOCATION_PIN_MISMATCH_NOTE_PREFIX),
+      );
+      if (!match) return;
+      const result = await resolveFailure(match.id, {
+        resolutionReason: `اعتماد موقع العقار من الأخصائي (${choiceLabel})`,
+        continueInstructions: "متابعة المعاملة بعد توحيد الإحداثيات",
+      });
+      if (result.ok) {
+        showToast("تم إغلاق تعذر اختلاف الموقع", "success");
+      } else {
+        showToast(
+          result.error || "تعذّر إغلاق تعذر اختلاف الموقع تلقائياً",
+          "error",
+        );
+      }
+    },
+    [
+      failures,
+      inspectionTask?.poNumber,
+      mapActor,
+      property.deedNumber,
+      property.id,
+      showToast,
+      surveyTask?.poNumber,
+    ],
+  );
+
   useEffect(() => {
     if (mapActor !== "specialist" || !surveyTask?.id) {
       setEngineeringMapPin(null);
@@ -437,7 +485,10 @@ export function PropertyDetailInspectionTab({
         longitude: lng,
       }).then((saved) => {
         if (saved) setEngineeringMapPin(engineeringActivePinOf(saved));
+        void resolveLocationPinMismatchFailure("موقع المعاين");
       });
+    } else {
+      void resolveLocationPinMismatchFailure("موقع المعاين");
     }
     showToast("تم اعتماد موقع المعاين", "success");
   }
@@ -450,6 +501,7 @@ export function PropertyDetailInspectionTab({
     setMapPinned(true);
     setMapPinEpoch((n) => n + 1);
     showToast("تم اعتماد موقع المكتب الهندسي", "success");
+    void resolveLocationPinMismatchFailure("موقع المكتب الهندسي");
   }
 
   function cancelPendingMapMove() {

@@ -110,7 +110,7 @@ export function finalOpinionComputed({
       }
     }
     if (discountPctNum > 0)
-      linesOut.push(`طُبِّق خصم بيع قسري ${discountPctNum}٪.`);
+      linesOut.push(forcedSaleDiscountOpinionLine(discountPctNum));
     linesOut.push(`أساس القيمة المستخدم: ${basisLabel}.`);
     linesOut.push(`الرأي النهائي في قيمة العقار: ${fmt(finalLocal)} ر.س.`);
 
@@ -130,6 +130,48 @@ export function finalOpinionComputed({
 }
 
 export type FinalOpinionComputed = ReturnType<typeof finalOpinionComputed>;
+
+/** Auto-generated forced-sale discount sentence in the final-opinion narrative. */
+export const FORCED_SALE_DISCOUNT_OPINION_LINE_RE =
+  /^طُبِّق خصم بيع قسري .+٪\.$/m;
+
+export function forcedSaleDiscountOpinionLine(pct: number): string {
+  return `طُبِّق خصم بيع قسري ${pct}٪.`;
+}
+
+/**
+ * Keep a manually edited opinion in sync with the discount % without wiping
+ * custom wording — only the discount line is inserted/replaced/removed.
+ */
+export function syncDiscountLineInOpinion(
+  text: string,
+  nextPct: number,
+): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const nextLine =
+    nextPct > 0 ? forcedSaleDiscountOpinionLine(nextPct) : null;
+  const withoutDiscount = lines.filter(
+    (line) => !FORCED_SALE_DISCOUNT_OPINION_LINE_RE.test(line.trim()),
+  );
+  if (!nextLine) return withoutDiscount.join("\n");
+
+  const basisIdx = withoutDiscount.findIndex((line) =>
+    line.trim().startsWith("أساس القيمة المستخدم:"),
+  );
+  if (basisIdx >= 0) {
+    withoutDiscount.splice(basisIdx, 0, nextLine);
+    return withoutDiscount.join("\n");
+  }
+  const finalIdx = withoutDiscount.findIndex((line) =>
+    line.trim().startsWith("الرأي النهائي في قيمة العقار:"),
+  );
+  if (finalIdx >= 0) {
+    withoutDiscount.splice(finalIdx, 0, nextLine);
+    return withoutDiscount.join("\n");
+  }
+  withoutDiscount.push(nextLine);
+  return withoutDiscount.join("\n");
+}
 
 /** PO selection wins; saved recon is fallback; assignment type is last resort. */
 export function workOrderPremiseKey({
