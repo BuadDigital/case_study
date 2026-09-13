@@ -6,6 +6,7 @@ import {
   getValuationApproachSettings,
   isNoExternalSpecialistAssumption,
   saveValuationApproachSettings,
+  type OrganizationValuerRosterEntry,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
 import {
@@ -17,6 +18,10 @@ import {
 } from "@platform/ui-kit";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import {
+  ensureOrganizationSettingsLoaded,
+  getCachedOrganizationSettings,
+} from "@platform/app-shared/organization/organization-settings-cache";
 import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
@@ -114,6 +119,32 @@ export function EvaluatorFinalReviewTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rosterValuers, setRosterValuers] = useState<
+    OrganizationValuerRosterEntry[]
+  >(() =>
+    (getCachedOrganizationSettings()?.valuers ?? []).filter(
+      (v) => v.isActive !== false && v.nameAr.trim(),
+    ),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void ensureOrganizationSettingsLoaded()
+      .then((org) => {
+        if (cancelled) return;
+        setRosterValuers(
+          (org?.valuers ?? []).filter(
+            (v) => v.isActive !== false && v.nameAr.trim(),
+          ),
+        );
+      })
+      .catch(() => {
+        /* roster stays empty — free-text name still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const propertyId = property?.id ?? draft.propertyId;
 
@@ -440,6 +471,47 @@ export function EvaluatorFinalReviewTab({
                   <label className="mb-1 block text-[11px] text-text-2">
                     الاسم
                   </label>
+                  {rosterValuers.length > 0 ? (
+                    <select
+                      className={cn(opsFldControl, "mb-1.5 font-medium")}
+                      disabled={disabled}
+                      value={
+                        rosterValuers.some((v) => v.nameAr === worker.name)
+                          ? worker.name
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const picked = e.target.value;
+                        if (!picked) return;
+                        const valuer = rosterValuers.find(
+                          (v) => v.nameAr === picked,
+                        );
+                        const next = list.map((w) =>
+                          w.id === worker.id
+                            ? {
+                                ...w,
+                                name: picked,
+                                licenseNumber:
+                                  valuer?.licenseNumber?.trim() ||
+                                  w.licenseNumber ||
+                                  "",
+                              }
+                            : w,
+                        );
+                        onDraftPatch?.({ reportWorkers: next });
+                      }}
+                    >
+                      <option value="">— اختر من سجل المقيّمين —</option>
+                      {rosterValuers.map((v) => (
+                        <option key={v.id} value={v.nameAr}>
+                          {v.nameAr}
+                          {v.licenseNumber?.trim()
+                            ? ` · ترخيص ${v.licenseNumber.trim()}`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                   <input
                     type="text"
                     placeholder="اسم المشارك"
@@ -479,7 +551,8 @@ export function EvaluatorFinalReviewTab({
             </p>
           ) : (
             <p className="mt-2 mb-0 text-[10.5px] text-text-3">
-              أدخل اسم عامل واحد على الأقل (معد / مراجع / معتمد).
+              اختر من سجل المقيّمين في الإعدادات، أو أدخل اسماً يدوياً. عامل
+              واحد على الأقل مطلوب (معد / مراجع / معتمد).
             </p>
           )}
         </div>

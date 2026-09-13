@@ -20,6 +20,7 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   Card,
   CardPad,
+  GhostBtn,
   PrimaryBtn,
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
@@ -136,6 +137,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     methodComplete,
     opinionAuto,
     opinionDirty,
+    clearMethodsRationale,
     saveReconciliation,
   } = workflow;
   const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
@@ -467,11 +469,31 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </p>
             ) : null}
 
+            <div className="mt-[13px] mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span
+                className={cn(
+                  "text-[11px] font-semibold",
+                  opinionDirty ? "text-red-text" : "text-gold-d",
+                )}
+              >
+                {opinionDirty
+                  ? "نص محرَّر يدوياً — يُحدَّث سطر خصم التصفية فقط"
+                  : "يتحدث تلقائياً مع الأساليب والخصم"}
+              </span>
+              {opinionDirty ? (
+                <GhostBtn
+                  disabled={saving}
+                  onClick={() => clearMethodsRationale()}
+                >
+                  ↺ استرجاع النص التلقائي
+                </GhostBtn>
+              ) : null}
+            </div>
             <textarea
               rows={6}
               value={opinionDirty ? methodsRationale : opinionAuto}
               onChange={(e) => setMethodsRationale(e.target.value)}
-              className="mt-[13px] w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
+              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
             />
 
             <div className="mt-[18px] flex flex-wrap gap-2.5">

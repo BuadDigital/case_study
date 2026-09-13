@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   activeValuationListOptions,
   getWorkOrder,
@@ -21,6 +21,7 @@ import {
   finalOpinionComputed,
   mergeReconMethods,
   reconciliationSaveRequest,
+  syncDiscountLineInOpinion,
   workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { apiConfig } from "./lib/shell-utils";
@@ -222,6 +223,26 @@ export function useFinalOpinionWorkflow({
     methodsRationale.trim().length > 0 &&
     methodsRationale.trim() !== opinionAuto.trim();
 
+  const applyLiquidationDiscountPct = useCallback(
+    (nextRaw: string) => {
+      const nextPct = Number(String(nextRaw).replace(",", ".")) || 0;
+      setLiquidationDiscountPct(nextRaw);
+      setMethodsRationale((prev) => {
+        const trimmed = prev.trim();
+        if (!trimmed) return prev;
+        // Still on auto text → clear so the textarea follows the regenerated auto.
+        if (trimmed === opinionAuto.trim()) return "";
+        // Custom prose → only refresh/remove the discount sentence.
+        return syncDiscountLineInOpinion(prev, nextPct);
+      });
+    },
+    [opinionAuto],
+  );
+
+  const clearMethodsRationale = useCallback(() => {
+    setMethodsRationale("");
+  }, []);
+
   return {
     // Reconciliation drafts.
     reconMethods,
@@ -235,7 +256,7 @@ export function useFinalOpinionWorkflow({
     premiseOptions,
     valuePremiseKey,
     liquidationDiscountPct,
-    setLiquidationDiscountPct,
+    setLiquidationDiscountPct: applyLiquidationDiscountPct,
     liquidationDiscountRationale,
     setLiquidationDiscountRationale,
     // Derived.
@@ -252,6 +273,7 @@ export function useFinalOpinionWorkflow({
     methodComplete,
     opinionAuto,
     opinionDirty,
+    clearMethodsRationale,
     // Commands.
     saveReconciliation,
   };
