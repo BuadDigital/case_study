@@ -74,13 +74,18 @@ export function useAdjustmentsMatrixModel({
     matrixFactorRows(factorKeysFromData);
 
   // Rule Q-8-1: factor justification from its own table; legacy line justification is back-compat only.
+  // Weight rationale may also live on the market row when the weight % was edited manually.
   const factorRationaleByKey = new Map(
     (selection.factorRationales ?? []).map((r) => [r.factorKey, r.rationaleAr]),
   );
-  const justValue = (factorKey: string) =>
-    factorRationaleByKey.get(factorKey) ??
-    lineOf(adopted[0]!, factorKey)?.rationale ??
-    "";
+  const justValue = (factorKey: string) => {
+    const fromFactor = factorRationaleByKey.get(factorKey);
+    if (fromFactor != null && fromFactor.trim() !== "") return fromFactor;
+    if (factorKey === "weight") {
+      return adopted[0]?.market?.weightOverrideRationale ?? "";
+    }
+    return lineOf(adopted[0]!, factorKey)?.rationale ?? "";
+  };
 
   return {
     confirmDelete,

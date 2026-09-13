@@ -8,26 +8,37 @@ import {
   caseStudySignatureImage,
   caseStudyStampImage,
 } from "./case-study-form-data";
-import { getCachedOrganizationSettings } from "@platform/app-shared/organization/organization-settings-cache";
+import {
+  ensureOrganizationSettingsLoaded,
+  getCachedOrganizationSettings,
+} from "@platform/app-shared/organization/organization-settings-cache";
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
+import {
+  ORG_LETTERHEAD_SLICES_HTML,
+  orgLetterheadContentCss,
+  orgLetterheadLayout,
+  orgLetterheadSliceCss,
+  orgLetterheadUrl,
+} from "./org-letterhead-slices";
 
 // Defaults only when facility-settings cache is cold — shared facility assets remain the source of truth (decision 25).
 const DEFAULT_COMPANY_CR = "4030297680";
-const DEFAULT_LETTERHEAD_PATH = "/case-study/ejadah-letterhead.png";
 const NAVY = "#0F2A4E";
 const MUTED = "#555";
 
 /** Blob print windows need absolute asset URLs. */
 function assetUrl(path: string): string {
   if (typeof window === "undefined") return path;
-  return `${window.location.origin}${path}`;
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
+  return `${window.location.origin}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
-export function printInternalDelegationLetter(
+/** Pure HTML for tests / preview — org branding letterhead (4-slice), body. */
+export function internalDelegationLetterHtml(
   letter: InternalDelegationLetter,
   agentFallback?: DelegationAgentInfo,
-): void {
+): string {
   const rowsSource =
     letter.issuedProperties && letter.issuedProperties.length > 0
       ? letter.issuedProperties
@@ -44,12 +55,12 @@ export function printInternalDelegationLetter(
   const agentId = agent?.nationalId?.trim() || "—";
   const agentMobile = agent?.mobile?.trim() || "—";
   const org = getCachedOrganizationSettings();
+  const branding = org?.branding ?? null;
   const companyName = caseStudyProviderName();
   const companyCr =
     org?.company.commercialRegistration?.trim() || DEFAULT_COMPANY_CR;
-  const letterhead =
-    org?.branding?.letterheadUrl?.trim() || DEFAULT_LETTERHEAD_PATH;
-  const bg = escapeHtml(assetUrl(letterhead));
+  const layout = orgLetterheadLayout(branding);
+  const bg = escapeHtml(assetUrl(orgLetterheadUrl(branding)));
   const stamp = escapeHtml(assetUrl(caseStudyStampImage()));
   const signature = escapeHtml(assetUrl(caseStudySignatureImage()));
 
@@ -66,7 +77,7 @@ export function printInternalDelegationLetter(
     )
     .join("");
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
@@ -132,34 +143,23 @@ export function printInternalDelegationLetter(
     .page {
       position: relative;
       width: 210mm;
-      min-height: 297mm;
+      height: 297mm;
       margin: 0 auto;
       background: #fff;
+      overflow: hidden;
       box-shadow: 0 4px 24px rgba(15,42,78,.15);
     }
-    .letterhead {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: fill;
-      z-index: 0;
-      pointer-events: none;
-    }
-    .content {
-      position: relative;
-      z-index: 1;
-      padding: 50mm 24mm 42mm;
-      min-height: 297mm;
-    }
+    ${orgLetterheadSliceCss(bg, layout)}
+    ${orgLetterheadContentCss(
+      layout,
+      "display: flex; flex-direction: column; gap: 2mm;",
+    )}
     .meta {
-      position: absolute;
-      top: 26mm;
-      right: 24mm;
       direction: rtl;
       text-align: right;
       font-size: 11px;
       line-height: 1.85;
+      margin-bottom: 3mm;
     }
     .meta .row {
       display: flex;
@@ -181,30 +181,30 @@ export function printInternalDelegationLetter(
       gap: 12px;
       font-weight: 700;
       font-size: 15px;
-      margin: 0 0 8mm;
+      margin: 0 0 4mm;
     }
     .greeting {
       font-weight: 600;
       margin: 0 0 4px;
     }
     .subject {
-      margin: 0 0 6mm;
+      margin: 0 0 4mm;
       font-weight: 700;
     }
     .court-line {
       display: flex;
       gap: 8px;
       align-items: baseline;
-      margin: 0 0 6mm;
+      margin: 0 0 4mm;
       font-size: 14px;
     }
     .court-line .cl-label { font-weight: 600; color: ${MUTED}; }
     .court-line .cl-value { font-weight: 700; color: ${NAVY}; }
     .body {
       text-align: justify;
-      margin: 0 0 7mm;
+      margin: 0 0 5mm;
       font-weight: 400;
-      line-height: 2.3;
+      line-height: 2.2;
     }
     .body .b { font-weight: 700; }
     table {
@@ -212,7 +212,7 @@ export function printInternalDelegationLetter(
       border-collapse: collapse;
       table-layout: fixed;
       font-size: 13px;
-      margin-top: 7mm;
+      margin-top: 3mm;
     }
     th, td {
       border: 1px solid #cdd4de;
@@ -249,7 +249,8 @@ export function printInternalDelegationLetter(
     }
     .col-req { width: 135px; white-space: nowrap; }
     .sign {
-      margin-top: 14mm;
+      margin-top: auto;
+      padding-top: 8mm;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
@@ -287,7 +288,7 @@ export function printInternalDelegationLetter(
       .page {
         box-shadow: none;
         width: 210mm;
-        min-height: 297mm;
+        height: 297mm;
       }
     }
   </style>
@@ -305,7 +306,7 @@ export function printInternalDelegationLetter(
     </button>
   </div>
   <div class="page">
-    <img class="letterhead" src="${bg}" alt="" />
+    ${ORG_LETTERHEAD_SLICES_HTML}
     <div class="content">
       <div class="meta">
         <div class="row"><span class="label">رقم المرجع:</span><span class="value">${escapeHtml(reference)}</span></div>
@@ -364,6 +365,23 @@ export function printInternalDelegationLetter(
   </div>
 </body>
 </html>`;
+}
 
-  openHtmlDocumentInNewTab(html, { waitForImages: true, waitForFonts: true });
+export function printInternalDelegationLetter(
+  letter: InternalDelegationLetter,
+  agentFallback?: DelegationAgentInfo,
+): void {
+  openHtmlDocumentInNewTab(internalDelegationLetterHtml(letter, agentFallback), {
+    waitForImages: true,
+    waitForFonts: true,
+  });
+}
+
+/** Opens after warming org branding so letterhead margins match الهوية البصرية. */
+export async function openInternalDelegationLetter(
+  letter: InternalDelegationLetter,
+  agentFallback?: DelegationAgentInfo,
+): Promise<void> {
+  await ensureOrganizationSettingsLoaded();
+  printInternalDelegationLetter(letter, agentFallback);
 }

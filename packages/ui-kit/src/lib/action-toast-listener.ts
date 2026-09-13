@@ -29,7 +29,8 @@ function isActionTrigger(element: HTMLElement | null): element is HTMLElement {
 
 function elementLooksBusy(element: HTMLElement): boolean {
   if (element.getAttribute("aria-busy") === "true") return true;
-  if ("disabled" in element && (element as HTMLButtonElement).disabled) return true;
+  // Disabled alone is not "in progress" — primary save buttons stay disabled while
+  // the form is incomplete; treating that as busy left a stuck «جاري الحفظ» toast.
   return false;
 }
 
@@ -138,6 +139,15 @@ export function bindGlobalActionToast(
 
     const label = labelFromActionElement(element);
     if (!shouldShowGlobalActionToast(element, label)) return;
+
+    // Already disabled without aria-busy = incomplete form / not started — no progress toast.
+    if (
+      "disabled" in element &&
+      (element as HTMLButtonElement).disabled &&
+      element.getAttribute("aria-busy") !== "true"
+    ) {
+      return;
+    }
 
     dismissFor(element, dismissToast, showSuccessToast);
     const toastId = showProgressToast(progressMessageForActionLabel(label));

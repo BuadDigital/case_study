@@ -64,7 +64,7 @@ export type MatrixOps<TContext> = {
     factorKey: string,
     text: string,
     context: TContext,
-  ): Promise<unknown> | void;
+  ): Promise<boolean> | boolean;
   saveLineRationaleOverride(
     selectionId: string,
     factorKey: string,
@@ -127,8 +127,9 @@ export async function runMatrixAction<TContext>(
     case "reset-weights":
       return ops.resetWeights(context);
     case "save-rationale":
-      await ops.saveFactorRationale(action.factorKey, action.text, context);
-      return true;
+      return Boolean(
+        await ops.saveFactorRationale(action.factorKey, action.text, context),
+      );
     case "save-line-rationale":
       await ops.saveLineRationaleOverride(
         action.selectionId,

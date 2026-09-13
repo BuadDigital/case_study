@@ -3,7 +3,7 @@ import { allocateNumberedDocument } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { pad2 } from "@platform/app-shared/format/date";
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
-import { printInternalDelegationLetter } from "./internal-delegation-letter-html";
+import { openInternalDelegationLetter } from "./internal-delegation-letter-html";
 import type { DelegationAgentInfo } from "./internal-delegation-letters";
 
 export const OPERATIONS_TASK_TYPE_LABELS: Record<string, string> = {
@@ -372,7 +372,7 @@ export async function printOperationsTaskDelegationLetter(
     })),
     issuedAt: task.createdAt,
   };
-  printInternalDelegationLetter(letter, agent);
+  await openInternalDelegationLetter(letter, agent);
 }
 
 function courtCityFromLetterCourt(court: string): string {

@@ -88,13 +88,13 @@ public class PartyTaskSubmissionAggregateTests
             ComparableReliabilityTags.Anomalous, false, "", "u1", Now);
         Assert.Equal("tagRationale", missing!.Value.Field);
 
-        // Placeholder rationale — rejected (Q-8-2).
-        var sham = comp.ApplyQualityTags(
-            ComparableReliabilityTags.Anomalous, false, ".", "u1", Now);
-        Assert.Equal("tagRationale", sham!.Value.Field);
-        Assert.Contains("الحد الأدنى", sham.Value.MessageAr);
+        // Blank rationale — rejected when a quality tag is set.
+        var blank = comp.ApplyQualityTags(
+            ComparableReliabilityTags.Anomalous, false, "  ", "u1", Now);
+        Assert.Equal("tagRationale", blank!.Value.Field);
+        Assert.Contains("إلزامي", blank.Value.MessageAr);
 
-        // Intact tag — dated with the name of its author.
+        // Any non-blank rationale is enough — dated with the name of its author.
         Assert.Null(comp.ApplyQualityTags(
             ComparableReliabilityTags.Anomalous, false, "سعر شاذ عن سائد الحي", "u1", Now));
         Assert.True(comp.IsExcludedFromSuggestions);

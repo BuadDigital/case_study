@@ -116,11 +116,11 @@ describe("nextSubjectSpecs", () => {
 });
 
 describe("isJustificationTooShort", () => {
-  it("rejects only a non-empty text under the minimum length", () => {
+  it("does not enforce a padded minimum length", () => {
     expect(isJustificationTooShort("")).toBe(false);
-    expect(isJustificationTooShort("قصير")).toBe(true);
+    expect(isJustificationTooShort("قصير")).toBe(false);
     expect(isJustificationTooShort("مبرر جوهري كافٍ")).toBe(false);
-    expect(JUSTIFICATION_TOO_SHORT_MESSAGE).toContain("10");
+    expect(JUSTIFICATION_TOO_SHORT_MESSAGE).toContain("مطلوب");
   });
 });
 

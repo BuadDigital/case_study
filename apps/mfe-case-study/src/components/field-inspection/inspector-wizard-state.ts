@@ -127,6 +127,33 @@ export function inspectorReferenceMapPins(
   return [{ lat, lng, title: "موقع المعاين الأصلي", label: "مع" }];
 }
 
+/** Engineering-office pin for specialist comparison (when it differs from the active pin). */
+export function engineeringOfficeContextPins(
+  draft: InspectorWorkspaceDraft,
+  mapActor: InspectorMapActor,
+  engineeringPin: { lat: number; lng: number } | null,
+): GoogleMapContextPin[] {
+  if (mapActor !== "specialist" || !engineeringPin) return [];
+  const activeLat = Number(draft.mapLatitude);
+  const activeLng = Number(draft.mapLongitude);
+  if (
+    Number.isFinite(activeLat) &&
+    Number.isFinite(activeLng) &&
+    Math.abs(activeLat - engineeringPin.lat) < 1e-5 &&
+    Math.abs(activeLng - engineeringPin.lng) < 1e-5
+  ) {
+    return [];
+  }
+  return [
+    {
+      lat: engineeringPin.lat,
+      lng: engineeringPin.lng,
+      title: "موقع المكتب الهندسي",
+      label: "مكتب",
+    },
+  ];
+}
+
 /** "lat, lng" for the coords input — empty until both sides are filled. */
 export function inspectorWizardCoordsValue(
   draft: InspectorWorkspaceDraft,

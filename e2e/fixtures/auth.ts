@@ -120,20 +120,20 @@ const POST_LOGIN_LANDING: Record<string, { path: string; title: string }> = {
   [RELEASE_USERS.cdo]: { path: "/dashboard", title: "لوحة التحكم" },
   [RELEASE_USERS.caseSpecialist]: { path: "/po", title: "أوامر العمل" },
   [RELEASE_USERS.fieldInspector]: {
-    path: "/operations-tasks",
-    title: "المهام",
+    path: "/active-inspection",
+    title: "معاينة العقار",
   },
   [RELEASE_USERS.appraiser]: {
-    path: "/operations-tasks",
-    title: "المهام",
+    path: "/property-appraisal",
+    title: "تقييم العقار",
   },
   [RELEASE_USERS.governmentReviewer]: {
     path: "/operations-tasks",
     title: "المهام",
   },
   [RELEASE_USERS.engineeringOffice]: {
-    path: "/operations-tasks",
-    title: "المهام",
+    path: "/active-survey",
+    title: "الرفع المساحي",
   },
   [RELEASE_USERS.financialOfficer]: {
     // The finance workspace overrides the shell title with its current area,

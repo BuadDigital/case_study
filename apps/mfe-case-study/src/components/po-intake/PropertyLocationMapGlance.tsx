@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { cn, useToast, GoogleMapPin } from "@platform/ui-kit";
 import {
-  approximatePropertyGeo,
-  approximatePropertyMapSearchUrl,
   formatGeoDec,
   formatGeoDms,
   type PoPropertyIntake,
@@ -13,20 +11,25 @@ import {
 const goldSoft =
   "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";
 
+const INSPECTOR_PIN_PENDING_MESSAGE =
+  "لم يتم تحديد الموقع من قبل المعاين بعد";
+
 function parseCoord(value: string | null | undefined): number | null {
   const n = Number.parseFloat((value ?? "").trim().replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
 
+/** Precise inspector/office pin only — never city/district approximate fallback. */
 export function resolvePropertyGlanceGeo(
-  property?: Pick<PoPropertyIntake, "city" | "deedNumber"> | null,
+  _property?: Pick<PoPropertyIntake, "city" | "deedNumber"> | null,
   latitude?: string | null,
   longitude?: string | null,
 ): { lat: number; lng: number } | null {
   const lat = parseCoord(latitude);
   const lng = parseCoord(longitude);
-  if (lat != null && lng != null) return { lat, lng };
-  return property ? approximatePropertyGeo(property) : null;
+  if (lat == null || lng == null) return null;
+  if (lat === 0 && lng === 0) return null;
+  return { lat, lng };
 }
 
 /**
@@ -54,8 +57,7 @@ export function PropertyLocationMapGlance({
     (property?.locationMapUrl ?? "").trim() ||
     (geo
       ? `https://www.google.com/maps/search/?api=1&query=${geo.lat},${geo.lng}`
-      : null) ||
-    (property ? approximatePropertyMapSearchUrl(property) : null);
+      : null);
 
   const dms = geo ? formatGeoDms(geo.lat, geo.lng) : "";
   const dec = geo ? formatGeoDec(geo.lat, geo.lng) : "";
@@ -98,7 +100,7 @@ export function PropertyLocationMapGlance({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-surface-2 px-4 text-center text-[12px] text-text-3">
-            أضف المدينة أو رابط الموقع لعرض الخريطة
+            {INSPECTOR_PIN_PENDING_MESSAGE}
           </div>
         )}
       </div>

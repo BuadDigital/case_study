@@ -18,6 +18,7 @@ import {
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
+  EvaluatorReportWorker,
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
@@ -98,6 +99,8 @@ export type ValuationWorkShellProps = {
     forcedSaleDiscountPct?: string;
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
+    independenceDeclared?: boolean;
+    reportWorkers?: EvaluatorReportWorker[];
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSubmit?: () => void;

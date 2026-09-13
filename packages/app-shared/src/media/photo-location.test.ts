@@ -4,6 +4,8 @@ import {
   PHOTO_LOCATION_MAX_MATCH_M,
   evaluatePhotoLocation,
   haversineMeters,
+  parsePlacedMapPin,
+  pinsExceedMatchMeters,
 } from "./photo-location";
 
 describe("photo-location", () => {
@@ -47,5 +49,25 @@ describe("photo-location", () => {
     const a = haversineMeters(21.48, 39.19, 21.49, 39.2);
     const b = haversineMeters(21.49, 39.2, 21.48, 39.19);
     expect(Math.abs(a - b)).toBeLessThan(0.01);
+  });
+
+  it("parsePlacedMapPin rejects unset (0,0)", () => {
+    expect(parsePlacedMapPin("0", "0")).toBeNull();
+    expect(parsePlacedMapPin("21.5", "39.2")).toEqual({ lat: 21.5, lng: 39.2 });
+  });
+
+  it("pinsExceedMatchMeters uses the 500m radius", () => {
+    expect(
+      pinsExceedMatchMeters(
+        { lat: 21.4858, lng: 39.1925 },
+        { lat: 21.4859, lng: 39.1926 },
+      ),
+    ).toBe(false);
+    expect(
+      pinsExceedMatchMeters(
+        { lat: 21.4858, lng: 39.1925 },
+        { lat: 21.4958, lng: 39.1925 },
+      ),
+    ).toBe(true);
   });
 });

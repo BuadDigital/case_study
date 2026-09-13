@@ -65,7 +65,8 @@ export function isJustificationTooShort(text: string): boolean {
   return text.length > 0 && text.length < JUSTIFICATION_MIN_LENGTH;
 }
 
-export const JUSTIFICATION_TOO_SHORT_MESSAGE = `المبرر أقصر من الحد الأدنى (${JUSTIFICATION_MIN_LENGTH} أحرف) — اكتب مبرراً جوهرياً (ق-8)`;
+export const JUSTIFICATION_TOO_SHORT_MESSAGE =
+  "المبرر مطلوب — اكتب سبباً غير فارغ (ق-8)";
 
 /** Context that owns a comparable selection — land table items belong to the cost approach. */
 export function contextOfSelection(

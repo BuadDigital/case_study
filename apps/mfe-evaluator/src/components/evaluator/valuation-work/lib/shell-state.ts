@@ -111,7 +111,9 @@ export function buildAutoNarrative(
     bullets.push(`• ${f.labelAr || f.factorKey} — ${just}`);
   }
   const weightJust = (
-    adopted[0]?.market?.weightOverrideRationale ?? ""
+    rationaleByKey.get("weight") ??
+    adopted[0]?.market?.weightOverrideRationale ??
+    ""
   ).trim();
   if (weightJust) {
     bullets.push(`• الوزن النسبي — ${weightJust}`);

@@ -684,11 +684,13 @@ export function buildValuationReportLiveFill(input: {
   const liqOn =
     isLiquidation || input.recon?.liquidationDiscountApplied === true;
   if (liqOn) {
-    const pct =
+    const fromRecon =
       input.recon?.liquidationDiscountPct != null &&
       input.recon.liquidationDiscountPct > 0
         ? String(input.recon.liquidationDiscountPct).replace(/%/g, "")
-        : draft.forcedSaleDiscountPct.replace(/%/g, "");
+        : "";
+    const fromDraft = draft.forcedSaleDiscountPct.replace(/%/g, "").trim();
+    const pct = fromRecon || fromDraft;
     cells["نسبة خصم التصفية المنظمة"] = dash(pct ? `${pct}٪` : "");
     cells["مبرر معامل التصفية"] = dash(
       input.recon?.liquidationDiscountRationale,

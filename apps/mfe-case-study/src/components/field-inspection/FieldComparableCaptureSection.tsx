@@ -24,10 +24,14 @@ import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import {
   comparableDealLabel,
   comparableDraftToUpsert,
-  comparableEntryReady,
   emptyComparableEntryDraft,
+  firstComparableEntryError,
+  firstComparableEntryErrorTarget,
   parseComparableCoords,
+  validateComparableEntry,
+  type ComparableEntryFieldErrors,
 } from "../../lib/comparable-entry";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { ComparablePropertyEntryFields } from "../comparables/ComparablePropertyEntryFields";
 
 function fieldColumns(cols: ValuationListItemDto[]): ValuationListItemDto[] {
@@ -110,6 +114,9 @@ export function FieldComparableCaptureSection({
   const [sessionRows, setSessionRows] = useState<ComparablePropertyDto[]>([]);
   const [draft, setDraft] = useState(() => emptyComparableEntryDraft());
   const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ComparableEntryFieldErrors>(
+    {},
+  );
   const [formKey, setFormKey] = useState(0);
   const subjectPin = parseComparableCoords(latitude, longitude);
 
@@ -140,8 +147,12 @@ export function FieldComparableCaptureSection({
   async function save() {
     const config = workOrdersApiConfig();
     if (!config) return;
-    if (!comparableEntryReady(draft, locationConfirmed)) {
-      showToast("أكمل الموقع والنوع والسعر والمساحة والتاريخ قبل الحفظ", "error");
+    const errors = validateComparableEntry(draft, locationConfirmed);
+    setFieldErrors(errors);
+    const message = firstComparableEntryError(errors);
+    if (message) {
+      showToast(message, "error");
+      scheduleScrollToFormField(firstComparableEntryErrorTarget(errors), 80);
       return;
     }
     setSaving(true);
@@ -166,6 +177,7 @@ export function FieldComparableCaptureSection({
       anomaly ? "error" : "success",
     );
     setDraft(emptyComparableEntryDraft());
+    setFieldErrors({});
     setLocationConfirmed(false);
     setOpen(false);
     if (propertyId) {
@@ -221,8 +233,12 @@ export function FieldComparableCaptureSection({
             key={formKey}
             draft={draft}
             disabled={saving || disabled}
+            fieldErrors={fieldErrors}
             subjectPin={subjectPin}
-            onChange={setDraft}
+            onChange={(next) => {
+              setDraft(next);
+              setFieldErrors({});
+            }}
             onLocationConfirmedChange={setLocationConfirmed}
           />
           <div className="mt-2">
@@ -231,11 +247,8 @@ export function FieldComparableCaptureSection({
               size="sm"
               variant="primary"
               loading={saving}
-              disabled={
-                saving ||
-                disabled ||
-                !comparableEntryReady(draft, locationConfirmed)
-              }
+              disabled={saving || disabled}
+              showActionToast={false}
               onClick={() => void save()}
             >
               حفظ في بنك العقارات

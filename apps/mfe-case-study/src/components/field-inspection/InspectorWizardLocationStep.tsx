@@ -9,18 +9,23 @@ import { useMemo } from "react";
 import { Button, cn, GoogleMapPin, useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
-  SITE_LOCATION_ACK_PENDING_MESSAGE,
   mapPinPatchForActor,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import {
+  SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
+  canPrintSiteLocationAck,
+} from "../../lib/app-data/site-location-ack-letter";
+import {
+  engineeringOfficeContextPins,
   inspectorReferenceMapPins,
   inspectorWizardCoordsValue,
   inspectorWizardMapGeo,
 } from "./inspector-wizard-state";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
+import { handleSiteLocationAckClick } from "./site-location-ack-action";
 import {
   InsCard,
   InsEditField,
@@ -45,10 +50,14 @@ export function InspectorWizardLocationStep({
   onMapMove,
   mapPinned,
   onPin,
+  onUnpin,
   mapPinEpoch,
   mapActor,
   canRestoreInspectorMap,
   onRestoreInspectorMap,
+  canAdoptEngineeringMap = false,
+  onAdoptEngineeringMap,
+  engineeringMapPin = null,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -59,19 +68,27 @@ export function InspectorWizardLocationStep({
   onMapMove: (lat: number, lng: number) => void;
   mapPinned: boolean;
   onPin: () => void;
+  onUnpin: () => void;
   mapPinEpoch: number;
   mapActor: InspectorMapActor;
   canRestoreInspectorMap: boolean;
   onRestoreInspectorMap?: () => void;
+  canAdoptEngineeringMap?: boolean;
+  onAdoptEngineeringMap?: () => void;
+  engineeringMapPin?: { lat: number; lng: number } | null;
 }) {
   const { showToast } = useToast();
+  const ackReady = canPrintSiteLocationAck(mapPinned);
   const mapGeo = useMemo(
     () => inspectorWizardMapGeo(draft, property),
     [draft, property],
   );
-  const inspectorReferencePins = useMemo(
-    () => inspectorReferenceMapPins(draft, mapActor, mapPinned),
-    [draft, mapActor, mapPinned],
+  const contextPins = useMemo(
+    () => [
+      ...inspectorReferenceMapPins(draft, mapActor, mapPinned),
+      ...engineeringOfficeContextPins(draft, mapActor, engineeringMapPin),
+    ],
+    [draft, mapActor, mapPinned, engineeringMapPin],
   );
   const coordsValue = inspectorWizardCoordsValue(draft);
 
@@ -94,7 +111,7 @@ export function InspectorWizardLocationStep({
                   ? "الموقع المعتمد"
                   : undefined
               }
-              contextPins={inspectorReferencePins}
+              contextPins={contextPins}
               onCoordsChange={
                 editable && !mapPinned
                   ? (lat, lng) => onMapMove(lat, lng)
@@ -112,7 +129,7 @@ export function InspectorWizardLocationStep({
             <span className={INS_LABEL_CLASS}>
               الإحداثيات
             </span>
-            {editable ? (
+            {editable && !mapPinned ? (
               <input
                 id="ins-map-coords"
                 className={cn(
@@ -147,7 +164,7 @@ export function InspectorWizardLocationStep({
               />
             )}
           </div>
-          {editable ? (
+          {editable && !mapPinned ? (
             <button
               type="button"
               className={INS_WIZARD_PIN_BUTTON_CLASS}
@@ -156,6 +173,24 @@ export function InspectorWizardLocationStep({
               تثبيت الموقع
             </button>
           ) : null}
+          {editable && mapPinned ? (
+            <div
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-[#B7E4C7] bg-[#F0FFF4] pe-1.5 ps-3.5 text-[12.5px] font-bold text-[#1B7A4A]"
+              role="status"
+            >
+              <i className="ti ti-pin-filled text-sm" aria-hidden />
+              تم تثبيت الموقع
+              <button
+                type="button"
+                className="grid size-7 place-items-center rounded-md border-0 bg-transparent font-inherit text-[15px] text-[#1B7A4A] transition-colors hover:bg-[color-mix(in_srgb,#1B7A4A_12%,transparent)]"
+                aria-label="إلغاء تثبيت الموقع"
+                title="إلغاء التثبيت وإعادة التعيين"
+                onClick={onUnpin}
+              >
+                <i className="ti ti-x" aria-hidden />
+              </button>
+            </div>
+          ) : null}
           {editable && canRestoreInspectorMap && onRestoreInspectorMap ? (
             <Button
               type="button"
@@ -163,14 +198,24 @@ export function InspectorWizardLocationStep({
               variant="outline"
               onClick={onRestoreInspectorMap}
             >
-              استعادة موقع المعاين
+              اعتماد موقع المعاين
+            </Button>
+          ) : null}
+          {editable && canAdoptEngineeringMap && onAdoptEngineeringMap ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onAdoptEngineeringMap}
+            >
+              اعتماد موقع المكتب الهندسي
             </Button>
           ) : null}
         </div>
-        {inspectorReferencePins.length > 0 ? (
+        {contextPins.length > 0 ? (
           <p className="mt-2 mb-0 text-[10.5px] leading-relaxed text-text-3">
-            الدبوس الأزرق يعرض موقع المعاين الأصلي للمقارنة فقط — لا يُرفع مع
-            التقرير.
+            الدبابيس الإضافية للمقارنة فقط (معاين / مكتب هندسي) — الموقع
+            المعتمد هو الدبوس الرئيسي بعد الاختيار.
           </p>
         ) : null}
         {fieldErrors.mapLatitude ? (
@@ -237,7 +282,15 @@ export function InspectorWizardLocationStep({
           fieldErrors={fieldErrors}
           onPatch={onPatch}
           onAckClick={() =>
-            showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
+            handleSiteLocationAckClick({
+              mapPinned,
+              draft,
+              property,
+              showToast,
+            })
+          }
+          ackTitle={
+            ackReady ? undefined : SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE
           }
         />
       </InsCard>

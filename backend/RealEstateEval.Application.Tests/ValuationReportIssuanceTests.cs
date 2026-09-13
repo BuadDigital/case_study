@@ -119,10 +119,10 @@ public class ValuationReportIssuanceTests
         var (deposit, _) = await service.IssueDepositAsync(id, "user-1");
         Assert.Equal(1, deposit!.Version);
 
-        // 2-B: reopen reason required with Q-8-2 minimum — short text rejected; nothing changes.
+        // 2-B: reopen reason required — blank rejected; nothing changes.
         var (_, shortErrors) = await service.ReopenAfterDepositAsync(
-            id, new ReopenReportIssuanceRequest { Reason = "قصير" }, "supervisor-1");
-        Assert.Contains("الحد الأدنى", shortErrors!["reason"]);
+            id, new ReopenReportIssuanceRequest { Reason = "  " }, "supervisor-1");
+        Assert.Contains("مطلوب", shortErrors!["reason"]);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
         // R2: current copy is marked superseded and kept on file; cycle returns to an open draft.

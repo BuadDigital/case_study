@@ -16,7 +16,7 @@ import {
   type AlertOverrideRecord,
 } from "./lib/final-opinion-state";
 import { isMarketMethodologyAlert } from "./lib/methodology-alerts";
-import { JUSTIFICATION_MIN_LENGTH, apiConfig } from "./lib/shell-utils";
+import { apiConfig } from "./lib/shell-utils";
 
 function draftFromRecon(recon: ValuationReconciliationDto | null) {
   return {
@@ -197,23 +197,10 @@ function MethodologyAlertRow({
         <>
           <input
             value={ov.overrideRationale}
-            placeholder={`المبرر النصي لتجاوز التنبيه (${JUSTIFICATION_MIN_LENGTH} أحرف فأكثر)…`}
+            placeholder="المبرر النصي لتجاوز التنبيه…"
             onChange={(e) => onPatch({ overrideRationale: e.target.value })}
-            className={cn(
-              "rounded-[7px] border border-dashed bg-surface px-2.5 py-[7px] text-xs",
-              ov.overrideRationale.trim().length > 0 &&
-                ov.overrideRationale.trim().length < JUSTIFICATION_MIN_LENGTH
-                ? "border-danger"
-                : "border-border-md",
-            )}
+            className="rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs"
           />
-          {ov.overrideRationale.trim().length > 0 &&
-          ov.overrideRationale.trim().length < JUSTIFICATION_MIN_LENGTH ? (
-            <span className="text-[10.5px] font-semibold text-danger">
-              هذا المبرر غير كافٍ لتجاوز التنبيه — اكتب سبباً حقيقياً لا يقل عن{" "}
-              {JUSTIFICATION_MIN_LENGTH} أحرف.
-            </span>
-          ) : null}
         </>
       ) : null}
       {needsAck ? (

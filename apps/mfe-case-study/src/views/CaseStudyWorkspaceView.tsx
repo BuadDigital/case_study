@@ -21,7 +21,6 @@ import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDet
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
-import { ReturnedForCorrectionNote } from "../components/ui/ReturnedForCorrectionNote";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
@@ -113,9 +112,6 @@ function CaseStudyAppraisalPanel({
   const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
   const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] = useState(false);
   const [inspectionAccepted, setInspectionAccepted] = useState(false);
-  const [inspectionReturnNote, setInspectionReturnNote] = useState<string | null>(
-    null,
-  );
   const [inspectionReloadKey, setInspectionReloadKey] = useState(0);
 
   const inspectionTask = useMemo(() => {
@@ -163,7 +159,6 @@ function CaseStudyAppraisalPanel({
       setInspectionAssetSubject("");
       setInspectionSnapshotLoaded(false);
       setInspectionAccepted(false);
-      setInspectionReturnNote(null);
       return;
     }
     let cancelled = false;
@@ -174,7 +169,6 @@ function CaseStudyAppraisalPanel({
         setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
         setInspectionSnapshotLoaded(true);
         setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
-        setInspectionReturnNote(draft?.returnNote?.trim() || null);
       });
     };
     load();
@@ -356,13 +350,6 @@ function CaseStudyAppraisalPanel({
           </div>
         ) : null}
 
-        {inspectionPackageStatus === "reopened" && inspectionReturnNote ? (
-          <ReturnedForCorrectionNote
-            note={inspectionReturnNote}
-            className="mb-3"
-          />
-        ) : null}
-
         {inspectionPackageStatus === "submitted" &&
         inspectionAssetSubject.trim() &&
         inspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
@@ -377,6 +364,11 @@ function CaseStudyAppraisalPanel({
             key={`${inspectionTask.id}:${inspectionReloadKey}`}
             property={property}
             inspectionTask={inspectionTask}
+            surveyTask={
+              surveyTaskId
+                ? (tasks.find((t) => t.id === surveyTaskId) ?? null)
+                : null
+            }
             inspectionCard={inspectionCard}
             editMode
             lockEditMode
@@ -564,7 +556,7 @@ export function CaseStudyWorkspaceView({
         />
 
         <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-          <div className={opsContentPanel}>
+          <div className={cn(opsContentPanel, "pt-5")}>
             <CaseStudyWorkspaceStepNav
               active={workspaceTab}
               onSelect={setWorkspaceTab}

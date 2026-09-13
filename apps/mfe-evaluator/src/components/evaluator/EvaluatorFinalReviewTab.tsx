@@ -22,9 +22,14 @@ import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
+  EvaluatorReportWorkerRole,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
-import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import {
+  EVALUATOR_WORKER_ROLES,
+  createEmptyReportWorker,
+  emptyReportChoices,
+} from "../../lib/evaluator/evaluator-window-data";
 import {
   EXTERNAL_SPECIALIST_USED_LABEL,
   assumptionsAfterSpecialistChoice,
@@ -72,6 +77,8 @@ export function EvaluatorFinalReviewTab({
   onDraftPatch?: (patch: {
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
+    independenceDeclared?: boolean;
+    reportWorkers?: EvaluatorSubmission["reportWorkers"];
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
@@ -335,6 +342,148 @@ export function EvaluatorFinalReviewTab({
       {error ? (
         <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
       ) : null}
+
+      <ValCard title="إقرار الاستقلالية والمشاركون">
+        <p className={noteClassName}>
+          مطلوب قبل اعتماد التقييم وإرساله للأخصائي — إقرار الاستقلالية وعامل
+          واحد على الأقل باسمه على التقرير.
+        </p>
+
+        <label
+          id="inf-independence"
+          className={cn(
+            "mb-4 flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] border border-border bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors hover:bg-row-hover",
+            err("independence_declared") && invalidControlClass,
+          )}
+        >
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
+            disabled={disabled}
+            checked={draft.independenceDeclared}
+            onChange={(e) =>
+              onDraftPatch?.({ independenceDeclared: e.target.checked })
+            }
+          />
+          <span>
+            أقرّ بعدم وجود تضارب مصالح وبأن التقييم أُعدّ باستقلالية مهنية.
+          </span>
+        </label>
+        {err("independence_declared") ? (
+          <p className="mt-[-8px] mb-3 text-[11px] text-danger-text">
+            {err("independence_declared")}
+          </p>
+        ) : null}
+
+        <div id="inf-workers">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[12.5px] font-bold text-heading">
+              العاملون على التقرير
+            </span>
+            <button
+              type="button"
+              className={cn(opsBtnPrimary, "!px-2.5 !py-1.5 text-[11.5px]")}
+              disabled={disabled}
+              onClick={() => {
+                const next = [
+                  ...(draft.reportWorkers?.length
+                    ? draft.reportWorkers
+                    : [createEmptyReportWorker("معد")]),
+                  createEmptyReportWorker(
+                    draft.reportWorkers?.length ? "مراجع" : "معد",
+                  ),
+                ];
+                onDraftPatch?.({ reportWorkers: next });
+              }}
+            >
+              إضافة عامل
+            </button>
+          </div>
+          <div
+            className={cn(
+              "overflow-hidden rounded-[var(--radius)] border border-border",
+              err("report_workers") && invalidControlClass,
+            )}
+          >
+            {(draft.reportWorkers?.length
+              ? draft.reportWorkers
+              : [createEmptyReportWorker("معد")]
+            ).map((worker, index, list) => (
+              <div
+                key={worker.id}
+                className="grid grid-cols-1 gap-2 border-b border-border bg-surface px-3 py-2.5 last:border-b-0 sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:items-end"
+              >
+                <div>
+                  <label className="mb-1 block text-[11px] text-text-2">
+                    الدور
+                  </label>
+                  <select
+                    className={cn(opsFldControl, "font-medium")}
+                    disabled={disabled}
+                    value={worker.role || "معد"}
+                    onChange={(e) => {
+                      const role = e.target.value as EvaluatorReportWorkerRole;
+                      const next = list.map((w) =>
+                        w.id === worker.id ? { ...w, role } : w,
+                      );
+                      onDraftPatch?.({ reportWorkers: next });
+                    }}
+                  >
+                    {EVALUATOR_WORKER_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-text-2">
+                    الاسم
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="اسم المشارك"
+                    className={cn(opsFldControl, "font-medium")}
+                    disabled={disabled}
+                    value={worker.name}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const next = list.map((w) =>
+                        w.id === worker.id ? { ...w, name } : w,
+                      );
+                      onDraftPatch?.({ reportWorkers: next });
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="h-[38px] rounded-md border border-border bg-surface px-3 text-[12px] font-bold text-text-2 disabled:opacity-40"
+                  disabled={disabled || list.length <= 1}
+                  aria-label="حذف العامل"
+                  onClick={() => {
+                    const next = list.filter((w) => w.id !== worker.id);
+                    onDraftPatch?.({
+                      reportWorkers:
+                        next.length > 0 ? next : [createEmptyReportWorker()],
+                    });
+                  }}
+                >
+                  حذف
+                </button>
+              </div>
+            ))}
+          </div>
+          {err("report_workers") ? (
+            <p className="mt-2 mb-0 text-[11px] text-danger-text">
+              {err("report_workers")}
+            </p>
+          ) : (
+            <p className="mt-2 mb-0 text-[10.5px] text-text-3">
+              أدخل اسم عامل واحد على الأقل (معد / مراجع / معتمد).
+            </p>
+          )}
+        </div>
+      </ValCard>
 
       <ValCard title="الافتراضات الخاصة">
         <p className={noteClassName}>

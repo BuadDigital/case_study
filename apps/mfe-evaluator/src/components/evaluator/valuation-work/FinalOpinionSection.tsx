@@ -122,6 +122,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     setFinalRoundDecimals,
     liquidationDiscountPct,
     setLiquidationDiscountPct,
+    liquidationDiscountRationale,
+    setLiquidationDiscountRationale,
     sole,
     weightSumLocal,
     reconWeightsBad,
@@ -375,6 +377,45 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     </td>
                     <td className="py-1.5 text-start text-[10.5px] text-text-3">
                       ٪ من القيمة قبل الخصم
+                    </td>
+                  </tr>
+                ) : null}
+                {isLiquidation ? (
+                  <tr className="border-b border-dashed border-border">
+                    <td colSpan={3} className="py-2 text-start">
+                      <label
+                        htmlFor="final-inf-discount-rationale"
+                        className="mb-1 block text-[12px] font-medium text-text"
+                      >
+                        مبرر معامل التصفية
+                        {Number(liquidationDiscountPct.replace(",", ".")) > 0 ? (
+                          <span className="text-danger-text"> *</span>
+                        ) : null}
+                      </label>
+                      <input
+                        id="final-inf-discount-rationale"
+                        type="text"
+                        value={liquidationDiscountRationale}
+                        onChange={(e) =>
+                          setLiquidationDiscountRationale(e.target.value)
+                        }
+                        placeholder="مثال: سيولة السوق خلال ٩٠ يوماً، ظروف البيع القسري…"
+                        className={cn(
+                          "w-full rounded-md border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-heading",
+                          fieldErrors?.liquidation_discount_rationale &&
+                            invalidControlClass,
+                        )}
+                      />
+                      {fieldErrors?.liquidation_discount_rationale ? (
+                        <p className="mt-1 mb-0 text-[11px] text-danger-text">
+                          {fieldErrors.liquidation_discount_rationale}
+                        </p>
+                      ) : Number(liquidationDiscountPct.replace(",", ".")) >
+                        0 ? (
+                        <p className="mt-1 mb-0 text-[10.5px] text-text-3">
+                          مطلوب عند إدخال نسبة خصم أكبر من صفر.
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 ) : null}

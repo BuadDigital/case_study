@@ -199,6 +199,7 @@ export function PoPropertyDetailTabs({
                 record={record}
                 property={property}
                 primaryPhoto={primaryPhoto}
+                inspectionTaskId={inspectionTask?.id ?? null}
               />
             </Activity>
           ) : null}
@@ -357,6 +358,7 @@ export function PoPropertyDetailTabs({
             <PropertyDetailInspectionTab
               property={property}
               inspectionTask={inspectionTask}
+              surveyTask={surveyTask}
               inspectionCard={inspectionCard}
               editMode={
                 workspaceForced

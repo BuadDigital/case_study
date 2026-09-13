@@ -841,6 +841,20 @@ describe("valuation report live fill from intake", () => {
     expect(liq.cells["مبرر معامل التصفية"]).toBe("سيولة 90 يوم");
     expect(liq.cells["قيمة العقار"]).toBe("1,211,200");
 
+    const emptyDiscount = buildValuationReportLiveFill({
+      draft,
+      record: poRecord({ assignmentType: "تنفيذ" }) as never,
+      recon: {
+        weightedValue: 1_514_000,
+        finalOpinionBeforeLiquidation: 1_514_000,
+        finalOpinionValue: 1_514_000,
+        liquidationDiscountApplied: false,
+        liquidationDiscountPct: 0,
+      } as never,
+    });
+    // Basis may still be liquidation for the PO, but no entered % → blank, not a baked-in 20.
+    expect(emptyDiscount.cells["نسبة خصم التصفية المنظمة"]).toBe("—");
+
     const dom = new DOMParser().parseFromString(
       `<section data-sec="25">
         <table>

@@ -62,11 +62,18 @@ const FINAL_OPINION_TARGET_IDS = new Set([
   "final-inf-discount",
 ]);
 
+const REVIEW_TARGET_IDS = new Set([
+  "val-esg",
+  "inf-independence",
+  "inf-workers",
+]);
+
 export function evaluatorWorkScreenForErrorTarget(
   targetId: string | null,
 ): "basic" | "market" | "cost" | "final" | "review" {
   if (targetId && RETRO_DATE_TARGET_IDS.has(targetId)) return "basic";
   if (targetId && FINAL_OPINION_TARGET_IDS.has(targetId)) return "final";
+  if (targetId && REVIEW_TARGET_IDS.has(targetId)) return "review";
   return "review";
 }
 
@@ -112,6 +119,8 @@ export function validateEvaluatorSubmission(input: {
     skipManualLandBuilding = false,
     retrospective,
     reportChoices,
+    independenceDeclared = false,
+    reportWorkers = [],
   } = input;
 
   if (retrospective?.mode === "retrospective") {
@@ -171,6 +180,17 @@ export function validateEvaluatorSubmission(input: {
   ) {
     errors.esg_impact_notes =
       "عند اختيار «يوجد تأثير» في ESG يجب كتابة وصف الأثر.";
+  }
+
+  if (!independenceDeclared) {
+    errors.independence_declared =
+      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
+  }
+
+  const hasNamedWorker = reportWorkers.some((w) => w.name.trim().length > 0);
+  if (!hasNamedWorker) {
+    errors.report_workers =
+      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).";
   }
 
   return errors;
