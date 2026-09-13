@@ -95,10 +95,7 @@ export function useReportIssuanceWorkflow({
     if (!config || !valuationRequestId) return;
     const reason = reopenReason.trim();
     if (reason.length < JUSTIFICATION_MIN_LENGTH) {
-      showToast(
-        `سبب إعادة الفتح لا يقل عن ${JUSTIFICATION_MIN_LENGTH} أحرف (ق-8)`,
-        "error",
-      );
+      showToast("سبب إعادة الفتح مطلوب (ق-8)", "error");
       return;
     }
     setIssuanceBusy(true);

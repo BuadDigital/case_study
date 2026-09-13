@@ -66,10 +66,14 @@ export function InspectorWorkspaceWizard({
   onMapMove,
   mapPinned,
   onPin,
+  onUnpin,
   mapPinEpoch,
   mapActor = "inspector",
   canRestoreInspectorMap = false,
   onRestoreInspectorMap,
+  canAdoptEngineeringMap = false,
+  onAdoptEngineeringMap,
+  engineeringMapPin = null,
   /** Property-detail review: show all design sections at once (no step filter). */
   flat = false,
   /** Hide inline submit footer — parent renders it after extra sections. */
@@ -94,10 +98,14 @@ export function InspectorWorkspaceWizard({
   onMapMove: (lat: number, lng: number) => void;
   mapPinned: boolean;
   onPin: () => void;
+  onUnpin: () => void;
   mapPinEpoch: number;
   mapActor?: InspectorMapActor;
   canRestoreInspectorMap?: boolean;
   onRestoreInspectorMap?: () => void;
+  canAdoptEngineeringMap?: boolean;
+  onAdoptEngineeringMap?: () => void;
+  engineeringMapPin?: { lat: number; lng: number } | null;
   flat?: boolean;
   hideSubmitFooter?: boolean;
   onStepGateFailed?: (
@@ -250,10 +258,14 @@ export function InspectorWorkspaceWizard({
             onMapMove={onMapMove}
             mapPinned={mapPinned}
             onPin={onPin}
+            onUnpin={onUnpin}
             mapPinEpoch={mapPinEpoch}
             mapActor={mapActor}
             canRestoreInspectorMap={canRestoreInspectorMap}
             onRestoreInspectorMap={onRestoreInspectorMap}
+            canAdoptEngineeringMap={canAdoptEngineeringMap}
+            onAdoptEngineeringMap={onAdoptEngineeringMap}
+            engineeringMapPin={engineeringMapPin}
           />
 
           {editable && !flat ? (

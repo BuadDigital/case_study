@@ -92,7 +92,7 @@ export function usePropertyMapWorkflow() {
   const [activeSel, setActiveSel] = useState<string[] | null>(null);
   const [archiveSel, setArchiveSel] = useState<string[] | null>(null);
   const [compSel, setCompSel] = useState<string[] | null>(null);
-  const [basemap, setBasemap] = useState<PropertyMapBasemap>("satellite");
+  const [basemap, setBasemap] = useState<PropertyMapBasemap>("osm");
   const [command, setCommand] = useState<MapViewCommand | null>(null);
   const cmdSeq = useRef(0);
   const fitted = useRef(false);

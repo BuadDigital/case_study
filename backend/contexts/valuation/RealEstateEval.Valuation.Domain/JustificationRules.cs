@@ -1,29 +1,29 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Q-8-2 (decisions log v2): minimum rationale length blocks token rationales of a letter or period.
+/// Q-8-2: required rationales must be non-blank (trimmed).
 /// Applies to all required rationales in the valuation package (adjustments, weights, tags, rationale alerts)
 /// without touching "free text" fields (decision 19).
 /// </summary>
 public static class JustificationRules
 {
- /// <summary>Package suggestion adopted in Q-8: ~10 characters.</summary>
-    public const int MinLength = 10;
+    /// <summary>Any non-empty trimmed text is enough — no padded minimum.</summary>
+    public const int MinLength = 1;
 
- /// <summary>Acceptable rationale: non-empty text whose trimmed length ≥ the minimum.</summary>
+    /// <summary>Acceptable rationale: non-empty text whose trimmed length ≥ the minimum.</summary>
     public static bool IsAcceptable(string? rationale) =>
         (rationale?.Trim().Length ?? 0) >= MinLength;
 
- /// <summary>Completely empty (not an entry) — distinct from "too short".</summary>
+    /// <summary>Completely empty (not an entry) — distinct from "too short".</summary>
     public static bool IsBlank(string? rationale) =>
         string.IsNullOrWhiteSpace(rationale);
 
- /// <summary>Non-empty but shorter than the minimum — the case Q-8-2 specifically blocks.</summary>
+    /// <summary>Non-empty but shorter than the minimum (only possible if MinLength &gt; 1).</summary>
     public static bool IsTooShort(string? rationale) =>
         !IsBlank(rationale) && !IsAcceptable(rationale);
 
     public static string TooShortMessageAr(string labelAr) =>
-        $"{labelAr}: المبرر أقصر من الحد الأدنى ({MinLength} أحرف) — اكتب مبرراً جوهرياً (ق-8).";
+        $"{labelAr}: المبرر مطلوب — اكتب سبباً غير فارغ (ق-8).";
 }
 
 /// <summary>

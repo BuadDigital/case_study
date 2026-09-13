@@ -17,10 +17,18 @@ import {
   hasAnyPartyPhone,
 } from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
 import { useIdempotentAction } from "@platform/app-shared";
+import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import { failureRecordTitle } from "@failures/mfe/lib/failures-labels";
+import { createFailure } from "@failures/mfe/lib/failures-repository";
+import { FAILURE_RAISER_LABEL_BY_KIND } from "@failures/mfe/lib/failure-party-roles";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
 import { loadEngineeringSurveySubmission } from "../lib/engineering-survey-submission-model";
 import { updateEngineeringSurveyDraft } from "../lib/engineering-survey-submission-commands";
+import {
+  engineeringPinMismatchesInspector,
+  LOCATION_PIN_MISMATCH_NOTE_PREFIX,
+  locationPinMismatchInternalNote,
+} from "../lib/engineering-survey-inspector-pin";
 import {
   cacheEngineeringSurveyFile,
   clearEngineeringSurveyFile,
@@ -71,6 +79,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     transactionActive,
     notesEditable,
     blockingFailure,
+    failures,
     setWorkTab,
     noteDraft,
     persist,
@@ -248,6 +257,45 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       if (result.warning) {
         showToast(result.warning, "error");
       }
+      const mismatch = engineeringPinMismatchesInspector(result.submission);
+      if (mismatch.mismatch && propertyId) {
+        const alreadyRaised = failures.some(
+          (f) =>
+            f.poNumber === task.poNumber &&
+            f.propertyId === propertyId &&
+            isActiveFailureStatus(f.status) &&
+            f.internalNote.includes(LOCATION_PIN_MISMATCH_NOTE_PREFIX),
+        );
+        if (!alreadyRaised) {
+          try {
+            await createFailure(
+              {
+                poNumber: task.poNumber,
+                propertyId,
+                deedNumber: property?.deedNumber?.trim() || "",
+                problemTypeId: "unknown-location",
+                severity: "internal",
+                raisedByRole:
+                  FAILURE_RAISER_LABEL_BY_KIND["engineering-survey"] ??
+                  "المكتب الهندسي",
+                title: "اختلاف موقع المعاين عن المكتب الهندسي",
+                internalNote: locationPinMismatchInternalNote(mismatch),
+                specialist: task.assigneeName || "المكتب الهندسي",
+              },
+              `pin-mismatch:${propertyId}`,
+            );
+            showToast(
+              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذر داخلي للمراجعة.",
+              "error",
+            );
+          } catch {
+            showToast(
+              "تم الإرسال، لكن تعذّر تسجيل تعذر اختلاف الموقع تلقائياً.",
+              "error",
+            );
+          }
+        }
+      }
       hostRef.current?.onSubmitted?.();
       return true;
     }
@@ -265,7 +313,12 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     role,
     property,
     property?.contacts,
+    property?.deedNumber,
+    propertyId,
+    failures,
     task.id,
+    task.poNumber,
+    task.assigneeName,
     hostRef,
     setDraft,
     setFieldErrors,

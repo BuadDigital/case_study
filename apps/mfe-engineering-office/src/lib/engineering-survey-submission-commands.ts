@@ -28,6 +28,7 @@ import {
   awaitEngineeringSurveyDraftWrites,
   enqueueEngineeringSurveyDraftWrite,
 } from "./engineering-survey-draft-write-queue";
+import { withInspectorPinSeed } from "./engineering-survey-inspector-pin";
 
 export async function saveEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
@@ -53,12 +54,38 @@ export async function getOrCreateEngineeringSurveyDraft(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
+  /** Sibling inspector pin — seeds the map and stores the mismatch reference. */
+  inspectorPin?: { lat: number; lng: number } | null;
 }): Promise<EngineeringSurveySubmission> {
   const existing = await fetchEngineeringSurveySubmission(input.taskId, {
     persistFixes: true,
   });
-  if (existing) return existing;
-  const draft = createEngineeringSurveyDraft(input);
+  if (existing) {
+    const seeded = withInspectorPinSeed(existing, input.inspectorPin ?? null);
+    if (
+      seeded.latitude !== existing.latitude ||
+      seeded.longitude !== existing.longitude ||
+      seeded.inspectorReferenceLatitude !==
+        existing.inspectorReferenceLatitude ||
+      seeded.inspectorReferenceLongitude !==
+        existing.inspectorReferenceLongitude
+    ) {
+      return saveEngineeringSurveySubmission(seeded);
+    }
+    return existing;
+  }
+  const pin = input.inspectorPin ?? null;
+  const lat = pin ? pin.lat.toFixed(5) : undefined;
+  const lng = pin ? pin.lng.toFixed(5) : undefined;
+  const draft = createEngineeringSurveyDraft({
+    taskId: input.taskId,
+    propertyId: input.propertyId,
+    poNumber: input.poNumber,
+    latitude: lat,
+    longitude: lng,
+    inspectorReferenceLatitude: lat,
+    inspectorReferenceLongitude: lng,
+  });
   return saveEngineeringSurveySubmission(draft);
 }
 
@@ -85,6 +112,8 @@ async function writeEngineeringSurveyDraft(
       EngineeringSurveySubmission,
       | "latitude"
       | "longitude"
+      | "inspectorReferenceLatitude"
+      | "inspectorReferenceLongitude"
       | "surveyReportFileName"
       | "siteLetterFileName"
       | "siteConfirmed"

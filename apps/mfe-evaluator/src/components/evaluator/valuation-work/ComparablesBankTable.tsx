@@ -8,11 +8,15 @@ import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedC
 import { ComparablePropertyEntryFields } from "../ComparablePropertyEntryFieldsSlot";
 import {
   comparableDraftToUpsert,
-  comparableEntryReady,
   emptyComparableEntryDraft,
+  firstComparableEntryError,
+  firstComparableEntryErrorTarget,
   parseComparableCoords,
+  validateComparableEntry,
   type ComparableEntryDraft,
+  type ComparableEntryFieldErrors,
 } from "@platform/app-shared/app-data/comparable-entry";
+import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   AppModal,
   Button,
@@ -96,6 +100,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   const [draft, setDraft] = useState<ComparableEntryDraft>(() =>
     emptyComparableEntryDraft(),
   );
+  const [fieldErrors, setFieldErrors] = useState<ComparableEntryFieldErrors>(
+    {},
+  );
   const initialDraftRef = useRef<ComparableEntryDraft | null>(null);
   const { run: runCreate, loading: saving } = useCommandMutation(
     async (next: ComparableEntryDraft) => {
@@ -135,6 +142,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     const next = emptyComparableEntryDraft();
     initialDraftRef.current = next;
     setDraft(next);
+    setFieldErrors({});
     setLocationConfirmed(false);
     setFormKey((n) => n + 1);
     setDiscardOpen(false);
@@ -161,8 +169,12 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   }
 
   async function saveComparable() {
-    if (!comparableEntryReady(draft, locationConfirmed)) {
-      showToast("أكمل الموقع والنوع والسعر والمساحة والتاريخ قبل الحفظ", "error");
+    const errors = validateComparableEntry(draft, locationConfirmed);
+    setFieldErrors(errors);
+    const message = firstComparableEntryError(errors);
+    if (message) {
+      showToast(message, "error");
+      scheduleScrollToFormField(firstComparableEntryErrorTarget(errors), 80);
       return;
     }
     try {
@@ -174,6 +186,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         anomaly ? "error" : "success",
       );
       setDraft(emptyComparableEntryDraft());
+      setFieldErrors({});
       setLocationConfirmed(false);
       setFormOpen(false);
       setDiscardOpen(false);
@@ -258,7 +271,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               type="button"
               variant="primary"
               loading={saving}
-              disabled={saving || !comparableEntryReady(draft, locationConfirmed)}
+              disabled={saving}
+              showActionToast={false}
               onClick={() => void saveComparable()}
             >
               حفظ في البنك
@@ -270,8 +284,12 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           key={formKey}
           draft={draft}
           disabled={saving}
+          fieldErrors={fieldErrors}
           subjectPin={parseComparableCoords(seed?.latitude, seed?.longitude)}
-          onChange={setDraft}
+          onChange={(next) => {
+            setDraft(next);
+            setFieldErrors({});
+          }}
           onLocationConfirmedChange={setLocationConfirmed}
         />
       </AppModal>

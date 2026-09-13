@@ -18,23 +18,39 @@ export function pagePathFromId(pageId: PageId): string {
   return pageId === "po" ? "/po" : `/${pageId}`;
 }
 
+/** Dedicated party work queues — preferred over the generic ops hub after login. */
+const PARTY_WORK_QUEUE_PAGES = [
+  "property-appraisal",
+  "active-inspection",
+  "active-survey",
+] as const satisfies readonly PageId[];
+
 /** First permitted page in sidebar order — post-login and access-denied redirect. */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (rolePages.includes("dashboard")) return "dashboard";
 
-  // Independent operations-task hubs:
-  // - Management director (valuation-requests + case-study suite)
-  // - Execution parties (inspector / office / appraiser / government reviewer / …) — ops without case-study manager pages
-  if (rolePages.includes("operations-tasks")) {
-    const isGeneralManagerHub =
-      rolePages.includes("valuation-requests") &&
-      rolePages.includes("active-case-study");
-    const isIndependentExecutorHub =
-      !rolePages.includes("dashboard") &&
-      !rolePages.includes("active-case-study");
-    if (isGeneralManagerHub || isIndependentExecutorHub) {
-      return "operations-tasks";
-    }
+  // Appraiser / inspector / engineering office → their primary work queue.
+  for (const pageId of PARTY_WORK_QUEUE_PAGES) {
+    if (rolePages.includes(pageId)) return pageId;
+  }
+
+  // Valuation director (valuation-requests + case-study suite) → PO list.
+  if (
+    rolePages.includes("po") &&
+    rolePages.includes("valuation-requests") &&
+    rolePages.includes("active-case-study")
+  ) {
+    return "po";
+  }
+
+  // Remaining independent executors (e.g. government reviewer) without a
+  // dedicated queue — land on the operations-tasks hub.
+  if (
+    rolePages.includes("operations-tasks") &&
+    !rolePages.includes("dashboard") &&
+    !rolePages.includes("active-case-study")
+  ) {
+    return "operations-tasks";
   }
 
   for (const pageId of NAV_PAGE_ORDER) {

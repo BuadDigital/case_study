@@ -12,37 +12,34 @@ namespace RealEstateEval.Application.Tests;
 public class AdjustmentFactorRationaleTests
 {
     [Fact]
-    public void Justification_min_length_is_ten_and_trims()
+    public void Justification_requires_non_blank_text()
     {
         Assert.False(JustificationRules.IsAcceptable(null));
         Assert.False(JustificationRules.IsAcceptable("   "));
-        Assert.False(JustificationRules.IsAcceptable("."));
-        Assert.False(JustificationRules.IsAcceptable("123456789"));
-        Assert.False(JustificationRules.IsAcceptable("  123456789  "));
-        Assert.True(JustificationRules.IsAcceptable("1234567890"));
+        Assert.True(JustificationRules.IsAcceptable("."));
+        Assert.True(JustificationRules.IsAcceptable("قصير"));
         Assert.True(JustificationRules.IsAcceptable("مبرر جوهري كافٍ"));
 
         Assert.False(JustificationRules.IsTooShort(""));
-        Assert.True(JustificationRules.IsTooShort("قصير"));
+        Assert.False(JustificationRules.IsTooShort("."));
         Assert.False(JustificationRules.IsTooShort("مبرر جوهري كافٍ"));
     }
 
     [Fact]
-    public void Sham_rationale_does_not_resolve_a_rationale_alert()
+    public void Blank_rationale_does_not_resolve_a_rationale_alert()
     {
         var resolutions = new Dictionary<string, ValuationMethodologyAlertResolution>(
             StringComparer.OrdinalIgnoreCase)
         {
             [ValuationMethodologyAlertCodes.LargeAdjustments] =
-                new(ValuationMethodologyAlertCodes.LargeAdjustments, "."),
+                new(ValuationMethodologyAlertCodes.LargeAdjustments, "  "),
         };
 
         Assert.False(ValuationMethodologyAlertRules.IsResolved(
             17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
 
         resolutions[ValuationMethodologyAlertCodes.LargeAdjustments] =
-            new(ValuationMethodologyAlertCodes.LargeAdjustments,
-                "تجاوز التسويات مبرر بندرة المقارنات في الحي");
+            new(ValuationMethodologyAlertCodes.LargeAdjustments, "نعم");
         Assert.True(ValuationMethodologyAlertRules.IsResolved(
             17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
     }

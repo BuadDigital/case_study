@@ -8,6 +8,7 @@
 import type { ComponentType } from "react";
 import type {
   ComparableEntryDraft,
+  ComparableEntryFieldErrors,
   ComparableSubjectPin,
 } from "../app-data/comparable-entry";
 
@@ -17,6 +18,7 @@ export type ComparablePropertyEntryFieldsProps = {
   showCoordinates?: boolean;
   showDescription?: boolean;
   subjectPin?: ComparableSubjectPin | null;
+  fieldErrors?: ComparableEntryFieldErrors;
   onChange: (next: ComparableEntryDraft) => void;
   onLocationConfirmedChange?: (confirmed: boolean) => void;
 };

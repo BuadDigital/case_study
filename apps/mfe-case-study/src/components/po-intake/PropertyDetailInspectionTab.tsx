@@ -59,6 +59,12 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import {
+  parsePlacedMapPin,
+} from "@platform/app-shared/media/photo-location";
+import { loadEngineeringSurveySubmissionAsync } from "@engineering-office/mfe/lib/engineering-survey-submission-reads";
+import { updateEngineeringSurveyDraft } from "@engineering-office/mfe/lib/engineering-survey-submission-commands";
+import { engineeringActivePinOf } from "@engineering-office/mfe/lib/engineering-survey-inspector-pin";
+import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
@@ -112,6 +118,7 @@ import {
 export function PropertyDetailInspectionTab({
   property,
   inspectionTask,
+  surveyTask = null,
   inspectionCard,
   editMode = false,
   onEditModeChange,
@@ -128,6 +135,8 @@ export function PropertyDetailInspectionTab({
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
+  /** Sibling engineering-survey task — specialist location choice. */
+  surveyTask?: WorkflowTask | null;
   inspectionCard: PropertyDetailPartyCard | null;
   /** Case Study.html `ed` — in-tab input mode. */
   editMode?: boolean;
@@ -170,6 +179,10 @@ export function PropertyDetailInspectionTab({
     prevLng: string;
   } | null>(null);
   const [mapPinEpoch, setMapPinEpoch] = useState(0);
+  const [engineeringMapPin, setEngineeringMapPin] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const { execute: executeInspectorSubmit, loading: inspectorSubmitting } =
     useIdempotentAction(
@@ -297,6 +310,35 @@ export function PropertyDetailInspectionTab({
     ? "specialist"
     : "inspector";
 
+  const canAdoptEngineeringMap = useMemo(() => {
+    if (mapActor !== "specialist" || !engineeringMapPin || !draft) return false;
+    const active = parsePlacedMapPin(draft.mapLatitude, draft.mapLongitude);
+    if (!active) return true;
+    return (
+      Math.abs(active.lat - engineeringMapPin.lat) > 1e-5 ||
+      Math.abs(active.lng - engineeringMapPin.lng) > 1e-5
+    );
+  }, [draft, engineeringMapPin, mapActor]);
+
+  useEffect(() => {
+    if (mapActor !== "specialist" || !surveyTask?.id) {
+      setEngineeringMapPin(null);
+      return;
+    }
+    let cancelled = false;
+    void loadEngineeringSurveySubmissionAsync({
+      taskId: surveyTask.id,
+      propertyId: surveyTask.propertyId,
+      poNumber: surveyTask.poNumber,
+    }).then((eng) => {
+      if (cancelled) return;
+      setEngineeringMapPin(engineeringActivePinOf(eng));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mapActor, surveyTask?.id, surveyTask?.propertyId, surveyTask?.poNumber]);
+
   function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
     if (!inspectionTask || locked) return;
     const safePatch =
@@ -387,7 +429,27 @@ export function PropertyDetailInspectionTab({
     patchDraft(restored);
     setMapPinned(true);
     setMapPinEpoch((n) => n + 1);
-    showToast("تم استعادة موقع المعاين", "success");
+    const lat = restored.mapLatitude?.trim();
+    const lng = restored.mapLongitude?.trim();
+    if (surveyTask?.id && lat && lng) {
+      void updateEngineeringSurveyDraft(surveyTask.id, {
+        latitude: lat,
+        longitude: lng,
+      }).then((saved) => {
+        if (saved) setEngineeringMapPin(engineeringActivePinOf(saved));
+      });
+    }
+    showToast("تم اعتماد موقع المعاين", "success");
+  }
+
+  function adoptEngineeringMap() {
+    if (!draft || !engineeringMapPin) return;
+    const nextLat = engineeringMapPin.lat.toFixed(5);
+    const nextLng = engineeringMapPin.lng.toFixed(5);
+    patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, "specialist"));
+    setMapPinned(true);
+    setMapPinEpoch((n) => n + 1);
+    showToast("تم اعتماد موقع المكتب الهندسي", "success");
   }
 
   function cancelPendingMapMove() {
@@ -558,6 +620,9 @@ export function PropertyDetailInspectionTab({
             Boolean(draft && activeMapDiffersFromInspectorOriginal(draft))
           }
           onRestoreInspectorMap={restoreInspectorMap}
+          canAdoptEngineeringMap={canAdoptEngineeringMap}
+          onAdoptEngineeringMap={adoptEngineeringMap}
+          engineeringMapPin={engineeringMapPin}
           onPin={() => {
             if (!draft) return;
             const nextLat =
@@ -572,6 +637,7 @@ export function PropertyDetailInspectionTab({
             setMapPinned(true);
             showToast("تم تثبيت الموقع", "success");
           }}
+          onUnpin={() => setMapPinned(false)}
           mapPinEpoch={mapPinEpoch}
         />
       ) : (

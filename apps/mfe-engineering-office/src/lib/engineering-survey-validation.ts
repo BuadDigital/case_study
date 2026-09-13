@@ -24,8 +24,8 @@ export type EngineeringSurveyFieldErrors = Partial<
 
 /** Document order for scroll + first error message. */
 const ENGINEERING_SURVEY_ERROR_TARGETS: readonly FormErrorTarget[] = [
-  { key: "latitude", targetId: "eng-lat" },
-  { key: "longitude", targetId: "eng-lng" },
+  { key: "latitude", targetId: "eng-map-coords" },
+  { key: "longitude", targetId: "eng-map-coords" },
   { key: "survey_report", targetId: "eng-survey-report" },
   { key: "on_site_area", targetId: "eng-on-site-area" },
   { key: "deed_matches_nature", targetId: "eng-deed-matches" },

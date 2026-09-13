@@ -87,46 +87,38 @@ export function EngineeringSurveyWorkBody({
           الإحداثيات مع موقع العقار الفعلي.
         </EngInfo>
       ) : null}
-      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div>
-          <label className={opsTfLbl} htmlFor="eng-lat">
-            خط العرض (Latitude) *
+      <div className="mb-2.5 flex flex-wrap items-end gap-2.5">
+        <div className="min-w-[240px] flex-1">
+          <label className={opsTfLbl} htmlFor="eng-map-coords">
+            الإحداثيات *
           </label>
           <input
-            id="eng-lat"
+            id="eng-map-coords"
             dir="ltr"
+            placeholder="21.523339, 39.187743"
             className={cn(
               opsFldControl,
-              fieldErrors.latitude && engineeringInvalidControlClass,
+              "tabular-nums",
+              (fieldErrors.latitude || fieldErrors.longitude) &&
+                engineeringInvalidControlClass,
             )}
             disabled={formDisabled}
-            value={localFields.latitude}
-            onChange={(e) => patchLocalField("latitude", e.target.value)}
+            value={
+              localFields.latitude || localFields.longitude
+                ? `${localFields.latitude}${localFields.longitude ? `, ${localFields.longitude}` : ""}`
+                : ""
+            }
+            onChange={(e) => {
+              const parts = e.target.value.split(/[,،]/);
+              handleCoordsChange(
+                (parts[0] || "").trim(),
+                (parts[1] || "").trim(),
+              );
+            }}
           />
-          {fieldErrors.latitude ? (
+          {fieldErrors.latitude || fieldErrors.longitude ? (
             <p className="mt-1 text-[11px] text-[#a5432e]">
-              {fieldErrors.latitude}
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <label className={opsTfLbl} htmlFor="eng-lng">
-            خط الطول (Longitude) *
-          </label>
-          <input
-            id="eng-lng"
-            dir="ltr"
-            className={cn(
-              opsFldControl,
-              fieldErrors.longitude && engineeringInvalidControlClass,
-            )}
-            disabled={formDisabled}
-            value={localFields.longitude}
-            onChange={(e) => patchLocalField("longitude", e.target.value)}
-          />
-          {fieldErrors.longitude ? (
-            <p className="mt-1 text-[11px] text-[#a5432e]">
-              {fieldErrors.longitude}
+              {fieldErrors.latitude || fieldErrors.longitude}
             </p>
           ) : null}
         </div>

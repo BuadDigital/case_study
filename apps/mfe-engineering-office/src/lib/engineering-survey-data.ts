@@ -36,6 +36,11 @@ export type EngineeringSurveySubmission = {
   status: EngineeringSurveySubmissionStatus;
   latitude: string;
   longitude: string;
+  /**
+   * Sibling field-inspection pin at seed time — used to detect office drift (>500 m).
+   */
+  inspectorReferenceLatitude?: string;
+  inspectorReferenceLongitude?: string;
   surveyReportFileName: string;
   siteLetterFileName: string;
   siteConfirmed: boolean;
@@ -138,14 +143,25 @@ export function createEngineeringSurveyDraft(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
+  latitude?: string;
+  longitude?: string;
+  inspectorReferenceLatitude?: string;
+  inspectorReferenceLongitude?: string;
 }): EngineeringSurveySubmission {
   const now = new Date().toISOString();
-  const { latitude, longitude } = jeddahDefaultCoords();
+  const defaults = jeddahDefaultCoords();
+  const latitude = input.latitude?.trim() || defaults.latitude;
+  const longitude = input.longitude?.trim() || defaults.longitude;
   return {
-    ...input,
+    taskId: input.taskId,
+    propertyId: input.propertyId,
+    poNumber: input.poNumber,
     status: "draft",
     latitude,
     longitude,
+    inspectorReferenceLatitude: input.inspectorReferenceLatitude?.trim() || "",
+    inspectorReferenceLongitude:
+      input.inspectorReferenceLongitude?.trim() || "",
     surveyReportFileName: "",
     siteLetterFileName: "",
     siteConfirmed: false,

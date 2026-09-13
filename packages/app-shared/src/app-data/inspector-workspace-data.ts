@@ -117,8 +117,9 @@ export const ACCESS_ROUTE_DESCRIPTION_REQUIRED =
   "أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)";
 
 export const SITE_LOCATION_ACK_BUTTON_LABEL = "إقرار صحة الموقع";
+/** @deprecated Use SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE from site-location-ack-letter. */
 export const SITE_LOCATION_ACK_PENDING_MESSAGE =
-  "سيتم إضافة خطاب إقرار ضابط الاتصال بصحة موقع العقار قريباً.";
+  "ثبّت الموقع أولاً عبر «تثبيت الموقع» قبل طباعة إقرار صحة الموقع.";
 
 /** Compose Infath / payload free-text from the three contact fields. */
 export function composeAccessRouteDescription(input: {

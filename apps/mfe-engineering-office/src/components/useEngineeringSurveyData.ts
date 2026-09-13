@@ -29,6 +29,11 @@ import {
   getOrCreateEngineeringSurveyDraft,
   updateEngineeringSurveyDraft,
 } from "../lib/engineering-survey-submission-commands";
+import {
+  loadInspectorPinForSurveyTask,
+  isEngineeringDefaultPin,
+  withInspectorPinSeed,
+} from "../lib/engineering-survey-inspector-pin";
 import type { EngineeringSurveyFieldErrors } from "../lib/engineering-survey-validation";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 import { isEngineeringSurveyTransactionActive } from "../lib/engineering-survey-transaction-active";
@@ -183,6 +188,70 @@ export function useEngineeringSurveyData({
     };
   }, [task.id, task.poNumber, propertyId, forceReadOnly, viewOnly]);
 
+  // Seed map + inspector reference once the sibling inspection pin is readable.
+  useEffect(() => {
+    if (!propertyId || forceReadOnly || viewOnly) return;
+    const current = draftRef.current;
+    if (!current || current.status === "submitted") return;
+    const needsSeed =
+      !current.inspectorReferenceLatitude?.trim() ||
+      !current.inspectorReferenceLongitude?.trim() ||
+      isEngineeringDefaultPin(current.latitude, current.longitude);
+    if (!needsSeed) return;
+
+    let cancelled = false;
+    void loadInspectorPinForSurveyTask(liveSurveyTask, workflowTasks).then(
+      async (pin) => {
+        if (cancelled || !pin) return;
+        const baseline = draftRef.current;
+        if (!baseline || baseline.status === "submitted") return;
+        const seeded = withInspectorPinSeed(baseline, pin);
+        if (
+          seeded.latitude === baseline.latitude &&
+          seeded.longitude === baseline.longitude &&
+          seeded.inspectorReferenceLatitude ===
+            baseline.inspectorReferenceLatitude &&
+          seeded.inspectorReferenceLongitude ===
+            baseline.inspectorReferenceLongitude
+        ) {
+          return;
+        }
+        const saved = await updateEngineeringSurveyDraft(task.id, {
+          latitude: seeded.latitude,
+          longitude: seeded.longitude,
+          inspectorReferenceLatitude: seeded.inspectorReferenceLatitude,
+          inspectorReferenceLongitude: seeded.inspectorReferenceLongitude,
+        });
+        if (cancelled || !saved) return;
+        setDraft(saved);
+        setLocalFields((prev) =>
+          prev
+            ? {
+                ...prev,
+                latitude: saved.latitude,
+                longitude: saved.longitude,
+              }
+            : localFieldsFromDraft(saved),
+        );
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    draft?.inspectorReferenceLatitude,
+    draft?.inspectorReferenceLongitude,
+    draft?.latitude,
+    draft?.longitude,
+    draft?.status,
+    forceReadOnly,
+    liveSurveyTask,
+    propertyId,
+    task.id,
+    viewOnly,
+    workflowTasks,
+  ]);
+
   // Refresh inspection-completed flag without discarding in-progress form edits.
   useEffect(() => {
     if (!task.id) return;
@@ -320,6 +389,7 @@ export function useEngineeringSurveyData({
     notesEditable,
     blockingFailure,
     activeFailureCount,
+    failures,
     feeForTask,
     // Tabs and notes.
     workTab,

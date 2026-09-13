@@ -136,20 +136,104 @@ function hasIsoDate(raw: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw.trim());
 }
 
+export type ComparableEntryFieldErrors = Partial<
+  Record<
+    | "location"
+    | "kind"
+    | "district"
+    | "price"
+    | "areaSqm"
+    | "transactionDate"
+    | "priceDescription"
+    | "source",
+    string
+  >
+>;
+
+const COMPARABLE_ENTRY_ERROR_ORDER: {
+  key: keyof ComparableEntryFieldErrors;
+  targetId: string;
+}[] = [
+  { key: "location", targetId: "cmp-location" },
+  { key: "kind", targetId: "cmp-kind" },
+  { key: "district", targetId: "cmp-district" },
+  { key: "price", targetId: "cmp-price" },
+  { key: "areaSqm", targetId: "cmp-area" },
+  { key: "transactionDate", targetId: "cmp-date" },
+  { key: "priceDescription", targetId: "cmp-price-description" },
+  { key: "source", targetId: "cmp-source" },
+];
+
+/** Field-level gates for the add-comparable form (office + field). */
+export function validateComparableEntry(
+  draft: ComparableEntryDraft,
+  locationConfirmed: boolean,
+): ComparableEntryFieldErrors {
+  const errors: ComparableEntryFieldErrors = {};
+
+  if (!locationConfirmed || !comparableLocationPinned(draft)) {
+    errors.location = "ثبّت موقع المقارن على الخريطة";
+  } else if (!draft.district.trim()) {
+    errors.district = "أدخل اسم الحي (يُستخرج من الخريطة أو يُكتب يدوياً)";
+  }
+
+  if (draft.kind !== "land" && draft.kind !== "building") {
+    errors.kind = "اختر نوع المقارن (أرض أو مبنى)";
+  }
+
+  if (!positiveAmount(draft.price)) {
+    errors.price = "أدخل سعراً أكبر من صفر";
+  }
+
+  if (!positiveAmount(draft.areaSqm)) {
+    errors.areaSqm = "أدخل مساحة أكبر من صفر";
+  }
+
+  if (!hasIsoDate(draft.transactionDate)) {
+    errors.transactionDate = "حدّد تاريخ العملية";
+  }
+
+  if (draft.transactionKind === "offer") {
+    if (
+      draft.priceDescription !== "asking" &&
+      draft.priceDescription !== "som"
+    ) {
+      errors.priceDescription = "اختر وصف السعر (حد أو سوم)";
+    }
+  }
+
+  if (!draft.source.trim()) {
+    errors.source = "اختر مصدر المعلومة";
+  }
+
+  return errors;
+}
+
+export function firstComparableEntryError(
+  errors: ComparableEntryFieldErrors,
+): string | null {
+  for (const { key } of COMPARABLE_ENTRY_ERROR_ORDER) {
+    const message = errors[key];
+    if (message) return message;
+  }
+  return null;
+}
+
+export function firstComparableEntryErrorTarget(
+  errors: ComparableEntryFieldErrors,
+): string | null {
+  for (const { key, targetId } of COMPARABLE_ENTRY_ERROR_ORDER) {
+    if (errors[key]) return targetId;
+  }
+  return null;
+}
+
 /** Pin confirmed, kind, price, area, date, and geocoded district. */
 export function comparableEntryReady(
   draft: ComparableEntryDraft,
   locationConfirmed: boolean,
 ): boolean {
-  return Boolean(
-    locationConfirmed &&
-      comparableLocationPinned(draft) &&
-      (draft.kind === "land" || draft.kind === "building") &&
-      draft.district.trim() &&
-      positiveAmount(draft.areaSqm) &&
-      positiveAmount(draft.price) &&
-      hasIsoDate(draft.transactionDate),
-  );
+  return Object.keys(validateComparableEntry(draft, locationConfirmed)).length === 0;
 }
 
 export function comparableDraftToUpsert(

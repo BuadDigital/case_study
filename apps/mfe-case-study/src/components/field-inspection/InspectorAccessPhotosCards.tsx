@@ -8,10 +8,11 @@
 import { FormRow, Input, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { RegField } from "@platform/app-shared/registration/FormFields";
+import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
 import {
-  SITE_LOCATION_ACK_PENDING_MESSAGE,
-  type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+  SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
+  canPrintSiteLocationAck,
+} from "../../lib/app-data/site-location-ack-letter";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
@@ -20,6 +21,7 @@ import {
   inspectorPhotosLabel,
 } from "./InspectorPropertyPhotosSection";
 import { InspectorSaveChip } from "./InspectorSaveChip";
+import { handleSiteLocationAckClick } from "./site-location-ack-action";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorAccessPhotosCards({
@@ -28,6 +30,7 @@ export function InspectorAccessPhotosCards({
   fieldErrors,
   layout,
   locked,
+  mapPinned,
   markDirty,
   mobile,
   persist,
@@ -39,6 +42,7 @@ export function InspectorAccessPhotosCards({
   | "activeStep"
   | "fieldErrors"
   | "locked"
+  | "mapPinned"
   | "markDirty"
   | "persist"
   | "property"
@@ -49,6 +53,10 @@ export function InspectorAccessPhotosCards({
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
+  const ackReady = canPrintSiteLocationAck(mapPinned);
+  const onAckClick = () =>
+    handleSiteLocationAckClick({ mapPinned, draft, property, showToast });
+  const ackTitle = ackReady ? undefined : SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE;
   return (
     <>
       <InspectorCard
@@ -107,9 +115,8 @@ export function InspectorAccessPhotosCards({
               fieldErrors={fieldErrors}
               layout={mobile ? "mobile" : "desktop"}
               onPatch={(patch) => persist(patch)}
-              onAckClick={() =>
-                showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
-              }
+              onAckClick={onAckClick}
+              ackTitle={ackTitle}
             />
           </div>
         ) : (
@@ -143,9 +150,8 @@ export function InspectorAccessPhotosCards({
               editable={!locked}
               fieldErrors={fieldErrors}
               onPatch={(patch) => persist(patch)}
-              onAckClick={() =>
-                showToast(SITE_LOCATION_ACK_PENDING_MESSAGE, "info")
-              }
+              onAckClick={onAckClick}
+              ackTitle={ackTitle}
             />
           </>
         )}

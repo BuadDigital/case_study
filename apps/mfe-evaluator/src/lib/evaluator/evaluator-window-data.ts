@@ -497,7 +497,7 @@ export function createEvaluatorDraft(input: {
     demandLevel: "",
     landValue: "0",
     buildingValue: "0",
-    forcedSaleDiscountPct: "20",
+    forcedSaleDiscountPct: "",
     searchScopeNotes: "",
     planImageFileName: null,
     appraiserAddress: DEFAULT_APPRAISER_ADDRESS,

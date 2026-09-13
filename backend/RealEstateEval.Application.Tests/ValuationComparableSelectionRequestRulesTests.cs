@@ -136,10 +136,8 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Equal("تسمية العامل المضاف مطلوبة", errors["adjustmentLines[1].labelAr"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[2].percent"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[3].percent"]);
-        Assert.Equal(
-            JustificationRules.TooShortMessageAr("مبرر التسوية للمقارن"),
-            errors["adjustmentLines[3].rationale"]);
-        Assert.Equal(5, errors.Count);
+        Assert.False(errors.ContainsKey("adjustmentLines[3].rationale"));
+        Assert.Equal(4, errors.Count);
     }
 
     [Theory]
@@ -156,9 +154,7 @@ public class ValuationComparableSelectionRequestRulesTests
         });
 
         Assert.Equal(expected, errors["weightPct"]);
-        Assert.Equal(
-            JustificationRules.TooShortMessageAr("مبرر الوزن اليدوي"),
-            errors["weightOverrideRationale"]);
+        Assert.False(errors.ContainsKey("weightOverrideRationale"));
     }
 
     [Fact]

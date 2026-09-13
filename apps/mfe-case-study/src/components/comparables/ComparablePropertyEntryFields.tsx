@@ -10,9 +10,11 @@ import {
   computedPricePerSqm,
   parseComparableCoords,
   type ComparableEntryDraft,
+  type ComparableEntryFieldErrors,
   type ComparableKind,
   type ComparableSubjectPin,
 } from "../../lib/comparable-entry";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 const FIELD_LABEL = "mb-1.5 text-[12px] font-semibold text-text-2";
 
@@ -20,11 +22,13 @@ function Field({
   label,
   required,
   className,
+  error,
   children,
 }: {
   label: string;
   required?: boolean;
   className?: string;
+  error?: string;
   children: ReactNode;
 }) {
   return (
@@ -34,6 +38,11 @@ function Field({
         {required ? <span className="text-danger"> *</span> : null}
       </Label>
       {children}
+      {error ? (
+        <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -73,6 +82,7 @@ export function ComparablePropertyEntryFields({
   showCoordinates,
   showDescription,
   subjectPin,
+  fieldErrors,
   onChange,
   onLocationConfirmedChange,
 }: {
@@ -82,6 +92,7 @@ export function ComparablePropertyEntryFields({
   showDescription?: boolean;
   /** Subject property under study — reference pin, not the comparable. */
   subjectPin?: ComparableSubjectPin | null;
+  fieldErrors?: ComparableEntryFieldErrors;
   onChange: (next: ComparableEntryDraft) => void;
   onLocationConfirmedChange?: (confirmed: boolean) => void;
 }) {
@@ -159,13 +170,20 @@ export function ComparablePropertyEntryFields({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {showCoordinates !== false ? (
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-2" id="cmp-location">
           <Label className={FIELD_LABEL}>موقع المقارن على الخريطة</Label>
           <p className="mb-1.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
             الدبوس الأزرق = العقار موضوع التقييم. حدّد موقع المقارن ثم ثبّته قبل
             تعبئة الحقول.
           </p>
-          <div className="relative mt-0.5 h-[240px] overflow-hidden rounded-[10px] border border-border sm:h-[280px]">
+          <div
+            className={cn(
+              "relative mt-0.5 h-[240px] overflow-hidden rounded-[10px] border sm:h-[280px]",
+              fieldErrors?.location || fieldErrors?.district
+                ? "border-danger"
+                : "border-border",
+            )}
+          >
             <GoogleMapPin
               lat={comparablePin?.lat}
               lng={comparablePin?.lng}
@@ -296,18 +314,52 @@ export function ComparablePropertyEntryFields({
               (placeLookup === "loading"
                 ? "جاري تحديد الحي…"
                 : comparablePin
-                  ? "تعذّر تحديد الحي — حرّك الدبوس ثم ثبّت مجدداً"
-                  : "المدينة والحي يُستخرجان من موقع الدبوس")}
+                  ? "تعذّر استخراج الحي تلقائياً — أدخله يدوياً بعد التثبيت"
+                  : "المدينة والحي يُستخرجان من موقع الدبوس، ويمكن تعديلهما يدوياً")}
           </p>
+          {fieldErrors?.location ? (
+            <p className="mb-0 mt-1.5 text-center text-[11px] font-semibold text-danger-text" role="alert">
+              {fieldErrors.location}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="sm:col-span-2">
+      {mapPinned ? (
+        <>
+          <Field label="المدينة">
+            <Input
+              id="cmp-city"
+              value={draft.city}
+              disabled={disabled}
+              placeholder="إن وُجدت"
+              onChange={(e) => patch("city", e.target.value)}
+            />
+          </Field>
+          <Field label="الحي" required error={fieldErrors?.district}>
+            <Input
+              id="cmp-district"
+              value={draft.district}
+              disabled={disabled}
+              placeholder="اكتب اسم الحي إن لم يُستخرج من الخريطة"
+              className={cn(fieldErrors?.district && invalidControlClass)}
+              onChange={(e) => patch("district", e.target.value)}
+            />
+          </Field>
+        </>
+      ) : null}
+
+      <div className="sm:col-span-2" id="cmp-kind">
         <Label className={FIELD_LABEL}>
           نوع المقارن
           <span className="text-danger"> *</span>
         </Label>
-        <div className="flex gap-2">
+        <div
+          className={cn(
+            "flex gap-2 rounded-[10px]",
+            fieldErrors?.kind && "ring-2 ring-danger/40",
+          )}
+        >
           <KindChip
             label="أرض"
             on={draft.kind === "land"}
@@ -321,7 +373,11 @@ export function ComparablePropertyEntryFields({
             onClick={() => setKind("building")}
           />
         </div>
-        {fieldsLocked ? (
+        {fieldErrors?.kind ? (
+          <p className="mb-0 mt-1.5 text-[11px] font-semibold text-danger-text" role="alert">
+            {fieldErrors.kind}
+          </p>
+        ) : fieldsLocked ? (
           <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
             ثبّت موقع المقارن أولاً لتعبئة البيانات.
           </p>
@@ -341,30 +397,36 @@ export function ComparablePropertyEntryFields({
         )}
       </div>
 
-      <Field label={priceLabel} required>
+      <Field label={priceLabel} required error={fieldErrors?.price}>
         <Input
+          id="cmp-price"
           inputMode="decimal"
           dir="ltr"
           value={draft.price}
           disabled={fieldsLocked}
+          className={cn(fieldErrors?.price && invalidControlClass)}
           onChange={(e) => patch("price", e.target.value)}
         />
       </Field>
-      <Field label={areaLabel} required>
+      <Field label={areaLabel} required error={fieldErrors?.areaSqm}>
         <Input
+          id="cmp-area"
           inputMode="decimal"
           dir="ltr"
           value={draft.areaSqm}
           disabled={fieldsLocked}
+          className={cn(fieldErrors?.areaSqm && invalidControlClass)}
           onChange={(e) => patch("areaSqm", e.target.value)}
         />
       </Field>
-      <Field label="تاريخ العملية" required>
+      <Field label="تاريخ العملية" required error={fieldErrors?.transactionDate}>
         <Input
+          id="cmp-date"
           type="date"
           dir="ltr"
           value={draft.transactionDate}
           disabled={fieldsLocked}
+          className={cn(fieldErrors?.transactionDate && invalidControlClass)}
           onChange={(e) => patch("transactionDate", e.target.value)}
         />
       </Field>
@@ -406,10 +468,16 @@ export function ComparablePropertyEntryFields({
         </Select>
       </Field>
       {draft.transactionKind === "offer" ? (
-        <Field label="وصف السعر">
+        <Field
+          label="وصف السعر"
+          required
+          error={fieldErrors?.priceDescription}
+        >
           <Select
+            id="cmp-price-description"
             value={draft.priceDescription}
             disabled={fieldsLocked}
+            hasError={Boolean(fieldErrors?.priceDescription)}
             onChange={(e) =>
               patch("priceDescription", e.target.value === "som" ? "som" : "asking")
             }
@@ -419,10 +487,12 @@ export function ComparablePropertyEntryFields({
           </Select>
         </Field>
       ) : null}
-      <Field label="مصدر المعلومة">
+      <Field label="مصدر المعلومة" required error={fieldErrors?.source}>
         <Select
+          id="cmp-source"
           value={draft.source}
           disabled={fieldsLocked}
+          hasError={Boolean(fieldErrors?.source)}
           onChange={(e) => patch("source", e.target.value)}
         >
           {COMPARABLE_SOURCE_OPTIONS.map((opt) => (

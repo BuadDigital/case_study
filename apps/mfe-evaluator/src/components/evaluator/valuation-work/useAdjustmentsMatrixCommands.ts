@@ -157,22 +157,13 @@ export function useAdjustmentsMatrixCommands(
     factorKey: string,
     rawText: string,
     context: string = MARKET_CONTEXT,
-  ) {
+  ): Promise<boolean> {
     const ctx = unlocked();
-    if (!ctx) return;
+    if (!ctx) return false;
     const text = rawText.trim();
-    // Weight justification is stored on the weight field, not as an adjustment line.
-    if (factorKey === "weight") {
-      await saveMany(ctx, {
-        items: adoptedFor(context).filter((item) => item.market?.weightIsManual),
-        linesFor: savedLines,
-        extra: { weightOverrideRationale: text || null },
-        errorMessage: "تعذّر حفظ مبرر الوزن",
-      });
-      return;
-    }
-    // Rule Q-8-1: one factor-level justification — single request instead of per-comparable fan-out;
-    // Line justifications stay as per-comparable overrides edited from the comparable cell.
+    // Weight uses the same factor-rationale table as other rows — saving only onto
+    // manual-weight market rows used to no-op when الوزن was still «مقترح», so the
+    // cell draft vanished on blur with nothing persisted.
     setSaving(true);
     const res = await saveAdjustmentFactorRationale(ctx.config, ctx.valuationRequestId, {
       selectionContext: context,
@@ -182,8 +173,10 @@ export function useAdjustmentsMatrixCommands(
     setSaving(false);
     if (!res.ok) {
       showToast(res.message ?? "تعذّر حفظ مبرر التسوية", "error");
+      return false;
     }
     await reload({ silent: true, scope: "derived" });
+    return true;
   }
 
   /** Rule Q-8-1: per-comparable justification override — writes that comparable’s adjustment line only. */

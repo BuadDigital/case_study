@@ -63,6 +63,8 @@ export function InspectorAccessContactFields({
   fieldErrors = {},
   onPatch,
   onAckClick,
+  ackDisabled = false,
+  ackTitle,
   layout = "desktop",
 }: {
   draft: InspectorWorkspaceDraft;
@@ -72,6 +74,9 @@ export function InspectorAccessContactFields({
   fieldErrors?: InspectorWorkspaceFieldErrors;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onAckClick: () => void;
+  /** True until «تثبيت الموقع» — print stays gated in the click handler too. */
+  ackDisabled?: boolean;
+  ackTitle?: string;
   layout?: "desktop" | "mobile";
 }) {
   const [addedContacts, setAddedContacts] = useState<PoContact[]>([]);
@@ -359,6 +364,8 @@ export function InspectorAccessContactFields({
               </button>
             ) : null}
             <InspectorSiteLocationAckButton
+              disabled={ackDisabled}
+              title={ackTitle}
               className={
                 layout === "mobile"
                   ? "h-12 min-h-12 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] px-4 text-[14px] text-ink"

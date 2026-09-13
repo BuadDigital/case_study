@@ -8,7 +8,9 @@ import {
   comparablePlaceLine,
   comparableTypeForSave,
   emptyComparableEntryDraft,
+  firstComparableEntryError,
   parseComparableCoords,
+  validateComparableEntry,
 } from "../comparable-entry";
 
 describe("parseComparableCoords", () => {
@@ -56,6 +58,15 @@ describe("comparableTypeForSave / ready", () => {
     expect(comparableEntryReady(draft, false)).toBe(false);
     expect(comparableEntryReady(draft, true)).toBe(true);
     expect(comparableEntryReady(emptyComparableEntryDraft(), true)).toBe(false);
+  });
+
+  it("names the first missing field for save guidance", () => {
+    const errors = validateComparableEntry(emptyComparableEntryDraft(), false);
+    expect(firstComparableEntryError(errors)).toBe(
+      "ثبّت موقع المقارن على الخريطة",
+    );
+    expect(errors.kind).toBeTruthy();
+    expect(errors.price).toBeTruthy();
   });
 
   it("writes land type أرض when kind is land", () => {

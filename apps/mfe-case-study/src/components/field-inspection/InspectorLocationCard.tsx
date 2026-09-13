@@ -246,17 +246,17 @@ export function InspectorLocationCard({
             </button>
           ) : null}
           {mapPinned ? (
-            <div className="flex gap-2">
-              <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#B7E4C7] bg-[#F0FFF4] text-[13px] font-bold text-[#1B7A4A]">
-                <i className="ti ti-pin-filled text-base" aria-hidden />
-                الموقع مثبت
-              </div>
+            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[#B7E4C7] bg-[#F0FFF4] pe-1.5 ps-3.5 text-[13px] font-bold text-[#1B7A4A]">
+              <i className="ti ti-pin-filled text-base" aria-hidden />
+              <span className="flex-1">تم تثبيت الموقع</span>
               <button
                 type="button"
-                className="flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-3 font-inherit text-[13px] font-bold text-heading"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border-0 bg-transparent font-inherit text-base text-[#1B7A4A] transition-colors hover:bg-[color-mix(in_srgb,#1B7A4A_12%,transparent)]"
+                aria-label="إلغاء تثبيت الموقع"
+                title="إلغاء التثبيت وإعادة التعيين"
                 onClick={() => setMapPinned(false)}
               >
-                تعديل
+                <i className="ti ti-x" aria-hidden />
               </button>
             </div>
           ) : null}

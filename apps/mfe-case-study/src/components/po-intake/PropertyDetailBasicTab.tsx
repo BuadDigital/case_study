@@ -4,7 +4,9 @@
  * Case Study.html «البيانات الأساسية» — media glance + fieldBox sections.
  */
 
+import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
+import { hasInspectorOriginalMapPin } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   boundariesAvailabilityLabel,
   boundariesMarkedUnavailable,
@@ -22,6 +24,7 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
+import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import {
   DetailBadge,
@@ -98,11 +101,46 @@ export function PropertyDetailBasicTab({
   record,
   property,
   primaryPhoto,
+  inspectionTaskId,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
   primaryPhoto?: PropertyDetailDocumentEntry | null;
+  /** Sibling field-inspection task — map shows only after the inspector pins. */
+  inspectionTaskId?: string | null;
 }) {
+  const [inspectorMapPin, setInspectorMapPin] = useState<{
+    latitude: string;
+    longitude: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const taskId = inspectionTaskId?.trim();
+    if (!taskId) {
+      setInspectorMapPin(null);
+      return;
+    }
+    let cancelled = false;
+    void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
+      if (cancelled) return;
+      if (!draft || !hasInspectorOriginalMapPin(draft)) {
+        setInspectorMapPin(null);
+        return;
+      }
+      // Active pin is the approved location; originals prove the inspector pinned.
+      const latitude =
+        draft.mapLatitude.trim() || draft.inspectorMapLatitude.trim();
+      const longitude =
+        draft.mapLongitude.trim() || draft.inspectorMapLongitude.trim();
+      setInspectorMapPin(
+        latitude && longitude ? { latitude, longitude } : null,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inspectionTaskId]);
+
   const boursePending = !property.bourseDataCompleted;
   const needsBourse = !skipsBourseForIdentifier(property.identifierType);
   const showBourseSection =
@@ -131,6 +169,8 @@ export function PropertyDetailBasicTab({
       <PropertyDetailMediaGlance
         property={property}
         primaryPhoto={primaryPhoto}
+        latitude={inspectorMapPin?.latitude}
+        longitude={inspectorMapPin?.longitude}
       />
 
       <SectionHeader divider>بيانات الصك</SectionHeader>

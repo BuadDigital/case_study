@@ -91,3 +91,31 @@ export function parseCoord(value: string | number | null | undefined): number | 
   const n = typeof value === "number" ? value : Number(String(value).trim());
   return Number.isFinite(n) ? n : null;
 }
+
+/** Placed map pin — rejects empty / non-numeric / (0,0) unset defaults. */
+export function parsePlacedMapPin(
+  latitude?: string | number | null,
+  longitude?: string | number | null,
+): { lat: number; lng: number } | null {
+  const lat = parseCoord(latitude);
+  const lng = parseCoord(longitude);
+  if (lat == null || lng == null) return null;
+  if (lat === 0 && lng === 0) return null;
+  return { lat, lng };
+}
+
+/** True when two pins are farther apart than the photo/property match radius (500 m). */
+export function pinsExceedMatchMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  maxMeters: number = PHOTO_LOCATION_MAX_MATCH_M,
+): boolean {
+  return haversineMeters(a.lat, a.lng, b.lat, b.lng) > maxMeters;
+}
+
+export function pinDistanceMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  return Math.round(haversineMeters(a.lat, a.lng, b.lat, b.lng) * 10) / 10;
+}
