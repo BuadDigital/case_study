@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   forcedSaleDiscountOpinionLine,
+  looksLikeAutoFinalOpinion,
   syncDiscountLineInOpinion,
   workOrderPremiseKey,
 } from "../final-opinion-state";
@@ -19,6 +20,28 @@ describe("workOrderPremiseKey", () => {
   it("falls back to the assignment default when nothing is stored", () => {
     expect(workOrderPremiseKey({ assignmentType: "قطاع خاص" })).toBe("current");
     expect(workOrderPremiseKey({ assignmentType: "تنفيذ" })).toBe("orderly");
+  });
+});
+
+describe("looksLikeAutoFinalOpinion", () => {
+  it("detects the former auto template", () => {
+    expect(
+      looksLikeAutoFinalOpinion(
+        [
+          "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات.",
+          "مؤشر أسلوب المقارنة (السوق): 6,437,500 ر.س بوزن ١٠٠٪.",
+          "أساس القيمة المستخدم: قيمة التصفية.",
+          "الرأي النهائي في قيمة العقار: 5,793,800 ر.س.",
+        ].join("\n"),
+      ),
+    ).toBe(true);
+  });
+
+  it("leaves blank or free-form notes alone", () => {
+    expect(looksLikeAutoFinalOpinion("")).toBe(false);
+    expect(looksLikeAutoFinalOpinion("بناءً على ظروف السوق المحلي.")).toBe(
+      false,
+    );
   });
 });
 

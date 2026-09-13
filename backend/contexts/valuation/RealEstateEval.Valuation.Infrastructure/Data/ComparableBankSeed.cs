@@ -331,8 +331,7 @@ public static class ComparableBankSeed
                 AreaFactorPct = AreaAdjustmentRules.DefaultAreaFactorPct,
                     AnnualMarketRatePct = MarketApproachRules.DefaultAnnualMarketRatePct,
                     ValueRoundDecimals = MarketApproachRules.DefaultValueRoundDecimals,
-                    AnalysisNotes =
-                    "بيانات تجريبية — بنك المقارنات وجدول التسويات من تصميم طريقة المقارنة.",
+                    AnalysisNotes = null,
                 UpdatedAtUtc = now,
             });
         }

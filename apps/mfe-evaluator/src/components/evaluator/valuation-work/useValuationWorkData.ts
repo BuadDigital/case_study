@@ -35,6 +35,7 @@ import {
   LAND_WITHIN_COST,
   MARKET_CONTEXT,
   buildFactorCatalog,
+  isSeedMarketAnalysisNotes,
   officialValuationDateOf,
   type ValuationWorkPropertyHint,
 } from "./lib/shell-state";
@@ -304,7 +305,19 @@ export function useValuationWorkData({
       const transactionArea = property?.area?.trim() || "";
       setSubjectArea(initialSubjectArea(transactionArea, selRes.data));
       setAdjustmentBasis(selRes.data.adjustmentBasis || "price_per_sqm");
-      setAnalysisNotes(selRes.data.analysisNotes ?? "");
+      const loadedNotes = selRes.data.analysisNotes ?? "";
+      // Drop demo seed filler so تحليل التسويات follows the adjustments table.
+      const seedNotes = isSeedMarketAnalysisNotes(loadedNotes);
+      setAnalysisNotes(seedNotes ? "" : loadedNotes);
+      if (seedNotes) {
+        void saveValuationMarketApproach(config, requestId, {
+          subjectAreaSqm: selRes.data.subjectAreaSqm ?? null,
+          adjustmentBasis: selRes.data.adjustmentBasis || "price_per_sqm",
+          analysisNotes: null,
+        }).then((res) => {
+          if (res.ok) setSelection(res.data);
+        });
+      }
       // Table drafts live inside their components — nothing to clear here.
       await syncSubjectAreaFromTransaction(
         config,

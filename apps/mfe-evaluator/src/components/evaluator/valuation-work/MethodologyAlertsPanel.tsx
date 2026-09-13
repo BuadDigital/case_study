@@ -68,10 +68,7 @@ export function MethodologyAlertsPanel({
     const res = await saveValuationReconciliation(
       config,
       valuationRequestId,
-      reconciliationSaveRequest(
-        { ...draft, alertOverrides: next },
-        draft.methodsRationale,
-      ),
+      reconciliationSaveRequest({ ...draft, alertOverrides: next }),
     );
     onSavingChange(false);
     if (!res.ok) {

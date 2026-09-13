@@ -20,7 +20,6 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   Card,
   CardPad,
-  GhostBtn,
   PrimaryBtn,
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
@@ -135,9 +134,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     roundNote,
     soleCost,
     methodComplete,
-    opinionAuto,
-    opinionDirty,
-    clearMethodsRationale,
     saveReconciliation,
   } = workflow;
   const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
@@ -469,31 +465,17 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </p>
             ) : null}
 
-            <div className="mt-[13px] mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span
-                className={cn(
-                  "text-[11px] font-semibold",
-                  opinionDirty ? "text-red-text" : "text-gold-d",
-                )}
-              >
-                {opinionDirty
-                  ? "نص محرَّر يدوياً — يُحدَّث سطر خصم التصفية فقط"
-                  : "يتحدث تلقائياً مع الأساليب والخصم"}
+            <div className="mt-[13px] mb-2">
+              <span className="text-[11px] font-semibold text-text-3">
+                مبرر الرأي النهائي — يكتبه المقيم
               </span>
-              {opinionDirty ? (
-                <GhostBtn
-                  disabled={saving}
-                  onClick={() => clearMethodsRationale()}
-                >
-                  ↺ استرجاع النص التلقائي
-                </GhostBtn>
-              ) : null}
             </div>
             <textarea
               rows={6}
-              value={opinionDirty ? methodsRationale : opinionAuto}
+              value={methodsRationale}
               onChange={(e) => setMethodsRationale(e.target.value)}
-              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text"
+              placeholder="اكتب مبرر الرأي النهائي هنا…"
+              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text placeholder:text-text-3"
             />
 
             <div className="mt-[18px] flex flex-wrap gap-2.5">

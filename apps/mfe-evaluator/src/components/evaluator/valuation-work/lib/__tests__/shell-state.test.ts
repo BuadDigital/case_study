@@ -3,7 +3,12 @@ import type {
   DifferenceFactorDefinitionDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { buildAutoNarrative, buildFactorCatalog } from "../shell-state";
+import {
+  buildAutoNarrative,
+  buildFactorCatalog,
+  isSeedMarketAnalysisNotes,
+  SEED_MARKET_ANALYSIS_NOTES,
+} from "../shell-state";
 
 function adopted(
   extra: Record<string, unknown> = {},
@@ -27,6 +32,16 @@ const FACTOR_ROWS = [
   { factorKey: "type", labelAr: "تسوية نوع المقارن" },
   { factorKey: "financing", labelAr: "تسوية شروط التمويل" },
 ];
+
+describe("isSeedMarketAnalysisNotes", () => {
+  it("detects the demo seed filler", () => {
+    expect(isSeedMarketAnalysisNotes(SEED_MARKET_ANALYSIS_NOTES)).toBe(true);
+    expect(isSeedMarketAnalysisNotes("  " + SEED_MARKET_ANALYSIS_NOTES)).toBe(
+      true,
+    );
+    expect(isSeedMarketAnalysisNotes("مبرر حقيقي")).toBe(false);
+  });
+});
 
 describe("buildAutoNarrative", () => {
   it("asks for an adopted comparable when the bank is empty", () => {

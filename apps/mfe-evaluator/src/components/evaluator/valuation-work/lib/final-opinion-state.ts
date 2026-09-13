@@ -227,14 +227,21 @@ export function alertOverridesFromRecon(
   return ovMap;
 }
 
+/** True when stored prose matches the former auto-generated opinion template. */
+export function looksLikeAutoFinalOpinion(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return (
+    t.includes("الرأي النهائي في قيمة العقار:") &&
+    (t.includes("اعتُمد أسلوب") || t.includes("مؤشر "))
+  );
+}
+
 /** Draft state to the save request body. */
-export function reconciliationSaveRequest(
-  draft: ReconciliationDraft,
-  opinionAuto: string,
-) {
+export function reconciliationSaveRequest(draft: ReconciliationDraft) {
   return {
-    // Auto text is pinned on save unless the appraiser edited it (“auto until edited” model).
-    methodsRationale: draft.methodsRationale.trim() || opinionAuto,
+    // Appraiser-authored only — do not pin generated filler on save.
+    methodsRationale: draft.methodsRationale.trim(),
     finalRoundDecimals: Number.parseInt(draft.finalRoundDecimals, 10) || 0,
     basisOfValueKey: draft.basisOfValueKey,
     valuePremiseKey: draft.valuePremiseKey || null,

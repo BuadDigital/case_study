@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   activeValuationListOptions,
   getWorkOrder,
@@ -19,9 +19,9 @@ import {
 import {
   alertOverridesFromRecon,
   finalOpinionComputed,
+  looksLikeAutoFinalOpinion,
   mergeReconMethods,
   reconciliationSaveRequest,
-  syncDiscountLineInOpinion,
   workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { apiConfig } from "./lib/shell-utils";
@@ -133,7 +133,9 @@ export function useFinalOpinionWorkflow({
       return;
     }
     setReconMethods(recon.methods);
-    setMethodsRationale(recon.methodsRationale ?? "");
+    const stored = recon.methodsRationale ?? "";
+    // Drop leftover auto-generated filler — the appraiser writes this field.
+    setMethodsRationale(looksLikeAutoFinalOpinion(stored) ? "" : stored);
     setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
     setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
@@ -171,19 +173,16 @@ export function useFinalOpinionWorkflow({
     const res = await saveValuationReconciliation(
       config,
       valuationRequestId,
-      reconciliationSaveRequest(
-        {
-          reconMethods,
-          methodsRationale,
-          finalRoundDecimals,
-          basisOfValueKey,
-          valuePremiseKey,
-          liquidationDiscountPct,
-          liquidationDiscountRationale,
-          alertOverrides: alertOverridesFromRecon(recon),
-        },
-        finalComputed.opinionAuto,
-      ),
+      reconciliationSaveRequest({
+        reconMethods,
+        methodsRationale,
+        finalRoundDecimals,
+        basisOfValueKey,
+        valuePremiseKey,
+        liquidationDiscountPct,
+        liquidationDiscountRationale,
+        alertOverrides: alertOverridesFromRecon(recon),
+      }),
     );
     onSavingChange(false);
     if (!res.ok) {
@@ -191,7 +190,10 @@ export function useFinalOpinionWorkflow({
       return;
     }
     setReconMethods(res.data.methods);
-    setMethodsRationale(res.data.methodsRationale ?? "");
+    const savedRationale = res.data.methodsRationale ?? "";
+    setMethodsRationale(
+      looksLikeAutoFinalOpinion(savedRationale) ? "" : savedRationale,
+    );
     setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
     setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");
@@ -216,32 +218,7 @@ export function useFinalOpinionWorkflow({
     roundNote,
     soleCost,
     methodComplete,
-    opinionAuto,
   } = finalComputed;
-  // Treated as manually edited only when it differs from auto text (save pins auto without counting as an edit).
-  const opinionDirty =
-    methodsRationale.trim().length > 0 &&
-    methodsRationale.trim() !== opinionAuto.trim();
-
-  const applyLiquidationDiscountPct = useCallback(
-    (nextRaw: string) => {
-      const nextPct = Number(String(nextRaw).replace(",", ".")) || 0;
-      setLiquidationDiscountPct(nextRaw);
-      setMethodsRationale((prev) => {
-        const trimmed = prev.trim();
-        if (!trimmed) return prev;
-        // Still on auto text → clear so the textarea follows the regenerated auto.
-        if (trimmed === opinionAuto.trim()) return "";
-        // Custom prose → only refresh/remove the discount sentence.
-        return syncDiscountLineInOpinion(prev, nextPct);
-      });
-    },
-    [opinionAuto],
-  );
-
-  const clearMethodsRationale = useCallback(() => {
-    setMethodsRationale("");
-  }, []);
 
   return {
     // Reconciliation drafts.
@@ -256,7 +233,7 @@ export function useFinalOpinionWorkflow({
     premiseOptions,
     valuePremiseKey,
     liquidationDiscountPct,
-    setLiquidationDiscountPct: applyLiquidationDiscountPct,
+    setLiquidationDiscountPct,
     liquidationDiscountRationale,
     setLiquidationDiscountRationale,
     // Derived.
@@ -271,9 +248,6 @@ export function useFinalOpinionWorkflow({
     roundNote,
     soleCost,
     methodComplete,
-    opinionAuto,
-    opinionDirty,
-    clearMethodsRationale,
     // Commands.
     saveReconciliation,
   };
