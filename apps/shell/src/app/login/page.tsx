@@ -83,6 +83,9 @@ async function resolvePostLoginPath(token: string): Promise<string> {
 function safeReturnPath(from: string | null | undefined): string | null {
   if (!from || !from.startsWith("/") || from.startsWith("//")) return null;
   if (from === "/login" || from.startsWith("/login?")) return null;
+  // `/` always bounced to login historically — treating it as a return path
+  // loops login ↔ / forever on the session-check spinner.
+  if (from === "/") return null;
   return from;
 }
 
@@ -160,23 +163,33 @@ export default function LoginPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const failSafe = window.setTimeout(() => {
+      if (!cancelled) setBoot("ready");
+    }, 4_000);
     void (async () => {
-      const session = await ensureFreshAuthSession();
-      if (cancelled) return;
-      if (!session) {
+      try {
+        const session = await ensureFreshAuthSession();
+        if (cancelled) return;
+        if (!session) {
+          setBoot("ready");
+          return;
+        }
+        setAuthSession(session);
+        const from = safeReturnPath(
+          new URLSearchParams(window.location.search).get("from"),
+        );
+        const path = from ?? (await resolvePostLoginPath(session.token));
+        if (cancelled) return;
+        router.replace(path);
+        // Keep the spinner only briefly; if navigation stalls, show the form.
         setBoot("ready");
-        return;
+      } catch {
+        if (!cancelled) setBoot("ready");
       }
-      setAuthSession(session);
-      const from = safeReturnPath(
-        new URLSearchParams(window.location.search).get("from"),
-      );
-      const path = from ?? (await resolvePostLoginPath(session.token));
-      if (cancelled) return;
-      router.replace(path);
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(failSafe);
     };
   }, [router]);
 
