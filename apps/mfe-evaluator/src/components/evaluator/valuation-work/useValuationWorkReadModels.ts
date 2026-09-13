@@ -30,6 +30,7 @@ import {
   MARKET_CONTEXT,
   buildAutoNarrative,
   farUnadoptSignature,
+  isSeedMarketAnalysisNotes,
   parseDecimal,
 } from "./lib/shell-state";
 import {
@@ -150,7 +151,11 @@ export function useValuationWorkReadModels({
       ),
     [visibleAdoptedMarket, visibleFactorRows, selection?.factorRationales],
   );
-  const narrativeDirty = analysisNotes.trim().length > 0;
+  // Seed placeholder (and empty) must not lock the field — always follow the table.
+  const narrativeDirty =
+    analysisNotes.trim().length > 0 &&
+    !isSeedMarketAnalysisNotes(analysisNotes) &&
+    analysisNotes.trim() !== autoNarrative.trim();
 
   /** Drop adopted comps that are too far from the subject (e.g. demo Riyadh seed on a Jeddah case). */
   const autoUnadoptFarRef = useRef<string | null>(null);

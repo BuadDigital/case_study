@@ -25,7 +25,7 @@ import {
   withAdoptionFlag,
   withFactorIncluded,
 } from "../market-commands-state";
-import { LAND_WITHIN_COST, MARKET_CONTEXT } from "../shell-state";
+import { LAND_WITHIN_COST, MARKET_CONTEXT, SEED_MARKET_ANALYSIS_NOTES } from "../shell-state";
 
 function line(
   factorKey: string,
@@ -100,6 +100,16 @@ describe("marketApproachBody", () => {
       analysisNotes: "note",
       areaFactorPct: 1.5,
     });
+  });
+
+  it("strips the demo seed filler instead of saving it", () => {
+    expect(
+      marketApproachBody({
+        subjectArea: "100",
+        adjustmentBasis: "price_per_sqm",
+        analysisNotes: SEED_MARKET_ANALYSIS_NOTES,
+      }).analysisNotes,
+    ).toBeNull();
   });
 });
 

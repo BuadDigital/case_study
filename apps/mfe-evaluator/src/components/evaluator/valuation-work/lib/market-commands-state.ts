@@ -20,6 +20,7 @@ import { JUSTIFICATION_MIN_LENGTH } from "./shell-utils";
 import {
   LAND_WITHIN_COST,
   MARKET_CONTEXT,
+  isSeedMarketAnalysisNotes,
   newAdjustmentLine,
   parseDecimal,
 } from "./shell-state";
@@ -40,10 +41,13 @@ export function marketApproachBody(
   extra?: Partial<SaveValuationMarketApproachRequest>,
 ): SaveValuationMarketApproachRequest {
   const area = parseDecimal(draft.subjectArea);
+  const notes = isSeedMarketAnalysisNotes(draft.analysisNotes)
+    ? null
+    : draft.analysisNotes.trim() || null;
   return {
     subjectAreaSqm: Number.isFinite(area) ? area : null,
     adjustmentBasis: draft.adjustmentBasis,
-    analysisNotes: draft.analysisNotes.trim() || null,
+    analysisNotes: notes,
     ...extra,
   };
 }

@@ -91,6 +91,14 @@ export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
  * not on the adjustment line — same precedence as `useAdjustmentsMatrixModel.justValue`. The
  * per-comparable line rationale is a back-compat/override fallback only.
  */
+/** Former demo seed filler — never treat as a real manual narrative. */
+export const SEED_MARKET_ANALYSIS_NOTES =
+  "بيانات تجريبية — بنك المقارنات وجدول التسويات من تصميم طريقة المقارنة.";
+
+export function isSeedMarketAnalysisNotes(text: string | null | undefined): boolean {
+  return (text ?? "").trim() === SEED_MARKET_ANALYSIS_NOTES;
+}
+
 export function buildAutoNarrative(
   adopted: ValuationComparableSelectionDto[],
   factorRows: { factorKey: string; labelAr: string }[],
