@@ -51,6 +51,8 @@ import {
   preserveInspectorOwnedFeatureValues,
   restoreInspectorOriginalMapPin,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
+  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
+  SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
@@ -585,7 +587,7 @@ export function PropertyDetailInspectionTab({
           ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
           : submitSuccessToast ??
             (serviceProofFromTransactionPhotos
-              ? "تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
+              ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS
               : "تم حفظ بيانات المعاينة وإرسالها."),
         result.queued ? "info" : "success",
       );
@@ -709,6 +711,11 @@ export function PropertyDetailInspectionTab({
           submitLabel={
             serviceProofFromTransactionPhotos
               ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL
+              : undefined
+          }
+          confirmLabel={
+            serviceProofFromTransactionPhotos
+              ? SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK
               : undefined
           }
           onPatch={(patch) => patchDraft(patch)}

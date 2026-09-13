@@ -415,6 +415,7 @@ export function InspectorWorkspaceSubmitFooter({
   saving,
   confirmInvalid = false,
   submitLabel = "حفظ وإرسال",
+  confirmLabel = "أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني",
   onPatch,
   onSubmit,
   onCancel,
@@ -423,6 +424,8 @@ export function InspectorWorkspaceSubmitFooter({
   saving: boolean;
   confirmInvalid?: boolean;
   submitLabel?: string;
+  /** Defaults to the field inspector pledge; specialist passes a review ack. */
+  confirmLabel?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -442,7 +445,7 @@ export function InspectorWorkspaceSubmitFooter({
           checked={draft.inspectionConfirmed}
           onChange={(e) => onPatch({ inspectionConfirmed: e.target.checked })}
         />
-        أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني
+        {confirmLabel}
       </label>
       <span className="flex-1" />
       <Button

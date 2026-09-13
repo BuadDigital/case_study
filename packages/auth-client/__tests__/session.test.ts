@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AUTH_CHANGED_EVENT,
+  AUTH_COOKIE_NAME,
   AUTH_STORAGE_KEY,
   clearAuthSession,
+  ensureAuthGateCookie,
   getAuthSession,
   getValidAuthSession,
+  isAuthSessionUsable,
   isRefreshTokenExpired,
   isSessionExpired,
   setAuthSession,
@@ -19,10 +22,18 @@ const baseSession: AuthSession = {
   expiresAtUtc: new Date(Date.now() + 60_000).toISOString(),
 };
 
+function cookieValue(name: string): string | null {
+  const match = document.cookie
+    .split("; ")
+    .find((part) => part.startsWith(`${name}=`));
+  return match ? match.slice(name.length + 1) : null;
+}
+
 describe("auth session", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0`;
     clearAuthSession();
   });
 
@@ -65,6 +76,23 @@ describe("auth session", () => {
     ).toBe(true);
   });
 
+  it("treats access-expired sessions with a live refresh token as usable", () => {
+    expect(
+      isAuthSessionUsable({
+        ...baseSession,
+        expiresAtUtc: new Date(Date.now() - 1_000).toISOString(),
+        refreshToken: "r",
+        refreshTokenExpiresAtUtc: new Date(Date.now() + 3_600_000).toISOString(),
+      }),
+    ).toBe(true);
+    expect(
+      isAuthSessionUsable({
+        ...baseSession,
+        expiresAtUtc: new Date(Date.now() - 1_000).toISOString(),
+      }),
+    ).toBe(false);
+  });
+
   it("returns null for expired stored session", () => {
     sessionStorage.setItem(
       "auth",
@@ -85,6 +113,19 @@ describe("auth session", () => {
 
     clearAuthSession();
     expect(localStorage.getItem("auth")).toBeNull();
+  });
+
+  it("heals the gate cookie from localStorage when the cookie was cleared", () => {
+    setAuthSession({
+      ...baseSession,
+      refreshToken: "r",
+      refreshTokenExpiresAtUtc: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+    document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0`;
+    expect(cookieValue(AUTH_COOKIE_NAME)).toBeNull();
+
+    ensureAuthGateCookie();
+    expect(cookieValue(AUTH_COOKIE_NAME)).toBe("1");
   });
 
   it("returns a stable snapshot until storage changes", () => {

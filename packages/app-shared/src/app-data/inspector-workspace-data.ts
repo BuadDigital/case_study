@@ -935,7 +935,14 @@ export function isInspectorWorkspaceLocked(
 }
 
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
-  "اعتماد مدخلات المعاين";
+  "تأكيد مدخلات المعاين";
+
+/** Specialist (supervisor) attestation — not the field inspector's reality pledge. */
+export const SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK =
+  "راجعت مدخلات المعاين وأؤكد أنها جاهزة للإقفال وبدء عمل المقيّم";
+
+export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS =
+  "تم تأكيد مدخلات المعاين — يمكن للمقيم بدء التقييم";
 
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
@@ -962,7 +969,7 @@ export function approvedInspectorPropertyDescription(
 
 /** Placeholder when the appraiser opens the report before specialist accept. */
 export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
-  "يظهر وصف العقار للمقيم بعد اعتماد الأخصائي لمدخلات المعاين.";
+  "يظهر وصف العقار للمقيم بعد تأكيد الأخصائي لمدخلات المعاين.";
 
 /**
  * Inspector cannot edit after submit. Specialist may correct a submitted

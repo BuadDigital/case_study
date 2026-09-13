@@ -69,21 +69,43 @@ export function isRefreshTokenExpired(
   return expires <= Date.now();
 }
 
+/**
+ * Access token still good, or a refresh token can still renew it.
+ * Used to keep the shell `ree-auth` gate cookie aligned with localStorage.
+ */
+export function isAuthSessionUsable(
+  session: AuthSession | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (!isSessionExpired(session)) return true;
+  return Boolean(session.refreshToken) && !isRefreshTokenExpired(session);
+}
+
 function syncAuthCookie(session: AuthSession | null): void {
   if (typeof document === "undefined") return;
-  if (
-    !session ||
-    (isSessionExpired(session) && isRefreshTokenExpired(session))
-  ) {
+  if (!session || !isAuthSessionUsable(session)) {
     document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
     return;
   }
   // The cookie tracks how long the login can be renewed, not the short access token.
+  // Prefer refresh expiry; if absent, keep the gate cookie alive long enough for
+  // a hard-nav new tab instead of collapsing to the ~15m access-token window.
   const until = Date.parse(
-    session.refreshTokenExpiresAtUtc ?? session.expiresAtUtc,
+    session.refreshTokenExpiresAtUtc ??
+      (session.refreshToken
+        ? new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
+        : session.expiresAtUtc),
   );
   const maxAge = Math.max(60, Math.floor((until - Date.now()) / 1000));
   document.cookie = `${AUTH_COOKIE_NAME}=1; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+/**
+ * Re-write the proxy gate cookie from the stored session. Call on app boot so a
+ * new-tab hard navigation does not bounce through /login when localStorage is fine.
+ */
+export function ensureAuthGateCookie(): void {
+  syncAuthCookie(getAuthSession());
 }
 
 export function getAuthSession(): AuthSession | null {
@@ -97,7 +119,10 @@ export function getAuthSession(): AuthSession | null {
   try {
     const session = JSON.parse(raw) as AuthSession;
     if (!shared) localStorage.setItem(AUTH_STORAGE_KEY, raw);
-    return rememberSession(raw, session);
+    const remembered = rememberSession(raw, session);
+    // Heal the gate cookie whenever storage is re-read (e.g. new document).
+    if (isAuthSessionUsable(remembered)) syncAuthCookie(remembered);
+    return remembered;
   } catch {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     sessionStorage.removeItem(AUTH_STORAGE_KEY);

@@ -1,7 +1,9 @@
 export {
   clearAuthSession,
+  ensureAuthGateCookie,
   getAuthSession,
   getValidAuthSession,
+  isAuthSessionUsable,
   isRefreshTokenExpired,
   isSessionExpired,
   notifyAuthExpired,

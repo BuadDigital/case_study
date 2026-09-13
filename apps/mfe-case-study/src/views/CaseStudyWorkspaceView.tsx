@@ -14,10 +14,14 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
-import { CaseStudyWorkspaceStepNav } from "../components/case-study/CaseStudyWorkspaceStepNav";
+import {
+  CaseStudyWorkspaceStepNav,
+  type CaseStudyWorkspaceTab,
+} from "../components/case-study/CaseStudyWorkspaceStepNav";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
 import { CaseStudyDeedNatureMatchReview } from "../components/case-study/CaseStudyDeedNatureMatchReview";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
+import { PropertyDetailAppraisalTab } from "../components/po-intake/PropertyDetailTabChunks";
 import { EmptyState } from "../components/po-intake/PropertyDetailFields";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
@@ -33,6 +37,7 @@ import {
   isInspectorWorkspaceAccepted,
   submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
+  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,
 } from "../lib/app-data/inspector-workspace-data";
 import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
@@ -48,10 +53,14 @@ import {
   useWorkflowTasksQuery,
 } from "../query/case-study-queries";
 import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
+import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail-party-submissions-queries";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
-import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT } from "../lib/case-study-workspace-events";
+import {
+  CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
+  CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
+} from "../lib/case-study-workspace-events";
 import { migrateDistribution } from "../lib/app-data/tasks-storage";
 import {
   loadSpecialistFinishingLevel,
@@ -280,12 +289,12 @@ function CaseStudyAppraisalPanel({
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
           <h3 className="m-0 text-[14px] font-extrabold text-heading">
-            معاينة العقار — إدخال البيانات
+            معاينة العقار — مراجعة المشرف
           </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
           {inspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)]">
-              معتمد — مدخلات المعاين مقفلة
+              مؤكَّدة — مدخلات المعاين مقفلة
             </span>
           ) : null}
           {canReturnToInspector && !returnOpen ? (
@@ -303,8 +312,9 @@ function CaseStudyAppraisalPanel({
           ) : null}
         </div>
         <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-          راجع بيانات المعاين وعدّلها إن لزم. «{SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}»
-          يعتمد الحزمة ويقفل التبويب. «إعادة للتصحيح» ترجع المهمة للمعاين.
+          أنت مشرف على ما كتبه المعاين: راجع وعدّل إن لزم. «
+          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يُقفل الحزمة للمقيّم. «إعادة
+          للتصحيح» ترجع المهمة للمعاين.
         </p>
 
         {returnOpen ? (
@@ -376,7 +386,7 @@ function CaseStudyAppraisalPanel({
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
             caseStudyDef={partyTaskPageDef("active-inspection") ?? undefined}
-            submitSuccessToast="تم اعتماد مدخلات المعاين — يمكن للمقيم بدء التقييم"
+            submitSuccessToast={SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS}
             submitFooterAfter={!inspectionUsesLand ? (
               <SpecialistValuationReportInputs
                 propertyId={property.id}
@@ -402,6 +412,96 @@ function CaseStudyAppraisalPanel({
   );
 }
 
+/**
+ * Step 3 — specialist reviews the appraiser's valuation report package.
+ * Accept stamps the package (valuation path ends); reopen stays available so
+ * the case is not permanently locked (future edit flow comes later).
+ */
+function CaseStudyValuationPanel({
+  property,
+  tasks,
+  caseStudyTask,
+}: {
+  property: NonNullable<ReturnType<typeof findPropertyForTask>>;
+  tasks: WorkflowTask[];
+  caseStudyTask: WorkflowTask;
+}) {
+  const { data: staffResult } = useStaffUsersQuery();
+  const staffUsers = staffResult?.users ?? [];
+
+  const appraisalTask = useMemo(() => {
+    const fromParent = childTasksForCaseStudyParent(
+      caseStudyTask.id,
+      tasks,
+    ).find((t) => t.kind === "property-appraisal");
+    if (fromParent) return fromParent;
+    return (
+      tasks.find(
+        (t) =>
+          t.kind === "property-appraisal" &&
+          t.poNumber.trim() === caseStudyTask.poNumber.trim() &&
+          t.propertyId === property.id,
+      ) ?? null
+    );
+  }, [caseStudyTask.id, caseStudyTask.poNumber, tasks, property.id]);
+
+  const appraisalCard = useMemo((): PropertyDetailPartyCard | null => {
+    const fromParties = buildPropertyDetailPartyCards({
+      task: caseStudyTask,
+      allTasks: tasks,
+      staffUsers,
+    }).find((c) => c.roleKey === "appraisal");
+    if (fromParties?.enabled) return fromParties;
+    if (!appraisalTask) return null;
+    return {
+      roleKey: "appraisal",
+      role: "المقيم العقاري",
+      name:
+        resolveAssigneeDisplayName({
+          assigneeName: appraisalTask.assigneeName,
+          assigneeId: appraisalTask.assigneeId,
+          staffUsers,
+          fallback: "المقيم",
+        }) || "المقيم",
+      unassigned: false,
+      state: "progress",
+      enabled: true,
+    };
+  }, [caseStudyTask, tasks, staffUsers, appraisalTask]);
+
+  const partySubmissionsQuery = usePropertyDetailPartySubmissionsQuery({
+    parentTask: caseStudyTask,
+    allTasks: tasks,
+    enabled: true,
+  });
+
+  return (
+    <div className="pt-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+        <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
+        <h3 className="m-0 text-[14px] font-extrabold text-heading">
+          تقرير التقييم — مراجعة الأخصائي
+        </h3>
+        <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
+      </div>
+      <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
+        يصل التقرير هنا بعد إرسال المقيّم. اعتمد التقرير لإتمام مسار التقييم، أو
+        أعده للتصحيح. الاعتماد لا يقفل المعاملة نهائيًا — يمكن إعادة فتحها لاحقًا.
+      </p>
+      <PropertyDetailAppraisalTab
+        property={property}
+        appraisalTask={appraisalTask}
+        tasks={tasks}
+        appraisalCard={appraisalCard}
+        submission={partySubmissionsQuery.data?.appraisal ?? null}
+        onReviewChanged={() => {
+          void partySubmissionsQuery.refetch();
+        }}
+      />
+    </div>
+  );
+}
+
 export function CaseStudyWorkspaceView({
   taskId,
   renderPartiesExtras,
@@ -411,19 +511,27 @@ export function CaseStudyWorkspaceView({
     props: CaseStudyWorkspacePartiesExtrasProps,
   ) => ReactNode;
 }) {
-  const [workspaceTab, setWorkspaceTab] = useState<"study" | "appraisal">(
-    "study",
-  );
+  const [workspaceTab, setWorkspaceTab] =
+    useState<CaseStudyWorkspaceTab>("study");
   useEffect(() => {
     const openAppraisal = () => setWorkspaceTab("appraisal");
+    const openValuation = () => setWorkspaceTab("valuation");
     window.addEventListener(
       CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
       openAppraisal,
+    );
+    window.addEventListener(
+      CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
+      openValuation,
     );
     return () => {
       window.removeEventListener(
         CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
         openAppraisal,
+      );
+      window.removeEventListener(
+        CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
+        openValuation,
       );
     };
   }, []);
@@ -432,7 +540,7 @@ export function CaseStudyWorkspaceView({
    * the study form never triggers the attachment fan-out. A visited tab stays
    * recorded, so the gate never flips back (same pattern as the property tabs).
    */
-  const visitedTabsRef = useRef<Set<"study" | "appraisal">>(new Set());
+  const visitedTabsRef = useRef<Set<CaseStudyWorkspaceTab>>(new Set());
   visitedTabsRef.current.add(workspaceTab);
   const propertyMediaVisited = visitedTabsRef.current.has("appraisal");
   const router = useRouter();
@@ -473,6 +581,27 @@ export function CaseStudyWorkspaceView({
     if (!record || !property) return -1;
     return record.properties.findIndex((p) => p.id === property.id);
   }, [record, property]);
+
+  /** Deep-link from party-submit notification: open valuation when a report awaits review. */
+  const partySubmissionsForGate = usePropertyDetailPartySubmissionsQuery({
+    parentTask: task,
+    allTasks: tasks ?? [],
+    enabled: Boolean(task && property),
+  });
+  const autoOpenedValuationRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedValuationRef.current) return;
+    const appraisal = partySubmissionsForGate.data?.appraisal;
+    if (!appraisal) return;
+    const status = (appraisal.packageStatus ?? "").toLowerCase();
+    const accepted =
+      typeof appraisal.acceptedAtUtc === "string" &&
+      appraisal.acceptedAtUtc.trim().length > 0;
+    if (status === "submitted" && !accepted) {
+      autoOpenedValuationRef.current = true;
+      setWorkspaceTab("valuation");
+    }
+  }, [partySubmissionsForGate.data?.appraisal]);
 
   const loading =
     (!tasksFetched && tasksPending) ||
@@ -569,13 +698,19 @@ export function CaseStudyWorkspaceView({
                 poRecord={record}
                 requestDateSeed={record.receivedFromEnfathAt}
               />
-            ) : (
+            ) : workspaceTab === "appraisal" ? (
               <CaseStudyAppraisalPanel
                 property={property}
                 poNumber={record.poNumber}
                 tasks={tasks ?? []}
                 caseStudyTask={task}
                 documentsEnabled={propertyMediaVisited}
+              />
+            ) : (
+              <CaseStudyValuationPanel
+                property={property}
+                tasks={tasks ?? []}
+                caseStudyTask={task}
               />
             )}
             {renderPartiesExtras ? (

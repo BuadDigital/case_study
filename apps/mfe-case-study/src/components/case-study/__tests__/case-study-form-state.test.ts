@@ -41,7 +41,7 @@ describe("firstCaseStudyFormScrollTarget", () => {
     expect(hit?.targetId).toBe("cs-deed-nature-match");
     expect(hit?.step).toBe(0);
     expect(hit?.blocking).toBe(true);
-    expect(hit?.message).toMatch(/تقييم العقار/);
+    expect(hit?.message).toMatch(/مدخلات المعاين/);
   });
 
   it("sends the specialist to match notes when فروق lacks an explanation", () => {

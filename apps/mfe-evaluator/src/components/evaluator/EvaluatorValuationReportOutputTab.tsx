@@ -16,10 +16,6 @@ import {
   listClients,
   listValuationComparableSelections,
   ensureOpenValuationRequestByProperty,
-  createValuationReportPdf,
-  valuationReportPdfAbsoluteUrl,
-  type ValuationReportPdfLinkDto,
-  type ValuationReportPdfResult,
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   type BuildingInventoryLineDto,
   type ClientDto,
@@ -64,7 +60,6 @@ import {
   printMapsNotice,
   type ComparablesMapPin,
 } from "../../lib/evaluator/valuation-report-comparables-map";
-import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 import { ReportMissingFieldPrompt } from "./ReportMissingFieldPrompt";
 import type { ReportAppraiserTab } from "../../lib/evaluator/valuation-report-missing-fields";
@@ -112,32 +107,11 @@ function ensureImageSlotCustomElement(): Promise<void> {
  * reach the appraiser — keep the message only when it's actually Arabic, otherwise show the
  * clear fallback and log the real cause for diagnostics.
  */
+/** Appraiser-facing text for a failed report action. */
 export function arabicErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && /[؀-ۿ]/.test(err.message)) return err.message;
   if (err instanceof Error) console.warn("[evaluator] report output tab error:", err);
   return fallback;
-}
-
-/** Appraiser-facing text for a failed `.pdf?k=…` link request. */
-export function pdfLinkErrorMessage(
-  res: Exclude<ValuationReportPdfResult, { ok: true }>,
-): string {
-  switch (res.kind) {
-    case "auth":
-      return "انتهت الجلسة — سجّل الدخول من جديد ثم أعد المحاولة.";
-    case "forbidden":
-      return "لا تملك صلاحية إنشاء رابط PDF لهذا التقرير.";
-    case "not_found":
-      return "طلب التقييم غير موجود.";
-    case "too_large":
-      return "حجم التقرير كبير جداً — قلّل عدد الصور المرفقة ثم أعد المحاولة.";
-    case "invalid":
-    case "renderer_unavailable":
-    case "render_failed":
-      return res.message || "تعذّر إنشاء رابط PDF — حاول مرة أخرى.";
-    default:
-      return "تعذّر إنشاء رابط PDF — حاول مرة أخرى.";
-  }
 }
 
 /** Old shortened defaults — replace with HTML v3 full copy when still stored in org settings. */
@@ -399,10 +373,6 @@ export function EvaluatorValuationReportOutputTab({
   const [printing, setPrinting] = useState(false);
   /** Why the last print copy fell back from Google maps (Static Maps API not enabled on the key). */
   const [mapNotice, setMapNotice] = useState<string | null>(null);
-  /** Last rendered `.pdf?k=…` link for this report (server-side PDF of the print copy). */
-  const [pdfLink, setPdfLink] = useState<ValuationReportPdfLinkDto | null>(null);
-  const [pdfBusy, setPdfBusy] = useState(false);
-  const [pdfCopied, setPdfCopied] = useState(false);
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
@@ -703,65 +673,6 @@ export function EvaluatorValuationReportOutputTab({
     }
   }, [preparePrintHtml]);
 
-  const pdfRequestId = outputBundle?.approaches?.valuationRequestId ?? null;
-
-  /**
-   * Server-rendered PDF behind a shareable `…/{reportNo}.pdf?k=…` link: the same print
-   * HTML, made self-contained (assets as data URLs), converted by the valuation service.
-   */
-  const createPdfLink = useCallback(async () => {
-    const session = getAuthSession();
-    if (!pdfRequestId || !session?.token) {
-      setError("لا يمكن إنشاء رابط PDF قبل فتح طلب التقييم لهذا العقار.");
-      return;
-    }
-    // Open the tab synchronously (popup blockers) and navigate it once the PDF exists.
-    const tab = window.open("about:blank", "_blank");
-    setPdfBusy(true);
-    setPdfCopied(false);
-    try {
-      const loaded = await ensureOrganizationSettingsLoaded({ force: true });
-      if (loaded) setOrg(loaded);
-      const { html, reportNo } = await preparePrintHtml(loaded);
-      const selfContained = await inlinePrintHtmlAssets(html, {
-        token: session.token,
-        apiBase: getApiBase(),
-      });
-      const res = await createValuationReportPdf(
-        { token: session.token, baseUrl: getApiBase() },
-        pdfRequestId,
-        { html: selfContained, reportNumber: reportNo },
-      );
-      if (!res.ok) {
-        tab?.close();
-        setError(pdfLinkErrorMessage(res));
-        return;
-      }
-      setPdfLink(res.data);
-      setError(null);
-      const url = valuationReportPdfAbsoluteUrl(res.data);
-      if (tab) tab.location.href = url;
-      else window.open(url, "_blank", "noopener");
-    } catch (err: unknown) {
-      tab?.close();
-      setError(arabicErrorMessage(err, "تعذّر إنشاء رابط PDF"));
-    } finally {
-      setPdfBusy(false);
-    }
-  }, [pdfRequestId, preparePrintHtml]);
-
-  const copyPdfLink = useCallback(async () => {
-    if (!pdfLink) return;
-    const url = valuationReportPdfAbsoluteUrl(pdfLink);
-    try {
-      await navigator.clipboard.writeText(url);
-      setPdfCopied(true);
-      window.setTimeout(() => setPdfCopied(false), 2500);
-    } catch {
-      window.prompt("انسخ الرابط:", url);
-    }
-  }, [pdfLink]);
-
   useEffect(() => {
     if (!screenHtml) return;
     const reportRoot = document.querySelector(".rpt-ref");
@@ -869,56 +780,11 @@ export function EvaluatorValuationReportOutputTab({
             type="button"
             variant="outline"
             size="sm"
-            disabled={pdfBusy || printing || !pdfRequestId}
-            title="ينشئ ملف PDF على الخادم ويفتحه من رابط ينتهي بـ .pdf يمكن مشاركته"
-            onClick={() => void createPdfLink()}
-          >
-            {pdfBusy ? "جاري إنشاء PDF…" : "رابط PDF"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={printing || pdfBusy}
+            disabled={printing}
             onClick={() => void print()}
           >
             {printing ? "جاري التجهيز…" : "طباعة / PDF"}
           </Button>
-        </div>
-      ) : null}
-      {pdfLink ? (
-        <div
-          className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-[#e6e1d6] bg-[#faf8f3] px-3 py-2 text-[12px] text-[#3a3f4d]"
-          data-testid="report-pdf-link"
-        >
-          <span className="font-semibold text-[#102b4e]">{pdfLink.fileName}</span>
-          <input
-            readOnly
-            dir="ltr"
-            value={valuationReportPdfAbsoluteUrl(pdfLink)}
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-w-[240px] flex-1 rounded border border-[#ddd8cc] bg-white px-2 py-1 text-[11px] text-[#3a3f4d]"
-            aria-label="رابط ملف PDF"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void copyPdfLink()}
-          >
-            {pdfCopied ? "تم النسخ" : "نسخ الرابط"}
-          </Button>
-          <a
-            href={valuationReportPdfAbsoluteUrl(pdfLink)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#102b4e] underline"
-          >
-            فتح
-          </a>
-          <span className="text-text-3">
-            صالح حتى {pdfLink.expiresAtUtc.slice(0, 10)}
-          </span>
         </div>
       ) : null}
       {error ? (

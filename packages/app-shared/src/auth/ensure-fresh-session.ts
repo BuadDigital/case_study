@@ -1,5 +1,6 @@
 import { refreshAuthSession } from "@platform/api-client";
 import {
+  ensureAuthGateCookie,
   getAuthSession,
   isRefreshTokenExpired,
   isSessionExpired,
@@ -38,7 +39,10 @@ async function renew(force: boolean): Promise<AuthSession | null> {
   const stored = getAuthSession();
   if (!stored) return null;
   if (!force && !shouldRefreshSession(stored)) {
-    return isSessionExpired(stored) ? null : stored;
+    if (isSessionExpired(stored)) return null;
+    // Keep the proxy gate cookie alive without emitting a storage change.
+    ensureAuthGateCookie();
+    return stored;
   }
   if (isRefreshTokenExpired(stored)) {
     return isSessionExpired(stored) ? null : stored;
@@ -59,5 +63,7 @@ async function renew(force: boolean): Promise<AuthSession | null> {
 
   if (result.kind === "auth") return null;
   // Transient failure: keep the session while its access token is still valid.
-  return isSessionExpired(stored) ? null : stored;
+  if (isSessionExpired(stored)) return null;
+  ensureAuthGateCookie();
+  return stored;
 }

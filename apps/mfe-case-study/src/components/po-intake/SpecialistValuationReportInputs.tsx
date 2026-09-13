@@ -24,8 +24,8 @@ export function SpecialistValuationReportInputs({
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
         {readOnly
-          ? "معتمدة — لا يمكن تعديلها بعد اعتماد مدخلات المعاين."
-          : "يعبّئها الأخصائي من دراسة الحالة (تبويب تقييم العقار)، وتظهر للمقيّم للعرض فقط."}
+          ? "مقفلة — لا يمكن تعديلها بعد تأكيد مدخلات المعاين."
+          : "يعبّئها الأخصائي من دراسة الحالة (تبويب مدخلات المعاين)، وتظهر للمقيّم للعرض فقط."}
       </p>
       <SpecialistValuationReportFinishingEditor
         propertyId={propertyId}

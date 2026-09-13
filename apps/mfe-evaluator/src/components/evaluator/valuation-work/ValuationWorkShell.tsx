@@ -631,7 +631,7 @@ export function ValuationWorkShell({
             <CardTitle>بانتظار مطابقة الصك على الطبيعة</CardTitle>
             <p className="m-0 text-[13px] leading-relaxed text-text">
               صك تقليدي: حساب القيمة بعد أن يعتمد دارس الحالة مطابقة المعاين أو
-              المكتب الهندسي (أو الرفع المساحي السابق) من تبويب تقييم العقار.
+              المكتب الهندسي (أو الرفع المساحي السابق) من تبويب مدخلات المعاين.
               {matchWaitDetail ? (
                 <span className="mt-1 block text-[12px] text-text-2">
                   {matchWaitDetail}
