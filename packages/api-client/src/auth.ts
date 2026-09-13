@@ -56,6 +56,8 @@ export async function refreshAuthSession(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
+      // Login/boot must not hang forever when the API is slow or unreachable.
+      signal: AbortSignal.timeout(5_000),
     });
     if (res.status === 401 || res.status === 400) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
