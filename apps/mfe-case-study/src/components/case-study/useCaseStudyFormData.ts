@@ -7,7 +7,7 @@
  * Writes live in `useCaseStudyFormCommands`; this hook owns the state they
  * mutate.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useToast } from "@platform/ui-kit";
 import { caseStudyAnswerKey, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-form-data";
@@ -25,6 +25,10 @@ import {
   type PartyQuestionContribution,
 } from "../../lib/app-data/case-study-party-answers";
 import {
+  applyInspectorAnswersToSpecialist,
+  type SpecialistAnswersMap,
+} from "../../lib/app-data/apply-inspector-answers-to-specialist";
+import {
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,
 } from "@settings/mfe/query/settings-queries";
@@ -39,6 +43,7 @@ import {
   loadPartyCaseStudyFormDraft,
   loadPartyCaseStudyFormDraftOrThrow,
 } from "../../lib/app-data/case-study-form-reads";
+import { saveCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
@@ -130,6 +135,9 @@ export function useCaseStudyFormData({
   const [partyAnswersByKey, setPartyAnswersByKey] = useState<
     Record<string, PartyQuestionContribution[]>
   >({});
+  /** Last mirrored inspector values — used to follow updates without clobbering overrides. */
+  const previousInspectorRef = useRef<SpecialistAnswersMap>({});
+  const mirroringRef = useRef(false);
 
   useEffect(() => {
     if (isParty || !hydrated || !infoRolesReady) return;
@@ -155,6 +163,59 @@ export function useCaseStudyFormData({
     infoRolesReady,
     workflowTasks,
     staffUsers,
+  ]);
+
+  // Specialist form stays responsive to inspector chips: empty cells (and cells
+  // still mirroring the last inspector value) follow the field party.
+  useEffect(() => {
+    if (isParty || !hydrated || forceReadOnly) return;
+    if (Object.keys(partyAnswersByKey).length === 0) return;
+    if (mirroringRef.current) return;
+
+    let cancelled = false;
+    setDraft((current) => {
+      if (cancelled || current.status === "submitted") return current;
+      const applied = applyInspectorAnswersToSpecialist(
+        current.answers,
+        partyAnswersByKey,
+        previousInspectorRef.current,
+      );
+      previousInspectorRef.current = applied.inspectorSnapshot;
+      if (applied.changedKeys.length === 0) return current;
+
+      const approved = { ...current.specialistReviewApproved };
+      for (const key of applied.changedKeys) {
+        approved[key] = true;
+      }
+      const next: CaseStudyFormDraft = {
+        ...current,
+        answers: applied.answers,
+        specialistReviewApproved: approved,
+      };
+      mirroringRef.current = true;
+      void saveCaseStudyFormDraft(next)
+        .then((result) => {
+          if (!result.ok) showToast(result.error, "error");
+        })
+        .catch(() => {
+          showToast("تعذّر مزامنة إجابات المعاين — حاول مرة أخرى", "error");
+        })
+        .finally(() => {
+          mirroringRef.current = false;
+        });
+      return next;
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isParty,
+    hydrated,
+    forceReadOnly,
+    partyAnswersByKey,
+    setDraft,
+    showToast,
   ]);
 
   const isQuestionVisible = useCallback(

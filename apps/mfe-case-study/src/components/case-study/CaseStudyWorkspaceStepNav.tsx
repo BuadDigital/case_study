@@ -2,11 +2,11 @@
 
 import { cn } from "@platform/ui-kit";
 
-export type CaseStudyWorkspaceTab = "study" | "appraisal";
+export type CaseStudyWorkspaceTab = "study" | "appraisal" | "valuation";
 
 /**
  * Numbered section cards for the case-study workspace — same look as the inspector's
- * `InspectorStepNav`, so the two sections are obvious instead of a thin text tab bar.
+ * `InspectorStepNav`, so the sections are obvious instead of a thin text tab bar.
  */
 const CASE_STUDY_WORKSPACE_STEPS: {
   id: CaseStudyWorkspaceTab;
@@ -23,8 +23,14 @@ const CASE_STUDY_WORKSPACE_STEPS: {
   {
     id: "appraisal",
     number: 2,
-    title: "تقييم العقار",
-    hint: "مطابقة الصك ومراجعة المعاينة ومدخلات التقييم",
+    title: "مدخلات المعاين",
+    hint: "مراجعة بيانات المعاين ومطابقة الصك ومدخلات التقرير",
+  },
+  {
+    id: "valuation",
+    number: 3,
+    title: "مدخلات التقييم",
+    hint: "تقرير المقيّم — مراجعة الأخصائي واعتماده",
   },
 ];
 

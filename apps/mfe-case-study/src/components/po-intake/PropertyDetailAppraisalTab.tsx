@@ -56,7 +56,7 @@ export function PropertyDetailAppraisalTab({
         returnPlaceholder="صف ما يجب تصحيحه في تقرير التقييم…"
         acceptSuccessToast="تم اعتماد تقرير التقييم"
         returnSuccessToast="أُعيد التقييم للتصحيح"
-        hint="اعتماد تقرير التقييم وإعادة للتصحيح من تبويب «تقييم العقار»."
+        hint="اعتماد تقرير التقييم وإعادة للتصحيح من تبويب «مدخلات التقييم»."
         onChanged={onReviewChanged}
       />
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (

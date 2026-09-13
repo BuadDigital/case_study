@@ -245,6 +245,30 @@ public static class DataSeeder
 
         new(
 
+            "emad",
+
+            "emad@ejadah.dev",
+
+            "user1234",
+
+            "عماد الرشيد",
+
+            "مسؤول التحول الرقمي (CDO)",
+
+            "دوام كامل",
+
+            "الإدارة التنفيذية",
+
+            null,
+
+            "cdo",
+
+            ContractType.Internal,
+
+            OrgRoles.Cdo),
+
+        new(
+
             "salam",
 
             "salam@ejadah.dev",
@@ -581,6 +605,7 @@ public static class DataSeeder
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["sliman"] = "+966500000001",
+            ["emad"] = "+966500000000",
             ["salam"] = "+966500000002",
             ["abdulrahman"] = "+966500000003",
             ["osama"] = "+966500000004",

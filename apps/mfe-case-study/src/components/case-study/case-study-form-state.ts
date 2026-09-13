@@ -199,7 +199,7 @@ export function firstCaseStudyFormScrollTarget(args: {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
           step: 0,
           message:
-            "اعتمد مطابقة الصك على الطبيعة من تبويب تقييم العقار قبل رفع تقرير دراسة الحالة.",
+            "أكّد مطابقة الصك على الطبيعة من تبويب مدخلات المعاين قبل رفع تقرير دراسة الحالة.",
           blocking: true,
           invalidDeedNature: true,
         };
@@ -226,7 +226,7 @@ export function firstCaseStudyFormScrollTarget(args: {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
           step: 0,
           message:
-            "مخرج المطابقة ليس مطابقًا — اعتمد أو عدّل من تبويب تقييم العقار. الفروق والتعذر مسار تعذر.",
+            "مخرج المطابقة ليس مطابقًا — أكّد أو عدّل من تبويب مدخلات المعاين. الفروق والتعذر مسار تعذر.",
           blocking: true,
           invalidDeedNature: true,
         };

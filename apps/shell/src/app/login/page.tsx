@@ -18,8 +18,8 @@ import {
 import {
   setAuthSession,
   type AuthSession,
-  getValidAuthSession,
 } from "@platform/auth-client";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { defaultLandingPath } from "@platform/app-shared/app-data/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/app-data/permissions-pages";
 import { cn, useToast } from "@platform/ui-kit";
@@ -79,6 +79,13 @@ async function resolvePostLoginPath(token: string): Promise<string> {
   }
 }
 
+/** Same-origin relative path only — blocks open redirects via ?from=. */
+function safeReturnPath(from: string | null | undefined): string | null {
+  if (!from || !from.startsWith("/") || from.startsWith("//")) return null;
+  if (from === "/login" || from.startsWith("/login?")) return null;
+  return from;
+}
+
 function formatPhoneDisplay(digits: string): string {
   if (digits.length > 2 && digits.length <= 5) {
     return `${digits.slice(0, 2)} ${digits.slice(2)}`;
@@ -131,6 +138,8 @@ function Spinner() {
 export default function LoginPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  /** Avoid painting the login form while we still may resume an existing session. */
+  const [boot, setBoot] = useState<"checking" | "ready">("checking");
   const [step, setStep] = useState<Step>("creds");
   const [identifier, setIdentifier] = useState("");
   const [remember, setRemember] = useState(false);
@@ -150,12 +159,25 @@ export default function LoginPage() {
   const otpValue = otp.join("");
 
   useEffect(() => {
-    const session = getValidAuthSession();
-    if (!session) return;
-    setAuthSession(session);
-    void resolvePostLoginPath(session.token).then((path) => {
+    let cancelled = false;
+    void (async () => {
+      const session = await ensureFreshAuthSession();
+      if (cancelled) return;
+      if (!session) {
+        setBoot("ready");
+        return;
+      }
+      setAuthSession(session);
+      const from = safeReturnPath(
+        new URLSearchParams(window.location.search).get("from"),
+      );
+      const path = from ?? (await resolvePostLoginPath(session.token));
+      if (cancelled) return;
       router.replace(path);
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Do NOT prefetch protected routes here: on the login page there is no
@@ -329,7 +351,10 @@ export default function LoginPage() {
         return;
       }
 
-      const path = await resolvePostLoginPath(session.token);
+      const from = safeReturnPath(
+        new URLSearchParams(window.location.search).get("from"),
+      );
+      const path = from ?? (await resolvePostLoginPath(session.token));
       setLandingPath(path);
       setAuthSession(session);
       showToast("تم تسجيل الدخول !", "success");
@@ -357,6 +382,18 @@ export default function LoginPage() {
   ).padStart(2, "0")}`;
 
   const otpTarget = formatPhoneTarget(mobileDigits);
+
+  if (boot === "checking") {
+    return (
+      <div
+        className="flex min-h-svh items-center justify-center bg-surface"
+        aria-busy="true"
+        aria-label="جاري التحقق من الجلسة"
+      >
+        <span className="size-8 animate-spin rounded-full border-[3px] border-[#ddd8cc] border-t-ink" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-h-svh grid-cols-1 min-[900px]:grid-cols-[0.92fr_1.08fr]">
