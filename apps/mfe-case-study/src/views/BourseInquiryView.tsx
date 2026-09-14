@@ -46,6 +46,10 @@ import {
 } from "../lib/app-data/po-intake-data";
 import { findPropertyInRecord } from "../lib/app-data/po-intake-reads";
 import { completePropertyBourse } from "../lib/app-data/po-intake-commands";
+import {
+  flushPropertyFieldAutosave,
+  queuePropertyFieldAutosave,
+} from "../lib/app-data/property-field-autosave";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
@@ -160,6 +164,13 @@ export function BourseInquiryView() {
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
         const next = { ...p, [key]: value };
+        if (selected) {
+          queuePropertyFieldAutosave(
+            selected.poNumber,
+            selected.propertyId,
+            next,
+          );
+        }
         return next;
       });
       setFieldErrors((e) => {
@@ -169,7 +180,7 @@ export function BourseInquiryView() {
         return next;
       });
     },
-    [],
+    [selected],
   );
 
   async function openItem(item: PendingBoursePropertyDto) {
@@ -183,6 +194,9 @@ export function BourseInquiryView() {
       setOpeningItemKey(null);
       closeForm();
       return;
+    }
+    if (selected) {
+      await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
     }
     setOpeningItemKey(key);
     startOpenItem(() => {
@@ -216,6 +230,9 @@ export function BourseInquiryView() {
   }
 
   function closeForm() {
+    if (selected) {
+      void flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
+    }
     setSelected(null);
     setProperty(emptyProperty());
     setFormError(null);
@@ -227,6 +244,8 @@ export function BourseInquiryView() {
 
   async function handleSubmit() {
     if (!selected) return;
+
+    await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
 
     if (!deedVitality) {
       const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };

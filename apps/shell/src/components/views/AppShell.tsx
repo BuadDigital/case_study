@@ -6,6 +6,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { prefetchPrototypePage } from "@/lib/query/app-data-queries";
 import type { PageId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
+import { initialsFromDisplayName } from "@platform/app-shared/lib/display-name-initials";
 import { activeTransactionNavForRole } from "@platform/app-shared/app-data/active-transactions";
 import { settingsNavTreeForRole } from "@platform/app-shared/app-data/system-settings-nav";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
@@ -48,7 +49,7 @@ import { PAGE_CHUNK_PRELOAD } from "./AppPageView";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const { role, rolePages } = useAppAccess();
+  const { role, rolePages, viewerDisplayName, viewerJobTitle } = useAppAccess();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -135,7 +136,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
 
   const def = ROLES[role];
-  const chipName = sessionUser?.displayName?.trim() || def.name;
+  const chipName =
+    viewerDisplayName?.trim() ||
+    sessionUser?.displayName?.trim() ||
+    def.name;
+  const chipDept =
+    viewerJobTitle?.trim() ||
+    sessionUser?.jobTitle?.trim() ||
+    def.dept;
+  const chipInitials = initialsFromDisplayName(chipName) || def.init;
   const handleLogout = useAppShellLogout();
   const onActiveSurveyPropertyDetail = route.onActiveSurveyEntry;
 
@@ -248,8 +257,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <ProfileMenu
               chipName={chipName}
-              initials={def.init}
-              dept={def.dept}
+              initials={chipInitials}
+              dept={chipDept}
               currentPage={currentPage}
               onLogout={handleLogout}
             />

@@ -11,9 +11,7 @@ import {
   InsEditField,
   InsFieldsGrid,
   ComponentCountWithPhotoField,
-  EditableFeaturePhotoCell,
 } from "../po-intake/PropertyDetailInspectionParts";
-import { uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import {
   isShopHiddenInspectorComponentKey,
   type InspectorComponentPhotoKey,
@@ -241,32 +239,6 @@ export function InspectorWizardComponentsCards({
                 editable && onPatch({ buildLicenseDate: v })
               }
             />
-            <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-semibold text-heading">صورة رخصة البناء</span>
-              <EditableFeaturePhotoCell
-                needsPhoto
-                hasPhoto={Boolean(
-                  draft.componentPhotoAttachments.buildLicense?.attachmentId,
-                )}
-                disabled={!editable}
-                onUpload={async (file) => {
-                  const result = await uploadInspectorPhotoFromFile(
-                    draft.taskId,
-                    "component:buildLicense",
-                    file,
-                    { draft, deedNumber },
-                  );
-                  if (!result.ok) throw new Error(result.error);
-                  onPatch({
-                    componentPhotoAttachments: {
-                      ...draft.componentPhotoAttachments,
-                      buildLicense: result.attachment,
-                    },
-                  });
-                  return true;
-                }}
-              />
-            </div>
           </InsFieldsGrid>
         </InsCard>
       ) : null}

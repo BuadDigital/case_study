@@ -66,7 +66,8 @@ public interface IWorkOrderService
         string poNumber,
         Guid propertyId,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool softDraft = false);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
         string poNumber,
         Guid propertyId,

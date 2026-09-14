@@ -21,7 +21,7 @@ import {
   inspectorPhotosLabel,
 } from "./InspectorPropertyPhotosSection";
 import { InspectorSaveChip } from "./InspectorSaveChip";
-import { handleSiteLocationAckClick } from "./site-location-ack-action";
+import { handleSiteLocationAckClick } from "../../lib/app-data/site-location-ack-open";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorAccessPhotosCards({
@@ -53,9 +53,14 @@ export function InspectorAccessPhotosCards({
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
-  const ackReady = canPrintSiteLocationAck(mapPinned);
+  const ackReady = canPrintSiteLocationAck({
+    mapPinned,
+    mapLatitude: draft.mapLatitude,
+    mapLongitude: draft.mapLongitude,
+    status: draft.status,
+  });
   const onAckClick = () =>
-    handleSiteLocationAckClick({ mapPinned, draft, property, showToast });
+    handleSiteLocationAckClick({ draft, property, showToast });
   const ackTitle = ackReady ? undefined : SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE;
   return (
     <>

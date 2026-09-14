@@ -36,7 +36,7 @@ npm run dev            # الواجهة على 3000
 ## 0. المتطلبات
 
 - سيرفر Hetzner Cloud بـ Ubuntu، ومعه دخول SSH يعمل.
-- **الحد الأدنى للموارد: 8 GB RAM و 4 vCPU** (مثل `CPX41` أو `CCX23`). الـ stack يشغّل 9 خدمات .NET + Gateway + Next.js + Postgres + RabbitMQ + Redis + Elasticsearch + Prometheus + Grafana + Jaeger. سيرفر بـ 4 GB سيُقتل بـ OOM.
+- **الحد الأدنى للموارد: 8 GB RAM و 4 vCPU** (مثل `CPX41` أو `CCX23`). الـ stack يشغّل 9 خدمات .NET + Gateway + Next.js + Postgres + RabbitMQ + Redis + Elasticsearch + Prometheus + Grafana. سيرفر بـ 4 GB سيُقتل بـ OOM.
 - دومين تقدر تعدّل سجلات DNS الخاصة به.
 - الريبو على GitHub: `BuadDigital/case_study`.
 
@@ -347,7 +347,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ---
 
-## 10. الوصول للمراقبة (Grafana / Jaeger / RabbitMQ)
+## 10. الوصول للمراقبة (Grafana / RabbitMQ)
 
 هذه الخدمات غير منشورة على الإنترنت عن قصد. ادخلها عبر نفق SSH:
 
@@ -371,6 +371,6 @@ ssh -L 3001:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress
 | --- | --- |
 | `deploy` يفشل عند `test -r "$TLS_CERTIFICATE_PATH"` | الشهادة غير موجودة أو المسار في الأسرار غلط. راجع الخطوة 2. |
 | `denied` عند `docker compose pull` | مرحلة النشر تفتقد `packages: read` في صلاحياتها، أو تسجّل الدخول بتوكن منتهٍ. |
-| حاويات تُقتل / `Exited (137)` | ذاكرة غير كافية. كبّر السيرفر أو أوقف حزمة المراقبة (`elasticsearch`، `jaeger`، `prometheus`، `grafana`). |
+| حاويات تُقتل / `Exited (137)` | ذاكرة غير كافية. كبّر السيرفر أو أوقف حزمة المراقبة (`elasticsearch`، `prometheus`، `grafana`). |
 | `Set POSTGRES_PASSWORD` عند التشغيل | ملف `/app/.env` غير موجود أو ناقص. |
 | الموقع يفتح لكن `/api` يرجّع 502 | Gateway لم يمر بفحص الصحة. `docker compose logs gateway identity`. |

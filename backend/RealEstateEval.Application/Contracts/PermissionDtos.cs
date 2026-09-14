@@ -8,6 +8,8 @@ public class PermissionsDto
     public string? DisplayName { get; init; }
     public string? DistributionAssigneeId { get; init; }
     public string? Department { get; init; }
+    /// <summary>Staff profile job title (Arabic label), distinct from org department.</summary>
+    public string? JobTitle { get; init; }
     public IReadOnlyList<string> Pages { get; init; } = [];
     public IReadOnlyList<string> Capabilities { get; init; } = [];
 }

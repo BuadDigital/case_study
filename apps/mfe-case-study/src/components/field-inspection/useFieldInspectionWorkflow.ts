@@ -94,9 +94,10 @@ export function useFieldInspectionWorkflow({
     prevLng: string;
   } | null>(null);
   const [mapPinEpoch, setMapPinEpoch] = useState(0);
-  const [mapPinned, setMapPinned] = useState(false);
+  const mapPinned = Boolean(draft?.mapPinned);
   const mapPinnedRef = useRef(false);
   mapPinnedRef.current = mapPinned;
+  const sessionPinMigratedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -117,15 +118,6 @@ export function useFieldInspectionWorkflow({
       cancelled = true;
     };
   }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
-
-  useEffect(() => {
-    if (!task.id) return;
-    try {
-      setMapPinned(sessionStorage.getItem(`inspector-map-pinned:${task.id}`) === "1");
-    } catch {
-      setMapPinned(false);
-    }
-  }, [task.id]);
 
   useEffect(() => {
     if (!task.id) return;
@@ -182,6 +174,40 @@ export function useFieldInspectionWorkflow({
         });
     },
     [task.id, workLocked, showToast, markDirty],
+  );
+
+  // One-time migrate: old builds only stored pin in sessionStorage.
+  useEffect(() => {
+    if (!draft || !task.id || draft.mapPinned || workLocked) return;
+    if (sessionPinMigratedRef.current === task.id) return;
+    sessionPinMigratedRef.current = task.id;
+    try {
+      if (sessionStorage.getItem(`inspector-map-pinned:${task.id}`) !== "1") {
+        return;
+      }
+    } catch {
+      return;
+    }
+    persist({ mapPinned: true });
+  }, [draft, task.id, workLocked, persist]);
+
+  const setMapPinned = useCallback(
+    (pinned: boolean) => {
+      if (!draft) return;
+      if (pinned) {
+        const lat = draft.mapLatitude.trim();
+        const lng = draft.mapLongitude.trim();
+        persist({
+          ...(lat && lng
+            ? mapPinPatchForActor(draft, lat, lng, "inspector")
+            : {}),
+          mapPinned: true,
+        });
+        return;
+      }
+      persist({ mapPinned: false });
+    },
+    [draft, persist],
   );
 
   const requestMapMove = useCallback(
@@ -367,16 +393,16 @@ export function useFieldInspectionWorkflow({
       lat: pendingMapMove.prevLat,
       lng: pendingMapMove.prevLng,
     });
-    persist(
-      mapPinPatchForActor(
+    persist({
+      ...mapPinPatchForActor(
         draft,
         pendingMapMove.nextLat,
         pendingMapMove.nextLng,
         "inspector",
       ),
-    );
+      mapPinned: true,
+    });
     setPendingMapMove(null);
-    setMapPinned(true);
   }
 
   function cancelPendingMapMove() {

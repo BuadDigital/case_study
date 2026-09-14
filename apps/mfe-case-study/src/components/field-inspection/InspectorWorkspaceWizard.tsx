@@ -414,6 +414,7 @@ export function InspectorWorkspaceSubmitFooter({
   draft,
   saving,
   confirmInvalid = false,
+  submitDisabled = false,
   submitLabel = "حفظ وإرسال",
   confirmLabel = "أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني",
   onPatch,
@@ -423,6 +424,8 @@ export function InspectorWorkspaceSubmitFooter({
   draft: InspectorWorkspaceDraft;
   saving: boolean;
   confirmInvalid?: boolean;
+  /** Extra gate (e.g. specialist finishing level not chosen yet). */
+  submitDisabled?: boolean;
   submitLabel?: string;
   /** Defaults to the field inspector pledge; specialist passes a review ack. */
   confirmLabel?: string;
@@ -453,7 +456,7 @@ export function InspectorWorkspaceSubmitFooter({
         size="sm"
         variant="primary"
         loading={saving}
-        disabled={saving || !draft.inspectionConfirmed}
+        disabled={saving || !draft.inspectionConfirmed || submitDisabled}
         onClick={onSubmit}
       >
         {submitLabel}

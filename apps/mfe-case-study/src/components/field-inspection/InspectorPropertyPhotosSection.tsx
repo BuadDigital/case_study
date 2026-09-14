@@ -3,16 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppModal, Button, cn, useToast } from "@platform/ui-kit";
 import {
-  INSPECTOR_FREE_PHOTO_CATEGORIES,
   INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR,
   INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR,
+  INSPECTOR_FREE_PHOTO_CATEGORY_OTHER,
+  INSPECTOR_FREE_PHOTO_KINDS,
+  INSPECTOR_FREE_PHOTO_PARENTS,
+  buildInspectorFreePhotoCategory,
   canDeleteInspectorFreePhoto,
   inspectorFreePhotoCategoryMeta,
+  inspectorFreePhotoParentKey,
   inspectorFreePhotoUploader,
   inspectorFreePhotoUploaderLabel,
   inspectorPhotoStampText,
-  isInspectorPrimaryFreePhotoCategory,
   nextInspectorPhotoId,
+  parseInspectorFreePhotoCategory,
   type InspectorFreePhoto,
   type InspectorFreePhotoUploader,
   type InspectorWorkspaceDraft,
@@ -26,15 +30,13 @@ import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { freePhotoRef } from "./InspectorDefinedPhotosSection";
 
-type PrimaryPhotoCategory =
+type ParentKey =
   | typeof INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
   | typeof INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR;
 
 /**
- * «تصوير العقار» — general property photography in step 1.
- *
- * Two upload zones (exterior / interior). Legacy untagged or old-tag photos can
- * be reclassified into those buckets.
+ * «تصوير العقار» — two on-page buckets (خارجية / داخلية).
+ * Drop into a bucket, then classify kind only (خدمة / مرفق / أخرى).
  */
 export function InspectorPropertyPhotosSection({
   draft,
@@ -46,43 +48,40 @@ export function InspectorPropertyPhotosSection({
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
-  /** Who is using this section — controls upload ownership and delete permissions. */
   actor?: InspectorFreePhotoUploader;
   onPatch: (patch: Partial<Pick<InspectorWorkspaceDraft, "freePhotos">>) => void;
   onDirty?: () => void;
   mobile?: boolean;
 }) {
   const { showToast } = useToast();
-  const [uploadingCategory, setUploadingCategory] =
-    useState<PrimaryPhotoCategory | null>(null);
+  const [uploadingParent, setUploadingParent] = useState<ParentKey | null>(null);
   const [previewPhotoId, setPreviewPhotoId] = useState<number | null>(null);
   const [classifyPhotoId, setClassifyPhotoId] = useState<number | null>(null);
+  /** Parent locked when dropping into a bucket; null for legacy untagged. */
+  const [classifyParent, setClassifyParent] = useState<ParentKey | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | undefined>();
   const [classifyDataUrl, setClassifyDataUrl] = useState<string | undefined>();
   const stamp = inspectorPhotoStampText(draft);
   const photos = draft.freePhotos;
   const canUpload = !disabled;
-  const uploading = uploadingCategory !== null;
+  const uploading = uploadingParent !== null;
 
-  const exteriorPhotos = useMemo(
-    () =>
-      photos.filter(
-        (photo) => photo.category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR,
-      ),
-    [photos],
-  );
-  const interiorPhotos = useMemo(
-    () =>
-      photos.filter(
-        (photo) => photo.category === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR,
-      ),
-    [photos],
-  );
-  const needsClassify = useMemo(
-    () =>
-      photos.filter((photo) => !isInspectorPrimaryFreePhotoCategory(photo.category)),
-    [photos],
-  );
+  const photosByParent = useMemo(() => {
+    const map = new Map<string, InspectorFreePhoto[]>();
+    for (const parent of INSPECTOR_FREE_PHOTO_PARENTS) {
+      map.set(parent.key, []);
+    }
+    const orphan: InspectorFreePhoto[] = [];
+    for (const photo of photos) {
+      const parent = inspectorFreePhotoParentKey(photo.category);
+      if (parent && map.has(parent)) {
+        map.get(parent)!.push(photo);
+      } else {
+        orphan.push(photo);
+      }
+    }
+    return { map, orphan };
+  }, [photos]);
 
   const previewPhoto = useMemo(
     () => photos.find((photo) => photo.id === previewPhotoId) ?? null,
@@ -138,7 +137,9 @@ export function InspectorPropertyPhotosSection({
   }, [draft.taskId, classifyPhoto, classifyRefKey]);
 
   const hasMixedUploaders = useMemo(() => {
-    const uploaders = new Set(photos.map((photo) => inspectorFreePhotoUploader(photo)));
+    const uploaders = new Set(
+      photos.map((photo) => inspectorFreePhotoUploader(photo)),
+    );
     return uploaders.size > 1;
   }, [photos]);
 
@@ -148,12 +149,18 @@ export function InspectorPropertyPhotosSection({
     (photo) => !canDeleteInspectorFreePhoto(photo, actor),
   );
 
-  async function upload(files: File[], category: PrimaryPhotoCategory) {
+  function needsKindClassify(photo: InspectorFreePhoto): boolean {
+    // Only prompt when there is no category at all — parent-only / nested are fine.
+    return !photo.category?.trim();
+  }
+
+  async function upload(files: File[], parent: ParentKey) {
     if (!canUpload || uploading) return false;
-    setUploadingCategory(category);
+    setUploadingParent(parent);
     let working = draft;
     let added = false;
     let lastError: string | null = null;
+    let firstId: number | null = null;
     try {
       for (const file of files) {
         const id = nextInspectorPhotoId(working);
@@ -167,24 +174,34 @@ export function InspectorPropertyPhotosSection({
           lastError = result.error;
           continue;
         }
+        // Parent is known from the bucket; default kind «أخرى» so submit is not blocked
+        // if the inspector dismisses the kind modal. They can still reclassify.
         const photo: InspectorFreePhoto = {
           id,
-          category,
+          category: buildInspectorFreePhotoCategory(
+            parent,
+            INSPECTOR_FREE_PHOTO_CATEGORY_OTHER,
+          ),
           approved: true,
           uploadedBy: actor,
           ...result.attachment,
         };
         working = { ...working, freePhotos: [...working.freePhotos, photo] };
+        if (firstId === null) firstId = id;
         added = true;
       }
       if (added) {
         onPatch({ freePhotos: working.freePhotos });
         onDirty?.();
+        if (firstId !== null && actor === "inspector") {
+          setClassifyParent(parent);
+          setClassifyPhotoId(firstId);
+        }
       }
       if (lastError) throw new Error(lastError);
       return added;
     } finally {
-      setUploadingCategory(null);
+      setUploadingParent(null);
     }
   }
 
@@ -193,39 +210,64 @@ export function InspectorPropertyPhotosSection({
     if (!photo || disabled || !canDeleteInspectorFreePhoto(photo, actor)) return;
     onPatch({ freePhotos: photos.filter((item) => item.id !== id) });
     onDirty?.();
-    if (classifyPhotoId === id) setClassifyPhotoId(null);
+    if (classifyPhotoId === id) {
+      setClassifyPhotoId(null);
+      setClassifyParent(null);
+    }
     if (previewPhotoId === id) setPreviewPhotoId(null);
     showToast("تم حذف الصورة.", "success");
   }
 
-  function tagPhoto(photoId: number, category: PrimaryPhotoCategory) {
-    const nextPhotos = photos.map((photo) =>
-      photo.id === photoId ? { ...photo, category, approved: true } : photo,
+  function tagKind(photoId: number, kindKey: string, parentOverride?: ParentKey) {
+    const photo = photos.find((item) => item.id === photoId);
+    if (!photo) return;
+    const parent =
+      parentOverride ??
+      classifyParent ??
+      (inspectorFreePhotoParentKey(photo.category) as ParentKey | null);
+    if (!parent) return;
+
+    const category = buildInspectorFreePhotoCategory(parent, kindKey);
+    const nextPhotos = photos.map((item) =>
+      item.id === photoId ? { ...item, category, approved: true } : item,
     );
     onPatch({ freePhotos: nextPhotos });
     onDirty?.();
-    const label =
-      inspectorFreePhotoCategoryMeta(category)?.label ?? category;
+    const label = inspectorFreePhotoCategoryMeta(category)?.label ?? category;
     showToast(`عُرّفت الصورة: ${label}`, "success");
 
     const nextPending = nextPhotos.find(
-      (photo) =>
-        photo.id !== photoId &&
-        !isInspectorPrimaryFreePhotoCategory(photo.category),
+      (item) =>
+        item.id !== photoId &&
+        inspectorFreePhotoParentKey(item.category) === parent &&
+        !parseInspectorFreePhotoCategory(item.category),
     );
-    setClassifyPhotoId(nextPending?.id ?? null);
+    if (nextPending) {
+      setClassifyParent(parent);
+      setClassifyPhotoId(nextPending.id);
+    } else {
+      setClassifyPhotoId(null);
+      setClassifyParent(null);
+    }
   }
 
   function openPhoto(photo: InspectorFreePhoto) {
     if (
-      !isInspectorPrimaryFreePhotoCategory(photo.category) &&
+      needsKindClassify(photo) &&
       !disabled &&
       canDeleteInspectorFreePhoto(photo, actor)
     ) {
+      const parent = inspectorFreePhotoParentKey(photo.category) as ParentKey | null;
+      setClassifyParent(parent);
       setClassifyPhotoId(photo.id);
       return;
     }
     setPreviewPhotoId(photo.id);
+  }
+
+  function closeClassify() {
+    setClassifyPhotoId(null);
+    setClassifyParent(null);
   }
 
   const gridClass = cn(
@@ -235,15 +277,26 @@ export function InspectorPropertyPhotosSection({
       : "grid-cols-[repeat(auto-fill,minmax(132px,1fr))]",
   );
 
+  const classifyKindsParent =
+    classifyParent ??
+    (classifyPhoto
+      ? (inspectorFreePhotoParentKey(classifyPhoto.category) as ParentKey | null)
+      : null);
+
   function renderPhotoCard(photo: InspectorFreePhoto) {
     const uploader = inspectorFreePhotoUploader(photo);
     const deletable = !disabled && canDeleteInspectorFreePhoto(photo, actor);
-    const pendingClassify = !isInspectorPrimaryFreePhotoCategory(photo.category);
+    const pendingKind = needsKindClassify(photo);
     const ownerBadge =
       !deletable || hasMixedUploaders
         ? inspectorFreePhotoUploaderLabel(uploader)
         : undefined;
-    const category = inspectorFreePhotoCategoryMeta(photo.category);
+    const parsed = parseInspectorFreePhotoCategory(photo.category);
+    const kindMeta = parsed
+      ? INSPECTOR_FREE_PHOTO_KINDS.find((k) => k.key === parsed.kind)
+      : null;
+    const fallback = inspectorFreePhotoCategoryMeta(photo.category);
+    const display = kindMeta ?? fallback;
 
     return (
       <div key={photo.id} className="flex flex-col gap-1.5">
@@ -259,7 +312,7 @@ export function InspectorPropertyPhotosSection({
             "w-full [&_button:first-child]:!h-[100px] [&_button:first-child]:!w-full",
           )}
         />
-        {pendingClassify ? (
+        {pendingKind ? (
           <button
             type="button"
             disabled={disabled}
@@ -270,10 +323,10 @@ export function InspectorPropertyPhotosSection({
           </button>
         ) : (
           <p className="m-0 truncate text-center text-[11px] text-text-3">
-            {category ? (
+            {display ? (
               <>
-                <i className={`ti ${category.icon} me-1`} aria-hidden />
-                {category.label}
+                <i className={`ti ${display.icon} me-1`} aria-hidden />
+                {display.label}
               </>
             ) : (
               "معرّفة"
@@ -284,23 +337,22 @@ export function InspectorPropertyPhotosSection({
     );
   }
 
-  function renderBucket(category: PrimaryPhotoCategory) {
-    const meta = inspectorFreePhotoCategoryMeta(category)!;
-    const bucketPhotos =
-      category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
-        ? exteriorPhotos
-        : interiorPhotos;
-    const busy = uploadingCategory === category;
+  function renderBucket(parent: (typeof INSPECTOR_FREE_PHOTO_PARENTS)[number]) {
+    const bucketPhotos = photosByParent.map.get(parent.key) ?? [];
+    const pendingInBucket = bucketPhotos.filter(needsKindClassify);
+    const doneInBucket = bucketPhotos.filter((p) => !needsKindClassify(p));
+    const busy = uploadingParent === parent.key;
+    const isExterior = parent.key === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR;
 
     return (
       <div
-        key={category}
+        key={parent.key}
         className="rounded-lg border border-border bg-surface-2/40 px-3 py-3"
       >
         <div className="mb-2.5 flex items-baseline justify-between gap-2">
           <p className="m-0 flex items-center gap-1.5 text-[13px] font-bold text-heading">
-            <i className={`ti ${meta.icon} text-primary`} aria-hidden />
-            {meta.label}
+            <i className={`ti ${parent.icon} text-primary`} aria-hidden />
+            {parent.label}
           </p>
           <p className="m-0 text-[11px] text-text-3">
             {inspectorPhotosLabel(bucketPhotos.length)}
@@ -310,26 +362,37 @@ export function InspectorPropertyPhotosSection({
         <InspectorPhotoFilePicker
           label={
             bucketPhotos.length > 0
-              ? `إضافة صورة ${category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR ? "خارجية" : "داخلية"}`
-              : `التقاط صورة ${category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR ? "خارجية" : "داخلية"}`
+              ? `إضافة صورة ${isExterior ? "خارجية" : "داخلية"}`
+              : `التقاط صورة ${isExterior ? "خارجية" : "داخلية"}`
           }
           disabled={!canUpload || (uploading && !busy)}
           loading={busy}
           multiple
-          onFilesSelected={(files) => upload(files, category)}
+          onFilesSelected={(files) => upload(files, parent.key as ParentKey)}
         />
 
-        {bucketPhotos.length > 0 ? (
-          <div className={cn(gridClass, "mt-3")}>
-            {bucketPhotos.map(renderPhotoCard)}
+        {pendingInBucket.length > 0 ? (
+          <div className="mt-3">
+            <p className="m-0 mb-2 text-[11px] font-semibold text-text-3">
+              بانتظار النوع (خدمة / مرفق / أخرى) · {pendingInBucket.length}
+            </p>
+            <div className={gridClass}>
+              {pendingInBucket.map(renderPhotoCard)}
+            </div>
           </div>
-        ) : (
+        ) : null}
+
+        {doneInBucket.length > 0 ? (
+          <div className={cn(gridClass, pendingInBucket.length > 0 ? "mt-3" : "mt-3")}>
+            {doneInBucket.map(renderPhotoCard)}
+          </div>
+        ) : bucketPhotos.length === 0 ? (
           <p className="m-0 mt-2 text-[11px] leading-relaxed text-text-3">
-            {category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
-              ? "ارفع صور الواجهات والمحيط الخارجي للعقار هنا."
-              : "ارفع صور الفراغات الداخلية للعقار هنا."}
+            {isExterior
+              ? "ارفع صور الواجهات والمحيط الخارجي، ثم اختر خدمة أو مرفق أو أخرى."
+              : "ارفع صور الفراغات الداخلية، ثم اختر خدمة أو مرفق أو أخرى."}
           </p>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -337,21 +400,22 @@ export function InspectorPropertyPhotosSection({
   return (
     <>
       <div className="space-y-3">
-        {renderBucket(INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR)}
-        {renderBucket(INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR)}
+        {INSPECTOR_FREE_PHOTO_PARENTS.map(renderBucket)}
       </div>
 
-      {needsClassify.length > 0 ? (
+      {photosByParent.orphan.length > 0 ? (
         <div className="mt-4">
           <div className="mb-2 flex items-baseline justify-between gap-2">
             <p className="m-0 text-[12px] font-bold text-heading">
-              بانتظار التصنيف (داخلية / خارجية)
+              بانتظار التصنيف
             </p>
             <p className="m-0 text-[11px] text-text-3">
-              {needsClassify.length} · اضغط الصورة أو «تحديد النوع»
+              اختر خارجية أو داخلية، ثم خدمة / مرفق / أخرى
             </p>
           </div>
-          <div className={gridClass}>{needsClassify.map(renderPhotoCard)}</div>
+          <div className={gridClass}>
+            {photosByParent.orphan.map(renderPhotoCard)}
+          </div>
         </div>
       ) : null}
 
@@ -359,7 +423,7 @@ export function InspectorPropertyPhotosSection({
         <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-text-3">
           {actor === "specialist"
             ? "لم تُضف صور بعد — صور المعاين تظهر هنا للمراجعة، ويمكنك إضافة صورك في القسم المناسب."
-            : "ارفع صور العقار في القسم المناسب (خارجية أو داخلية). صور توثيق الخدمات/المرافق تُرفع لاحقاً في خاناتها."}
+            : "ارفع في «صور خارجية» أو «صور داخلية»، ثم اختر النوع: خدمة / مرفق / أخرى."}
         </p>
       ) : null}
 
@@ -371,8 +435,16 @@ export function InspectorPropertyPhotosSection({
 
       <AppModal
         open={classifyPhoto !== null}
-        title="تحديد نوع الصورة"
-        onClose={() => setClassifyPhotoId(null)}
+        title={
+          classifyKindsParent
+            ? `تحديد النوع · ${
+                INSPECTOR_FREE_PHOTO_PARENTS.find(
+                  (p) => p.key === classifyKindsParent,
+                )?.label ?? ""
+              }`
+            : "تحديد نوع الصورة"
+        }
+        onClose={closeClassify}
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             {classifyPhoto &&
@@ -386,11 +458,7 @@ export function InspectorPropertyPhotosSection({
                 حذف
               </Button>
             ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setClassifyPhotoId(null)}
-            >
+            <Button type="button" variant="ghost" onClick={closeClassify}>
               لاحقاً
             </Button>
           </div>
@@ -408,29 +476,68 @@ export function InspectorPropertyPhotosSection({
             جاري تحميل المعاينة…
           </div>
         )}
-        <div className="grid grid-cols-2 gap-2">
-          {INSPECTOR_FREE_PHOTO_CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              type="button"
-              disabled={disabled}
-              className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-3 text-[12px] font-semibold text-heading hover:border-primary hover:bg-surface-2 hover:text-primary disabled:opacity-50"
-              onClick={() =>
-                classifyPhotoId !== null
-                  ? tagPhoto(classifyPhotoId, cat.key as PrimaryPhotoCategory)
-                  : undefined
-              }
-            >
-              <i className={`ti ${cat.icon} text-xl text-primary`} aria-hidden />
-              {cat.label}
-            </button>
-          ))}
-        </div>
-        {needsClassify.length > 1 ? (
-          <p className="mb-0 mt-3 text-center text-[11px] text-text-3">
-            بعد الاختيار تُفتح الصورة التالية تلقائياً
-          </p>
-        ) : null}
+
+        {classifyKindsParent ? (
+          <div className="grid grid-cols-3 gap-2">
+            {INSPECTOR_FREE_PHOTO_KINDS.map((kind) => (
+              <button
+                key={kind.key}
+                type="button"
+                disabled={disabled}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-3 text-[12px] font-semibold text-heading hover:border-primary hover:bg-surface-2 hover:text-primary disabled:opacity-50"
+                onClick={() =>
+                  classifyPhotoId !== null
+                    ? tagKind(classifyPhotoId, kind.key)
+                    : undefined
+                }
+              >
+                <i
+                  className={`ti ${kind.icon} text-xl text-primary`}
+                  aria-hidden
+                />
+                {kind.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {INSPECTOR_FREE_PHOTO_PARENTS.map((parent) => (
+              <div
+                key={parent.key}
+                className="rounded-lg border border-border bg-surface-2/40 px-3 py-3"
+              >
+                <p className="m-0 mb-2.5 flex items-center gap-1.5 text-[13px] font-bold text-heading">
+                  <i className={`ti ${parent.icon} text-primary`} aria-hidden />
+                  {parent.label}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {INSPECTOR_FREE_PHOTO_KINDS.map((kind) => (
+                    <button
+                      key={kind.key}
+                      type="button"
+                      disabled={disabled}
+                      className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-2 py-3 text-[12px] font-semibold text-heading hover:border-primary hover:bg-surface-2 hover:text-primary disabled:opacity-50"
+                      onClick={() => {
+                        if (classifyPhotoId === null) return;
+                        tagKind(
+                          classifyPhotoId,
+                          kind.key,
+                          parent.key as ParentKey,
+                        );
+                      }}
+                    >
+                      <i
+                        className={`ti ${kind.icon} text-xl text-primary`}
+                        aria-hidden
+                      />
+                      {kind.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </AppModal>
 
       <AppModal
@@ -468,7 +575,8 @@ export function InspectorPropertyPhotosSection({
                   previewPhoto.category
                 }`
               : ""}
-            {hasMixedUploaders || !canDeleteInspectorFreePhoto(previewPhoto, actor)
+            {hasMixedUploaders ||
+            !canDeleteInspectorFreePhoto(previewPhoto, actor)
               ? ` · ${inspectorFreePhotoUploaderLabel(inspectorFreePhotoUploader(previewPhoto))}`
               : ""}
           </p>

@@ -31,7 +31,7 @@ describe("printKeyForPropertyDocument", () => {
       printKeyForPropertyDocument({
         ...base,
         id: "intake-assignment-0-x",
-        name: "خطاب الإسناد",
+        name: "قرار الإسناد",
         documentTypeKey: "assignment-letter",
       }),
     ).toBeNull();
@@ -39,7 +39,7 @@ describe("printKeyForPropertyDocument", () => {
       printKeyForPropertyDocument({
         ...base,
         id: "intake-delegation-0-x",
-        name: "خطاب التفويض",
+        name: "خطاب التكليف",
       }),
     ).toBeNull();
   });

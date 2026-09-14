@@ -7,7 +7,7 @@
  * 2026-09-04), but the overview still shows one photo on a cold load. This
  * hook spends at most three requests for it: the property's `for-property`
  * metadata list, the inspector workspace read when an inspection task exists,
- * and exactly one blob — the entry `pickPrimaryPropertyDetailPhoto` would pick
+ * and exactly one blob — the entry `pickInspectorPrimaryPhoto` would pick
  * once everything is hydrated. Both the metadata and the blob land in the same
  * caches the full prefetch reads, so opening a media tab later reuses them.
  */
@@ -26,7 +26,7 @@ import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-rea
 import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 import {
   collectPrimaryPhotoCandidates,
-  pickPrimaryPropertyDetailPhoto,
+  pickInspectorPrimaryPhoto,
   type PropertyDetailDocumentEntry,
 } from "../lib/app-data/property-detail-documents";
 
@@ -41,7 +41,7 @@ export function usePropertyPrimaryPhoto(input: {
     input;
 
   const pick = () =>
-    pickPrimaryPropertyDetailPhoto(
+    pickInspectorPrimaryPhoto(
       collectPrimaryPhotoCandidates({
         property,
         showDecree,

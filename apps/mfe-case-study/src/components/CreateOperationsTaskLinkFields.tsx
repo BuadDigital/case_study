@@ -96,7 +96,7 @@ export function CreateTaskLinkScopeFields({
       {scope === "multi" ? (
         <div className={opsFldFull}>
           <div className={opsTfNote}>
-            اختر صكوكاً من أي أوامر عمل — يُجمَّع خطاب التفويض حسب المحكمة/الدائرة.
+            اختر صكوكاً من أي أوامر عمل — يُجمَّع خطاب التكليف حسب المحكمة/الدائرة.
           </div>
         </div>
       ) : null}
@@ -221,7 +221,7 @@ export function CreateTaskLetterPreview({ rows }: { rows: OperationsTaskLetterRo
       <div className={cn(opsLetterCard, "mt-1")}>
         <div className={opsLetterHead}>
           <div>
-            <div className={opsLetterTitle}>خطاب التفويض الداخلي</div>
+            <div className={opsLetterTitle}>خطاب التكليف الداخلي</div>
             <div className={opsLetterSub}>
               مفتاح التجميع: المحكمة + الدائرة · لقطة (snapshot) عند الإصدار
             </div>

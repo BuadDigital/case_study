@@ -24,12 +24,6 @@ public static class FieldInspectionSubmissionValidator
         "21.543300,39.172800",
     };
 
-    private static readonly HashSet<string> PrimaryFreePhotoCategories = new(StringComparer.Ordinal)
-    {
-        "exterior",
-        "interior",
-    };
-
     private static readonly HashSet<string> LandHiddenFeatureKeys = new(StringComparer.Ordinal)
     {
         "facade",
@@ -213,8 +207,17 @@ public static class FieldInspectionSubmissionValidator
         foreach (var obs in observations.EnumerateArray())
         {
             var text = ReadString(obs, "text");
-            if (string.IsNullOrWhiteSpace(text))
+            if (!string.IsNullOrWhiteSpace(text))
+                continue;
+
+            // Empty shells (add then leave blank) are optional. Only rows that
+            // already have a photo need explanation text.
+            if (obs.TryGetProperty("photo", out var photo) &&
+                photo.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined &&
+                HasPhotoFileName(photo))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -256,15 +259,12 @@ public static class FieldInspectionSubmissionValidator
             issues.Add("يجب إرفاق صورة البئر");
         }
 
-        var (requiredTotal, requiredDone, pendingApproval) = ComputeDefinedPhotoCoverage(root);
+        var (requiredTotal, requiredDone, _) = ComputeDefinedPhotoCoverage(root);
         if (requiredDone < requiredTotal)
             issues.Add("وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
-        if (pendingApproval > 0)
-            issues.Add($"{pendingApproval} صورة بانتظار الاعتماد");
 
-        var untagged = CountUntaggedFreePhotos(root);
-        if (untagged > 0)
-            issues.Add($"{untagged} صورة إضافية بحاجة لتعريف");
+        // Free-photo kind tagging is optional — do not block submission.
+        // Pending-approval extras in an otherwise complete slot are not a submit blocker.
 
         if (HasPhotosWithoutServerAttachment(root))
             issues.Add("يجب رفع الصور إلى الخادم قبل الإرسال");
@@ -275,10 +275,10 @@ public static class FieldInspectionSubmissionValidator
     private static readonly (string Key, string Label, bool PhotoOnYes, bool YesNo)[] FeaturePhotoFields =
     [
         ("assetSubject", "الأصل محل التقييم", false, false),
-        ("facade", "الواجهة", true, false),
+        ("facade", "الواجهة", false, false),
         ("propertyUsage", "استخدام العقار", false, false),
         ("zoneStatus", "حالة منطقة العقار", false, false),
-        ("buildState", "حالة البناء", true, false),
+        ("buildState", "حالة البناء", false, false),
         ("occupancyState", "حالة الإشغال", false, false),
         ("districtState", "حالة الحي", false, false),
         ("movables", "يوجد منقولات", true, true),
@@ -413,33 +413,12 @@ public static class FieldInspectionSubmissionValidator
 
         foreach (var photo in photos.EnumerateArray())
         {
-            if (GetBool(photo, "approved") && HasPhotoFileName(photo))
+            // Captured/uploaded file is enough — `approved` is review metadata.
+            if (HasPhotoFileName(photo))
                 return true;
         }
 
         return false;
-    }
-
-    private static int CountUntaggedFreePhotos(JsonElement root)
-    {
-        if (!root.TryGetProperty("freePhotos", out var freePhotos) ||
-            freePhotos.ValueKind != JsonValueKind.Array)
-        {
-            return 0;
-        }
-
-        var count = 0;
-        foreach (var photo in freePhotos.EnumerateArray())
-        {
-            var category = ReadString(photo, "category");
-            if (string.IsNullOrWhiteSpace(category) ||
-                !PrimaryFreePhotoCategories.Contains(category))
-            {
-                count++;
-            }
-        }
-
-        return count;
     }
 
     private static bool HasPhotoFileName(JsonElement element) =>

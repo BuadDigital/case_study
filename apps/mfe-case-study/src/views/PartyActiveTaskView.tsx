@@ -26,7 +26,7 @@ import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
 } from "../lib/case-study-field-inspection-events";
-import { fieldInspectionTaskStatusBadge } from "../lib/app-data/field-inspection-work-queue";
+import { fieldInspectionTaskStatusBadge, filterFieldInspectionListedTasks } from "../lib/app-data/field-inspection-work-queue";
 
 function queueConfig(
   def: PartyTaskPageDef,
@@ -65,13 +65,25 @@ function queueConfig(
   }
 
   if (def.kind === "field-inspection") {
+    const baseFilter = base.filterListed!;
     return {
       ...base,
       hidePageTitle: true,
+      tableLayout: "field-inspection",
+      emptyHint:
+        "بعد إرسال المعاينة تختفي من قائمة العمل — فعّل «إظهار المكتملة» لعرضها للقراءة فقط.",
       tableHint: "اضغط الصف لفتح نموذج المعاينة في صفحة مستقلة.",
       fullPageTaskPath: (taskId) =>
         fieldInspectionWorkspacePath(def.pageId, taskId),
       statusColumnLabel: "الحالة",
+      filterListed: (
+        mine: WorkflowTask[],
+        poByNumber: Map<string, PoIntakeRecord>,
+        options?: { showCompleted?: boolean },
+      ) =>
+        filterFieldInspectionListedTasks(baseFilter(mine, poByNumber), {
+          showCompleted: options?.showCompleted,
+        }),
       getTaskStatusBadge: (task) =>
         fieldInspectionTaskStatusBadge(task.id, task.status),
       refreshOnWindowEvents: [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT],

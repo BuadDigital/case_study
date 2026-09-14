@@ -6,6 +6,7 @@ import {
   poPropertyFailurePath,
   poPropertyPath,
 } from "@platform/app-shared/domain/po-routes";
+import { openSiteLocationAckForInspectionTask } from "./site-location-ack-open";
 import {
   deletePrimaryDataTransaction,
   revertTaskToPhase,
@@ -17,6 +18,8 @@ import {
   canRedistributeParties,
 } from "./po-roles";
 import type { RoleId } from "@platform/types";
+import type { PoIntakeRecord } from "./po-intake-data";
+import { findPropertyForTask } from "./my-task-row";
 
 export type ActiveQueueRowMoreOptions = {
   task: WorkflowTask;
@@ -25,6 +28,8 @@ export type ActiveQueueRowMoreOptions = {
   router: { push: (href: string) => void };
   refreshQueue?: () => void;
   showToast?: (message: string, tone?: "success" | "error" | "info") => void;
+  /** PO map — needed to fill «خطاب صحة الموقع» from the queue row. */
+  poByNumber?: Map<string, PoIntakeRecord>;
   /** Show phase-revert actions for distribution / bourse queues. */
   allowPhaseRevert?: boolean;
   /** When true, hide «Return to bourse inquiry» (e.g. real_estate_reg). */
@@ -163,6 +168,22 @@ export function buildActiveQueueRowMoreItems(
       id: "start-survey",
       label: "ابدأ الرفع المساحي",
       onClick: () => options.router.push(activeSurveyEntryPath(options.task.id)),
+    });
+  }
+
+  if (options.task.kind === "field-inspection") {
+    const record = options.poByNumber?.get(options.task.poNumber.trim());
+    const property = findPropertyForTask(record, options.task);
+    items.push({
+      id: "site-location-ack",
+      label: "خطاب صحة الموقع",
+      onClick: () => {
+        void openSiteLocationAckForInspectionTask({
+          taskId: options.task.id,
+          property,
+          showToast: options.showToast ?? (() => undefined),
+        });
+      },
     });
   }
 

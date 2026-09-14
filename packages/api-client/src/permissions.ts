@@ -19,6 +19,7 @@ export type PermissionsDto = {
   displayName?: string | null;
   distributionAssigneeId?: string | null;
   department?: string | null;
+  jobTitle?: string | null;
   pages: string[];
   capabilities: string[];
 };

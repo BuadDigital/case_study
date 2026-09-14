@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Intake «other documents» are documents outside the defined list: every file needs a name and
- * a reason, is kept for supervisor review, and never counts toward required documents.
+ * Intake «other documents» are documents outside the defined list: every file needs a name
+ * (reason optional), is kept for supervisor review, and never counts toward required documents.
  * Defined documents (lease contract, building permit…) go through the documents tab by type.
  */
 

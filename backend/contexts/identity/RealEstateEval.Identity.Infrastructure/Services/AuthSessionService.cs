@@ -179,7 +179,8 @@ public sealed class AuthSessionService(
             userPermissions?.PrototypeRole,
             userPermissions?.DistributionAssigneeId,
             userPermissions?.Pages,
-            userPermissions?.Department);
+            userPermissions?.Department,
+            userPermissions?.JobTitle);
 
         var nowUtc = _time.UtcNow();
 
@@ -220,6 +221,7 @@ public sealed class AuthSessionService(
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
                 DisplayName = user.DisplayName,
+                JobTitle = userPermissions?.JobTitle,
             },
         };
     }

@@ -14,11 +14,8 @@ processors:
   batch:
 
 exporters:
-  # Forward traces to Jaeger all-in-one (OTLP).
-  otlp/jaeger:
-    endpoint: jaeger:4317
-    tls:
-      insecure: true
+  # Traces discarded — no trace backend in the stack. Apps may still export OTLP.
+  nop:
 
   # Services export metrics via OTLP only (no /metrics scrape endpoints).
   # Prometheus scrapes this exporter to collect all service metrics.
@@ -33,7 +30,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/jaeger]
+      exporters: [nop]
     metrics:
       receivers: [otlp]
       processors: [batch]

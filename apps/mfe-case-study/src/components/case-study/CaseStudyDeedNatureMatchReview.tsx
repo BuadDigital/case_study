@@ -5,10 +5,7 @@ import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyHasRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import {
-  emptyCaseStudyFormDraft,
-  type CaseStudyFormDraft,
-} from "../../lib/app-data/case-study-form-model";
+import { emptyCaseStudyFormDraft, type CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
 import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
 import { saveCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
@@ -16,14 +13,8 @@ import { isInspectorWorkspaceAccepted } from "../../lib/app-data/inspector-works
 import { loadEngineeringSurveySubmissionSnapshot } from "../../lib/app-data/property-detail-party-submission-loaders";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import {
-  inspectorBoundariesIndicateMismatch,
-  proposeDeedNatureMatch,
-} from "../../lib/app-data/deed-nature-match-proposal";
+import { inspectorBoundariesIndicateMismatch, proposeDeedNatureMatch } from "../../lib/app-data/deed-nature-match-proposal";
 
-/**
- * Specialist adopt/amend of the party deed↔nature match — تقييم العقار tab.
- */
 export function CaseStudyDeedNatureMatchReview({
   caseStudyTaskId,
   property,
@@ -167,10 +158,8 @@ export function CaseStudyDeedNatureMatchReview({
         onAdoptSuggestion={() =>
           void persist({
             deedNatureMatchOutcome: suggestedOutcome,
-            deedNatureMatchNotes:
-              suggestedOutcome === DeedNatureMatchOutcomes.Matched
-                ? ""
-                : draft.deedNatureMatchNotes,
+            deedNatureMatchNotes: suggestedOutcome === 
+            DeedNatureMatchOutcomes.Matched ? "" : draft.deedNatureMatchNotes,
           })
         }
         onPatch={(p) => void persist(p)}

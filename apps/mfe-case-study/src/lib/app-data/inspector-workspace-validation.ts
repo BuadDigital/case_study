@@ -313,7 +313,12 @@ export function validateInspectorWorkspace(
     }
   }
 
-  const incompleteObs = submission.observations.find((o) => !o.text.trim());
+  // Empty shells (add then leave blank) are optional — only rows with a photo
+  // (or other substance) must include explanation text.
+  const incompleteObs = submission.observations.find((o) => {
+    if (o.text.trim()) return false;
+    return Boolean(o.photo?.fileName?.trim());
+  });
   if (incompleteObs) {
     errors.observations = "كل ملاحظة يجب أن تتضمن شرحاً";
     errors.missingObservationId = incompleteObs.id;

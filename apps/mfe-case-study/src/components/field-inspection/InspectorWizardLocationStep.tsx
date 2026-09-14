@@ -25,7 +25,7 @@ import {
 } from "./inspector-wizard-state";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
-import { handleSiteLocationAckClick } from "./site-location-ack-action";
+import { handleSiteLocationAckClick } from "../../lib/app-data/site-location-ack-open";
 import {
   InsCard,
   InsEditField,
@@ -78,7 +78,12 @@ export function InspectorWizardLocationStep({
   engineeringMapPin?: { lat: number; lng: number } | null;
 }) {
   const { showToast } = useToast();
-  const ackReady = canPrintSiteLocationAck(mapPinned);
+  const ackReady = canPrintSiteLocationAck({
+    mapPinned,
+    mapLatitude: draft.mapLatitude,
+    mapLongitude: draft.mapLongitude,
+    status: draft.status,
+  });
   const mapGeo = useMemo(
     () => inspectorWizardMapGeo(draft, property),
     [draft, property],
@@ -283,7 +288,6 @@ export function InspectorWizardLocationStep({
           onPatch={onPatch}
           onAckClick={() =>
             handleSiteLocationAckClick({
-              mapPinned,
               draft,
               property,
               showToast,

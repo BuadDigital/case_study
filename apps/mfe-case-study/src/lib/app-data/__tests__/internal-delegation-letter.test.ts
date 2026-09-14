@@ -23,7 +23,7 @@ describe("org letterhead slices", () => {
 });
 
 describe("internal delegation letter", () => {
-  it("renders four-slice letterhead like site-ack / valuation report", () => {
+  it("renders official letter layout like authorization_letter.html", () => {
     const html = internalDelegationLetterHtml({
       id: "l1",
       city: "جدة",
@@ -52,11 +52,13 @@ describe("internal delegation letter", () => {
         mobile: "0500000000",
       },
     });
-    expect(html).toContain("lh-slice");
-    expect(html).toContain("lh-head");
-    expect(html).toContain("lh-foot");
-    expect(html).not.toContain('class="letterhead"');
-    expect(html).toContain("تفويض");
+    expect(html).toContain("ref-meta");
+    expect(html).toContain("letter-body");
+    expect(html).toContain("prop-table");
+    expect(html).toContain("sign-block");
+    expect(html).toContain("background-image");
+    expect(html).toContain("تكليف");
     expect(html).toContain("window.print()");
+    expect(html).not.toContain("lh-slice");
   });
 });

@@ -274,8 +274,13 @@ export function ActiveTransactionQueueView({
           ) : queueReady && listed.length === 0 && !hasActiveQuery ? (
             /* With server search a no-match page is also `listed.length === 0`;
                swapping in the whole-screen empty state would take the search box
-               away with it, so it only replaces an genuinely empty queue. */
-            <EmptyState line={config.emptyLine} hint={config.emptyHint} />
+               away with it, so it only replaces an genuinely empty queue.
+               Party queues still keep the toolbar so «إظهار المكتملة» stays
+               reachable when active work is empty but completed rows exist. */
+            <>
+              {isPartyQueueToggleTable ? queueToolbar : null}
+              <EmptyState line={config.emptyLine} hint={config.emptyHint} />
+            </>
           ) : (
             <>
               {queueToolbar}

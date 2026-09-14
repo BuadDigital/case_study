@@ -1,5 +1,6 @@
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 
 /** Fields for the contact-officer site-accuracy acknowledgment letter. */
 export type SiteLocationAckLetter = {
@@ -30,9 +31,25 @@ export const SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE =
 export const SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE =
   "تعذّر فتح خطاب الإقرار — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.";
 
-/** Print is allowed only after the inspector pins the map location. */
-export function canPrintSiteLocationAck(mapPinned: boolean): boolean {
-  return mapPinned;
+export type SiteLocationAckPrintGate = {
+  mapPinned: boolean;
+  mapLatitude?: string | null;
+  mapLongitude?: string | null;
+  /** Submitted packages may predate `mapPinned` — placed GPS is enough. */
+  status?: InspectorWorkspaceDraft["status"] | null;
+};
+
+/**
+ * Draft work requires «تثبيت الموقع». Submitted/reopened packages also allow
+ * print when a real GPS pin exists (legacy rows saved coords without the flag).
+ */
+export function canPrintSiteLocationAck(input: SiteLocationAckPrintGate | boolean): boolean {
+  if (typeof input === "boolean") return input;
+  if (input.mapPinned) return true;
+  if (input.status === "draft" || input.status == null) return false;
+  return (
+    parsePlacedMapPin(input.mapLatitude, input.mapLongitude) != null
+  );
 }
 
 function dash(value: string | null | undefined): string {

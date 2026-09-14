@@ -311,7 +311,8 @@ public class WorkOrdersController : ControllerBase
         string poNumber,
         Guid propertyId,
         [FromBody] WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] bool draft = false)
     {
         var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
         if (forbidden is not null) return forbidden;
@@ -320,7 +321,8 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             propertyId,
             property,
-            cancellationToken);
+            cancellationToken,
+            softDraft: draft);
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();

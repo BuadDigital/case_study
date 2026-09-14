@@ -842,11 +842,13 @@ export async function updateWorkOrderProperty(
   poNumber: string,
   propertyId: string,
   property: WorkOrderPropertyDto,
+  options?: { draft?: boolean },
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
+  const draftQs = options?.draft ? "?draft=true" : "";
   try {
     const res = await fetch(
-      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}`,
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}${draftQs}`,
       {
         method: "PUT",
         headers: headers(config.token),

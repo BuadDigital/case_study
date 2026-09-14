@@ -257,7 +257,7 @@ function scheduleDebouncedSave(
 export async function updateInspectorWorkspace(
   taskId: string,
   patch: InspectorWorkspacePatch,
-  options?: { allowWhenSubmitted?: boolean },
+  options?: { allowWhenSubmitted?: boolean; immediate?: boolean },
 ): Promise<InspectorWorkspaceDraft | null> {
   const current =
     loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
@@ -267,8 +267,13 @@ export async function updateInspectorWorkspace(
   }
 
   // Apply locally first so typing stays instant; network save is debounced.
+  // Pin / unpin must flush immediately — leaving the page within the debounce
+  // window used to drop `mapPinned` and block «خطاب صحة الموقع».
   const next = mergeInspectorWorkspacePatch(current, patch);
   setCache(next);
+  if (options?.immediate || Object.prototype.hasOwnProperty.call(patch, "mapPinned")) {
+    return flushInspectorWorkspaceSave(taskId);
+  }
   return scheduleDebouncedSave(taskId);
 }
 

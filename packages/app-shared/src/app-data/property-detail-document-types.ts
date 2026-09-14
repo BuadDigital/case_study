@@ -54,3 +54,21 @@ export function pickPrimaryPropertyDetailPhoto(
     null
   );
 }
+
+/**
+ * Basic-tab «صورة العقار الرئيسية» is inspector-only — never intake/deed/bourse
+ * images. Prefer an explicit inspectionPhoto handle, else source «المعاين…».
+ */
+export function isInspectorGlancePhoto(
+  entry: PropertyDetailDocumentEntry,
+): boolean {
+  if (entry.inspectionPhoto) return true;
+  if (entry.documentTypeKey === "inspection-photo") return true;
+  return /المعاين/.test(entry.source);
+}
+
+export function pickInspectorPrimaryPhoto(
+  photos: PropertyDetailDocumentEntry[],
+): PropertyDetailDocumentEntry | null {
+  return pickPrimaryPropertyDetailPhoto(photos.filter(isInspectorGlancePhoto));
+}

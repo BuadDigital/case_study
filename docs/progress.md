@@ -61,7 +61,7 @@ Work **not done** after commit `266be9b`. Grouped by priority for PM and dev han
 | - | ---- | ------------- |
 | 17 | **Physical DB-per-service** | Connection string **keys** per service exist; dev still **one Postgres DB** + shared **`ApplicationDbContext`**. Split contexts or databases per deployable. |
 | 18 | **Shared Infrastructure coupling** | Domain entities and migrations still centralized in `RealEstateEval.Infrastructure`; long-term each service should own its persistence boundary. |
-| 19 | **Observability stack** | Docker compose includes Jaeger, Prometheus, Grafana, ELK; **not fully wired** into all service startup paths for local dev. |
+| 19 | **Observability stack** | Docker compose includes Prometheus, Grafana, ELK; OTLP metrics wired; traces discarded (no trace UI). |
 | 20 | **Integration events** | Outbox + `valuation.request.created` scaffolded; expand event catalog and consumers as valuation workflow grows. |
 | 21 | **Contract / load tests** | No automated API contract tests or load test suite in CI yet (build-only workflow today). |
 | 22 | **Module Federation (F5)** | Logical MFE split done; **independent deploy** via Module Federation still **deferred** (`apps/plan/FRONTEND.md`). |
@@ -396,7 +396,7 @@ npm run dev:stop # free ports 3000 + 5160
 
 ### Full local platform (optional)
 
-`infra/docker-compose.yml` defines: **RabbitMQ**, **Redis**, **Jaeger**, **Prometheus**, **Grafana** (port 3001), **Elasticsearch**, **Kibana**, **Fluent Bit**. **Redis** and **RabbitMQ** are used by the API layer (caching + outbox). See `README.md`, `backend/README.md`, and `backend/plan/LOCAL_INFRA.md`.
+`infra/docker-compose.yml` defines: **RabbitMQ**, **Redis**, **Prometheus**, **Grafana** (port 3001), **Elasticsearch**, **Kibana**, **Fluent Bit**. **Redis** and **RabbitMQ** are used by the API layer (caching + outbox). See `README.md`, `backend/README.md`, and `backend/plan/LOCAL_INFRA.md`.
 
 ---
 

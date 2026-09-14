@@ -172,6 +172,32 @@ describe("buildQueueServerQuery", () => {
     ).toBeUndefined();
   });
 
+  it("treats field-inspection like survey for the completed toggle", () => {
+    const base = config({
+      tableLayout: "field-inspection",
+      pageId: "active-inspection",
+      serverQuery: { kind: ["field-inspection"] },
+    });
+    expect(resolveQueueLayoutFlags(base).isPartyQueueToggleTable).toBe(true);
+    expect(resolveQueueLayoutFlags(base).isFieldInspectionTable).toBe(true);
+    expect(
+      buildQueueServerQuery({
+        config: base,
+        role: "field-inspector",
+        showCompleted: false,
+        narrow: true,
+      }).status,
+    ).toEqual(QUEUE_DEFAULT_STATUSES);
+    expect(
+      buildQueueServerQuery({
+        config: base,
+        role: "field-inspector",
+        showCompleted: true,
+        narrow: true,
+      }).status,
+    ).toBeUndefined();
+  });
+
   it("lets the screen pin an explicit status set", () => {
     expect(
       buildQueueServerQuery({
@@ -228,6 +254,7 @@ describe("queueLayoutSupportsPaging", () => {
     expect(queueLayoutSupportsPaging(undefined)).toBe(true);
     expect(queueLayoutSupportsPaging("primary-data")).toBe(true);
     expect(queueLayoutSupportsPaging("engineering-survey")).toBe(true);
+    expect(queueLayoutSupportsPaging("field-inspection")).toBe(true);
   });
 
   it("refuses the layouts that read siblings or collapse rows", () => {

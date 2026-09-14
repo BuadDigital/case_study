@@ -73,7 +73,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string poNumber,
         Guid propertyId,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool softDraft = false)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -86,44 +87,54 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         var previousLocationMapUrl = existing!.LocationMapUrl;
 
-        var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
-            property,
-            entity.AssignmentType,
-            entity.PoNumber,
-            propertyId,
-            WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
-
-        if (property.BourseDataCompleted)
+        if (softDraft)
         {
-            var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
-            {
-                City = property.City,
-                Region = property.Region,
-                RegionId = property.RegionId,
-                CityId = property.CityId,
-                District = property.District,
-                Classification = property.Classification,
-                PropertyType = property.PropertyType,
-                Area = property.Area,
-                DeedStatus = property.DeedStatus,
-                BourseDeedImageFileName = property.BourseDeedImageFileName,
-                RestrictionsPresent = property.RestrictionsPresent,
-                RestrictionType = property.RestrictionType,
-                RestrictionOtherReason = property.RestrictionOtherReason,
-                BoundariesAvailability = property.BoundariesAvailability,
-                BoundariesExternalDocName = property.BoundariesExternalDocName,
-            });
-            var errors = WorkOrderPropertyWriteRules.MergeErrors(enfathErrors, bourseErrors);
-            if (errors.Count > 0) return (null, errors);
+            // Field autosave: persist mid-edit without required-field gates and without
+            // completing البورصة. Explicit save / bourse complete still validate fully.
             WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
-            WorkOrderPropertyWriteRules.ApplyPropertyBourse(existing, property);
-            existing.BourseDataCompleted = true;
-            existing.BourseCompletedAtUtc = _time.UtcNow();
+            WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(existing, property);
         }
         else
         {
-            if (enfathErrors.Count > 0) return (null, enfathErrors);
-            WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
+            var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
+                property,
+                entity.AssignmentType,
+                entity.PoNumber,
+                propertyId,
+                WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
+
+            if (property.BourseDataCompleted)
+            {
+                var bourseErrors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+                {
+                    City = property.City,
+                    Region = property.Region,
+                    RegionId = property.RegionId,
+                    CityId = property.CityId,
+                    District = property.District,
+                    Classification = property.Classification,
+                    PropertyType = property.PropertyType,
+                    Area = property.Area,
+                    DeedStatus = property.DeedStatus,
+                    BourseDeedImageFileName = property.BourseDeedImageFileName,
+                    RestrictionsPresent = property.RestrictionsPresent,
+                    RestrictionType = property.RestrictionType,
+                    RestrictionOtherReason = property.RestrictionOtherReason,
+                    BoundariesAvailability = property.BoundariesAvailability,
+                    BoundariesExternalDocName = property.BoundariesExternalDocName,
+                });
+                var errors = WorkOrderPropertyWriteRules.MergeErrors(enfathErrors, bourseErrors);
+                if (errors.Count > 0) return (null, errors);
+                WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
+                WorkOrderPropertyWriteRules.ApplyPropertyBourse(existing, property);
+                existing.BourseDataCompleted = true;
+                existing.BourseCompletedAtUtc = _time.UtcNow();
+            }
+            else
+            {
+                if (enfathErrors.Count > 0) return (null, enfathErrors);
+                WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
+            }
         }
 
  // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —

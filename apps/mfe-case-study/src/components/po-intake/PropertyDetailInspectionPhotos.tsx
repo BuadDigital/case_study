@@ -14,6 +14,7 @@ import type {
 import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
+  openInspectorPhotoPreview,
   prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
@@ -128,17 +129,25 @@ export function PhotoTile({
   );
 }
 
-/** Desktop file-picker cell for feature-table «photo» (PC friendly). */
+/** Desktop/mobile file-picker for feature proof photos — shows the uploaded thumb. */
 export function EditableFeaturePhotoCell({
   needsPhoto,
   hasPhoto,
   disabled,
   onUpload,
+  taskId,
+  photoRef,
+  attachment,
+  onClear,
 }: {
   needsPhoto: boolean;
   hasPhoto: boolean;
   disabled?: boolean;
   onUpload: (file: File) => boolean | void | Promise<boolean | void>;
+  taskId?: string;
+  photoRef?: string;
+  attachment?: InspectorPhotoAttachment | null;
+  onClear?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
@@ -154,6 +163,8 @@ export function EditableFeaturePhotoCell({
     return <span className="text-text-3">—</span>;
   }
 
+  const canPreview = Boolean(hasPhoto && taskId && photoRef && attachment);
+
   return (
     <span
       className={cn(
@@ -163,7 +174,41 @@ export function EditableFeaturePhotoCell({
       )}
       {...dropZoneProps}
     >
-      {hasPhoto ? (
+      {canPreview ? (
+        <>
+          <InspectorStampedPhotoThumb
+            compact
+            stamp=""
+            taskId={taskId}
+            photoRef={photoRef}
+            attachment={attachment}
+            onClear={disabled ? undefined : onClear}
+            onClick={() => {
+              if (!taskId || !photoRef) return;
+              const cached = getInspectorPhotoDataUrl(taskId, photoRef);
+              if (cached) {
+                openInspectorPhotoPreview(cached);
+                return;
+              }
+              void prefetchInspectorPhoto(taskId, photoRef, attachment!).then(
+                (url) => {
+                  if (url) openInspectorPhotoPreview(url);
+                },
+              );
+            }}
+          />
+          {!disabled ? (
+            <button
+              type="button"
+              title="استبدال الصورة"
+              className="border-0 bg-transparent p-0 font-inherit text-[10.5px] font-semibold text-primary hover:underline"
+              onClick={() => inputRef.current?.click()}
+            >
+              {dragOver ? "أفلِت هنا" : "استبدال"}
+            </button>
+          ) : null}
+        </>
+      ) : hasPhoto ? (
         <button
           type="button"
           disabled={disabled}

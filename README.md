@@ -38,7 +38,7 @@ The application comprises:
 - a Next.js 16 shell (microfrontend-ready monorepo) for the web UI
 - ASP.NET Core 10 gateway and domain services with JWT and ASP.NET Identity
 - PostgreSQL as the system of record
-- Docker Compose for local platform services (RabbitMQ, Redis, Jaeger, Prometheus, Grafana, Elasticsearch, Kibana, Fluent Bit)
+- Docker Compose for local platform services (RabbitMQ, Redis, Prometheus, Grafana, Elasticsearch, Kibana, Fluent Bit)
 
 Infrastructure runs locally. Observability and some domain events (RabbitMQ) are not fully connected in application code.
 
@@ -264,7 +264,7 @@ Report vulnerabilities to the project owner internally. Do not open public issue
 | Message broker         | RabbitMQ 3.13 (local; planned for domain events)                                       |
 | Cache                  | Redis 7 (planned)                                                                      |
 | Metrics                | Prometheus and Grafana                                                                 |
-| Tracing                | Jaeger and OpenTelemetry (planned)                                                     |
+| Tracing                | OpenTelemetry (OTLP; traces discarded in Compose — no trace UI)                        |
 | Logs                   | Fluent Bit to Elasticsearch to Kibana                                                  |
 | Wide-column store      | Cassandra — deferred (MVP uses PostgreSQL)                                             |
 | Local infrastructure   | Docker Compose (`infra/docker-compose.yml`)                                            |
@@ -345,8 +345,7 @@ Browser → API Gateway (YARP) :5160
 ### Observability (target)
 
 ```text
-Services → OpenTelemetry → Jaeger (traces)
-         → /metrics      → Prometheus → Grafana
+Services → OpenTelemetry → OTLP collector (traces discarded; metrics → Prometheus → Grafana)
          → JSON logs     → Fluent Bit → Elasticsearch → Kibana
 ```
 
@@ -366,7 +365,7 @@ Details: [docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](docs/ARCHITECTU
 | Redis         | Cache, locks, rate limits  | `6379`                                                             | Planned                  |
 | Prometheus    | Metrics                    | [http://localhost:9090](http://localhost:9090)                     | Configuration only       |
 | Grafana       | Dashboards                 | [http://localhost:3001](http://localhost:3001) (`admin` / `admin`) | Planned                  |
-| Jaeger        | Distributed tracing        | [http://localhost:16686](http://localhost:16686), OTLP `4318`      | Planned                  |
+| OTEL Collector| OTLP intake (metrics)      | OTLP `4317` / `4318`                                               | Wired (apps export OTLP) |
 | Elasticsearch | Log and search index       | [http://localhost:9200](http://localhost:9200)                     | Planned (via Fluent Bit) |
 | Kibana        | Log exploration            | [http://localhost:5601](http://localhost:5601) (`fluentbit-*`)     | Planned                  |
 | Fluent Bit    | Log collector              | container `ree-fluent-bit`                                         | Sample pipeline          |
@@ -468,7 +467,7 @@ See [docs/DEMO_ROLE_CREDENTIALS.txt](docs/DEMO_ROLE_CREDENTIALS.txt). These `@ej
 PostgreSQL:  Host=localhost;Port=5432;Database=realestate_eval_dev;Username=postgres;Password=Admin
 Redis:       localhost:6379
 RabbitMQ:    amqp://dev:dev@localhost:5672/
-Jaeger OTLP: http://localhost:4318
+OTLP:        http://localhost:4318
 ```
 
 ---
@@ -566,8 +565,8 @@ Future service split: [docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](do
 | Module Federation (F5)                                   | No       | Independent deploy URLs are not wired                                                       |
 | Domain APIs (purchase orders, properties, courts, users) | Yes      | Gateway and Identity / Case Study services — see `backend/README.md`                        |
 | Per-role `@ejadah.dev` sign-in                           | No       | Draft in `docs/DEMO_ROLE_CREDENTIALS.txt`                                                   |
-| Docker platform stack                                    | Yes      | PostgreSQL, RabbitMQ, Redis, Jaeger, Prometheus, Grafana, Elasticsearch, Kibana, Fluent Bit |
-| Application wiring to Redis, RabbitMQ, and Jaeger        | No       | Infrastructure runs; application code is not fully connected                                |
+| Docker platform stack                                    | Yes      | PostgreSQL, RabbitMQ, Redis, Prometheus, Grafana, Elasticsearch, Kibana, Fluent Bit         |
+| Application wiring to Redis and RabbitMQ                 | Partial  | Outbox/caching wired; full event catalog still growing                                      |
 | Cassandra                                                | No       | Deferred; not in Docker Compose                                                             |
 | Case study form UI                                       | Yes      | `CaseStudyForm` and `/case-study/[taskId]`                                                  |
 | Registration flow UI                                     | Yes      | `RegisterUserFlow` and HR/procurement/CRM flows to the API                                  |
@@ -627,7 +626,6 @@ npm run dev
 | API             | [http://localhost:5160](http://localhost:5160)                     |
 | RabbitMQ UI     | [http://localhost:15672](http://localhost:15672) (`dev` / `dev`)   |
 | Grafana         | [http://localhost:3001](http://localhost:3001) (`admin` / `admin`) |
-| Jaeger          | [http://localhost:16686](http://localhost:16686)                   |
 | Kibana          | [http://localhost:5601](http://localhost:5601)                     |
 
 
@@ -732,7 +730,7 @@ Phase 6             Module Federation and separate deployments per microfrontend
 | Roles and permissions | Product and backend | Finalize the role matrix; JWT claims on all domain routes                                             |
 | Case study rules      | Product             | Keep field contracts aligned with live APIs                                                           |
 | Microservices         | Architecture        | Follow [the architecture document](docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md), phases A–E |
-| Observability         | Operations          | Confirm OTLP → Jaeger/Prometheus in each environment                                                  |
+| Observability         | Operations          | Confirm OTLP → Prometheus/Grafana in each environment                                                 |
 | MFE boundaries        | Frontend            | Keep case-study ↔ evaluator via shell bridges only (no package cycles)                                |
 
 

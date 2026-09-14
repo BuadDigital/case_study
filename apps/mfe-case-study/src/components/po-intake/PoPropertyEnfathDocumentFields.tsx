@@ -45,7 +45,7 @@ export function PoPropertyEnfathDocumentFields({
       {showDelegationDoc ? (
         <PropertyFileUploadField
           id={`delegation_${property.id}`}
-          label="خطاب التفويض *"
+          label="خطاب التكليف *"
           fileNames={property.delegationLetterFileNames}
           error={fieldErrors.delegationLetterFileNames}
           attachPo={attachPo}
@@ -122,7 +122,7 @@ export function PoPropertyEnfathDocumentFields({
       {showExtended ? (
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
-          label={<>خطاب الإسناد *</>}
+          label={<>قرار الإسناد *</>}
           fileNames={property.assignmentDocFileNames}
           error={fieldErrors.assignmentDocFileNames}
           attachPo={attachPo}
@@ -142,7 +142,7 @@ export function PoPropertyEnfathDocumentFields({
                 })
                 .catch(() => {
                   showToast(
-                    "تعذّر حفظ مرفق خطاب الإسناد — حاول مرة أخرى",
+                    "تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى",
                     "error",
                   );
                 });

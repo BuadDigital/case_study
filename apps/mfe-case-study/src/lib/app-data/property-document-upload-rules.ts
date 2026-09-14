@@ -1,12 +1,11 @@
 /**
  * Client-side mirror of the server's document-governance checks, so the user hears about a
- * missing reason or an unsupported file before the upload round-trip. The server
+ * missing name or an unsupported file before the upload round-trip. The server
  * (`PropertyDocumentUploadRules` / `AttachmentUploadRules`) stays authoritative.
  */
 
 export const UNLISTED_LABEL_MIN_LENGTH = 2;
 export const UNLISTED_LABEL_MAX_LENGTH = 128;
-export const UNLISTED_REASON_MIN_LENGTH = 10;
 export const UNLISTED_REASON_MAX_LENGTH = 512;
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -24,9 +23,6 @@ export function validateUnlistedDocumentFields(
   const why = reason.trim();
   if (name.length < UNLISTED_LABEL_MIN_LENGTH) return "اكتب اسم المستند غير المعرّف";
   if (name.length > UNLISTED_LABEL_MAX_LENGTH) return "اسم المستند أطول من المسموح";
-  if (why.length < UNLISTED_REASON_MIN_LENGTH) {
-    return "اذكر سبب رفع مستند غير معرّف (10 أحرف على الأقل)";
-  }
   if (why.length > UNLISTED_REASON_MAX_LENGTH) return "سبب رفع المستند أطول من المسموح";
   return null;
 }

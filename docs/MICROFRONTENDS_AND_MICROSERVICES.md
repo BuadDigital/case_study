@@ -296,7 +296,7 @@ Map prototype roles to **permissions** (implement in Identity service):
 
 ---
 
-## 6.1 Platform stack: Elasticsearch, Fluentd, Kibana, Jaeger, Prometheus, Redis, RabbitMQ, Cassandra
+## 6.1 Platform stack: Elasticsearch, Fluentd, Kibana, Prometheus, Redis, RabbitMQ, Cassandra
 
 This section maps each technology to **role**, **when you need it**, and **how it fits** the Real Estate Evaluation microservices + MFE design.
 
@@ -308,7 +308,7 @@ This section maps each technology to **role**, **when you need it**, and **how i
 | **RabbitMQ** | Async integration between services | **Yes — when 2+ services** | Outbox, domain events |
 | **Redis** | Cache, locks, rate limits, optional pub/sub | **Yes — soon after APIs** | Hot reads, dashboard, sessions |
 | **Prometheus** | Metrics (CPU, latency, error rates) | **Yes — with microservices** | Grafana dashboards, Alertmanager |
-| **Jaeger** | Distributed tracing (request path across services) | **Yes — with microservices** | OpenTelemetry SDK in .NET / Next |
+| **OpenTelemetry** | Trace/metric instrumentation (OTLP export) | **Yes — with microservices** | Collector → Prometheus; optional Tempo later |
 | **Fluentd** | Collect & forward logs from containers/hosts | **Yes — in K8s / multi-container** | Elasticsearch or cloud log sink |
 | **Elasticsearch** | Log storage + full-text search | **Logs: yes at scale; search: optional** | Kibana, or app search index |
 | **Kibana** | Explore logs & build dashboards on ES data | **Yes — if you use Elasticsearch for logs** | Not for app metrics (use Grafana) |
@@ -334,7 +334,6 @@ flowchart LR
   subgraph observe [Observability]
     OTEL[OpenTelemetry SDK]
     PROM[Prometheus]
-    JAEG[Jaeger]
     FLU[Fluentd / Fluent Bit]
     ES[(Elasticsearch)]
     KIB[Kibana]
@@ -347,7 +346,6 @@ flowchart LR
   SVC --> RMQ
   SVC --> OTEL
   OTEL --> PROM
-  OTEL --> JAEG
   SVC --> FLU
   FLU --> ES
   ES --> KIB
@@ -426,7 +424,7 @@ flowchart LR
 
 ---
 
-### Jaeger (Uber) — distributed tracing
+### OpenTelemetry — distributed tracing
 
 **What it does:** Shows one **trace** for a user action across shell → gateway → Case Study → RabbitMQ → Valuation (each hop is a **span**).
 
@@ -438,12 +436,12 @@ flowchart LR
 
 **Implement:**
 
-- [ ] Instrument with **OpenTelemetry** (.NET `OpenTelemetry.Instrumentation.AspNetCore`, browser optional)
+- [x] Instrument with **OpenTelemetry** (.NET `OpenTelemetry.Instrumentation.AspNetCore`, browser optional)
 - [ ] Propagate **W3C trace context** (`traceparent` header) from MFE → gateway → all services
-- [ ] Export traces to **Jaeger** backend (or Grafana Tempo, Zipkin — same model)
+- [ ] Optionally add a trace backend later (**Grafana Tempo**, Zipkin) if you need a UI — not required for the product
 - [ ] Link traces to logs via **trace ID** in every log line
 
-**When:** Phase B with multiple services. Jaeger is the **trace backend**; you do not pick “Jaeger OR OpenTelemetry” — you use OTel SDK + Jaeger as one exporter.
+**When:** Phase B with multiple services. Apps export OTLP; Compose currently discards traces to save RAM (metrics still go to Prometheus).
 
 ---
 
@@ -546,8 +544,8 @@ flowchart LR
 | Stage | Messaging | Cache | Metrics | Traces | Logs |
 |-------|-----------|-------|---------|--------|------|
 | **Now (monolith)** | — | — | optional local Prometheus | optional | console / Seq |
-| **Phase A–B (2–3 services)** | RabbitMQ | Redis | Prometheus + Grafana | Jaeger + OpenTelemetry | Fluent Bit → ES → Kibana **or** cloud equivalent |
-| **Scale / compliance** | RabbitMQ cluster | Redis cluster | HA Prometheus | Jaeger / Tempo HA | ES cluster + ILM retention |
+| **Phase A–B (2–3 services)** | RabbitMQ | Redis | Prometheus + Grafana | OpenTelemetry (OTLP) | Fluent Bit → ES → Kibana **or** cloud equivalent |
+| **Scale / compliance** | RabbitMQ cluster | Redis cluster | HA Prometheus | Tempo / Zipkin HA (optional) | ES cluster + ILM retention |
 
 ### Local developer stack
 
@@ -566,7 +564,7 @@ See **[LOCAL_INFRA.md](./LOCAL_INFRA.md)** for URLs, credentials, and how to con
 1. **PostgreSQL** — keep as source of truth per service (already started).
 2. **RabbitMQ** — when Valuation ↔ Case Study events exist.
 3. **Redis** — cache dashboard + hot property reads.
-4. **OpenTelemetry + Jaeger + Prometheus + Grafana** — one observability pass when gateway + 2 services deploy.
+4. **OpenTelemetry + Prometheus + Grafana** — one observability pass when gateway + 2 services deploy.
 5. **Fluentd/Fluent Bit + Elasticsearch + Kibana** — centralized logs in staging/prod.
 6. **Elasticsearch app search index** — only if product needs advanced property/PO search.
 7. **Cassandra** — defer unless a clear high-volume append-only requirement appears.

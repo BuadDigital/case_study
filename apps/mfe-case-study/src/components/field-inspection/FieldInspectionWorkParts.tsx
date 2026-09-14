@@ -30,7 +30,8 @@ import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
-import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
+import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionPhotos";
+import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
 import {
   MobileChips,
   MobileFieldLabel,
@@ -146,100 +147,38 @@ export const INS_MOBILE_PIN_BUTTON_CLASS =
   "flex w-full min-h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * Desktop feature photo cell — always a real file picker on computer
- * (not camera-only). Empty: attach photo; attached: HTML-style "attached" + replace.
+ * Desktop feature photo cell — same thumb preview as the wizard picker.
  */
 export function DesktopFeaturePhotoCell({
   needsPhoto,
   hasPhoto,
   disabled,
   onUpload,
+  taskId,
+  photoRef,
+  attachment,
+  onClear,
 }: {
   needsPhoto: boolean;
   hasPhoto: boolean;
   disabled?: boolean;
   onUpload: (file: File) => boolean | void | Promise<boolean | void>;
+  taskId?: string;
+  photoRef?: string;
+  attachment?: InspectorPhotoAttachment | null;
+  onClear?: () => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { runWithUploadToast } = useToast();
-  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
-    disabled,
-    onFiles: (files) => {
-      const file = files[0];
-      if (file) void runWithUploadToast(() => onUpload(file));
-    },
-  });
-
-  if (!needsPhoto) {
-    return <span className="text-text-3">—</span>;
-  }
-
-  const openFilePicker = () => {
-    if (disabled) return;
-    inputRef.current?.click();
-  };
-
   return (
-    <span
-      className={cn(
-        "inline-flex flex-col items-center justify-center gap-1 rounded-md px-1 py-0.5",
-        dragOver &&
-          "bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] ring-2 ring-primary/30",
-      )}
-      {...dropZoneProps}
-    >
-      {hasPhoto ? (
-        <button
-          type="button"
-          disabled={disabled}
-          title="استبدال الصورة — اسحب صورة جديدة أو اختر من الجهاز"
-          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default disabled:no-underline"
-          onClick={openFilePicker}
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-          {dragOver ? "أفلِت هنا" : "مرفقة"}
-        </button>
-      ) : (
-        <button
-          type="button"
-          disabled={disabled}
-          className={cn(
-            "inline-flex items-center justify-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-1.5",
-            "font-inherit text-[10.5px] font-semibold text-text-2",
-            "hover:border-primary hover:text-primary",
-            "disabled:cursor-not-allowed disabled:opacity-60",
-            dragOver && "border-primary text-primary",
-          )}
-          onClick={openFilePicker}
-        >
-          <i className="ti ti-upload text-[13px]" aria-hidden />
-          {dragOver ? "أفلِت الصورة" : "إرفاق صورة"}
-        </button>
-      )}
-      {/* Desktop: no capture attribute — opens local file dialog on PC. */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={INSPECTOR_PHOTO_ACCEPT}
-        disabled={disabled}
-        className="sr-only"
-        onChange={(e) => {
-          const file = filterInspectorPhotoFiles(e.target.files)[0];
-          e.target.value = "";
-          if (file) void runWithUploadToast(() => onUpload(file));
-        }}
-      />
-    </span>
+    <EditableFeaturePhotoCell
+      needsPhoto={needsPhoto}
+      hasPhoto={hasPhoto}
+      disabled={disabled}
+      onUpload={onUpload}
+      taskId={taskId}
+      photoRef={photoRef}
+      attachment={attachment}
+      onClear={onClear}
+    />
   );
 }
 

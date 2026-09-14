@@ -8,9 +8,37 @@ import {
 import { siteLocationAckLetterHtml } from "../site-location-ack-letter-html";
 
 describe("site location ack letter", () => {
-  it("blocks print until the map is pinned", () => {
-    expect(canPrintSiteLocationAck(false)).toBe(false);
-    expect(canPrintSiteLocationAck(true)).toBe(true);
+  it("blocks print on draft until the map is pinned", () => {
+    expect(
+      canPrintSiteLocationAck({
+        mapPinned: false,
+        mapLatitude: "21.5",
+        mapLongitude: "39.2",
+        status: "draft",
+      }),
+    ).toBe(false);
+    expect(canPrintSiteLocationAck({ mapPinned: true, status: "draft" })).toBe(
+      true,
+    );
+  });
+
+  it("allows print on submitted packages with placed GPS even without mapPinned", () => {
+    expect(
+      canPrintSiteLocationAck({
+        mapPinned: false,
+        mapLatitude: "21.5",
+        mapLongitude: "39.2",
+        status: "submitted",
+      }),
+    ).toBe(true);
+    expect(
+      canPrintSiteLocationAck({
+        mapPinned: false,
+        mapLatitude: "0",
+        mapLongitude: "0",
+        status: "submitted",
+      }),
+    ).toBe(false);
   });
 
   it("fills the letter from draft + property", () => {
@@ -64,12 +92,16 @@ describe("site location ack letter", () => {
       east: "39.1",
       coords: "21.5, 39.1",
     });
-    expect(html).toContain("خطاب إقرار صحة الموقع");
-    expect(html).toContain("إقرار بتحمل المسؤولية");
+    expect(html).toContain("إقرار صحة الموقع");
+    expect(html).toContain("ref-meta");
+    expect(html).toContain("letter-body");
+    expect(html).toContain("prop-table");
+    expect(html).toContain("sign-block");
     expect(html).toContain("شماليات 21.5");
     expect(html).toContain("شرقيات 39.1");
-    expect(html).toContain("lh-slice");
-    expect(html).toContain("lh-head");
+    expect(html).toContain("background-image");
     expect(html).toContain("window.print()");
+    expect(html).not.toContain("facts-table");
+    expect(html).not.toContain("lh-slice");
   });
 });

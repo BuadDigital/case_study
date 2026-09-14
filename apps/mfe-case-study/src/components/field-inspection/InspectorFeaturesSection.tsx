@@ -224,6 +224,22 @@ export function InspectorFeaturesSection({
                     needsPhoto={inspectorFeatureRequiresPhoto(field, value)}
                     hasPhoto={Boolean(attachment?.fileName)}
                     disabled={locked}
+                    taskId={draft.taskId}
+                    photoRef={photoRef}
+                    attachment={attachment}
+                    onClear={
+                      locked
+                        ? undefined
+                        : () => {
+                            clearInspectorPhotoDataUrl(draft.taskId, photoRef);
+                            persist({
+                              featurePhotoAttachments: {
+                                ...draft.featurePhotoAttachments,
+                                [field.key]: null,
+                              },
+                            });
+                          }
+                    }
                     onUpload={async (file) => {
                       const result = await uploadInspectorPhotoFromFile(
                         draft.taskId,

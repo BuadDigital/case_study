@@ -13,6 +13,7 @@ const FALLBACK = PROPERTY_BOUNDARY_TYPE_OPTIONS.filter((o) => o.value.length > 0
  * Admin-managed «أنواع الحد» for the bourse «النوع» column.
  *
  * Returns built-in defaults until the dictionary loads, then the catalog is authoritative.
+ * Refetches when the catalogue becomes stale so settings edits (e.g. «مشاه») show up.
  */
 export function useBoundaryTypeOptions(): { value: string; label: string }[] {
   const { data, isPending, isError } = useValuationListsQuery();

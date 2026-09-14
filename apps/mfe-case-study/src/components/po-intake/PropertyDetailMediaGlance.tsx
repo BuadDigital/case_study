@@ -112,7 +112,9 @@ export function PropertyDetailMediaGlance({
             if (primaryPhoto) openPropertyDetailDocumentPreview(primaryPhoto);
           }}
           aria-label={
-            hasPhoto ? "معاينة الصورة الرئيسية" : "لا توجد صورة رئيسية بعد"
+            hasPhoto
+              ? "معاينة الصورة الرئيسية"
+              : "لم يتم رفع صورة من قبل المعاين بعد"
           }
         >
           {hasPhoto && primaryPhoto?.dataUrl ? (
@@ -123,11 +125,10 @@ export function PropertyDetailMediaGlance({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-surface-2 text-[11px] text-text-3">
-              لا توجد صورة بعد
+            <div className="flex h-full w-full items-center justify-center bg-surface-2 px-4 text-center text-[12px] text-text-3">
+              لم يتم رفع صورة من قبل المعاين بعد
             </div>
-          )}
-        </button>
+          )}        </button>
         {showCoordinates ? (
           <div className={cn("mt-2 flex-1 px-3 py-2", goldSoft)}>
             {descriptionBlock}
