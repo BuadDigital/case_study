@@ -5,7 +5,7 @@
  * calls these and the view only renders their output.
  */
 import type { ReactNode } from "react";
-import type { RowMoreMenuItem } from "@platform/ui-kit";
+import type { RowMoreMenuItem, ToastTone } from "@platform/ui-kit";
 import type { PageId, RoleId } from "@platform/types";
 import type {
   WorkflowTaskListFilters,
@@ -305,7 +305,7 @@ export type ActiveQueueRowMoreContext = {
   openTask: () => void;
   router: { push: (href: string) => void };
   refreshQueue: () => void;
-  showToast: (message: string, tone?: "success" | "error" | "info") => void;
+  showToast: (message: string, tone?: ToastTone) => void;
   poByNumber: Map<string, PoIntakeRecord>;
   viewerRole: RoleId;
 };
