@@ -1,4 +1,4 @@
-import type { RowMoreMenuItem } from "@platform/ui-kit";
+import type { RowMoreMenuItem, ToastTone } from "@platform/ui-kit";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { activeSurveyEntryPath } from "../my-task-routes";
 import {
@@ -27,7 +27,7 @@ export type ActiveQueueRowMoreOptions = {
   openTask: () => void;
   router: { push: (href: string) => void };
   refreshQueue?: () => void;
-  showToast?: (message: string, tone?: "success" | "error" | "info") => void;
+  showToast?: (message: string, tone?: ToastTone) => void;
   /** PO map — needed to fill «خطاب صحة الموقع» from the queue row. */
   poByNumber?: Map<string, PoIntakeRecord>;
   /** Show phase-revert actions for distribution / bourse queues. */
