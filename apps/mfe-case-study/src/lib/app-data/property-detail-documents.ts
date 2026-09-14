@@ -57,6 +57,8 @@ export function inspectorComponentPhotoLabel(key: string): string {
 
 export {
   pickPrimaryPropertyDetailPhoto,
+  pickInspectorPrimaryPhoto,
+  isInspectorGlancePhoto,
   type PropertyDetailDocumentEntry,
   type PropertyDetailDocumentSection,
 } from "@platform/app-shared/app-data/property-detail-document-types";
@@ -134,8 +136,8 @@ export function collectIntakeDocuments(input: {
       id: `intake-assignment-${index}-${name}`,
       documentTypeKey: "assignment-letter",
       name: property.assignmentDocFileNames.length > 1
-        ? `خطاب الإسناد (${index + 1})`
-        : "خطاب الإسناد",
+        ? `قرار الإسناد (${index + 1})`
+        : "قرار الإسناد",
       fileName: name,
       source,
       kind: fileKind(name, cached?.mimeType),
@@ -197,8 +199,8 @@ export function collectIntakeDocuments(input: {
       id: `intake-delegation-${index}-${name}`,
       documentTypeKey: "delegation-letter",
       name: property.delegationLetterFileNames.length > 1
-        ? `خطاب التفويض (${index + 1})`
-        : "خطاب التفويض",
+        ? `خطاب التكليف (${index + 1})`
+        : "خطاب التكليف",
       fileName: name,
       source,
       kind: fileKind(name, cached?.mimeType),
@@ -535,10 +537,8 @@ export function collectPropertyDetailDocumentSections(input: {
 }
 
 /**
- * Every image the property could show, in the order the full sections use
- * (intake first, then field inspection), *before* any blob is downloaded — so
- * the primary-photo path can pick the same entry `pickPrimaryPropertyDetailPhoto`
- * would pick once everything is hydrated, and fetch only that one.
+ * Inspector photos only for the basic-tab glance — intake/deed/bourse images must
+ * never appear as «صورة العقار الرئيسية».
  */
 export function collectPrimaryPhotoCandidates(input: {
   property: PoPropertyIntake;
@@ -546,14 +546,12 @@ export function collectPrimaryPhotoCandidates(input: {
   poNumber: string;
   inspectionTaskId?: string | null;
 }): PropertyDetailDocumentEntry[] {
-  return [
-    ...collectIntakeDocuments(input),
-    ...collectFieldInspectionDocuments(input.inspectionTaskId),
-  ].filter(
+  void input.property;
+  void input.showDecree;
+  void input.poNumber;
+  return collectFieldInspectionDocuments(input.inspectionTaskId).filter(
     (doc) =>
       doc.kind === "image" &&
-      // Only what the full path would show once hydrated: an entry that has a
-      // preview already or a blob it can fetch. A name-only row never wins.
       Boolean(
         doc.dataUrl ||
           doc.attachmentId ||

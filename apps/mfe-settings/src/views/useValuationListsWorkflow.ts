@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getOrganizationSettings,
   getValuationLists,
@@ -10,6 +11,7 @@ import {
   type ValuationListItemDto,
   type ValuationListsDto,
 } from "@platform/api-client";
+import { syncValuationListsCache } from "@platform/app-shared/query/valuation-lists-query";
 import { useToast } from "@platform/ui-kit";
 
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
@@ -28,6 +30,7 @@ import {
  */
 export function useValuationListsWorkflow() {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("purposes");
   const [catalog, setCatalog] = useState<ValuationListsDto | null>(null);
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
@@ -70,8 +73,9 @@ export function useValuationListsWorkflow() {
     }
     setError(null);
     setCatalog(listsRes.data);
+    syncValuationListsCache(queryClient, listsRes.data);
     if (orgRes.ok) setOrg(orgRes.data);
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     void reload();
@@ -116,6 +120,7 @@ export function useValuationListsWorkflow() {
       return false;
     }
     setCatalog(res.data);
+    syncValuationListsCache(queryClient, res.data);
     if (!options?.quiet) showToast("تم الحفظ", "success");
     return true;
   }

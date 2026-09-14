@@ -56,7 +56,7 @@ describe("listDefinedPhotoSlotCells", () => {
     });
   });
 
-  it("joins the slot state: approved photo or «غير متوفر» counts as done, an unapproved one does not", () => {
+  it("joins the slot state: any photo file or «غير متوفر» counts as done", () => {
     const cells = listDefinedPhotoSlotCells({
       services: ["كهرباء", "ماء"],
       amenities: ["مدارس"],
@@ -68,7 +68,7 @@ describe("listDefinedPhotoSlotCells", () => {
     });
     expect(cells[0]).toMatchObject({ done: true, first: photo(7), photoRef: slotPhotoRef(electricity, 7) });
     expect(cells[1]).toMatchObject({ done: true, first: undefined, photoRef: undefined });
-    expect(cells[2]).toMatchObject({ done: false, first: photo(9, false) });
+    expect(cells[2]).toMatchObject({ done: true, first: photo(9, false) });
   });
 });
 

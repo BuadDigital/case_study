@@ -82,7 +82,7 @@ export function validatePropertyEnfathFields(
       ),
     );
     if (p.assignmentDocFileNames.length === 0) {
-      errors.assignmentDocFileNames = "خطاب الإسناد مطلوب";
+      errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
     }
     const identifierError = validatePropertyIdentifierNumber(
       p.identifierType,
@@ -115,13 +115,13 @@ export function validatePropertyEnfathFields(
   );
 
   if (p.delegationLetterFileNames.length === 0) {
-    errors.delegationLetterFileNames = "خطاب التفويض مطلوب";
+    errors.delegationLetterFileNames = "خطاب التكليف مطلوب";
   }
 
   validateDeedOrRealEstateReg(p, errors);
 
   if (p.assignmentDocFileNames.length === 0) {
-    errors.assignmentDocFileNames = "خطاب الإسناد مطلوب";
+    errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
   }
 
   return errors;

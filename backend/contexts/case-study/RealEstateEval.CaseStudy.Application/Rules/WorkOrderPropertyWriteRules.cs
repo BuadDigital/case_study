@@ -315,6 +315,44 @@ public static class WorkOrderPropertyWriteRules
     }
 
     /// <summary>
+    /// Soft field autosave for البورصة transcription — same columns as
+    /// <see cref="ApplyPropertyBourse"/> plus owners/ownership, without completing the phase.
+    /// </summary>
+    public static void ApplyPropertyBourseDraft(WorkOrderProperty entity, WorkOrderPropertyDto dto)
+    {
+        ApplyPropertyBourse(entity, dto);
+
+        if (dto.Owners is not null)
+        {
+            var owners = dto.Owners
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Where(o => !string.IsNullOrWhiteSpace(o.Name))
+                .ToList();
+            // Soft draft: skip invalid owner sets rather than failing the whole autosave.
+            if (OwnershipTypeRules.ValidateOwners(owners) is null)
+            {
+                entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
+                if (owners.Count > 0)
+                    entity.OwnerName = owners[0].Name;
+            }
+        }
+
+        if (dto.OwnershipTypeIsManual)
+        {
+            if (OwnershipTypes.IsKnown(dto.OwnershipType))
+            {
+                entity.OwnershipType = dto.OwnershipType!.Trim().ToLowerInvariant();
+                entity.OwnershipTypeIsManual = true;
+            }
+        }
+        else
+        {
+            entity.OwnershipType = null;
+            entity.OwnershipTypeIsManual = false;
+        }
+    }
+
+    /// <summary>
     /// The bourse transcription as its own request: same columns, plus the owners/ownership-type
     /// decisions. Returns the error dictionary to hand back, and whether the boundaries came back
     /// unavailable (which holds the property open instead of completing it).
@@ -335,13 +373,8 @@ public static class WorkOrderPropertyWriteRules
         entity.DeedStatus = request.DeedStatus?.Trim();
         entity.BourseDeedImageFileName = request.BourseDeedImageFileName?.Trim();
         entity.RestrictionsPresent = request.RestrictionsPresent?.Trim();
-        entity.RestrictionType = NormalizeRestrictionType(
-            request.RestrictionsPresent,
-            request.RestrictionType);
-        entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(
-            request.RestrictionsPresent,
-            request.RestrictionType,
-            request.RestrictionOtherReason);
+        entity.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent,request.RestrictionType);
+        entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(request.RestrictionsPresent, request.RestrictionType, request.RestrictionOtherReason);
 
  // owners+shares from the transcription; ownership type is editable-derived.
         if (request.Owners is not null)

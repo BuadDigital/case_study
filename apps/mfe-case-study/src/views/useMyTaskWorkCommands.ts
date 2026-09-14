@@ -47,6 +47,7 @@ import {
   completePropertyBourse,
   updatePropertyInPo,
 } from "../lib/app-data/po-intake-commands";
+import { flushPropertyFieldAutosave } from "../lib/app-data/property-field-autosave";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
@@ -211,6 +212,10 @@ export function useMyTaskWorkCommands({
     }
     if (await rejectIfEnfathInvalid()) return;
 
+    if (task.propertyId) {
+      await flushPropertyFieldAutosave(task.poNumber, task.propertyId);
+    }
+
     const persisted = persistedEnfathProperty(property);
 
     await runWithActionToast(ENFATH_SAVE_ACTION, async () => {
@@ -318,6 +323,10 @@ export function useMyTaskWorkCommands({
     if (!task.propertyId && !bourseInquiryFastPath) {
       setFormError(NO_LINKED_PROPERTY_ERROR);
       return;
+    }
+
+    if (task.propertyId) {
+      await flushPropertyFieldAutosave(task.poNumber, task.propertyId);
     }
 
     await runWithActionToast(BOURSE_SAVE_ACTION, async () => {

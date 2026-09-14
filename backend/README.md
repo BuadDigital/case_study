@@ -623,8 +623,8 @@ Because RabbitMQ queue arguments are immutable, queues created before dead-lette
 keep working but log a warning at startup; delete the queue once to pick up the new topology.
 
 All services export **traces and metrics** via OTLP (default `http://localhost:4317`).
-In Compose, that endpoint is the **OpenTelemetry Collector**, which forwards
-traces to Jaeger and exposes Prometheus metrics on `:8889` (scraped by Prometheus).
+In Compose, that endpoint is the **OpenTelemetry Collector**, which discards
+traces (no trace UI in the stack) and exposes Prometheus metrics on `:8889` (scraped by Prometheus).
 Services do **not** expose a Prometheus `/metrics` HTTP endpoint.
 
 | Endpoint                  | Purpose                                |
@@ -634,7 +634,7 @@ Services do **not** expose a Prometheus `/metrics` HTTP endpoint.
 | `X-Correlation-Id` header | Returned on every response             |
 
 Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`.
-Local UIs: Jaeger [http://localhost:16686](http://localhost:16686), Prometheus
+Local UIs: Prometheus
 [http://localhost:9090](http://localhost:9090), Grafana
 [http://localhost:3001](http://localhost:3001) (provisioned dashboard
 **Real Estate Eval — Service Overview**). Fluent Bit tails Docker json-file

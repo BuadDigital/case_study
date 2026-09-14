@@ -334,8 +334,9 @@ public partial class WorkOrderService : IWorkOrderService
         string poNumber,
         Guid propertyId,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken) =>
-        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken);
+        CancellationToken cancellationToken,
+        bool softDraft = false) =>
+        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken, softDraft);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
         string poNumber,

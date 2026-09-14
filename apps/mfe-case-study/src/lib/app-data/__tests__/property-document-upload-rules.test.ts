@@ -7,9 +7,10 @@ import {
 import { governedEntryFromMeta } from "../governed-property-documents-reads";
 
 describe("validateUnlistedDocumentFields", () => {
-  it("needs a name and a reason of at least ten characters", () => {
-    expect(validateUnlistedDocumentFields("", "سبب طويل بما يكفي")).not.toBeNull();
-    expect(validateUnlistedDocumentFields("محضر لجنة", "قصير")).not.toBeNull();
+  it("needs a name; reason is optional", () => {
+    expect(validateUnlistedDocumentFields("", "سبب")).not.toBeNull();
+    expect(validateUnlistedDocumentFields("محضر لجنة", "")).toBeNull();
+    expect(validateUnlistedDocumentFields("محضر لجنة", "قصير")).toBeNull();
     expect(validateUnlistedDocumentFields("محضر لجنة", "طلبه العميل للمعاملة")).toBeNull();
   });
 });

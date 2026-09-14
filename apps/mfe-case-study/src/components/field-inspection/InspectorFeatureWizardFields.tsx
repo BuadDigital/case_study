@@ -157,11 +157,33 @@ export function InspectorFeatureWizardFields({
               {!hidePhotos && needsPhoto ? (
                 <div
                   id={`ins-feature-photo-${field.key}`}
-                  className={cn("mt-1.5", photoMissing && "rounded-md bg-danger-bg p-1")}
+                  className={cn(
+                    "mt-1.5 flex justify-center",
+                    photoMissing && "rounded-md bg-danger-bg p-1",
+                  )}
                 >
                   <EditableFeaturePhotoCell
                     needsPhoto
                     hasPhoto={hasPhoto}
+                    taskId={draft.taskId}
+                    photoRef={`feature:${field.key}`}
+                    attachment={draft.featurePhotoAttachments[field.key]}
+                    onClear={
+                      fieldDisabled
+                        ? undefined
+                        : () => {
+                            clearInspectorPhotoDataUrl(
+                              draft.taskId,
+                              `feature:${field.key}`,
+                            );
+                            onPatch({
+                              featurePhotoAttachments: {
+                                ...draft.featurePhotoAttachments,
+                                [field.key]: null,
+                              },
+                            });
+                          }
+                    }
                     onUpload={async (file) => {
                       const result = await uploadInspectorPhotoFromFile(
                         draft.taskId,
@@ -238,11 +260,33 @@ export function InspectorFeatureWizardFields({
               {!hidePhotos && needsPhoto ? (
                 <div
                   id={`ins-feature-photo-${field.key}`}
-                  className={cn("mt-1.5", photoMissing && "rounded-md bg-danger-bg p-1")}
+                  className={cn(
+                    "mt-1.5 flex justify-center",
+                    photoMissing && "rounded-md bg-danger-bg p-1",
+                  )}
                 >
                   <EditableFeaturePhotoCell
                     needsPhoto
                     hasPhoto={hasPhoto}
+                    taskId={draft.taskId}
+                    photoRef={`feature:${field.key}`}
+                    attachment={draft.featurePhotoAttachments[field.key]}
+                    onClear={
+                      fieldDisabled
+                        ? undefined
+                        : () => {
+                            clearInspectorPhotoDataUrl(
+                              draft.taskId,
+                              `feature:${field.key}`,
+                            );
+                            onPatch({
+                              featurePhotoAttachments: {
+                                ...draft.featurePhotoAttachments,
+                                [field.key]: null,
+                              },
+                            });
+                          }
+                    }
                     onUpload={async (file) => {
                       const result = await uploadInspectorPhotoFromFile(
                         draft.taskId,
@@ -321,6 +365,7 @@ export function InspectorFeatureWizardFields({
                     <span
                       id={`ins-feature-photo-${field.key}`}
                       className={cn(
+                        "mt-1.5 flex justify-center",
                         photoMissing && "rounded-md bg-danger-bg p-1",
                         photoMissing && invalidControlClass,
                       )}
@@ -328,6 +373,25 @@ export function InspectorFeatureWizardFields({
                       <EditableFeaturePhotoCell
                         needsPhoto
                         hasPhoto={hasPhoto}
+                        taskId={draft.taskId}
+                        photoRef={`feature:${field.key}`}
+                        attachment={draft.featurePhotoAttachments[field.key]}
+                        onClear={
+                          fieldDisabled
+                            ? undefined
+                            : () => {
+                                clearInspectorPhotoDataUrl(
+                                  draft.taskId,
+                                  `feature:${field.key}`,
+                                );
+                                onPatch({
+                                  featurePhotoAttachments: {
+                                    ...draft.featurePhotoAttachments,
+                                    [field.key]: null,
+                                  },
+                                });
+                              }
+                        }
                         onUpload={async (file) => {
                           const result = await uploadInspectorPhotoFromFile(
                             draft.taskId,

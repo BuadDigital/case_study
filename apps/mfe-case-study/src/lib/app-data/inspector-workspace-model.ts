@@ -19,6 +19,7 @@ import {
   type InspectorWorkspaceDraft,
   type InspectorWorkspaceStatus,
 } from "./inspector-workspace-data";
+import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 
 const workspaceCache = new Map<string, InspectorWorkspaceDraft>();
 
@@ -255,6 +256,16 @@ export function payloadToDraft(
     readString(payload.mapLongitude),
     draft,
   );
+  const status = (dto.status === "submitted"
+    ? "submitted"
+    : dto.status === "reopened"
+      ? "reopened"
+      : "draft") as InspectorWorkspaceStatus;
+  const explicitPinned = readBool(payload.mapPinned);
+  const legacyPinned =
+    !explicitPinned &&
+    status !== "draft" &&
+    parsePlacedMapPin(mapCoords.mapLatitude, mapCoords.mapLongitude) != null;
   const mapped: InspectorWorkspaceDraft = {
     ...draft,
     propertyDisplayId:
@@ -264,6 +275,7 @@ export function payloadToDraft(
     ...mapCoords,
     inspectorMapLatitude: readString(payload.inspectorMapLatitude),
     inspectorMapLongitude: readString(payload.inspectorMapLongitude),
+    mapPinned: explicitPinned || legacyPinned,
     featureValues: readRecord(payload.featureValues),
     featurePhotoAttachments: readFeaturePhotoAttachments(
       payload.featurePhotoAttachments,
@@ -336,11 +348,7 @@ export function payloadToDraft(
     freePhotos: readFreePhotos(payload.freePhotos),
     observations: readObservations(payload.observations),
     inspectionConfirmed: readBool(payload.inspectionConfirmed),
-    status: (dto.status === "submitted"
-      ? "submitted"
-      : dto.status === "reopened"
-        ? "reopened"
-        : "draft") as InspectorWorkspaceStatus,
+    status,
     returnNote:
       readString(payload.returnNote) ||
       (typeof dto.returnNote === "string" ? dto.returnNote : undefined),
@@ -371,6 +379,7 @@ export function draftToPayload(
     mapLongitude: draft.mapLongitude,
     inspectorMapLatitude: draft.inspectorMapLatitude,
     inspectorMapLongitude: draft.inspectorMapLongitude,
+    mapPinned: draft.mapPinned,
     featureValues: clean.featureValues,
     featurePhotoAttachments: clean.featurePhotoAttachments,
     componentPhotoAttachments: draft.componentPhotoAttachments,

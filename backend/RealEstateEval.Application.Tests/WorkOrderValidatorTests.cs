@@ -226,7 +226,7 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Equal("خطاب الإسناد مطلوب", errors["assignmentDocFileNames"]);
+        Assert.Equal("قرار الإسناد مطلوب", errors["assignmentDocFileNames"]);
     }
 
     [Fact]

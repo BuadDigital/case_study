@@ -1,4 +1,5 @@
 import type { FieldInspectionWorkspaceListItemDto } from "@platform/api-client";
+import type { WorkflowTask } from "./tasks-storage";
 import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
@@ -47,6 +48,30 @@ export function fieldInspectionTaskStatusBadge(
   }
 
   return { label: "جديدة", className: "b-new" };
+}
+
+/** Hide submitted/completed معاينات until «إظهار المكتملة» is on. */
+export function isVisibleInFieldInspectionQueue(
+  taskStatus: string,
+  options?: { showCompleted?: boolean; workspaceStatus?: string | null },
+): boolean {
+  if (options?.showCompleted) return true;
+  if (taskStatus === "completed") return false;
+  if (options?.workspaceStatus === "submitted") return false;
+  return true;
+}
+
+export function filterFieldInspectionListedTasks(
+  tasks: WorkflowTask[],
+  options?: { showCompleted?: boolean },
+): WorkflowTask[] {
+  return tasks.filter(
+    (t) =>
+      t.kind === "field-inspection" &&
+      isVisibleInFieldInspectionQueue(t.status, {
+        showCompleted: options?.showCompleted,
+      }),
+  );
 }
 
 export function isFieldInspectionLocked(

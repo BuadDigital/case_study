@@ -13,7 +13,7 @@ import { cn, ShowAllEye } from "@platform/ui-kit";
 
 /** Case Study.html `.card` footer note under the grid. */
 export const TASKS_LIST_FOOTER =
-  "اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التفويض حالتان من هذه الطبقة.";
+  "اضغط الصف لعرض تفاصيل المهمة. المراجعة الحكومية وخطاب التكليف حالتان من هذه الطبقة.";
 
 /** Case Study.html `#tkShowAll` eye — shared blink motion. */
 export function TasksShowAllEye({

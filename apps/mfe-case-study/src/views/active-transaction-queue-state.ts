@@ -48,7 +48,8 @@ export type ActiveTransactionQueueTableLayout =
   | "case-study"
   | "all-transactions"
   | "engineering-survey"
-  | "property-appraisal";
+  | "property-appraisal"
+  | "field-inspection";
 
 export type ActiveTransactionQueueConfig = {
   pageTitle: string;
@@ -202,7 +203,8 @@ export function buildQueueServerQuery(input: {
 
   const showAllToggle =
     config.tableLayout === "engineering-survey" ||
-    config.tableLayout === "property-appraisal";
+    config.tableLayout === "property-appraisal" ||
+    config.tableLayout === "field-inspection";
   const showAll =
     Boolean(config.includeAllStatuses) || (showAllToggle && input.showCompleted);
   const status =
@@ -332,6 +334,7 @@ export type QueueLayoutFlags = {
   isAllTransactionsTable: boolean;
   isEngineeringSurveyTable: boolean;
   isPropertyAppraisalTable: boolean;
+  isFieldInspectionTable: boolean;
   isPartyQueueToggleTable: boolean;
   showPartyColumns: boolean;
 };
@@ -341,6 +344,7 @@ export function resolveQueueLayoutFlags(
 ): QueueLayoutFlags {
   const isEngineeringSurveyTable = config.tableLayout === "engineering-survey";
   const isPropertyAppraisalTable = config.tableLayout === "property-appraisal";
+  const isFieldInspectionTable = config.tableLayout === "field-inspection";
   return {
     isPropertyInspectionQueue:
       config.pageId === "property-inspection" ||
@@ -351,8 +355,11 @@ export function resolveQueueLayoutFlags(
     isAllTransactionsTable: config.tableLayout === "all-transactions",
     isEngineeringSurveyTable,
     isPropertyAppraisalTable,
+    isFieldInspectionTable,
     isPartyQueueToggleTable:
-      isEngineeringSurveyTable || isPropertyAppraisalTable,
+      isEngineeringSurveyTable ||
+      isPropertyAppraisalTable ||
+      isFieldInspectionTable,
     showPartyColumns: config.tableLayout === "case-study",
   };
 }
@@ -430,7 +437,9 @@ export function buildListedQueue({
   const compare = queueSortComparator(sortMode);
   const isSurveyLayout = config.tableLayout === "engineering-survey";
   const isAppraisalLayout = config.tableLayout === "property-appraisal";
-  const showAllToggle = isSurveyLayout || isAppraisalLayout;
+  const isInspectionLayout = config.tableLayout === "field-inspection";
+  const showAllToggle =
+    isSurveyLayout || isAppraisalLayout || isInspectionLayout;
   return config
     .filterListed(mine, poByNumber, {
       showCompleted: showAllToggle ? showCompleted : undefined,

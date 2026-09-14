@@ -30,7 +30,7 @@ type LoginResponse = {
   expiresAtUtc: string;
   refreshToken?: string;
   refreshTokenExpiresAtUtc?: string;
-  user: { id: string; email: string; displayName: string };
+  user: { id: string; email: string; displayName: string; jobTitle?: string };
 };
 
 type Step = "creds" | "otp";

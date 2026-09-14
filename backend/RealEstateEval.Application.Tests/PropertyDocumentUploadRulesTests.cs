@@ -53,14 +53,29 @@ public class PropertyDocumentUploadRulesTests
     [Theory]
     [InlineData(null, Reason)]
     [InlineData("م", Reason)]
-    [InlineData("محضر لجنة", null)]
-    [InlineData("محضر لجنة", "قصير")]
-    public void Unlisted_document_needs_a_name_and_a_reason(string? label, string? reason)
+    [InlineData("", Reason)]
+    [InlineData("   ", Reason)]
+    public void Unlisted_document_needs_a_name(string? label, string? reason)
     {
         var result = PropertyDocumentUploadRules.Resolve(
             Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey, label, reason);
 
         Assert.NotNull(result.Error);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(Reason)]
+    public void Unlisted_document_reason_is_optional(string? reason)
+    {
+        var result = PropertyDocumentUploadRules.Resolve(
+            Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey, "محضر لجنة", reason);
+
+        Assert.Null(result.Error);
+        Assert.Equal(PropertyDocumentTypes.UnlistedKey, result.TypeKey);
+        Assert.Equal(PropertyDocumentReviewStatuses.Pending, result.ReviewStatus);
     }
 
     [Fact]
@@ -76,11 +91,11 @@ public class PropertyDocumentUploadRulesTests
     }
 
     [Fact]
-    public void Other_documents_field_is_unlisted_and_needs_a_reason_too()
+    public void Other_documents_field_is_unlisted_and_needs_a_name()
     {
         Assert.NotNull(PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, null, null).Error);
 
-        var ok = PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, "محضر لجنة", Reason);
+        var ok = PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, "محضر لجنة", null);
         Assert.Null(ok.Error);
         Assert.Equal(PropertyDocumentReviewStatuses.Pending, ok.ReviewStatus);
     }

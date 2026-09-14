@@ -105,7 +105,16 @@ public class FieldInspectionSubmissionValidatorTests
             "\"observations\": []",
             """
             "observations": [
-              { "id": "obs-1", "category": "عيب ظاهر", "text": "", "photo": null }
+              {
+                "id": "obs-1",
+                "category": "عيب ظاهر",
+                "text": "",
+                "photo": {
+                  "fileName": "crack.jpg",
+                  "mimeType": "image/jpeg",
+                  "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa8"
+                }
+              }
             ]
             """);
 
@@ -113,6 +122,23 @@ public class FieldInspectionSubmissionValidatorTests
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
         Assert.Equal("كل ملاحظة يجب أن تتضمن شرحاً", errors["observations"]);
+    }
+
+    [Fact]
+    public void Validate_ignores_blank_observation_shells_without_photo()
+    {
+        var json = MinimalValidPayload().Replace(
+            "\"observations\": []",
+            """
+            "observations": [
+              { "id": "obs-1", "category": "عيب ظاهر", "text": "", "photo": null }
+            ]
+            """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("observations", errors.Keys);
     }
 
     [Fact]
@@ -258,6 +284,42 @@ public class FieldInspectionSubmissionValidatorTests
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
         Assert.Equal("يجب رفع الصور إلى الخادم قبل الإرسال", errors["definedPhotos"]);
+    }
+
+    [Fact]
+    public void Validate_does_not_block_on_unapproved_extra_when_slot_already_complete()
+    {
+        var needle =
+            $$"""
+                  "id": 1,
+                  "approved": true,
+                  "fileName": "electricity.jpg",
+                  "mimeType": "image/jpeg",
+                  "attachmentId": "{{ServicePhotoAttachmentId}}"
+            """;
+        var replacement =
+            $$"""
+                  "id": 1,
+                  "approved": true,
+                  "fileName": "electricity.jpg",
+                  "mimeType": "image/jpeg",
+                  "attachmentId": "{{ServicePhotoAttachmentId}}"
+                },
+                {
+                  "id": 99,
+                  "approved": false,
+                  "fileName": "extra.jpg",
+                  "mimeType": "image/jpeg",
+                  "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa9"
+            """;
+
+        var json = MinimalValidPayload().Replace(needle, replacement, StringComparison.Ordinal);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("definedPhotos", errors.Keys);
+        Assert.DoesNotContain(errors.Values, v => v.Contains("بانتظار الاعتماد", StringComparison.Ordinal));
     }
 
     private static readonly Guid ServicePhotoAttachmentId =

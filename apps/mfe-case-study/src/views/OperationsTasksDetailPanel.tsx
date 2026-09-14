@@ -339,7 +339,7 @@ export function OperationsTasksDetailPanel({
                 <TypeIcon type="court_visit" size={18} />
               </span>
               <div>
-                <div className={opsLetterTitle}>خطاب التفويض الداخلي</div>
+                <div className={opsLetterTitle}>خطاب التكليف الداخلي</div>
                 <div className={opsLetterSub}>
                   مفتاح التجميع: المحكمة + الدائرة · لقطة (snapshot) عند الإصدار
                 </div>
@@ -366,7 +366,7 @@ export function OperationsTasksDetailPanel({
                     )
                   }
                 >
-                  طباعة خطاب التفويض
+                  طباعة خطاب التكليف
                 </button>
               ) : null}
             </div>

@@ -592,7 +592,7 @@ export function buildOperationsTaskRowMenu(
   if (task.type === "court_visit" && task.letterRows.length > 0) {
     items.push({
       id: "letter",
-      label: "عرض خطاب التفويض",
+      label: "عرض خطاب التكليف",
       icon: RowMoreMenuIcons.building,
       onClick: () => handlers.showDetail(task),
     });

@@ -139,8 +139,7 @@ docker compose -f infra/docker-compose.yml up -d
 | **RabbitMQ** | Async events between microservices | Yes (`5672`, UI `15672`) | No — planned Phase B+ |
 | **Redis** | Cache, locks, rate limits, hot dashboard reads | Yes (`6379`) | No — planned Phase A–B |
 | **Prometheus** | Metrics (latency, errors, queue depth) | Yes (`9090`) | No — scrape targets TBD |
-| **Grafana** | Dashboards on Prometheus (+ Jaeger) | Yes (`3001`) | Provisioned; empty until apps export metrics |
-| **Jaeger** | Distributed tracing | Yes (UI `16686`, OTLP `4317`/`4318`) | No — OpenTelemetry not in apps yet |
+| **Grafana** | Dashboards on Prometheus | Yes (`3001`) | Provisioned; empty until apps export metrics |
 | **Elasticsearch** | Log and search index store | Yes (`9200`) | No — via Fluent Bit |
 | **Kibana** | Explore logs in Elasticsearch | Yes (`5601`) | Index pattern `fluentbit-*` |
 | **Fluent Bit** | Log collector (Fluentd family) | Yes (`ree-fluent-bit`) | Sample → ES |
@@ -158,7 +157,7 @@ Browser (shell / MFEs)
             → RabbitMQ (events)
 
 Observability (planned):
-    Services → OpenTelemetry → Jaeger + Prometheus
+    Services → OpenTelemetry → OTLP collector → Prometheus
     Services → logs → Fluent Bit → Elasticsearch → Kibana
     Grafana ← Prometheus
 ```

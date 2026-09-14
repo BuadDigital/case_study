@@ -21,13 +21,12 @@ public sealed record ResolvedDocumentType(
 /// <summary>
 /// Document governance for property uploads. The documents-tab scope must name a registry type;
 /// the older per-field scopes are classified by the field they were uploaded from; anything
-/// outside the defined list needs a name and a reason and waits for review.
+/// outside the defined list needs a name (reason optional) and waits for review.
 /// </summary>
 public static class PropertyDocumentUploadRules
 {
     public const int CustomLabelMinLength = 2;
     public const int CustomLabelMaxLength = 128;
-    public const int CustomReasonMinLength = 10;
     public const int CustomReasonMaxLength = 512;
     public const int ReviewNoteMaxLength = 512;
 
@@ -135,8 +134,6 @@ public static class PropertyDocumentUploadRules
             return ResolvedDocumentType.Reject("اكتب اسم المستند غير المعرّف");
         if (label.Length > CustomLabelMaxLength)
             return ResolvedDocumentType.Reject("اسم المستند أطول من المسموح");
-        if (reason.Length < CustomReasonMinLength)
-            return ResolvedDocumentType.Reject("اذكر سبب رفع مستند غير معرّف (10 أحرف على الأقل)");
         if (reason.Length > CustomReasonMaxLength)
             return ResolvedDocumentType.Reject("سبب رفع المستند أطول من المسموح");
 
@@ -144,7 +141,7 @@ public static class PropertyDocumentUploadRules
             null,
             PropertyDocumentTypes.UnlistedKey,
             label,
-            reason,
+            reason.Length == 0 ? null : reason,
             PropertyDocumentReviewStatuses.Pending);
     }
 }

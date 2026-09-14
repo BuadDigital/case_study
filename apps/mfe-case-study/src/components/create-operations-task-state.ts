@@ -416,7 +416,7 @@ export function buildCreateOperationsTaskSubmission(
       letterRows = buildLetterRowsForDeed(poOptions, po, d);
       if (letterRows.length === 0) {
         return invalid(
-          "هذا الصك بلا محكمة مسجّلة — لا يمكن إنشاء صف خطاب التفويض. أكمل بيانات المحكمة في العقار ثم أعد المحاولة.",
+          "هذا الصك بلا محكمة مسجّلة — لا يمكن إنشاء صف خطاب التكليف. أكمل بيانات المحكمة في العقار ثم أعد المحاولة.",
         );
       }
     }

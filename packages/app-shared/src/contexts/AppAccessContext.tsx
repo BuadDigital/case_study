@@ -13,6 +13,8 @@ type Ctx = {
   authReady: boolean;
   viewerEmail: string | null;
   viewerDisplayName: string | null;
+  /** Staff job title — preferred chip subtitle; catalog dept is only a fallback. */
+  viewerJobTitle: string | null;
   distributionAssigneeId: string | null;
   department: string | null;
   rolePages: PageId[];
@@ -114,6 +116,10 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
         permissions?.displayName?.trim() ||
         session?.user.displayName?.trim() ||
         null,
+      viewerJobTitle:
+        permissions?.jobTitle?.trim() ||
+        session?.user.jobTitle?.trim() ||
+        null,
       distributionAssigneeId: permissions?.distributionAssigneeId?.trim() || null,
       department: permissions?.department?.trim() || null,
       rolePages,
@@ -125,7 +131,9 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       authReady,
       session?.user.email,
       session?.user.displayName,
+      session?.user.jobTitle,
       permissions?.displayName,
+      permissions?.jobTitle,
       permissions?.distributionAssigneeId,
       permissions?.department,
       rolePages,

@@ -114,10 +114,10 @@ export const PROPERTY_DOCUMENT_TYPES: readonly PropertyDocumentType[] = [
     legacyScopes: ["property-boundaries"],
   }),
 
-  t("assignment-letter", "خطاب الإسناد", "assignment", {
+  t("assignment-letter", "قرار الإسناد", "assignment", {
     legacyScopes: ["property-decree"],
   }),
-  t("delegation-letter", "خطاب التفويض", "assignment", {
+  t("delegation-letter", "خطاب التكليف", "assignment", {
     legacyScopes: ["property-delegation"],
   }),
   t("owner-identity", "هوية المالك / الوكالة", "assignment"),

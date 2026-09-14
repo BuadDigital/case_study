@@ -35,7 +35,7 @@ cpus=$(nproc)
 echo "RAM: ${ram_mb} MB, vCPU: ${cpus}"
 if [ "$ram_mb" -lt 7500 ]; then
   warn "The full stack (9 .NET services + Postgres + RabbitMQ + Redis + Elasticsearch +
-         Prometheus + Grafana + Jaeger) needs about 8 GB. With ${ram_mb} MB containers
+         Prometheus + Grafana) needs about 8 GB. With ${ram_mb} MB containers
          will be OOM-killed. Resize the server, or drop the observability services from
          docker-compose.prod.yml before deploying."
 fi

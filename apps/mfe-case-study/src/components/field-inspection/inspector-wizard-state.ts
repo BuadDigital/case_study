@@ -182,7 +182,7 @@ export function emptyDefinedPhotoSlot(): InspectorDefinedPhotoSlot {
 /** One selected service/amenity with its slot state joined in — what a tile renders. */
 export type DefinedPhotoSlotCell = ServiceAmenityPhotoSlotDef & {
   slot: InspectorDefinedPhotoSlot;
-  /** Approved photo present, or marked «غير متوفر». */
+  /** Photo file present, or marked «غير متوفر». */
   done: boolean;
   first: InspectorSlotPhoto | undefined;
   /** Cache key of the first photo — `undefined` while the slot is empty. */

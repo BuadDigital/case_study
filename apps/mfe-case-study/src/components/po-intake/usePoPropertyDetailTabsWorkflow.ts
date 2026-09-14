@@ -31,7 +31,7 @@ import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import {
   listPropertyDetailPhotos,
-  pickPrimaryPropertyDetailPhoto,
+  pickInspectorPrimaryPhoto,
 } from "../../lib/app-data/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { usePropertyPrimaryPhoto } from "../../query/property-primary-photo-query";
@@ -223,7 +223,7 @@ export function usePoPropertyDetailTabsWorkflow({
     enabled: !propertyMediaVisited,
   });
   const primaryPhoto = useMemo(() => {
-    const fromSections = pickPrimaryPropertyDetailPhoto(propertyPhotos);
+    const fromSections = pickInspectorPrimaryPhoto(propertyPhotos);
     return fromSections?.dataUrl
       ? fromSections
       : (primaryPhotoOnly ?? fromSections);

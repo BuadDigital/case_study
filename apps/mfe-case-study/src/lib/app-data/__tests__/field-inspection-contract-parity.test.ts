@@ -342,6 +342,66 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(validateInspectorWorkspace(draft).definedPhotos).toBeDefined();
   });
 
+  it("does not block submit on an unapproved extra when the slot is already complete", () => {
+    const draft = completeDraft();
+    const serviceSlot = serviceAmenityPhotoSlotId("service", "كهرباء");
+    draft.definedPhotos[serviceSlot]!.photos.push({
+      id: 99,
+      approved: false,
+      fileName: "extra.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-extra",
+    });
+
+    const issues = listInspectorPhotoValidationIssues(draft);
+    expect(issues.some((i) => i.includes("بانتظار الاعتماد"))).toBe(false);
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
+  });
+
+  it("treats an unapproved slot photo with a file as documenting the service", () => {
+    const draft = completeDraft();
+    const serviceSlot = serviceAmenityPhotoSlotId("service", "كهرباء");
+    draft.definedPhotos[serviceSlot] = {
+      none: false,
+      photos: [
+        {
+          id: 1,
+          approved: false,
+          fileName: "electricity.jpg",
+          mimeType: "image/jpeg",
+          attachmentId: "att-service",
+        },
+      ],
+    };
+
+    expect(listInspectorPhotoValidationIssues(draft)).toEqual([]);
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
+  });
+
+  it("ignores blank observation shells but still requires text when a photo is attached", () => {
+    const draft = completeDraft();
+    draft.observations = [
+      { id: "obs-empty", category: "عيب ظاهر", text: "", photo: null },
+    ];
+    expect(validateInspectorWorkspace(draft).observations).toBeUndefined();
+
+    draft.observations = [
+      {
+        id: "obs-photo",
+        category: "عيب ظاهر",
+        text: "",
+        photo: {
+          fileName: "crack.jpg",
+          mimeType: "image/jpeg",
+          attachmentId: "att-obs",
+        },
+      },
+    ];
+    expect(validateInspectorWorkspace(draft).observations).toBe(
+      "كل ملاحظة يجب أن تتضمن شرحاً",
+    );
+  });
+
   it("requires a movables description when the inspector answers yes", () => {
     const draft = completeDraft();
     for (const field of INSPECTOR_FEATURE_FIELDS) {

@@ -245,7 +245,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
       "جنوبية غربية",
       "جنوبية شرقية",
     ],
-    photoOnYes: true,
+    photoOnYes: false,
   },
   {
     key: "propertyUsage",
@@ -264,7 +264,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     key: "buildState",
     label: "حالة البناء",
     options: ["جيد", "متوسط", "رديء"],
-    photoOnYes: true,
+    photoOnYes: false,
     shared: true,
   },
   {
@@ -606,7 +606,9 @@ export function isServiceAmenityPhotoSlotComplete(
 ): boolean {
   if (!slot) return false;
   if (slot.none) return true;
-  return slot.photos.some((photo) => photo.approved && photo.fileName.trim());
+  // A captured/uploaded file is enough — `approved` is review metadata, not a
+  // submit gate (missing/false used to false-fail «وثّق بالصورة»).
+  return slot.photos.some((photo) => photo.fileName.trim().length > 0);
 }
 
 /** First selected service/amenity still missing an approved photo. */
@@ -629,12 +631,15 @@ export type InspectorFreePhotoCategory = {
   icon: string;
 };
 
-/** Primary buckets for general property photography (upload zones). */
+/** Parent buckets in the classify modal. */
 export const INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR = "exterior";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR = "interior";
+/** Kind tags nested under each parent. */
+export const INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE = "service";
+export const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
+export const INSPECTOR_FREE_PHOTO_CATEGORY_OTHER = "other";
 
-/** Categories for residual free-photo tagging / upload zones. */
-export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] = [
+export const INSPECTOR_FREE_PHOTO_PARENTS: InspectorFreePhotoCategory[] = [
   {
     key: INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR,
     label: "صور خارجية",
@@ -647,12 +652,62 @@ export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] = [
   },
 ];
 
-/** Older drafts may still carry these tags — keep labels for display/reclassify. */
+export const INSPECTOR_FREE_PHOTO_KINDS: InspectorFreePhotoCategory[] = [
+  {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE,
+    label: "خدمة",
+    icon: "ti-plug",
+  },
+  {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY,
+    label: "مرفق",
+    icon: "ti-map-pin",
+  },
+  {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_OTHER,
+    label: "أخرى",
+    icon: "ti-photo",
+  },
+];
+
+/** Stored category = `parent:kind` (e.g. exterior:service). */
+export function buildInspectorFreePhotoCategory(
+  parent: string,
+  kind: string,
+): string {
+  return `${parent}:${kind}`;
+}
+
+export function parseInspectorFreePhotoCategory(
+  category: string | null | undefined,
+): { parent: string; kind: string } | null {
+  const key = category?.trim();
+  if (!key || !key.includes(":")) return null;
+  const [parent, kind] = key.split(":", 2);
+  if (
+    !INSPECTOR_FREE_PHOTO_PARENTS.some((p) => p.key === parent) ||
+    !INSPECTOR_FREE_PHOTO_KINDS.some((k) => k.key === kind)
+  ) {
+    return null;
+  }
+  return { parent, kind };
+}
+
+/** Leaf options for classify (nested under parents). */
+export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
+  INSPECTOR_FREE_PHOTO_PARENTS.flatMap((parent) =>
+    INSPECTOR_FREE_PHOTO_KINDS.map((kind) => ({
+      key: buildInspectorFreePhotoCategory(parent.key, kind.key),
+      label: `${parent.label} · ${kind.label}`,
+      icon: kind.icon,
+    })),
+  );
+
+/** Older flat tags still display / count as tagged until reclassified. */
 export const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
   [
-    { key: "service", label: "خدمة", icon: "ti-plug" },
-    { key: "amenity", label: "مرفق", icon: "ti-map-pin" },
-    { key: "other", label: "أخرى", icon: "ti-photo" },
+    ...INSPECTOR_FREE_PHOTO_PARENTS,
+    ...INSPECTOR_FREE_PHOTO_KINDS,
   ];
 
 export function inspectorFreePhotoCategoryMeta(
@@ -660,21 +715,49 @@ export function inspectorFreePhotoCategoryMeta(
 ): InspectorFreePhotoCategory | undefined {
   const key = category?.trim();
   if (!key) return undefined;
+  const nested = parseInspectorFreePhotoCategory(key);
+  if (nested) {
+    const parent = INSPECTOR_FREE_PHOTO_PARENTS.find(
+      (p) => p.key === nested.parent,
+    )!;
+    const kind = INSPECTOR_FREE_PHOTO_KINDS.find((k) => k.key === nested.kind)!;
+    return {
+      key,
+      label: `${parent.label} · ${kind.label}`,
+      icon: kind.icon,
+    };
+  }
   return (
     INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key) ??
     INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.find((cat) => cat.key === key)
   );
 }
 
+export type InspectorPrimaryFreePhotoCategory = string;
+
+/** True when the photo has a usable free-photo category (nested or parent/legacy). */
 export function isInspectorPrimaryFreePhotoCategory(
   category: string | null | undefined,
-): category is
-  | typeof INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
-  | typeof INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR {
-  return (
+): category is InspectorPrimaryFreePhotoCategory {
+  if (!category?.trim()) return false;
+  if (parseInspectorFreePhotoCategory(category)) return true;
+  return INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.some(
+    (cat) => cat.key === category,
+  );
+}
+
+export function inspectorFreePhotoParentKey(
+  category: string | null | undefined,
+): string | null {
+  const nested = parseInspectorFreePhotoCategory(category);
+  if (nested) return nested.parent;
+  if (
     category === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR ||
     category === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR
-  );
+  ) {
+    return category;
+  }
+  return null;
 }
 
 export type InspectorComponentPhotoKey = "showroom" | "well" | "buildLicense";
@@ -703,6 +786,8 @@ export type InspectorWorkspaceDraft = {
    */
   inspectorMapLatitude: string;
   inspectorMapLongitude: string;
+  /** True after «تثبيت الموقع» — persisted with the draft (not session-only). */
+  mapPinned: boolean;
   featureValues: Record<string, string>;
   featurePhotoAttachments: Record<string, InspectorPhotoAttachment | null>;
   componentPhotoAttachments: InspectorComponentPhotoAttachments;
@@ -865,6 +950,7 @@ export function createInspectorWorkspaceDraft(input: {
     mapLongitude: longitude,
     inspectorMapLatitude: "",
     inspectorMapLongitude: "",
+    mapPinned: false,
     featureValues: {},
     featurePhotoAttachments: {},
     componentPhotoAttachments: emptyComponentPhotoAttachments(),
@@ -1257,8 +1343,10 @@ export function listInspectorPhotoValidationIssues(
     ? listSpecialistProofServicePhotoSlots(draft)
     : undefined;
 
-  const { requiredTotal, requiredDone, pendingApproval } =
-    computeInspectorPhotoCoverage(draft, proofSlots);
+  const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
+    draft,
+    proofSlots,
+  );
   if (requiredDone < requiredTotal) {
     issues.push(
       options?.specialistProofServicesOnly
@@ -1266,16 +1354,11 @@ export function listInspectorPhotoValidationIssues(
         : "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
     );
   }
-  if (pendingApproval > 0) {
-    issues.push(`${pendingApproval} صورة بانتظار الاعتماد`);
-  }
 
-  const untagged = draft.freePhotos.filter(
-    (photo) => !isInspectorPrimaryFreePhotoCategory(photo.category),
-  ).length;
-  if (!options?.specialistProofServicesOnly && untagged > 0) {
-    issues.push(`${untagged} صورة إضافية بحاجة لتعريف`);
-  }
+  // Free-photo kind (خدمة/مرفق/أخرى) is optional — bucket parent is enough.
+  // Do not block «حفظ وإرسال» on untagged free photos.
+  // Unapproved extras in a complete slot are also not a submit blocker —
+  // slot completeness already requires an approved photo (or «غير متوفر»).
 
   const hasLocalOnly = Object.values(draft.definedPhotos).some((slot) =>
     slot.photos.some((p) => p.fileName && !p.attachmentId),

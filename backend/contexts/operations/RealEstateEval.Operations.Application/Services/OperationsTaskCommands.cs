@@ -77,7 +77,7 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         var letterRows = request.LetterRows?.ToList() ?? [];
         var isCourtVisit = type == OperationsTaskType.CourtVisit;
         if (isCourtVisit && letterRows.Count == 0)
-            return (null, "مهمة زيارة المحكمة تتطلب صفوف خطاب التفويض");
+            return (null, "مهمة زيارة المحكمة تتطلب صفوف خطاب التكليف");
 
         decimal? agreedVisitFee = null;
         Guid? visitFeePricingTableId = null;

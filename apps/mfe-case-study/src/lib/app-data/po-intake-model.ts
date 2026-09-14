@@ -257,6 +257,11 @@ export function propertyToEnfathDto(
 export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
   return {
     ...propertyToEnfathDto(prop),
+    owners: parseOwnersDraft(prop.ownersJson),
+    ownershipType: prop.ownershipTypeIsManual
+      ? prop.ownershipType || undefined
+      : undefined,
+    ownershipTypeIsManual: prop.ownershipTypeIsManual,
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,

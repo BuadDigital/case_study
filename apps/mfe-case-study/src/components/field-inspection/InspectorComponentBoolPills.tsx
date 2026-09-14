@@ -81,12 +81,34 @@ export function InspectorComponentBoolPills({
             {slot.needsPhoto ? (
               <span
                 id={`ins-feature-photo-${slot.key}`}
-                className={cn(photoMissing && "rounded-md bg-danger-bg p-1")}
+                className={cn(
+                  "flex justify-center",
+                  photoMissing && "rounded-md bg-danger-bg p-1",
+                )}
               >
                 <EditableFeaturePhotoCell
                   needsPhoto
                   hasPhoto={slot.hasPhoto}
                   disabled={!editable}
+                  taskId={draft.taskId}
+                  photoRef={`feature:${slot.key}`}
+                  attachment={draft.featurePhotoAttachments[slot.key]}
+                  onClear={
+                    !editable
+                      ? undefined
+                      : () => {
+                          clearInspectorPhotoDataUrl(
+                            draft.taskId,
+                            `feature:${slot.key}`,
+                          );
+                          onPatch({
+                            featurePhotoAttachments: {
+                              ...draft.featurePhotoAttachments,
+                              [slot.key]: null,
+                            },
+                          });
+                        }
+                  }
                   onUpload={async (file) => {
                     const result = await uploadInspectorPhotoFromFile(
                       draft.taskId,

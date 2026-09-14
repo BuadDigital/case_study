@@ -84,118 +84,6 @@ services:
       retries: 5
       start_period: 20s
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.60
-    container_name: ree-jaeger
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    # UI only on the host; OTLP intake is via otel-collector (4317/4318 below).
-    ports:
-      - "16686:16686"
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.114.0
-    container_name: ree-otel-collector
-    command: ["--config=/etc/otelcol/config.yaml"]
-    volumes:
-      - ./otel-collector/otel-collector-config.yml:/etc/otelcol/config.yaml:ro
-    # Host apps (npm run dev:api) export OTLP here; collector forwards traces to Jaeger.
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-    depends_on:
-      - jaeger
-
-  prometheus:
-    image: prom/prometheus:v2.54.1
-    container_name: ree-prometheus
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --web.enable-lifecycle
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ree_prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    depends_on:
-      - otel-collector
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  grafana:
-    image: grafana/grafana:11.2.0
-    container_name: ree-grafana
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ree_grafana_data:/var/lib/grafana
-    ports:
-      - "3001:3000"
-    depends_on:
-      prometheus:
-        condition: service_healthy
-      jaeger:
-        condition: service_started
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-    container_name: ree-elasticsearch
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: "false"
-      xpack.security.http.ssl.enabled: "false"
-      ES_JAVA_OPTS: -Xms512m -Xmx512m
-    ports:
-      - "9200:9200"
-    volumes:
-      - ree_es_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.15.3
-    container_name: ree-kibana
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 20
-      start_period: 60s
-
-  fluent-bit:
-    image: fluent/fluent-bit:3.1.9
-    container_name: ree-fluent-bit
-    volumes:
-      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
-      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-
   # Optional one-shot migrator (apps still migrate on startup in Development).
   migrate:
     build:
@@ -225,7 +113,6 @@ services:
     container_name: ree-identity
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_identity;Username=postgres;Password=Admin
@@ -238,8 +125,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -253,7 +138,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       Database__SeedDemoData: "false"
       Database__MigrateOnStartup: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__PlatformBaseUrl: http://platform:8080
@@ -299,8 +183,6 @@ services:
         condition: service_healthy
       financial:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -312,7 +194,6 @@ services:
     container_name: ree-operations
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__IdentityBaseUrl: http://identity:8080
@@ -335,8 +216,6 @@ services:
         condition: service_healthy
       financial:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -348,7 +227,6 @@ services:
     container_name: ree-reporting
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__GatewayBaseUrl: http://gateway:5160
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
@@ -364,8 +242,6 @@ services:
         condition: service_healthy
       failures:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -377,7 +253,6 @@ services:
     container_name: ree-financial
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
@@ -395,8 +270,6 @@ services:
         condition: service_healthy
       attachments:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -408,7 +281,6 @@ services:
     container_name: ree-valuation
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__PlatformBaseUrl: http://platform:8080
@@ -432,8 +304,6 @@ services:
         condition: service_healthy
       platform:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -445,7 +315,6 @@ services:
     container_name: ree-failures
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       # A9: Case Study reads/side-effects via HTTP. Deliberately no depends_on case-study —
@@ -461,8 +330,6 @@ services:
         condition: service_healthy
       identity:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -474,7 +341,6 @@ services:
     container_name: ree-platform
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
@@ -488,8 +354,6 @@ services:
         condition: service_healthy
       identity:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -501,7 +365,6 @@ services:
     container_name: ree-attachments
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       Redis__ConnectionString: redis:6379
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_attachments;Username=postgres;Password=Admin
@@ -513,8 +376,6 @@ services:
         condition: service_healthy
       platform:
         condition: service_healthy
-      otel-collector:
-        condition: service_started
     expose:
       - "8080"
     healthcheck: *app-healthcheck
@@ -526,7 +387,6 @@ services:
     container_name: ree-gateway
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports:
       - "5160:5160"
     depends_on:
@@ -557,6 +417,3 @@ services:
 
 volumes:
   ree_pgdata:
-  ree_prometheus_data:
-  ree_grafana_data:
-  ree_es_data:

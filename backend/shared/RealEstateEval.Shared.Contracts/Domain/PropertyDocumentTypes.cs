@@ -94,9 +94,9 @@ public static class PropertyDocumentTypes
         T("boundaries-document", "مستند الحدود", PropertyDocumentGroups.Ownership,
             legacyScopes: ["property-boundaries"]),
 
-        T("assignment-letter", "خطاب الإسناد", PropertyDocumentGroups.Assignment,
+        T("assignment-letter", "قرار الإسناد", PropertyDocumentGroups.Assignment,
             legacyScopes: ["property-decree"]),
-        T("delegation-letter", "خطاب التفويض", PropertyDocumentGroups.Assignment,
+        T("delegation-letter", "خطاب التكليف", PropertyDocumentGroups.Assignment,
             legacyScopes: ["property-delegation"]),
         T("owner-identity", "هوية المالك / الوكالة", PropertyDocumentGroups.Assignment),
 

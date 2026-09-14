@@ -76,7 +76,7 @@ public static class WorkOrderValidator
         {
             ValidateDeedOrRealEstateReg(dto, errors);
             if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
-                errors["delegationLetterFileNames"] = "خطاب التفويض مطلوب";
+                errors["delegationLetterFileNames"] = "خطاب التكليف مطلوب";
         }
 
         ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, errors);
@@ -86,7 +86,7 @@ public static class WorkOrderValidator
 
         if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {
-            errors["assignmentDocFileNames"] = "خطاب الإسناد مطلوب";
+            errors["assignmentDocFileNames"] = "قرار الإسناد مطلوب";
         }
 
         ValidateContacts(dto, AssignmentTypeRules.RequiresContacts(assignmentType), errors);

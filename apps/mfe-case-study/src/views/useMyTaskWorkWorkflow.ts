@@ -6,7 +6,7 @@
  * step/screen decisions and the chrome titles. Commands live in
  * `useMyTaskWorkCommands`; the view and its regions consume the returned bag.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -46,6 +46,10 @@ import {
   type TaskWorkLayout,
 } from "./my-task-work-state";
 import { useMyTaskWorkCommands } from "./useMyTaskWorkCommands";
+import {
+  flushPropertyFieldAutosave,
+  queuePropertyFieldAutosave,
+} from "../lib/app-data/property-field-autosave";
 
 export type CaseStudyTaskWorkProps = {
   task: WorkflowTask;
@@ -95,6 +99,7 @@ export function useMyTaskWorkWorkflow({
   const [phaseOverride, setPhaseOverride] = useState<WorkflowTask["phase"] | null>(
     null,
   );
+  const hydratedPropertyKeyRef = useRef("");
 
   const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
     task.poNumber,
@@ -123,8 +128,24 @@ export function useMyTaskWorkWorkflow({
     setObstructionReasonError(undefined);
   }, [task.id]);
 
+  // Flush or cancel the previous صك autosave when the panel switches tasks.
+  useEffect(() => {
+    const po = task.poNumber;
+    const propertyId = task.propertyId;
+    return () => {
+      if (propertyId) {
+        void flushPropertyFieldAutosave(po, propertyId);
+      }
+    };
+  }, [task.id, task.poNumber, task.propertyId]);
+
   useEffect(() => {
     if (!poRecord) return;
+    const hydrateKey = `${task.id}|${task.propertyId ?? "new"}`;
+    // Keep local edits for this صك — do not re-hydrate on unrelated PO refetches.
+    if (hydratedPropertyKeyRef.current === hydrateKey) return;
+    hydratedPropertyKeyRef.current = hydrateKey;
+
     setAssignmentType(poRecord.assignmentType ?? task.assignmentType ?? "تنفيذ");
     if (task.propertyId) {
       const prop =
@@ -142,7 +163,7 @@ export function useMyTaskWorkWorkflow({
       setProperty(emptyProperty());
       setHasPriorSurvey(false);
     }
-  }, [poRecord, task.propertyId, task.poNumber, task.assignmentType]);
+  }, [poRecord, task.id, task.propertyId, task.poNumber, task.assignmentType]);
 
   const linkedPropertyRemoved = Boolean(property.isRemoved);
 
@@ -150,6 +171,7 @@ export function useMyTaskWorkWorkflow({
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
         const next = { ...p, [key]: value };
+        queuePropertyFieldAutosave(task.poNumber, task.propertyId ?? next.id, next);
         return next;
       });
       setFieldErrors((e) => {
@@ -159,13 +181,17 @@ export function useMyTaskWorkWorkflow({
         return next;
       });
     },
-    [],
+    [task.poNumber, task.propertyId],
   );
 
-  const replaceProperty = useCallback((next: PoPropertyIntake) => {
-    setProperty(next);
-    setFieldErrors({});
-  }, []);
+  const replaceProperty = useCallback(
+    (next: PoPropertyIntake) => {
+      setProperty(next);
+      setFieldErrors({});
+      queuePropertyFieldAutosave(task.poNumber, task.propertyId ?? next.id, next);
+    },
+    [task.poNumber, task.propertyId],
+  );
 
   const onObstructionReasonChange = useCallback((value: string) => {
     setObstructionReason(value);

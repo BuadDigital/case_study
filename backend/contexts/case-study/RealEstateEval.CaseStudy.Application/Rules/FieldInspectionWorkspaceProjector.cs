@@ -136,7 +136,8 @@ public static class FieldInspectionWorkspaceProjector
 
         foreach (var photo in photos.EnumerateArray())
         {
-            if (GetBool(photo, "approved") && !string.IsNullOrWhiteSpace(ReadString(photo, "fileName")))
+            // Captured/uploaded file is enough — `approved` is review metadata.
+            if (!string.IsNullOrWhiteSpace(ReadString(photo, "fileName")))
                 return true;
         }
 

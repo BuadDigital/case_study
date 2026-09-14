@@ -196,7 +196,7 @@ function CreateOperationsTaskForm({
     <AppModal
       open
       title="مهمة جديدة"
-      subtitle="واجهة موحّدة للإنشاء والإسناد — «زيارة محكمة» يفعّل خطاب التفويض"
+      subtitle="واجهة موحّدة للإنشاء والإسناد — «زيارة محكمة» يفعّل خطاب التكليف"
       onClose={onClose}
       wide
       maxWidthPx={720}

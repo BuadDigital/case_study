@@ -504,6 +504,7 @@ export async function updatePropertyInPo(
   poNumber: string,
   propertyId: string,
   property: PoPropertyIntake,
+  options?: { draft?: boolean; silent?: boolean },
 ): Promise<StorageOk<PoPropertyIntake> | StorageError> {
   if (property.isRemoved) {
     return { ok: false, error: "لا يمكن تعديل عقار محذوف" };
@@ -511,15 +512,19 @@ export async function updatePropertyInPo(
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
-  const dto = property.bourseDataCompleted
-    ? propertyToDto({ ...property, id: propertyId })
-    : propertyToEnfathDto({ ...property, id: propertyId });
+  const withId = { ...property, id: propertyId };
+  const dto = options?.draft
+    ? propertyToDto({ ...withId, bourseDataCompleted: false })
+    : property.bourseDataCompleted
+      ? propertyToDto(withId)
+      : propertyToEnfathDto(withId);
 
   const result = await updateWorkOrderProperty(
     config,
     poNumber,
     propertyId,
     dto,
+    { draft: options?.draft === true },
   );
   if (!result.ok) {
     return {
@@ -529,7 +534,9 @@ export async function updatePropertyInPo(
     };
   }
 
-  notifyWorkOrdersChanged();
+  if (!options?.silent) {
+    notifyWorkOrdersChanged();
+  }
   return { ok: true, data: dtoToProperty(result.data, poNumber) };
 }
 

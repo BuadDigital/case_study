@@ -276,103 +276,106 @@ export function InspectorAccessContactFields({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2.5">
-        <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <div className="min-w-0">
-            <label htmlFor="ins-access-name" className={INS_LABEL_CLASS}>
-              {ACCESS_CONTACT_NAME_LABEL}
-            </label>
-            <input
-              ref={nameInputRef}
-              id="ins-access-name"
-              type="text"
-              disabled={!editable}
-              aria-invalid={Boolean(fieldErrors.accessContactName) || undefined}
-              className={controlClass(Boolean(fieldErrors.accessContactName))}
-              value={draft.accessContactName}
-              onChange={(e) =>
-                patchContact({ accessContactName: e.target.value })
-              }
-            />
-            {fieldErrors.accessContactName ? (
-              <p className="mt-1 mb-0 text-[11px] text-danger-text">
-                {fieldErrors.accessContactName}
-              </p>
-            ) : null}
-          </div>
-          <div className="min-w-0">
-            <label htmlFor="ins-access-phone" className={INS_LABEL_CLASS}>
-              {ACCESS_CONTACT_PHONE_LABEL}
-            </label>
-            <input
-              id="ins-access-phone"
-              type="tel"
-              inputMode="numeric"
-              dir="ltr"
-              disabled={!editable}
-              aria-invalid={Boolean(fieldErrors.accessContactPhone) || undefined}
-              className={controlClass(Boolean(fieldErrors.accessContactPhone))}
-              value={draft.accessContactPhone}
-              onChange={(e) =>
-                patchContact({ accessContactPhone: e.target.value })
-              }
-            />
-            {fieldErrors.accessContactPhone ? (
-              <p className="mt-1 mb-0 text-[11px] text-danger-text">
-                {fieldErrors.accessContactPhone}
-              </p>
-            ) : null}
-          </div>
-          <div className="min-w-0">
-            <label htmlFor="ins-access-role" className={INS_LABEL_CLASS}>
-              {ACCESS_CONTACT_ROLE_LABEL}
-            </label>
-            <select
-              id="ins-access-role"
-              disabled={!editable}
-              aria-invalid={Boolean(fieldErrors.accessContactRole) || undefined}
-              className={controlClass(Boolean(fieldErrors.accessContactRole))}
-              value={draft.accessContactRole}
-              onChange={(e) =>
-                patchContact({ accessContactRole: e.target.value })
-              }
-            >
-              <option value="">— اختر —</option>
-              {roleOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.accessContactRole ? (
-              <p className="mt-1 mb-0 text-[11px] text-danger-text">
-                {fieldErrors.accessContactRole}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        {editable ? (
-          <div className="flex flex-wrap items-end gap-2">
-            {canAddToContacts ? (
-              <button
-                type="button"
-                id="ins-access-contact-add"
-                className={actionBtnClass}
-                onClick={addCurrentToContacts}
+      <div className="flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-end gap-2.5">
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <div className="min-w-0">
+              <label htmlFor="ins-access-name" className={INS_LABEL_CLASS}>
+                {ACCESS_CONTACT_NAME_LABEL}
+              </label>
+              <input
+                ref={nameInputRef}
+                id="ins-access-name"
+                type="text"
+                disabled={!editable}
+                aria-invalid={Boolean(fieldErrors.accessContactName) || undefined}
+                className={controlClass(Boolean(fieldErrors.accessContactName))}
+                value={draft.accessContactName}
+                onChange={(e) =>
+                  patchContact({ accessContactName: e.target.value })
+                }
+              />
+              {fieldErrors.accessContactName ? (
+                <p className="mt-1 mb-0 text-[11px] text-danger-text">
+                  {fieldErrors.accessContactName}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="ins-access-phone" className={INS_LABEL_CLASS}>
+                {ACCESS_CONTACT_PHONE_LABEL}
+              </label>
+              <input
+                id="ins-access-phone"
+                type="tel"
+                inputMode="numeric"
+                dir="ltr"
+                disabled={!editable}
+                aria-invalid={Boolean(fieldErrors.accessContactPhone) || undefined}
+                className={controlClass(Boolean(fieldErrors.accessContactPhone))}
+                value={draft.accessContactPhone}
+                onChange={(e) =>
+                  patchContact({ accessContactPhone: e.target.value })
+                }
+              />
+              {fieldErrors.accessContactPhone ? (
+                <p className="mt-1 mb-0 text-[11px] text-danger-text">
+                  {fieldErrors.accessContactPhone}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="ins-access-role" className={INS_LABEL_CLASS}>
+                {ACCESS_CONTACT_ROLE_LABEL}
+              </label>
+              <select
+                id="ins-access-role"
+                disabled={!editable}
+                aria-invalid={Boolean(fieldErrors.accessContactRole) || undefined}
+                className={controlClass(Boolean(fieldErrors.accessContactRole))}
+                value={draft.accessContactRole}
+                onChange={(e) =>
+                  patchContact({ accessContactRole: e.target.value })
+                }
               >
-                {ACCESS_CONTACT_ADD_BUTTON_LABEL}
-              </button>
-            ) : null}
+                <option value="">— اختر —</option>
+                {roleOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.accessContactRole ? (
+                <p className="mt-1 mb-0 text-[11px] text-danger-text">
+                  {fieldErrors.accessContactRole}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {editable ? (
             <InspectorSiteLocationAckButton
               disabled={ackDisabled}
               title={ackTitle}
-              className={
+              className={cn(
+                "shrink-0",
                 layout === "mobile"
                   ? "h-12 min-h-12 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] px-4 text-[14px] text-ink"
-                  : undefined
-              }
+                  : undefined,
+              )}
               onClick={onAckClick}
             />
+          ) : null}
+        </div>
+        {editable && canAddToContacts ? (
+          <div className="flex flex-wrap items-center justify-start gap-2">
+            <button
+              type="button"
+              id="ins-access-contact-add"
+              className={actionBtnClass}
+              onClick={addCurrentToContacts}
+            >
+              {ACCESS_CONTACT_ADD_BUTTON_LABEL}
+            </button>
           </div>
         ) : null}
       </div>

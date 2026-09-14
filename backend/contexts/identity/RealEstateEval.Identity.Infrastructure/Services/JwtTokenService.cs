@@ -34,7 +34,8 @@ public class JwtTokenService : IJwtTokenService
         string? prototypeRole = null,
         string? distributionAssigneeId = null,
         IEnumerable<string>? pages = null,
-        string? department = null)
+        string? department = null,
+        string? jobTitle = null)
     {
         var issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
@@ -64,6 +65,8 @@ public class JwtTokenService : IJwtTokenService
             claims.Add(new Claim("distributionAssigneeId", distributionAssigneeId.Trim()));
         if (!string.IsNullOrWhiteSpace(department))
             claims.Add(new Claim("department", department.Trim()));
+        if (!string.IsNullOrWhiteSpace(jobTitle))
+            claims.Add(new Claim("jobTitle", jobTitle.Trim()));
         if (pages is not null)
             claims.AddRange(pages.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => new Claim("page", p)));
 

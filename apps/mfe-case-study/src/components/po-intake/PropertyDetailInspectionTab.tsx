@@ -103,6 +103,10 @@ import {
   finalizeInspectorWorkspace,
   finalizeSpecialistInspectionAcceptance,
 } from "../../lib/app-data/finalize-field-inspection-submission";
+import {
+  notifySpecialistFinishingRequired,
+  specialistFinishingLevelMissingMessage,
+} from "../../lib/app-data/valuation-report-specialist-finishing";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
@@ -173,7 +177,7 @@ export function PropertyDetailInspectionTab({
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
     {},
   );
-  const [mapPinned, setMapPinned] = useState(false);
+  const mapPinned = Boolean(draft?.mapPinned);
   const mapPinnedRef = useRef(false);
   mapPinnedRef.current = mapPinned;
   const [mapBackup, setMapBackup] = useState<{
@@ -460,24 +464,23 @@ export function PropertyDetailInspectionTab({
       lat: pendingMapMove.prevLat,
       lng: pendingMapMove.prevLng,
     });
-    patchDraft(
-      mapPinPatchForActor(
+    patchDraft({
+      ...mapPinPatchForActor(
         draft,
         pendingMapMove.nextLat,
         pendingMapMove.nextLng,
         mapActor,
       ),
-    );
+      mapPinned: true,
+    });
     setPendingMapMove(null);
-    setMapPinned(true);
   }
 
   function restoreInspectorMap() {
     if (!draft) return;
     const restored = restoreInspectorOriginalMapPin(draft);
     if (!restored) return;
-    patchDraft(restored);
-    setMapPinned(true);
+    patchDraft({ ...restored, mapPinned: true });
     setMapPinEpoch((n) => n + 1);
     const lat = restored.mapLatitude?.trim();
     const lng = restored.mapLongitude?.trim();
@@ -499,8 +502,10 @@ export function PropertyDetailInspectionTab({
     if (!draft || !engineeringMapPin) return;
     const nextLat = engineeringMapPin.lat.toFixed(5);
     const nextLng = engineeringMapPin.lng.toFixed(5);
-    patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, "specialist"));
-    setMapPinned(true);
+    patchDraft({
+      ...mapPinPatchForActor(draft, nextLat, nextLng, "specialist"),
+      mapPinned: true,
+    });
     setMapPinEpoch((n) => n + 1);
     showToast("تم اعتماد موقع المكتب الهندسي", "success");
     void resolveLocationPinMismatchFailure("موقع المكتب الهندسي");
@@ -532,6 +537,24 @@ export function PropertyDetailInspectionTab({
     setSaving(true);
     setFormError(null);
     try {
+      if (serviceProofFromTransactionPhotos) {
+        const finishingError = specialistFinishingLevelMissingMessage({
+          propertyId: property.id,
+          status: draft.status,
+          assetSubject: draft.featureValues.assetSubject,
+          initialAssetSubject:
+            property.propertyType?.trim() ||
+            property.classification?.trim() ||
+            "",
+        });
+        if (finishingError) {
+          notifySpecialistFinishingRequired(property.id);
+          setFormError(finishingError);
+          showToast(finishingError, "error");
+          return;
+        }
+      }
+
       const baseConfirmed: InspectorWorkspaceDraft = {
         ...draft,
         inspectionConfirmed: true,
@@ -686,12 +709,16 @@ export function PropertyDetailInspectionTab({
               draft.mapLongitude.trim() ||
               (mapGeo ? mapGeo.lng.toFixed(5) : "");
             if (nextLat && nextLng) {
-              patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, mapActor));
+              patchDraft({
+                ...mapPinPatchForActor(draft, nextLat, nextLng, mapActor),
+                mapPinned: true,
+              });
+            } else {
+              patchDraft({ mapPinned: true });
             }
-            setMapPinned(true);
             showToast("تم تثبيت الموقع", "success");
           }}
-          onUnpin={() => setMapPinned(false)}
+          onUnpin={() => patchDraft({ mapPinned: false })}
           mapPinEpoch={mapPinEpoch}
         />
       ) : (

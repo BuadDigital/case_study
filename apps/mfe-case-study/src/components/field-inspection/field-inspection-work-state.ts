@@ -20,6 +20,7 @@ export type InspectorSaveChipSection = "location" | "access" | "photos";
 export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection> = {
   mapLatitude: "location",
   mapLongitude: "location",
+  mapPinned: "location",
   inspectionDate: "location",
   inspectionTime: "location",
   streetName: "access",

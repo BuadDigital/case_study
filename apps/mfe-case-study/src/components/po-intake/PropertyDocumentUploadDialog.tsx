@@ -2,7 +2,7 @@
 
 /**
  * Upload a property document by type, or re-type an existing one. The type always comes from
- * the defined list; «مستند غير معرّف» asks for a name and a reason and goes to review.
+ * the defined list; «مستند غير معرّف» asks for a name (reason optional) and goes to review.
  */
 
 import { useEffect, useState } from "react";
@@ -171,7 +171,7 @@ export function PropertyDocumentUploadDialog({
             </div>
             <div>
               <Label className="mb-1 text-[11px]" htmlFor="property-document-reason">
-                سبب رفعه *
+                سبب رفعه
               </Label>
               <Textarea
                 id="property-document-reason"

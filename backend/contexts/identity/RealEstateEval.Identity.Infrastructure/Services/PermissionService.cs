@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Rules;
 using RealEstateEval.Identity.Infrastructure.Permissions;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 
@@ -59,6 +60,10 @@ public sealed class PermissionService : IPermissionService
 
         var department = SupervisingDepartments.NormalizeProfileValue(profile?.Department)
             ?? SupervisingDepartments.DeriveForRole(prototypeRole ?? profile?.RoleId);
+        var rawJobTitle = profile?.JobTitle?.Trim();
+        var jobTitle = string.IsNullOrWhiteSpace(rawJobTitle)
+            ? StaffRoleCatalog.JobTitleForRoleId(prototypeRole ?? profile?.RoleId)
+            : rawJobTitle;
 
         return new PermissionsDto
         {
@@ -68,6 +73,7 @@ public sealed class PermissionService : IPermissionService
             DisplayName = user.DisplayName,
             DistributionAssigneeId = profile?.DistributionAssigneeId?.Trim(),
             Department = department,
+            JobTitle = jobTitle,
             Pages = pages.OrderBy(p => p).ToList(),
             Capabilities = capabilities.OrderBy(c => c).ToList(),
         };

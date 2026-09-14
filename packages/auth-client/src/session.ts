@@ -8,6 +8,8 @@ export type AuthUser = {
   id: string;
   email: string;
   displayName: string;
+  /** Staff job title from profile — optional on older stored sessions. */
+  jobTitle?: string;
 };
 
 export type AuthSession = {
