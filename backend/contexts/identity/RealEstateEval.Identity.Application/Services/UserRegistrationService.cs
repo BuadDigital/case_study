@@ -67,74 +67,74 @@ public partial class UserRegistrationService : IUserRegistrationService
         if (await _repo.NationalIdInUseAsync(nationalId, null, cancellationToken))
             return (null, StaffUserRules.FormError("رقم الهوية مستخدم مسبقاً.", "nationalId"));
 
-        await using var transaction = await _repo.BeginTransactionAsync(cancellationToken);
-        var userName = await AllocateUniqueUserNameAsync(normalizedMobile, cancellationToken);
-
-        // Password-less Identity user: sign-in is by Saudi mobile (OTP UI / future SMS OTP).
-        var (user, createErrors) = await _accounts.CreateAsync(
-            new NewStaffIdentityUser(userName, normalizedEmail, displayName, normalizedMobile),
-            cancellationToken);
-        if (user is null)
-            return (null, StaffUserRules.FormError(StaffProfileRules.Describe(createErrors)));
-
-        foreach (var identityRole in defaults.IdentityRoles.Distinct())
+        return await _repo.ExecuteInTransactionAsync(async ct =>
         {
-            var roleErrors = await _accounts.AddToRoleAsync(user.Id, identityRole, cancellationToken);
-            if (roleErrors.Count > 0)
-                return (null, StaffUserRules.FormError(StaffProfileRules.Describe(roleErrors)));
-        }
+            var userName = await AllocateUniqueUserNameAsync(normalizedMobile, ct);
 
-        var (department, departmentError) = SupervisingDepartments.ResolveForStaff(
-            roleId,
-            request.Department);
-        if (departmentError is not null)
-            return (null, StaffUserRules.FormError(departmentError, "department"));
+            // Password-less Identity user: sign-in is by Saudi mobile (OTP UI / future SMS OTP).
+            var (user, createErrors) = await _accounts.CreateAsync(
+                new NewStaffIdentityUser(userName, normalizedEmail, displayName, normalizedMobile),
+                ct);
+            if (user is null)
+                return (false, (null, StaffUserRules.FormError(StaffProfileRules.Describe(createErrors))));
 
-        // Numbering session (bit lines 2 and 5): The user reference number is assigned upon registration.
-        var (userReference, userReferenceError) =
-            await _repo.AllocateUserReferenceAsync(_time.UtcNow(), cancellationToken);
-        if (userReferenceError is not null)
-            return (null, StaffUserRules.FormError(userReferenceError));
+            foreach (var identityRole in defaults.IdentityRoles.Distinct())
+            {
+                var roleErrors = await _accounts.AddToRoleAsync(user.Id, identityRole, ct);
+                if (roleErrors.Count > 0)
+                    return (false, (null, StaffUserRules.FormError(StaffProfileRules.Describe(roleErrors))));
+            }
 
-        var profile = StaffProfileRules.NewStaffProfile(
-            request,
-            user.Id,
-            userName,
-            roleId,
-            department,
-            userReference,
-            _time.UtcNow());
+            var (department, departmentError) = SupervisingDepartments.ResolveForStaff(
+                roleId,
+                request.Department);
+            if (departmentError is not null)
+                return (false, (null, StaffUserRules.FormError(departmentError, "department")));
 
-        await _repo.AddProfileAsync(profile, cancellationToken);
-        await AddAuditAsync(
-            _audit.Create(
-                actorId,
-                "USER_CREATED",
-                "user",
+            // Numbering session (bit lines 2 and 5): The user reference number is assigned upon registration.
+            var (userReference, userReferenceError) =
+                await _repo.AllocateUserReferenceAsync(_time.UtcNow(), ct);
+            if (userReferenceError is not null)
+                return (false, (null, StaffUserRules.FormError(userReferenceError)));
+
+            var profile = StaffProfileRules.NewStaffProfile(
+                request,
                 user.Id,
-                null,
-                new
-                {
-                    user.DisplayName,
-                    user.Email,
-                    profile.RoleId,
-                    profile.City,
-                    profile.Department,
-                    profile.ContractType,
-                    profile.Status,
-                }),
-            cancellationToken);
-        await SaveIdentityAsync(cancellationToken);
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
+                userName,
+                roleId,
+                department,
+                userReference,
+                _time.UtcNow());
 
-        var dto = await _repo.GetByUserIdAsync(user.Id, cancellationToken);
-        return (new CreateStaffUserResponseDto
-        {
-            User = dto!,
-            UserName = userName,
-            ActivationRequired = false,
-        }, null);
+            await _repo.AddProfileAsync(profile, ct);
+            await AddAuditAsync(
+                _audit.Create(
+                    actorId,
+                    "USER_CREATED",
+                    "user",
+                    user.Id,
+                    null,
+                    new
+                    {
+                        user.DisplayName,
+                        user.Email,
+                        profile.RoleId,
+                        profile.City,
+                        profile.Department,
+                        profile.ContractType,
+                        profile.Status,
+                    }),
+                ct);
+            await SaveIdentityAsync(ct);
+
+            var dto = await _repo.GetByUserIdAsync(user.Id, ct);
+            return (true, (new CreateStaffUserResponseDto
+            {
+                User = dto!,
+                UserName = userName,
+                ActivationRequired = false,
+            }, (Dictionary<string, string>?)null));
+        }, cancellationToken);
     }
 
     public async Task<(UserListItemDto? Result, Dictionary<string, string>? Errors)> UpdateStaffAsync(
@@ -176,82 +176,80 @@ public partial class UserRegistrationService : IUserRegistrationService
                 return (null, StaffUserRules.FormError(refusal));
         }
 
-        await using var transaction = await _repo.BeginTransactionAsync(cancellationToken);
-
-        var changes = StaffProfileRules.TrackedChanges(user, stored, target);
-        var mobileChanged = StaffProfileRules.MobileChanged(user, target);
-        var identityChanged = StaffProfileRules.IdentityChanged(user, target);
-        var profile = StaffProfileRules.ApplyEdits(stored, target);
-
-        var departmentBefore = stored.Department;
-        if (!string.Equals(stored.RoleId, target.RoleId, StringComparison.Ordinal))
+        return await _repo.ExecuteInTransactionAsync(async ct =>
         {
-            StaffProfileRules.Track(changes, "roleId", stored.RoleId, target.RoleId);
-            profile = await ApplyRoleChangeAsync(
-                user,
-                profile,
+            var changes = StaffProfileRules.TrackedChanges(user, stored, target);
+            var mobileChanged = StaffProfileRules.MobileChanged(user, target);
+            var identityChanged = StaffProfileRules.IdentityChanged(user, target);
+            var profile = StaffProfileRules.ApplyEdits(stored, target);
+
+            var departmentBefore = stored.Department;
+            if (!string.Equals(stored.RoleId, target.RoleId, StringComparison.Ordinal))
+            {
+                StaffProfileRules.Track(changes, "roleId", stored.RoleId, target.RoleId);
+                profile = await ApplyRoleChangeAsync(
+                    user,
+                    profile,
+                    target.RoleId!,
+                    request.Department,
+                    ct);
+            }
+
+            var (department, departmentError) = SupervisingDepartments.ResolveForStaff(
                 target.RoleId!,
-                request.Department,
-                cancellationToken);
-        }
+                request.Department ?? profile.Department);
+            if (departmentError is not null)
+                return (false, (null, StaffUserRules.FormError(departmentError, "department")));
+            StaffProfileRules.Track(changes, "department", departmentBefore, department);
+            profile = profile with { Department = department };
 
-        var (department, departmentError) = SupervisingDepartments.ResolveForStaff(
-            target.RoleId!,
-            request.Department ?? profile.Department);
-        if (departmentError is not null)
-            return (null, StaffUserRules.FormError(departmentError, "department"));
-        StaffProfileRules.Track(changes, "department", departmentBefore, department);
-        profile = profile with { Department = department };
+            if (changes.Count > 0)
+            {
+                profile = profile with { UpdatedAtUtc = _time.UtcNow() };
+                await AddAuditAsync(
+                    _audit.CreateFromChanges(
+                        actorId,
+                        "USER_UPDATED",
+                        "user",
+                        userId,
+                        changes),
+                    ct);
+            }
 
-        if (changes.Count > 0)
-        {
-            profile = profile with { UpdatedAtUtc = _time.UtcNow() };
-            await AddAuditAsync(
-                _audit.CreateFromChanges(
+            if (target.Status != stored.Status)
+            {
+                profile = await ApplyStatusChangeAsync(
+                    user,
+                    profile,
+                    target.Status,
                     actorId,
-                    "USER_UPDATED",
-                    "user",
-                    userId,
-                    changes),
-                cancellationToken);
-        }
+                    ct);
+            }
 
-        if (target.Status != stored.Status)
-        {
-            profile = await ApplyStatusChangeAsync(
-                user,
-                profile,
-                target.Status,
-                actorId,
-                cancellationToken);
-        }
+            await _repo.ApplyProfileAsync(profile, ct);
 
-        await _repo.ApplyProfileAsync(profile, cancellationToken);
+            if (identityChanged)
+            {
+                // The account store refreshes the normalized email and saves every tracked change,
+                // so the profile row and audit entry commit in the same round trip.
+                var updateErrors = await _accounts.UpdateAsync(
+                    new StaffIdentityWrite(
+                        userId,
+                        target.DisplayName,
+                        target.Email,
+                        target.Mobile,
+                        mobileChanged),
+                    ct);
+                if (updateErrors.Count > 0)
+                    return (false, (null, StaffUserRules.FormError(StaffProfileRules.Describe(updateErrors))));
+            }
+            else
+            {
+                await SaveIdentityAsync(ct);
+            }
 
-        if (identityChanged)
-        {
-            // The account store refreshes the normalized email and saves every tracked change,
-            // so the profile row and audit entry commit in the same round trip.
-            var updateErrors = await _accounts.UpdateAsync(
-                new StaffIdentityWrite(
-                    userId,
-                    target.DisplayName,
-                    target.Email,
-                    target.Mobile,
-                    mobileChanged),
-                cancellationToken);
-            if (updateErrors.Count > 0)
-                return (null, StaffUserRules.FormError(StaffProfileRules.Describe(updateErrors)));
-        }
-        else
-        {
-            await SaveIdentityAsync(cancellationToken);
-        }
-
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
-
-        return (await _repo.GetByUserIdAsync(userId, cancellationToken), null);
+            return (true, (await _repo.GetByUserIdAsync(userId, ct), (Dictionary<string, string>?)null));
+        }, cancellationToken);
     }
 
     /// <summary>

@@ -114,6 +114,34 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
         return MaskSecrets(next);
     }
 
+    public async Task<OrganizationSettingsDto> SyncStaffValuerAsync(
+        SyncStaffValuerRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = (request.UserId ?? "").Trim();
+        if (userId.Length == 0)
+            throw new ArgumentOutOfRangeException(nameof(request), "معرّف المستخدم غير صالح.");
+
+        var mode = (request.Mode ?? "").Trim();
+        if (!StaffValuerRosterSyncRules.IsUpsert(mode)
+            && !string.Equals(mode, StaffValuerRosterSyncRules.DeactivateMode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentOutOfRangeException(nameof(request), "وضع المزامنة غير صالح.");
+        }
+
+        var current = await GetInternalAsync(cancellationToken);
+        var nextValuers = StaffValuerRosterSyncRules.Apply(
+            current.Valuers,
+            userId,
+            request.DisplayName ?? "",
+            StaffValuerRosterSyncRules.IsUpsert(mode));
+        return await SaveAsync(
+            new SaveOrganizationSettingsRequest { Valuers = nextValuers },
+            actorId,
+            cancellationToken);
+    }
+
     private static void ValidateSla(OrganizationSlaSettingsDto sla)
     {
         if (sla.DefaultBusinessDays < 1 || sla.DefaultBusinessDays > 60)
@@ -353,6 +381,7 @@ public sealed class OrganizationSettingsService : IOrganizationSettingsService
                 Role = NormalizeValuerRole(v.Role),
                 IsActive = v.IsActive,
                 SignatureUrl = string.IsNullOrWhiteSpace(v.SignatureUrl) ? null : v.SignatureUrl.Trim(),
+                StaffUserId = string.IsNullOrWhiteSpace(v.StaffUserId) ? null : v.StaffUserId.Trim(),
             })
             .ToList();
     }

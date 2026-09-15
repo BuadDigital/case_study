@@ -48,7 +48,6 @@ export type StaffFormState = {
   taxNumber: string;
   commercialRegistration: string;
   joinedAt: string;
-  avatarUrl: string;
   nationalId: string;
 };
 
@@ -65,7 +64,6 @@ export const EMPTY_STAFF_FORM: StaffFormState = {
   taxNumber: "",
   commercialRegistration: "",
   joinedAt: "",
-  avatarUrl: "",
   nationalId: "",
 };
 
@@ -105,9 +103,6 @@ export function validateStaffForm(form: StaffFormState): FieldErrors {
       : undefined,
     form.iban.trim() && !/^SA\d{22}$/i.test(form.iban.replace(/\s/g, ""))
       ? { iban: "صيغة الآيبان السعودي غير صحيحة." }
-      : undefined,
-    form.avatarUrl.trim() && !/^https?:\/\/\S+$/i.test(form.avatarUrl.trim())
-      ? { avatarUrl: "رابط الصورة الشخصية غير صالح." }
       : undefined,
   );
 }
@@ -154,7 +149,6 @@ export function buildCreateStaffUserPayload(form: StaffFormState): CreateStaffUs
     taxNumber: form.taxNumber.trim() || undefined,
     commercialRegistration: form.commercialRegistration.trim() || undefined,
     joinedAt: form.joinedAt || undefined,
-    avatarUrl: form.avatarUrl.trim() || undefined,
     nationalId: form.nationalId.trim(),
   };
 }
@@ -293,4 +287,24 @@ export const USER_TOASTS = {
   edited: "تم حفظ التعديلات.",
   reactivated: "تم تفعيل المستخدم.",
   unlocked: "تم فك قفل الحساب.",
+  rosterSyncFailed:
+    "تم حفظ الحساب، وتعذّر مزامنته مع سجل المقيّمين. أكمل الربط من شاشة المقيّمون.",
 } as const;
+
+export const APPRAISER_ROLE_ID = "real-estate-appraiser";
+
+/** Linked roster row stays active for every non-disabled appraiser account. */
+export function staffValuerSyncMode(
+  roleId: string | null | undefined,
+  status: string | null | undefined,
+): "upsert" | "deactivate" {
+  if (roleId === APPRAISER_ROLE_ID && status !== "Disabled") return "upsert";
+  return "deactivate";
+}
+
+export function shouldSyncStaffValuer(
+  beforeRoleId?: string | null,
+  afterRoleId?: string | null,
+): boolean {
+  return beforeRoleId === APPRAISER_ROLE_ID || afterRoleId === APPRAISER_ROLE_ID;
+}

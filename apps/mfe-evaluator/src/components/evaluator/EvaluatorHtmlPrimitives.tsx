@@ -3,8 +3,6 @@
 import type { ReactNode } from "react";
 import {
   StatusPill,
-  Tab,
-  TabBar,
   cn,
   opsFieldBox,
   opsWorkCard,
@@ -159,35 +157,60 @@ export function ValTabBar({
   active,
   onChange,
 }: {
-  tabs: { id: string; label: string }[];
+  tabs: { id: string; label: string; hint?: string }[];
   active: string;
   onChange: (id: string) => void;
 }) {
   return (
-    <TabBar
-      className="z-10 mx-[-20px] mb-0 flex flex-wrap items-stretch gap-x-0.5 gap-y-0 !overflow-x-hidden overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-transparent px-3.5 sm:px-3.5"
+    <div
+      role="tablist"
       aria-label="أقسام نافذة التقييم"
+      className="mb-1 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 pt-4"
     >
-      {tabs.map((tab) => {
-        const on = active === tab.id;
+      {tabs.map((tab, index) => {
+        const selected = active === tab.id;
         return (
-          <Tab
+          <button
             key={tab.id}
-            active={on}
+            type="button"
+            role="tab"
+            aria-label={tab.label}
+            aria-selected={selected}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "relative mb-0 max-lg:min-h-0 border-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal text-text-2",
-              "rounded-none transition-[background,color] duration-150",
-              "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
-              on &&
-                "!border-0 !bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
+              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit transition-colors",
+              selected
+                ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
+                : "border-border border-t-border bg-surface",
             )}
           >
-            {tab.label}
-          </Tab>
+            <span
+              className={cn(
+                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
+                selected ? "bg-ink text-white" : "bg-surface-2 text-text-3",
+              )}
+            >
+              {index + 1}
+            </span>
+            <span className="min-w-0 flex-1 text-start">
+              <span
+                className={cn(
+                  "block text-[13px] font-bold",
+                  selected ? "text-gold-d" : "text-heading",
+                )}
+              >
+                {tab.label}
+              </span>
+              {tab.hint ? (
+                <span className="mt-[3px] block text-[11px] leading-relaxed text-text-3">
+                  {tab.hint}
+                </span>
+              ) : null}
+            </span>
+          </button>
         );
       })}
-    </TabBar>
+    </div>
   );
 }
 

@@ -13,4 +13,13 @@ public interface IOrganizationSettingsService
         SaveOrganizationSettingsRequest request,
         string actorId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Link or hide a valuers-roster row for a staff appraiser account.
+    /// Taqeem membership and signature stay on the roster screen.
+    /// </summary>
+    Task<OrganizationSettingsDto> SyncStaffValuerAsync(
+        SyncStaffValuerRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default);
 }

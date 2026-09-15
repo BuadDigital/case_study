@@ -17,9 +17,11 @@ import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { getAuthSession } from "@platform/auth-client";
 import { useToast } from "@platform/ui-kit";
 import type { ConfirmActionSpec } from "../../components/ConfirmActionModal";
+import { refreshOrgCache } from "../../lib/org-settings-ui";
 import {
   submitCreateStaffUser,
   submitDeleteStaffUser,
+  submitSyncStaffValuer,
   submitUnlockStaffUser,
   submitUpdateStaffUser,
 } from "../../lib/users-api";
@@ -36,6 +38,8 @@ import {
   PROTECTED_ACCOUNT_TOAST,
   reactivateErrorMessage,
   saveEditErrors,
+  staffValuerSyncMode,
+  shouldSyncStaffValuer,
   unlockErrorMessage,
   USER_TOASTS,
   validateStaffForm,
@@ -84,6 +88,26 @@ export function useUsersOrganizationWorkflow() {
   // Invalidation already refetches the active query — an extra refetch was a duplicate GET.
   const invalidateUsers = () =>
     queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
+
+  async function syncValuerRoster(opts: {
+    id: string;
+    displayName: string;
+    roleId?: string | null;
+    status?: string | null;
+    previousRoleId?: string | null;
+  }): Promise<void> {
+    if (!shouldSyncStaffValuer(opts.previousRoleId, opts.roleId)) return;
+    const ok = await submitSyncStaffValuer({
+      userId: opts.id,
+      displayName: opts.displayName,
+      mode: staffValuerSyncMode(opts.roleId, opts.status),
+    });
+    if (!ok) {
+      showToast(USER_TOASTS.rosterSyncFailed, "error");
+      return;
+    }
+    await refreshOrgCache().catch(() => undefined);
+  }
 
   function updateField<K extends keyof StaffFormState>(key: K, value: StaffFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -138,12 +162,18 @@ export function useUsersOrganizationWorkflow() {
       setAdding(true);
       await invalidateUsers();
       showToast(USER_TOASTS.created, "success");
+      await syncValuerRoster({
+        id: result.result.user.id,
+        displayName: result.result.user.displayName,
+        roleId: result.result.user.roleId,
+        status: result.result.user.status,
+      });
     } finally {
       setSaving(false);
     }
   }
 
-  async function onDeleteUser(user: { id: string; name: string }) {
+  async function onDeleteUser(user: StaffUser) {
     setDeletingId(user.id);
     try {
       const result = await submitDeleteStaffUser(user.id);
@@ -153,6 +183,13 @@ export function useUsersOrganizationWorkflow() {
       }
       await invalidateUsers();
       showToast(USER_TOASTS.disabled, "success");
+      await syncValuerRoster({
+        id: user.id,
+        displayName: user.name,
+        roleId: user.roleId,
+        status: "Disabled",
+        previousRoleId: user.roleId,
+      });
     } finally {
       setDeletingId(null);
     }
@@ -171,13 +208,20 @@ export function useUsersOrganizationWorkflow() {
       setEditingUser(null);
       await invalidateUsers();
       showToast(USER_TOASTS.edited, "success");
+      await syncValuerRoster({
+        id: result.user.id,
+        displayName: result.user.displayName,
+        roleId: result.user.roleId,
+        status: result.user.status,
+        previousRoleId: users.find((row) => row.id === userId)?.roleId,
+      });
       return null;
     } finally {
       setPendingActionId(null);
     }
   }
 
-  async function onReactivateUser(user: { id: string; name: string }) {
+  async function onReactivateUser(user: StaffUser) {
     setPendingActionId(user.id);
     try {
       const result = await submitUpdateStaffUser(user.id, { status: "Active" });
@@ -187,6 +231,13 @@ export function useUsersOrganizationWorkflow() {
       }
       await invalidateUsers();
       showToast(USER_TOASTS.reactivated, "success");
+      await syncValuerRoster({
+        id: result.user.id,
+        displayName: result.user.displayName,
+        roleId: result.user.roleId,
+        status: result.user.status,
+        previousRoleId: user.roleId,
+      });
     } finally {
       setPendingActionId(null);
     }

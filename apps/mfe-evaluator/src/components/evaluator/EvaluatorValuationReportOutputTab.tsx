@@ -340,6 +340,7 @@ export function EvaluatorValuationReportOutputTab({
   inspectionTaskId,
   surveyTaskId,
   assignedAppraiserName,
+  assignedAppraiserId,
   onReportChoicesPatch,
   onNavigateTab,
   showActions = true,
@@ -351,6 +352,7 @@ export function EvaluatorValuationReportOutputTab({
   surveyTaskId?: string | null;
   /** From work-order dispatch — printed as a fourth participants column. */
   assignedAppraiserName?: string | null;
+  assignedAppraiserId?: string | null;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   /** A red appraiser field in the report opens the evaluator tab that completes it. */
   onNavigateTab?: (tab: ReportAppraiserTab) => void;
@@ -510,6 +512,7 @@ export function EvaluatorValuationReportOutputTab({
             settings: approachSettings,
           }),
           assignedAppraiserName,
+          assignedAppraiserId,
           survey,
           photoSlots: isLandInspectionContext({
             vacantLand: inspector?.vacantLand,
@@ -553,6 +556,7 @@ export function EvaluatorValuationReportOutputTab({
     [
       approachSettings,
       assignedAppraiserName,
+      assignedAppraiserId,
       clients,
       cost,
       deedSlot,

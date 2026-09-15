@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationCostApproachDto } from "@platform/api-client";
 import {
+  buildCostNarrative,
   costApproachDerived,
   costFieldsFromDto,
   EMPTY_COST_FIELDS,
@@ -142,5 +143,55 @@ describe("costApproachDerived age / depreciation", () => {
     );
     expect(derived.physicalLocal).toBe(0);
     expect(derived.totalDepLocal).toBe(0);
+  });
+});
+
+describe("buildCostNarrative", () => {
+  it("omits لم يتم تبريره and empty justification lines until they are written", () => {
+    const text = buildCostNarrative(EMPTY_COST_FIELDS, [], "replacement");
+    expect(text).not.toContain("لم يتم تبريره");
+    expect(text).not.toContain("مبررات بنود التكلفة");
+    expect(text).not.toContain("مبررات العمر والتقادم");
+    expect(text).not.toContain("مخصص الطوارئ");
+    expect(text).toContain("طريقة التكلفة: الإحلال.");
+    expect(text).toContain("التمويل — معدل 5٪ سنوياً على 18 شهراً");
+  });
+
+  it("lists a line only after its justification is written", () => {
+    const text = buildCostNarrative(
+      {
+        ...EMPTY_COST_FIELDS,
+        indirectDraft: {
+          ...EMPTY_COST_FIELDS.indirectDraft,
+          contingency: { pct: "3", rationale: "نقص معلومات التنفيذ" },
+        },
+        actualAgeRationale: "من المعاينة",
+      },
+      [
+        {
+          id: "c1",
+          structureKind: "floor",
+          itemKey: "ground_floor",
+          itemLabelAr: "الدور الأرضي",
+          label: "الدور الأرضي",
+          areaSqm: 200,
+          unit: "sqm",
+          unitLabelAr: "م²",
+          unitCostSar: 0,
+          lineTotal: 0,
+          rationale: "سعر مقاول الحي",
+          isIncluded: true,
+          sortOrder: 0,
+        },
+      ],
+      "reproduction",
+    );
+    expect(text).toContain("طريقة التكلفة: إعادة الإنتاج.");
+    expect(text).toContain("• الدور الأرضي — سعر مقاول الحي");
+    expect(text).toContain("• مخصص الطوارئ (3٪) — نقص معلومات التنفيذ");
+    expect(text).toContain("• العمر الفعلي (10) — من المعاينة");
+    expect(text).not.toContain("لم يتم تبريره");
+    expect(text).not.toContain("أرباح المطور");
+    expect(text).not.toContain("العمر الاقتصادي");
   });
 });

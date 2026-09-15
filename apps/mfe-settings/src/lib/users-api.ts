@@ -4,6 +4,7 @@ import {
   fetchMyProfile,
   listDistributionAssignees,
   listUsers,
+  syncStaffValuer,
   unlockStaffUser,
   updateStaffUser,
   type CreateStaffUserRequest,
@@ -12,7 +13,6 @@ import {
   type UnlockStaffUserResult,
   type UpdateStaffUserRequest,
   type UpdateStaffUserResult,
-  type UsersApiConfig,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
@@ -113,6 +113,17 @@ export async function submitDeleteStaffUser(
   const config = apiConfig();
   if (!config) return { ok: false, kind: "network" };
   return deleteStaffUser(config, userId);
+}
+
+export async function submitSyncStaffValuer(body: {
+  userId: string;
+  displayName: string;
+  mode: "upsert" | "deactivate";
+}): Promise<boolean> {
+  const config = apiConfig();
+  if (!config) return false;
+  const result = await syncStaffValuer(config, body);
+  return result.ok;
 }
 
 /** Current signed-in user's staff profile (for header / self profile). */

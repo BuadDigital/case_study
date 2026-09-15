@@ -173,5 +173,11 @@ public class AdjustmentFactorRationaleTests
             string actorId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new OrganizationSettingsDto());
+
+        public Task<OrganizationSettingsDto> SyncStaffValuerAsync(
+            SyncStaffValuerRequest request,
+            string actorId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new OrganizationSettingsDto());
     }
 }
