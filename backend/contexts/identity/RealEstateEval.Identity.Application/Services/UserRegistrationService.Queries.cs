@@ -60,7 +60,6 @@ public partial class UserRegistrationService
             {
                 Id = member.UserId,
                 DisplayName = member.DisplayName,
-                Email = member.Email,
                 JobTitle = member.JobTitle,
                 SystemRole = orgRole,
             };

@@ -14,6 +14,7 @@ import {
   COST_ITEM_OPTIONS,
   costGroupOf,
 } from "./lib/cost-line-math";
+import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import {
   EMPTY_COST_FIELDS,
   blankCostLine,
@@ -24,6 +25,7 @@ import {
   costLineTotals,
   costLinesFromInventory,
   costSaveRequest,
+  inspectorAgeYearsForCostField,
   reorderCostLines,
   type CostApproachFields,
 } from "./lib/cost-approach-state";
@@ -33,6 +35,7 @@ export type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
   poNumber?: string;
   propertyId: string;
+  inspectionTaskId?: string | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
@@ -50,6 +53,7 @@ export function useCostApproachWorkflow({
   valuationRequestId,
   poNumber,
   propertyId,
+  inspectionTaskId = null,
   cost,
   hydrateKey,
   buildingOnly,
@@ -97,7 +101,19 @@ export function useCostApproachWorkflow({
     }
     setCostDraft(cost.lines);
     setFields(costFieldsFromDto(cost));
-  }, [hydrateKey, cost]);
+    const taskId = inspectionTaskId?.trim();
+    if (cost.actualAgeYears != null || !taskId) return;
+    let cancelled = false;
+    void fetchInspectorWorkspace(taskId).then((workspace) => {
+      if (cancelled) return;
+      const age = inspectorAgeYearsForCostField(workspace?.propertyAgeYears);
+      if (!age) return;
+      setFields((prev) => ({ ...prev, actualAge: age }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateKey, cost, inspectionTaskId]);
 
   const seedCostFromInventory = useCallback(async () => {
     const config = apiConfig();

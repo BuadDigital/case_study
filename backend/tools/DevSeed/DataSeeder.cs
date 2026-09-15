@@ -227,7 +227,7 @@ public static class DataSeeder
 
             "user1234",
 
-            "مسؤول النظام",
+            "سليمان الصالحي",
 
             "مسؤول التحول الرقمي (CDO)",
 
@@ -253,7 +253,7 @@ public static class DataSeeder
 
             "عماد الرشيد",
 
-            "مسؤول التحول الرقمي (CDO)",
+            "المدير التنفيذي",
 
             "دوام كامل",
 
@@ -579,26 +579,26 @@ public static class DataSeeder
 
 
 
-    private static readonly Dictionary<string, string> DistributionAssigneeIdsByEmail =
+    private static readonly Dictionary<string, string> DistributionAssigneeIdsByLogin =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["feras@ejadah.dev"] = "gov-firas",
-            ["abdullah.kathiri@ejadah.dev"] = "val-abdullah",
-            ["ayman.majrashi@ejadah.dev"] = "val-ayman",
-            ["mohammed.assaf@ejadah.dev"] = "val-assaf",
-            ["ahmed@ejadah.dev"] = "fi-ahmed",
-            ["abdullah.abdulmane@ejadah.dev"] = "fi-abdullah-abdulmane",
-            ["survey.jeddah@ejadah.dev"] = "eo-jeddah",
+            ["feras"] = "gov-firas",
+            ["abdullah"] = "val-abdullah",
+            ["ayman"] = "val-ayman",
+            ["assaf"] = "val-assaf",
+            ["ahmed"] = "fi-ahmed",
+            ["abdullah_m"] = "fi-abdullah-abdulmane",
+            ["jeddah_survey"] = "eo-jeddah",
  // Case specialists must be assignable on «Transaction Distribution» (supervisors stay without ids).
-            ["osama@ejadah.dev"] = "cs-osama",
+            ["osama"] = "cs-osama",
         };
 
  /// <summary>Staff membership / badge numbers shown as “membership number”.</summary>
-    private static readonly Dictionary<string, string> EmployeeNumbersByEmail =
+    private static readonly Dictionary<string, string> EmployeeNumbersByLogin =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["ahmed@ejadah.dev"] = "FI-002",
-            ["abdullah.abdulmane@ejadah.dev"] = "FI-001",
+            ["ahmed"] = "FI-002",
+            ["abdullah_m"] = "FI-001",
         };
 
     private static readonly Dictionary<string, string> DemoMobileByLogin =
@@ -619,18 +619,21 @@ public static class DataSeeder
             ["assaf"] = "+966500000012",
         };
 
-    private static readonly Dictionary<string, string[]> ReviewerCityCoverageByEmail =
+    private static readonly Dictionary<string, string[]> ReviewerCityCoverageByLogin =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["feras@ejadah.dev"] = ["الرياض", "الطائف"],
+            ["feras"] = ["الرياض", "الطائف"],
         };
 
-    private static void ApplyReviewerCityCoverage(UserProfile profile, string email)
+    private static void ApplyReviewerCityCoverage(UserProfile profile, string loginUsername)
     {
-        if (!ReviewerCityCoverageByEmail.TryGetValue(email.Trim(), out var cities))
+        if (!ReviewerCityCoverageByLogin.TryGetValue(loginUsername.Trim(), out var cities))
             return;
         profile.ReviewerCityCoverageJson = JsonSerializer.Serialize(cities);
     }
+
+    private static string StaffIdentityEmail(string loginUsername) =>
+        SaudiMobiles.InternalEmail(DemoMobileByLogin[loginUsername]);
 
  /// <summary>
  /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
@@ -681,9 +684,9 @@ public static class DataSeeder
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
-        foreach (var (email, cities) in ReviewerCityCoverageByEmail)
+        foreach (var (login, cities) in ReviewerCityCoverageByLogin)
         {
-            var user = await userManager.FindByEmailAsync(email.Trim());
+            var user = await userManager.FindByNameAsync(login.Trim());
             if (user is null) continue;
 
             var profile = await db.UserProfiles
@@ -702,9 +705,9 @@ public static class DataSeeder
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
-        foreach (var (email, assigneeId) in DistributionAssigneeIdsByEmail)
+        foreach (var (login, assigneeId) in DistributionAssigneeIdsByLogin)
         {
-            var user = await userManager.FindByEmailAsync(email.Trim());
+            var user = await userManager.FindByNameAsync(login.Trim());
             if (user is null) continue;
 
             var profile = await db.UserProfiles
@@ -761,12 +764,12 @@ public static class DataSeeder
  /// Never clear a previously stored id when the email is absent from the map.
  /// </summary>
     private static string? ResolveSeedDistributionAssigneeId(
-        string email,
+        string login,
         string? roleId,
         string userName,
         string? existing)
     {
-        if (DistributionAssigneeIdsByEmail.TryGetValue(email.Trim(), out var mapped)
+        if (DistributionAssigneeIdsByLogin.TryGetValue(login.Trim(), out var mapped)
             && !string.IsNullOrWhiteSpace(mapped))
             return mapped.Trim();
         if (!string.IsNullOrWhiteSpace(existing))
@@ -782,9 +785,9 @@ public static class DataSeeder
         UserManager<ApplicationUser> userManager,
         CancellationToken cancellationToken)
     {
-        foreach (var (email, employeeNumber) in EmployeeNumbersByEmail)
+        foreach (var (login, employeeNumber) in EmployeeNumbersByLogin)
         {
-            var user = await userManager.FindByEmailAsync(email.Trim());
+            var user = await userManager.FindByNameAsync(login.Trim());
             if (user is null) continue;
 
             var profile = await identity.UserProfiles
@@ -1012,7 +1015,7 @@ public static class DataSeeder
             // (PartyFeePricingRules.AllowsCategoryDefaultFallback): every office is priced by
             // an explicit assignment, so the demo office must be assigned or its surveys can
             // never accrue a fee.
-            var demoOfficeAssigneeId = DistributionAssigneeIdsByEmail[JeddahSurveyOfficeSeed.Email];
+            var demoOfficeAssigneeId = DistributionAssigneeIdsByLogin[JeddahSurveyOfficeSeed.LoginUsername];
             var hasAssignment = await financial.PartyFeePricingAssignments.AnyAsync(
                 a => a.Category == PartyFeePricingCategories.EngineeringSurvey
                     && a.AssigneeId == demoOfficeAssigneeId,
@@ -1143,9 +1146,11 @@ public static class DataSeeder
 
     {
 
-        var normalizedEmail = seed.Email.Trim().ToLowerInvariant();
+        var identityEmail = StaffIdentityEmail(seed.LoginUsername);
+        var mobile = DemoMobileByLogin[seed.LoginUsername];
 
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
+        var user = await userManager.FindByNameAsync(seed.LoginUsername)
+            ?? await userManager.FindByEmailAsync(seed.Email.Trim());
 
         if (user is null)
 
@@ -1157,13 +1162,13 @@ public static class DataSeeder
 
                 UserName = seed.LoginUsername,
 
-                Email = normalizedEmail,
+                Email = identityEmail,
 
                 EmailConfirmed = true,
 
                 DisplayName = seed.DisplayName,
 
-                PhoneNumber = DemoMobileByLogin[seed.LoginUsername],
+                PhoneNumber = mobile,
 
                 PhoneNumberConfirmed = true,
 
@@ -1179,7 +1184,7 @@ public static class DataSeeder
 
                 throw new InvalidOperationException(
 
-                    "Failed to seed HR user " + seed.Email + ": "
+                    "Failed to seed HR user " + seed.LoginUsername + ": "
 
                     + string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
@@ -1213,13 +1218,17 @@ public static class DataSeeder
 
             }
 
-            if (!string.Equals(
-                    user.PhoneNumber,
-                    DemoMobileByLogin[seed.LoginUsername],
-                    StringComparison.Ordinal))
+            if (!string.Equals(user.PhoneNumber, mobile, StringComparison.Ordinal))
             {
-                user.PhoneNumber = DemoMobileByLogin[seed.LoginUsername];
+                user.PhoneNumber = mobile;
                 user.PhoneNumberConfirmed = true;
+                changed = true;
+            }
+
+            if (!string.Equals(user.Email, identityEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                user.Email = identityEmail;
+                user.EmailConfirmed = true;
                 changed = true;
             }
 
@@ -1285,7 +1294,7 @@ public static class DataSeeder
                     : null,
 
                 DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
-                    normalizedEmail,
+                    seed.LoginUsername,
                     PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
                     seed.LoginUsername,
                     existing: null),
@@ -1313,13 +1322,13 @@ public static class DataSeeder
 
                     Section = seed.Section,
 
-                    EmployeeNumber = EmployeeNumbersByEmail.GetValueOrDefault(normalizedEmail),
+                    EmployeeNumber = EmployeeNumbersByLogin.GetValueOrDefault(seed.LoginUsername),
 
                 },
 
             };
 
-            ApplyReviewerCityCoverage(profile, normalizedEmail);
+            ApplyReviewerCityCoverage(profile, seed.LoginUsername);
             db.UserProfiles.Add(profile);
 
         }
@@ -1345,7 +1354,7 @@ public static class DataSeeder
                 : null;
 
             profile.DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
-                normalizedEmail,
+                seed.LoginUsername,
                 PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
                 seed.LoginUsername,
                 profile.DistributionAssigneeId);
@@ -1357,7 +1366,7 @@ public static class DataSeeder
                     profile.FeeValueSar = 100m;
             }
 
-            ApplyReviewerCityCoverage(profile, normalizedEmail);
+            ApplyReviewerCityCoverage(profile, seed.LoginUsername);
 
             profile.PermissionLevel = seed.PermissionLevel;
 
@@ -1387,7 +1396,7 @@ public static class DataSeeder
 
             profile.HrEmployee.Section = seed.Section;
 
-            if (EmployeeNumbersByEmail.TryGetValue(normalizedEmail, out var employeeNumber))
+            if (EmployeeNumbersByLogin.TryGetValue(seed.LoginUsername, out var employeeNumber))
                 profile.HrEmployee.EmployeeNumber = employeeNumber;
 
         }
@@ -1408,9 +1417,11 @@ public static class DataSeeder
 
     {
 
-        var normalizedEmail = seed.Email.Trim().ToLowerInvariant();
+        var identityEmail = StaffIdentityEmail(seed.LoginUsername);
+        var mobile = DemoMobileByLogin[seed.LoginUsername];
 
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
+        var user = await userManager.FindByNameAsync(seed.LoginUsername)
+            ?? await userManager.FindByEmailAsync(seed.Email.Trim());
 
         if (user is null)
 
@@ -1422,13 +1433,13 @@ public static class DataSeeder
 
                 UserName = seed.LoginUsername,
 
-                Email = normalizedEmail,
+                Email = identityEmail,
 
                 EmailConfirmed = true,
 
                 DisplayName = seed.OrganizationName,
 
-                PhoneNumber = DemoMobileByLogin[seed.LoginUsername],
+                PhoneNumber = mobile,
 
                 PhoneNumberConfirmed = true,
 
@@ -1444,7 +1455,7 @@ public static class DataSeeder
 
                 throw new InvalidOperationException(
 
-                    "Failed to seed PROC provider " + seed.Email + ": "
+                    "Failed to seed PROC provider " + seed.LoginUsername + ": "
 
                     + string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
@@ -1478,13 +1489,17 @@ public static class DataSeeder
 
             }
 
-            if (!string.Equals(
-                    user.PhoneNumber,
-                    DemoMobileByLogin[seed.LoginUsername],
-                    StringComparison.Ordinal))
+            if (!string.Equals(user.PhoneNumber, mobile, StringComparison.Ordinal))
             {
-                user.PhoneNumber = DemoMobileByLogin[seed.LoginUsername];
+                user.PhoneNumber = mobile;
                 user.PhoneNumberConfirmed = true;
+                changed = true;
+            }
+
+            if (!string.Equals(user.Email, identityEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                user.Email = identityEmail;
+                user.EmailConfirmed = true;
                 changed = true;
             }
 
@@ -1543,7 +1558,7 @@ public static class DataSeeder
                 City = "جدة",
 
                 DistributionAssigneeId =
-                    DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail),
+                    DistributionAssigneeIdsByLogin.GetValueOrDefault(seed.LoginUsername),
 
                 Status = UserStatus.Active,
 
@@ -1590,7 +1605,7 @@ public static class DataSeeder
             profile.City = "جدة";
 
             profile.DistributionAssigneeId =
-                DistributionAssigneeIdsByEmail.GetValueOrDefault(normalizedEmail);
+                DistributionAssigneeIdsByLogin.GetValueOrDefault(seed.LoginUsername);
 
             profile.Status = UserStatus.Active;
 

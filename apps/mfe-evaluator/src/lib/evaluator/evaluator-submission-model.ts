@@ -54,7 +54,8 @@ export function dtoToSubmission(
     status: (dto.status as EvaluatorSubmissionStatus) ?? payload.status,
     reportNo:
       typeof payload.reportNo === "string" ? payload.reportNo : base.reportNo,
-    independenceDeclared: Boolean(payload.independenceDeclared),
+    // Frozen report text — the appraiser does not tick a declaration.
+    independenceDeclared: true,
     reportWorkers: normalizeReportWorkers(payload.reportWorkers),
     assetDataConfirmed: Boolean(payload.assetDataConfirmed),
     assetDataVarianceNotes:

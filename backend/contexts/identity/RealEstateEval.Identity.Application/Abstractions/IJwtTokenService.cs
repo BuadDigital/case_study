@@ -1,6 +1,6 @@
 namespace RealEstateEval.Identity.Application.Abstractions;
 
-public sealed record TokenSubject(string Id, string Email, string DisplayName);
+public sealed record TokenSubject(string Id, string DisplayName);
 
 public interface IJwtTokenService
 {

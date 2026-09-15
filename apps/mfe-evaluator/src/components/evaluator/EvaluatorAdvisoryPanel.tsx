@@ -299,12 +299,6 @@ export function EvaluatorAdvisoryPanel({
         </span>
       </div>
       <div className={infoRowClass}>
-        <span className="shrink-0 text-text-3">إقرار الاستقلالية</span>
-        <span className="text-left font-medium text-text">
-          {submission.independenceDeclared ? "مُؤكَّد" : "غير مؤكد"}
-        </span>
-      </div>
-      <div className={infoRowClass}>
         <span className="shrink-0 text-text-3">مراجعة بيانات الأصل</span>
         <span className="text-left font-medium text-text">
           {submission.assetDataConfirmed ? "مُؤكَّدة" : "غير مؤكَّدة"}
@@ -318,21 +312,6 @@ export function EvaluatorAdvisoryPanel({
           </span>
         </div>
       ) : null}
-      {(submission.reportWorkers ?? [])
-        .filter((w) => w.name.trim())
-        .map((w, i) => (
-          <div key={w.id || i} className={infoRowClass}>
-            <span className="shrink-0 text-text-3">
-              عامل {w.role ? `(${w.role})` : `#${i + 1}`}
-            </span>
-            <span className="text-left font-medium text-text">
-              {w.name}
-              {w.licenseNumber.trim()
-                ? ` · ترخيص ${w.licenseNumber}`
-                : ""}
-            </span>
-          </div>
-        ))}
       {submission.reportNo.trim() ? (
         <div className={infoRowClass}>
           <span className="shrink-0 text-text-3">رقم التقرير</span>

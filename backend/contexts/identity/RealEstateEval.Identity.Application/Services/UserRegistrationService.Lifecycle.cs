@@ -16,7 +16,7 @@ public partial class UserRegistrationService
     public async Task<int> DeleteAllRegisteredAsync(
         CancellationToken cancellationToken = default)
     {
-        const string protectedEmail = "admin@local.dev";
+        const string protectedUserName = "admin";
 
         var userIds = await _repo.ListProfiledUserIdsAsync(cancellationToken);
 
@@ -27,8 +27,8 @@ public partial class UserRegistrationService
             if (user is null)
                 continue;
 
-            var email = (user.Email ?? "").Trim().ToLowerInvariant();
-            if (email == protectedEmail)
+            var userName = (user.UserName ?? "").Trim().ToLowerInvariant();
+            if (userName is protectedUserName or "sliman")
                 continue;
 
             var roles = await _accounts.GetRolesAsync(userId, cancellationToken);
@@ -99,7 +99,6 @@ public partial class UserRegistrationService
             return (false, "المستخدم غير موجود.");
 
         var refusal = StaffUserRules.DisableRefusalReason(
-            user.Email,
             user.UserName,
             userId,
             requestingUserId);

@@ -55,15 +55,11 @@ public partial class UserRegistrationService : IUserRegistrationService
 
         var roleId = request.RoleId.Trim();
         var defaults = StaffRoleDefaults.For(roleId);
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         // The above verification within ValidateCreateStaffRequest ensures a valid Saudi mobile.
         var normalizedMobile = StaffUserRules.NormalizeMobile(request.Mobile)!;
+        var normalizedEmail = SaudiMobiles.InternalEmail(normalizedMobile);
         var displayName = request.DisplayName.Trim();
         var nationalId = request.NationalId.Trim();
-
-        var existingEmail = await _accounts.FindByEmailAsync(normalizedEmail, cancellationToken);
-        if (existingEmail is not null)
-            return (null, StaffUserRules.FormError("البريد الإلكتروني مستخدم مسبقاً.", "email"));
 
         if (await _repo.PhoneNumberInUseAsync(normalizedMobile, null, cancellationToken))
             return (null, StaffUserRules.FormError("رقم الجوال مستخدم مسبقاً.", "mobile"));
@@ -72,7 +68,7 @@ public partial class UserRegistrationService : IUserRegistrationService
             return (null, StaffUserRules.FormError("رقم الهوية مستخدم مسبقاً.", "nationalId"));
 
         await using var transaction = await _repo.BeginTransactionAsync(cancellationToken);
-        var userName = await AllocateUniqueUserNameAsync(normalizedEmail, cancellationToken);
+        var userName = await AllocateUniqueUserNameAsync(normalizedMobile, cancellationToken);
 
         // Password-less Identity user: sign-in is by Saudi mobile (OTP UI / future SMS OTP).
         var (user, createErrors) = await _accounts.CreateAsync(
@@ -173,7 +169,6 @@ public partial class UserRegistrationService : IUserRegistrationService
         if (target.Status != stored.Status && target.Status == UserStatus.Disabled)
         {
             var refusal = StaffUserRules.DisableRefusalReason(
-                user.Email,
                 user.UserName,
                 userId,
                 actorId);
@@ -305,7 +300,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         if (!string.IsNullOrWhiteSpace(email)
             && await _repo.EmailInUseAsync(email, userId, cancellationToken))
         {
-            errors["email"] = "البريد الإلكتروني مستخدم مسبقاً.";
+            errors["mobile"] = "رقم الجوال مستخدم مسبقاً.";
         }
 
         if (!string.IsNullOrWhiteSpace(mobile)
@@ -324,10 +319,10 @@ public partial class UserRegistrationService : IUserRegistrationService
     }
 
     private async Task<string> AllocateUniqueUserNameAsync(
-        string normalizedEmail,
+        string normalizedMobile,
         CancellationToken cancellationToken)
     {
-        var baseName = StaffUserRules.DeriveUserNameFromEmail(normalizedEmail);
+        var baseName = StaffUserRules.DeriveUserNameFromMobile(normalizedMobile);
         var candidate = baseName;
         var suffix = 2;
 

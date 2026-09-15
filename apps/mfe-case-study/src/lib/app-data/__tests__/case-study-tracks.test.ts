@@ -15,7 +15,6 @@ const staff: StaffUser[] = [
     distributionAssigneeId: "fi-ahmed",
     role: "معاين ميداني",
     roleId: "field-inspector",
-    email: "fi@ejadah.dev",
     type: "internal",
   },
   {
@@ -24,7 +23,6 @@ const staff: StaffUser[] = [
     distributionAssigneeId: "val-abdullah",
     role: "مقيم عقاري",
     roleId: "real-estate-appraiser",
-    email: "val@ejadah.dev",
     type: "internal",
   },
 ];

@@ -20,7 +20,6 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     referenceNumber: u.referenceNumber ?? null,
     name: u.displayName,
     role: u.jobTitle,
-    email: u.email,
     userName: u.userName,
     distributionAssigneeId: u.distributionAssigneeId ?? undefined,
     reviewerCityCoverage: reviewerCityCoverageFromUser(u),

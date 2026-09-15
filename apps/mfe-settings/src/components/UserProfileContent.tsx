@@ -158,6 +158,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   const detailSections = useMemo(() => {
     const map = new Map<string, { label: string; value: string }[]>();
     for (const field of user.details ?? []) {
+      if (/إيميل|بريد/i.test(field.label)) continue;
       const list = map.get(field.section) ?? [];
       list.push({ label: field.label, value: field.value });
       map.set(field.section, list);
@@ -302,7 +303,6 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
               <ProfileField label="الاسم" value={user.name} />
               <ProfileField label="الدور / المسمى" value={user.role} />
-              <ProfileField label="البريد الإلكتروني" value={user.email} dir="ltr" />
               <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
               {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
               {user.department ? (

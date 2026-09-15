@@ -29,7 +29,6 @@ export function CaseStudyDeedNatureMatchReview({
   poNumber: string;
   surveyTaskId: string | null;
   inspectionTaskId: string | null;
-  /** True when the transaction was distributed to the engineering office. */
   engineeringAssigned?: boolean;
   readOnly?: boolean;
 }) {

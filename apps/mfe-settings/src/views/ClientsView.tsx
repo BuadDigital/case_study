@@ -160,7 +160,7 @@ export function ClientsView() {
       nameEn: modal.nameEn?.trim() || null,
       identityNumber: modal.identityNumber?.trim() || null,
       phone: modal.phone?.trim() || null,
-      email: modal.email?.trim() || null,
+      email: null,
       isActive: modal.isActive !== false,
     };
     const res = modal.id
@@ -394,22 +394,6 @@ export function ClientsView() {
                     disabled={!canEdit}
                     onChange={(e) =>
                       setModal((d) => (d ? { ...d, phone: e.target.value } : d))
-                    }
-                  />
-                </div>
-                <div className={opsFldFull}>
-                  <label htmlFor="client-email" className={opsTfLbl}>
-                    البريد
-                  </label>
-                  <input
-                    id="client-email"
-                    type="email"
-                    className={opsFldControl}
-                    dir="ltr"
-                    value={modal.email ?? ""}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      setModal((d) => (d ? { ...d, email: e.target.value } : d))
                     }
                   />
                 </div>

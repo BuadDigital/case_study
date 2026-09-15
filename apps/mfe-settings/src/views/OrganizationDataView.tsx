@@ -183,7 +183,7 @@ export function OrganizationDataView() {
       ),
       certifiedValuerId: selectedCertId,
       address: filled(company.address, D.address!),
-      email: filled(company.email, D.email!),
+      email: "",
       phone: filled(company.phone, D.phone!),
       website: filled(company.website, D.website!),
     };
@@ -478,15 +478,6 @@ export function OrganizationDataView() {
                 disabled={!canEdit}
                 value={filled(company.address, D.address!)}
                 onChange={(e) => patchCompany({ address: e.target.value })}
-              />
-            </div>
-            <div className="flex flex-col">
-              <Label size="field">البريد الإلكتروني</Label>
-              <Input
-                dir="ltr"
-                disabled={!canEdit}
-                value={filled(company.email, D.email!)}
-                onChange={(e) => patchCompany({ email: e.target.value })}
               />
             </div>
             <div className="flex flex-col">

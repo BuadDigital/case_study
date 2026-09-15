@@ -427,7 +427,6 @@ export type StaffUser = {
   referenceNumber?: string | null;
   name: string;
   role: string;
-  email: string;
   userName?: string;
   distributionAssigneeId?: string;
   reviewerCityCoverage?: string[];

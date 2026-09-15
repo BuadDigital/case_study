@@ -13,7 +13,6 @@ export type UserListItem = {
   referenceNumber?: string | null;
   displayName: string;
   jobTitle: string;
-  email: string;
   userName: string;
   roleId?: string | null;
   mobile?: string | null;

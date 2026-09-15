@@ -13,6 +13,7 @@ export type DistributionAssignee = {
  */
 const EXACT_JOB_TITLE_TO_ROLE: Record<string, RoleId> = {
   "مسؤول التحول الرقمي (CDO)": "cdo",
+  "المدير التنفيذي": "cdo",
   "مدير إدارة التقييم العقاري": "general-manager",
   "مشرف قسم دراسة الحالة": "section-supervisor",
   "أخصائي دراسة حالة": "case-specialist",
@@ -96,16 +97,14 @@ export function staffUsersForPartyRole(
 export function staffUserForViewer(
   users: StaffUser[],
   roleId: RoleId,
-  viewerEmail?: string | null,
+  viewerUserId?: string | null,
 ): StaffUser | undefined {
-  const email = viewerEmail?.trim().toLowerCase();
-  if (email) {
-    const byEmail = users.find(
-      (u) =>
-        u.email.trim().toLowerCase() === email &&
-        partyRoleForStaffUser(u) === roleId,
+  const id = viewerUserId?.trim();
+  if (id) {
+    const byId = users.find(
+      (u) => u.id === id && partyRoleForStaffUser(u) === roleId,
     );
-    if (byEmail) return byEmail;
+    if (byId) return byId;
   }
   return users.find(
     (u) => isStaffAssignable(u) && partyRoleForStaffUser(u) === roleId,

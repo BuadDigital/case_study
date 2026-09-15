@@ -17,7 +17,6 @@ public class UserListItemDto
     public string? ReferenceNumber { get; init; }
     public required string DisplayName { get; init; }
     public required string JobTitle { get; init; }
-    public required string Email { get; init; }
     public required string UserName { get; init; }
     public string? RoleId { get; init; }
     public string? Mobile { get; init; }
@@ -56,7 +55,6 @@ public class DeleteRegisteredUsersResponseDto
 public sealed class CreateStaffUserRequest
 {
     public required string DisplayName { get; init; }
-    public required string Email { get; init; }
     public required string Mobile { get; init; }
     public required string City { get; init; }
     public required string RoleId { get; init; }
@@ -74,13 +72,12 @@ public sealed class CreateStaffUserRequest
 
 /// <summary>
 /// Partial update. A null member leaves the stored value untouched; an empty string clears
-/// an optional field. Mobile, city, role, name, email and national id can be replaced but
+/// an optional field. Mobile, city, role, name and national id can be replaced but
 /// never cleared, because the unified model requires them.
 /// </summary>
 public sealed class UpdateStaffUserRequest
 {
     public string? DisplayName { get; init; }
-    public string? Email { get; init; }
     public string? Mobile { get; init; }
     public string? City { get; init; }
     public string? RoleId { get; init; }

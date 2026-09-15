@@ -52,9 +52,9 @@ type ActiveTransactionNavIndicators = {
 
 /** Red sidebar counts for active transactions. */
 export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators {
-  const { role, viewerEmail, distributionAssigneeId, hasCapability } =
+  const { role, viewerUserId, distributionAssigneeId, hasCapability } =
     useAppAccess();
-  const resolvedViewerEmail = viewerEmail ?? getAuthSession()?.user.email ?? null;
+  const resolvedViewerUserId = viewerUserId ?? getAuthSession()?.user.id ?? null;
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: poRecords } = usePoRecordsQuery();
   const { data: pendingBourse } = usePendingBourseItemsQuery();
@@ -126,7 +126,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       role,
       tasks ?? [],
       undefined,
-      resolvedViewerEmail,
+      resolvedViewerUserId,
       staffUsers,
       distributionAssigneeId,
     );
@@ -176,7 +176,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     return parts.join("|");
   }, [
     role,
-    resolvedViewerEmail,
+    resolvedViewerUserId,
     distributionAssigneeId,
     tasks,
     poRecords,

@@ -32,7 +32,6 @@ function validForm(patch: Partial<StaffFormState> = {}): StaffFormState {
     ...EMPTY_STAFF_FORM,
     displayName: "سعد",
     roleId: "case-specialist",
-    email: "saad@example.com",
     mobile: "0512345678",
     city: "الرياض",
     nationalId: "1234567890",
@@ -45,7 +44,6 @@ function user(patch: Partial<StaffUser> = {}): StaffUser {
     id: "u1",
     name: "سعد",
     role: "أخصائي",
-    email: "saad@example.com",
     type: "internal",
     status: "Active",
     ...patch,
@@ -69,12 +67,11 @@ describe("validateStaffForm", () => {
   it("requires the six base fields", () => {
     const errors = validateStaffForm(EMPTY_STAFF_FORM);
     expect(Object.keys(errors).sort()).toEqual(
-      ["city", "displayName", "email", "mobile", "nationalId", "roleId"].sort(),
+      ["city", "displayName", "mobile", "nationalId", "roleId"].sort(),
     );
   });
 
   it("checks formats", () => {
-    expect(validateStaffForm(validForm({ email: "bad" })).email).toBe("صيغة البريد الإلكتروني غير صحيحة.");
     expect(validateStaffForm(validForm({ mobile: "123" })).mobile).toBe("صيغة رقم الجوال غير صحيحة.");
     expect(validateStaffForm(validForm({ mobile: "+966512345678" })).mobile).toBeUndefined();
     expect(validateStaffForm(validForm({ nationalId: "3234567890" })).nationalId).toBe(
@@ -107,10 +104,10 @@ describe("form transitions", () => {
   });
 
   it("error trimming helpers", () => {
-    expect(withoutRoleErrors({ roleId: "a", department: "b", email: "c" })).toEqual({ email: "c" });
-    const errors = { email: "x" };
+    expect(withoutRoleErrors({ roleId: "a", department: "b", city: "c" })).toEqual({ city: "c" });
+    const errors = { city: "x" };
     expect(withoutFieldError(errors, "mobile")).toBe(errors);
-    expect(withoutFieldError(errors, "email")).toEqual({});
+    expect(withoutFieldError(errors, "city")).toEqual({});
   });
 });
 
@@ -167,7 +164,7 @@ describe("row presentation", () => {
   it("canDeleteUser protects self and seeded admin accounts", () => {
     expect(canDeleteUser(user(), "u1")).toBe(false);
     expect(canDeleteUser(user(), "other")).toBe(true);
-    expect(canDeleteUser(user({ email: " S.Salhy@gmail.com " }), null)).toBe(false);
+    expect(canDeleteUser(user({ userName: "sliman" }), null)).toBe(false);
     expect(canDeleteUser(user({ userName: "Admin" }), null)).toBe(false);
   });
 
@@ -212,7 +209,7 @@ describe("dialog copy and API error mapping", () => {
     expect(deleteUserErrorMessage({ kind: "validation", message: "v" })).toBe("v");
     expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذر تعطيل المستخدم.");
     expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
-    expect(saveEditErrors({ kind: "validation", errors: { email: "e" } })).toEqual({ email: "e" });
+    expect(saveEditErrors({ kind: "validation", errors: { mobile: "e" } })).toEqual({ mobile: "e" });
     expect(saveEditErrors({ kind: "network" })).toEqual({ _form: "تعذر الاتصال بالخادم." });
     expect(saveEditErrors({ kind: "server" })).toEqual({ _form: "تعذر حفظ التعديلات." });
     expect(reactivateErrorMessage({ kind: "validation", errors: { status: "s" } })).toBe("s");

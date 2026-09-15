@@ -218,7 +218,6 @@ internal sealed class StubAuthSessionService : IAuthSessionService
             User = new UserInfoDto
             {
                 Id = "integration-user",
-                Email = "integration@example.test",
                 DisplayName = "Integration User",
             },
         });
@@ -240,7 +239,6 @@ internal sealed class StubAuthSessionService : IAuthSessionService
             User = new UserInfoDto
             {
                 Id = "integration-user",
-                Email = "integration@example.test",
                 DisplayName = "Integration User",
             },
         });

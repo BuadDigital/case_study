@@ -23,4 +23,16 @@ public static class SaudiMobiles
             return null;
         return $"+966{digits}";
     }
+
+    /// <summary>
+    /// Identity still requires a unique email. Staff accounts never collect one, so the
+    /// stored value is derived from the Saudi mobile and never shown in the product.
+    /// </summary>
+    public static string InternalEmail(string normalizedMobile)
+    {
+        var digits = Texts.DigitsOnly(normalizedMobile);
+        if (string.IsNullOrWhiteSpace(digits))
+            throw new ArgumentException("A mobile number is required.", nameof(normalizedMobile));
+        return $"{digits}@users.internal";
+    }
 }

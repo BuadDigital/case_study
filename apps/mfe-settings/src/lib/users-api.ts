@@ -117,7 +117,7 @@ export async function submitDeleteStaffUser(
 
 /** Current signed-in user's staff profile (for header / self profile). */
 export async function fetchCurrentStaffProfile(
-  fallback?: Pick<StaffUser, "id" | "name" | "role" | "email"> &
+  fallback?: Pick<StaffUser, "id" | "name" | "role"> &
     Partial<StaffUser>,
 ): Promise<StaffUser | null> {
   const config = apiConfig();

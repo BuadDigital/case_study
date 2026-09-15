@@ -17,7 +17,6 @@ public class PermissionsDto
 public class MeDto
 {
     public required string Id { get; init; }
-    public required string Email { get; init; }
     public required string DisplayName { get; init; }
     public PermissionsDto? Permissions { get; init; }
 }

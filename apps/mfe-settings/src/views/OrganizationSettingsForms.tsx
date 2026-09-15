@@ -63,34 +63,32 @@ export function OrganizationCommunicationsForm({
   return (
     <>
       <p className={cn(opsTfNote, "m-0 mb-3.5")}>
-        واجهة موحّدة لإرسال OTP والدعوات. الافتراضي <code>dev-log</code>{" "}
-        يكتب الرمز في سجل الخادم. مفاتيح API وكلمات مرور SMTP لا تُعاد في
-        الاستجابة — اترك الحقل فارغاً للإبقاء على القيمة الحالية.
+        واجهة موحّدة لإرسال OTP عبر الجوال. الافتراضي <code>dev-log</code>{" "}
+        يكتب الرمز في سجل الخادم. مفاتيح API لا تُعاد في الاستجابة — اترك
+        الحقل فارغاً للإبقاء على القيمة الحالية.
       </p>
       <div className={opsFormGrid}>
         <Field id="org-otp-provider" label="مزوّد OTP">
           <select
             id="org-otp-provider"
             className={opsFldControl}
-            value={c.otpProvider}
+            value={c.otpProvider === "email" ? "sms" : c.otpProvider}
             disabled={!canEdit}
             onChange={(e) => patchCommunications({ otpProvider: e.target.value })}
           >
             <option value="dev-log">dev-log (تطوير)</option>
             <option value="sms">sms</option>
-            <option value="email">email</option>
           </select>
         </Field>
         <Field id="org-otp-channel" label="قناة OTP الافتراضية">
           <select
             id="org-otp-channel"
             className={opsFldControl}
-            value={c.defaultOtpChannel}
+            value={c.defaultOtpChannel === "email" ? "sms" : c.defaultOtpChannel}
             disabled={!canEdit}
             onChange={(e) => patchCommunications({ defaultOtpChannel: e.target.value })}
           >
             <option value="sms">sms</option>
-            <option value="email">email</option>
           </select>
         </Field>
         <Field id="org-sms-sender" label="معرّف مرسل SMS">
@@ -101,16 +99,6 @@ export function OrganizationCommunicationsForm({
             value={c.smsSenderId ?? ""}
             disabled={!canEdit}
             onChange={(e) => patchCommunications({ smsSenderId: e.target.value })}
-          />
-        </Field>
-        <Field id="org-email-from" label="بريد المرسل">
-          <input
-            id="org-email-from"
-            className={opsFldControl}
-            dir="ltr"
-            value={c.emailFrom ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ emailFrom: e.target.value })}
           />
         </Field>
         <Field id="org-sms-api-url" label="عنوان API للرسائل (SMS)" full>
@@ -146,68 +134,12 @@ export function OrganizationCommunicationsForm({
             onChange={(e) => patchCommunications({ smsApiKey: e.target.value })}
           />
         </Field>
-        <Field id="org-smtp-host" label="خادم SMTP">
-          <input
-            id="org-smtp-host"
-            className={opsFldControl}
-            dir="ltr"
-            value={c.smtpHost ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smtpHost: e.target.value })}
-          />
-        </Field>
-        <Field id="org-smtp-port" label="منفذ SMTP">
-          <input
-            id="org-smtp-port"
-            className={opsFldControl}
-            dir="ltr"
-            type="number"
-            value={String(c.smtpPort ?? FALLBACK.smtpPort)}
-            disabled={!canEdit}
-            onChange={(e) =>
-              patchCommunications({
-                smtpPort: numberOr(e.target.value, FALLBACK.smtpPort),
-              })
-            }
-          />
-        </Field>
-        <Field id="org-smtp-user" label="مستخدم SMTP">
-          <input
-            id="org-smtp-user"
-            className={opsFldControl}
-            dir="ltr"
-            value={c.smtpUsername ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smtpUsername: e.target.value })}
-          />
-        </Field>
-        <Field
-          id="org-smtp-password"
-          label={
-            <>
-              كلمة مرور SMTP
-              {c.smtpPasswordConfigured ? " (محفوظة)" : ""}
-            </>
-          }
-        >
-          <input
-            id="org-smtp-password"
-            className={opsFldControl}
-            dir="ltr"
-            type="password"
-            autoComplete="new-password"
-            placeholder={c.smtpPasswordConfigured ? "••••••••" : ""}
-            value={c.smtpPassword ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smtpPassword: e.target.value })}
-          />
-        </Field>
       </div>
 
       <div className={cn(opsTfNote, "mt-4 flex flex-wrap items-end gap-2.5")}>
         <div className={cn(opsFld, "min-w-[12rem] flex-1")}>
           <label htmlFor="org-test-destination" className={opsTfLbl}>
-            وجهة اختبار (جوال أو بريد)
+            وجهة اختبار (جوال)
           </label>
           <input
             id="org-test-destination"
@@ -216,7 +148,7 @@ export function OrganizationCommunicationsForm({
             value={testDestination}
             disabled={!canEdit}
             onChange={(e) => setTestDestination(e.target.value)}
-            placeholder="+9665… أو email@…"
+            placeholder="+9665…"
           />
         </div>
         <button

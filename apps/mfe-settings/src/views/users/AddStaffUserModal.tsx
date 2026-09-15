@@ -95,17 +95,6 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
                 error={errors.roleId}
               />
               <RegField
-                id="staff-email"
-                label="البريد الإلكتروني"
-                required
-                type="email"
-                dir="ltr"
-                placeholder="name@example.com"
-                value={form.email}
-                onChange={(v) => updateField("email", v)}
-                error={errors.email}
-              />
-              <RegField
                 id="staff-mobile"
                 label="رقم الجوال"
                 required

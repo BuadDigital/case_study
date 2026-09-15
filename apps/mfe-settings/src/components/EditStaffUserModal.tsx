@@ -44,7 +44,6 @@ const INSPECTOR_TYPE_OPTIONS = [
 
 type FormState = {
   displayName: string;
-  email: string;
   mobile: string;
   city: string;
   roleId: RoleId | "";
@@ -63,7 +62,6 @@ type FormState = {
 function initialForm(user: StaffUser): FormState {
   return {
     displayName: user.name ?? "",
-    email: user.email ?? "",
     mobile: user.phone ?? "",
     city: user.city ?? "",
     roleId: (user.roleId as RoleId | undefined) ?? "",
@@ -86,10 +84,6 @@ function initialForm(user: StaffUser): FormState {
 function validate(form: FormState): FieldErrors {
   return mergeFieldErrors(
     form.displayName.trim() ? undefined : { displayName: "الاسم مطلوب." },
-    form.email.trim() ? undefined : { email: "البريد الإلكتروني مطلوب." },
-    form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())
-      ? { email: "صيغة البريد الإلكتروني غير صحيحة." }
-      : undefined,
     form.mobile.trim() ? undefined : { mobile: "رقم الجوال مطلوب." },
     form.mobile.trim() && !/^(\+9665|05)\d{8}$/.test(form.mobile.trim())
       ? { mobile: "صيغة رقم الجوال غير صحيحة." }
@@ -130,7 +124,6 @@ function buildPatch(
 
   const required = [
     ["displayName", "displayName"],
-    ["email", "email"],
     ["mobile", "mobile"],
     ["city", "city"],
     ["nationalId", "nationalId"],
@@ -282,16 +275,6 @@ export function EditStaffUserModal({
                   });
                 }}
                 error={errors.roleId}
-              />
-              <RegField
-                id="edit-email"
-                label="البريد الإلكتروني"
-                required
-                type="email"
-                dir="ltr"
-                value={form.email}
-                onChange={(v) => updateField("email", v)}
-                error={errors.email}
               />
               <RegField
                 id="edit-mobile"

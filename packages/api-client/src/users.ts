@@ -58,7 +58,6 @@ export async function listDistributionAssignees(
 
 export type CreateStaffUserRequest = {
   displayName: string;
-  email: string;
   mobile: string;
   city: string;
   roleId: string;
@@ -114,12 +113,11 @@ export async function createStaffUser(
 
 /**
  * Partial update. Omit a key to leave the stored value untouched; send an empty string to
- * clear an optional field. Name, email, mobile, city, role and national id can be replaced
+ * clear an optional field. Name, mobile, city, role and national id can be replaced
  * but never cleared.
  */
 export type UpdateStaffUserRequest = {
   displayName?: string;
-  email?: string;
   mobile?: string;
   city?: string;
   roleId?: string;

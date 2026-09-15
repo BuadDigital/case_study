@@ -9,7 +9,6 @@ export function useAuth() {
   const {
     role,
     authReady,
-    viewerEmail,
     viewerDisplayName,
     viewerJobTitle,
     capabilities,
@@ -58,7 +57,6 @@ export function useAuth() {
       token: session?.token ?? null,
       expiresAtUtc: session?.expiresAtUtc ?? null,
       role,
-      email: viewerEmail,
       displayName: viewerDisplayName,
       jobTitle: viewerJobTitle,
       capabilities,
@@ -70,7 +68,6 @@ export function useAuth() {
       session,
       authReady,
       role,
-      viewerEmail,
       viewerDisplayName,
       viewerJobTitle,
       capabilities,

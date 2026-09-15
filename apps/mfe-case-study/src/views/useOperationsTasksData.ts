@@ -70,7 +70,7 @@ export function useOperationsTasksData() {
   const prefillScope = searchParams.get("scope")?.trim() || undefined;
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
 
-  const { role, viewerEmail, viewerDisplayName } = useAppAccess();
+  const { role, viewerUserId, viewerDisplayName } = useAppAccess();
   const { data: staffResult, isPending: staffPending } = useStaffUsersQuery();
   const { data: distResult, isPending: distPending } =
     useDistributionAssigneesQuery();
@@ -94,9 +94,9 @@ export function useOperationsTasksData() {
   /** Viewer account for executor queues (assignee-scoped), fallback to role prototype seed. */
   const partyAccount = useMemo(
     () =>
-      partyAccountForViewer(role, viewerEmail, staffUsers) ??
+      partyAccountForViewer(role, viewerUserId, staffUsers) ??
       partyAccountForRole(role, staffUsers),
-    [role, viewerEmail, staffUsers],
+    [role, viewerUserId, staffUsers],
   );
 
   /** Keep local name used by court/credit UI that expects government-reviewer account. */

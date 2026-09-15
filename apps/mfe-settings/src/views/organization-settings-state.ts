@@ -41,7 +41,7 @@ export const TAB_META: Record<TabId, { icon: string; sub: string }> = {
   },
   communications: {
     icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6",
-    sub: "قنوات إرسال رموز التحقق (OTP) والدعوات عبر SMS والبريد",
+    sub: "قنوات إرسال رموز التحقق (OTP) عبر SMS",
   },
   sla: {
     icon: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",

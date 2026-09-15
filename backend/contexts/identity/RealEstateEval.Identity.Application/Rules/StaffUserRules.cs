@@ -8,7 +8,6 @@ internal static class StaffUserRules
 {
  /// <summary>Guards shared by disabling through PATCH and through the delete endpoint.</summary>
     internal static string? DisableRefusalReason(
-        string? accountEmail,
         string? accountUserName,
         string userId,
         string? requestingUserId)
@@ -19,10 +18,8 @@ internal static class StaffUserRules
             return "لا يمكنك تعطيل حسابك الحالي.";
         }
 
-        var email = (accountEmail ?? "").Trim().ToLowerInvariant();
         var userName = (accountUserName ?? "").Trim().ToLowerInvariant();
-        return email is "admin@local.dev" or "s.salhy@gmail.com"
-               || userName is "sliman" or "admin"
+        return userName is "sliman" or "admin"
             ? "لا يمكن تعطيل حساب المسؤول الأساسي."
             : null;
     }
@@ -41,10 +38,6 @@ internal static class StaffUserRules
 
         if (string.IsNullOrWhiteSpace(request.DisplayName))
             errors["displayName"] = "الاسم مطلوب.";
-        if (string.IsNullOrWhiteSpace(request.Email))
-            errors["email"] = "البريد الإلكتروني مطلوب.";
-        else if (!IsValidEmail(request.Email.Trim()))
-            errors["email"] = "صيغة البريد الإلكتروني غير صحيحة.";
         if (string.IsNullOrWhiteSpace(request.Mobile))
             errors["mobile"] = "رقم الجوال مطلوب.";
         else if (NormalizeMobile(request.Mobile) is null)
@@ -75,20 +68,16 @@ internal static class StaffUserRules
         return errors;
     }
 
-    private static bool IsValidEmail(string email) => Texts.IsValidEmail(email);
-
  // Q3: strict Saudi normalization shared with login — SaudiMobiles.Normalize.
     internal static string? NormalizeMobile(string mobile) =>
         SaudiMobiles.Normalize(mobile);
 
-    internal static string DeriveUserNameFromEmail(string normalizedEmail)
+    internal static string DeriveUserNameFromMobile(string normalizedMobile)
     {
-        var local = normalizedEmail.Split('@')[0].Trim().ToLowerInvariant();
-        var sanitized = Regex.Replace(local, @"[^a-z0-9._-]", "_");
-        sanitized = sanitized.Trim('_', '.', '-');
-        if (string.IsNullOrWhiteSpace(sanitized))
-            sanitized = "user";
-        return sanitized.Length > 50 ? sanitized[..50] : sanitized;
+        var digits = Texts.DigitsOnly(normalizedMobile);
+        if (string.IsNullOrWhiteSpace(digits))
+            digits = "user";
+        return digits.Length > 50 ? digits[..50] : digits;
     }
 
     internal static string BuildDistributionAssigneeId(string roleId, string userName)

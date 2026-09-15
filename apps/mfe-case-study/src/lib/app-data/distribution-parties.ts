@@ -17,7 +17,6 @@ export type DistributionPartyAccount = {
   name: string;
   subtitle: string;
   roleId: RoleId;
-  email: string;
   password: string;
   roleOptionGroup: string;
   roleOptionLabel: string;
@@ -70,7 +69,6 @@ function staffToPartyAccount(
     name: staff.name,
     subtitle: staff.role,
     roleId,
-    email: staff.email,
     password: "",
     roleOptionGroup: "",
     roleOptionLabel: staff.name,
@@ -91,10 +89,10 @@ export function partyAccountForRole(
 
 export function partyAccountForViewer(
   roleId: RoleId,
-  viewerEmail?: string | null,
+  viewerUserId?: string | null,
   users: StaffUser[] = [],
 ): DistributionPartyAccount | undefined {
-  const staff = staffUserForViewer(users, roleId, viewerEmail);
+  const staff = staffUserForViewer(users, roleId, viewerUserId);
   if (staff) return staffToPartyAccount(staff, roleId);
   return undefined;
 }

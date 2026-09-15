@@ -104,6 +104,28 @@ public class ValuationMethodologyAlertRulesTests
     }
 
     [Fact]
+    public void Market_comparable_alerts_are_skipped_when_market_approach_is_off()
+    {
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            MarketApproachRelevant = false,
+            AdoptedComparableCount = 0,
+            AdoptedComparables = [],
+            ComparableWeightsSumTo100 = false,
+        });
+
+        Assert.False(checks.Single(c => c.Number == 15).Evaluated);
+        Assert.False(checks.Single(c => c.Number == 15).Triggered);
+        Assert.False(checks.Single(c => c.Number == 15).BlocksIssuance);
+        Assert.False(checks.Single(c => c.Number == 19).Evaluated);
+        Assert.False(checks.Single(c => c.Number == 19).Triggered);
+        Assert.False(checks.Single(c => c.Number == 17).Evaluated);
+        Assert.False(checks.Single(c => c.Number == 20).Evaluated);
+        // Comparable-weight half of m16 is skipped; EmptyInput recon weights stay 100%.
+        Assert.False(checks.Single(c => c.Number == 16).Triggered);
+    }
+
+    [Fact]
     public void Weights_alert_m16_is_hard()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with

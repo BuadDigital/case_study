@@ -173,7 +173,7 @@ public sealed class AuthSessionService(
         var roles = await userManager.GetRolesAsync(user);
         var userPermissions = await permissions.GetForUserIdAsync(user.Id, cancellationToken);
         var (accessToken, accessExpiresAtUtc) = jwtTokenService.CreateToken(
-            new TokenSubject(user.Id, user.Email ?? string.Empty, user.DisplayName),
+            new TokenSubject(user.Id, user.DisplayName),
             roles,
             userPermissions?.Capabilities ?? [],
             userPermissions?.PrototypeRole,
@@ -219,7 +219,6 @@ public sealed class AuthSessionService(
             User = new UserInfoDto
             {
                 Id = user.Id,
-                Email = user.Email ?? string.Empty,
                 DisplayName = user.DisplayName,
                 JobTitle = userPermissions?.JobTitle,
             },
