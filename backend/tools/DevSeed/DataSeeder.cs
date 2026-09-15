@@ -245,6 +245,30 @@ public static class DataSeeder
 
         new(
 
+            "o.bamusa",
+
+            "o.bamusa@ejadah.dev",
+
+            "user1234",
+
+            "عمر باموسى",
+
+            "مسؤول التحول الرقمي (CDO)",
+
+            "دوام كامل",
+
+            "الإدارة التنفيذية",
+
+            null,
+
+            "cdo",
+
+            ContractType.Internal,
+
+            OrgRoles.Cdo),
+
+        new(
+
             "emad",
 
             "emad@ejadah.dev",
@@ -324,6 +348,78 @@ public static class DataSeeder
             "user1234",
 
             "أسامة الصالحي",
+
+            "أخصائي دراسة حالة",
+
+            "دوام كامل",
+
+            "إدارة التقييم العقاري",
+
+            "قسم دراسة الحالة",
+
+            "محرر",
+
+            ContractType.Internal,
+
+            "Editor"),
+
+        new(
+
+            "omar_hamrani",
+
+            "omar.hamrani@ejadah.dev",
+
+            "user1234",
+
+            "عمر الحمراني",
+
+            "أخصائي دراسة حالة",
+
+            "دوام كامل",
+
+            "إدارة التقييم العقاري",
+
+            "قسم دراسة الحالة",
+
+            "محرر",
+
+            ContractType.Internal,
+
+            "Editor"),
+
+        new(
+
+            "ayman_mahfouz",
+
+            "ayman.mahfouz@ejadah.dev",
+
+            "user1234",
+
+            "أيمن بن محفوظ",
+
+            "أخصائي دراسة حالة",
+
+            "دوام كامل",
+
+            "إدارة التقييم العقاري",
+
+            "قسم دراسة الحالة",
+
+            "محرر",
+
+            ContractType.Internal,
+
+            "Editor"),
+
+        new(
+
+            "mohammed_nafei",
+
+            "mohammed.nafei@ejadah.dev",
+
+            "user1234",
+
+            "محمد النفيعي",
 
             "أخصائي دراسة حالة",
 
@@ -591,6 +687,9 @@ public static class DataSeeder
             ["jeddah_survey"] = "eo-jeddah",
  // Case specialists must be assignable on «Transaction Distribution» (supervisors stay without ids).
             ["osama"] = "cs-osama",
+            ["omar_hamrani"] = "cs-omar-hamrani",
+            ["ayman_mahfouz"] = "cs-ayman-mahfouz",
+            ["mohammed_nafei"] = "cs-mohammed-nafei",
         };
 
  /// <summary>Staff membership / badge numbers shown as “membership number”.</summary>
@@ -605,10 +704,14 @@ public static class DataSeeder
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["sliman"] = "+966500000001",
+            ["o.bamusa"] = "+966507777777",
             ["emad"] = "+966500000000",
             ["salam"] = "+966500000002",
             ["abdulrahman"] = "+966500000003",
             ["osama"] = "+966500000004",
+            ["omar_hamrani"] = "+966500000013",
+            ["ayman_mahfouz"] = "+966500000014",
+            ["mohammed_nafei"] = "+966500000015",
             ["feras"] = "+966500000005",
             ["ayman"] = "+966500000006",
             ["abdullah"] = "+966500000007",

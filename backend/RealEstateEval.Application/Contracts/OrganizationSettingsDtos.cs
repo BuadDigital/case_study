@@ -97,6 +97,8 @@ public sealed class OrganizationValuerRosterEntryDto
     public bool IsActive { get; init; } = true;
  /// <summary>Signature Appraiser for new reports.</summary>
     public string? SignatureUrl { get; init; }
+    /// <summary>Staff account this roster row belongs to — set when created from المستخدمون.</summary>
+    public string? StaffUserId { get; init; }
 }
 
 public sealed class OrganizationBrandingSettingsDto
@@ -186,6 +188,14 @@ public sealed class SaveOrganizationSettingsRequest
     public OrganizationSlaSettingsDto? Sla { get; init; }
     public OrganizationValuationSettingsDto? Valuation { get; init; }
     public OrganizationValuationReportSettingsDto? ValuationReport { get; init; }
+}
+
+public sealed class SyncStaffValuerRequest
+{
+    public required string UserId { get; init; }
+    public required string DisplayName { get; init; }
+    /// <summary><c>upsert</c> creates/links an active valuer row; <c>deactivate</c> hides a linked row.</summary>
+    public required string Mode { get; init; }
 }
 
 public sealed class TestCommunicationRequest

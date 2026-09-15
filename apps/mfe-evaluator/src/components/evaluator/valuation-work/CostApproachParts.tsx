@@ -448,6 +448,7 @@ export function CostAnalysisCard({
   saving: boolean;
   onChange: (value: string) => void;
 }) {
+  const displayed = dirty ? notes : autoNarrative;
   return (
     <Card>
       <CardPad>
@@ -469,10 +470,10 @@ export function CostAnalysisCard({
           ) : null}
         </div>
         <textarea
-          rows={10}
-          value={dirty ? notes : autoNarrative}
+          rows={Math.max(3, Math.min(8, displayed.split("\n").length + 1))}
+          value={displayed}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
+          className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3 py-2.5 text-[13px] font-medium leading-[1.65] text-text"
         />
       </CardPad>
     </Card>

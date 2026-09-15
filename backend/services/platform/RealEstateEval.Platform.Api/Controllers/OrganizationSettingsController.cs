@@ -76,6 +76,30 @@ public sealed class OrganizationSettingsController(
         }
     }
 
+    [HttpPost("staff-valuer")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageUsers)]
+    public async Task<ActionResult<OrganizationSettingsDto>> SyncStaffValuer(
+        [FromBody] SyncStaffValuerRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await settings.SyncStaffValuerAsync(
+                request ?? new SyncStaffValuerRequest
+                {
+                    UserId = "",
+                    DisplayName = "",
+                    Mode = "",
+                },
+                ActorClaims.Id(User),
+                ct));
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            return this.BadRequestProblem(ex.Message);
+        }
+    }
+
     [HttpPost("test-communication")]
     [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
     public async Task<ActionResult<TestCommunicationResultDto>> TestCommunication(

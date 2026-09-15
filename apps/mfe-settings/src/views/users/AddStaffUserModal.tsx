@@ -160,17 +160,6 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
                 onChange={(v) => updateField("joinedAt", v)}
                 hint="اختياري"
               />
-              <RegField
-                id="staff-avatarUrl"
-                label="رابط الصورة الشخصية"
-                dir="ltr"
-                placeholder="https://…"
-                value={form.avatarUrl}
-                onChange={(v) => updateField("avatarUrl", v)}
-                error={errors.avatarUrl}
-                hint="اختياري"
-                className="sm:col-span-2"
-              />
               <FormSectionLabel>التعويض والفوترة</FormSectionLabel>
               <label
                 className={cn(

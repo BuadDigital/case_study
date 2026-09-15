@@ -67,6 +67,7 @@ export function EvaluatorValuationReportPreview({
       inspectionTaskId={inspectionTaskId}
       surveyTaskId={surveyTaskId}
       assignedAppraiserName={assignedAppraiserName}
+      assignedAppraiserId={appraisalTask.assigneeId}
       showActions={false}
       showMissingFields={false}
     />

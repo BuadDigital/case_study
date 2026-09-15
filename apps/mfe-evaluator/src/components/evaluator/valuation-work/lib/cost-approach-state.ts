@@ -489,39 +489,70 @@ export function buildCostAlerts(
   return alerts;
 }
 
-/** Auto cost analysis — `buildCostNarrative` from the interactive form. */
+function justifiedBullet(label: string, rationale: string): string | null {
+  const just = rationale.trim();
+  if (!just) return null;
+  return `• ${label} — ${just}`;
+}
+
+function narrativeSection(
+  title: string,
+  lines: Array<string | null>,
+): string | null {
+  const bullets = lines.filter((line): line is string => Boolean(line));
+  if (!bullets.length) return null;
+  return `${title}\n${bullets.join("\n")}`;
+}
+
+/** Auto cost analysis — only lines with a written justification, same as market. */
 export function buildCostNarrative(
   fields: CostApproachFields,
   costDraft: ValuationCostLineDto[],
   costBasisKey: string,
 ): string {
-  const noJust = "لم يتم تبريره";
+  const restrictionJust = fields.useRestrictionRationale.trim();
   return [
     `طريقة التكلفة: ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
-    costNum(fields.useRestrictionPct) > 0
-      ? `خصم تقييد الاستخدام: ${fields.useRestrictionPct}٪ — ${fields.useRestrictionRationale.trim() || noJust}.`
+    restrictionJust
+      ? `خصم تقييد الاستخدام: ${fields.useRestrictionPct}٪ — ${restrictionJust}.`
       : null,
-    "مبررات بنود التكلفة:\n" +
-      (costDraft.length
-        ? costDraft
-            .filter((l) => l.label.trim() || l.itemKey !== "custom")
-            .map((l) => `• ${costItemLabel(l)} — ${l.rationale.trim() || noJust}`)
-            .join("\n")
-        : "• لا توجد بنود"),
-    "مبررات النسب غير المباشرة:\n" +
-      INDIRECT_COST_ITEMS.map(
-        (item) =>
-          `• ${item.label} (${fields.indirectDraft[item.key]?.pct ?? "0"}٪) — ${(fields.indirectDraft[item.key]?.rationale ?? "").trim() || noJust}`,
-      ).join("\n") +
-      `\n• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب ٥٠٪`,
-    "مبررات العمر والتقادم:\n" +
-      [
-        `• العمر الفعلي (${fields.actualAge || "—"}) — ${noJust}`,
-        `• العمر الاقتصادي (${fields.economicAge || "—"}) — ${noJust}`,
-        `• تمديد العمر (${fields.lifeExtension || "0"}) — ${fields.lifeExtensionBasis.trim() || noJust}`,
-        `• التقادم الوظيفي (${fields.functionalObs || "0"}٪) — ${fields.functionalObsRationale.trim() || noJust}`,
-        `• التقادم الخارجي (${fields.externalObs || "0"}٪) — ${fields.externalObsRationale.trim() || noJust}`,
-      ].join("\n"),
+    narrativeSection(
+      "مبررات بنود التكلفة:",
+      costDraft
+        .filter((l) => l.label.trim() || l.itemKey !== "custom")
+        .map((l) => justifiedBullet(costItemLabel(l), l.rationale)),
+    ),
+    narrativeSection("مبررات النسب غير المباشرة:", [
+      ...INDIRECT_COST_ITEMS.map((item) =>
+        justifiedBullet(
+          `${item.label} (${fields.indirectDraft[item.key]?.pct ?? "0"}٪)`,
+          fields.indirectDraft[item.key]?.rationale ?? "",
+        ),
+      ),
+      `• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب ٥٠٪`,
+    ]),
+    narrativeSection("مبررات العمر والتقادم:", [
+      justifiedBullet(
+        `العمر الفعلي (${fields.actualAge || "—"})`,
+        fields.actualAgeRationale,
+      ),
+      justifiedBullet(
+        `العمر الاقتصادي (${fields.economicAge || "—"})`,
+        fields.economicAgeRationale,
+      ),
+      justifiedBullet(
+        `تمديد العمر (${fields.lifeExtension || "0"})`,
+        fields.lifeExtensionBasis,
+      ),
+      justifiedBullet(
+        `التقادم الوظيفي (${fields.functionalObs || "0"}٪)`,
+        fields.functionalObsRationale,
+      ),
+      justifiedBullet(
+        `التقادم الخارجي (${fields.externalObs || "0"}٪)`,
+        fields.externalObsRationale,
+      ),
+    ]),
   ]
     .filter(Boolean)
     .join("\n\n");

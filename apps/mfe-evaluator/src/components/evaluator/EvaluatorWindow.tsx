@@ -76,13 +76,37 @@ const WORK_SCREENS: ValuationWorkScreenId[] = [
   "review",
 ];
 
-const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string }[] = [
-  { id: "basic", label: "البيانات الأساسية" },
-  { id: "market", label: "طريقة المقارنة" },
-  { id: "cost", label: "طريقة المقاول" },
-  { id: "final", label: "رأي القيمة النهائي" },
-  { id: "review", label: "المراجعة النهائية" },
-  { id: "output", label: "تقرير التقييم" },
+const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = [
+  {
+    id: "basic",
+    label: "البيانات الأساسية",
+    hint: "إعدادات الأساليب وتاريخ التقييم ومدخلات التقرير",
+  },
+  {
+    id: "market",
+    label: "طريقة المقارنة",
+    hint: "بنك المقارنات وتسويات أسلوب السوق",
+  },
+  {
+    id: "cost",
+    label: "طريقة المقاول",
+    hint: "تكلفة الإحلال والإهلاك",
+  },
+  {
+    id: "final",
+    label: "رأي القيمة النهائي",
+    hint: "الرأي النهائي وخصم التصفية",
+  },
+  {
+    id: "review",
+    label: "المراجعة النهائية",
+    hint: "الافتراضات الخاصة وإرسال التقييم",
+  },
+  {
+    id: "output",
+    label: "تقرير التقييم",
+    hint: "معاينة التقرير وطباعته",
+  },
 ];
 
 function isWorkScreen(id: EvaluatorWindowTab): id is ValuationWorkScreenId {
@@ -703,6 +727,7 @@ export function EvaluatorWindow({
                   inspectionTaskId={summary.inspectionTaskId}
                   surveyTaskId={summary.surveyTaskId}
                   assignedAppraiserName={assignedAppraiserName}
+                  assignedAppraiserId={task.assigneeId}
                   onReportChoicesPatch={onReportChoicesPatch}
                   onNavigateTab={onTabChange}
                 />

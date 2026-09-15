@@ -93,8 +93,13 @@ function participantFromRoster(
   name: string,
   roster: OrganizationValuerRosterEntry[],
   fallbackRole: string,
+  staffUserId?: string | null,
 ): ParticipantFill {
-  const hit = roster.find((v) => peopleNameMatch(v.nameAr, name));
+  const linkedId = (staffUserId ?? "").trim();
+  const hit =
+    (linkedId
+      ? roster.find((v) => (v.staffUserId ?? "").trim() === linkedId)
+      : undefined) ?? roster.find((v) => peopleNameMatch(v.nameAr, name));
   return {
     name: (hit?.nameAr || name).trim(),
     title: hit
@@ -111,15 +116,25 @@ function participantFromRoster(
 export function resolveReportParticipants(
   valuers: OrganizationValuerRosterEntry[] | null | undefined,
   assignedAppraiserName?: string | null,
+  assignedAppraiserId?: string | null,
 ): ParticipantFill[] {
   const roster = (valuers ?? []).filter((v) => v.isActive !== false);
   const fixed = FIXED_REPORT_PARTICIPANT_NAMES.map((name) =>
     participantFromRoster(name, roster, "مراجع"),
   );
   const assignee = (assignedAppraiserName ?? "").trim();
-  if (!assignee || !isUsableAssigneeDisplayName(assignee)) return [...fixed];
-  if (fixed.some((p) => peopleNameMatch(p.name, assignee))) return [...fixed];
-  return [...fixed, participantFromRoster(assignee, roster, "معد")];
+  const assigneeId = (assignedAppraiserId ?? "").trim();
+  const usableName = Boolean(assignee && isUsableAssigneeDisplayName(assignee));
+  if (!usableName && !assigneeId) return [...fixed];
+  const fourth = participantFromRoster(
+    usableName ? assignee : "",
+    roster,
+    "معد",
+    assigneeId,
+  );
+  if (!fourth.name) return [...fixed];
+  if (fixed.some((p) => peopleNameMatch(p.name, fourth.name))) return [...fixed];
+  return [...fixed, fourth];
 }
 
 function removeSections(dom: Document, ids: readonly string[]) {
@@ -364,6 +379,7 @@ export function applyValuationReportLiveFill(
       resolveReportParticipants(
         extras?.valuers,
         fill.assignedAppraiserName,
+        fill.assignedAppraiserId,
       ),
       extras?.valuationBranch || fill.cells["فرع التقييم"] || "",
     );

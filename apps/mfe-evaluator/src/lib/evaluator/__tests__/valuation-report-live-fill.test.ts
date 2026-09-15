@@ -12,6 +12,7 @@ import {
   applyValuationReportLiveFill,
   buildValuationReportLiveFill,
   certifiedPracticeLicenseFromOrg,
+  resolveReportParticipants,
 } from "../valuation-report-live-fill";
 
 function poRecord(over: Record<string, unknown> = {}) {
@@ -975,6 +976,29 @@ describe("valuation report live fill from intake", () => {
       ?.nextElementSibling;
     expect(approve?.textContent).toContain("عماد رشيد الرشيد");
     expect(approve?.textContent).toContain("1210000003");
+  });
+
+  it("matches the assigned appraiser roster row by staffUserId before name", () => {
+    const people = resolveReportParticipants(
+      [
+        {
+          id: "v-name",
+          nameAr: "اسم قديم في السجل",
+          membershipNumber: "1220001583",
+          membershipCategory: "associate",
+          role: "valuer",
+          isActive: true,
+          staffUserId: "u-abdullah",
+        },
+      ],
+      "عبدالله الكثيري",
+      "u-abdullah",
+    );
+    expect(people).toHaveLength(4);
+    expect(people[3]).toMatchObject({
+      name: "اسم قديم في السجل",
+      membership: "1220001583",
+    });
   });
 
   it("keeps only the three fixed participants when assignment is empty", () => {

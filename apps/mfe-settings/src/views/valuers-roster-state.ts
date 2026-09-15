@@ -31,6 +31,10 @@ export function roleLabel(role: string): string {
   return VALUER_SYS_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
+export function isLinkedStaffValuer(row: OrganizationValuerRosterEntry): boolean {
+  return Boolean(row.staffUserId?.trim());
+}
+
 export function catLabel(value: string | null | undefined): string {
   if (!value) return "—";
   return (
@@ -140,6 +144,7 @@ export function newValuer(id = `v${Date.now()}`): OrganizationValuerRosterEntry 
     membershipExpiresAt: "",
     isActive: true,
     signatureUrl: null,
+    staffUserId: null,
   };
 }
 
@@ -197,6 +202,7 @@ const ROSTER_COMPARED_FIELDS = [
   "role",
   "isActive",
   "signatureUrl",
+  "staffUserId",
 ] as const satisfies readonly (keyof OrganizationValuerRosterEntry)[];
 
 export function rostersEqual(

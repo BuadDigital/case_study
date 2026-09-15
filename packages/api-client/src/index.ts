@@ -535,6 +535,7 @@ export {
   getOrganizationSettingsSectionEditors,
   notifyOrganizationSettingsGap,
   saveOrganizationSettings,
+  syncStaffValuer,
   testOrganizationCommunication,
   type NotifyOrganizationSettingsGapRequest,
   type OrganizationSettingsSectionEditor,
@@ -562,6 +563,7 @@ export {
   type OrganizationSlaSettings,
   type OrganizationValuationReportSettings,
   type SaveOrganizationSettingsRequest,
+  type SyncStaffValuerRequest,
 } from "./organization-settings";
 export {
   customBrandLogoUrl,

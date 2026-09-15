@@ -358,6 +358,8 @@ export type ValuationReportLiveFill = {
   reportWorkers: EvaluatorReportWorker[];
   /** §26 — assigned appraiser from work-order dispatch (fourth column). */
   assignedAppraiserName: string;
+  /** Staff user id of the assigned appraiser — matches roster `staffUserId` before name. */
+  assignedAppraiserId: string;
   /** §34 — up to 12 field photos (data URLs); null keeps that HTML slot empty. */
   photoSlots: Array<ValuationReportSlotAttachment | null>;
   /** §35 — survey document (image or PDF data URL). */
@@ -447,6 +449,7 @@ export function buildValuationReportLiveFill(input: {
   effectiveValuationDate?: string | null;
   /** Assigned appraiser from work-order dispatch — fourth participants column. */
   assignedAppraiserName?: string | null;
+  assignedAppraiserId?: string | null;
   survey?: ValuationReportSurveyBounds | null;
   photoSlots?: Array<ValuationReportSlotAttachment | null> | null;
   surveySlot?: ValuationReportSlotAttachment | null;
@@ -1192,6 +1195,7 @@ export function buildValuationReportLiveFill(input: {
     propertyDescription: approvedInspectorPropertyDescription(inspector),
     reportWorkers: draft.reportWorkers ?? [],
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
+    assignedAppraiserId: (input.assignedAppraiserId ?? "").trim(),
     photoSlots: input.photoSlots ?? [],
     surveySlot: input.surveySlot ?? null,
     deedSlot: input.deedSlot ?? null,

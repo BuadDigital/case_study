@@ -23,6 +23,7 @@ import {
   incompleteBeforeAddMessage,
   initialRows,
   isIsoDate,
+  isLinkedStaffValuer,
   isRowComplete,
   isStockSignatureUrl,
   newValuer,
@@ -209,10 +210,15 @@ describe("row helpers", () => {
     const n = newValuer("v9");
     expect(n.id).toBe("v9");
     expect(n.role).toBe("assistant");
+    expect(n.staffUserId).toBeNull();
     expect(filterRoster([row({ nameAr: "عماد" }), row({ id: "2", nameAr: "سعد" })], " عماد ")).toHaveLength(1);
     expect(rostersEqual([row()], [row()])).toBe(true);
     expect(rostersEqual([row()], [row({ nameAr: "x" })])).toBe(false);
     expect(rostersEqual([row()], [])).toBe(false);
+    expect(rostersEqual([row({ staffUserId: "u1" })], [row({ staffUserId: "u1" })])).toBe(true);
+    expect(rostersEqual([row({ staffUserId: "u1" })], [row({ staffUserId: "u2" })])).toBe(false);
+    expect(isLinkedStaffValuer(row({ staffUserId: "u1" }))).toBe(true);
+    expect(isLinkedStaffValuer(row())).toBe(false);
   });
 
   it("certBlockMessage explains why issuing is blocked", () => {

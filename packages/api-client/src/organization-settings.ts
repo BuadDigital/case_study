@@ -103,6 +103,8 @@ export type OrganizationValuerRosterEntry = {
   isActive: boolean;
   /** Valuer signature — printed on new reports. */
   signatureUrl?: string | null;
+  /** Staff account this roster row belongs to — set when created from المستخدمون. */
+  staffUserId?: string | null;
 };
 
 /** Valuers register — source: settings v2.dc.html `valuers`. */
@@ -477,6 +479,10 @@ function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
       role: String(v.role ?? v.Role ?? "assistant").trim() || "assistant",
       isActive: Boolean(v.isActive ?? v.IsActive ?? true),
       signatureUrl: (v.signatureUrl ?? v.SignatureUrl ?? null) as string | null,
+      staffUserId: (() => {
+        const linked = String(v.staffUserId ?? v.StaffUserId ?? "").trim();
+        return linked || null;
+      })(),
     });
   }
   return out;
@@ -692,6 +698,48 @@ export async function saveOrganizationSettings(
   try {
     const res = await fetch(`${base}/api/organization-settings`, {
       method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        error?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
+      };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    const raw = (await res.json()) as Record<string, unknown>;
+    return { ok: true, data: normalizeSettings(raw) };
+  } catch (err) {
+    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type SyncStaffValuerRequest = {
+  userId: string;
+  displayName: string;
+  mode: "upsert" | "deactivate";
+};
+
+export async function syncStaffValuer(
+  config: OrganizationSettingsApiConfig,
+  body: SyncStaffValuerRequest,
+): Promise<OrganizationSettingsResult<OrganizationSettingsDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/organization-settings/staff-valuer`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.token}`,

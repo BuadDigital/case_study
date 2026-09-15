@@ -49,7 +49,6 @@ type FormState = {
   roleId: RoleId | "";
   department: string;
   nationalId: string;
-  avatarUrl: string;
   inspectorType: "employee" | "contractor" | "";
   hasCompensation: boolean;
   feeValueSar: string;
@@ -67,7 +66,6 @@ function initialForm(user: StaffUser): FormState {
     roleId: (user.roleId as RoleId | undefined) ?? "",
     department: user.department ?? "",
     nationalId: user.nationalId ?? "",
-    avatarUrl: user.avatarUrl ?? "",
     inspectorType: user.inspectorType ?? "",
     hasCompensation: user.hasCompensation ?? false,
     feeValueSar:
@@ -106,9 +104,6 @@ function validate(form: FormState): FieldErrors {
     form.iban.trim() && !/^SA\d{22}$/i.test(form.iban.replace(/\s/g, ""))
       ? { iban: "صيغة الآيبان السعودي غير صحيحة." }
       : undefined,
-    form.avatarUrl.trim() && !/^https?:\/\/\S+$/i.test(form.avatarUrl.trim())
-      ? { avatarUrl: "رابط الصورة الشخصية غير صالح." }
-      : undefined,
   );
 }
 
@@ -145,7 +140,6 @@ function buildPatch(
   }
 
   const optional = [
-    "avatarUrl",
     "iban",
     "taxNumber",
     "commercialRegistration",
@@ -338,15 +332,6 @@ export function EditStaffUserModal({
                   error={errors.inspectorType}
                 />
               ) : null}
-              <RegField
-                id="edit-avatarUrl"
-                label="رابط الصورة الشخصية"
-                dir="ltr"
-                value={form.avatarUrl}
-                onChange={(v) => updateField("avatarUrl", v)}
-                error={errors.avatarUrl}
-                className="sm:col-span-2"
-              />
               <label
                 className={`flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/50 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2 ${
                   form.hasCompensation

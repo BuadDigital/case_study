@@ -74,4 +74,11 @@ public sealed class HttpOrganizationSettingsService(
         CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException(
             "Organization-settings writes belong on the Platform API.");
+
+    public Task<OrganizationSettingsDto> SyncStaffValuerAsync(
+        SyncStaffValuerRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        throw new InvalidOperationException(
+            "Organization-settings writes belong on the Platform API.");
 }

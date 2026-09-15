@@ -42,15 +42,6 @@ public sealed record StaffRoleMembership(
     IReadOnlyList<string> SystemRoles);
 
 /// <summary>
-/// A database transaction the use case opened. <c>null</c> is returned instead on providers with
-/// no transaction support, so the caller treats "no transaction" as the ordinary case.
-/// </summary>
-public interface IStaffWriteTransaction : IAsyncDisposable
-{
-    Task CommitAsync(CancellationToken cancellationToken);
-}
-
-/// <summary>
 /// Persistence boundary for staff registration: the profile rows, the uniqueness guards, the
 /// refresh tokens a disable revokes, the yearly user reference, and the audit rows each write
 /// leaves. <c>UserRegistrationService</c> in <c>Identity.Application</c> owns the rules; only
@@ -119,8 +110,13 @@ public interface IStaffRegistrationRepository
         DateTime utcNow,
         CancellationToken cancellationToken);
 
-    /// <summary>Opens a transaction, or returns <c>null</c> on a non-relational provider.</summary>
-    Task<IStaffWriteTransaction?> BeginTransactionAsync(CancellationToken cancellationToken);
+    /// <summary>
+    /// Commits only when the action returns <c>Commit: true</c>; otherwise rolls back without throwing.
+    /// Non-relational providers run the action with no transaction.
+    /// </summary>
+    Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<(bool Commit, T Result)>> action,
+        CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

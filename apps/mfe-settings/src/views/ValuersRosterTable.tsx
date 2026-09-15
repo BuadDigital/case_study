@@ -27,6 +27,7 @@ import {
 import {
   catLabel,
   isIsoDate,
+  isLinkedStaffValuer,
   removeButtonLabel,
   roleLabel,
   roleOptionsFor,
@@ -87,6 +88,10 @@ function ValuerRow({
               {isCert ? (
                 <Badge tone="primary" className="px-2 py-0.5 text-[10.5px]">
                   المقيّم المعتمد
+                </Badge>
+              ) : isLinkedStaffValuer(v) ? (
+                <Badge tone="info" className="px-2 py-0.5 text-[10.5px]">
+                  مربوط بحساب
                 </Badge>
               ) : null}
             </div>

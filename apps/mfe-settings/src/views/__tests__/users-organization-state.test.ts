@@ -16,6 +16,8 @@ import {
   reactivateErrorMessage,
   ROLE_SELECT_OPTIONS,
   saveEditErrors,
+  shouldSyncStaffValuer,
+  staffValuerSyncMode,
   statusLabel,
   statusTone,
   SUPERVISOR_DEPARTMENT_SELECT_OPTIONS,
@@ -79,7 +81,6 @@ describe("validateStaffForm", () => {
     );
     expect(validateStaffForm(validForm({ iban: "SA12" })).iban).toBe("صيغة الآيبان السعودي غير صحيحة.");
     expect(validateStaffForm(validForm({ iban: "SA 1234567890123456789012" })).iban).toBeUndefined();
-    expect(validateStaffForm(validForm({ avatarUrl: "ftp://x" })).avatarUrl).toBe("رابط الصورة الشخصية غير صالح.");
   });
 
   it("applies role-conditional rules", () => {
@@ -114,7 +115,7 @@ describe("form transitions", () => {
 describe("buildCreateStaffUserPayload", () => {
   it("trims and drops optional blanks", () => {
     const payload = buildCreateStaffUserPayload(
-      validForm({ displayName: " سعد ", iban: " ", taxNumber: "", joinedAt: "", avatarUrl: "" }),
+      validForm({ displayName: " سعد ", iban: " ", taxNumber: "", joinedAt: "" }),
     );
     expect(payload.displayName).toBe("سعد");
     expect(payload.department).toBeUndefined();
@@ -123,7 +124,6 @@ describe("buildCreateStaffUserPayload", () => {
     expect(payload.iban).toBeUndefined();
     expect(payload.taxNumber).toBeUndefined();
     expect(payload.joinedAt).toBeUndefined();
-    expect(payload.avatarUrl).toBeUndefined();
     expect(payload.hasCompensation).toBe(false);
   });
 
@@ -219,5 +219,21 @@ describe("dialog copy and API error mapping", () => {
     expect(unlockErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
     expect(unlockErrorMessage({ kind: "validation", message: "u" })).toBe("u");
     expect(unlockErrorMessage({ kind: "server" })).toBe("تعذر فك قفل الحساب.");
+  });
+});
+
+describe("staff valuer roster sync", () => {
+  it("upserts an active appraiser and deactivates everyone else", () => {
+    expect(staffValuerSyncMode("real-estate-appraiser", "Active")).toBe("upsert");
+    expect(staffValuerSyncMode("real-estate-appraiser", "Locked")).toBe("upsert");
+    expect(staffValuerSyncMode("real-estate-appraiser", "PendingActivation")).toBe("upsert");
+    expect(staffValuerSyncMode("real-estate-appraiser", "Disabled")).toBe("deactivate");
+    expect(staffValuerSyncMode("case-specialist", "Active")).toBe("deactivate");
+  });
+
+  it("syncs when the account is or was an appraiser", () => {
+    expect(shouldSyncStaffValuer(undefined, "real-estate-appraiser")).toBe(true);
+    expect(shouldSyncStaffValuer("real-estate-appraiser", "case-specialist")).toBe(true);
+    expect(shouldSyncStaffValuer("case-specialist", "cdo")).toBe(false);
   });
 });

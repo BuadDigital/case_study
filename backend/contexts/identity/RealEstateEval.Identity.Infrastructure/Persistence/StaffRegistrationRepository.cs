@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
@@ -250,11 +249,10 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
             utcNow,
             cancellationToken);
 
-    public async Task<IStaffWriteTransaction?> BeginTransactionAsync(
+    public Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<(bool Commit, T Result)>> action,
         CancellationToken cancellationToken) =>
-        _db.Database.IsRelational()
-            ? new EfStaffWriteTransaction(await _db.Database.BeginTransactionAsync(cancellationToken))
-            : null;
+        DbContextTransaction.ExecuteInTransactionAsync(_db, action, cancellationToken);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         _db.SaveChangesAsync(cancellationToken);
@@ -329,14 +327,5 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         row.DistributionAssigneeId = profile.DistributionAssigneeId;
         row.Status = profile.Status;
         row.UpdatedAtUtc = profile.UpdatedAtUtc;
-    }
-
-    private sealed class EfStaffWriteTransaction(IDbContextTransaction transaction)
-        : IStaffWriteTransaction
-    {
-        public Task CommitAsync(CancellationToken cancellationToken) =>
-            transaction.CommitAsync(cancellationToken);
-
-        public ValueTask DisposeAsync() => transaction.DisposeAsync();
     }
 }
