@@ -1,8 +1,12 @@
 import type { ToastTone } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "./po-intake-data";
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import {
+  isValidSaudiNationalId,
+  type InspectorWorkspaceDraft,
+} from "./inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE,
+  SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE,
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
   buildSiteLocationAckLetter,
   canPrintSiteLocationAck,
@@ -37,6 +41,11 @@ export function handleSiteLocationAckClick(input: {
     })
   ) {
     input.showToast(SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE, "info");
+    return;
+  }
+
+  if (!isValidSaudiNationalId(input.draft.accessContactNationalId)) {
+    input.showToast(SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE, "info");
     return;
   }
 

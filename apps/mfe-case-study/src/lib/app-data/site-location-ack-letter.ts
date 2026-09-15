@@ -28,6 +28,9 @@ export type SiteLocationAckLetter = {
 export const SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE =
   "ثبّت الموقع أولاً عبر «تثبيت الموقع» قبل طباعة إقرار صحة الموقع.";
 
+export const SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE =
+  "أدخل رقم الهوية قبل طباعة إقرار صحة الموقع.";
+
 export const SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE =
   "تعذّر فتح خطاب الإقرار — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.";
 
@@ -102,7 +105,7 @@ export function buildSiteLocationAckLetter(
     dateHijri: formatHijriAr(when),
     dateGreg: formatGregAr(when),
     contactName: dash(draft.accessContactName),
-    civilId: "—",
+    civilId: dash(draft.accessContactNationalId),
     contactPhone: dash(draft.accessContactPhone),
     capacity: dash(draft.accessContactRole),
     requestNumber: dash(property?.requestNumber),

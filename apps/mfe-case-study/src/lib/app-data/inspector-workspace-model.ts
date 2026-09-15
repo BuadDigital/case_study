@@ -290,12 +290,14 @@ export function payloadToDraft(
     accessContactName: readString(payload.accessContactName),
     accessContactPhone: readString(payload.accessContactPhone),
     accessContactRole: readString(payload.accessContactRole),
+    accessContactNationalId: readString(payload.accessContactNationalId),
     accessRouteDescription:
       readString(payload.accessRouteDescription) ||
       composeAccessRouteDescription({
         name: readString(payload.accessContactName),
         phone: readString(payload.accessContactPhone),
         role: readString(payload.accessContactRole),
+        nationalId: readString(payload.accessContactNationalId),
       }),
     roomCount: readString(payload.roomCount),
     hallCount: readString(payload.hallCount),
@@ -389,12 +391,14 @@ export function draftToPayload(
     accessContactName: draft.accessContactName,
     accessContactPhone: draft.accessContactPhone,
     accessContactRole: draft.accessContactRole,
+    accessContactNationalId: draft.accessContactNationalId,
     accessRouteDescription:
       draft.accessRouteDescription.trim() ||
       composeAccessRouteDescription({
         name: draft.accessContactName,
         phone: draft.accessContactPhone,
         role: draft.accessContactRole,
+        nationalId: draft.accessContactNationalId,
       }),
     roomCount: draft.roomCount,
     hallCount: draft.hallCount,

@@ -208,9 +208,16 @@ public static class WorkOrderPropertyWriteRules
                 Name = (c.Name ?? "").Trim(),
                 Role = (c.Role ?? "").Trim(),
                 Phone = (c.Phone ?? "").Trim(),
+                NationalId = NormalizeNationalId(c.NationalId),
                 SortOrder = order++,
             })
             .ToList();
+    }
+
+    internal static string NormalizeNationalId(string? value)
+    {
+        var digits = Texts.DigitsOnly(value ?? "");
+        return digits.Length <= 16 ? digits : digits[..16];
     }
 
     public static void ReplacePropertyContacts(

@@ -209,8 +209,8 @@ public static class PropertyListRowBuilder
 
  /// <summary>
  /// Survey waived when classification does not require it, the property has
- /// a registered title (in-kind registry), or the same deed already exists on a
- /// different work order (true prior registration).
+ /// a registered title, it sits on an approved organizational plan (plan + plot),
+ /// or the same deed already exists on a different work order.
  /// </summary>
     private static bool PriorSurveyWaived(
         WorkOrderProperty prop,

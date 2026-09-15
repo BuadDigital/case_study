@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   CONTACT_ROLE_OPTIONS,
+  emptyPoContact,
   type PoContact,
 } from "../../lib/app-data/po-intake-data";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
@@ -19,6 +20,10 @@ import {
   PHONE_MIN_DIGITS,
   splitContactPhones,
 } from "../../lib/domain/po-intake/property-validation";
+import {
+  ACCESS_CONTACT_NATIONAL_ID_LABEL,
+  normalizeSaudiNationalId,
+} from "../../lib/app-data/inspector-workspace-data";
 
 function ContactPhoneField({
   id,
@@ -132,7 +137,7 @@ export function PoContactEditor({
   }
 
   function addContact() {
-    onChange([...contacts, { name: "", role: "", phone: "" }]);
+    onChange([...contacts, emptyPoContact()]);
   }
 
   function removeContact(index: number) {
@@ -167,6 +172,16 @@ export function PoContactEditor({
               value={c.name}
               error={errors[`contact_name_${i}`]}
               onChange={(v) => patch(i, "name", v)}
+            />
+            <RegField
+              id={`po_contact_national_id_${i}`}
+              label={ACCESS_CONTACT_NATIONAL_ID_LABEL}
+              value={c.nationalId ?? ""}
+              error={errors[`contact_national_id_${i}`]}
+              inputMode="numeric"
+              dir="ltr"
+              maxLength={10}
+              onChange={(v) => patch(i, "nationalId", normalizeSaudiNationalId(v))}
             />
             <RegSelect
               id={`po_contact_role_${i}`}

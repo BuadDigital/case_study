@@ -167,7 +167,7 @@ export function DistributionTaskWork({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
+  }, [loading, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber, property.planNumber, property.plotNumber]);
 
   const engineeringUnavailableHint = useCallback((): string | null => {
     return engineeringOfficeUnavailableReason(property, hasPriorSurvey);

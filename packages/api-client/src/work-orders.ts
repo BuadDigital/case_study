@@ -27,6 +27,7 @@ export type PropertyContactDto = {
   name: string;
   role: string;
   phone: string;
+  nationalId?: string;
 };
 
 export type DeedOwnerDto = {

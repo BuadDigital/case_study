@@ -149,6 +149,9 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
   const contactNameKey = Object.keys(errors).find((k) =>
     k.startsWith("contact_name_"),
   );
+  const contactNationalIdKey = Object.keys(errors).find((k) =>
+    k.startsWith("contact_national_id_"),
+  );
 
   return (
     errors._contacts ??
@@ -170,6 +173,7 @@ export function firstEnfathValidationMessage(errors: FieldErrors): string {
     (contactPhoneKey ? errors[contactPhoneKey] : undefined) ??
     (contactRoleKey ? errors[contactRoleKey] : undefined) ??
     (contactNameKey ? errors[contactNameKey] : undefined) ??
+    (contactNationalIdKey ? errors[contactNationalIdKey] : undefined) ??
     "يرجى تعبئة بيانات العقار"
   );
 }

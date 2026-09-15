@@ -281,6 +281,10 @@ public static class WorkOrderValidator
                     "كل رقم جوال يجب أن يكون 10 أرقام على الأقل (افصل بينها بمسافة)";
             if (string.IsNullOrEmpty(role))
                 errors[$"contact_role_{i}"] = "صفة الضابط مطلوبة";
+            var nationalId = WorkOrderPropertyWriteRules.NormalizeNationalId(c.NationalId);
+            if (nationalId.Length > 0 && !IsValidSaudiNationalId(nationalId))
+                errors[$"contact_national_id_{i}"] =
+                    "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.";
             if (phones.Count > 0 &&
                 phones.All(p => CountPhoneDigits(p) >= 10) &&
                 !string.IsNullOrEmpty(role))
@@ -299,6 +303,9 @@ public static class WorkOrderValidator
 
     private static int CountPhoneDigits(string phone) =>
         phone.Count(char.IsDigit);
+
+    private static bool IsValidSaudiNationalId(string nationalId) =>
+        nationalId.Length == 10 && (nationalId[0] == '1' || nationalId[0] == '2');
 
     private static void ValidateOptionalSpecialistEmail(
         string? email,

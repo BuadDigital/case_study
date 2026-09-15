@@ -194,7 +194,7 @@ public class WorkOrderPropertyWriteRulesTests
     {
         var propertyId = Guid.NewGuid();
         var rows = WorkOrderPropertyWriteRules.BuildContacts(propertyId, [
-            new PropertyContactDto { Name = " أحمد ", Role = " مالك ", Phone = " 05 " },
+            new PropertyContactDto { Name = " أحمد ", Role = " مالك ", Phone = " 05 ", NationalId = " 1098765432 " },
             new PropertyContactDto { Name = "بدون", Role = "", Phone = "" },
             new PropertyContactDto { Name = "", Role = "وكيل", Phone = "" },
         ]);
@@ -204,6 +204,9 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.Equal("أحمد", rows[0].Name);
         Assert.Equal("مالك", rows[0].Role);
         Assert.Equal("05", rows[0].Phone);
+        Assert.Equal("1098765432", rows[0].NationalId);
+        Assert.Equal("وكيل", rows[1].Role);
+        Assert.Equal("", rows[1].NationalId);
         Assert.Equal([0, 1], rows.Select(r => r.SortOrder));
     }
 

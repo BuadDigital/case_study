@@ -53,6 +53,7 @@ describe("site location ack letter", () => {
     draft.accessContactName = "أحمد";
     draft.accessContactPhone = "0500000000";
     draft.accessContactRole = "ضابط اتصال";
+    draft.accessContactNationalId = "1098765432";
     draft.inspectionDate = "2026-09-13";
 
     const property = emptyProperty();
@@ -66,6 +67,7 @@ describe("site location ack letter", () => {
     const letter = buildSiteLocationAckLetter(draft, property);
     expect(letter.deedNumber).toBe("123456");
     expect(letter.contactName).toBe("أحمد");
+    expect(letter.civilId).toBe("1098765432");
     expect(letter.capacity).toBe("ضابط اتصال");
     expect(letter.north).toBe("21.5433");
     expect(letter.east).toBe("39.1728");
@@ -80,7 +82,7 @@ describe("site location ack letter", () => {
       dateHijri: "1/1/1447 هـ",
       dateGreg: "2026/9/13 م",
       contactName: "أحمد",
-      civilId: "—",
+      civilId: "1098765432",
       contactPhone: "0500000000",
       capacity: "ضابط اتصال",
       requestNumber: "REQ-1",
@@ -93,6 +95,8 @@ describe("site location ack letter", () => {
       coords: "21.5, 39.1",
     });
     expect(html).toContain("إقرار صحة الموقع");
+    expect(html).toContain("سجل مدني رقم");
+    expect(html).toContain("1098765432");
     expect(html).toContain("ref-meta");
     expect(html).toContain("letter-body");
     expect(html).toContain("prop-table");
@@ -101,7 +105,7 @@ describe("site location ack letter", () => {
     expect(html).toContain("شرقيات 39.1");
     expect(html).toContain("background-image");
     expect(html).toContain("window.print()");
-    expect(html).not.toContain("facts-table");
+    expect(html).not.toContain('<table class="facts-table"');
     expect(html).not.toContain("lh-slice");
   });
 });

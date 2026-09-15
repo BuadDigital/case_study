@@ -175,11 +175,9 @@ function propertyPayload(deedNumber: string, today: string) {
     circuit: "1",
     delegationLetterFileNames: ["delegation.pdf"],
     assignmentDocFileNames: ["assignment.pdf"],
-    contacts: [{ name: "ضابط اتصال آلي", role: "مالك", phone: "0555000111" }],
-    // Plan + plot make the engineering-office "site validity letter" optional
-    // (PartyTaskSubmissionPayloadRules.RequireSiteLetterUnlessPlatted).
-    planNumber: "1234",
-    plotNumber: "77",
+    contacts: [{ name: "ضابط اتصال آلي", role: "مالك", phone: "0555000111", nationalId: "1098765432" }],
+    // Unplatted (no plan/plot): Infath requires a cadastral survey. Plan + plot
+    // would skip the engineering-office child entirely.
     area: "500",
   };
 }
@@ -446,6 +444,7 @@ export async function submitFieldInspection(
       accessContactName: "ضابط اتصال آلي",
       accessContactPhone: "0555000111",
       accessContactRole: "مالك",
+      accessContactNationalId: "1098765432",
       accessRouteDescription: "طريق مباشر من الشارع الرئيسي",
       inspectionConfirmed: true,
       featureValues: {

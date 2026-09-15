@@ -231,7 +231,7 @@ export function useMyTaskWorkWorkflow({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
-  }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber]);
+  }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber, property.planNumber, property.plotNumber]);
 
   const steps = resolveTaskWorkSteps(effectivePhase, layout, property.identifierType);
 

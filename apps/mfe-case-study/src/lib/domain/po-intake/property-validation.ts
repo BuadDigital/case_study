@@ -3,6 +3,11 @@ import {
   type PoContact,
   type PoPropertyIntake,
 } from "../../app-data/po-intake-data";
+import {
+  ACCESS_CONTACT_NATIONAL_ID_INVALID,
+  isValidSaudiNationalId,
+  normalizeSaudiNationalId,
+} from "../../app-data/inspector-workspace-data";
 import type { FieldErrors } from "@platform/app-shared/domain/form/field-errors";
 
 export const PHONE_MIN_DIGITS = 10;
@@ -64,6 +69,7 @@ export function contactsForApi(contacts: PoContact[]): PoContact[] {
     name: c.name.trim(),
     role: c.role.trim(),
     phone: joinContactPhones(splitContactPhones(c.phone)),
+    nationalId: normalizeSaudiNationalId(c.nationalId ?? ""),
   }));
 }
 
@@ -85,6 +91,10 @@ export function validatePropertyContacts(
         `كل رقم جوال يجب أن يكون ${PHONE_MIN_DIGITS} أرقام على الأقل (افصل بينها بمسافة)`;
     }
     if (!role) errors[`contact_role_${i}`] = "صفة الضابط مطلوبة";
+    const nationalId = normalizeSaudiNationalId(c.nationalId ?? "");
+    if (nationalId && !isValidSaudiNationalId(nationalId)) {
+      errors[`contact_national_id_${i}`] = ACCESS_CONTACT_NATIONAL_ID_INVALID;
+    }
     if (isValidContactEntry(c)) hasValid = true;
   });
   if (requireAtLeastOne && !hasValid) {
