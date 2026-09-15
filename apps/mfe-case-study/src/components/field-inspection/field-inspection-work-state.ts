@@ -30,6 +30,7 @@ export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection
   accessContactName: "access",
   accessContactPhone: "access",
   accessContactRole: "access",
+  accessContactNationalId: "access",
   freePhotos: "photos",
 };
 
@@ -60,6 +61,7 @@ const ERROR_LINK_TARGETS: {
   { key: "accessContactName", targetId: "ins-access-name" },
   { key: "accessContactPhone", targetId: "ins-access-phone" },
   { key: "accessContactRole", targetId: "ins-access-role" },
+  { key: "accessContactNationalId", targetId: "ins-access-national-id" },
   { key: "accessRouteDescription", targetId: "ins-access-name" },
   { key: "freePhotos", targetId: "ins-property-photos" },
   {

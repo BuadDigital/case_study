@@ -121,6 +121,17 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
       REPORT_FILE_NAME,
     );
 
+    // Unplatted lots require a site-validity letter (plan + plot skip survey).
+    const letterBox = page.locator("#eng-site-letter");
+    await letterBox.locator('input[type="file"]').setInputFiles({
+      name: "site-letter-e2e.pdf",
+      mimeType: "application/pdf",
+      buffer: tinyPdfBuffer(),
+    });
+    await expect(
+      letterBox.getByRole("button", { name: "حذف الملف" }),
+    ).toBeVisible({ timeout: 60_000 });
+
     // ── 4. deed/nature match, declaration, checklist (UI) ──────────────────
     await page
       .locator("#eng-deed-matches")

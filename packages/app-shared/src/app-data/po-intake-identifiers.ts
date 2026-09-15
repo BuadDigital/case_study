@@ -95,15 +95,29 @@ export function propertyHasRegisteredTitle(property: {
   return propertySkipsBourse(property);
 }
 
-/** Engineering survey is skipped for unit-inside-building and for title registry. */
+/** Approved subdivision: plan number and plot number are both present. */
+export function propertyHasApprovedOrganizationalPlan(property: {
+  planNumber?: string | null;
+  plotNumber?: string | null;
+}): boolean {
+  return Boolean(
+    String(property.planNumber ?? "").trim() &&
+      String(property.plotNumber ?? "").trim(),
+  );
+}
+
+/** Engineering survey is skipped for unit-inside-building, title registry, and approved plans. */
 export function propertyRequiresSurvey(property: {
   classification: string;
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
+  planNumber?: string | null;
+  plotNumber?: string | null;
 }): boolean {
   return (
     classificationRequiresSurvey(property.classification) &&
-    !propertyHasRegisteredTitle(property)
+    !propertyHasRegisteredTitle(property) &&
+    !propertyHasApprovedOrganizationalPlan(property)
   );
 }
 

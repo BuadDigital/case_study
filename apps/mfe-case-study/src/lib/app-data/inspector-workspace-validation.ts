@@ -8,6 +8,7 @@ import {
 } from "@platform/app-shared/form-ux";
 import {
   ACCESS_CONTACT_NAME_LABEL,
+  ACCESS_CONTACT_NATIONAL_ID_INVALID,
   ACCESS_CONTACT_PHONE_LABEL,
   ACCESS_CONTACT_ROLE_LABEL,
   ACCESS_ROUTE_DESCRIPTION_REQUIRED,
@@ -23,6 +24,7 @@ import {
   isInspectorRetiredFeatureKey,
   INSPECTOR_BOUNDARY_KEYS,
   firstIncompleteServiceAmenitySlotId,
+  isValidSaudiNationalId,
   visibleInspectorFeatureFields,
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
@@ -38,6 +40,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "accessContactName"
     | "accessContactPhone"
     | "accessContactRole"
+    | "accessContactNationalId"
     | "inspectionConfirmed"
     | "observations"
     | "definedPhotos"
@@ -111,6 +114,8 @@ export function inspectorFieldTargetId(
       return "ins-access-phone";
     case "accessContactRole":
       return "ins-access-role";
+    case "accessContactNationalId":
+      return "ins-access-national-id";
     case "features":
       return "ins-features-section";
     case "movablesDescription":
@@ -153,6 +158,9 @@ export function firstInspectorWorkspaceErrorTarget(
   }
   if (errors.accessContactRole) {
     return inspectorFieldTargetId("accessContactRole");
+  }
+  if (errors.accessContactNationalId) {
+    return inspectorFieldTargetId("accessContactNationalId");
   }
   if (errors.accessRouteDescription) {
     return inspectorFieldTargetId("accessRouteDescription");
@@ -265,6 +273,10 @@ export function validateInspectorWorkspace(
   if (!submission.accessContactRole.trim()) {
     errors.accessContactRole = `${ACCESS_CONTACT_ROLE_LABEL} مطلوبة`;
   }
+  const nationalId = submission.accessContactNationalId.trim();
+  if (nationalId && !isValidSaudiNationalId(nationalId)) {
+    errors.accessContactNationalId = ACCESS_CONTACT_NATIONAL_ID_INVALID;
+  }
   if (
     errors.accessContactName ||
     errors.accessContactPhone ||
@@ -376,6 +388,7 @@ const INSPECTOR_ERROR_KEYS = [
   "accessContactName",
   "accessContactPhone",
   "accessContactRole",
+  "accessContactNationalId",
   "accessRouteDescription",
   "features",
   "movablesDescription",
@@ -414,6 +427,7 @@ const WIZARD_STEP_ERROR_KEYS: Record<
     "accessContactName",
     "accessContactPhone",
     "accessContactRole",
+    "accessContactNationalId",
     "accessRouteDescription",
     "freePhotos",
   ],

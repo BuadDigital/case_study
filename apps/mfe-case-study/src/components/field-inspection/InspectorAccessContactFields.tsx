@@ -11,11 +11,13 @@ import { isValidContactEntry } from "../../lib/domain/po-intake/property-validat
 import {
   ACCESS_CONTACT_ADD_BUTTON_LABEL,
   ACCESS_CONTACT_NAME_LABEL,
+  ACCESS_CONTACT_NATIONAL_ID_LABEL,
   ACCESS_CONTACT_NEW_BUTTON_LABEL,
   ACCESS_CONTACT_PHONE_LABEL,
   ACCESS_CONTACT_ROLE_LABEL,
   ACCESS_ROUTE_DESCRIPTION_HINT,
   ACCESS_ROUTE_DESCRIPTION_LABEL,
+  normalizeSaudiNationalId,
   patchAccessContact,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -38,13 +40,14 @@ function contactOptionLabel(c: PoContact, index: number): string {
 }
 
 function contactsMatch(
-  a: { name: string; phone: string; role: string },
+  a: { name: string; phone: string; role: string; nationalId?: string },
   b: PoContact,
 ): boolean {
   return (
     a.name.trim() === b.name.trim() &&
     a.phone.trim() === b.phone.trim() &&
-    a.role.trim() === b.role.trim()
+    a.role.trim() === b.role.trim() &&
+    (a.nationalId ?? "").trim() === (b.nationalId ?? "").trim()
   );
 }
 
@@ -53,6 +56,7 @@ function draftContact(draft: InspectorWorkspaceDraft): PoContact {
     name: draft.accessContactName.trim(),
     phone: draft.accessContactPhone.trim(),
     role: draft.accessContactRole.trim(),
+    nationalId: draft.accessContactNationalId.trim(),
   };
 }
 
@@ -89,7 +93,7 @@ export function InspectorAccessContactFields({
     const out: PoContact[] = [];
     for (const c of merged) {
       if (!isValidContactEntry(c)) continue;
-      const key = `${c.name.trim()}|${c.phone.trim()}|${c.role.trim()}`;
+      const key = `${c.name.trim()}|${c.phone.trim()}|${c.role.trim()}|${(c.nationalId ?? "").trim()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push(c);
@@ -102,6 +106,7 @@ export function InspectorAccessContactFields({
       accessContactName: string;
       accessContactPhone: string;
       accessContactRole: string;
+      accessContactNationalId: string;
     }>,
   ) {
     onPatch(patchAccessContact(draft, patch));
@@ -113,7 +118,8 @@ export function InspectorAccessContactFields({
     const hasAny =
       draft.accessContactName.trim() ||
       draft.accessContactPhone.trim() ||
-      draft.accessContactRole.trim();
+      draft.accessContactRole.trim() ||
+      draft.accessContactNationalId.trim();
     if (hasAny) {
       didPrefill.current = true;
       return;
@@ -126,6 +132,7 @@ export function InspectorAccessContactFields({
         accessContactName: first.name,
         accessContactPhone: first.phone,
         accessContactRole: first.role,
+        accessContactNationalId: first.nationalId ?? "",
       }),
     );
   }, [
@@ -134,6 +141,7 @@ export function InspectorAccessContactFields({
     draft.accessContactName,
     draft.accessContactPhone,
     draft.accessContactRole,
+    draft.accessContactNationalId,
     draft,
     onPatch,
   ]);
@@ -145,6 +153,7 @@ export function InspectorAccessContactFields({
           name: draft.accessContactName,
           phone: draft.accessContactPhone,
           role: draft.accessContactRole,
+          nationalId: draft.accessContactNationalId,
         },
         c,
       ),
@@ -155,6 +164,7 @@ export function InspectorAccessContactFields({
     draft.accessContactName,
     draft.accessContactPhone,
     draft.accessContactRole,
+    draft.accessContactNationalId,
   ]);
 
   const canAddToContacts = useMemo(() => {
@@ -167,6 +177,7 @@ export function InspectorAccessContactFields({
     draft.accessContactName,
     draft.accessContactPhone,
     draft.accessContactRole,
+    draft.accessContactNationalId,
     validContacts,
   ]);
 
@@ -182,6 +193,7 @@ export function InspectorAccessContactFields({
       accessContactName: contact.name,
       accessContactPhone: contact.phone,
       accessContactRole: contact.role,
+      accessContactNationalId: contact.nationalId ?? "",
     });
   }
 
@@ -191,6 +203,7 @@ export function InspectorAccessContactFields({
       accessContactName: "",
       accessContactPhone: "",
       accessContactRole: "",
+      accessContactNationalId: "",
     });
     queueMicrotask(() => nameInputRef.current?.focus());
   }
@@ -229,7 +242,8 @@ export function InspectorAccessContactFields({
           INS_LABEL_CLASS,
           (fieldErrors.accessContactName ||
             fieldErrors.accessContactPhone ||
-            fieldErrors.accessContactRole) &&
+            fieldErrors.accessContactRole ||
+            fieldErrors.accessContactNationalId) &&
             "text-danger",
         )}
       >
@@ -278,7 +292,7 @@ export function InspectorAccessContactFields({
 
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-end gap-2.5">
-          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <div className="min-w-0">
               <label htmlFor="ins-access-name" className={INS_LABEL_CLASS}>
                 {ACCESS_CONTACT_NAME_LABEL}
@@ -298,6 +312,32 @@ export function InspectorAccessContactFields({
               {fieldErrors.accessContactName ? (
                 <p className="mt-1 mb-0 text-[11px] text-danger-text">
                   {fieldErrors.accessContactName}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <label htmlFor="ins-access-national-id" className={INS_LABEL_CLASS}>
+                {ACCESS_CONTACT_NATIONAL_ID_LABEL}
+              </label>
+              <input
+                id="ins-access-national-id"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                maxLength={10}
+                disabled={!editable}
+                aria-invalid={Boolean(fieldErrors.accessContactNationalId) || undefined}
+                className={controlClass(Boolean(fieldErrors.accessContactNationalId))}
+                value={draft.accessContactNationalId}
+                onChange={(e) =>
+                  patchContact({
+                    accessContactNationalId: normalizeSaudiNationalId(e.target.value),
+                  })
+                }
+              />
+              {fieldErrors.accessContactNationalId ? (
+                <p className="mt-1 mb-0 text-[11px] text-danger-text">
+                  {fieldErrors.accessContactNationalId}
                 </p>
               ) : null}
             </div>

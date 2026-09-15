@@ -5,6 +5,7 @@ import type {
   PoPropertyIntake,
 } from "./po-intake-data";
 import {
+  propertyHasApprovedOrganizationalPlan,
   propertyHasRegisteredTitle,
   propertyRequiresSurvey,
 } from "./po-intake-data";
@@ -217,6 +218,9 @@ export function engineeringOfficeUnavailableReason(
   if (!propertyRequiresSurvey(property)) {
     if (propertyHasRegisteredTitle(property)) {
       return "المكتب الهندسي غير متاح: المعاملة لها سجل عيني ولا تتطلب رفعاً مساحياً.";
+    }
+    if (propertyHasApprovedOrganizationalPlan(property)) {
+      return "المكتب الهندسي غير متاح: العقار ضمن مخطط تنظيمي معتمد ولا يتطلب رفعاً مساحياً.";
     }
     return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
   }

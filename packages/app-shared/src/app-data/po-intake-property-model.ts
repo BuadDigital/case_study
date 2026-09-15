@@ -39,7 +39,12 @@ export type PoContact = {
   /** Officer capacity — required */
   role: string;
   phone: string;
+  nationalId: string;
 };
+
+export function emptyPoContact(): PoContact {
+  return { name: "", role: "", phone: "", nationalId: "" };
+}
 
 /** Case Study.html PSTATUS labels for the property hero. */
 export type PropertyUiStatus = PropertyListRowStatus;
@@ -348,6 +353,6 @@ export function emptyProperty(): PoPropertyIntake {
     isRemoved: false,
     removalReason: "",
     removedAtUtc: "",
-    contacts: [{ name: "", role: "", phone: "" }],
+    contacts: [emptyPoContact()],
   };
 }

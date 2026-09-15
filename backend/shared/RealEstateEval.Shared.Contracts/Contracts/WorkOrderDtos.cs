@@ -8,6 +8,7 @@ public class PropertyContactDto
     public string Name { get; set; } = "";
     public string Role { get; set; } = "";
     public string Phone { get; set; } = "";
+    public string NationalId { get; set; } = "";
 }
 
 public class WorkOrderPropertyDto

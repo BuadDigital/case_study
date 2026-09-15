@@ -275,6 +275,11 @@ export function PropertyDetailBasicTab({
       ) : (
         <FieldsGrid cols={3}>
           <FieldBox label="الاسم" value={primaryContact.name.trim() || "—"} />
+          <FieldBox
+            label="رقم الهوية"
+            value={primaryContact.nationalId?.trim() || "—"}
+            ltr
+          />
           <FieldBox label="رقم الجوال" value={primaryContact.phone} ltr />
           <FieldBox
             label="الصلة"

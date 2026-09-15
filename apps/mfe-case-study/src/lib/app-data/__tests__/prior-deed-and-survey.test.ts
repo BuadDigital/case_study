@@ -47,6 +47,31 @@ describe("engineeringOfficeAvailable with prior survey", () => {
     expect(engineeringOfficeAvailable(prop, false)).toBe(false);
     expect(engineeringOfficeUnavailableReason(prop, false)).toContain("سجل عيني");
   });
+
+  it("hides engineering office when plan number and plot are both present", () => {
+    const prop = {
+      ...emptyProperty(),
+      classification: "أرض",
+      deedNumber: "1",
+      planNumber: "1234",
+      plotNumber: "77",
+    };
+    expect(engineeringOfficeAvailable(prop, false)).toBe(false);
+    expect(engineeringOfficeUnavailableReason(prop, false)).toContain(
+      "مخطط تنظيمي معتمد",
+    );
+  });
+
+  it("still allows engineering office when only the plan number is filled", () => {
+    const prop = {
+      ...emptyProperty(),
+      classification: "أرض",
+      deedNumber: "1",
+      planNumber: "1234",
+      plotNumber: "",
+    };
+    expect(engineeringOfficeAvailable(prop, false)).toBe(true);
+  });
 });
 
 describe("buildPropertyFromPriorDeed", () => {
@@ -66,7 +91,7 @@ describe("buildPropertyFromPriorDeed", () => {
       propertyType: "سكني",
       area: "500",
       deedStatus: "ساري",
-      contacts: [{ name: "جهة", role: "مالك", phone: "0500000000" }],
+      contacts: [{ name: "جهة", role: "مالك", phone: "0500000000", nationalId: "" }],
     }) as PriorDeedRegistrationDto;
 
   it("fills all prior fields including request, mandate, and document names", () => {

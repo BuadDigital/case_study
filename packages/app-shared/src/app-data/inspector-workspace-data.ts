@@ -19,6 +19,7 @@ export type InspectorBoundaryMatch = {
 };
 
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
 export type InspectorPhotoAttachment = {
   fileName: string;
@@ -111,30 +112,46 @@ export const ACCESS_ROUTE_DESCRIPTION_HINT =
 export const ACCESS_CONTACT_NAME_LABEL = "الاسم";
 export const ACCESS_CONTACT_PHONE_LABEL = "رقم الجوال";
 export const ACCESS_CONTACT_ROLE_LABEL = "الصلة";
+export const ACCESS_CONTACT_NATIONAL_ID_LABEL = "رقم الهوية";
 export const ACCESS_CONTACT_NEW_BUTTON_LABEL = "+ جهة اتصال جديدة";
 export const ACCESS_CONTACT_ADD_BUTTON_LABEL = "إضافة لجهات الاتصال";
 export const ACCESS_ROUTE_DESCRIPTION_REQUIRED =
   "أكمل بيانات من سهّل الوصول (الاسم، رقم الجوال، الصلة)";
+export const ACCESS_CONTACT_NATIONAL_ID_INVALID =
+  "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.";
 
 export const SITE_LOCATION_ACK_BUTTON_LABEL = "إقرار صحة الموقع";
 /** @deprecated Use SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE from site-location-ack-letter. */
 export const SITE_LOCATION_ACK_PENDING_MESSAGE =
   "ثبّت الموقع أولاً عبر «تثبيت الموقع» قبل طباعة إقرار صحة الموقع.";
 
-/** Compose Infath / payload free-text from the three contact fields. */
+/** Compose Infath / payload free-text from the contact fields. */
 export function composeAccessRouteDescription(input: {
   name: string;
   phone: string;
   role: string;
+  nationalId?: string;
 }): string {
   const name = input.name.trim();
   const phone = input.phone.trim();
   const role = input.role.trim();
+  const nationalId = input.nationalId?.trim() ?? "";
   const parts: string[] = [];
   if (role) parts.push(role);
   if (name) parts.push(name);
+  if (nationalId) parts.push(`سجل مدني ${nationalId}`);
   if (phone) parts.push(`رقم الجوال ${phone}`);
   return parts.join("، ");
+}
+
+const SAUDI_NATIONAL_ID = /^[12]\d{9}$/;
+
+export function normalizeSaudiNationalId(value: string): string {
+  return toLatinDigits(value).replace(/\D/g, "").slice(0, 10);
+}
+
+export function isValidSaudiNationalId(value: string): boolean {
+  return SAUDI_NATIONAL_ID.test(value.trim());
 }
 
 export function isMovablesPresent(featureValues: Record<string, string>): boolean {
@@ -635,6 +652,7 @@ export type InspectorFreePhotoCategory = {
 export const INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR = "exterior";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR = "interior";
 /** Kind tags nested under each parent. */
+export const INSPECTOR_FREE_PHOTO_CATEGORY_FACADE = "facade";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE = "service";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_OTHER = "other";
@@ -654,6 +672,11 @@ export const INSPECTOR_FREE_PHOTO_PARENTS: InspectorFreePhotoCategory[] = [
 
 export const INSPECTOR_FREE_PHOTO_KINDS: InspectorFreePhotoCategory[] = [
   {
+    key: INSPECTOR_FREE_PHOTO_CATEGORY_FACADE,
+    label: "واجهة",
+    icon: "ti-building-estate",
+  },
+  {
     key: INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE,
     label: "خدمة",
     icon: "ti-plug",
@@ -669,6 +692,18 @@ export const INSPECTOR_FREE_PHOTO_KINDS: InspectorFreePhotoCategory[] = [
     icon: "ti-photo",
   },
 ];
+
+/** Interior shots do not use the facade kind. */
+export function inspectorFreePhotoKindsForParent(
+  parent: string | null | undefined,
+): readonly InspectorFreePhotoCategory[] {
+  if (parent === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR) {
+    return INSPECTOR_FREE_PHOTO_KINDS.filter(
+      (kind) => kind.key !== INSPECTOR_FREE_PHOTO_CATEGORY_FACADE,
+    );
+  }
+  return INSPECTOR_FREE_PHOTO_KINDS;
+}
 
 /** Stored category = `parent:kind` (e.g. exterior:service). */
 export function buildInspectorFreePhotoCategory(
@@ -760,6 +795,15 @@ export function inspectorFreePhotoParentKey(
   return null;
 }
 
+/** True until the inspector picks خدمة / مرفق / واجهة / أخرى under the bucket. */
+export function inspectorFreePhotoNeedsKind(
+  category: string | null | undefined,
+): boolean {
+  const parent = inspectorFreePhotoParentKey(category);
+  if (!parent) return !category?.trim();
+  return parseInspectorFreePhotoCategory(category) === null;
+}
+
 export type InspectorComponentPhotoKey = "showroom" | "well" | "buildLicense";
 
 export type InspectorComponentPhotoAttachments = Record<
@@ -799,6 +843,8 @@ export type InspectorWorkspaceDraft = {
   accessContactName: string;
   accessContactPhone: string;
   accessContactRole: string;
+  /** National / civil ID of the access contact — printed on إقرار صحة الموقع. */
+  accessContactNationalId: string;
   roomCount: string;
   hallCount: string;
   unitCount: string;
@@ -870,24 +916,29 @@ export function patchAccessContact(
     | "accessContactName"
     | "accessContactPhone"
     | "accessContactRole"
+    | "accessContactNationalId"
     | "accessRouteDescription"
   >,
   patch: Partial<{
     accessContactName: string;
     accessContactPhone: string;
     accessContactRole: string;
+    accessContactNationalId: string;
   }>,
 ): Pick<
   InspectorWorkspaceDraft,
   | "accessContactName"
   | "accessContactPhone"
   | "accessContactRole"
+  | "accessContactNationalId"
   | "accessRouteDescription"
 > {
   const next = {
     accessContactName: patch.accessContactName ?? draft.accessContactName,
     accessContactPhone: patch.accessContactPhone ?? draft.accessContactPhone,
     accessContactRole: patch.accessContactRole ?? draft.accessContactRole,
+    accessContactNationalId:
+      patch.accessContactNationalId ?? draft.accessContactNationalId,
   };
   return {
     ...next,
@@ -895,6 +946,7 @@ export function patchAccessContact(
       name: next.accessContactName,
       phone: next.accessContactPhone,
       role: next.accessContactRole,
+      nationalId: next.accessContactNationalId,
     }),
   };
 }
@@ -961,6 +1013,7 @@ export function createInspectorWorkspaceDraft(input: {
     accessContactName: "",
     accessContactPhone: "",
     accessContactRole: "",
+    accessContactNationalId: "",
     roomCount: "",
     hallCount: "",
     unitCount: "",
@@ -1355,7 +1408,7 @@ export function listInspectorPhotoValidationIssues(
     );
   }
 
-  // Free-photo kind (خدمة/مرفق/أخرى) is optional — bucket parent is enough.
+  // Free-photo kind (واجهة / خدمة / مرفق / أخرى) is optional — bucket parent is enough.
   // Do not block «حفظ وإرسال» on untagged free photos.
   // Unapproved extras in a complete slot are also not a submit blocker —
   // slot completeness already requires an approved photo (or «غير متوفر»).

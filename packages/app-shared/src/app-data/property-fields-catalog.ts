@@ -37,6 +37,7 @@ const poIntakeFields: PropertyFieldCatalogEntry[] = [
   { key: "contactName", label: "ضابط الاتصال — الاسم" },
   { key: "contactRole", label: "ضابط الاتصال — الصفة" },
   { key: "contactPhone", label: "ضابط الاتصال — الجوال" },
+  { key: "contactNationalId", label: "ضابط الاتصال — رقم الهوية" },
   { key: "contacts", label: "ضباط الاتصال (قائمة)" },
 ];
 
@@ -547,6 +548,7 @@ const backendApiFields: PropertyFieldCatalogEntry[] = [
   { key: "PropertyContact.Name", label: "ضابط الاتصال — الاسم (API)" },
   { key: "PropertyContact.Role", label: "ضابط الاتصال — الصفة (API)" },
   { key: "PropertyContact.Phone", label: "ضابط الاتصال — الجوال (API)" },
+  { key: "PropertyContact.NationalId", label: "ضابط الاتصال — رقم الهوية (API)" },
 ];
 
 /** All property field groups ordered by role and screen. */

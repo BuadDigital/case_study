@@ -98,6 +98,32 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void ValidatePropertyEnfath_rejects_invalid_contact_national_id()
+    {
+        var dto = ValidDeedProperty();
+        dto.Contacts =
+        [
+            new PropertyContactDto
+            {
+                Phone = "0501234567",
+                Role = "ضابط",
+                NationalId = "555",
+            },
+        ];
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            "PO-1",
+            null,
+            (_, _) => false);
+
+        Assert.Equal(
+            "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.",
+            errors["contact_national_id_0"]);
+    }
+
+    [Fact]
     public void ValidatePropertyEnfath_requires_court_for_execution()
     {
         var dto = ValidDeedProperty();

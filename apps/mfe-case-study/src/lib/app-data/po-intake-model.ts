@@ -3,7 +3,7 @@ import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "./po-intake-data";
-import { computeBusinessDueDate, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier, businessDaysForAssignmentType,} from "./po-intake-data";
+import { computeBusinessDueDate, emptyPoContact, emptyProperty, formatPropertyDeedDisplay, hasBourseDetailFields, normalizePropertyIdentifierNumber, parsePropertyIdentifierType, skipsBourseForIdentifier, businessDaysForAssignmentType,} from "./po-intake-data";
 import {
   contactsForApi,
 } from "../domain/po-intake/property-validation";
@@ -32,8 +32,9 @@ export function normalizeProperty(prop: PoPropertyIntake): PoPropertyIntake {
           name: c.name ?? "",
           role: c.role ?? "",
           phone: c.phone ?? "",
+          nationalId: c.nationalId ?? "",
         }))
-      : [{ name: "", role: "", phone: "" }],
+      : [emptyPoContact()],
   };
 }
 
@@ -154,6 +155,7 @@ export function dtoToProperty(
       name: c.name ?? "",
       role: c.role ?? "",
       phone: c.phone ?? "",
+      nationalId: c.nationalId ?? "",
     })),
   });
   if (property.id && poNumber) {

@@ -53,4 +53,31 @@ public class SurveyRequirementRulesTests
         };
         Assert.True(SurveyRequirementRules.PropertyRequiresSurvey(prop));
     }
+
+    [Fact]
+    public void Approved_organizational_plan_does_not_require_survey()
+    {
+        var prop = new WorkOrderProperty
+        {
+            Classification = "أرض",
+            IdentifierType = PropertyIdentifierType.Deed,
+            PlanNumber = "1234",
+            PlotNumber = "77",
+        };
+        Assert.True(SurveyRequirementRules.HasApprovedOrganizationalPlan(prop.PlanNumber, prop.PlotNumber));
+        Assert.False(SurveyRequirementRules.PropertyRequiresSurvey(prop));
+    }
+
+    [Fact]
+    public void Plan_without_plot_still_requires_survey()
+    {
+        var prop = new WorkOrderProperty
+        {
+            Classification = "أرض",
+            IdentifierType = PropertyIdentifierType.Deed,
+            PlanNumber = "1234",
+            PlotNumber = "",
+        };
+        Assert.True(SurveyRequirementRules.PropertyRequiresSurvey(prop));
+    }
 }

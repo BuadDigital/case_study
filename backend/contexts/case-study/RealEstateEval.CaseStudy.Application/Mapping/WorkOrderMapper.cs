@@ -135,6 +135,7 @@ public static class WorkOrderMapper
                     Name = c.Name,
                     Role = c.Role,
                     Phone = c.Phone,
+                    NationalId = c.NationalId,
                 })
                 .ToList(),
         };
@@ -230,6 +231,7 @@ public static class WorkOrderMapper
                     Name = c.Name,
                     Role = c.Role,
                     Phone = c.Phone,
+                    NationalId = c.NationalId,
                 })
                 .ToList(),
             Region = p.Region,

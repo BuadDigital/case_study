@@ -209,6 +209,7 @@ public static class CaseStudyModel
             e.Property(x => x.Name).HasMaxLength(256);
             e.Property(x => x.Role).HasMaxLength(128);
             e.Property(x => x.Phone).HasMaxLength(32);
+            e.Property(x => x.NationalId).HasMaxLength(16);
         });
 
         builder.Entity<WorkflowTask>(e =>

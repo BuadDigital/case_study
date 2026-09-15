@@ -53,6 +53,7 @@ export {
   toggleRestrictionType,
   BOUNDARIES_AVAILABILITY_OPTIONS,
   classificationRequiresSurvey,
+  propertyHasApprovedOrganizationalPlan,
   propertyHasRegisteredTitle,
   propertyRequiresSurvey,
   type PropertyIdentifierType,
@@ -113,6 +114,7 @@ export {
   type PoPropertyIntake,
   type PoIntakeRecord,
   emptyProperty,
+  emptyPoContact,
 } from "./po-intake-property-model";
 
 export {
