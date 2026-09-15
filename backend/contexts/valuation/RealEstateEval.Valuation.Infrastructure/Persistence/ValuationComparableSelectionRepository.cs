@@ -19,8 +19,11 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
         db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
 
-    public Task EnsureBankSeedAsync(Guid valuationRequestId, CancellationToken cancellationToken) =>
-        ComparableBankSeed.EnsureForValuationRequestAsync(db, valuationRequestId, cancellationToken);
+    public Task DetachUnchosenDemoSelectionsAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken) =>
+        ComparableBankSeed.DetachUnchosenFromValuationAsync(
+            db, valuationRequestId, cancellationToken);
 
     public async Task<IReadOnlyList<ValuationComparableSelection>> ListSelectionsAsync(
         Guid valuationRequestId,

@@ -6,9 +6,6 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 
 public static class WorkOrderValidator
 {
-    private const int DeedNumberDigitLength = 12;
-    private const int RealEstateRegistrationDigitLength = 16;
-
     public static bool RequiresAssignmentDecree(AssignmentType type) =>
         AssignmentTypeRules.RequiresAssignmentDecree(type);
 
@@ -127,8 +124,19 @@ public static class WorkOrderValidator
         }
     }
 
+    /// <summary>
+    /// Registered title still visits bourse, but only city/district (and optional area fields).
+    /// </summary>
+    public static bool CompactRegisteredTitleBourse(
+        string? identifierType,
+        string? realEstateRegNumber) =>
+        identifierType == PropertyIdentifierTypeLabels.RealEstateReg
+        || !string.IsNullOrWhiteSpace(realEstateRegNumber);
+
  /// <summary>Real Estate Exchange stage — Real Estate Exchange query.</summary>
-    public static Dictionary<string, string> ValidatePropertyBourse(UpdatePropertyBourseRequest dto)
+    public static Dictionary<string, string> ValidatePropertyBourse(
+        UpdatePropertyBourseRequest dto,
+        bool compactRegisteredTitle = false)
     {
         var errors = new Dictionary<string, string>();
 
@@ -136,6 +144,8 @@ public static class WorkOrderValidator
             errors["city"] = "المدينة مطلوبة";
         if (string.IsNullOrWhiteSpace(dto.District))
             errors["district"] = "الحي مطلوب";
+        if (compactRegisteredTitle)
+            return errors;
         if (string.IsNullOrWhiteSpace(dto.BourseDeedImageFileName))
             errors["bourseDeedImageFileName"] = "صورة الصك من البورصة مطلوبة";
 
@@ -182,7 +192,7 @@ public static class WorkOrderValidator
         var hasReg = !string.IsNullOrWhiteSpace(dto.RealEstateRegNumber);
 
  // At least one of them is required: No. Deed or Real Estate Registration (or both).
- // Real Estate Registration on fill overrides Real Estate Exchange query.
+ // Registered title still goes through bourse (location/area only).
         if (!hasDeed && !hasReg)
         {
             const string msg = "أدخل رقم الصك أو رقم التسجيل العيني";
@@ -191,21 +201,8 @@ public static class WorkOrderValidator
             return;
         }
 
-        if (hasDeed)
-        {
-            var digits = NormalizeIdentifierDigits(dto.DeedNumber);
-            if (digits.Length != DeedNumberDigitLength)
-                errors["deedNumber"] = $"رقم الصك يجب أن يكون {DeedNumberDigitLength} رقماً";
-        }
-
         if (hasReg)
         {
-            var regDigits = NormalizeIdentifierDigits(dto.RealEstateRegNumber!);
-            if (regDigits.Length != RealEstateRegistrationDigitLength)
-            {
-                errors["realEstateRegNumber"] =
-                    $"تسجيل عيني يجب أن يكون {RealEstateRegistrationDigitLength} رقماً";
-            }
             if (string.IsNullOrWhiteSpace(dto.RealEstateRegDate))
                 errors["realEstateRegDate"] = "تاريخ التسجيل العيني مطلوب";
             if (string.IsNullOrWhiteSpace(dto.RealEstateRegFileName))
@@ -221,26 +218,10 @@ public static class WorkOrderValidator
         PropertyIdentifierType idType,
         Dictionary<string, string> errors)
     {
- // Deed number is always 12 digits — Real Estate Registration is a separate field.
         _ = idType;
-        const string label = "رقم الصك";
-        const int requiredLength = DeedNumberDigitLength;
-
         if (string.IsNullOrWhiteSpace(dto.DeedNumber))
-        {
-            errors["deedNumber"] = $"{label} مطلوب";
-            return;
-        }
-
-        var digits = NormalizeIdentifierDigits(dto.DeedNumber);
-        if (digits.Length != requiredLength)
-        {
-            errors["deedNumber"] = $"{label} يجب أن يكون {requiredLength} رقماً";
-        }
+            errors["deedNumber"] = "رقم الصك مطلوب";
     }
-
-    private static string NormalizeIdentifierDigits(string value) =>
-        Texts.DigitsOnly(value);
 
     private static readonly HashSet<string> AllowedRestrictionTypes = new(StringComparer.Ordinal)
     {

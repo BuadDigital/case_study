@@ -1,5 +1,8 @@
 import type { PoPropertyIntake } from "../../app-data/po-intake-data";
-import { parseRestrictionTypes } from "../../app-data/po-intake-data";
+import {
+  parseRestrictionTypes,
+  propertyHasRegisteredTitle,
+} from "../../app-data/po-intake-data";
 import {
   collectRequiredErrors,
   mergeFieldErrors,
@@ -21,6 +24,8 @@ export function validatePropertyBourseFields(
       ["city", "district"],
     ),
   );
+
+  if (propertyHasRegisteredTitle(p)) return errors;
 
   if (!p.bourseDeedImageFileName.trim()) {
     errors.bourseDeedImageFileName = "صورة الصك من البورصة مطلوبة";

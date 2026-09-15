@@ -24,7 +24,7 @@ export function SpecialistValuationReportInputs({
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
         {readOnly
-          ? "مقفلة — لا يمكن تعديلها بعد تأكيد مدخلات المعاين."
+          ? "للعرض فقط."
           : "يعبّئها الأخصائي من دراسة الحالة (تبويب مدخلات المعاين)، وتظهر للمقيّم للعرض فقط. مستوى التشطيب مطلوب قبل التأكيد."}
       </p>
       <SpecialistValuationReportFinishingEditor

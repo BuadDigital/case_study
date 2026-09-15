@@ -8,7 +8,7 @@ import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
-import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
+import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT, WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/app-data/suspended-transactions-reads";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-reads";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
@@ -248,6 +248,17 @@ export function useAppAccessDataSync(): void {
     };
 
     window.addEventListener(WORK_ORDERS_CHANGED_EVENT, invalidateWorkOrders);
+    const onPropertyChanged = (event: Event) => {
+      const poNumber =
+        event instanceof CustomEvent
+          ? String(event.detail?.poNumber ?? "").trim()
+          : "";
+      if (!poNumber) return;
+      void queryClient.invalidateQueries({
+        queryKey: appDataKeys.poRecord(poNumber),
+      });
+    };
+    window.addEventListener(WORK_ORDER_PROPERTY_CHANGED_EVENT, onPropertyChanged);
     window.addEventListener(TASKS_CHANGED_EVENT, invalidateTasks);
     const onInfoRolesChanged = () => invalidateInfoRoles();
 
@@ -258,6 +269,7 @@ export function useAppAccessDataSync(): void {
 
     return () => {
       window.removeEventListener(WORK_ORDERS_CHANGED_EVENT, invalidateWorkOrders);
+      window.removeEventListener(WORK_ORDER_PROPERTY_CHANGED_EVENT, onPropertyChanged);
       window.removeEventListener(TASKS_CHANGED_EVENT, invalidateTasks);
       window.removeEventListener(FAILURES_CHANGED_EVENT, onFailuresChanged);
       window.removeEventListener(

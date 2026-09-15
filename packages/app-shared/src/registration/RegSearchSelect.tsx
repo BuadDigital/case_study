@@ -40,6 +40,8 @@ type Props = {
   /** Option to add a new name when no matching results. */
   createLabel?: (query: string) => string;
   onCreate?: (query: string) => void;
+  /** Minimum query length before the «add» row appears. Default 2 (districts). */
+  createMinLength?: number;
   loading?: boolean;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
 };
@@ -61,6 +63,7 @@ export function RegSearchSelect({
   serverFiltered = false,
   createLabel,
   onCreate,
+  createMinLength = 2,
   loading = false,
   inputMode,
 }: Props) {
@@ -85,7 +88,7 @@ export function RegSearchSelect({
 
   const trimmedQuery = query.trim();
   const showCreate =
-    Boolean(createLabel && onCreate && trimmedQuery.length >= 2) &&
+    Boolean(createLabel && onCreate && trimmedQuery.length >= createMinLength) &&
     !filtered.some((o) => {
       const label = o.label.trim();
       return (

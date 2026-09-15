@@ -48,6 +48,7 @@ import {
 import { useMyTaskWorkCommands } from "./useMyTaskWorkCommands";
 import {
   flushPropertyFieldAutosave,
+  peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
 } from "../lib/app-data/property-field-autosave";
 
@@ -74,13 +75,13 @@ export function useMyTaskWorkWorkflow({
   onEnfathSaved,
 }: CaseStudyTaskWorkProps) {
   const router = useRouter();
-  const exit = onClose ?? (() => router.push(myTasksPath()));
   const { role } = useAppAccess();
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const [assignmentType, setAssignmentType] = useState<AssignmentType>("تنفيذ");
   const [property, setProperty] = useState<PoPropertyIntake>(emptyProperty);
+  const [propertyHydrated, setPropertyHydrated] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -101,10 +102,8 @@ export function useMyTaskWorkWorkflow({
   );
   const hydratedPropertyKeyRef = useRef("");
 
-  const { data: poRecord, isPending: poRecordLoading } = usePoRecordQuery(
-    task.poNumber,
-  );
-  const loading = poRecordLoading && !poRecord;
+  const { data: poRecord, isFetched } = usePoRecordQuery(task.poNumber);
+  const loading = !propertyHydrated;
 
   useEffect(() => {
     setDistribution(migrateDistribution(task.distribution));
@@ -140,22 +139,24 @@ export function useMyTaskWorkWorkflow({
   }, [task.id, task.poNumber, task.propertyId]);
 
   useEffect(() => {
-    if (!poRecord) return;
+    if (!isFetched) return;
     const hydrateKey = `${task.id}|${task.propertyId ?? "new"}`;
     // Keep local edits for this صك — do not re-hydrate on unrelated PO refetches.
     if (hydratedPropertyKeyRef.current === hydrateKey) return;
     hydratedPropertyKeyRef.current = hydrateKey;
 
-    setAssignmentType(poRecord.assignmentType ?? task.assignmentType ?? "تنفيذ");
+    setAssignmentType(poRecord?.assignmentType ?? task.assignmentType ?? "تنفيذ");
     if (task.propertyId) {
+      const local = peekPropertyFieldAutosave(task.poNumber, task.propertyId);
       const prop =
-        poRecord.properties.find((p) => p.id === task.propertyId) ??
+        local ??
+        poRecord?.properties.find((p) => p.id === task.propertyId) ??
         emptyProperty();
       setProperty(prop);
       if (prop.deedNumber.trim()) {
-        void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber, prop.id).then(
-          (prior) => setHasPriorSurvey(Boolean(prior)),
-        ).catch(() => setHasPriorSurvey(false));
+        void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber, prop.id)
+          .then((prior) => setHasPriorSurvey(Boolean(prior)))
+          .catch(() => setHasPriorSurvey(false));
       } else {
         setHasPriorSurvey(false);
       }
@@ -163,7 +164,16 @@ export function useMyTaskWorkWorkflow({
       setProperty(emptyProperty());
       setHasPriorSurvey(false);
     }
-  }, [poRecord, task.id, task.propertyId, task.poNumber, task.assignmentType]);
+    setPropertyHydrated(true);
+  }, [isFetched, poRecord, task.id, task.propertyId, task.poNumber, task.assignmentType]);
+
+  const exit = useCallback(() => {
+    if (task.propertyId) {
+      void flushPropertyFieldAutosave(task.poNumber, task.propertyId);
+    }
+    if (onClose) onClose();
+    else router.push(myTasksPath());
+  }, [onClose, router, task.poNumber, task.propertyId]);
 
   const linkedPropertyRemoved = Boolean(property.isRemoved);
 

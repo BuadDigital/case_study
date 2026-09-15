@@ -368,7 +368,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 locked={locked}
                 areaFactor={areaFactor}
                 onAreaFactorChange={(value) =>
-                  void dispatch({ type: "area-factor-change", value })
+                  dispatch({ type: "area-factor-change", value })
                 }
               />
               <SubjCell

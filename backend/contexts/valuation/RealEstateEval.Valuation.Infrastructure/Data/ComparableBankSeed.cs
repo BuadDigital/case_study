@@ -1,38 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Infrastructure.Data;
 
 /// <summary>
-/// Demo bank + market adjustments from docs/_similar-sales-valuation
-/// (similar-sales valuation — standalone.html).
-/// Idempotent by <see cref="ComparableProperty.ReferenceCode"/>.
+/// Demo comparable-property rows from docs/_similar-sales-valuation.
+/// Bank rows may exist for local demo; valuations never auto-attach or auto-adopt them.
 /// </summary>
 public static class ComparableBankSeed
 {
-    public static readonly Guid[] SeedIds =
-    [
-        // c1..c7 — land parcels (interactive-model bank)
-        Guid.Parse("c0a10001-0000-4000-8000-000000000001"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000002"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000003"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000004"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000005"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000006"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000007"),
-        // b1..b4 — villas
-        Guid.Parse("c0a10001-0000-4000-8000-000000000008"),
-        Guid.Parse("c0a10001-0000-4000-8000-000000000009"),
-        Guid.Parse("c0a10001-0000-4000-8000-00000000000a"),
-        Guid.Parse("c0a10001-0000-4000-8000-00000000000b"),
-        // a1..a3 — apartments
-        Guid.Parse("c0a10001-0000-4000-8000-00000000000c"),
-        Guid.Parse("c0a10001-0000-4000-8000-00000000000d"),
-        Guid.Parse("c0a10001-0000-4000-8000-00000000000e"),
-    ];
+    public static readonly Guid[] SeedIds = DemoComparableBank.Ids;
 
     private sealed record BankRow(
         Guid Id,
@@ -125,22 +104,41 @@ public static class ComparableBankSeed
  // B8: wall clock only via TimeProvider — the seed lives beside runtime code now.
         var now = (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         await EnsureBankRowsAsync(db, now, cancellationToken);
-        await AttachToOpenValuationsAsync(db, now, cancellationToken);
     }
 
     /// <summary>
-    /// Ensures bank rows exist and attaches seed comps to one valuation if missing.
-    /// Safe to call from list/selection endpoints (idempotent).
+    /// Drops demo-bank selections the valuer never adopted, and clears the fake
+    /// field-comparable pin so they do not re-import onto a valuation.
     /// </summary>
-    public static async Task EnsureForValuationRequestAsync(
+    public static async Task DetachUnchosenFromValuationAsync(
         ValuationDbContext db,
         Guid valuationRequestId,
-        CancellationToken cancellationToken = default,
-        TimeProvider? time = null)
+        CancellationToken cancellationToken = default)
     {
-        var now = (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
-        await EnsureBankRowsAsync(db, now, cancellationToken);
-        await AttachToValuationAsync(db, valuationRequestId, now, cancellationToken);
+        var seedIds = DemoComparableBank.Ids;
+        var rows = await db.ValuationComparableSelections
+            .Where(s =>
+                s.ValuationRequestId == valuationRequestId
+                && seedIds.Contains(s.ComparablePropertyId))
+            .ToListAsync(cancellationToken);
+
+        var unchosen = rows.Where(DemoComparableBank.IsUnchosenDemoSelection).ToList();
+        if (unchosen.Count > 0)
+            db.ValuationComparableSelections.RemoveRange(unchosen);
+
+        var pinned = await db.ComparableProperties
+            .Where(c =>
+                seedIds.Contains(c.Id)
+                && c.SourceWorkOrderNumber == "SEED-FIELD")
+            .ToListAsync(cancellationToken);
+        foreach (var comp in pinned)
+        {
+            comp.SourceWorkOrderNumber = null;
+            comp.SourcePropertyId = null;
+        }
+
+        if (unchosen.Count > 0 || pinned.Count > 0)
+            await db.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task EnsureBankRowsAsync(
@@ -225,187 +223,5 @@ public static class ComparableBankSeed
         }
 
         await db.SaveChangesAsync(cancellationToken);
-    }
-
-    private static async Task AttachToOpenValuationsAsync(
-        ValuationDbContext db,
-        DateTime now,
-        CancellationToken cancellationToken)
-    {
-        var openIds = await db.ValuationRequests
-            .AsNoTracking()
-            .Where(v => v.Status != ValuationRequestStatus.Done)
-            .Select(v => v.Id)
-            .ToListAsync(cancellationToken);
-
-        if (openIds.Count == 0) return;
-
-        var compsByRef = await db.ComparableProperties
-            .AsNoTracking()
-            .Where(c => Rows.Select(r => r.Ref).Contains(c.ReferenceCode))
-            .ToDictionaryAsync(c => c.ReferenceCode, cancellationToken);
-
-        if (compsByRef.Count == 0) return;
-
-        var seedCompIds = compsByRef.Values.Select(c => c.Id).ToHashSet();
-
-        var alreadyLinked = await db.ValuationComparableSelections
-            .AsNoTracking()
-            .Where(s =>
-                openIds.Contains(s.ValuationRequestId)
-                && s.SelectionContext == ComparableSelectionContexts.Market
-                && seedCompIds.Contains(s.ComparablePropertyId))
-            .Select(s => s.ValuationRequestId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        var targets = openIds.Except(alreadyLinked).ToList();
-        if (targets.Count == 0) return;
-
-        foreach (var vrId in targets)
-            await AttachToValuationAsync(db, vrId, now, cancellationToken);
-    }
-
-    private static async Task AttachToValuationAsync(
-        ValuationDbContext db,
-        Guid vrId,
-        DateTime now,
-        CancellationToken cancellationToken)
-    {
-        var exists = await db.ValuationRequests
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                v => v.Id == vrId && v.Status != ValuationRequestStatus.Done,
-                cancellationToken);
-        if (exists is null) return;
-
-        var compsByRef = await db.ComparableProperties
-            .Where(c => Rows.Select(r => r.Ref).Contains(c.ReferenceCode))
-            .ToDictionaryAsync(c => c.ReferenceCode, cancellationToken);
-        if (compsByRef.Count == 0) return;
-
-        // Spec §2: link field comparables to this property for display priority.
-        var subjectPropertyId = exists.PropertyId;
-        if (subjectPropertyId != Guid.Empty)
-        {
-            foreach (var r in Rows.Where(x =>
-                         x.Source == ComparableSources.Field
-                         || x.Intake == ComparableIntakeChannels.Field))
-            {
-                if (!compsByRef.TryGetValue(r.Ref, out var comp)) continue;
-                var tracked = await db.ComparableProperties
-                    .FirstOrDefaultAsync(c => c.Id == comp.Id, cancellationToken);
-                if (tracked is null) continue;
-                // Write only when different — avoid xmin conflicts with concurrent requests.
-                if (tracked.SourcePropertyId != subjectPropertyId)
-                    tracked.SourcePropertyId = subjectPropertyId;
-                tracked.SourceWorkOrderNumber ??= "SEED-FIELD";
-            }
-        }
-
-        var seedCompIds = compsByRef.Values.Select(c => c.Id).ToHashSet();
-        var already = await db.ValuationComparableSelections
-            .AsNoTracking()
-            .AnyAsync(
-                s =>
-                    s.ValuationRequestId == vrId
-                    && s.SelectionContext == ComparableSelectionContexts.Market
-                    && seedCompIds.Contains(s.ComparablePropertyId),
-                cancellationToken);
-        if (already)
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            return;
-        }
-
-        var header = await db.ValuationMarketApproaches
-            .FirstOrDefaultAsync(h => h.ValuationRequestId == vrId, cancellationToken);
-        if (header is null)
-        {
-            db.ValuationMarketApproaches.Add(new ValuationMarketApproach
-            {
-                Id = Guid.NewGuid(),
-                ValuationRequestId = vrId,
-                SubjectAreaSqm = 900m,
-                AdjustmentBasis = MarketAdjustmentBasisKeys.PricePerSqm,
-                AreaFactorPct = AreaAdjustmentRules.DefaultAreaFactorPct,
-                    AnnualMarketRatePct = MarketApproachRules.DefaultAnnualMarketRatePct,
-                    ValueRoundDecimals = MarketApproachRules.DefaultValueRoundDecimals,
-                    AnalysisNotes = null,
-                UpdatedAtUtc = now,
-            });
-        }
-        else if (header.SubjectAreaSqm is null or 0)
-        {
-            header.SubjectAreaSqm = 900m;
-            header.UpdatedAtUtc = now;
-        }
-
-        var existingMaxSort = await db.ValuationComparableSelections
-            .Where(s =>
-                s.ValuationRequestId == vrId
-                && s.SelectionContext == ComparableSelectionContexts.Market)
-            .Select(s => (int?)s.SortOrder)
-            .MaxAsync(cancellationToken) ?? -1;
-
-        // Max 5 adopted (model spec): when prior adoptions exist (comparables imported
-        // from property links) model seeds are attached as non-adopted so the table does not exceed the cap.
-        var adoptedAlready = await db.ValuationComparableSelections
-            .AsNoTracking()
-            .CountAsync(
-                s =>
-                    s.ValuationRequestId == vrId
-                    && s.SelectionContext == ComparableSelectionContexts.Market
-                    && s.IsAdopted,
-                cancellationToken);
-
-        var sort = existingMaxSort + 1;
-        foreach (var r in Rows)
-        {
-            if (!compsByRef.TryGetValue(r.Ref, out var comp)) continue;
-            var selectionId = Guid.NewGuid();
-            var selection = new ValuationComparableSelection
-            {
-                Id = selectionId,
-                ValuationRequestId = vrId,
-                ComparablePropertyId = comp.Id,
-                SelectionContext = ComparableSelectionContexts.Market,
-                SortOrder = sort++,
-                IsAdopted = adoptedAlready == 0 && r.AdoptDefault,
-                SelectedAtUtc = now,
-                WeightIsManual = false,
-                AreaAdjustmentMethod = AreaAdjustmentMethods.Amthal,
-            };
-            db.ValuationComparableSelections.Add(selection);
-
-            var lines = MarketApproachRules.CreateStandardMarketLines(selectionId).ToList();
-            ApplySeedSpecs(lines, r);
-            foreach (var line in lines)
-                db.ValuationComparableAdjustmentLines.Add(line);
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// compSpec from interactive model: comparable descriptions per difference factor — percentages start at zero
-    /// (suggested comparable-kind defaults are computed by the engine, not the seed).
-    /// </summary>
-    private static void ApplySeedSpecs(
-        List<ValuationComparableAdjustmentLine> lines,
-        BankRow r)
-    {
-        void Describe(string key, string description)
-        {
-            var line = lines.FirstOrDefault(l => l.FactorKey == key);
-            if (line is null || string.IsNullOrWhiteSpace(description)) return;
-            line.DescriptionAr = description;
-        }
-
-        Describe(MarketAdjustmentFactorKeys.IdealArea, r.SpecIdeal);
-        Describe(MarketAdjustmentFactorKeys.Attraction, r.SpecAttraction);
-        Describe(MarketAdjustmentFactorKeys.Access, r.SpecAccess);
-        Describe(MarketAdjustmentFactorKeys.StreetCount, r.SpecStreetsCount);
-        Describe(MarketAdjustmentFactorKeys.StreetLengths, r.SpecStreetsLength);
     }
 }

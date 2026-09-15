@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Spinner, cn, useToast } from "@platform/ui-kit";
 import { InfoBox } from "./PropertyDetailFields";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
 } from "../../lib/app-data/property-detail-documents";
+import {
+  getInspectorPhotoDataUrl,
+  prefetchInspectorPhoto,
+} from "../../lib/app-data/inspector-photo-upload";
 import { openPropertyPhotosPdfPrint } from "../../lib/app-data/property-photos-pdf";
 
 /**
@@ -58,7 +62,41 @@ const HTML_PHOTO_GROUPS: {
 ];
 
 function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
-  const canOpen = Boolean(photo.dataUrl);
+  const handle = photo.inspectionPhoto;
+  const [dataUrl, setDataUrl] = useState(
+    () =>
+      photo.dataUrl ??
+      (handle ? getInspectorPhotoDataUrl(handle.taskId, handle.photoRef) : undefined),
+  );
+
+  useEffect(() => {
+    if (photo.dataUrl) {
+      setDataUrl(photo.dataUrl);
+      return;
+    }
+    if (!handle?.attachment.attachmentId) return;
+    const cached = getInspectorPhotoDataUrl(handle.taskId, handle.photoRef);
+    if (cached) {
+      setDataUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    void prefetchInspectorPhoto(handle.taskId, handle.photoRef, handle.attachment).then(
+      (url) => {
+        if (!cancelled && url) setDataUrl(url);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    photo.dataUrl,
+    handle?.taskId,
+    handle?.photoRef,
+    handle?.attachment.attachmentId,
+  ]);
+
+  const canOpen = Boolean(dataUrl);
   return (
     <div>
       <button
@@ -68,13 +106,15 @@ function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
           canOpen ? "cursor-pointer" : "cursor-default opacity-80",
         )}
         disabled={!canOpen}
-        onClick={() => openPropertyDetailDocumentPreview(photo)}
+        onClick={() =>
+          openPropertyDetailDocumentPreview({ ...photo, dataUrl })
+        }
         aria-label={photo.name}
       >
-        {photo.dataUrl ? (
+        {dataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={photo.dataUrl}
+            src={dataUrl}
             alt={photo.name}
             className="h-full w-full object-cover"
           />

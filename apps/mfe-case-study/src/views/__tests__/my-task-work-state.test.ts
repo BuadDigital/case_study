@@ -172,13 +172,13 @@ describe("taskWorkRoleFlags", () => {
 });
 
 describe("property helpers", () => {
-  it("persists the bourse flag from whether the identifier skips bourse", () => {
+  it("does not mark bourse complete on enfath save", () => {
     const deed = { ...emptyProperty(), identifierType: "deed" as const, realEstateRegNumber: "" };
     expect(persistedEnfathProperty(deed).bourseDataCompleted).toBe(false);
     const registered = { ...deed, realEstateRegNumber: "REG-9" };
-    expect(persistedEnfathProperty(registered).bourseDataCompleted).toBe(true);
+    expect(persistedEnfathProperty(registered).bourseDataCompleted).toBe(false);
     const saved = { ...deed, id: "server" };
-    expect(savedEnfathProperty(registered, saved)).toEqual({ ...saved, bourseDataCompleted: true });
+    expect(savedEnfathProperty(registered, saved)).toBe(saved);
     expect(savedEnfathProperty(deed, saved)).toBe(saved);
   });
 

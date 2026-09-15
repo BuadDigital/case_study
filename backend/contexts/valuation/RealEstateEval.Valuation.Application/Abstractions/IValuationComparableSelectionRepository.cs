@@ -14,8 +14,11 @@ public interface IValuationComparableSelectionRepository
     /// <summary>Untracked valuation request, or <c>null</c> when it does not exist.</summary>
     Task<ValuationRequest?> GetRequestAsync(Guid valuationRequestId, CancellationToken cancellationToken);
 
-    /// <summary>Seeds the demo comparables bank for this request; idempotent by reference code.</summary>
-    Task EnsureBankSeedAsync(Guid valuationRequestId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Drops demo-bank rows the valuer never adopted (no <c>SelectedByUserId</c>).
+    /// Opening a valuation must not keep TRX-24-0912 / OFR-25-0206 planted on the matrix.
+    /// </summary>
+    Task DetachUnchosenDemoSelectionsAsync(Guid valuationRequestId, CancellationToken cancellationToken);
 
     /// <summary>Untracked selections of one context with their adjustment lines, in sort order.</summary>
     Task<IReadOnlyList<ValuationComparableSelection>> ListSelectionsAsync(

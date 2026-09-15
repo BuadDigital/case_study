@@ -2,6 +2,7 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import { approximatePropertyGeo, hasDistrictGeo } from "@platform/app-shared/domain/property-geo";
 import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
 
@@ -51,6 +52,47 @@ export function areaRatio(
 ): string {
   const r = areaRatioValue(subjectArea, compArea);
   return r == null ? "—" : r.toFixed(2);
+}
+
+/** Digits and one decimal point — Arabic numerals accepted. */
+export function sanitizeAmountInput(raw: string): string {
+  return toLatinDigits(raw).replace(/[^\d.]/g, "");
+}
+
+export function roundMoney(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function amountOr(raw: string | null | undefined, fallback: number): number {
+  if (raw == null || raw.trim() === "") return fallback;
+  const n = Number(raw.replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Live سعر العقار / المساحة / سعر المتر while the evaluator is still in the cell. */
+export function liveBankMoney(args: {
+  committedPrice: number;
+  committedArea: number;
+  priceDraft?: string | null;
+  areaDraft?: string | null;
+  unitDraft?: string | null;
+}): { price: number; area: number; unit: number | null } {
+  const area = amountOr(args.areaDraft, args.committedArea);
+  if (args.unitDraft != null && args.unitDraft !== "") {
+    const unit = amountOr(args.unitDraft, 0);
+    return {
+      area,
+      unit: unit > 0 ? unit : null,
+      price:
+        unit > 0 && area > 0 ? roundMoney(unit * area) : args.committedPrice,
+    };
+  }
+  const price = amountOr(args.priceDraft, args.committedPrice);
+  return {
+    price,
+    area,
+    unit: area > 0 ? roundMoney(price / area) : null,
+  };
 }
 
 export function haversineKm(

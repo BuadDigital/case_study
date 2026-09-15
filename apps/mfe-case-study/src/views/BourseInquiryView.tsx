@@ -42,12 +42,14 @@ import {
   formatPendingBourseDeedDisplay,
   formatPoDisplay,
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
+  propertyHasRegisteredTitle,
   type PoPropertyIntake,
 } from "../lib/app-data/po-intake-data";
 import { findPropertyInRecord } from "../lib/app-data/po-intake-reads";
 import { completePropertyBourse } from "../lib/app-data/po-intake-commands";
 import {
   flushPropertyFieldAutosave,
+  peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
 } from "../lib/app-data/property-field-autosave";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -208,10 +210,17 @@ export function BourseInquiryView() {
           setDeedVitality(null);
           setObstructionReason("");
           setObstructionReasonError(undefined);
+          const local = peekPropertyFieldAutosave(item.poNumber, item.propertyId);
+          if (local) {
+            setProperty({ ...local, id: item.propertyId });
+          }
           const hit = await findPropertyInRecord(item.poNumber, item.propertyId);
+          if (peekPropertyFieldAutosave(item.poNumber, item.propertyId)) {
+            return;
+          }
           if (hit) {
             setProperty({ ...hit.property, id: item.propertyId });
-          } else {
+          } else if (!local) {
             setProperty({
               ...emptyProperty(),
               id: item.propertyId,
@@ -229,9 +238,9 @@ export function BourseInquiryView() {
     });
   }
 
-  function closeForm() {
+  async function closeForm() {
     if (selected) {
-      void flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
+      await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
     }
     setSelected(null);
     setProperty(emptyProperty());
@@ -247,7 +256,9 @@ export function BourseInquiryView() {
 
     await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
 
-    if (!deedVitality) {
+    const compactRegisteredTitle = propertyHasRegisteredTitle(property);
+
+    if (!compactRegisteredTitle && !deedVitality) {
       const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };
       setFieldErrors(errors);
       setFormError(DEED_VITALITY_REQUIRED_ERROR);
@@ -255,7 +266,7 @@ export function BourseInquiryView() {
       return;
     }
 
-    if (deedVitality === "inactive") {
+    if (!compactRegisteredTitle && deedVitality === "inactive") {
       const obstructionError = validateBourseObstructionReason(
         deedVitality,
         obstructionReason,
@@ -309,7 +320,9 @@ export function BourseInquiryView() {
         pendingBourseComplete.current = {
           poNumber: selected.poNumber,
           propertyId: selected.propertyId,
-          property: { ...property, deedStatus: "فعال" },
+          property: compactRegisteredTitle
+            ? property
+            : { ...property, deedStatus: "فعال" },
         };
         const outcome = await executeBourseComplete();
         if (outcome.status === "skipped") return;

@@ -245,7 +245,7 @@ public class GodServiceCollaboratorTests
     public void Workflow_phase_after_enfath()
     {
         Assert.Equal(
-            WorkflowTaskPhase.Distribution,
+            WorkflowTaskPhase.Bourse,
             WorkflowTaskPhaseRules.PhaseAfterEnfath(
                 PropertyIdentifierTypeLabels.RealEstateReg, false));
         Assert.Equal(

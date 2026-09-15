@@ -413,7 +413,7 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void ValidatePropertyEnfath_rejects_deed_with_wrong_digit_length()
+    public void ValidatePropertyEnfath_allows_deed_of_any_digit_length()
     {
         var dto = ValidDeedProperty();
         dto.DeedNumber = "12345";
@@ -425,11 +425,11 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Equal("رقم الصك يجب أن يكون 12 رقماً", errors["deedNumber"]);
+        Assert.DoesNotContain(errors, e => e.Key == "deedNumber");
     }
 
     [Fact]
-    public void ValidatePropertyEnfath_requires_sixteen_digits_for_real_estate_registration()
+    public void ValidatePropertyEnfath_allows_real_estate_reg_of_any_digit_length()
     {
         var dto = ValidDeedProperty();
         dto.IdentifierType = PropertyIdentifierTypeLabels.RealEstateReg;
@@ -446,7 +446,7 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Equal("تسجيل عيني يجب أن يكون 16 رقماً", errors["realEstateRegNumber"]);
+        Assert.DoesNotContain(errors, e => e.Key == "realEstateRegNumber");
     }
 
     [Fact]
@@ -459,6 +459,31 @@ public class WorkOrderValidatorTests
         Assert.Contains("bourseDeedImageFileName", errors.Keys);
         Assert.DoesNotContain("classification", errors.Keys);
         Assert.DoesNotContain("propertyType", errors.Keys);
+    }
+
+    [Fact]
+    public void ValidatePropertyBourse_registered_title_skips_deed_image()
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(
+            new UpdatePropertyBourseRequest
+            {
+                City = "Riyadh",
+                District = "Al Olaya",
+            },
+            compactRegisteredTitle: true);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void CompactRegisteredTitleBourse_detects_registration_number()
+    {
+        Assert.True(WorkOrderValidator.CompactRegisteredTitleBourse(
+            PropertyIdentifierTypeLabels.Deed, "12345"));
+        Assert.True(WorkOrderValidator.CompactRegisteredTitleBourse(
+            PropertyIdentifierTypeLabels.RealEstateReg, null));
+        Assert.False(WorkOrderValidator.CompactRegisteredTitleBourse(
+            PropertyIdentifierTypeLabels.Deed, "  "));
     }
 
     [Fact]

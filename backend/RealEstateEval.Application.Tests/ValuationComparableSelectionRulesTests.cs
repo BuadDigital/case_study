@@ -36,4 +36,33 @@ public class ValuationComparableSelectionRulesTests
     {
         Assert.Equal(expected, ValuationComparableSelectionRules.MeetsMinimumAdopted(flags));
     }
+
+    [Fact]
+    public void Demo_bank_excludes_seed_ids_from_property_link_import()
+    {
+        var trx = DemoComparableBank.Ids[0];
+        var real = Guid.Parse("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee");
+        Assert.Equal([real], DemoComparableBank.Exclude([trx, real, trx]));
+    }
+
+    [Fact]
+    public void Demo_bank_unchosen_means_no_valuer_user_id()
+    {
+        var trx = DemoComparableBank.Ids[0];
+        Assert.True(DemoComparableBank.IsUnchosenDemoSelection(new ValuationComparableSelection
+        {
+            ComparablePropertyId = trx,
+            IsAdopted = true,
+        }));
+        Assert.False(DemoComparableBank.IsUnchosenDemoSelection(new ValuationComparableSelection
+        {
+            ComparablePropertyId = trx,
+            SelectedByUserId = "valuer-1",
+            IsAdopted = true,
+        }));
+        Assert.False(DemoComparableBank.IsUnchosenDemoSelection(new ValuationComparableSelection
+        {
+            ComparablePropertyId = Guid.NewGuid(),
+        }));
+    }
 }

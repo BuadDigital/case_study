@@ -87,12 +87,15 @@ export function classificationRequiresSurvey(classification: string): boolean {
   return classification.trim() !== "وحدة داخل مبنى";
 }
 
-/** Registered title (title registry) — same intake signals that skip bourse. */
+/** Registered title (title registry) — registration number or identifier type. */
 export function propertyHasRegisteredTitle(property: {
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
 }): boolean {
-  return propertySkipsBourse(property);
+  return (
+    property.realEstateRegNumber.trim().length > 0 ||
+    property.identifierType === "real_estate_reg"
+  );
 }
 
 /** Approved subdivision: plan number and plot number are both present. */
@@ -131,22 +134,22 @@ export function isBourseInquiryIdentifier(
   return type === "bourse_inquiry";
 }
 
-/** Registered title — skips bourse and goes straight to transaction distribution. */
+/**
+ * Registered title still goes through bourse (location/area only).
+ * Kept so callers that gated menus/badges keep compiling.
+ */
 export function skipsBourseForIdentifier(
-  type: PropertyIdentifierType,
+  _type: PropertyIdentifierType,
 ): boolean {
-  return type === "real_estate_reg";
+  return false;
 }
 
-/** Skip bourse when real-estate registration number is filled. */
-export function propertySkipsBourse(property: {
+/** No identifier skips the bourse phase anymore. */
+export function propertySkipsBourse(_property: {
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
 }): boolean {
-  return (
-    property.realEstateRegNumber.trim().length > 0 ||
-    skipsBourseForIdentifier(property.identifierType)
-  );
+  return false;
 }
 
 export function parsePropertyIdentifierType(
@@ -194,12 +197,12 @@ export function formatPendingBourseDeedDisplay(item: {
   });
 }
 
-/** Soft cap aligned with DB `HasMaxLength(128)` — not a business length rule. */
+/** Digits only — no fixed business length (up to DB max). */
 export const PROPERTY_IDENTIFIER_MAX_LENGTH = 128;
 
-/** @deprecated Prefer any non-empty digit string; kept for callers that still compare. */
+/** @deprecated Length is not enforced; kept for callers that still compare. */
 export const DEED_NUMBER_DIGIT_LENGTH = 12;
-/** @deprecated Prefer any non-empty digit string; kept for callers that still compare. */
+/** @deprecated Length is not enforced; kept for callers that still compare. */
 export const REAL_ESTATE_REG_NUMBER_DIGIT_LENGTH = 16;
 
 export function requiredPropertyIdentifierDigitLength(

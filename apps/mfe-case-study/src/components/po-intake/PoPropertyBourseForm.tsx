@@ -12,6 +12,7 @@ import {
   boundariesMarkedUnavailable,
   clearPropertyBoundaryFields,
   hasRestrictionType,
+  propertyHasRegisteredTitle,
   toggleRestrictionType,
   type BourseDeedVitality,
   type PoPropertyIntake,
@@ -67,11 +68,13 @@ export function PoPropertyBourseForm({
 }: Props) {
   const { showToast } = useToast();
   const attachPo = poNumber?.trim() || "";
-  const obstructionPath = showDeedVitalityFlow && deedVitality === "inactive";
+  const compactRegisteredTitle = propertyHasRegisteredTitle(property);
+  const vitalityFlow = showDeedVitalityFlow && !compactRegisteredTitle;
+  const obstructionPath = vitalityFlow && deedVitality === "inactive";
 
   return (
     <>
-      {showDeedVitalityFlow ? (
+      {vitalityFlow ? (
         <div
           id="deed_vitality"
           className={cn(
@@ -137,7 +140,11 @@ export function PoPropertyBourseForm({
       ) : null}
 
       {showIntroNote && !obstructionPath ? (
-        <Note tone="info" className="mb-3">بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة.</Note>
+        <Note tone="info" className="mb-3">
+          {compactRegisteredTitle
+            ? "بيانات الموقع والمساحة حسب استعلام البورصة."
+            : "بيانات البورصة — المدينة والحي والمساحة والحدود حسب استعلام البورصة."}
+        </Note>
       ) : null}
 
       {!obstructionPath ? (
@@ -174,7 +181,7 @@ export function PoPropertyBourseForm({
             onChange={(v) => onPatch("propertyType", v)}
             placeholder="سكني · تجاري · فيلا…"
           />
-          {showDeedVitalityFlow ? null : (
+          {vitalityFlow || compactRegisteredTitle ? null : (
             <RegSelect
               id="deed_status"
               label="حالة الصك"
@@ -187,7 +194,7 @@ export function PoPropertyBourseForm({
         </InfathSection>
       ) : null}
 
-      {!obstructionPath ? (
+      {!obstructionPath && !compactRegisteredTitle ? (
         <>
           <InfathSection title="صورة الصك" className="mt-3">
           <PropertyFileUploadField

@@ -32,14 +32,13 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { Card } from "./atoms";
+import { ComparablesBankMoneyCells, ComparablesBankMoneyReadOnly } from "./ComparablesBankMoneyCells";
 import {
-  areaRatio,
-  areaRatioValue,
   NEARBY_RADIUS_KM,
   sourceCardLine,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
-import { apiConfig, fmt } from "./lib/shell-utils";
+import { apiConfig } from "./lib/shell-utils";
 
 export type ComparablesBankRow = BankDisplayRow;
 
@@ -120,8 +119,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       return res.data;
     },
   );
-  /** compEdit: price/area edit drafts for the comparable — local to the table. */
-  const [editDraft, setEditDraft] = useState<Record<string, string>>({});
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;
   const onCreatedRef = useRef(onCreated);
@@ -199,22 +196,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       );
     }
   }
-
-  const saveOverride = (
-    item: ValuationComparableSelectionDto,
-    field: "price" | "area",
-    raw: string,
-  ) => {
-    void onSaveOverride(item, field, raw).then((ok) => {
-      if (!ok) return;
-      // Draft served its purpose — effective server value shows after silent reload.
-      setEditDraft((prev) => {
-        const next = { ...prev };
-        delete next[`${item.id}:${field}`];
-        return next;
-      });
-    });
-  };
 
   return (
     <>
@@ -366,107 +347,19 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                 <TdLtr className="text-center" valueClassName="text-[13px] text-text-2">
                   {row.comp.transactionDate?.slice(0, 10) || "—"}
                 </TdLtr>
-                <TdLtr
-                  className="bg-gold-soft text-center"
-                  valueClassName="text-[14px] font-extrabold text-heading"
-                >
-                  {fmt(row.item?.effectivePricePerSqm ?? row.comp.pricePerSqm)}
-                </TdLtr>
-                <Td className="text-center">
-                  {row.item ? (
-                    <input
-                      dir="ltr"
-                      type="text"
-                      title="سعر العقار الإجمالي — تجاوز لهذا التقييم فقط، لا يمس بنك المقارنات"
-                      value={
-                        editDraft[`${row.item.id}:price`] ??
-                        String(row.item.effectivePriceSar ?? row.comp.price)
-                      }
-                      onChange={(e) =>
-                        setEditDraft((prev) => ({
-                          ...prev,
-                          [`${row.item!.id}:price`]: e.target.value.replace(
-                            /[^\d.]/g,
-                            "",
-                          ),
-                        }))
-                      }
-                      onBlur={(e) =>
-                        saveOverride(row.item!, "price", e.target.value)
-                      }
-                      className={cn(
-                        "w-[104px] rounded-md border px-2 py-1.5 text-center text-[13.5px] font-extrabold outline-none",
-                        row.item.priceOverrideSar != null
-                          ? "border-border-md bg-surface text-heading"
-                          : "border-border bg-surface-2 text-text-2",
-                      )}
-                    />
-                  ) : (
-                    <span dir="ltr" className="text-[14px] font-extrabold text-heading">
-                      {fmt(row.comp.price)}
-                    </span>
-                  )}
-                </Td>
                 {row.item ? (
-                  <Td className="text-center">
-                    <input
-                      dir="ltr"
-                      type="text"
-                      title="مساحة المقارن — تجاوز لهذا التقييم فقط"
-                      value={
-                        editDraft[`${row.item.id}:area`] ??
-                        String(row.item.effectiveAreaSqm ?? row.comp.areaSqm)
-                      }
-                      onChange={(e) =>
-                        setEditDraft((prev) => ({
-                          ...prev,
-                          [`${row.item!.id}:area`]: e.target.value.replace(
-                            /[^\d.]/g,
-                            "",
-                          ),
-                        }))
-                      }
-                      onBlur={(e) =>
-                        saveOverride(row.item!, "area", e.target.value)
-                      }
-                      className={cn(
-                        "w-[84px] rounded-md border px-2 py-1.5 text-center text-[13px] font-bold outline-none",
-                        row.item.areaOverrideSqm != null
-                          ? "border-border-md bg-surface text-heading"
-                          : "border-border bg-surface-2 text-text-2",
-                      )}
-                    />
-                  </Td>
+                  <ComparablesBankMoneyCells
+                    item={row.item}
+                    comp={row.comp}
+                    subjectSqm={subjectSqm}
+                    onSaveOverride={onSaveOverride}
+                  />
                 ) : (
-                  <TdLtr
-                    bare
-                    className="text-center text-[13.5px] font-bold text-text-2"
-                  >
-                    {fmt(row.comp.areaSqm)}
-                  </TdLtr>
+                  <ComparablesBankMoneyReadOnly
+                    comp={row.comp}
+                    subjectSqm={subjectSqm}
+                  />
                 )}
-                {(() => {
-                  const effArea = row.item?.effectiveAreaSqm ?? row.comp.areaSqm;
-                  const ratio = areaRatioValue(subjectSqm, effArea);
-                  return (
-                    <TdLtr
-                      bare
-                      className={cn(
-                        "text-center text-[13.5px] font-bold",
-                        ratio != null && ratio >= 2
-                          ? "text-red-text"
-                          : "text-heading",
-                      )}
-                      title={
-                        ratio != null && ratio >= 2
-                          ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
-                          : undefined
-                      }
-                    >
-                      {areaRatio(subjectSqm, effArea)}
-                    </TdLtr>
-                  );
-                })()}
                 {(() => {
                   const km = distanceKm[row.comp.id];
                   return (

@@ -236,7 +236,7 @@ export function distributionValidationContext(
   };
 }
 
-/** Infath save persists the bourse flag: identifiers that skip bourse are complete already. */
+/** Infath save never completes bourse; registered title still visits inquiry. */
 export function persistedEnfathProperty(property: PoPropertyIntake): PoPropertyIntake {
   return propertySkipsBourse(property)
     ? { ...property, bourseDataCompleted: true }

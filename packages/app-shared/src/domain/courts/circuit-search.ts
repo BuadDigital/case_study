@@ -204,6 +204,31 @@ function rankWithNormalizedQuery(
   return null;
 }
 
+function circuitDigits(value: string): string {
+  return toLatinDigits(value).replace(/\D/g, "");
+}
+
+/**
+ * Exact catalog hit for a typed query: same circuit number, or the full
+ * displayed name. Partial ranks (prefix / «خامس») are not a link.
+ */
+export function findLinkedCircuit<T extends CircuitSearchItem>(
+  circuits: readonly T[],
+  query: string,
+): T | null {
+  const q = query.trim();
+  if (!q) return null;
+  const qDigits = circuitDigits(q);
+  if (qDigits) {
+    return circuits.find((row) => circuitDigits(row.circuitNo) === qDigits) ?? null;
+  }
+  const qText = stripArabicAl(q);
+  return (
+    circuits.find((row) => stripArabicAl(circuitDisplayLabel(row)) === qText) ??
+    null
+  );
+}
+
 /** Filter and sort circuits by query. Without q: ascending by number. */
 export function filterAndRankCircuits<T extends CircuitSearchItem>(
   circuits: readonly T[],
