@@ -98,13 +98,17 @@ public static class StaffProfileRules
     {
         var roleId = request.RoleId is null ? stored.RoleId : request.RoleId.Trim();
         var hasCompensation = request.HasCompensation ?? stored.HasCompensation;
+        var mobile = request.Mobile is null
+            ? user.PhoneNumber
+            : StaffUserRules.NormalizeMobile(request.Mobile);
+        var email = request.Mobile is null || mobile is null
+            ? user.Email
+            : SaudiMobiles.InternalEmail(mobile);
         return new StaffUpdateTarget(
             RoleId: roleId,
             DisplayName: request.DisplayName is null ? user.DisplayName : request.DisplayName.Trim(),
-            Email: request.Email is null ? user.Email : request.Email.Trim().ToLowerInvariant(),
-            Mobile: request.Mobile is null
-                ? user.PhoneNumber
-                : StaffUserRules.NormalizeMobile(request.Mobile),
+            Email: email,
+            Mobile: mobile,
             City: request.City is null ? stored.City : request.City.Trim(),
             NationalId: request.NationalId is null ? stored.NationalId : request.NationalId.Trim(),
             InspectorType: roleId == "field-inspector"
@@ -172,7 +176,6 @@ public static class StaffProfileRules
     {
         var changes = new Dictionary<string, AuditValueChange>(StringComparer.Ordinal);
         Track(changes, "displayName", user.DisplayName, target.DisplayName);
-        Track(changes, "email", user.Email, target.Email);
         Track(changes, "mobile", user.PhoneNumber, target.Mobile);
         Track(changes, "city", stored.City, target.City);
         Track(changes, "nationalId", stored.NationalId, target.NationalId);

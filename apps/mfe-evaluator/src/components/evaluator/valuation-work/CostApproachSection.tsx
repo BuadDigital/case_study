@@ -15,8 +15,6 @@ import {
 } from "./CostApproachParts";
 import { useCostApproachWorkflow } from "./useCostApproachWorkflow";
 
-export { CostBasisUnitCard } from "./CostApproachParts";
-
 /**
  * Cost-approach section — composes the land, lines, indirect, age, results,
  * analysis and alert cards over `useCostApproachWorkflow`, which owns the
@@ -28,6 +26,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   valuationRequestId,
   poNumber,
   propertyId,
+  inspectionTaskId = null,
   cost,
   hydrateKey,
   buildingOnly,
@@ -41,6 +40,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   valuationRequestId: string | null;
   poNumber?: string;
   propertyId: string;
+  inspectionTaskId?: string | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
@@ -55,6 +55,7 @@ export const CostApproachSection = memo(function CostApproachSection({
     valuationRequestId,
     poNumber,
     propertyId,
+    inspectionTaskId,
     cost,
     hydrateKey,
     buildingOnly,
@@ -87,19 +88,23 @@ export const CostApproachSection = memo(function CostApproachSection({
         />
       ) : null}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-baseline gap-2.5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2.5">
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             بنود التكلفة المباشرة
           </h2>
-          <span className="text-[11.5px] text-text-3">
-            البنود موجبة فقط — النقص عن السائد يُعالَج تقادماً وظيفياً · أضف البند
-            من صف «اختر البند» في نهاية كل مجموعة
+          <span className="text-xs text-text-3">
+            البنود موجبة فقط — النقص عن السائد يُعالَج تقادماً وظيفياً
           </span>
         </div>
-        <GhostBtn disabled={saving || locked} onClick={() => void seedCostFromInventory()}>
-          سحب من حصر المباني
-        </GhostBtn>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-xs text-text-3">
+            أضف البند من صف «اختر البند» في نهاية كل مجموعة
+          </span>
+          <GhostBtn disabled={saving || locked} onClick={() => void seedCostFromInventory()}>
+            سحب من حصر المباني
+          </GhostBtn>
+        </div>
       </div>
 
       <CostApproachLinesTable workflow={workflow} saving={saving} />
@@ -112,7 +117,7 @@ export const CostApproachSection = memo(function CostApproachSection({
           directTotal={totals.directTotal}
           derived={derived}
         />
-        <CostAgeCard cost={cost} fields={fields} setField={setField} />
+        <CostAgeCard derived={derived} fields={fields} setField={setField} />
       </div>
 
       {/* Results and recommendations — interactive-form spec */}

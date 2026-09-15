@@ -231,7 +231,8 @@ public sealed class ValuationIssuanceGateService(
             InspectionScopeKey: inspectionScopeKey,
             UninspectedUnitCount: uninspectedUnitCount,
             RemoteInspectionApprovedByAccredited: remoteInspectionApproved,
-            TimeGapMonthsThreshold: org.Valuation.ComparableTimeGapMonths);
+            TimeGapMonthsThreshold: org.Valuation.ComparableTimeGapMonths,
+            MarketApproachRelevant: marketApproachEnabled);
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
         var overrideByCode = (recon?.MethodologyAlertOverrides ?? [])

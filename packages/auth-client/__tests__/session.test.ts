@@ -18,7 +18,7 @@ import {
 
 const baseSession: AuthSession = {
   token: "t",
-  user: { id: "1", email: "a@b.c", displayName: "Test" },
+  user: { id: "1", displayName: "Test" },
   expiresAtUtc: new Date(Date.now() + 60_000).toISOString(),
 };
 

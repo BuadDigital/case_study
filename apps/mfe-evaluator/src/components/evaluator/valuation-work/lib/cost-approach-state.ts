@@ -8,6 +8,7 @@ import type {
   ValuationCostLineDto,
 } from "@platform/api-client";
 import { createClientId } from "@platform/app-shared/lib/create-client-id";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
 import {
   COST_ITEM_OPTIONS,
@@ -34,7 +35,9 @@ export type CostApproachFields = {
   financingRate: string;
   financingMonths: string;
   actualAge: string;
+  actualAgeRationale: string;
   economicAge: string;
+  economicAgeRationale: string;
   lifeExtension: string;
   lifeExtensionBasis: string;
   functionalObs: string;
@@ -49,15 +52,43 @@ export function costNum(raw: string): number {
   return Number(String(raw).replace(",", ".")) || 0;
 }
 
+/** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
+export const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
+  design_supervision: "3",
+  licensing_fees: "3",
+  project_management: "3",
+  utilities_connection: "3",
+  contingency: "3",
+  developer_profit: "15",
+};
+
+export const DEFAULT_FINANCING_RATE = "5";
+export const DEFAULT_FINANCING_MONTHS = "18";
+export const DEFAULT_ACTUAL_AGE_YEARS = "10";
+export const DEFAULT_ECONOMIC_AGE_YEARS = "40";
+
+export function defaultIndirectDraft(): IndirectDraft {
+  const draft: IndirectDraft = {};
+  for (const item of INDIRECT_COST_ITEMS) {
+    draft[item.key] = {
+      pct: DEFAULT_INDIRECT_PCTS[item.key] ?? "0",
+      rationale: "",
+    };
+  }
+  return draft;
+}
+
 export const EMPTY_COST_FIELDS: CostApproachFields = {
   useRestrictionPct: "0",
   useRestrictionRationale: "",
   apartmentLandShare: "",
-  indirectDraft: {},
-  financingRate: "0",
-  financingMonths: "0",
-  actualAge: "",
-  economicAge: "",
+  indirectDraft: defaultIndirectDraft(),
+  financingRate: DEFAULT_FINANCING_RATE,
+  financingMonths: DEFAULT_FINANCING_MONTHS,
+  actualAge: DEFAULT_ACTUAL_AGE_YEARS,
+  actualAgeRationale: "",
+  economicAge: DEFAULT_ECONOMIC_AGE_YEARS,
+  economicAgeRationale: "",
   lifeExtension: "0",
   lifeExtensionBasis: "",
   functionalObs: "0",
@@ -67,17 +98,37 @@ export const EMPTY_COST_FIELDS: CostApproachFields = {
   costAnalysisNotes: "",
 };
 
+/** Inspector property age → cost actual-age field. Empty when missing or non-numeric. */
+export function inspectorAgeYearsForCostField(
+  raw: string | null | undefined,
+): string {
+  const latin = toLatinDigits((raw ?? "").trim());
+  const match = latin.match(/(\d+(?:\.\d+)?)/);
+  return match?.[1] ?? "";
+}
+
 /** Server DTO to editable drafts — one full-load reseed, no partial merges. */
 export function costFieldsFromDto(
   cost: ValuationCostApproachDto,
+  inspectorAgeYears?: string | null,
 ): CostApproachFields {
-  const indirectDraft: IndirectDraft = {};
-  for (const item of cost.indirectItems ?? []) {
-    indirectDraft[item.itemKey] = {
-      pct: String(item.pct),
-      rationale: item.rationale ?? "",
-    };
+  const savedIndirect = cost.indirectItems ?? [];
+  const hasSavedIndirect = savedIndirect.some(
+    (item) => item.pct !== 0 || (item.rationale ?? "").trim() !== "",
+  );
+  const indirectDraft: IndirectDraft = hasSavedIndirect
+    ? {}
+    : defaultIndirectDraft();
+  if (hasSavedIndirect) {
+    for (const item of savedIndirect) {
+      indirectDraft[item.itemKey] = {
+        pct: String(item.pct),
+        rationale: item.rationale ?? "",
+      };
+    }
   }
+  const financingUntouched =
+    !(cost.financingAnnualRatePct ?? 0) && !(cost.financingMonths ?? 0);
   return {
     useRestrictionPct: String(cost.useRestrictionDiscountPct ?? 0),
     useRestrictionRationale: cost.useRestrictionRationale ?? "",
@@ -86,11 +137,23 @@ export function costFieldsFromDto(
         ? String(cost.apartmentLandShareSqm)
         : "",
     indirectDraft,
-    financingRate: String(cost.financingAnnualRatePct ?? 0),
-    financingMonths: String(cost.financingMonths ?? 0),
-    actualAge: cost.actualAgeYears != null ? String(cost.actualAgeYears) : "",
+    financingRate: financingUntouched
+      ? DEFAULT_FINANCING_RATE
+      : String(cost.financingAnnualRatePct ?? 0),
+    financingMonths: financingUntouched
+      ? DEFAULT_FINANCING_MONTHS
+      : String(cost.financingMonths ?? 0),
+    actualAge:
+      cost.actualAgeYears != null
+        ? String(cost.actualAgeYears)
+        : inspectorAgeYearsForCostField(inspectorAgeYears) ||
+          DEFAULT_ACTUAL_AGE_YEARS,
+    actualAgeRationale: "",
     economicAge:
-      cost.economicAgeYears != null ? String(cost.economicAgeYears) : "",
+      cost.economicAgeYears != null
+        ? String(cost.economicAgeYears)
+        : DEFAULT_ECONOMIC_AGE_YEARS,
+    economicAgeRationale: "",
     lifeExtension: String(cost.lifeExtensionYears ?? 0),
     lifeExtensionBasis: cost.lifeExtensionBasis ?? "",
     functionalObs: String(cost.functionalObsolescencePct ?? 0),

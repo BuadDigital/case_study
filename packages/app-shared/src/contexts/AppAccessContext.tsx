@@ -11,7 +11,7 @@ import { useValidAuthSession } from "../auth/use-auth-session";
 type Ctx = {
   role: RoleId;
   authReady: boolean;
-  viewerEmail: string | null;
+  viewerUserId: string | null;
   viewerDisplayName: string | null;
   /** Staff job title — preferred chip subtitle; catalog dept is only a fallback. */
   viewerJobTitle: string | null;
@@ -111,7 +111,7 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     () => ({
       role,
       authReady,
-      viewerEmail: session?.user.email ?? null,
+      viewerUserId: session?.user.id ?? null,
       viewerDisplayName:
         permissions?.displayName?.trim() ||
         session?.user.displayName?.trim() ||
@@ -129,7 +129,7 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     [
       role,
       authReady,
-      session?.user.email,
+      session?.user.id,
       session?.user.displayName,
       session?.user.jobTitle,
       permissions?.displayName,

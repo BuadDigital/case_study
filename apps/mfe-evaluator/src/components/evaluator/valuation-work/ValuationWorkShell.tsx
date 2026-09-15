@@ -71,11 +71,6 @@ const CostApproachSection = lazy(() =>
     default: m.CostApproachSection,
   })),
 );
-const CostBasisUnitCard = lazy(() =>
-  import("./CostApproachSection").then((m) => ({
-    default: m.CostBasisUnitCard,
-  })),
-);
 const FinalOpinionSection = lazy(() =>
   import("./FinalOpinionSection").then((m) => ({
     default: m.FinalOpinionSection,
@@ -87,6 +82,8 @@ export type ValuationWorkShellProps = {
   poNumber?: string;
   assignmentType?: string;
   districtHint?: string;
+  /** Field-inspection task — seeds cost actual age from the inspector package. */
+  inspectionTaskId?: string | null;
   onFinalOpinionChange?: FinalOpinionChangeHandler;
   property?: ValuationWorkPropertyHint;
   /** Full intake row when available (final-review screen). */
@@ -126,6 +123,7 @@ export function ValuationWorkShell({
   poNumber,
   assignmentType,
   districtHint,
+  inspectionTaskId = null,
   onFinalOpinionChange,
   property,
   intakeProperty = null,
@@ -187,7 +185,6 @@ export function ValuationWorkShell({
     onCostSaved,
     onReconSaved,
     onSettingsSaved,
-    onSaveCostBasisUnit,
     settingsSaved,
     marketEnabled,
     costEnabled,
@@ -471,18 +468,6 @@ export function ValuationWorkShell({
           </div>
         </div>
 
-        <Suspense fallback={<InlineLoadingSkeleton />}>
-          <CostBasisUnitCard
-            key={`${approachSettings?.costBasisKey ?? "replacement"}:${approachSettings?.costMeasurementUnitKey ?? "comparison_unit"}`}
-            savedBasisKey={approachSettings?.costBasisKey || "replacement"}
-            savedUnitKey={
-              approachSettings?.costMeasurementUnitKey || "comparison_unit"
-            }
-            saving={saving}
-            onSave={onSaveCostBasisUnit}
-          />
-        </Suspense>
-
         {!buildingOnly ? (
         <>
         <div className="mb-4 flex items-start gap-[11px] rounded-[10px] border border-border-md bg-gold-soft px-4 py-[13px]">
@@ -711,6 +696,7 @@ export function ValuationWorkShell({
                   valuationRequestId={valuationRequestId}
                   poNumber={poNumber}
                   propertyId={propertyId}
+                  inspectionTaskId={inspectionTaskId}
                   cost={cost}
                   hydrateKey={costHydrateKey}
                   buildingOnly={

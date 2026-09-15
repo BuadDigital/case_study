@@ -5,7 +5,6 @@
  * detection and the small mappers the loader uses. No React, no I/O.
  */
 import type {
-  SaveValuationApproachSettingsRequest,
   SaveValuationMarketApproachRequest,
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
@@ -276,31 +275,5 @@ export function finalOpinionSyncExtrasFromRecon(dto: {
   return {
     liquidationDiscountPct: dto.liquidationDiscountPct,
     liquidationDiscountApplied: dto.liquidationDiscountApplied,
-  };
-}
-
-/** Cost basis/unit saved from the cost screen — layered on the last saved settings. */
-export function costBasisUnitSettingsBody(
-  s: ValuationApproachSettingsDto,
-  basisKey: string,
-  unitKey: string,
-): SaveValuationApproachSettingsRequest {
-  return {
-    marketApproachEnabled: s.marketApproachEnabled,
-    costApproachEnabled: s.costApproachEnabled,
-    incomeApproachEnabled: false,
-    costBasisKey: basisKey,
-    costScopeKey: s.costScopeKey,
-    costMeasurementUnitKey: unitKey,
-    adjustmentsEditUnlocked: s.adjustmentsEditUnlocked,
-    valuationPurposeKey: s.valuationPurposeKey,
-    valuationPurposeNote: s.valuationPurposeNote ?? null,
-    externalSpecialistUsed: s.externalSpecialistUsed,
-    externalSpecialistDetails: s.externalSpecialistDetails ?? null,
-    valuationDateMode: s.valuationDateMode,
-    retrospectiveDate: s.retrospectiveDate ?? null,
-    retrospectiveDateEnd: s.retrospectiveDateEnd ?? null,
-    retrospectiveRationale: null,
-    selectedAssumptions: s.selectedAssumptions ?? [],
   };
 }

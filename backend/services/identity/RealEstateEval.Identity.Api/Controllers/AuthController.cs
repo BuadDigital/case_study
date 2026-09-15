@@ -119,7 +119,6 @@ public class AuthController : ControllerBase
         return Ok(new MeDto
         {
             Id = user.Id,
-            Email = user.Email,
             DisplayName = user.DisplayName,
             Permissions = permissions,
         });

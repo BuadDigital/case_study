@@ -19,9 +19,7 @@ public class PropertyAppraisalSubmissionValidatorTests
         using var doc = JsonDocument.Parse(
             """
             {
-              "evaluatorPrice": "",
-              "independenceDeclared": true,
-              "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
+              "evaluatorPrice": ""
             }
             """);
         var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
@@ -31,47 +29,26 @@ public class PropertyAppraisalSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_rejects_missing_independence()
-    {
-        using var doc = JsonDocument.Parse(MinimalValidPayload());
-        using var missing = JsonDocument.Parse(
-            """
-            {
-              "evaluatorPrice": "1250000",
-              "independenceDeclared": false,
-              "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
-            }
-            """);
-        var errors = PropertyAppraisalSubmissionValidator.Validate(missing.RootElement);
-        Assert.Equal(
-            "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.",
-            errors["independence_declared"]);
-        Assert.Empty(PropertyAppraisalSubmissionValidator.Validate(doc.RootElement));
-    }
-
-    [Fact]
-    public void Validate_rejects_missing_report_worker()
+    public void Validate_does_not_require_independence_or_report_workers()
     {
         using var doc = JsonDocument.Parse(
             """
             {
               "evaluatorPrice": "1250000",
-              "independenceDeclared": true,
+              "independenceDeclared": false,
               "reportWorkers": []
             }
             """);
         var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
-        Assert.Equal(
-            "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).",
-            errors["report_workers"]);
+        Assert.False(errors.ContainsKey("independence_declared"));
+        Assert.False(errors.ContainsKey("report_workers"));
+        Assert.Empty(errors);
     }
 
     private static string MinimalValidPayload() =>
         """
         {
-          "evaluatorPrice": "1250000",
-          "independenceDeclared": true,
-          "reportWorkers": [{ "name": "أحمد", "role": "معد" }]
+          "evaluatorPrice": "1250000"
         }
         """;
 }

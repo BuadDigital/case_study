@@ -11,7 +11,6 @@ import {
   disableApproachConfirmCopy,
   initialApproachToggles,
   buildBankFetchOptions,
-  costBasisUnitSettingsBody,
   farAdoptedItems,
   hasPositiveFinalOpinion,
   finalOpinionSyncExtrasFromRecon,
@@ -344,29 +343,6 @@ describe("finalOpinionSyncExtrasFromRecon", () => {
     ).toEqual({
       liquidationDiscountPct: 15,
       liquidationDiscountApplied: true,
-    });
-  });
-});
-
-describe("costBasisUnitSettingsBody", () => {
-  it("layers the basis and unit on the saved settings with income kept off", () => {
-    expect(costBasisUnitSettingsBody(settings({ selectedAssumptions: undefined }), "reproduction", "quantity_survey")).toEqual({
-      marketApproachEnabled: true,
-      costApproachEnabled: true,
-      incomeApproachEnabled: false,
-      costBasisKey: "reproduction",
-      costScopeKey: "land_and_building",
-      costMeasurementUnitKey: "quantity_survey",
-      adjustmentsEditUnlocked: false,
-      valuationPurposeKey: "sale",
-      valuationPurposeNote: null,
-      externalSpecialistUsed: false,
-      externalSpecialistDetails: null,
-      valuationDateMode: "current",
-      retrospectiveDate: null,
-      retrospectiveDateEnd: null,
-      retrospectiveRationale: null,
-      selectedAssumptions: [],
     });
   });
 });

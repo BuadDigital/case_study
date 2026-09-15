@@ -16,6 +16,7 @@ public static class StaffRoleCatalog
         new(StringComparer.Ordinal)
         {
             ["مسؤول التحول الرقمي (CDO)"] = "cdo",
+            ["المدير التنفيذي"] = "cdo",
             ["مدير إدارة التقييم العقاري"] = "general-manager",
             ["مشرف قسم دراسة الحالة"] = "section-supervisor",
             ["أخصائي دراسة حالة"] = "case-specialist",

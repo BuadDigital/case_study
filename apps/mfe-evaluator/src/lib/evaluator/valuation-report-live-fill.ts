@@ -13,7 +13,6 @@ export {
 
 import type { OrganizationValuerRosterEntry } from "@platform/api-client";
 import { isUsableAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import type { EvaluatorReportWorker } from "./evaluator-window-data";
 import {
   SAMPLE_SECS,
   normLabel,
@@ -110,7 +109,6 @@ function participantFromRoster(
 
 /** §26 — three fixed + fourth column from valuation assignment in work-order dispatch. */
 export function resolveReportParticipants(
-  _workers: EvaluatorReportWorker[] | undefined,
   valuers: OrganizationValuerRosterEntry[] | null | undefined,
   assignedAppraiserName?: string | null,
 ): ParticipantFill[] {
@@ -364,7 +362,6 @@ export function applyValuationReportLiveFill(
     fillParticipants(
       people,
       resolveReportParticipants(
-        fill.reportWorkers,
         extras?.valuers,
         fill.assignedAppraiserName,
       ),

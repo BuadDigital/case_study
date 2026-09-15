@@ -1,4 +1,4 @@
-﻿using RealEstateEval.Domain;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;
 
@@ -149,7 +149,12 @@ public sealed record ValuationMethodologyAlertInput(
  /// <summary>Q-7 — certified-valuer approval for "remote desktop" scope.</summary>
     bool RemoteInspectionApprovedByAccredited = false,
  /// <summary>Q-4 — time-gap threshold in months (admin setting, default 6).</summary>
-    int TimeGapMonthsThreshold = ValuationMethodologyAlertRules.DefaultTimeGapMonths);
+    int TimeGapMonthsThreshold = ValuationMethodologyAlertRules.DefaultTimeGapMonths,
+    /// <summary>
+    /// Market-approach comparable gates (m15/m16-comps/m17/m19/m20). False when أسلوب السوق is off —
+    /// cost-only / «مبنى فقط» must not require adopted market comps.
+    /// </summary>
+    bool MarketApproachRelevant = true);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -249,7 +254,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(11, ValuationMethodologyAlertCodes.NonVacantLandComps,
                 "مقارنات غير أرض فضاء",
-                !input.HasStructuresToValue && comps.Count > 0,
+                input.MarketApproachRelevant && !input.HasStructuresToValue && comps.Count > 0,
                 () => comps.Any(c => LooksBuiltUp(c.ComparablePropertyType)),
                 "للأرض الفضاء: مقارن يبدو بمبانٍ — خطر احتساب المبنى مرتين",
                 resolutions),
@@ -281,7 +286,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(15, ValuationMethodologyAlertCodes.NoAdoptedComparables,
                 "لا توجد مقارنات معتمدة",
-                true,
+                input.MarketApproachRelevant,
                 () => input.AdoptedComparableCount <= 0,
                 "صفر مقارن معتمد",
                 resolutions),
@@ -289,14 +294,16 @@ public static class ValuationMethodologyAlertRules
             Eval(16, ValuationMethodologyAlertCodes.WeightsNot100,
                 "مجموع الأوزان ≠ ١٠٠٪",
                 true,
-                () => (input.AdoptedComparableCount > 0 && !input.ComparableWeightsSumTo100)
+                () => (input.MarketApproachRelevant
+                       && input.AdoptedComparableCount > 0
+                       && !input.ComparableWeightsSumTo100)
                       || (input.HasReconciliationSaved && !input.ReconciliationWeightsSumTo100),
                 "أوزان المقارنات أو نسب مشاركة الأساليب ≠ 100٪",
                 resolutions),
 
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
                 "مجموع التسويات > ٣٥٪",
-                comps.Count > 0,
+                input.MarketApproachRelevant && comps.Count > 0,
                 () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
                 "تجاوز عتبة ±٣٥٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
                 resolutions),
@@ -315,7 +322,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(19, ValuationMethodologyAlertCodes.FewAdoptedComparables,
                 "أقل من ٣ مقارنات معتمدة",
-                true,
+                input.MarketApproachRelevant,
                 () => input.AdoptedComparableCount is > 0
                           and < MinComparablesWithoutRationale,
                 "المقارنات المعتمدة أقل من ٣ — برّر الاكتفاء",
@@ -323,7 +330,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(20, ValuationMethodologyAlertCodes.StaleComparableNoTimeAdjustment,
                 "فارق زمني كبير بلا تسوية زمن",
-                comps.Count > 0,
+                input.MarketApproachRelevant && comps.Count > 0,
                 () => comps.Any(c =>
                     c.DealAgeMonths > Math.Max(1, input.TimeGapMonthsThreshold)
                     && !c.HasMarketConditionsAdjustment),

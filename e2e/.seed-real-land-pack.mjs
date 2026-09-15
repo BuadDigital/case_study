@@ -440,7 +440,7 @@ async function main() {
     assignmentType: "تنفيذ",
     promulgationDate: today(),
     assignmentSpecialist: ASSIGNEE_NAMES.caseSpecialist,
-    assignmentSpecialistEmail: "osama@ejadah.dev",
+    assignmentSpecialistEmail: "",
     expectedPropertyCount: 2,
     clientId: INFATH_CLIENT_ID,
     properties: [],

@@ -94,15 +94,6 @@ export function PoIntakeModal({
             error={form.fieldErrors.assignmentSpecialist}
             onChange={form.setAssignmentSpecialist}
           />
-          <RegField
-            id="po_specialist_email_modal"
-            label="إيميل أخصائي الإسناد"
-            type="email"
-            dir="ltr"
-            value={form.assignmentSpecialistEmail}
-            error={form.fieldErrors.assignmentSpecialistEmail}
-            onChange={form.setAssignmentSpecialistEmail}
-          />
           <AssignmentTypeFields
             value={form.assignmentType}
             allowEmpty

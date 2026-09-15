@@ -16,17 +16,6 @@ describe("validateEvaluatorSubmission", () => {
     landValue: "1000",
     buildingValue: "0",
     forcedSaleDiscountPct: "15",
-    independenceDeclared: true,
-    reportWorkers: [
-      {
-        id: "w1",
-        role: "معد" as const,
-        name: "أحمد",
-        licenseNumber: "",
-        licenseDate: "",
-        licenseFileName: null,
-      },
-    ],
   };
 
   it("does not require an uploaded report file or typed report number", () => {
@@ -120,38 +109,17 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.esg_impact_notes).toBeUndefined();
   });
 
-  it("requires independence declaration", () => {
+  it("does not require an independence checkbox", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
-      independenceDeclared: false,
     });
-    expect(errors.independence_declared).toBe(
-      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.",
-    );
-  });
-
-  it("requires at least one named report worker", () => {
-    const errors = validateEvaluatorSubmission({
-      ...base,
-      reportWorkers: [
-        {
-          id: "w1",
-          role: "معد",
-          name: "   ",
-          licenseNumber: "",
-          licenseDate: "",
-          licenseFileName: null,
-        },
-      ],
-    });
-    expect(errors.report_workers).toBe(
-      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).",
-    );
-  });
-
-  it("passes when independence is confirmed and a worker is named", () => {
-    const errors = validateEvaluatorSubmission({ ...base });
     expect(errors.independence_declared).toBeUndefined();
+  });
+
+  it("does not require named report workers", () => {
+    const errors = validateEvaluatorSubmission({
+      ...base,
+    });
     expect(errors.report_workers).toBeUndefined();
   });
 });
@@ -175,23 +143,6 @@ describe("firstEvaluatorErrorTarget", () => {
       "final",
     );
     expect(evaluatorWorkScreenForErrorTarget("val-esg")).toBe("review");
-  });
-
-  it("points independence and workers errors at the review screen", () => {
-    expect(
-      firstEvaluatorErrorTarget({
-        independence_declared: "مطلوب",
-      }),
-    ).toBe("inf-independence");
-    expect(
-      firstEvaluatorErrorTarget({
-        report_workers: "مطلوب",
-      }),
-    ).toBe("inf-workers");
-    expect(evaluatorWorkScreenForErrorTarget("inf-independence")).toBe(
-      "review",
-    );
-    expect(evaluatorWorkScreenForErrorTarget("inf-workers")).toBe("review");
   });
 
   it("opens basics and focuses the missing retrospective date", () => {

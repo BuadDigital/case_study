@@ -23,12 +23,10 @@ namespace RealEstateEval.Application.Tests;
 public class StaffUserUpdateTests
 {
     private static CreateStaffUserRequest SampleRequest(
-        string email = "New.Staff@example.test",
         string mobile = "0500000099",
         string nationalId = "1000000091") => new()
         {
             DisplayName = "موظف تجريبي",
-            Email = email,
             Mobile = mobile,
             City = "الرياض",
             NationalId = nationalId,
@@ -93,7 +91,7 @@ public class StaffUserUpdateTests
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (first, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
         await users.CreateStaffAsync(
-            SampleRequest("Other.Staff@example.test", "0500000077", "1000000092"),
+            SampleRequest("0500000077", "1000000092"),
             "admin");
 
         var (result, errors) = await users.UpdateStaffAsync(
@@ -113,7 +111,7 @@ public class StaffUserUpdateTests
         var users = provider.GetRequiredService<IUserRegistrationService>();
         var (first, _) = await users.CreateStaffAsync(SampleRequest(), "admin");
         await users.CreateStaffAsync(
-            SampleRequest("Other.Staff@example.test", "0500000077", "1000000092"),
+            SampleRequest("0500000077", "1000000092"),
             "admin");
 
         var (_, errors) = await users.UpdateStaffAsync(
@@ -181,7 +179,6 @@ public class StaffUserUpdateTests
         request = new CreateStaffUserRequest
         {
             DisplayName = request.DisplayName,
-            Email = request.Email,
             Mobile = request.Mobile,
             City = request.City,
             NationalId = request.NationalId,
@@ -204,7 +201,6 @@ public class StaffUserUpdateTests
             new CreateStaffUserRequest
             {
                 DisplayName = request.DisplayName,
-                Email = request.Email,
                 Mobile = request.Mobile,
                 City = request.City,
                 NationalId = request.NationalId,
@@ -227,7 +223,6 @@ public class StaffUserUpdateTests
             new CreateStaffUserRequest
             {
                 DisplayName = request.DisplayName,
-                Email = request.Email,
                 Mobile = request.Mobile,
                 City = request.City,
                 NationalId = request.NationalId,
@@ -274,7 +269,6 @@ public class StaffUserUpdateTests
             new CreateStaffUserRequest
             {
                 DisplayName = request.DisplayName,
-                Email = request.Email,
                 Mobile = request.Mobile,
                 City = request.City,
                 NationalId = request.NationalId,

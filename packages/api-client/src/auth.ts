@@ -12,7 +12,7 @@ export type AuthSessionPayload = {
   expiresAtUtc: string;
   refreshToken: string;
   refreshTokenExpiresAtUtc: string;
-  user: { id: string; email: string; displayName: string; jobTitle?: string };
+  user: { id: string; displayName: string; jobTitle?: string };
 };
 
 export type RefreshSessionResult =
@@ -39,7 +39,6 @@ export function normalizeAuthSessionPayload(
     refreshTokenExpiresAtUtc: readString(raw, "refreshTokenExpiresAtUtc"),
     user: {
       id: readString(user, "id"),
-      email: readString(user, "email"),
       displayName: readString(user, "displayName"),
       ...(readString(user, "jobTitle")
         ? { jobTitle: readString(user, "jobTitle") }

@@ -13,7 +13,7 @@
  *   POST /api/workflow-tasks/{id}/advance-after-bourse
  *   POST /api/workflow-tasks/{id}/confirm-distribution  (spawns the three party children)
  */
-import { API_BASE, RELEASE_USER_EMAILS, RELEASE_USER_PHONES } from "./auth";
+import { API_BASE, RELEASE_USER_PHONES } from "./auth";
 
 export type ApiResult<T = unknown> = {
   ok: boolean;
@@ -198,7 +198,7 @@ export async function createWorkOrderHeader(
     assignmentType: "تنفيذ",
     promulgationDate: today(),
     assignmentSpecialist: ASSIGNEE_NAMES.caseSpecialist,
-    assignmentSpecialistEmail: RELEASE_USER_EMAILS.osama,
+    assignmentSpecialistEmail: "",
     expectedPropertyCount: 1,
     clientId: INFATH_CLIENT_ID,
     properties: [],
@@ -376,7 +376,7 @@ export async function createDistributedTransaction(
     assignmentType: "تنفيذ",
     promulgationDate: today(),
     assignmentSpecialist: ASSIGNEE_NAMES.caseSpecialist,
-    assignmentSpecialistEmail: RELEASE_USER_EMAILS.osama,
+    assignmentSpecialistEmail: "",
     expectedPropertyCount: 1,
     clientId: INFATH_CLIENT_ID,
     properties: [propertyPayload(deedNumber, today())],

@@ -505,7 +505,7 @@ export function createEvaluatorDraft(input: {
     reportIssueDate: "",
     depositCode: "",
     depositCertificateFileName: null,
-    independenceDeclared: false,
+    independenceDeclared: true,
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,
     assetDataVarianceNotes: "",

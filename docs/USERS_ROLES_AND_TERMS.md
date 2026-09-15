@@ -47,6 +47,7 @@ typed with a different dash or spacing yields an account with zero access.
 | Job title (المسمى الوظيفي) | Prototype role |
 | --- | --- |
 | `مسؤول التحول الرقمي (CDO)` | `cdo` |
+| `المدير التنفيذي` | `cdo` |
 | `مدير إدارة التقييم العقاري` | `general-manager` |
 | `مشرف قسم دراسة الحالة` | `section-supervisor` |
 | `أخصائي دراسة حالة` | `case-specialist` |
@@ -68,27 +69,31 @@ exist in a real deployment.
 
 ### Login and access
 
-| Email used for login | Username | Password | Display name | Job title | Prototype role |
+Staff sign in by Saudi mobile (OTP). Accounts no longer have a login email.
+
+| Phone | Username | Password | Display name | Job title | Prototype role |
 | --- | --- | --- | --- | --- | --- |
-| `s.salhy@gmail.com` | `sliman` | `user1234` | سليمان | مسؤول التحول الرقمي (CDO) | `cdo` |
-| `salam@ejadah.dev` | `salam` | `user1234` | سالم الغريب | مدير إدارة التقييم العقاري | `general-manager` |
-| `abdulrahman@ejadah.dev` | `abdulrahman` | `user1234` | عبدالرحمن النفيعي | مشرف قسم دراسة الحالة | `section-supervisor` |
-| `osama@ejadah.dev` | `osama` | `user1234` | أسامة الصالحي | أخصائي دراسة حالة | `case-specialist` |
-| `feras@ejadah.dev` | `feras` | `user1234` | فراس كمرين | مراجع حكومي | `government-reviewer` |
-| `abdullah.kathiri@ejadah.dev` | `abdullah` | `user1234` | عبدالله الكثيري | مقيم عقاري | `real-estate-appraiser` |
-| `ayman.majrashi@ejadah.dev` | `ayman` | `user1234` | أيمن أحمد مجرشي | مقيم عقاري | `real-estate-appraiser` |
-| `mohammed.assaf@ejadah.dev` | `assaf` | `user1234` | محمد العساف | مقيم عقاري | `real-estate-appraiser` |
-| `ahmed@ejadah.dev` | `ahmed` | `user1234` | أحمد سعيد | معاين ميداني | `field-inspector` |
-| `abdullah.abdulmane@ejadah.dev` | `abdullah_m` | `user1234` | عبدالله عبدالمانع | معاين ميداني | `field-inspector` |
-| `eman@ejadah.dev` | `eman` | `user1234` | إيمان النهدي | موظف الشؤون المالية | `financial-officer` |
-| `survey.jeddah@ejadah.dev` | `jeddah_survey` | `user1234` | مكتب جدة للمساحة | مقدم خدمة — جهة | `engineering-office` |
-| `admin@local.dev` | `admin@local.dev` | `user1234` | سالم الغريب | — (legacy account) | `cdo` via identity role `Admin` |
+| `0500000000` | `emad` | `user1234` | عماد الرشيد | المدير التنفيذي | `cdo` (identity `CDO`) |
+| `0500000001` | `sliman` | `user1234` | سليمان الصالحي | مسؤول التحول الرقمي (CDO) | `cdo` |
+| `0500000002` | `salam` | `user1234` | سالم الغريب | مدير إدارة التقييم العقاري | `general-manager` |
+| `0500000003` | `abdulrahman` | `user1234` | عبدالرحمن النفيعي | مشرف قسم دراسة الحالة | `section-supervisor` |
+| `0500000004` | `osama` | `user1234` | أسامة الصالحي | أخصائي دراسة حالة | `case-specialist` |
+| `0500000005` | `feras` | `user1234` | فراس كمرين | مراجع حكومي | `government-reviewer` |
+| `0500000007` | `abdullah` | `user1234` | عبدالله الكثيري | مقيم عقاري | `real-estate-appraiser` |
+| `0500000006` | `ayman` | `user1234` | أيمن أحمد مجرشي | مقيم عقاري | `real-estate-appraiser` |
+| `0500000012` | `assaf` | `user1234` | محمد العساف | مقيم عقاري | `real-estate-appraiser` |
+| `0500000008` | `ahmed` | `user1234` | أحمد سعيد | معاين ميداني | `field-inspector` |
+| `0500000009` | `abdullah_m` | `user1234` | عبدالله عبدالمانع | معاين ميداني | `field-inspector` |
+| `0500000010` | `eman` | `user1234` | إيمان النهدي | موظف الشؤون المالية | `financial-officer` |
+| `0500000011` | `jeddah_survey` | `user1234` | مكتب جدة للمساحة | مقدم خدمة — جهة | `engineering-office` |
+| — | `admin@local.dev` | `user1234` | سالم الغريب | — (legacy account) | `cdo` via identity role `Admin` |
 
 ### Organization placement
 
 | Username | Department (الإدارة) | Section (القسم) | Permission level | Employment | Contract type | Identity roles | Assignee id | رقم العضوية |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `sliman` | الإدارة التنفيذية | — | `cdo` | دوام كامل | Internal | `CDO`, `HR` | — | — |
+| `emad` | الإدارة التنفيذية | — | `cdo` | دوام كامل | Internal | `CDO` | — | — |
+| `sliman` | الإدارة التنفيذية | — | `cdo` | دوام كامل | Internal | `CDO` | — | — |
 | `salam` | إدارة التقييم العقاري | — | مدير | دوام كامل | Internal | `HR`, `Editor` | — | — |
 | `abdulrahman` | إدارة التقييم العقاري | قسم دراسة الحالة | مشرف | دوام كامل | Internal | `HR`, `Supervisor` | — | — |
 | `osama` | إدارة التقييم العقاري | قسم دراسة الحالة | محرر | دوام كامل | Internal | `HR`, `Editor` | — | — |

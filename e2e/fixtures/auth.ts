@@ -18,16 +18,6 @@ export const RELEASE_USERS = {
   financialOfficer: "eman",
 } as const;
 
-export const RELEASE_USER_EMAILS: Record<string, string> = {
-  [RELEASE_USERS.cdo]: "s.salhy@gmail.com",
-  [RELEASE_USERS.caseSpecialist]: "osama@ejadah.dev",
-  [RELEASE_USERS.fieldInspector]: "ahmed@ejadah.dev",
-  [RELEASE_USERS.appraiser]: "abdullah.kathiri@ejadah.dev",
-  [RELEASE_USERS.governmentReviewer]: "feras@ejadah.dev",
-  [RELEASE_USERS.engineeringOffice]: "survey.jeddah@ejadah.dev",
-  [RELEASE_USERS.financialOfficer]: "eman@ejadah.dev",
-};
-
 /** Seeded Saudi mobiles (9 digits after +966) — matches DataSeeder DemoMobileByLogin. */
 export const RELEASE_USER_PHONES: Record<string, string> = {
   [RELEASE_USERS.cdo]: "500000001",
@@ -42,7 +32,7 @@ export const RELEASE_USER_PHONES: Record<string, string> = {
 type LoginResponse = {
   token: string;
   expiresAtUtc: string;
-  user: { id: string; email: string; displayName: string };
+  user: { id: string; displayName: string };
 };
 
 function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
@@ -52,7 +42,6 @@ function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
     expiresAtUtc: String(raw.expiresAtUtc ?? raw.ExpiresAtUtc ?? ""),
     user: {
       id: String(userRaw?.id ?? userRaw?.Id ?? ""),
-      email: String(userRaw?.email ?? userRaw?.Email ?? ""),
       displayName: String(userRaw?.displayName ?? userRaw?.DisplayName ?? ""),
     },
   };

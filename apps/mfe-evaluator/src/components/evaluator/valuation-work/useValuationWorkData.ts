@@ -372,14 +372,10 @@ export function useValuationWorkData({
   reloadRef.current = reload;
 
   const sectionSaves = useValuationSectionSaves({
-    showToast,
-    setSaving,
     setCost,
     setRecon,
     setApproachSettings,
     setSettingsHydrateKey,
-    approachSettings,
-    valuationRequestIdRef,
     reloadRef,
     onFinalOpinionChangeRef,
   });

@@ -38,7 +38,6 @@ public sealed record StaffProfileState
 public sealed record StaffRoleMembership(
     string UserId,
     string DisplayName,
-    string Email,
     string JobTitle,
     IReadOnlyList<string> SystemRoles);
 

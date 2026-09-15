@@ -32,12 +32,11 @@ public class BoundaryRequestValidatorTests
             .IsValid);
 
     [Fact]
-    public void Staff_create_rejects_invalid_email()
+    public void Staff_create_does_not_require_email()
     {
         var request = new CreateStaffUserRequest
         {
             DisplayName = "Test User",
-            Email = "not-an-email",
             Mobile = "0500000011",
             City = "الرياض",
             NationalId = "1000000018",
@@ -46,7 +45,7 @@ public class BoundaryRequestValidatorTests
 
         var result = new CreateStaffUserRequestValidator().Validate(request);
 
-        Assert.Contains(result.Errors, error => error.PropertyName == "email");
+        Assert.DoesNotContain(result.Errors, error => error.PropertyName == "email");
     }
 
     [Fact]
@@ -55,7 +54,6 @@ public class BoundaryRequestValidatorTests
         var request = new CreateStaffUserRequest
         {
             DisplayName = "Test Inspector",
-            Email = "inspector@example.test",
             Mobile = "123",
             City = "الرياض",
             NationalId = "300",
@@ -87,7 +85,6 @@ public class BoundaryRequestValidatorTests
         var request = new CreateStaffUserRequest
         {
             DisplayName = "Test Inspector",
-            Email = "inspector@example.test",
             Mobile = "0500000011",
             City = "الرياض",
             NationalId = "1000000018",
@@ -114,7 +111,6 @@ public class BoundaryRequestValidatorTests
         var result = new UpdateStaffUserRequestValidator().Validate(new UpdateStaffUserRequest
         {
             DisplayName = "",
-            Email = "not-an-email",
             Mobile = "12345",
             City = "",
             NationalId = "3000000001",
@@ -125,7 +121,7 @@ public class BoundaryRequestValidatorTests
         });
 
         Assert.Contains(result.Errors, error => error.PropertyName == "displayName");
-        Assert.Contains(result.Errors, error => error.PropertyName == "email");
+        Assert.DoesNotContain(result.Errors, error => error.PropertyName == "email");
         Assert.Contains(result.Errors, error => error.PropertyName == "mobile");
         Assert.Contains(result.Errors, error => error.PropertyName == "city");
         Assert.Contains(result.Errors, error => error.PropertyName == "nationalId");

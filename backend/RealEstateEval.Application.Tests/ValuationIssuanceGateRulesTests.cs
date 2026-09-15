@@ -92,4 +92,23 @@ public class ValuationIssuanceGateRulesTests
     {
         Assert.False(ValuationIssuanceGateRules.FinalOpinion(0m).Passed);
     }
+
+    [Fact]
+    public void Min_adopted_comparables_pass_when_approach_is_off()
+    {
+        var marketOff = ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+            "market",
+            "مقارنات أسلوب السوق",
+            approachEnabled: false,
+            adoptedCount: 0);
+        Assert.True(marketOff.Passed);
+        Assert.Null(marketOff.DetailAr);
+
+        var landWithinCostOff = ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
+            "land_within_cost",
+            "مقارنات الأرض ضمن التكلفة",
+            approachEnabled: false,
+            adoptedCount: 0);
+        Assert.True(landWithinCostOff.Passed);
+    }
 }

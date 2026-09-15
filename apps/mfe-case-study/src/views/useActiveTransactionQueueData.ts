@@ -86,7 +86,7 @@ export function useActiveTransactionQueueData({
 }) {
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("task");
-  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
+  const { role, viewerUserId, distributionAssigneeId } = useAppAccess();
   const { data: staffResult } = useStaffUsersQuery();
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
   const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
@@ -220,7 +220,7 @@ export function useActiveTransactionQueueData({
       pageId: config.pageId,
       partyAssignee: config.partyAssignee,
       assigneeRole: config.assigneeRole,
-      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerUserId: viewerUserId ?? getAuthSession()?.user.id,
       viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
@@ -228,7 +228,7 @@ export function useActiveTransactionQueueData({
     config.assigneeRole,
     config.pageId,
     config.partyAssignee,
-    viewerEmail,
+    viewerUserId,
     distributionAssigneeId,
     role,
     tasks,

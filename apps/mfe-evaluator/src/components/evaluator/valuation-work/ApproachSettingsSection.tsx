@@ -338,7 +338,9 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                 <div className="mt-[3px] text-[11px] font-normal text-text-3">
                   {isLandKind && !settings?.costApproachAllowed
                     ? "لا ينطبق: الأرض لا تُقيَّم بالتكلفة"
-                    : "أسلوب مركّب إلزامياً: قيمة الأرض بالمقارنات + تكلفة الإحلال ناقصاً الإهلاك — لا يُلغى أحد المكوّنين منفرداً"}
+                    : asCostScope === "building_only"
+                      ? "تكلفة الإحلال ناقصاً الإهلاك — دون تقدير الأرض بالمقارنات"
+                      : "أسلوب مركّب: قيمة الأرض بالمقارنات + تكلفة الإحلال ناقصاً الإهلاك"}
                 </div>
               </div>
             </label>
@@ -363,7 +365,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </label>
           </div>
 
-          {asCostEnabled && settings?.costApproachAllowed ? (
+          {asCostEnabled && settings?.costApproachAllowed && asCostScope !== "building_only" ? (
             <p className="mb-3 text-[11.5px] text-gold-d">
               طريقة المقاول تستلزم تقييم أرض المبنى بطريقة المقارنة.
             </p>
@@ -390,7 +392,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               </div>
               <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
                 {asCostScope === "building_only"
-                  ? "«مبنى فقط» يخفي قسم تقدير الأرض ويجعل مؤشر الأسلوب = تكلفة الإحلال ناقصاً الإهلاك."
+                  ? "«مبنى فقط» لا يستلزم مقارنات أرض. إن بقي أسلوب السوق مفعّلاً فستلزم مقارناته للعقار ككل — عطّله إن كان التقييم بالتكلفة وحدها."
                   : "«أرض ومبنى» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
               </p>
               <FieldLabel>طريقة تقدير التكلفة</FieldLabel>

@@ -55,7 +55,7 @@ export type ActiveTransactionPageSituation = {
 export function useActiveTransactionPageSituation(
   pageId: PageId | undefined,
 ): ActiveTransactionPageSituation | null {
-  const { role, viewerEmail, distributionAssigneeId } = useAppAccess();
+  const { role, viewerUserId, distributionAssigneeId } = useAppAccess();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const cardsBase = pageId ? pageSituationCards(pageId) : null;
@@ -149,7 +149,7 @@ export function useActiveTransactionPageSituation(
       pageId,
       partyAssignee: Boolean(partyDef),
       assigneeRole: partyDef?.roleId,
-      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerUserId: viewerUserId ?? getAuthSession()?.user.id,
       viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
@@ -160,7 +160,7 @@ export function useActiveTransactionPageSituation(
     pageId,
     role,
     tasks,
-    viewerEmail,
+    viewerUserId,
     distributionAssigneeId,
     staffUsers,
   ]);
@@ -239,7 +239,7 @@ export function useActiveTransactionPageSituation(
       pageId,
       partyAssignee: Boolean(partyDef),
       assigneeRole: partyDef?.roleId,
-      viewerEmail: viewerEmail ?? getAuthSession()?.user.email,
+      viewerUserId: viewerUserId ?? getAuthSession()?.user.id,
       viewerAssigneeId: distributionAssigneeId,
       staffUsers,
     });
@@ -288,7 +288,7 @@ export function useActiveTransactionPageSituation(
     pendingBourse,
     failures,
     inspectionWorkspaces,
-    viewerEmail,
+    viewerUserId,
     distributionAssigneeId,
     staffUsers,
     partySubmissionGen,

@@ -38,7 +38,7 @@ export function resolveQueueTasksForViewer(input: {
   pageId?: PageId;
   partyAssignee?: boolean;
   assigneeRole?: RoleId;
-  viewerEmail?: string | null;
+  viewerUserId?: string | null;
   viewerAssigneeId?: string | null;
   staffUsers?: StaffUser[];
 }): WorkflowTask[] {
@@ -53,7 +53,7 @@ export function resolveQueueTasksForViewer(input: {
       input.role,
       all,
       input.assigneeRole,
-      input.viewerEmail,
+      input.viewerUserId,
       input.staffUsers,
       input.viewerAssigneeId,
     );

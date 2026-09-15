@@ -34,12 +34,10 @@ export const INSPECTOR_TYPE_OPTIONS = [
 ];
 
 const PROTECTED_USERNAMES = new Set(["sliman", "admin"]);
-const PROTECTED_EMAILS = new Set(["s.salhy@gmail.com", "admin@local.dev"]);
 
 export type StaffFormState = {
   displayName: string;
   roleId: RoleId | "";
-  email: string;
   mobile: string;
   city: string;
   department: string;
@@ -57,7 +55,6 @@ export type StaffFormState = {
 export const EMPTY_STAFF_FORM: StaffFormState = {
   displayName: "",
   roleId: "",
-  email: "",
   mobile: "",
   city: "",
   department: "",
@@ -80,16 +77,12 @@ export function validateStaffForm(form: StaffFormState): FieldErrors {
       {
         displayName: form.displayName,
         roleId: form.roleId,
-        email: form.email,
         mobile: form.mobile,
         city: form.city,
         nationalId: form.nationalId,
       },
-      ["displayName", "roleId", "email", "mobile", "city", "nationalId"],
+      ["displayName", "roleId", "mobile", "city", "nationalId"],
     ),
-    form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())
-      ? { email: "صيغة البريد الإلكتروني غير صحيحة." }
-      : undefined,
     fieldRequired(form.displayName)
       ? { displayName: fieldRequired(form.displayName)! }
       : undefined,
@@ -148,7 +141,6 @@ export function withoutFieldError(errors: FieldErrors, key: string): FieldErrors
 export function buildCreateStaffUserPayload(form: StaffFormState): CreateStaffUserRequest {
   return {
     displayName: form.displayName.trim(),
-    email: form.email.trim(),
     mobile: form.mobile.trim(),
     city: form.city.trim(),
     roleId: form.roleId as RoleId,
@@ -193,13 +185,12 @@ export function userToggleLabel(status: string | undefined): string {
 }
 
 export function canDeleteUser(
-  user: { id: string; email: string; userName?: string },
+  user: { id: string; userName?: string },
   currentUserId: string | null,
 ): boolean {
   if (currentUserId && user.id === currentUserId) return false;
-  const email = user.email.trim().toLowerCase();
   const userName = (user.userName ?? "").trim().toLowerCase();
-  if (PROTECTED_EMAILS.has(email) || PROTECTED_USERNAMES.has(userName)) return false;
+  if (PROTECTED_USERNAMES.has(userName)) return false;
   return true;
 }
 

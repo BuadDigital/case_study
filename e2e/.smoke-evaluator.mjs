@@ -104,15 +104,15 @@ try {
     step("matrix rationale typed + blurred", false, "no rationale input visible");
   }
 
-  // ── cost screen (CostApproachSection + CostBasisUnitCard) ──
+  // ── cost screen (CostApproachSection) ──
   await clickNav("طريقة المقاول");
   await page.getByText("بنود التكلفة المباشرة").first().waitFor({ timeout: 30000 });
-  const basisCard = await page
-    .getByText("طريقة التكلفة وأسلوب التقدير")
+  const costTable = await page
+    .getByText("بنود التكلفة المباشرة")
     .first()
     .isVisible()
     .catch(() => false);
-  step("cost screen renders (table + basis card)", basisCard);
+  step("cost screen renders (direct-cost table)", costTable);
   await shot("03-cost");
 
   // draft persistence across screen switch (persistent hidden mount)

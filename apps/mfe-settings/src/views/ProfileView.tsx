@@ -27,7 +27,6 @@ export function ProfileView() {
                 id: session.id,
                 name: session.displayName,
                 role: "",
-                email: session.email,
               }
             : undefined,
         );

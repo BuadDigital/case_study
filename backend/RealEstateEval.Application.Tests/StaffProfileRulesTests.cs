@@ -42,7 +42,6 @@ public class StaffProfileRulesTests
         string? iban = null) => new()
         {
             DisplayName = " موظف ",
-            Email = "New.Staff@example.test",
             Mobile = "0500000099",
             City = " الرياض ",
             NationalId = " 1000000091 ",
@@ -103,13 +102,13 @@ public class StaffProfileRulesTests
     public void Absent_members_keep_the_stored_values_and_present_ones_are_normalized()
     {
         var target = StaffProfileRules.ResolveUpdateTarget(
-            new UpdateStaffUserRequest { Email = " Other@Example.TEST ", Mobile = "0512345678" },
+            new UpdateStaffUserRequest { Mobile = "0512345678" },
             User(),
             Stored());
 
         Assert.Equal("case-specialist", target.RoleId);
         Assert.Equal("موظف تجريبي", target.DisplayName);
-        Assert.Equal("other@example.test", target.Email);
+        Assert.Equal(SaudiMobiles.InternalEmail("+966512345678"), target.Email);
         Assert.Equal("+966512345678", target.Mobile);
         Assert.Equal("الرياض", target.City);
         Assert.Equal(UserStatus.Active, target.Status);

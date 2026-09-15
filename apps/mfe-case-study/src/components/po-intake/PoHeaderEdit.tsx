@@ -35,8 +35,6 @@ import { AssignmentValuationFields } from "./AssignmentValuationFields";
 import { PoEditShell } from "./PoEditShell";
 import { PoWorkOrderPartyFields } from "./PoWorkOrderPartyFields";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function CountDisplay({
   label,
   value,
@@ -81,9 +79,6 @@ export function PoHeaderEdit({
   );
   const [assignmentSpecialist, setAssignmentSpecialist] = useState(
     record.assignmentSpecialist,
-  );
-  const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState(
-    record.assignmentSpecialistEmail,
   );
   const [expectedPropertyCount, setExpectedPropertyCount] = useState(
     String(record.expectedPropertyCount ?? 1),
@@ -137,7 +132,6 @@ export function PoHeaderEdit({
     assignmentType !== record.assignmentType ||
     promulgationDate !== (record.promulgationDate || record.receivedFromEnfathAt) ||
     assignmentSpecialist.trim() !== record.assignmentSpecialist ||
-    assignmentSpecialistEmail.trim() !== record.assignmentSpecialistEmail ||
     workOrderDescription.trim() !== (record.workOrderDescription ?? "").trim() ||
     clientId !== (record.clientId ?? "") ||
     valuationPurposeKey !== (record.valuationPurposeKey ?? initialValuation.purposeKey) ||
@@ -165,12 +159,6 @@ export function PoHeaderEdit({
     if (showsSubClientField(assignmentType, clientId) && !subClientId.trim()) {
       errors.subClientId = "اختر العميل الفرعي";
     }
-    if (
-      assignmentSpecialistEmail.trim() &&
-      !EMAIL_RE.test(assignmentSpecialistEmail.trim())
-    ) {
-      errors.assignmentSpecialistEmail = "صيغة الإيميل غير صالحة";
-    }
     const count = parseInt(expectedPropertyCount, 10);
     if (!Number.isFinite(count) || count < 1) {
       errors.expectedPropertyCount = "عدد العقارات يجب أن يكون 1 على الأقل";
@@ -192,7 +180,7 @@ export function PoHeaderEdit({
       assignmentType: assignmentType as AssignmentType,
       promulgationDate,
       assignmentSpecialist: assignmentSpecialist.trim(),
-      assignmentSpecialistEmail: assignmentSpecialistEmail.trim(),
+      assignmentSpecialistEmail: "",
       expectedPropertyCount: Math.max(1, count || 1),
       workOrderDescription: workOrderDescription.trim(),
       clientId: clientId.trim(),
@@ -288,15 +276,6 @@ export function PoHeaderEdit({
             value={assignmentSpecialist}
             error={fieldErrors.assignmentSpecialist}
             onChange={setAssignmentSpecialist}
-          />
-          <RegField
-            id="po_specialist_email_edit"
-            label="إيميل أخصائي الإسناد"
-            type="email"
-            dir="ltr"
-            value={assignmentSpecialistEmail}
-            error={fieldErrors.assignmentSpecialistEmail}
-            onChange={setAssignmentSpecialistEmail}
           />
           <RegField
             id="expected_property_count_edit"

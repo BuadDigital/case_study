@@ -12,7 +12,6 @@ const staff: StaffUser[] = [
     name: "عبدالله عبدالمانع",
     distributionAssigneeId: "fi-abdullah-abdulmane",
     role: "field-inspector",
-    email: "abdullah.abdulmane@ejadah.dev",
     type: "internal",
   },
 ];

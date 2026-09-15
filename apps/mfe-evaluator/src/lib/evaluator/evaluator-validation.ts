@@ -5,10 +5,7 @@ import {
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
 import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
-import type {
-  EvaluatorReportChoices,
-  EvaluatorReportWorker,
-} from "./evaluator-window-data";
+import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { parseEvaluatorAmount } from "./value-estimation";
 
 export type EvaluatorValidationErrors = Record<string, string>;
@@ -45,8 +42,6 @@ const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "evaluator_price", targetId: "final-inf-total" },
   { key: "forced_sale_discount", targetId: "final-inf-discount" },
   { key: "esg_impact_notes", targetId: "val-esg" },
-  { key: "independence_declared", targetId: "inf-independence" },
-  { key: "report_workers", targetId: "inf-workers" },
 ] as const;
 
 const RETRO_DATE_TARGET_IDS = new Set([
@@ -62,11 +57,7 @@ const FINAL_OPINION_TARGET_IDS = new Set([
   "final-inf-discount",
 ]);
 
-const REVIEW_TARGET_IDS = new Set([
-  "val-esg",
-  "inf-independence",
-  "inf-workers",
-]);
+const REVIEW_TARGET_IDS = new Set(["val-esg"]);
 
 export function evaluatorWorkScreenForErrorTarget(
   targetId: string | null,
@@ -77,10 +68,7 @@ export function evaluatorWorkScreenForErrorTarget(
   return "review";
 }
 
-export const EVALUATOR_INFATH_ERROR_KEYS = [
-  "independence_declared",
-  "report_workers",
-] as const;
+export const EVALUATOR_INFATH_ERROR_KEYS = [] as const;
 
 const EVALUATOR_ERROR_KEYS = EVALUATOR_ERROR_TARGETS.map((t) => t.key);
 
@@ -99,8 +87,6 @@ export function validateEvaluatorSubmission(input: {
   valueBasisKey?: string;
   assetDataConfirmed?: boolean;
   assetDataVarianceNotes?: string;
-  independenceDeclared?: boolean;
-  reportWorkers?: EvaluatorReportWorker[];
   reportChoices?: Pick<
     EvaluatorReportChoices,
     "esgEnv" | "esgSoc" | "esgGov"
@@ -119,8 +105,6 @@ export function validateEvaluatorSubmission(input: {
     skipManualLandBuilding = false,
     retrospective,
     reportChoices,
-    independenceDeclared = false,
-    reportWorkers = [],
   } = input;
 
   if (retrospective?.mode === "retrospective") {
@@ -180,17 +164,6 @@ export function validateEvaluatorSubmission(input: {
   ) {
     errors.esg_impact_notes =
       "عند اختيار «يوجد تأثير» في ESG يجب كتابة وصف الأثر.";
-  }
-
-  if (!independenceDeclared) {
-    errors.independence_declared =
-      "يجب تأكيد إقرار الاستقلالية وعدم تضارب المصالح.";
-  }
-
-  const hasNamedWorker = reportWorkers.some((w) => w.name.trim().length > 0);
-  if (!hasNamedWorker) {
-    errors.report_workers =
-      "أضف عاملاً واحداً على الأقل على التقرير (الدور والاسم).";
   }
 
   return errors;

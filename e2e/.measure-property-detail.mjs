@@ -158,7 +158,6 @@ async function login() {
     expiresAtUtc: String(raw.expiresAtUtc ?? raw.ExpiresAtUtc ?? ""),
     user: {
       id: String(user.id ?? user.Id ?? ""),
-      email: String(user.email ?? user.Email ?? ""),
       displayName: String(user.displayName ?? user.DisplayName ?? ""),
     },
   };

@@ -22,7 +22,6 @@ public static class RegistrationMapper
             ReferenceNumber = profile.ReferenceNumber,
             DisplayName = user.DisplayName,
             JobTitle = profile.JobTitle,
-            Email = user.Email ?? string.Empty,
             UserName = user.UserName ?? string.Empty,
             RoleId = profile.RoleId,
             Mobile = user.PhoneNumber,
@@ -116,7 +115,6 @@ public static class RegistrationMapper
             Add(SecProcService, "القطاع", proc.Sector);
             Add(SecProcService, "العنوان", proc.Address);
             Add(SecProcBilling, "البنك", proc.BankName);
-            Add(SecProcBilling, "بريد الفوترة", proc.BillingEmail);
         }
         else if (profile.HrEmployee is { } employee)
         {

@@ -6,7 +6,6 @@ import {
   getValuationApproachSettings,
   isNoExternalSpecialistAssumption,
   saveValuationApproachSettings,
-  type OrganizationValuerRosterEntry,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
 import {
@@ -18,23 +17,14 @@ import {
 } from "@platform/ui-kit";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import {
-  ensureOrganizationSettingsLoaded,
-  getCachedOrganizationSettings,
-} from "@platform/app-shared/organization/organization-settings-cache";
 import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
-  EvaluatorReportWorkerRole,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
-import {
-  EVALUATOR_WORKER_ROLES,
-  createEmptyReportWorker,
-  emptyReportChoices,
-} from "../../lib/evaluator/evaluator-window-data";
+import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import {
   EXTERNAL_SPECIALIST_USED_LABEL,
   assumptionsAfterSpecialistChoice,
@@ -82,8 +72,6 @@ export function EvaluatorFinalReviewTab({
   onDraftPatch?: (patch: {
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
-    independenceDeclared?: boolean;
-    reportWorkers?: EvaluatorSubmission["reportWorkers"];
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
@@ -119,32 +107,6 @@ export function EvaluatorFinalReviewTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rosterValuers, setRosterValuers] = useState<
-    OrganizationValuerRosterEntry[]
-  >(() =>
-    (getCachedOrganizationSettings()?.valuers ?? []).filter(
-      (v) => v.isActive !== false && v.nameAr.trim(),
-    ),
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    void ensureOrganizationSettingsLoaded()
-      .then((org) => {
-        if (cancelled) return;
-        setRosterValuers(
-          (org?.valuers ?? []).filter(
-            (v) => v.isActive !== false && v.nameAr.trim(),
-          ),
-        );
-      })
-      .catch(() => {
-        /* roster stays empty — free-text name still works */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const propertyId = property?.id ?? draft.propertyId;
 
@@ -373,190 +335,6 @@ export function EvaluatorFinalReviewTab({
       {error ? (
         <p className="mb-3 text-[12px] font-semibold text-danger-text">{error}</p>
       ) : null}
-
-      <ValCard title="إقرار الاستقلالية والمشاركون">
-        <p className={noteClassName}>
-          مطلوب قبل اعتماد التقييم وإرساله للأخصائي — إقرار الاستقلالية وعامل
-          واحد على الأقل باسمه على التقرير.
-        </p>
-
-        <label
-          id="inf-independence"
-          className={cn(
-            "mb-4 flex cursor-pointer items-start gap-2.5 rounded-[var(--radius)] border border-border bg-surface px-3 py-2.5 text-[12.5px] leading-relaxed text-text transition-colors hover:bg-row-hover",
-            err("independence_declared") && invalidControlClass,
-          )}
-        >
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-            disabled={disabled}
-            checked={draft.independenceDeclared}
-            onChange={(e) =>
-              onDraftPatch?.({ independenceDeclared: e.target.checked })
-            }
-          />
-          <span>
-            أقرّ بعدم وجود تضارب مصالح وبأن التقييم أُعدّ باستقلالية مهنية.
-          </span>
-        </label>
-        {err("independence_declared") ? (
-          <p className="mt-[-8px] mb-3 text-[11px] text-danger-text">
-            {err("independence_declared")}
-          </p>
-        ) : null}
-
-        <div id="inf-workers">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-[12.5px] font-bold text-heading">
-              العاملون على التقرير
-            </span>
-            <button
-              type="button"
-              className={cn(opsBtnPrimary, "!px-2.5 !py-1.5 text-[11.5px]")}
-              disabled={disabled}
-              onClick={() => {
-                const next = [
-                  ...(draft.reportWorkers?.length
-                    ? draft.reportWorkers
-                    : [createEmptyReportWorker("معد")]),
-                  createEmptyReportWorker(
-                    draft.reportWorkers?.length ? "مراجع" : "معد",
-                  ),
-                ];
-                onDraftPatch?.({ reportWorkers: next });
-              }}
-            >
-              إضافة عامل
-            </button>
-          </div>
-          <div
-            className={cn(
-              "overflow-hidden rounded-[var(--radius)] border border-border",
-              err("report_workers") && invalidControlClass,
-            )}
-          >
-            {(draft.reportWorkers?.length
-              ? draft.reportWorkers
-              : [createEmptyReportWorker("معد")]
-            ).map((worker, index, list) => (
-              <div
-                key={worker.id}
-                className="grid grid-cols-1 gap-2 border-b border-border bg-surface px-3 py-2.5 last:border-b-0 sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:items-end"
-              >
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-2">
-                    الدور
-                  </label>
-                  <select
-                    className={cn(opsFldControl, "font-medium")}
-                    disabled={disabled}
-                    value={worker.role || "معد"}
-                    onChange={(e) => {
-                      const role = e.target.value as EvaluatorReportWorkerRole;
-                      const next = list.map((w) =>
-                        w.id === worker.id ? { ...w, role } : w,
-                      );
-                      onDraftPatch?.({ reportWorkers: next });
-                    }}
-                  >
-                    {EVALUATOR_WORKER_ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] text-text-2">
-                    الاسم
-                  </label>
-                  {rosterValuers.length > 0 ? (
-                    <select
-                      className={cn(opsFldControl, "mb-1.5 font-medium")}
-                      disabled={disabled}
-                      value={
-                        rosterValuers.some((v) => v.nameAr === worker.name)
-                          ? worker.name
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const picked = e.target.value;
-                        if (!picked) return;
-                        const valuer = rosterValuers.find(
-                          (v) => v.nameAr === picked,
-                        );
-                        const next = list.map((w) =>
-                          w.id === worker.id
-                            ? {
-                                ...w,
-                                name: picked,
-                                licenseNumber:
-                                  valuer?.licenseNumber?.trim() ||
-                                  w.licenseNumber ||
-                                  "",
-                              }
-                            : w,
-                        );
-                        onDraftPatch?.({ reportWorkers: next });
-                      }}
-                    >
-                      <option value="">— اختر من سجل المقيّمين —</option>
-                      {rosterValuers.map((v) => (
-                        <option key={v.id} value={v.nameAr}>
-                          {v.nameAr}
-                          {v.licenseNumber?.trim()
-                            ? ` · ترخيص ${v.licenseNumber.trim()}`
-                            : ""}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <input
-                    type="text"
-                    placeholder="اسم المشارك"
-                    className={cn(opsFldControl, "font-medium")}
-                    disabled={disabled}
-                    value={worker.name}
-                    onChange={(e) => {
-                      const name = e.target.value;
-                      const next = list.map((w) =>
-                        w.id === worker.id ? { ...w, name } : w,
-                      );
-                      onDraftPatch?.({ reportWorkers: next });
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="h-[38px] rounded-md border border-border bg-surface px-3 text-[12px] font-bold text-text-2 disabled:opacity-40"
-                  disabled={disabled || list.length <= 1}
-                  aria-label="حذف العامل"
-                  onClick={() => {
-                    const next = list.filter((w) => w.id !== worker.id);
-                    onDraftPatch?.({
-                      reportWorkers:
-                        next.length > 0 ? next : [createEmptyReportWorker()],
-                    });
-                  }}
-                >
-                  حذف
-                </button>
-              </div>
-            ))}
-          </div>
-          {err("report_workers") ? (
-            <p className="mt-2 mb-0 text-[11px] text-danger-text">
-              {err("report_workers")}
-            </p>
-          ) : (
-            <p className="mt-2 mb-0 text-[10.5px] text-text-3">
-              اختر من سجل المقيّمين في الإعدادات، أو أدخل اسماً يدوياً. عامل
-              واحد على الأقل مطلوب (معد / مراجع / معتمد).
-            </p>
-          )}
-        </div>
-      </ValCard>
 
       <ValCard title="الافتراضات الخاصة">
         <p className={noteClassName}>

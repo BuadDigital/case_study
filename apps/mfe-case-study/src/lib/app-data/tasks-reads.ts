@@ -210,7 +210,7 @@ export function tasksForPartyAssignee(
   viewerRole: RoleId,
   tasks: WorkflowTask[],
   queueRole?: RoleId,
-  viewerEmail?: string | null,
+  viewerUserId?: string | null,
   staffUsers: StaffUser[] = [],
   viewerAssigneeId?: string | null,
 ): WorkflowTask[] {
@@ -220,12 +220,12 @@ export function tasksForPartyAssignee(
   const role =
     isSuperAdmin(viewerRole) && queueRole ? queueRole : viewerRole;
   const session = typeof window !== "undefined" ? getAuthSession() : null;
-  const email = viewerEmail?.trim() || session?.user.email?.trim() || null;
-  const account = partyAccountForViewer(role, email, staffUsers);
+  const userId = viewerUserId?.trim() || session?.user.id?.trim() || null;
+  const account = partyAccountForViewer(role, userId, staffUsers);
   const expectedId =
-    account?.assigneeId?.trim() ||
     viewerAssigneeId?.trim() ||
-    (email ? "" : getRoleAssigneeId(staffUsers)[role]?.trim()) ||
+    account?.assigneeId?.trim() ||
+    (userId ? "" : getRoleAssigneeId(staffUsers)[role]?.trim()) ||
     undefined;
   const expectedName =
     account?.name?.trim() ||

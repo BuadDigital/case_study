@@ -38,7 +38,7 @@ public class AuthSessionServiceTests
         var login = await sessions.IssueForUsernameAsync("test-user");
 
         Assert.NotNull(login);
-        Assert.Equal("test-user", login.User.Email.Split('@')[0]);
+        Assert.Equal("Test User", login.User.DisplayName);
         Assert.Null(await sessions.IssueForUsernameAsync("missing-user"));
     }
 

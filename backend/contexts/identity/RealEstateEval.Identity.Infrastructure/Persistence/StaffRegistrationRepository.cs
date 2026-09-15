@@ -58,7 +58,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
             .Select(user => new UserInfoDto
             {
                 Id = user.Id,
-                Email = user.Email ?? string.Empty,
                 DisplayName = user.DisplayName,
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -118,7 +117,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
                 Id = user.Id,
                 DisplayName = user.DisplayName,
                 JobTitle = string.Empty,
-                Email = user.Email ?? string.Empty,
                 UserName = user.UserName ?? string.Empty,
                 ContractType = ContractType.Internal,
                 Status = UserStatus.Active,
@@ -148,7 +146,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
             .Select(p => new StaffRoleMembership(
                 p.UserId,
                 p.User.DisplayName,
-                p.User.Email ?? string.Empty,
                 p.JobTitle,
                 rolesByUser.GetValueOrDefault(p.UserId, [])))
             .ToList();

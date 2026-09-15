@@ -45,8 +45,6 @@ import {
 } from "../../lib/domain/po-intake/po-field-error-targets";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const { showToast } = useToast();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -58,7 +56,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const [promulgationDate, setPromulgationDate] = useState("");
   const [assignmentType, setAssignmentType] = useState<AssignmentType | "">("");
   const [assignmentSpecialist, setAssignmentSpecialist] = useState("");
-  const [assignmentSpecialistEmail, setAssignmentSpecialistEmail] = useState("");
   const [expectedPropertyCount, setExpectedPropertyCount] = useState("1");
   const [workOrderDescription, setWorkOrderDescription] = useState("");
   const [clientId, setClientId] = useState(INFATH_SEED_CLIENT_ID);
@@ -77,7 +74,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           setPromulgationDate(draft.promulgationDate);
           setAssignmentType(draft.assignmentType || "");
           setAssignmentSpecialist(draft.assignmentSpecialist);
-          setAssignmentSpecialistEmail(draft.assignmentSpecialistEmail);
           const count = draft.expectedPropertyCount;
           setExpectedPropertyCount(count && count > 0 ? String(count) : "1");
           setWorkOrderDescription(draft.workOrderDescription ?? "");
@@ -134,7 +130,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       !!promulgationDate ||
       !!assignmentType ||
       !!assignmentSpecialist.trim() ||
-      !!assignmentSpecialistEmail.trim() ||
       !!workOrderDescription.trim() ||
       clientId !== INFATH_SEED_CLIENT_ID ||
       subClientId !== defaultSubClientId() ||
@@ -144,7 +139,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       promulgationDate,
       assignmentType,
       assignmentSpecialist,
-      assignmentSpecialistEmail,
       workOrderDescription,
       clientId,
       subClientId,
@@ -160,7 +154,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
       promulgationDate,
       assignmentType,
       assignmentSpecialist,
-      assignmentSpecialistEmail,
+      assignmentSpecialistEmail: "",
       expectedPropertyCount: Math.max(
         1,
         parseInt(expectedPropertyCount, 10) || 1,
@@ -178,7 +172,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     promulgationDate,
     assignmentType,
     assignmentSpecialist,
-    assignmentSpecialistEmail,
     expectedPropertyCount,
     workOrderDescription,
     clientId,
@@ -216,12 +209,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     if (showsSubClientField(assignmentType, clientId) && !subClientId.trim()) {
       errors.subClientId = "اختر العميل الفرعي";
     }
-    if (
-      assignmentSpecialistEmail.trim() &&
-      !EMAIL_RE.test(assignmentSpecialistEmail.trim())
-    ) {
-      errors.assignmentSpecialistEmail = "صيغة الإيميل غير صالحة";
-    }
     const count = parseInt(expectedPropertyCount, 10);
     if (!Number.isFinite(count) || count < 1) {
       errors.expectedPropertyCount = "عدد العقارات يجب أن يكون 1 على الأقل";
@@ -250,7 +237,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           assignmentType: AssignmentType;
           promulgationDate: string;
           assignmentSpecialist: string;
-          assignmentSpecialistEmail: string;
           expectedPropertyCount: string;
           workOrderDescription: string;
           subClientId: string;
@@ -269,7 +255,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
           assignmentType: args.assignmentType,
           promulgationDate: args.promulgationDate,
           assignmentSpecialist: args.assignmentSpecialist.trim(),
-          assignmentSpecialistEmail: args.assignmentSpecialistEmail.trim(),
+          assignmentSpecialistEmail: "",
           expectedPropertyCount: Math.max(
             1,
             parseInt(args.expectedPropertyCount, 10) || 1,
@@ -305,7 +291,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         assignmentType: assignmentType as AssignmentType,
         promulgationDate,
         assignmentSpecialist,
-        assignmentSpecialistEmail,
         expectedPropertyCount,
         workOrderDescription,
         subClientId,
@@ -346,8 +331,6 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
     setAssignmentType: handleAssignmentType,
     assignmentSpecialist,
     setAssignmentSpecialist,
-    assignmentSpecialistEmail,
-    setAssignmentSpecialistEmail,
     expectedPropertyCount,
     setExpectedPropertyCount,
     workOrderDescription,

@@ -52,9 +52,6 @@ public sealed class CreateStaffUserRequestValidator : AbstractValidator<CreateSt
     {
         RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(256)
             .OverridePropertyName("displayName");
-        RuleFor(x => x.Email).NotEmpty().MaximumLength(256).Must(FieldFormats.IsEmail)
-            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
-            .OverridePropertyName("email");
         RuleFor(x => x.Mobile).NotEmpty().MaximumLength(20)
             .Matches(@"^(\+9665|05)\d{8}$")
             .WithMessage("صيغة رقم الجوال غير صالحة.")
@@ -107,10 +104,6 @@ public sealed class UpdateStaffUserRequestValidator : AbstractValidator<UpdateSt
         RuleFor(x => x.DisplayName!).NotEmpty().MaximumLength(256)
             .When(x => x.DisplayName is not null)
             .OverridePropertyName("displayName");
-        RuleFor(x => x.Email!).NotEmpty().MaximumLength(256).Must(FieldFormats.IsEmail)
-            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
-            .When(x => x.Email is not null)
-            .OverridePropertyName("email");
         RuleFor(x => x.Mobile!).NotEmpty().MaximumLength(20)
             .Matches(@"^(\+9665|05)\d{8}$")
             .WithMessage("صيغة رقم الجوال غير صالحة.")
