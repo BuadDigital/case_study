@@ -52,7 +52,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             entity.PoNumber,
             null,
             WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
-            SeedClientIds.IsNabrTransaction(
+            SeedClientIds.ClientFieldPolicyForClient(
                 entity.ClientId,
                 WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)));
         if (errors.Count > 0) return (null, errors);
@@ -105,7 +105,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 entity.PoNumber,
                 propertyId,
                 WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
-                SeedClientIds.IsNabrTransaction(
+                SeedClientIds.ClientFieldPolicyForClient(
                     entity.ClientId,
                     WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)));
 

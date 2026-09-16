@@ -35,6 +35,7 @@ import {
   propertyHasRegisteredTitle,
   type AssignmentType,
   type BourseDeedVitality,
+  type ClientFieldPolicy,
   type PoPropertyIntake,
   type PropertyIdentifierType,
 } from "../lib/app-data/po-intake-data";
@@ -86,8 +87,7 @@ export type MyTaskWorkCommandsInput = {
   role: RoleId;
   property: PoPropertyIntake;
   assignmentType: AssignmentType;
-  /** Nabr transactions skip قرار الإسناد / اسم المالك. */
-  isNabrClient: boolean;
+  fieldPolicy: ClientFieldPolicy;
   distribution: TaskDistributionDraft;
   showEngineering: boolean;
   deedVitality: BourseDeedVitality | null;
@@ -115,9 +115,9 @@ async function findEnfathSaveErrors(
   property: PoPropertyIntake,
   assignmentType: AssignmentType,
   task: Pick<WorkflowTask, "poNumber" | "propertyId">,
-  isNabrClient: boolean,
+  fieldPolicy: ClientFieldPolicy,
 ): Promise<EnfathSaveErrors | null> {
-  const errors = mergePropertyEnfathValidation(property, assignmentType, isNabrClient);
+  const errors = mergePropertyEnfathValidation(property, assignmentType, fieldPolicy);
   if (hasFieldErrors(errors)) {
     return { errors, message: firstEnfathValidationMessage(errors) };
   }
@@ -140,7 +140,7 @@ export function useMyTaskWorkCommands({
   role,
   property,
   assignmentType,
-  isNabrClient,
+  fieldPolicy,
   distribution,
   showEngineering,
   deedVitality,
@@ -209,7 +209,7 @@ export function useMyTaskWorkCommands({
       property,
       assignmentType,
       task,
-      isNabrClient,
+      fieldPolicy,
     );
     if (!invalid) return false;
     setFieldErrors(invalid.errors);

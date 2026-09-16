@@ -82,19 +82,55 @@ export function isNabrClient(clientId: string): boolean {
 }
 
 /**
- * Nabr work almost never sets Nabr as the primary العميل (it's Infath, per
- * isSelectableWorkOrderClient) — Nabr shows up as the العميل الفرعي instead,
- * persisted in reportUserClientIds. Check both so "is this a Nabr
- * transaction" is correct for the normal case, not just the legacy one.
+ * Which per-client field requirements a work order carries. Infath's default is
+ * "require everything" — a named client (currently only Nabr) can override
+ * individual fields. Not Enfath-specific: any future client exception (Enfath
+ * field or otherwise) is added here, in this one object, instead of a new
+ * isXClient check re-implemented in every screen and validator that cares
+ * about "is this field required".
  */
-export function isNabrTransaction(record: {
+export type ClientFieldPolicy = {
+  /** قرار الإسناد upload (إنفاذ stage). */
+  requiresAssignmentDoc: boolean;
+  /** اسم المالك (إنفاذ stage). */
+  requiresOwnerName: boolean;
+};
+
+export const DEFAULT_CLIENT_FIELD_POLICY: ClientFieldPolicy = {
+  requiresAssignmentDoc: true,
+  requiresOwnerName: true,
+};
+
+/**
+ * Nabr never gets a قرار إسناد letter (Infath assigns Nabr work directly) or a
+ * separate اسم مالك — add the next client's exceptions here, not as a new
+ * isXClient check scattered through the form/validators.
+ */
+const CLIENT_FIELD_POLICY_OVERRIDES: Record<string, Partial<ClientFieldPolicy>> = {
+  [NABR_SEED_CLIENT_ID]: {
+    requiresAssignmentDoc: false,
+    requiresOwnerName: false,
+  },
+};
+
+/**
+ * Resolves the effective policy for a property's work order. Nabr work almost
+ * never sets Nabr as the primary العميل (it's Infath, per
+ * isSelectableWorkOrderClient) — Nabr shows up as the العميل الفرعي instead,
+ * persisted in reportUserClientIds — so every id in play is checked, not just
+ * the primary client, and any override that relaxes a field wins.
+ */
+export function clientFieldPolicyFor(record: {
   clientId: string;
   reportUserClientIds?: readonly string[] | null;
-}): boolean {
-  return (
-    isNabrClient(record.clientId) ||
-    (record.reportUserClientIds ?? []).some((id) => isNabrClient(id))
-  );
+}): ClientFieldPolicy {
+  const ids = [record.clientId, ...(record.reportUserClientIds ?? [])];
+  let policy = DEFAULT_CLIENT_FIELD_POLICY;
+  for (const id of ids) {
+    const override = CLIENT_FIELD_POLICY_OVERRIDES[id.trim()];
+    if (override) policy = { ...policy, ...override };
+  }
+  return policy;
 }
 
 /** Nabr is Infath's sub-client for now — not a peer work-order client. */

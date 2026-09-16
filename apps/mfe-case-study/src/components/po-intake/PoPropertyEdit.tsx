@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
+  clientFieldPolicyFor,
   formatPoDisplay,
   hasBourseDetailFields,
   isBourseInquiryIdentifier,
-  isNabrTransaction,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
@@ -207,7 +207,7 @@ export function PoPropertyEdit({
     const enfathErrors = mergePropertyEnfathValidation(
       property,
       initialRecord.assignmentType,
-      isNabrTransaction(initialRecord),
+      clientFieldPolicyFor(initialRecord),
     );
     const bourseErrors = property.bourseDataCompleted
       ? validatePropertyBourseFields(property)
@@ -334,7 +334,7 @@ export function PoPropertyEdit({
             onReplaceProperty={replaceProperty}
             poNumber={poNumber}
             excludePoNumber={poNumber}
-            isNabrClient={isNabrTransaction(initialRecord)}
+            fieldPolicy={clientFieldPolicyFor(initialRecord)}
           />
         </CardBody>
       </Card>

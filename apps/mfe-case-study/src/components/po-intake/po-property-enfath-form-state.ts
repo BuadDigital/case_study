@@ -5,11 +5,13 @@
  * No React, no I/O.
  */
 import {
+  DEFAULT_CLIENT_FIELD_POLICY,
   isBourseInquiryIdentifier,
   requiresContacts,
   requiresRequestNumberField,
   showsCourtFields,
   type AssignmentType,
+  type ClientFieldPolicy,
   type PoPropertyIntake,
   type PropertyIdentifierType,
 } from "../../lib/app-data/po-intake-data";
@@ -46,7 +48,7 @@ export type EnfathFormVisibility = {
   showDelegationDoc: boolean;
   showRegistryDoc: boolean;
   showOtherDocs: boolean;
-  /** Nabr transactions have no قرار إسناد — Infath assigns Nabr work directly. */
+  /** From the client's ClientFieldPolicy — Nabr's for example has no قرار إسناد. */
   showAssignmentDoc: boolean;
 };
 
@@ -56,9 +58,9 @@ export function enfathFormVisibility(input: {
   identifierType: PropertyIdentifierType;
   realEstateRegNumber: string;
   hasRequestNumber: boolean | null | undefined;
-  /** Nabr transactions have no قرار إسناد. */
-  isNabrClient?: boolean;
+  fieldPolicy?: ClientFieldPolicy;
 }): EnfathFormVisibility {
+  const fieldPolicy = input.fieldPolicy ?? DEFAULT_CLIENT_FIELD_POLICY;
   const { fieldsMode } = input;
   const isBourseId = isBourseInquiryIdentifier(input.identifierType);
   const isIdentifierOnly = fieldsMode === "identifier-only";
@@ -80,7 +82,7 @@ export function enfathFormVisibility(input: {
     showDelegationDoc: !isBourseId && fieldsMode === "all",
     showRegistryDoc: hasRealEstateReg && fieldsMode === "all",
     showOtherDocs: fieldsMode === "all" || isPrimaryOnly,
-    showAssignmentDoc: showExtended && !input.isNabrClient,
+    showAssignmentDoc: showExtended && fieldPolicy.requiresAssignmentDoc,
   };
 }
 

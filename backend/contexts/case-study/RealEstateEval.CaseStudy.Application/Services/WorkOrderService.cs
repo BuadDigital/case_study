@@ -156,7 +156,7 @@ public partial class WorkOrderService : IWorkOrderService
                 po,
                 null,
                 (_, _) => false,
-                SeedClientIds.IsNabrTransaction(request.ClientId, request.ReportUserClientIds));
+                SeedClientIds.ClientFieldPolicyForClient(request.ClientId, request.ReportUserClientIds));
             if (propErrors.Count > 0) return (null, propErrors);
         }
 

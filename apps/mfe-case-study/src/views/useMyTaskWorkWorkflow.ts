@@ -18,8 +18,8 @@ import {
 } from "@failures/mfe/lib/failure-party-roles";
 import { myTasksPath } from "../lib/my-task-routes";
 import {
+  clientFieldPolicyFor,
   emptyProperty,
-  isNabrTransaction,
   type AssignmentType,
   type BourseDeedVitality,
   type PoPropertyIntake,
@@ -260,7 +260,7 @@ export function useMyTaskWorkWorkflow({
   }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber, property.planNumber, property.plotNumber]);
 
   const steps = resolveTaskWorkSteps(effectivePhase, layout, property.identifierType);
-  const isNabr = isNabrTransaction({
+  const fieldPolicy = clientFieldPolicyFor({
     clientId: poRecord?.clientId ?? "",
     reportUserClientIds: poRecord?.reportUserClientIds,
   });
@@ -270,7 +270,7 @@ export function useMyTaskWorkWorkflow({
     role,
     property,
     assignmentType,
-    isNabrClient: isNabr,
+    fieldPolicy,
     distribution,
     showEngineering,
     deedVitality,
@@ -307,7 +307,7 @@ export function useMyTaskWorkWorkflow({
     onRefresh,
     property,
     assignmentType,
-    isNabrClient: isNabr,
+    fieldPolicy,
     fieldErrors,
     formError,
     submitBusy,

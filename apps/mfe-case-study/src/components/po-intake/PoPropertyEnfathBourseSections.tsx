@@ -5,6 +5,10 @@
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import { FormRow, InfathSection } from "@platform/ui-kit";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
+import {
+  DEFAULT_CLIENT_FIELD_POLICY,
+  type ClientFieldPolicy,
+} from "../../lib/app-data/po-intake-data";
 import type { EnfathSectionProps } from "./po-property-enfath-form-state";
 
 export function PoPropertyEnfathBourseSections({
@@ -14,13 +18,12 @@ export function PoPropertyEnfathBourseSections({
   showCourt,
   showRequestNumber,
   onDeedNumberChange,
-  isNabrClient = false,
+  fieldPolicy = DEFAULT_CLIENT_FIELD_POLICY,
 }: EnfathSectionProps & {
   showCourt: boolean;
   showRequestNumber: boolean;
   onDeedNumberChange: (value: string) => void;
-  /** Nabr transactions have no owner name on file. */
-  isNabrClient?: boolean;
+  fieldPolicy?: ClientFieldPolicy;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -147,8 +150,8 @@ export function PoPropertyEnfathBourseSections({
       <RegField
         id="owner_name_bourse"
         label="اسم المالك"
-        required={!isNabrClient}
-        hint={isNabrClient ? "لا ينطبق على نبر" : undefined}
+        required={fieldPolicy.requiresOwnerName}
+        hint={fieldPolicy.requiresOwnerName ? undefined : "لا ينطبق على نبر"}
         value={property.ownerName}
         error={fieldErrors.ownerName}
         onChange={(v) => onPatch("ownerName", v)}
