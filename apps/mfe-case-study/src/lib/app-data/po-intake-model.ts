@@ -533,6 +533,7 @@ export function priorDeedToPropertyIntake(
           name: c.name ?? "",
           role: c.role ?? "",
           phone: c.phone ?? "",
+          nationalId: c.nationalId ?? "",
         }))
       : base.contacts;
 

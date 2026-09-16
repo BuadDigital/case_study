@@ -29,7 +29,7 @@ function filled(value: string | null | undefined): boolean {
 /** True when the draft has at least one field the specialist actually entered. */
 export function isMeaningfulPropertyDraft(
   property: PoPropertyIntake | null | undefined,
-): boolean {
+): property is PoPropertyIntake {
   if (!property) return false;
   if (
     filled(property.deedNumber) ||

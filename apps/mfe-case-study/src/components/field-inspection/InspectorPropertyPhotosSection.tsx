@@ -464,7 +464,7 @@ export function InspectorPropertyPhotosSection({
             </p>
           </div>
           <div className={gridClass}>
-            {photosByParent.orphan.map(renderPhotoCard)}
+            {photosByParent.orphan.map((photo) => renderPhotoCard(photo))}
           </div>
         </div>
       ) : null}
