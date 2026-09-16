@@ -150,22 +150,6 @@ export function firstInspectorWorkspaceErrorTarget(
   if (errors.mapLatitude || errors.mapLongitude) {
     return inspectorFieldTargetId("mapLatitude");
   }
-  if (errors.accessContactName) {
-    return inspectorFieldTargetId("accessContactName");
-  }
-  if (errors.accessContactPhone) {
-    return inspectorFieldTargetId("accessContactPhone");
-  }
-  if (errors.accessContactRole) {
-    return inspectorFieldTargetId("accessContactRole");
-  }
-  if (errors.accessContactNationalId) {
-    return inspectorFieldTargetId("accessContactNationalId");
-  }
-  if (errors.accessRouteDescription) {
-    return inspectorFieldTargetId("accessRouteDescription");
-  }
-  if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
   if (errors.emptyFeatureKeys?.[0]) {
     return inspectorFieldTargetId(`feature:${errors.emptyFeatureKeys[0]}`);
   }
@@ -183,6 +167,22 @@ export function firstInspectorWorkspaceErrorTarget(
   if (errors.features || errors.featurePhotos) {
     return inspectorFieldTargetId("features");
   }
+  if (errors.accessContactName) {
+    return inspectorFieldTargetId("accessContactName");
+  }
+  if (errors.accessContactPhone) {
+    return inspectorFieldTargetId("accessContactPhone");
+  }
+  if (errors.accessContactRole) {
+    return inspectorFieldTargetId("accessContactRole");
+  }
+  if (errors.accessContactNationalId) {
+    return inspectorFieldTargetId("accessContactNationalId");
+  }
+  if (errors.accessRouteDescription) {
+    return inspectorFieldTargetId("accessRouteDescription");
+  }
+  if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
   if (errors.missingComponentPhotoKey) {
     return inspectorFieldTargetId(
       `component-photo:${errors.missingComponentPhotoKey}`,
@@ -424,6 +424,10 @@ const WIZARD_STEP_ERROR_KEYS: Record<
     "inspectionTime",
     "mapLatitude",
     "mapLongitude",
+    "features",
+    "movablesDescription",
+    "occupancyDescription",
+    "featurePhotos",
     "accessContactName",
     "accessContactPhone",
     "accessContactRole",
@@ -432,10 +436,6 @@ const WIZARD_STEP_ERROR_KEYS: Record<
     "freePhotos",
   ],
   2: [
-    "features",
-    "movablesDescription",
-    "occupancyDescription",
-    "featurePhotos",
     "componentPhotos",
     "boundaries",
     "definedPhotos",
@@ -454,13 +454,15 @@ export function pickInspectorErrorsForWizardStep(
       Object.assign(picked, { [key]: value });
     }
   }
-  if (step === 2) {
+  if (step === 1) {
     if (errors.emptyFeatureKeys?.length) {
       picked.emptyFeatureKeys = errors.emptyFeatureKeys;
     }
     if (errors.missingFeaturePhotoKey) {
       picked.missingFeaturePhotoKey = errors.missingFeaturePhotoKey;
     }
+  }
+  if (step === 2) {
     if (errors.missingDefinedPhotoSlotId) {
       picked.missingDefinedPhotoSlotId = errors.missingDefinedPhotoSlotId;
     }
@@ -485,7 +487,11 @@ export function inspectorWizardStepForErrorTarget(
     targetId === "ins-time" ||
     targetId === "ins-map-section" ||
     targetId === "ins-property-photos" ||
-    targetId.startsWith("ins-access")
+    targetId === "ins-features-section" ||
+    targetId === `ins-${MOVABLES_DESCRIPTION_KEY}` ||
+    targetId === `ins-${OCCUPANCY_DESCRIPTION_KEY}` ||
+    targetId.startsWith("ins-access") ||
+    targetId.startsWith("ins-feature-")
   ) {
     return 1;
   }

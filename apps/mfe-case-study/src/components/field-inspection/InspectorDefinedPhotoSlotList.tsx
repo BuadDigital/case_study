@@ -70,7 +70,6 @@ export function InspectorDefinedPhotoSlotList({
           <MobilePhotoTile
             key={id}
             label={label}
-            required={false}
             done={done}
             none={slot.none}
             disabled={disabled}
@@ -98,7 +97,6 @@ export function InspectorDefinedPhotoSlotList({
         >
           <DesktopHtmlPhotoTile
             label={label}
-            required={false}
             done={done}
             none={slot.none}
             taskId={taskId}

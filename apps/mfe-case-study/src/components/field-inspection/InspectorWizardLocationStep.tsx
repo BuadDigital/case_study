@@ -10,6 +10,7 @@ import { Button, cn, GoogleMapPin, useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   mapPinPatchForActor,
+  type InspectorFeatureField,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -25,6 +26,7 @@ import {
 } from "./inspector-wizard-state";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
+import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { handleSiteLocationAckClick } from "../../lib/app-data/site-location-ack-open";
 import {
   InsCard,
@@ -45,6 +47,7 @@ export function InspectorWizardLocationStep({
   draft,
   editable,
   fieldErrors,
+  featureFields,
   serviceProofFromTransactionPhotos,
   onPatch,
   onMapMove,
@@ -63,6 +66,8 @@ export function InspectorWizardLocationStep({
   draft: InspectorWorkspaceDraft;
   editable: boolean;
   fieldErrors: InspectorWorkspaceFieldErrors;
+  /** «خصائص العقار» — rendered right after the map card. */
+  featureFields: InspectorFeatureField[];
   serviceProofFromTransactionPhotos: boolean;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
   onMapMove: (lat: number, lng: number) => void;
@@ -254,6 +259,25 @@ export function InspectorWizardLocationStep({
             />
           </InsFieldsGrid>
         </div>
+        </div>
+      </InsCard>
+
+      <InsCard title="خصائص العقار">
+        <div id="ins-features-section">
+          <InspectorFeatureWizardFields
+            fields={featureFields}
+            draft={draft}
+            deedNumber={property.deedNumber}
+            emptyFeatureKeys={fieldErrors.emptyFeatureKeys}
+            missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
+            movablesDescriptionError={fieldErrors.movablesDescription}
+            occupancyDescriptionError={fieldErrors.occupancyDescription}
+            disabled={!editable}
+            readOnlyFeatureKeys={
+              serviceProofFromTransactionPhotos ? ["assetSubject"] : []
+            }
+            onPatch={onPatch}
+          />
         </div>
       </InsCard>
 

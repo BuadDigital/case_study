@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createInspectorWorkspaceDraft,
   inspectionStampFromNow,
+  isInspectorPresenceToggleField,
+  visibleInspectorFeatureFields,
   INSPECTOR_FEATURE_FIELDS,
   listInspectorPhotoValidationIssues,
   inspectorFeatureRequiresPhoto,
@@ -52,6 +54,18 @@ function completeDraft() {
     ],
   };
   return draft;
+}
+
+/** Picks a value for every visible non-toggle feature field so «خصائص العقار» reads complete. */
+function fillRequiredFeatureValues(
+  featureValues: Record<string, string>,
+): Record<string, string> {
+  const next = { ...featureValues };
+  for (const field of visibleInspectorFeatureFields(false)) {
+    if (isInspectorPresenceToggleField(field)) continue;
+    next[field.key] = field.options[0] ?? "";
+  }
+  return next;
 }
 
 describe("Field inspection frontend/backend rule parity", () => {
@@ -161,12 +175,14 @@ describe("Field inspection frontend/backend rule parity", () => {
   it("keeps step-1 continue independent of later-step gaps", () => {
     const draft = completeDraft();
     draft.inspectionConfirmed = false;
-    draft.featureValues = {};
+    draft.featureValues = fillRequiredFeatureValues(draft.featureValues);
     draft.mapLatitude = "21.481000";
     draft.mapLongitude = "39.186500";
     draft.accessContactName = "عبدالرحمن";
     draft.accessContactPhone = "0500000001";
     draft.accessContactRole = "مالك";
+    // A component-photo gap (step 2) must not block step 1's own continue gate.
+    draft.showroomCount = "1";
     const all = validateInspectorWorkspace(draft);
     const step1 = pickInspectorErrorsForWizardStep(all, 1);
     expect(inspectorWorkspaceHasBlockingErrors(step1)).toBe(false);
@@ -189,7 +205,7 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(inspectorWizardStepForErrorTarget("ins-map-section")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-property-photos")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-photos")).toBe(2);
-    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(2);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-slot-service:مياه")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-component-photo-showroom")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-boundaries-section")).toBe(2);

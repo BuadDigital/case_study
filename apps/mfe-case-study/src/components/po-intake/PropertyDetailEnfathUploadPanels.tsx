@@ -4,63 +4,12 @@
 
 import { Badge, Button } from "@platform/ui-kit";
 import type { InfathUploadAttachment } from "../../lib/app-data/infath-upload-types";
-import type { InfathDepositDraft } from "../../lib/app-data/infath-deposit-storage";
 import { InfazIcon } from "./InfazIcon";
 import {
   attachmentIcon,
   attachmentReady,
   attachmentStatusLabel,
 } from "./property-detail-enfath-upload-state";
-
-export function InfathDepositPanel({
-  draft,
-  onPatch,
-}: {
-  draft: InfathDepositDraft;
-  onPatch: (patch: Partial<InfathDepositDraft>) => void;
-}) {
-  return (
-    <section className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3.5">
-      <p className="m-0 mb-2 text-[13px] font-bold text-text">
-        إيداع التقرير في الهيئة
-      </p>
-      <p className="m-0 mb-3 text-[11px] leading-relaxed text-text-3">
-        رمز الإيداع حقل إدخال، وشهادة الإيداع مرفق — مستقلان عن استلام
-        الأخصائي لتقرير التقييم.
-      </p>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-2">
-          رمز إيداع التقرير
-          <input
-            className="h-9 rounded-md border border-border bg-surface px-2.5 text-[13px] font-normal"
-            dir="ltr"
-            value={draft.depositCode}
-            onChange={(e) => onPatch({ depositCode: e.target.value })}
-            placeholder="أدخل رمز الإيداع…"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] font-semibold text-text-2">
-          شهادة الإيداع
-          <input
-            type="file"
-            className="text-[12px] font-normal"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              onPatch({
-                depositCertificateName: file?.name ?? "",
-              });
-            }}
-          />
-          {draft.depositCertificateName ? (
-            <span className="text-[11px] font-normal text-text-3" dir="ltr">
-              {draft.depositCertificateName}
-            </span>
-          ) : null}
-        </label>
-      </div>
-    </section>
-  );
-}
 
 export function InfathCollapseControls({
   onSetAllCollapsed,

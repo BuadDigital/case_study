@@ -15,7 +15,6 @@ import { InfathSectionBlock } from "./PropertyDetailEnfathUploadRows";
 import {
   InfathAttachmentsPanel,
   InfathCollapseControls,
-  InfathDepositPanel,
 } from "./PropertyDetailEnfathUploadPanels";
 import { usePropertyDetailEnfathUploadWorkflow } from "./usePropertyDetailEnfathUploadWorkflow";
 
@@ -65,8 +64,6 @@ export function PropertyDetailEnfathUpload({
 
   return (
     <div className="flex flex-col gap-4">
-      <InfathDepositPanel draft={flow.depositDraft} onPatch={flow.patchDeposit} />
-
       <InfathCollapseControls onSetAllCollapsed={flow.setAllCollapsed} />
 
       <InfathAttachmentsPanel

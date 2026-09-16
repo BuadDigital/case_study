@@ -29,11 +29,7 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import {
-  loadInfathDeposit,
-  saveInfathDeposit,
-  type InfathDepositDraft,
-} from "../../lib/app-data/infath-deposit-storage";
+import { loadInfathDeposit } from "../../lib/app-data/infath-deposit-storage";
 import {
   DEPOSIT_CERTIFICATE_FIELD_LABEL,
   DEPOSIT_CODE_FIELD_LABEL,
@@ -51,8 +47,6 @@ import {
 
 export type PropertyDetailEnfathUploadWorkflow = {
   model: InfathUploadModel;
-  depositDraft: InfathDepositDraft;
-  patchDeposit: (patch: Partial<InfathDepositDraft>) => void;
   collapsedSections: Set<string>;
   copiedKeys: Set<CopyKey>;
   toggleSection: (sectionId: string) => void;
@@ -90,24 +84,10 @@ export function usePropertyDetailEnfathUploadWorkflow({
     requestNumber: property.requestNumber.trim() || undefined,
   });
 
-  const [depositDraft, setDepositDraft] = useState(() =>
-    loadInfathDeposit(property.id),
-  );
-
-  useEffect(() => {
-    setDepositDraft(loadInfathDeposit(property.id));
-  }, [property.id]);
-
-  const patchDeposit = useCallback(
-    (patch: Partial<InfathDepositDraft>) => {
-      setDepositDraft((prev) => {
-        const next = { ...prev, ...patch };
-        saveInfathDeposit(property.id, next);
-        return next;
-      });
-    },
-    [property.id],
-  );
+  // Historical fallback only — nothing writes to this anymore now that the
+  // manual deposit-entry panel is gone; the evaluator's own report draft is
+  // the sole source going forward.
+  const depositDraft = useMemo(() => loadInfathDeposit(property.id), [property.id]);
 
   const opsContext = useMemo((): InfathOpsContext => {
     const visit = primaryCourtVisit;
@@ -235,8 +215,6 @@ export function usePropertyDetailEnfathUploadWorkflow({
 
   return {
     model,
-    depositDraft,
-    patchDeposit,
     collapsedSections,
     copiedKeys,
     toggleSection,
