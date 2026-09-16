@@ -82,6 +82,8 @@ export type MyTaskWorkCommandsInput = {
   role: RoleId;
   property: PoPropertyIntake;
   assignmentType: AssignmentType;
+  /** Nabr transactions skip قرار الإسناد / اسم المالك. */
+  isNabrClient: boolean;
   distribution: TaskDistributionDraft;
   showEngineering: boolean;
   deedVitality: BourseDeedVitality | null;
@@ -109,8 +111,9 @@ async function findEnfathSaveErrors(
   property: PoPropertyIntake,
   assignmentType: AssignmentType,
   task: Pick<WorkflowTask, "poNumber" | "propertyId">,
+  isNabrClient: boolean,
 ): Promise<EnfathSaveErrors | null> {
-  const errors = mergePropertyEnfathValidation(property, assignmentType);
+  const errors = mergePropertyEnfathValidation(property, assignmentType, isNabrClient);
   if (hasFieldErrors(errors)) {
     return { errors, message: firstEnfathValidationMessage(errors) };
   }
@@ -133,6 +136,7 @@ export function useMyTaskWorkCommands({
   role,
   property,
   assignmentType,
+  isNabrClient,
   distribution,
   showEngineering,
   deedVitality,
@@ -197,7 +201,12 @@ export function useMyTaskWorkCommands({
   }
 
   async function rejectIfEnfathInvalid(): Promise<boolean> {
-    const invalid = await findEnfathSaveErrors(property, assignmentType, task);
+    const invalid = await findEnfathSaveErrors(
+      property,
+      assignmentType,
+      task,
+      isNabrClient,
+    );
     if (!invalid) return false;
     setFieldErrors(invalid.errors);
     setFormError(invalid.message);

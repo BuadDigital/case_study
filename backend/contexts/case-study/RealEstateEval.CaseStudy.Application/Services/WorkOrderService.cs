@@ -155,7 +155,8 @@ public partial class WorkOrderService : IWorkOrderService
                 assignmentType,
                 po,
                 null,
-                (_, _) => false);
+                (_, _) => false,
+                request.ClientId == SeedClientIds.NabrRealEstate);
             if (propErrors.Count > 0) return (null, propErrors);
         }
 

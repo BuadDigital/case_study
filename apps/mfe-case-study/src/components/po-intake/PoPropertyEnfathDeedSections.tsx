@@ -102,6 +102,7 @@ export function PoPropertyEnfathDeedSections({
   hasRequestNumber,
   onDeedNumberChange,
   onRealEstateRegNumberChange,
+  isNabrClient = false,
 }: EnfathSectionProps & {
   showCourt: boolean;
   showRequestNumber: boolean;
@@ -109,6 +110,8 @@ export function PoPropertyEnfathDeedSections({
   hasRequestNumber: boolean;
   onDeedNumberChange: (value: string) => void;
   onRealEstateRegNumberChange: (value: string) => void;
+  /** Nabr transactions have no owner name on file. */
+  isNabrClient?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -140,7 +143,6 @@ export function PoPropertyEnfathDeedSections({
         label="رقم التسجيل العيني"
         dir="ltr"
         inputMode="numeric"
-        hint="تعبئته تُغني عن استعلام البورصة."
         value={property.realEstateRegNumber}
         error={fieldErrors.realEstateRegNumber}
         onChange={onRealEstateRegNumberChange}
@@ -254,7 +256,8 @@ export function PoPropertyEnfathDeedSections({
       <RegField
         id="owner_name"
         label="اسم المالك"
-        required
+        required={!isNabrClient}
+        hint={isNabrClient ? "لا ينطبق على نبر" : undefined}
         value={property.ownerName}
         error={fieldErrors.ownerName}
         onChange={(v) => onPatch("ownerName", v)}

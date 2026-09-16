@@ -5,6 +5,7 @@ import {
   formatPoDisplay,
   hasBourseDetailFields,
   isBourseInquiryIdentifier,
+  isNabrClient,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
@@ -206,6 +207,7 @@ export function PoPropertyEdit({
     const enfathErrors = mergePropertyEnfathValidation(
       property,
       initialRecord.assignmentType,
+      isNabrClient(initialRecord.clientId),
     );
     const bourseErrors = property.bourseDataCompleted
       ? validatePropertyBourseFields(property)
@@ -332,6 +334,7 @@ export function PoPropertyEdit({
             onReplaceProperty={replaceProperty}
             poNumber={poNumber}
             excludePoNumber={poNumber}
+            clientId={initialRecord.clientId}
           />
         </CardBody>
       </Card>

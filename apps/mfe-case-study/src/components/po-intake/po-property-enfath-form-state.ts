@@ -46,6 +46,8 @@ export type EnfathFormVisibility = {
   showDelegationDoc: boolean;
   showRegistryDoc: boolean;
   showOtherDocs: boolean;
+  /** Nabr transactions have no قرار إسناد — Infath assigns Nabr work directly. */
+  showAssignmentDoc: boolean;
 };
 
 export function enfathFormVisibility(input: {
@@ -54,6 +56,8 @@ export function enfathFormVisibility(input: {
   identifierType: PropertyIdentifierType;
   realEstateRegNumber: string;
   hasRequestNumber: boolean | null | undefined;
+  /** Nabr transactions have no قرار إسناد. */
+  isNabrClient?: boolean;
 }): EnfathFormVisibility {
   const { fieldsMode } = input;
   const isBourseId = isBourseInquiryIdentifier(input.identifierType);
@@ -76,6 +80,7 @@ export function enfathFormVisibility(input: {
     showDelegationDoc: !isBourseId && fieldsMode === "all",
     showRegistryDoc: hasRealEstateReg && fieldsMode === "all",
     showOtherDocs: fieldsMode === "all" || isPrimaryOnly,
+    showAssignmentDoc: showExtended && !input.isNabrClient,
   };
 }
 
@@ -102,14 +107,11 @@ export function derivedIdentifierType(realEstateRegNumber: string): PropertyIden
   return realEstateRegNumber.trim().length > 0 ? "real_estate_reg" : "deed";
 }
 
-export function stageNoteText(isBourseId: boolean, hasRealEstateReg: boolean): string {
+export function stageNoteText(isBourseId: boolean, _hasRealEstateReg = false): string {
   if (isBourseId) {
     return "مسار استعلام البورصة — أدخل البيانات الأولية وبيانات البورصة معاً.";
   }
-  if (hasRealEstateReg) {
-    return "بيانات مرحلة إنفاذ — مع التسجيل العيني يمكن تجاوز استعلام البورصة.";
-  }
-  return "بيانات مرحلة إنفاذ — يلزم رقم الصك أو التسجيل العيني (أو كلاهما)؛ بدون تسجيل عيني تُكمّل بيانات البورصة لاحقاً من «استعلام البورصة».";
+  return "بيانات مرحلة إنفاذ — يلزم رقم الصك أو التسجيل العيني (أو كلاهما)؛ بيانات البورصة تُكمّل لاحقاً من «استعلام البورصة».";
 }
 
 export function contactsSectionTitle(contactsRequired: boolean): string {

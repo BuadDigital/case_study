@@ -39,6 +39,13 @@ describe("enfathFormVisibility", () => {
     expect(v.showRegistryDoc).toBe(false);
     expect(v.showOtherDocs).toBe(true);
     expect(v.hasRequestNumber).toBe(true);
+    expect(v.showAssignmentDoc).toBe(true);
+  });
+
+  it("hides قرار الإسناد for a Nabr transaction", () => {
+    const v = enfathFormVisibility({ ...base, isNabrClient: true });
+    expect(v.showExtended).toBe(true);
+    expect(v.showAssignmentDoc).toBe(false);
   });
 
   it("switches to the bourse primary sections for a bourse identifier", () => {
@@ -132,7 +139,8 @@ describe("texts and keys", () => {
 
   it("picks the stage note per path", () => {
     expect(stageNoteText(true, false)).toContain("استعلام البورصة");
-    expect(stageNoteText(false, true)).toContain("التسجيل العيني يمكن تجاوز");
+    expect(stageNoteText(false, true)).toContain("يلزم رقم الصك");
+    expect(stageNoteText(false, true)).not.toContain("تجاوز");
     expect(stageNoteText(false, false)).toContain("يلزم رقم الصك");
   });
 
