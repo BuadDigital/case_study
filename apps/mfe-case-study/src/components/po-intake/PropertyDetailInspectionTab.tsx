@@ -39,7 +39,6 @@ import {
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
   isCommercialShopInspectionContext,
-  isInspectorWorkspaceAccepted,
   isInspectorWorkspaceReviewLocked,
   isLandInspectionContext,
   isMovablesPresent,
@@ -54,8 +53,6 @@ import {
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK,
-  SPECIALIST_SAVE_INSPECTOR_INPUTS_LABEL,
-  SPECIALIST_SAVE_INSPECTOR_INPUTS_SUCCESS,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
   type InspectorComponentPhotoKey,
@@ -321,8 +318,6 @@ export function PropertyDetailInspectionTab({
       }),
   );
   const showEditFields = editMode && Boolean(draft) && !locked;
-  const specialistAlreadyAccepted =
-    serviceProofFromTransactionPhotos && isInspectorWorkspaceAccepted(draft);
   const mapActor = serviceProofFromTransactionPhotos
     ? "specialist"
     : "inspector";
@@ -568,9 +563,6 @@ export function PropertyDetailInspectionTab({
         mapActor === "inspector"
           ? ensureInspectorOriginalMapOnSubmit(baseConfirmed)
           : baseConfirmed;
-      const alreadyAccepted =
-        serviceProofFromTransactionPhotos &&
-        isInspectorWorkspaceAccepted(draft);
       const saved = await saveInspectorWorkspaceDraft(confirmed);
       setDraft(saved);
 
@@ -592,12 +584,6 @@ export function PropertyDetailInspectionTab({
         setFormError(message);
         showToast(message, "error");
         scheduleInspectorErrorScroll(errors);
-        return;
-      }
-
-      if (alreadyAccepted) {
-        setFieldErrors({});
-        showToast(SPECIALIST_SAVE_INSPECTOR_INPUTS_SUCCESS, "success");
         return;
       }
 
@@ -751,9 +737,7 @@ export function PropertyDetailInspectionTab({
           confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
           submitLabel={
             serviceProofFromTransactionPhotos
-              ? specialistAlreadyAccepted
-                ? SPECIALIST_SAVE_INSPECTOR_INPUTS_LABEL
-                : SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL
+              ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL
               : undefined
           }
           confirmLabel={

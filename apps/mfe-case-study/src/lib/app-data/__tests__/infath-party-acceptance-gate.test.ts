@@ -85,7 +85,7 @@ describe("inspection → إنفاذ acceptance gate", () => {
     ).toBe(true);
   });
 
-  it("keeps specialist review editable after acceptance, and locks inspector after submit", () => {
+  it("keeps specialist review editable until acceptance, then locks it; inspector locks on submit", () => {
     expect(
       isInspectorWorkspaceReviewLocked(
         { status: "submitted", acceptedAtUtc: null },
@@ -97,7 +97,7 @@ describe("inspection → إنفاذ acceptance gate", () => {
         { status: "submitted", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },
         { specialistReview: true },
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isInspectorWorkspaceReviewLocked(
         { status: "reopened", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },

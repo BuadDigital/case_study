@@ -283,7 +283,7 @@ function CaseStudyAppraisalPanel({
         surveyTaskId={surveyTaskId}
         inspectionTaskId={inspectionTaskId}
         engineeringAssigned={engineeringAssigned}
-        readOnly={caseStudyTask.status === "completed"}
+        readOnly={caseStudyTask.status === "completed" || inspectionAccepted}
       />
       <section className="mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
@@ -294,7 +294,7 @@ function CaseStudyAppraisalPanel({
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
           {inspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)]">
-              مؤكَّدة — يمكن تعديل مدخلات المعاين
+              مؤكَّدة — القسم مقفل
             </span>
           ) : null}
           {canReturnToInspector && !returnOpen ? (
@@ -313,8 +313,8 @@ function CaseStudyAppraisalPanel({
         </div>
         <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
           أنت مشرف على ما كتبه المعاين: راجع وعدّل إن لزم. «
-          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يفتح الحزمة للمقيّم، وتبقى
-          قابلة للتعديل هنا. «إعادة للتصحيح» ترجع المهمة للمعاين.
+          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يقفل القسم ويفتح الحزمة
+          للمقيّم. «إعادة للتصحيح» ترجع المهمة للمعاين للتعديل من جديد.
         </p>
 
         {returnOpen ? (
