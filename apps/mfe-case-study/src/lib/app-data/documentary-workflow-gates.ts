@@ -38,14 +38,92 @@ export function findSiblingInspectionTask(
   tasks: WorkflowTask[],
 ): WorkflowTask | null {
   if (!surveyTask.parentTaskId) return null;
-  return (
+  const visible =
     tasks.find(
       (t) =>
         t.parentTaskId === surveyTask.parentTaskId &&
         t.propertyId === surveyTask.propertyId &&
         t.kind === "field-inspection",
+    ) ?? null;
+  if (visible) return visible;
+  const siblingId = surveyTask.fieldInspectionTaskId?.trim();
+  if (!siblingId) return null;
+  return inspectionTaskFromSiblingId(siblingId, surveyTask);
+}
+
+/** Party lists hide the inspection row; appraisal/survey DTOs carry its id. */
+export function inspectionTaskFromSiblingId(
+  siblingId: string,
+  source: WorkflowTask,
+): WorkflowTask {
+  return {
+    id: siblingId,
+    kind: "field-inspection",
+    poNumber: source.poNumber,
+    propertyId: source.propertyId,
+    propertyOrdinal: source.propertyOrdinal,
+    title: "معاينة العقار",
+    phase: source.phase,
+    assigneeRole: "field-inspector",
+    assigneeName: "",
+    parentTaskId: source.parentTaskId,
+    status: "completed",
+    createdAt: source.createdAt,
+    updatedAt: source.updatedAt,
+  };
+}
+
+export function partyChildTaskForProperty(
+  kind: WorkflowTask["kind"],
+  poNumber: string,
+  propertyId: string,
+  tasks: WorkflowTask[],
+): WorkflowTask | null {
+  const po = poNumber.trim();
+  return (
+    tasks.find(
+      (t) =>
+        t.kind === kind &&
+        t.poNumber.trim() === po &&
+        t.propertyId === propertyId,
     ) ?? null
   );
+}
+
+/**
+ * Inspection task for property photos / facts. Prefers a visible row, else the
+ * sibling id stamped on the viewer's appraisal or survey task.
+ */
+export function resolveInspectionTaskForProperty(input: {
+  tasks: WorkflowTask[];
+  parentTask?: WorkflowTask | null;
+  appraisalTask?: WorkflowTask | null;
+  surveyTask?: WorkflowTask | null;
+  poNumber: string;
+  propertyId: string;
+}): WorkflowTask | null {
+  const fromParent = input.parentTask
+    ? input.tasks.find(
+        (t) =>
+          t.kind === "field-inspection" &&
+          t.parentTaskId === input.parentTask!.id &&
+          t.propertyId === input.propertyId,
+      )
+    : null;
+  if (fromParent) return fromParent;
+
+  const visible = partyChildTaskForProperty(
+    "field-inspection",
+    input.poNumber,
+    input.propertyId,
+    input.tasks,
+  );
+  if (visible) return visible;
+
+  const carrier = input.appraisalTask ?? input.surveyTask ?? null;
+  const siblingId = carrier?.fieldInspectionTaskId?.trim() ?? "";
+  if (!carrier || !siblingId) return null;
+  return inspectionTaskFromSiblingId(siblingId, carrier);
 }
 
 export type DocumentaryGateState =

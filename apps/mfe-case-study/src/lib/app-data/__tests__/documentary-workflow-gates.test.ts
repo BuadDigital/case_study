@@ -5,6 +5,7 @@ import {
   isInformalSettlement,
   roleBypassesDocumentaryGates,
   roleCanSetLocationMapUrl,
+  resolveInspectionTaskForProperty,
   surveyWorkGate,
 } from "../documentary-workflow-gates";
 import type { WorkflowTask } from "../tasks-storage";
@@ -163,4 +164,49 @@ describe("documentary workflow gates — role matrix", () => {
     ).toBe(true);
   });
 
+});
+
+describe("resolveInspectionTaskForProperty", () => {
+  it("uses the appraisal sibling id when the inspection row is hidden from the party list", () => {
+    const appraisal = baseTask({
+      id: "val-1",
+      kind: "property-appraisal",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم",
+      fieldInspectionTaskId: "insp-hidden",
+    });
+    const found = resolveInspectionTaskForProperty({
+      tasks: [appraisal],
+      parentTask: null,
+      appraisalTask: appraisal,
+      surveyTask: null,
+      poNumber: "PO-1",
+      propertyId: "p1",
+    });
+    expect(found?.id).toBe("insp-hidden");
+    expect(found?.kind).toBe("field-inspection");
+  });
+
+  it("prefers a visible inspection row over the stamped sibling id", () => {
+    const inspection = baseTask({
+      id: "insp-visible",
+      kind: "field-inspection",
+      assigneeRole: "field-inspector",
+      status: "completed",
+    });
+    const appraisal = baseTask({
+      id: "val-1",
+      kind: "property-appraisal",
+      fieldInspectionTaskId: "insp-hidden",
+    });
+    const found = resolveInspectionTaskForProperty({
+      tasks: [inspection, appraisal],
+      parentTask: null,
+      appraisalTask: appraisal,
+      surveyTask: null,
+      poNumber: "PO-1",
+      propertyId: "p1",
+    });
+    expect(found?.id).toBe("insp-visible");
+  });
 });

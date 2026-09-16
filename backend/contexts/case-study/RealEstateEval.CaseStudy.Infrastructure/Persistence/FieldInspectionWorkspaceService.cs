@@ -50,6 +50,8 @@ public sealed class FieldInspectionWorkspaceService : IFieldInspectionWorkspaceS
                     ? x.Workspace.SubmittedAtUtc.Value.ToString("O")
                     : null,
                 UpdatedAtUtc = x.Workspace.UpdatedAtUtc.ToString("O"),
+                MapLatitude = x.Workspace.MapLatitude,
+                MapLongitude = x.Workspace.MapLongitude,
             })
             .ToListAsync(cancellationToken);
     }

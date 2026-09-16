@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import type { WorkflowTask } from "../tasks-storage";
 import {
+  assignedCaseStudyParties,
   buildCaseStudyPartyAssignees,
   caseStudyFamilyParentId,
 } from "../case-study-tracks";
@@ -24,6 +25,14 @@ const staff: StaffUser[] = [
     role: "مقيم عقاري",
     roleId: "real-estate-appraiser",
     type: "internal",
+  },
+  {
+    id: "u-eo",
+    name: "مكتب جدة الهندسي",
+    distributionAssigneeId: "eo-jeddah",
+    role: "مكتب هندسي",
+    roleId: "engineering-office",
+    type: "external",
   },
 ];
 
@@ -70,6 +79,7 @@ describe("buildCaseStudyPartyAssignees", () => {
       assigneeRole: "real-estate-appraiser",
       assigneeName: "مقيم عقاري",
       assigneeId: "val-abdullah",
+      fieldInspectionTaskId: "insp-1",
       distribution: {
         governmentAuditor: false,
         governmentAuditorId: "",
@@ -96,6 +106,118 @@ describe("buildCaseStudyPartyAssignees", () => {
     expect(byTrack.inspection.enabled).toBe(true);
     expect(byTrack.inspection.name).toBe("أحمد سعيد");
     expect(byTrack.survey.enabled).toBe(false);
+  });
+
+  it("does not show the engineering office when the survey task was never spawned", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      engineeringSurveyAssigned: false,
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: true,
+        engineeringOfficeId: "eo-jeddah",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+
+    const parties = buildCaseStudyPartyAssignees(
+      appraisal,
+      [appraisal],
+      undefined,
+      staff,
+    );
+    expect(parties.find((p) => p.trackId === "survey")?.enabled).toBe(false);
+  });
+
+  it("shows the engineering office from the mirrored assigned flag", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      engineeringSurveyAssigned: true,
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: true,
+        engineeringOfficeId: "eo-jeddah",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+
+    const parties = buildCaseStudyPartyAssignees(
+      appraisal,
+      [appraisal],
+      undefined,
+      staff,
+    );
+    expect(parties.find((p) => p.trackId === "survey")?.enabled).toBe(true);
+  });
+
+  it("assignedCaseStudyParties lists only parties that actually received a task", () => {
+    const plannedOnly = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      engineeringSurveyAssigned: false,
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: true,
+        engineeringOfficeId: "eo-jeddah",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+
+    expect(
+      assignedCaseStudyParties(plannedOnly, [plannedOnly], staff).map(
+        (p) => p.role,
+      ),
+    ).toEqual(["المعاين", "المقيم"]);
+
+    const noInspector = task({
+      ...plannedOnly,
+      distribution: {
+        ...plannedOnly.distribution!,
+        inspectorId: "",
+      },
+    });
+    expect(
+      assignedCaseStudyParties(noInspector, [noInspector], staff).map(
+        (p) => p.trackId,
+      ),
+    ).toEqual(["appraisal"]);
+
+    const allThree = task({
+      ...plannedOnly,
+      engineeringSurveyAssigned: true,
+    });
+    expect(
+      assignedCaseStudyParties(allThree, [allThree], staff).map((p) => p.role),
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
   });
 });
 
@@ -174,6 +296,7 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
         assigneeName: "مقيم عقاري",
         assigneeId: "val-abdullah",
         fieldInspectionCompleted: true,
+        engineeringSurveyAssigned: true,
         engineeringSurveyCompleted,
         distribution: {
           governmentAuditor: false,

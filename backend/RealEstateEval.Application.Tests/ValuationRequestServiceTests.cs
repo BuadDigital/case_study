@@ -133,6 +133,75 @@ public class ValuationRequestServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task List_includes_final_opinion_and_issue_date()
+    {
+        await using var db = CreateDb();
+        var requestId = Guid.Parse("a1000001-0000-4000-8000-000000000005");
+        var propertyId = Guid.Parse("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+        var request = ValuationRequest.Create(
+            requestId,
+            "VR-520",
+            propertyId,
+            "جدة",
+            "فيلا",
+            "مقيم الاختبار",
+            "2026-09-01",
+            DateTime.UtcNow,
+            ValuationRequestStatus.Done);
+        db.ValuationRequests.Add(request);
+        db.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = Guid.Parse("a1000001-0000-4000-8000-000000000006"),
+            ValuationRequestId = requestId,
+            MethodsRationale = "سوق",
+            FinalRoundDecimals = 0,
+            BasisOfValueKey = BasisOfValueKeys.Market,
+            UpdatedAtUtc = DateTime.UtcNow,
+            Methods =
+            [
+                new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000007"),
+                    ApproachKind = ValuationApproachKinds.Market,
+                    ApproachValue = 1_850_000m,
+                    WeightPct = 100m,
+                    IsIncluded = true,
+                    Rationale = "سوق",
+                },
+            ],
+        });
+        db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
+            requestId,
+            "{}",
+            [1],
+            "staff",
+            new DateTime(2026, 9, 10, 8, 0, 0, DateTimeKind.Utc)));
+        await db.SaveChangesAsync();
+
+        db.ValuationRequests.Add(ValuationRequest.Create(
+            Guid.Parse("a1000001-0000-4000-8000-000000000008"),
+            "VR-521",
+            Guid.Parse("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"),
+            "جدة",
+            "فيلا",
+            "مقيم آخر",
+            "2026-08-01",
+            DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var listed = await CreateService(db).ListAsync();
+        var row = Assert.Single(listed, x => x.DisplayId == "VR-520");
+        Assert.Equal(1_850_000m, row.FinalOpinionValue);
+        Assert.Equal("2026-09-10", row.IssueDate);
+        Assert.Equal("مقيم الاختبار", row.Appraiser);
+        Assert.Equal("done", row.Status);
+
+        var open = Assert.Single(listed, x => x.DisplayId == "VR-521");
+        Assert.Null(open.FinalOpinionValue);
+        Assert.Null(open.IssueDate);
+    }
+
     private static ValuationRequest OpenRequest(Guid id, string displayId) =>
         ValuationRequest.Create(
             id,

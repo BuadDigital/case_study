@@ -15,6 +15,8 @@ public class FieldInspectionWorkspaceListItemDto
     public int AttachmentCount { get; set; }
     public string? SubmittedAtUtc { get; set; }
     public string UpdatedAtUtc { get; set; } = "";
+    public decimal? MapLatitude { get; set; }
+    public decimal? MapLongitude { get; set; }
 }
 
 public class FieldInspectionWorkspaceSummaryDto

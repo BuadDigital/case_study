@@ -52,6 +52,30 @@ public class FieldInspectionWorkspaceServiceTests
     }
 
     [Fact]
+    public async Task List_includes_inspector_map_pin()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+        var owned = await db.FieldInspectionWorkspaces.SingleAsync(x => x.WorkflowTaskId == OwnedTaskId);
+        owned.PropertyId = Guid.Parse("dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+        owned.MapLatitude = 21.543300m;
+        owned.MapLongitude = 39.172800m;
+        await db.SaveChangesAsync();
+        var service = new FieldInspectionWorkspaceService(TestInspectorFeeServiceFactory.ShareCaseStudy(db));
+
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "case-staff",
+            PrototypeRole = "case-specialist",
+        });
+
+        var pin = Assert.Single(rows, row => row.WorkflowTaskId == OwnedTaskId.ToString());
+        Assert.Equal(owned.PropertyId.ToString(), pin.PropertyId);
+        Assert.Equal(21.543300m, pin.MapLatitude);
+        Assert.Equal(39.172800m, pin.MapLongitude);
+    }
+
+    [Fact]
     public async Task List_returns_no_workspaces_when_actor_is_null()
     {
         await using var db = CreateDb();

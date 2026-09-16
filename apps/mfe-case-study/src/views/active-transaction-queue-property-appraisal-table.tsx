@@ -25,7 +25,7 @@ import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
-import { buildCaseStudyPartyAssignees } from "../lib/app-data/case-study-tracks";
+import { assignedCaseStudyParties } from "../lib/app-data/case-study-tracks";
 import {
   appraiserInspectionDone,
   appraiserQueueStatusBadge,
@@ -34,7 +34,6 @@ import {
   APPRAISAL_QUEUE_SKELETON_COLS,
   assignedDateLabel,
   caseStudyParentForQueueTask,
-  EMPTY_PARTY_PROGRESS,
   engSurveyStatusPillStyle,
   joinCityDistrict,
   propertyTypeLabel,
@@ -58,26 +57,15 @@ type OpenPropertyDetail = (
 function AssignedPartiesCell({
   parent,
   tasks,
-  progress,
   staffUsers,
 }: {
   parent: WorkflowTask;
   tasks: WorkflowTask[];
-  progress: typeof EMPTY_PARTY_PROGRESS;
   staffUsers: StaffUser[];
 }) {
-  const members = buildCaseStudyPartyAssignees(
-    parent,
-    tasks,
-    progress,
-    staffUsers,
-  )
-    .filter((p) => p.enabled)
-    .flatMap((p) => {
-      const name = p.name.trim();
-      if (!name || name === "—") return [];
-      return [{ name, role: p.shortLabel }];
-    });
+  const members = assignedCaseStudyParties(parent, tasks, staffUsers).map(
+    (p) => ({ name: p.name, role: p.role }),
+  );
   return <TeamStack members={members} />;
 }
 
@@ -86,14 +74,12 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
   meta,
   tasks,
   staffUsers,
-  partyProgressByTask,
   openPropertyDetail,
 }: {
   ctx: QueueRowContext;
   meta: PrimaryQueueRowMeta;
   tasks: WorkflowTask[];
   staffUsers: StaffUser[];
-  partyProgressByTask: PartyProgressByTask;
   openPropertyDetail: OpenPropertyDetail;
 }) {
   const { task, record, property, row } = meta;
@@ -156,7 +142,6 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
         <AssignedPartiesCell
           parent={parent}
           tasks={tasks}
-          progress={partyProgressByTask.get(parent.id) ?? EMPTY_PARTY_PROGRESS}
           staffUsers={staffUsers}
         />
       </Td>
@@ -176,7 +161,6 @@ export function PropertyAppraisalQueueTable({
   filteredMeta,
   tasks,
   staffUsers,
-  partyProgressByTask,
   openPropertyDetail,
   statusColumnLabel,
 }: {
@@ -221,7 +205,6 @@ export function PropertyAppraisalQueueTable({
               meta={meta}
               tasks={tasks}
               staffUsers={staffUsers}
-              partyProgressByTask={partyProgressByTask}
               openPropertyDetail={openPropertyDetail}
             />
           ))

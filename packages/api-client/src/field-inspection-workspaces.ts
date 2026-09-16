@@ -20,6 +20,8 @@ export type FieldInspectionWorkspaceListItemDto = {
   attachmentCount: number;
   submittedAtUtc: string | null;
   updatedAtUtc: string;
+  mapLatitude?: number | null;
+  mapLongitude?: number | null;
 };
 
 function headers(token: string): HeadersInit {
@@ -57,7 +59,18 @@ function normalizeListItem(
       | string
       | null,
     updatedAtUtc: String(raw.updatedAtUtc ?? raw.UpdatedAtUtc ?? ""),
+    mapLatitude: optionalNumber(raw.mapLatitude ?? raw.MapLatitude),
+    mapLongitude: optionalNumber(raw.mapLongitude ?? raw.MapLongitude),
   };
+}
+
+function optionalNumber(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  const n =
+    typeof raw === "number"
+      ? raw
+      : Number.parseFloat(String(raw).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
 }
 
 export async function listFieldInspectionWorkspaces(

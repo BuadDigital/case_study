@@ -171,23 +171,40 @@ export type ValuationRequestDto = {
   appraiser: string;
   status: string;
   date: string;
+  finalOpinionValue?: number | null;
+  issueDate?: string | null;
 };
 
-export async function listValuationRequests(
+async function fetchValuationRequestList(
   config: PrototypeModulesApiConfig,
+  path: string,
 ): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
   const base = config.baseUrl ?? getApiBase();
   try {
-    const res = await fetch(`${base}/api/valuation-requests`, {
+    const res = await fetch(`${base}${path}`, {
       headers: headers(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = await parseJson<ValuationRequestDto[]>(res);
     return { ok: true, data: Array.isArray(data) ? data : [] };
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+export async function listValuationRequests(
+  config: PrototypeModulesApiConfig,
+): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
+  return fetchValuationRequestList(config, "/api/valuation-requests");
+}
+
+/** Case-staff readable overlay for the property map (not the operator queue). */
+export async function listValuationRequestMapOverlay(
+  config: PrototypeModulesApiConfig,
+): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
+  return fetchValuationRequestList(config, "/api/valuation-requests/map-overlay");
 }
 
 export async function submitValuationReport(

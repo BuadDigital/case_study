@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Spinner, cn, useToast } from "@platform/ui-kit";
-import { InfoBox } from "./PropertyDetailFields";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
@@ -252,11 +251,6 @@ export function PropertyDetailPhotosTab({
           </div>
         ))
       )}
-
-      <InfoBox icon="ℹ">
-        الصور مرفوعة من النظام بواسطة المعاين أو الطرف المختص — هذا التبويب
-        للاستعراض فقط.
-      </InfoBox>
     </>
   );
 }

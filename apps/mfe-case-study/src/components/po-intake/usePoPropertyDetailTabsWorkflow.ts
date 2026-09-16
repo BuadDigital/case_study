@@ -30,6 +30,10 @@ import { usePropertyTimelineQuery } from "../../query/use-property-timeline-quer
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import {
+  partyChildTaskForProperty,
+  resolveInspectionTaskForProperty,
+} from "../../lib/app-data/documentary-workflow-gates";
+import {
   listPropertyDetailPhotos,
   pickInspectorPrimaryPhoto,
 } from "../../lib/app-data/property-detail-documents";
@@ -169,36 +173,49 @@ export function usePoPropertyDetailTabsWorkflow({
     () =>
       task
         ? findSurveyChildForParent(task.id, property.id, tasks)
-        : null,
-    [task, property.id, tasks],
+        : partyChildTaskForProperty(
+            "engineering-survey",
+            poNumber,
+            property.id,
+            tasks,
+          ),
+    [task, property.id, tasks, poNumber],
   );
 
   const appraisalTask = useMemo(() => {
-    if (!task) return null;
-    return (
-      childTasksForCaseStudyParent(task.id, tasks).find(
+    if (task) {
+      const fromParent = childTasksForCaseStudyParent(task.id, tasks).find(
         (t) => t.kind === "property-appraisal",
-      ) ?? null
+      );
+      if (fromParent) return fromParent;
+    }
+    return partyChildTaskForProperty(
+      "property-appraisal",
+      poNumber,
+      property.id,
+      tasks,
     );
-  }, [task, tasks]);
+  }, [task, tasks, poNumber, property.id]);
 
   const inspectionTask = useMemo(() => {
     if (inspectorWorkspace?.task) return inspectorWorkspace.task;
-    const fromParent = task
-      ? childTasksForCaseStudyParent(task.id, tasks).find(
-          (t) => t.kind === "field-inspection",
-        )
-      : null;
-    if (fromParent) return fromParent;
-    return (
-      tasks.find(
-        (t) =>
-          t.kind === "field-inspection" &&
-          t.poNumber.trim() === poNumber &&
-          t.propertyId === property.id,
-      ) ?? null
-    );
-  }, [inspectorWorkspace?.task, task, tasks, poNumber, property.id]);
+    return resolveInspectionTaskForProperty({
+      tasks,
+      parentTask: task ?? null,
+      appraisalTask,
+      surveyTask,
+      poNumber,
+      propertyId: property.id,
+    });
+  }, [
+    inspectorWorkspace?.task,
+    task,
+    tasks,
+    appraisalTask,
+    surveyTask,
+    poNumber,
+    property.id,
+  ]);
 
   const propertyDocumentSections = usePropertyDetailDocuments({
     property,

@@ -39,7 +39,8 @@ public sealed class ValuationRequestService : IValuationRequestService
             .OrderByDescending(x => x.RequestDate)
             .Take(MaxListRows)
             .ToListAsync(cancellationToken);
-        return rows.Select(ToDto).ToList();
+        var overlays = await LoadOverlaysAsync(rows.Select(x => x.Id), cancellationToken);
+        return rows.Select(row => ToDto(row, OverlayFor(overlays, row.Id))).ToList();
     }
 
     public async Task<ValuationRequestDto?> GetAsync(
@@ -48,7 +49,9 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         var row = await _db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        return row is null ? null : ToDto(row);
+        if (row is null) return null;
+        var overlays = await LoadOverlaysAsync([id], cancellationToken);
+        return ToDto(row, OverlayFor(overlays, id));
     }
 
     public async Task<ValuationRequestDto?> GetOpenByPropertyAsync(
@@ -204,7 +207,66 @@ public sealed class ValuationRequestService : IValuationRequestService
         return $"VR-{next}";
     }
 
-    private static ValuationRequestDto ToDto(ValuationRequest row) => new()
+    private async Task<IReadOnlyDictionary<Guid, RequestMapOverlay>> LoadOverlaysAsync(
+        IEnumerable<Guid> requestIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = requestIds.Distinct().ToArray();
+        if (ids.Length == 0)
+            return new Dictionary<Guid, RequestMapOverlay>();
+
+        var reconByRequest = await _db.ValuationReconciliations.AsNoTracking()
+            .Include(x => x.Methods)
+            .Where(x => ids.Contains(x.ValuationRequestId))
+            .ToDictionaryAsync(x => x.ValuationRequestId, cancellationToken);
+
+        var issueRows = await _db.ValuationReportIssuances.AsNoTracking()
+            .Where(x => ids.Contains(x.ValuationRequestId) && x.SupersededAtUtc == null)
+            .Select(x => new
+            {
+                x.ValuationRequestId,
+                IssueAt = x.FinalIssuedAtUtc ?? x.DepositIssuedAtUtc,
+            })
+            .ToListAsync(cancellationToken);
+        var issueByRequest = issueRows.ToDictionary(x => x.ValuationRequestId, x => x.IssueAt);
+
+        var overlays = new Dictionary<Guid, RequestMapOverlay>(ids.Length);
+        foreach (var id in ids)
+        {
+            reconByRequest.TryGetValue(id, out var recon);
+            DateTime? issueAt = issueByRequest.TryGetValue(id, out var at) ? at : null;
+            overlays[id] = new RequestMapOverlay(FinalOpinionFrom(recon), issueAt);
+        }
+
+        return overlays;
+    }
+
+    private static RequestMapOverlay OverlayFor(
+        IReadOnlyDictionary<Guid, RequestMapOverlay> overlays,
+        Guid id) =>
+        overlays.TryGetValue(id, out var overlay) ? overlay : default;
+
+    private static decimal? FinalOpinionFrom(ValuationReconciliation? recon)
+    {
+        if (recon is null) return null;
+        var included = recon.Methods
+            .Where(m => m.IsIncluded)
+            .Select(m => (m.ApproachValue, m.WeightPct, true))
+            .ToList();
+        if (included.Count == 0) return null;
+        var weighted = ReconciliationRules.WeightedValue(included);
+        var (_, final, _) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
+            weighted,
+            recon.FinalRoundDecimals,
+            recon.BasisOfValueKey,
+            recon.ValuePremiseKey,
+            recon.LiquidationDiscountPct);
+        return final > 0m ? final : null;
+    }
+
+    private static ValuationRequestDto ToDto(
+        ValuationRequest row,
+        RequestMapOverlay overlay = default) => new()
     {
         Id = row.Id,
         DisplayId = row.DisplayId,
@@ -214,7 +276,15 @@ public sealed class ValuationRequestService : IValuationRequestService
         Appraiser = row.Appraiser,
         Status = row.Status.ToDbValue(),
         Date = row.RequestDate.ToString("yyyy-MM-dd"),
+        FinalOpinionValue = overlay.FinalOpinionValue,
+        IssueDate = overlay.IssueAtUtc is { } at
+            ? DateOnly.FromDateTime(at).ToString("yyyy-MM-dd")
+            : null,
     };
+
+    private readonly record struct RequestMapOverlay(
+        decimal? FinalOpinionValue,
+        DateTime? IssueAtUtc);
 
  /// <summary>
  /// The wire carries the property id as text in any Guid format or casing; the column is a

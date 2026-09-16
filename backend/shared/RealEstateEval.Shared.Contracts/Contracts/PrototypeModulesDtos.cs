@@ -20,6 +20,8 @@ public class ValuationRequestDto
     public required string Appraiser { get; init; }
     public required string Status { get; init; }
     public required string Date { get; init; }
+    public decimal? FinalOpinionValue { get; init; }
+    public string? IssueDate { get; init; }
 }
 
 public class SaveValuationRequestRequest

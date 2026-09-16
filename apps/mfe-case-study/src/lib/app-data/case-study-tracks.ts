@@ -119,6 +119,48 @@ function distributionAssigneeId(
   return null;
 }
 
+function liveChild(child: WorkflowTask | undefined): WorkflowTask | undefined {
+  if (!child || child.status === "cancelled") return undefined;
+  return child;
+}
+
+/**
+ * Whether this party actually received a task. Checkboxes alone are not
+ * enough: survey follows the spawned sibling (or the mirrored assigned flag
+ * when party visibility hides the row). Inspection / appraisal follow a live
+ * child, a mirrored sibling id, or the assignee id copied onto the row.
+ */
+export function isPartyTrackAssigned(input: {
+  trackId: string;
+  distribution: TaskDistributionDraft;
+  child?: WorkflowTask;
+  parent: WorkflowTask;
+}): boolean {
+  if (liveChild(input.child)) return true;
+  if (input.trackId === "survey") {
+    return (
+      input.parent.engineeringSurveyAssigned === true ||
+      input.parent.engineeringSurveyCompleted === true
+    );
+  }
+  if (input.trackId === "inspection") {
+    const id = (distributionAssigneeId(input.distribution, "inspection") ?? "").trim();
+    return Boolean(
+      id ||
+        input.parent.fieldInspectionTaskId?.trim() ||
+        input.parent.fieldInspectionCompleted,
+    );
+  }
+  if (input.trackId === "appraisal") {
+    return input.parent.kind === "property-appraisal";
+  }
+  if (input.trackId === "caseStudy") {
+    const id = (distributionAssigneeId(input.distribution, "caseStudy") ?? "").trim();
+    return Boolean(id || input.distribution.caseSpecialist);
+  }
+  return false;
+}
+
 export function buildCaseStudyTracks(
   parent: WorkflowTask,
   allTasks: WorkflowTask[],
@@ -126,22 +168,41 @@ export function buildCaseStudyTracks(
 ): CaseStudyTrack[] {
   const distribution = migrateDistribution(parent.distribution);
   const children = partyChildrenForTracks(parent, allTasks);
+  const childOf = (kind: Exclude<WorkflowTaskKind, "case-study-property">) =>
+    findChild(children, kind);
 
   const defs: { id: string; label: string; spawned: boolean }[] = [
     {
       id: "survey",
       label: "الرفع المساحي",
-      spawned: distribution.engineeringOffice,
+      spawned: isPartyTrackAssigned({
+        trackId: "survey",
+        distribution,
+        child: childOf("engineering-survey"),
+        parent,
+      }),
     },
     {
       id: "inspection",
       label: "المعاينة الميدانية",
-      spawned: distribution.valuationDepartment,
+      spawned: isPartyTrackAssigned({
+        trackId: "inspection",
+        distribution,
+        child: childOf("field-inspection"),
+        parent,
+      }),
     },
     {
       id: "appraisal",
       label: "التقييم العقاري",
-      spawned: distribution.valuationDepartment,
+      spawned: isPartyTrackAssigned({
+        trackId: "appraisal",
+        distribution,
+        child:
+          childOf("property-appraisal") ??
+          (parent.kind === "property-appraisal" ? parent : undefined),
+        parent,
+      }),
     },
     { id: "caseStudy", label: "دراسة الحالة", spawned: true },
   ];
@@ -220,14 +281,25 @@ export function buildCaseStudyPartyAssignees(
 ): CaseStudyPartyAssignee[] {
   const tracks = buildCaseStudyTracks(parent, allTasks, staffUsers);
   const distribution = migrateDistribution(parent.distribution);
+  const children = partyChildrenForTracks(parent, allTasks);
 
   return CASE_STUDY_PARTY_DEFS.map((def) => {
     const track = tracks.find((t) => t.id === def.trackId);
     const state = track?.state ?? PropertyListRowStatuses.New;
-    const enabled =
-      def.trackId === "inspection" || def.trackId === "appraisal"
-        ? distribution.valuationDepartment
-        : distribution.engineeringOffice;
+    const kind = TRACK_KIND[def.trackId];
+    const child =
+      kind && kind !== "parent"
+        ? (findChild(
+            children,
+            kind as Exclude<WorkflowTaskKind, "case-study-property">,
+          ) ?? (parent.kind === kind ? parent : undefined))
+        : undefined;
+    const enabled = isPartyTrackAssigned({
+      trackId: def.trackId,
+      distribution,
+      child,
+      parent,
+    });
 
     const formPct =
       progressByParty === undefined
@@ -249,4 +321,25 @@ export function buildCaseStudyPartyAssignees(
       progressPct,
     };
   });
+}
+
+export type AssignedCaseStudyParty = {
+  trackId: string;
+  name: string;
+  role: string;
+};
+
+/** Parties that actually received a task — what the queue «الأطراف» stack shows. */
+export function assignedCaseStudyParties(
+  parent: WorkflowTask,
+  allTasks: WorkflowTask[],
+  staffUsers: StaffUser[] = [],
+): AssignedCaseStudyParty[] {
+  return buildCaseStudyPartyAssignees(parent, allTasks, undefined, staffUsers)
+    .filter((party) => party.enabled)
+    .flatMap((party) => {
+      const name = party.name.trim();
+      if (!name || name === "—") return [];
+      return [{ trackId: party.trackId, name, role: party.shortLabel }];
+    });
 }

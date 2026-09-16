@@ -286,6 +286,7 @@ export {
   listSurveyOffices,
   listSuspendedTransactions,
   listValuationRequests,
+  listValuationRequestMapOverlay,
   markKeyReceiptFeeCollected,
   submitValuationReport,
   submitValuationImpediment,

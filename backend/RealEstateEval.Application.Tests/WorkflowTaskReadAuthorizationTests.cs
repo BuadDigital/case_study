@@ -251,6 +251,63 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.True(rows[0].FieldInspectionCompleted);
         Assert.False(rows[0].FieldInspectionAccepted);
         Assert.Equal(inspection.Id.ToString(), rows[0].FieldInspectionTaskId);
+        Assert.False(rows[0].EngineeringSurveyAssigned);
+    }
+
+    [Fact]
+    public async Task List_marks_property_appraisal_when_sibling_survey_exists()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var propertyId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-survey-flag",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.EngineeringSurvey,
+                "PO-survey-flag",
+                now,
+                title: "survey",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "engineering-office",
+                assigneeName: "office",
+                assigneeId: "office-1",
+                parentTaskId: parentId,
+                propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-survey-flag",
+                now,
+                title: "appraisal",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "val",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        Assert.Single(rows);
+        Assert.True(rows[0].EngineeringSurveyAssigned);
+        Assert.False(rows[0].EngineeringSurveyCompleted);
     }
 
     [Fact]
@@ -436,6 +493,7 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.False(rows[0].FieldInspectionCompleted);
         Assert.Null(rows[0].FieldInspectionTaskId);
+        Assert.False(rows[0].EngineeringSurveyAssigned);
     }
 
     private static CaseStudyDbContext CreateDb()
