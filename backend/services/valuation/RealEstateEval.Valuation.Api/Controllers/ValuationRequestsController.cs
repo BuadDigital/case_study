@@ -33,6 +33,17 @@ public class ValuationRequestsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ValuationRequestDto>>> List(CancellationToken ct)
         => Ok(await _service.ListAsync(ct));
 
+    /// <summary>
+    /// Map card facts — same payload as the operator queue, readable by case staff
+    /// (<see cref="CapabilityPolicyNames.ReadValuationReport"/>). The queue page stays
+    /// on <see cref="CapabilityPolicyNames.ReadValuationQueue"/>.
+    /// </summary>
+    [HttpGet("map-overlay")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
+    public async Task<ActionResult<IReadOnlyList<ValuationRequestDto>>> MapOverlay(
+        CancellationToken ct)
+        => Ok(await _service.ListAsync(ct));
+
     [HttpGet("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<ValuationRequestDto>> Get(Guid id, CancellationToken ct)

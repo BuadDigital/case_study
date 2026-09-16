@@ -19,6 +19,18 @@ describe("PO intake frontend/backend rule parity", () => {
     );
   });
 
+  it("skips deed image and extra bourse fields for registered title", () => {
+    const property = {
+      ...emptyProperty(),
+      identifierType: "real_estate_reg" as const,
+      realEstateRegNumber: "12345",
+      city: "الرياض",
+      district: "العليا",
+    };
+
+    expect(validatePropertyBourseFields(property)).toEqual({});
+  });
+
   it("matches the backend whole-field incomplete-contact marker check", () => {
     const markerOnly = {
       ...emptyProperty(),

@@ -165,6 +165,13 @@ export function inspectorWizardCoordsValue(
 
 /* ---------- Defined (service/amenity) photo slots ---------- */
 
+/**
+ * «المنقولات» keeps its single required proof shot in `featurePhotoAttachments`
+ * (unchanged, still gates submit) — this slot is only for extra photos beyond
+ * it, via the same multi-photo `definedPhotos` mechanism as services/amenities.
+ */
+export const MOVABLES_EXTRA_PHOTOS_SLOT_ID = "feature:movables";
+
 /** Cache key of a slot photo's data URL (`inspector-photo-upload`). */
 export function slotPhotoRef(slotId: string, photoId: number): string {
   return `slot:${slotId}:${photoId}`;

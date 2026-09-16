@@ -10,11 +10,12 @@ import {
   prototypeModulesApiConfig,
 } from "@platform/app-shared/app-data/modules-api-config";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
-import type {
-  InspectorPhotoAttachment,
-  InspectorWorkspaceDraft,
+import {
+  includeInspectorPhotoForReaders,
+  listServiceAmenityPhotoSlots,
+  type InspectorPhotoAttachment,
+  type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
-import { listServiceAmenityPhotoSlots } from "./inspector-workspace-data";
 import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
 import {
   buildEvidenceStampLines,
@@ -151,7 +152,7 @@ export async function prefetchInspectorWorkspacePhotos(
   if (!taskId) return;
 
   const include = (approved: boolean) =>
-    approved || draft.status === "submitted";
+    includeInspectorPhotoForReaders(approved, draft);
 
   const jobs: (() => Promise<unknown>)[] = [];
 

@@ -101,6 +101,7 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
       clients: [] as ClientDto[],
       inspector: null,
       primaryPhoto: null,
+      photos: [] as PropertyDetailDocumentEntry[],
     };
   }
   const [loadedOrg, listRes, clientsRes, ws] = await Promise.all([
@@ -112,9 +113,10 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
       : Promise.resolve(null),
   ]);
   let primaryPhoto: ReturnType<typeof pickPrimaryPropertyDetailPhoto> = null;
+  let photos: PropertyDetailDocumentEntry[] = [];
   if (ws) {
     await prefetchInspectorWorkspacePhotos(ws);
-    const photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
+    photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
       (doc) => doc.kind === "image",
     );
     primaryPhoto = pickPrimaryPropertyDetailPhoto(photos);
@@ -127,6 +129,7 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
     clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
     inspector: ws,
     primaryPhoto,
+    photos,
   };
 }
 
@@ -216,6 +219,7 @@ export function EvaluatorValuationReportTab({
   const lists = !bundleAuthError ? (tabBundle?.lists ?? null) : null;
   const inspector = !bundleAuthError ? (tabBundle?.inspector ?? null) : null;
   const primaryPhoto = !bundleAuthError ? (tabBundle?.primaryPhoto ?? null) : null;
+  const inspectorPhotos = !bundleAuthError ? (tabBundle?.photos ?? []) : [];
   const clients = (!bundleAuthError ? tabBundle?.clients : undefined) ?? EMPTY_CLIENTS;
 
   const vr = useMemo(
@@ -404,6 +408,7 @@ export function EvaluatorValuationReportTab({
             valuePremiseLabel={valuePremiseDisplay}
             valuationPurposeLabel={valuationPurposeDisplay}
             reportUsersLabel={reportUsersDisplay}
+            photos={loading ? undefined : inspectorPhotos}
           />
           {inspectionChips.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1.5">

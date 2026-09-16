@@ -175,10 +175,14 @@ export function PropertyFileUploadField({
                 ? "border-danger bg-danger-bg/30"
                 : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
           )}
-          onClick={() => inputRef.current?.click()}
+          onClick={(e) => {
+            e.stopPropagation();
+            inputRef.current?.click();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
+              e.stopPropagation();
               inputRef.current?.click();
             }
           }}

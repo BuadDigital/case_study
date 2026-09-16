@@ -23,7 +23,6 @@ type UploadHandler = (files: File[]) => boolean | void | Promise<boolean | void>
 /** Mobile square photo cell. */
 export function MobilePhotoTile({
   label,
-  required = true,
   done,
   none,
   disabled,
@@ -32,7 +31,6 @@ export function MobilePhotoTile({
   onOpenDone,
 }: {
   label: string;
-  required?: boolean;
   done: boolean;
   none: boolean;
   disabled?: boolean;
@@ -91,7 +89,7 @@ export function MobilePhotoTile({
               ? `غير متوفر · ${label}`
               : label}
         </span>
-        {!required && !none ? (
+        {!none ? (
           <span className="text-[9px] font-semibold text-text-3">اختياري</span>
         ) : null}
         {done ? (
@@ -134,7 +132,6 @@ export function MobilePhotoTile({
  */
 export function DesktopHtmlPhotoTile({
   label,
-  required = true,
   done,
   none,
   taskId,
@@ -146,7 +143,6 @@ export function DesktopHtmlPhotoTile({
   onOpen,
 }: {
   label: string;
-  required?: boolean;
   done: boolean;
   none: boolean;
   taskId: string;
@@ -278,9 +274,7 @@ export function DesktopHtmlPhotoTile({
         ) : null}
         <span className="absolute inset-x-0 bottom-0 bg-[rgba(16,43,78,0.78)] px-1.5 py-[3px] text-center text-[9.5px] text-white">
           {label}
-          {!required ? (
-            <span className="ms-1 opacity-80">· اختياري</span>
-          ) : null}
+          <span className="ms-1 opacity-80">· اختياري</span>
         </span>
       </button>
       <button

@@ -25,7 +25,6 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
-import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsCard, InsEditTextarea } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
@@ -253,6 +252,7 @@ export function InspectorWorkspaceWizard({
             draft={draft}
             editable={editable}
             fieldErrors={fieldErrors}
+            featureFields={featureFields}
             serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
             onPatch={onPatch}
             onMapMove={onMapMove}
@@ -283,25 +283,6 @@ export function InspectorWorkspaceWizard({
               onChange={(v) => onPatch({ propertyDescription: v })}
               disabled={!editable}
             />
-          </InsCard>
-
-          <InsCard title="خصائص العقار">
-            <div id="ins-features-section">
-            <InspectorFeatureWizardFields
-              fields={featureFields}
-              draft={draft}
-              deedNumber={property.deedNumber}
-              emptyFeatureKeys={fieldErrors.emptyFeatureKeys}
-              missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
-              movablesDescriptionError={fieldErrors.movablesDescription}
-              occupancyDescriptionError={fieldErrors.occupancyDescription}
-              disabled={!editable}
-              readOnlyFeatureKeys={
-                serviceProofFromTransactionPhotos ? ["assetSubject"] : []
-              }
-              onPatch={onPatch}
-            />
-            </div>
           </InsCard>
 
           <InspectorWizardComponentsCards

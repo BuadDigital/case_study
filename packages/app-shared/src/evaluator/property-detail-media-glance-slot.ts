@@ -20,6 +20,7 @@ export type PropertyDetailMediaGlanceProps = {
   valuePremiseLabel?: string | null;
   valuationPurposeLabel?: string | null;
   reportUsersLabel?: string | null;
+  photos?: PropertyDetailDocumentEntry[] | null;
 };
 
 let panel: ComponentType<PropertyDetailMediaGlanceProps> | null = null;

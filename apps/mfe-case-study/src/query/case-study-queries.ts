@@ -34,7 +34,7 @@ import type {
 } from "@platform/api-client";
 
 export { loadWorkflowTasks, loadWorkflowTasksForQuery };
-export { WORK_ORDERS_CHANGED_EVENT } from "../lib/work-orders-api-config";
+export { WORK_ORDERS_CHANGED_EVENT, WORK_ORDER_PROPERTY_CHANGED_EVENT } from "../lib/work-orders-api-config";
 export { TASKS_CHANGED_EVENT, TASKS_STORAGE_KEY } from "../lib/app-data/tasks-storage";
 
 const STALE_MS = 60_000;

@@ -2,11 +2,21 @@ import type { WorkOrdersApiConfig } from "@platform/api-client";
 import { apiConfig } from "../auth/api-config";
 
 export const WORK_ORDERS_CHANGED_EVENT = "work-orders-changed";
+export const WORK_ORDER_PROPERTY_CHANGED_EVENT = "work-order-property-changed";
 
 export function notifyWorkOrdersChanged(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(WORK_ORDERS_CHANGED_EVENT));
   }
+}
+
+/** Invalidate the cached PO record after a property field autosave. */
+export function notifyWorkOrderPropertyChanged(poNumber: string): void {
+  const n = poNumber.trim();
+  if (!n || typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(WORK_ORDER_PROPERTY_CHANGED_EVENT, { detail: { poNumber: n } }),
+  );
 }
 
 export function workOrdersApiConfig(): WorkOrdersApiConfig | null {

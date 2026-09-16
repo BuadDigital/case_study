@@ -1,13 +1,29 @@
 "use client";
 
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn, opsLetterCard } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 
-/** Enter commits like blur does (same onBlur handler); Escape discards the field's own change. */
-function commitOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+const COMMIT_MS = 350;
+
+/** Enter / Tab flush the pending commit; Escape discards the field's own change. */
+function commitKeys(
+  e: KeyboardEvent<HTMLInputElement>,
+  flush: () => void,
+  discard?: () => void,
+) {
   if (e.key === "Enter") {
     e.preventDefault();
+    flush();
+    e.currentTarget.blur();
+    return;
+  }
+  if (e.key === "Tab") {
+    flush();
+    return;
+  }
+  if (e.key === "Escape") {
+    discard?.();
     e.currentTarget.blur();
   }
 }
@@ -102,7 +118,7 @@ export function LabelCell({
   offNote?: string;
   /** Present only on the area row — “adjustment % per multiple / ratio”. */
   areaFactor?: number;
-  onAreaFactorChange?: (value: string) => void;
+  onAreaFactorChange?: (value: string) => Promise<boolean> | void;
   /** Two-step delete: × → “Delete? ✓ ×”. */
   deleteKey?: string;
   confirmDelete?: string | null;
@@ -140,6 +156,7 @@ export function LabelCell({
         {pickable ? (
           <button
             type="button"
+            tabIndex={-1}
             title={
               picked
                 ? "الأساس المعتمد في التسويات"
@@ -158,6 +175,7 @@ export function LabelCell({
         {removable ? (
           <button
             type="button"
+            tabIndex={-1}
             title={
               included === false
                 ? "تفعيل احتساب البند"
@@ -183,6 +201,7 @@ export function LabelCell({
               </span>
               <button
                 type="button"
+                tabIndex={-1}
                 title="تأكيد الحذف"
                 disabled={locked}
                 onClick={() => {
@@ -195,6 +214,7 @@ export function LabelCell({
               </button>
               <button
                 type="button"
+                tabIndex={-1}
                 title="إلغاء"
                 onClick={() => onConfirmDelete(null)}
                 className="grid size-[22px] cursor-pointer place-items-center rounded-[7px] border border-border bg-surface text-[12px] font-bold leading-none text-text-2"
@@ -205,6 +225,7 @@ export function LabelCell({
           ) : (
             <button
               type="button"
+              tabIndex={-1}
               title="حذف البند من الجدول"
               disabled={locked}
               onClick={() => onConfirmDelete(deleteKey)}
@@ -221,25 +242,84 @@ export function LabelCell({
         </div>
       ) : null}
       {areaFactor != null && onAreaFactorChange ? (
-        <label className="mt-1.5 flex items-center gap-[7px]">
-          <span className="text-[10.5px] font-medium text-gold-d">
-            نسبة التسوية لكل مثل أو مضاعف (٪)
-          </span>
-          <input
-            dir="ltr"
-            type="number"
-            min={0}
-            max={50}
-            step={0.5}
-            disabled={locked}
-            defaultValue={String(areaFactor)}
-            onBlur={(e) => onAreaFactorChange(e.target.value)}
-            onKeyDown={commitOnEnter}
-            className="w-16 rounded-[7px] border border-border-md bg-surface px-[7px] py-[5px] text-center text-[12px] font-bold text-heading"
-          />
-        </label>
+        <AreaFactorInput
+          value={areaFactor}
+          locked={locked}
+          onCommit={onAreaFactorChange}
+        />
       ) : null}
     </td>
+  );
+}
+
+function AreaFactorInput({
+  value,
+  locked,
+  onCommit,
+}: {
+  value: number;
+  locked: boolean;
+  onCommit: (raw: string) => Promise<boolean> | void;
+}) {
+  const committed = String(value);
+  const [draft, setDraft] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<string | null>(null);
+  const text = draft ?? committed;
+
+  function clearTimer() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  function flush() {
+    const raw = pending.current;
+    pending.current = null;
+    clearTimer();
+    if (raw == null) return;
+    if (raw === committed) {
+      setDraft(null);
+      return;
+    }
+    void Promise.resolve(onCommit(raw)).then((ok) => {
+      if (ok !== false) setDraft((d) => (d === raw ? null : d));
+    });
+  }
+
+  useEffect(() => () => clearTimer(), []);
+
+  return (
+    <label className="mt-1.5 flex items-center gap-[7px]">
+      <span className="text-[10.5px] font-medium text-gold-d">
+        نسبة التسوية لكل مثل أو مضاعف (٪)
+      </span>
+      <input
+        dir="ltr"
+        inputMode="decimal"
+        enterKeyHint="next"
+        type="text"
+        disabled={locked}
+        value={text}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          pending.current = raw;
+          clearTimer();
+          timer.current = setTimeout(flush, COMMIT_MS);
+        }}
+        onKeyDown={(e) =>
+          commitKeys(e, flush, () => {
+            pending.current = null;
+            clearTimer();
+            setDraft(null);
+          })
+        }
+        onBlur={flush}
+        className="w-16 rounded-[7px] border border-border-md bg-surface px-[7px] py-[5px] text-center text-[12px] font-bold text-heading"
+      />
+    </label>
   );
 }
 
@@ -262,15 +342,41 @@ export function JustCell({
   factorKey?: string;
   value?: string;
   locked?: boolean;
-  /** On blur only when the value changed; returning false keeps the draft (save failed). */
+  /** Commits while typing (debounced) and on Tab/blur; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<string | null>(null);
+  const committed = value ?? "";
+  const text = draft ?? committed;
+
+  function clearTimer() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  function flush() {
+    const raw = pending.current;
+    pending.current = null;
+    clearTimer();
+    if (raw == null || !factorKey || !onCommit) return;
+    if (raw === committed) {
+      setDraft(null);
+      return;
+    }
+    void Promise.resolve(onCommit(factorKey, raw)).then((ok) => {
+      if (ok !== false) setDraft((d) => (d === raw ? null : d));
+    });
+  }
+
+  useEffect(() => () => clearTimer(), []);
+
   if (!factorKey || !onCommit) {
     return <td className={tdJustClass} />;
   }
-  const committed = value ?? "";
-  const text = draft ?? committed;
   return (
     <td className={tdJustClass}>
       <input
@@ -278,18 +384,21 @@ export function JustCell({
         value={text}
         disabled={locked}
         placeholder="مبرر عامل التسوية"
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={commitOnEnter}
-        onBlur={() => {
-          if (draft == null) return;
-          if (draft === committed) {
-            setDraft(null);
-            return;
-          }
-          void Promise.resolve(onCommit(factorKey, draft)).then((ok) => {
-            if (ok !== false) setDraft(null);
-          });
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          pending.current = raw;
+          clearTimer();
+          timer.current = setTimeout(flush, COMMIT_MS);
         }}
+        onKeyDown={(e) =>
+          commitKeys(e, flush, () => {
+            pending.current = null;
+            clearTimer();
+            setDraft(null);
+          })
+        }
+        onBlur={flush}
         className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text"
       />
     </td>
@@ -338,31 +447,60 @@ export function CompInput({
   auto?: boolean;
   note?: string;
   extra?: ReactNode;
-  /** On blur only when the value changed; returning false keeps the draft (save failed). */
+  /** Commits while typing (debounced) and on Tab/blur; returning false keeps the draft. */
   onCommit?: (key: string, raw: string) => Promise<boolean> | void;
 }) {
-  // Draft lives in the cell — was in the parent and re-rendered ~120 components per keystroke
-  // (rerender-defer-reads); commit on blur only when changed, as before.
   const [draft, setDraft] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<string | null>(null);
+
+  function clearTimer() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  function flush() {
+    const raw = pending.current;
+    pending.current = null;
+    clearTimer();
+    if (raw == null) return;
+    if (raw === value || !onCommit) {
+      setDraft(null);
+      return;
+    }
+    void Promise.resolve(onCommit(cellKey, raw)).then((ok) => {
+      if (ok !== false) setDraft((d) => (d === raw ? null : d));
+    });
+  }
+
+  useEffect(() => () => clearTimer(), []);
+
   return (
     <td className={tdCellClass}>
       <input
         dir="ltr"
+        inputMode="decimal"
+        enterKeyHint="next"
         type="text"
         disabled={disabled}
         value={draft ?? value}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={commitOnEnter}
-        onBlur={() => {
-          if (draft == null) return;
-          if (draft === value || !onCommit) {
-            setDraft(null);
-            return;
-          }
-          void Promise.resolve(onCommit(cellKey, draft)).then((ok) => {
-            if (ok !== false) setDraft(null);
-          });
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          pending.current = raw;
+          clearTimer();
+          timer.current = setTimeout(flush, COMMIT_MS);
         }}
+        onKeyDown={(e) =>
+          commitKeys(e, flush, () => {
+            pending.current = null;
+            clearTimer();
+            setDraft(null);
+          })
+        }
+        onBlur={flush}
         className={cn(
           cellInputBaseClass,
           muted || auto
@@ -412,7 +550,20 @@ export function InlineDraftInput({
         setEdited(true);
         setDraft(e.target.value);
       }}
-      onKeyDown={commitOnEnter}
+      onKeyDown={(e) =>
+        commitKeys(e, () => {
+          setFocused(false);
+          if (draft == null) return;
+          if (hintUntilFocus && !edited) {
+            setDraft(null);
+            return;
+          }
+          const text = draft;
+          setDraft(null);
+          setEdited(false);
+          if (text !== value) onCommit(text);
+        })
+      }
       onBlur={() => {
         setFocused(false);
         if (draft == null) return;
@@ -448,25 +599,56 @@ export function WeightCell({
   onCommit: (raw: string) => Promise<boolean> | void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<string | null>(null);
+
+  function clearTimer() {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  function flush() {
+    const raw = pending.current;
+    pending.current = null;
+    clearTimer();
+    if (raw == null) return;
+    if (raw === value) {
+      setDraft(null);
+      return;
+    }
+    void Promise.resolve(onCommit(raw)).then((ok) => {
+      if (ok !== false) setDraft((d) => (d === raw ? null : d));
+    });
+  }
+
+  useEffect(() => () => clearTimer(), []);
+
   return (
     <td className={tdCellClass}>
       <input
         dir="ltr"
+        inputMode="decimal"
+        enterKeyHint="next"
         type="text"
         disabled={locked}
         value={draft ?? value}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={commitOnEnter}
-        onBlur={() => {
-          if (draft == null) return;
-          if (draft === value) {
-            setDraft(null);
-            return;
-          }
-          void Promise.resolve(onCommit(draft)).then((ok) => {
-            if (ok !== false) setDraft(null);
-          });
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          pending.current = raw;
+          clearTimer();
+          timer.current = setTimeout(flush, COMMIT_MS);
         }}
+        onKeyDown={(e) =>
+          commitKeys(e, flush, () => {
+            pending.current = null;
+            clearTimer();
+            setDraft(null);
+          })
+        }
+        onBlur={flush}
         className={cn(
           cellInputBaseClass,
           manual
@@ -522,6 +704,7 @@ export function AddFactorRow({
           ) : null}
           <button
             type="button"
+            tabIndex={-1}
             disabled={locked}
             onClick={onAddCustom}
             className="cursor-pointer rounded-[var(--radius-sm)] border-none bg-ink px-3.5 py-[7px] text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-55"

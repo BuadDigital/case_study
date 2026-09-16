@@ -60,6 +60,13 @@ public class WorkflowTaskDto
     public bool? EngineeringSurveyCompleted { get; set; }
 
  /// <summary>
+ /// Property-appraisal: a sibling engineering-survey task exists (not cancelled).
+ /// Distinct from the distribution checkbox — the office only sees a row when this
+ /// is true, so the parties column must follow the same fact.
+ /// </summary>
+    public bool? EngineeringSurveyAssigned { get; set; }
+
+ /// <summary>
  /// Engineering-survey / property-appraisal: id of the completed sibling field-inspection task.
  /// Populated on list so parties can load inspection facts without seeing the sibling row.
  /// Prefer specialist-accepted inspection when several completed siblings exist.

@@ -12,13 +12,12 @@ public static class WorkflowTaskPhaseRules
     public const string CaseStudyPropertyKind = WorkflowTaskKindValues.CaseStudyProperty;
 
  /// <summary>
- /// A real-estate registration needs no bourse inquiry, so it goes straight to distribution;
- /// a deed only skips the bourse phase once its inquiry data is in.
+ /// After primary data, every identifier goes to bourse until inquiry data is in;
+ /// then the task moves to distribution.
  /// </summary>
     public static WorkflowTaskPhase PhaseAfterEnfath(string identifierType, bool bourseCompleted)
     {
-        if (identifierType == PropertyIdentifierTypeLabels.RealEstateReg)
-            return WorkflowTaskPhase.Distribution;
+        _ = identifierType;
         if (bourseCompleted) return WorkflowTaskPhase.Distribution;
         return WorkflowTaskPhase.Bourse;
     }

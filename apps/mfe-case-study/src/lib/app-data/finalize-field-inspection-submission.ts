@@ -17,7 +17,7 @@ export async function finalizeInspectorWorkspace(
 
 /**
  * Specialist «تأكيد مدخلات المعاين»: save/submit if needed, then stamp
- * AcceptedAtUtc so the valuation tab locks.
+ * AcceptedAtUtc so the appraiser can see the approved package.
  */
 export async function finalizeSpecialistInspectionAcceptance(
   taskId: string,

@@ -6,6 +6,7 @@ import type {
 import {
   collectFieldInspectionDocumentsFromSubmission,
   inspectorFeaturePhotoLabel,
+  isPropertyDetailDocumentAvailable,
   withGovernedDocumentsSection,
 } from "../property-detail-documents";
 
@@ -106,6 +107,33 @@ describe("collectFieldInspectionDocumentsFromSubmission", () => {
     expect(names).toContain("صورة البئر");
     expect(names).toContain("رخصة البناء");
     expect(names.some((n) => /facade|hasPool/i.test(n))).toBe(false);
+  });
+
+  it("lists submitted inspector photos by attachment id before the blob hydrates", () => {
+    const submission = {
+      ...createInspectorWorkspaceDraft({
+        taskId: "task-1",
+        propertyId: "prop-1",
+        poNumber: "PO-1",
+      }),
+      status: "submitted" as const,
+      freePhotos: [
+        {
+          id: 7,
+          category: "واجهة",
+          approved: false,
+          fileName: "front.jpg",
+          mimeType: "image/jpeg",
+          attachmentId: "att-front",
+          uploadedBy: "inspector" as const,
+        },
+      ],
+    };
+    const docs = collectFieldInspectionDocumentsFromSubmission(submission);
+    const front = docs.find((d) => d.id === "inspection-free-7");
+    expect(front?.attachmentId).toBe("att-front");
+    expect(front?.dataUrl).toBeUndefined();
+    expect(front && isPropertyDetailDocumentAvailable(front)).toBe(true);
   });
 });
 

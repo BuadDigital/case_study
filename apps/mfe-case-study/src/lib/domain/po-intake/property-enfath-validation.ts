@@ -19,7 +19,7 @@ function validateDeedOrRealEstateReg(p: PoPropertyIntake, errors: FieldErrors) {
   const hasReg = p.realEstateRegNumber.trim().length > 0;
 
   // At least one required: deed number or title registry (or both).
-  // A filled title registry skips bourse inquiry.
+  // A filled title registry still visits bourse (location/area only).
   if (!hasDeed && !hasReg) {
     const msg = "أدخل رقم الصك أو رقم التسجيل العيني";
     errors.deedNumber = msg;

@@ -1078,10 +1078,15 @@ export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
 
 /** Specialist (supervisor) attestation — not the field inspector's reality pledge. */
 export const SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK =
-  "راجعت مدخلات المعاين وأؤكد أنها جاهزة للإقفال وبدء عمل المقيّم";
+  "راجعت مدخلات المعاين وأؤكد أنها جاهزة وبدء عمل المقيّم";
 
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS =
   "تم تأكيد مدخلات المعاين — يمكن للمقيم بدء التقييم";
+
+export const SPECIALIST_SAVE_INSPECTOR_INPUTS_LABEL = "حفظ تعديلات المعاينة";
+
+export const SPECIALIST_SAVE_INSPECTOR_INPUTS_SUCCESS =
+  "تم حفظ تعديلات مدخلات المعاين";
 
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
@@ -1089,6 +1094,21 @@ export function isInspectorWorkspaceAccepted(
 ): boolean {
   const stamp = draft?.acceptedAtUtc;
   return typeof stamp === "string" && stamp.trim().length > 0;
+}
+
+/**
+ * Inspector photos the valuer / specialist may see: approved tiles, or every
+ * photo once the package is submitted or accepted (draft unapproved stays hidden).
+ */
+export function includeInspectorPhotoForReaders(
+  approved: boolean,
+  workspace: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
+): boolean {
+  return (
+    approved ||
+    workspace.status === "submitted" ||
+    isInspectorWorkspaceAccepted(workspace)
+  );
 }
 
 /**
@@ -1111,15 +1131,15 @@ export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
   "يظهر وصف العقار للمقيم بعد تأكيد الأخصائي لمدخلات المعاين.";
 
 /**
- * Inspector cannot edit after submit. Specialist may correct a submitted
- * package until they accept it — then the valuation tab locks.
+ * Inspector cannot edit after submit. Specialist may keep correcting the
+ * package after they accept it (acceptance only opens the path for the appraiser).
  */
 export function isInspectorWorkspaceReviewLocked(
   draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
   options?: { specialistReview?: boolean },
 ): boolean {
   if (draft.status === "reopened") return false;
-  if (options?.specialistReview) return isInspectorWorkspaceAccepted(draft);
+  if (options?.specialistReview) return false;
   return isInspectorWorkspaceLocked(draft.status);
 }
 
@@ -1392,20 +1412,18 @@ export function listInspectorPhotoValidationIssues(
     issues.push("يجب إرفاق صورة البئر");
   }
 
-  const proofSlots = options?.specialistProofServicesOnly
-    ? listSpecialistProofServicePhotoSlots(draft)
-    : undefined;
-
-  const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
-    draft,
-    proofSlots,
-  );
-  if (requiredDone < requiredTotal) {
-    issues.push(
-      options?.specialistProofServicesOnly
-        ? "اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة"
-        : "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
+  // «الخدمات والمرافق المحيطة» proof photos are optional and never block submit.
+  // The case-study specialist's كهرباء/ماء proof-from-transaction-photos step is a
+  // separate, stricter rule and keeps gating.
+  if (options?.specialistProofServicesOnly) {
+    const proofSlots = listSpecialistProofServicePhotoSlots(draft);
+    const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
+      draft,
+      proofSlots,
     );
+    if (requiredDone < requiredTotal) {
+      issues.push("اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة");
+    }
   }
 
   // Free-photo kind (واجهة / خدمة / مرفق / أخرى) is optional — bucket parent is enough.

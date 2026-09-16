@@ -69,6 +69,8 @@ export type WorkflowTask = {
   fieldInspectionTaskId?: string;
   /** Server flag on property-appraisal: sibling engineering-survey completed. */
   engineeringSurveyCompleted?: boolean;
+  /** Server flag on property-appraisal: a sibling engineering-survey task exists. */
+  engineeringSurveyAssigned?: boolean;
   /*
    * The task's property, as the server joined it onto the row
    * (`docs/architecture/pagination-contract.md` §2). Undefined when the task has

@@ -366,6 +366,27 @@ describe("map-locations-logic", () => {
     expect(card.title).toContain("القيروان");
   });
 
+  it("shows the issued final opinion on the property card", () => {
+    const card = propertyCard({
+      ...FIXTURE_PROPERTIES.find((r) => r.id === "T-0103")!,
+      workflowStatus: "issued",
+      valuationDate: "2026-09-01",
+      issueDate: "2026-09-10",
+      finalValue: 1850000,
+      valuer: "م. خالد العتيبي",
+      coordsSource: "معاينة",
+    });
+    expect(card.workflowStatus.label).toBe("صادر");
+    expect(card.rows).toContainEqual(["تاريخ التقييم", "2026/09/01"]);
+    expect(card.rows).toContainEqual(["تاريخ الإصدار", "2026/09/10"]);
+    expect(card.rows).toContainEqual([
+      "الرأي النهائي للقيمة",
+      "1,850,000 ريال",
+    ]);
+    expect(card.rows).toContainEqual(["المقيم", "م. خالد العتيبي"]);
+    expect(card.rows).toContainEqual(["مصدر الإحداثيات", "معاينة"]);
+  });
+
   it("filters land vs building and infeasible workflow", () => {
     const lands = filterProperties(FIXTURE_PROPERTIES, { kindCat: "أرض" });
     expect(lands.every((r) => r.propertyType.startsWith("أرض"))).toBe(true);

@@ -16,6 +16,7 @@ import {
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
+import { InspectorMovablesPhotosField } from "./InspectorMovablesPhotosField";
 import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
 import {
   EDIT_CONTROL_CLASS,
@@ -412,19 +413,26 @@ export function InspectorFeatureWizardFields({
                     </span>
                   ) : null}
                   {field.key === "movables" && on ? (
-                    <InspectorMovablesDescriptionField
-                      value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
-                      disabled={disabled}
-                      invalid={Boolean(movablesDescriptionError)}
-                      onChange={(v) =>
-                        onPatch({
-                          featureValues: {
-                            ...draft.featureValues,
-                            [MOVABLES_DESCRIPTION_KEY]: v,
-                          },
-                        })
-                      }
-                    />
+                    <div className="flex w-full flex-col gap-2">
+                      <InspectorMovablesDescriptionField
+                        value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
+                        disabled={disabled}
+                        invalid={Boolean(movablesDescriptionError)}
+                        onChange={(v) =>
+                          onPatch({
+                            featureValues: {
+                              ...draft.featureValues,
+                              [MOVABLES_DESCRIPTION_KEY]: v,
+                            },
+                          })
+                        }
+                      />
+                      <InspectorMovablesPhotosField
+                        draft={draft}
+                        disabled={disabled}
+                        onPatch={onPatch}
+                      />
+                    </div>
                   ) : null}
                 </div>
               );

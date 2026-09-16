@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createInspectorWorkspaceDraft,
   inspectionStampFromNow,
+  isInspectorPresenceToggleField,
+  visibleInspectorFeatureFields,
   INSPECTOR_FEATURE_FIELDS,
   listInspectorPhotoValidationIssues,
   inspectorFeatureRequiresPhoto,
@@ -52,6 +54,18 @@ function completeDraft() {
     ],
   };
   return draft;
+}
+
+/** Picks a value for every visible non-toggle feature field so «خصائص العقار» reads complete. */
+function fillRequiredFeatureValues(
+  featureValues: Record<string, string>,
+): Record<string, string> {
+  const next = { ...featureValues };
+  for (const field of visibleInspectorFeatureFields(false)) {
+    if (isInspectorPresenceToggleField(field)) continue;
+    next[field.key] = field.options[0] ?? "";
+  }
+  return next;
 }
 
 describe("Field inspection frontend/backend rule parity", () => {
@@ -161,12 +175,14 @@ describe("Field inspection frontend/backend rule parity", () => {
   it("keeps step-1 continue independent of later-step gaps", () => {
     const draft = completeDraft();
     draft.inspectionConfirmed = false;
-    draft.featureValues = {};
+    draft.featureValues = fillRequiredFeatureValues(draft.featureValues);
     draft.mapLatitude = "21.481000";
     draft.mapLongitude = "39.186500";
     draft.accessContactName = "عبدالرحمن";
     draft.accessContactPhone = "0500000001";
     draft.accessContactRole = "مالك";
+    // A component-photo gap (step 2) must not block step 1's own continue gate.
+    draft.showroomCount = "1";
     const all = validateInspectorWorkspace(draft);
     const step1 = pickInspectorErrorsForWizardStep(all, 1);
     expect(inspectorWorkspaceHasBlockingErrors(step1)).toBe(false);
@@ -176,24 +192,20 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(step1.inspectionConfirmed).toBeUndefined();
   });
 
-  it("blocks step 2 when a selected amenity has no proof photo", () => {
+  it("does not block step 2 when a selected amenity has no proof photo (optional)", () => {
     const draft = completeDraft();
     draft.amenities = ["مساجد", "مدارس"];
     const all = validateInspectorWorkspace(draft);
     const step2 = pickInspectorErrorsForWizardStep(all, 2);
-    expect(inspectorWorkspaceHasBlockingErrors(step2)).toBe(true);
-    expect(step2.definedPhotos).toBeDefined();
-    expect(step2.missingDefinedPhotoSlotId).toBe(
-      serviceAmenityPhotoSlotId("amenity", "مدارس"),
-    );
-    expect(pickInspectorErrorsForWizardStep(all, 1).definedPhotos).toBeUndefined();
+    expect(step2.definedPhotos).toBeUndefined();
+    expect(step2.missingDefinedPhotoSlotId).toBeUndefined();
   });
 
   it("maps error targets to the wizard step that owns the field", () => {
     expect(inspectorWizardStepForErrorTarget("ins-map-section")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-property-photos")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-photos")).toBe(2);
-    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(2);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-slot-service:مياه")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-component-photo-showroom")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-boundaries-section")).toBe(2);
@@ -331,15 +343,15 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
   });
 
-  it("requires a photo when a service chip is selected without one", () => {
+  it("does not require a photo when a service chip is selected without one (optional)", () => {
     const draft = completeDraft();
     draft.services = ["كهرباء", "مياه"];
 
     const issues = listInspectorPhotoValidationIssues(draft);
     expect(issues.some((i) => i.includes("خدمة") || i.includes("مرفق"))).toBe(
-      true,
+      false,
     );
-    expect(validateInspectorWorkspace(draft).definedPhotos).toBeDefined();
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
   });
 
   it("does not block submit on an unapproved extra when the slot is already complete", () => {

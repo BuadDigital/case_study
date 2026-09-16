@@ -6,14 +6,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
-import { listComparableProperties } from "@platform/api-client";
+import {
+  listComparableProperties,
+  listValuationRequestMapOverlay,
+} from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 
-import { usePoRecordsQuery } from "../query/case-study-queries";
+import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
+import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
 import { findPropertyPathByDeed } from "../lib/app-data/map-open-property";
 import {
+  fillValuersFromAppraisalTasks,
+  inspectorPinsByPropertyId,
   mapComparableDtosToMapRecords,
   mapPoRecordsToMapProperties,
+  valuationsByPropertyId,
 } from "../lib/app-data/map-live-records";
 import {
   computeStats,
@@ -54,9 +61,28 @@ export function usePropertyMapWorkflow() {
   const router = useRouter();
   const { showToast } = useToast();
   const { data: poRecords } = usePoRecordsQuery();
+  const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery();
+  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: valuationRequests = [] } = useQuery({
+    queryKey: ["property-map", "valuation-overlay"],
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config) return [];
+      const res = await listValuationRequestMapOverlay(config);
+      return res.ok ? res.data : [];
+    },
+    staleTime: 60_000,
+  });
   const liveProperties = useMemo(
-    () => mapPoRecordsToMapProperties(poRecords),
-    [poRecords],
+    () =>
+      mapPoRecordsToMapProperties(poRecords, {
+        inspectorPins: inspectorPinsByPropertyId(inspectionWorkspaces),
+        valuations: fillValuersFromAppraisalTasks(
+          valuationsByPropertyId(valuationRequests),
+          workflowTasks,
+        ),
+      }),
+    [poRecords, inspectionWorkspaces, valuationRequests, workflowTasks],
   );
   const { data: liveComparables = [] } = useQuery({
     queryKey: ["property-map", "comparables"],

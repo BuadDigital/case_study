@@ -363,20 +363,22 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                     return preferred.Id.ToString();
                 });
 
-        // The appraiser never sees the engineering-survey row, so its completion
-        // is mirrored onto the appraisal DTO the same way the inspection is.
+        // The appraiser never sees the engineering-survey row, so assignment and
+        // completion are mirrored onto the appraisal DTO the same way inspection is.
         var appraisalParentIds = targets
             .Where(t => t.Kind == WorkflowTaskKindValues.PropertyAppraisal)
             .Select(t => Guid.TryParse(t.ParentTaskId, out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty)
             .ToHashSet();
 
-        var surveyCompleted = appraisalParentIds.Count == 0
-            ? new HashSet<(string Parent, string Prop)>()
-            : (await _caseStudy.WorkflowTasks.AsNoTracking()
+        var surveyAssigned = new HashSet<(string Parent, string Prop)>();
+        var surveyCompleted = new HashSet<(string Parent, string Prop)>();
+        if (appraisalParentIds.Count > 0)
+        {
+            var surveyRows = await _caseStudy.WorkflowTasks.AsNoTracking()
                 .Where(t =>
                     t.Kind == WorkflowTaskKind.EngineeringSurvey
-                    && t.Status == WorkflowTaskStatus.Completed
+                    && t.Status != WorkflowTaskStatus.Cancelled
                     && t.ParentTaskId != null
                     && appraisalParentIds.Contains(t.ParentTaskId.Value)
                     && t.PropertyId != null
@@ -385,10 +387,18 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                 {
                     ParentId = t.ParentTaskId!.Value,
                     PropertyId = t.PropertyId!.Value,
+                    t.Status,
                 })
-                .ToListAsync(cancellationToken))
-                .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
-                .ToHashSet();
+                .ToListAsync(cancellationToken);
+
+            foreach (var row in surveyRows)
+            {
+                var key = (Parent: row.ParentId.ToString(), Prop: row.PropertyId.ToString());
+                surveyAssigned.Add(key);
+                if (row.Status == WorkflowTaskStatus.Completed)
+                    surveyCompleted.Add(key);
+            }
+        }
 
         foreach (var target in targets)
         {
@@ -399,6 +409,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
             {
                 target.FieldInspectionAccepted = accepted.Contains(key);
+                target.EngineeringSurveyAssigned = surveyAssigned.Contains(key);
                 target.EngineeringSurveyCompleted = surveyCompleted.Contains(key);
             }
         }

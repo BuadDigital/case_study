@@ -5,7 +5,6 @@
 
 export {
   loadInfathDeposit,
-  saveInfathDeposit,
   type InfathDepositDraft,
 } from "../app-data/infath-deposit-storage";
 export {

@@ -17,6 +17,11 @@ import {
   updatePropertyInPo,
 } from "../../lib/app-data/po-intake-commands";
 import {
+  flushPropertyFieldAutosave,
+  peekPropertyFieldAutosave,
+  queuePropertyFieldAutosave,
+} from "../../lib/app-data/property-field-autosave";
+import {
   hasFieldErrors,
   mergeFieldErrors,
   type FieldErrors,
@@ -106,11 +111,19 @@ export function PoPropertyEdit({
 
   useEffect(() => {
     let cancelled = false;
+    const local = peekPropertyFieldAutosave(poNumber, propertyId);
+    if (local) {
+      setProperty(local);
+    }
     void findPropertyInRecord(poNumber, propertyId).then((found) => {
       if (cancelled) return;
+      const stillLocal = peekPropertyFieldAutosave(poNumber, propertyId);
       if (found) {
         setInitialRecord(found.record);
-        setProperty(found.property);
+        setProperty(stillLocal ?? found.property);
+      } else if (stillLocal) {
+        setInitialRecord(null);
+        setProperty(stillLocal);
       } else {
         setInitialRecord(null);
         setProperty(null);
@@ -119,6 +132,7 @@ export function PoPropertyEdit({
     });
     return () => {
       cancelled = true;
+      void flushPropertyFieldAutosave(poNumber, propertyId);
     };
   }, [poNumber, propertyId]);
 
@@ -127,6 +141,7 @@ export function PoPropertyEdit({
       setProperty((p) => {
         if (!p) return p;
         const next = { ...p, [key]: value };
+        queuePropertyFieldAutosave(poNumber, propertyId, next);
         return next;
       });
       setFieldErrors((e) => {
@@ -136,13 +151,17 @@ export function PoPropertyEdit({
         return next;
       });
     },
-    [],
+    [poNumber, propertyId],
   );
 
-  const replaceProperty = useCallback((next: PoPropertyIntake) => {
-    setProperty(next);
-    setFieldErrors({});
-  }, []);
+  const replaceProperty = useCallback(
+    (next: PoPropertyIntake) => {
+      setProperty(next);
+      setFieldErrors({});
+      queuePropertyFieldAutosave(poNumber, propertyId, next);
+    },
+    [poNumber, propertyId],
+  );
 
   if (loading) {
     return (
@@ -212,6 +231,7 @@ export function PoPropertyEdit({
 
     setSaving(true);
     setFormError(null);
+    await flushPropertyFieldAutosave(poNumber, propertyId);
 
     const committed: PoPropertyIntake = {
       ...property,

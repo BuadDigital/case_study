@@ -32,6 +32,7 @@ import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po
 import {
   formatPropertyDeedDisplay,
   isBourseInquiryIdentifier,
+  propertyHasRegisteredTitle,
   type AssignmentType,
   type BourseDeedVitality,
   type PoPropertyIntake,
@@ -293,14 +294,15 @@ export function useMyTaskWorkCommands({
       setFormError(REMOVED_PROPERTY_SAVE_ERROR);
       return;
     }
-    if (!deedVitality) {
+    const compactRegisteredTitle = propertyHasRegisteredTitle(property);
+    if (!compactRegisteredTitle && !deedVitality) {
       const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };
       setFieldErrors(errors);
       setFormError(DEED_VITALITY_REQUIRED_ERROR);
       scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
-    if (deedVitality === "inactive") {
+    if (!compactRegisteredTitle && deedVitality === "inactive") {
       await submitObstruction();
       return;
     }
@@ -358,7 +360,9 @@ export function useMyTaskWorkCommands({
         pendingBourseComplete.current = {
           poNumber: task.poNumber,
           propertyId: propertyId!,
-          property: { ...prop, deedStatus: "فعال" },
+          property: compactRegisteredTitle
+            ? prop
+            : { ...prop, deedStatus: "فعال" },
         };
         const outcome = await executeBourseComplete();
         if (outcome.status === "skipped") {

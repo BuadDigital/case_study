@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { partyPackageFeedsInfath } from "../infath-upload-model";
 import {
   inspectorWorkspaceStatusLabel,
+  includeInspectorPhotoForReaders,
   isInspectorWorkspaceAccepted,
   isInspectorWorkspaceReviewLocked,
 } from "../inspector-workspace-data";
@@ -84,7 +85,7 @@ describe("inspection → إنفاذ acceptance gate", () => {
     ).toBe(true);
   });
 
-  it("locks specialist review only after acceptance, and inspector after submit", () => {
+  it("keeps specialist review editable after acceptance, and locks inspector after submit", () => {
     expect(
       isInspectorWorkspaceReviewLocked(
         { status: "submitted", acceptedAtUtc: null },
@@ -96,7 +97,7 @@ describe("inspection → إنفاذ acceptance gate", () => {
         { status: "submitted", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },
         { specialistReview: true },
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isInspectorWorkspaceReviewLocked(
         { status: "reopened", acceptedAtUtc: "2026-08-10T10:00:00.000Z" },
@@ -107,6 +108,35 @@ describe("inspection → إنفاذ acceptance gate", () => {
       isInspectorWorkspaceReviewLocked({
         status: "submitted",
         acceptedAtUtc: null,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("includeInspectorPhotoForReaders", () => {
+  it("hides unapproved draft photos and shows them after submit or accept", () => {
+    expect(
+      includeInspectorPhotoForReaders(false, {
+        status: "draft",
+        acceptedAtUtc: null,
+      }),
+    ).toBe(false);
+    expect(
+      includeInspectorPhotoForReaders(true, {
+        status: "draft",
+        acceptedAtUtc: null,
+      }),
+    ).toBe(true);
+    expect(
+      includeInspectorPhotoForReaders(false, {
+        status: "submitted",
+        acceptedAtUtc: null,
+      }),
+    ).toBe(true);
+    expect(
+      includeInspectorPhotoForReaders(false, {
+        status: "draft",
+        acceptedAtUtc: "2026-08-10T10:00:00.000Z",
       }),
     ).toBe(true);
   });

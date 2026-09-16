@@ -2,7 +2,7 @@
 
 import { cn } from "@platform/ui-kit";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
-import { downloadDocumentFile } from "@platform/app-shared/app-data/download-document-file";
+import { previewDocumentFile } from "@platform/app-shared/app-data/download-document-file";
 import type { ValuationPrintAttachmentRow } from "../../lib/evaluator/valuation-report-property-attachments";
 import { movePrintAttachmentKey } from "../../lib/evaluator/valuation-report-property-attachments";
 
@@ -31,15 +31,21 @@ function PropertyDocumentLinks({ docs }: { docs: PropertyDetailDocumentEntry[] }
           <button
             type="button"
             className="shrink-0 rounded border border-border bg-surface px-2 py-0.5 text-[10.5px] font-bold text-text-2"
-            onClick={() =>
-              void downloadDocumentFile({
-                fileName: doc.fileName,
-                dataUrl: doc.dataUrl,
-                attachmentId: doc.attachmentId ?? doc.inspectionPhoto?.attachment.attachmentId,
-              })
-            }
+            onClick={() => {
+              const target = window.open("about:blank", "_blank");
+              void previewDocumentFile(
+                {
+                  fileName: doc.fileName,
+                  dataUrl: doc.dataUrl,
+                  attachmentId:
+                    doc.attachmentId ??
+                    doc.inspectionPhoto?.attachment.attachmentId,
+                },
+                target,
+              );
+            }}
           >
-            تنزيل
+            معاينة
           </button>
         </span>
       ))}

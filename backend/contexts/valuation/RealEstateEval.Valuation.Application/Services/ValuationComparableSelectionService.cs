@@ -44,10 +44,8 @@ public sealed partial class ValuationComparableSelectionService(
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         if (context == ComparableSelectionContexts.Market)
         {
-            // Property-link comparables and interactive-model seed coexist in the bank —
-            // the seed is not deleted on import (model data is the demo-display reference).
             await ImportPropertyLinkedComparablesAsync(request, cancellationToken);
-            await repo.EnsureBankSeedAsync(valuationRequestId, cancellationToken);
+            await repo.DetachUnchosenDemoSelectionsAsync(valuationRequestId, cancellationToken);
         }
 
         var rows = await repo.ListSelectionsAsync(valuationRequestId, context, cancellationToken);
@@ -303,7 +301,9 @@ public sealed partial class ValuationComparableSelectionService(
             .Select(x => x.ComparablePropertyId)
             .ToHashSet();
 
-        var missing = links.Where(id => !existing.Contains(id)).Distinct().ToList();
+        var missing = DemoComparableBank
+            .Exclude(links.Where(id => !existing.Contains(id)))
+            .ToList();
         if (missing.Count == 0) return true;
 
         var activeIds = (await repo.ListActiveComparableIdsAsync(missing, cancellationToken))

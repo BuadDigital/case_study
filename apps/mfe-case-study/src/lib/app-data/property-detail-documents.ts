@@ -16,6 +16,7 @@ import {
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
   INSPECTOR_FEATURE_FIELDS,
+  includeInspectorPhotoForReaders,
   inspectorFreePhotoCategoryMeta,
   listServiceAmenityPhotoSlots,
   type InspectorPhotoAttachment,
@@ -89,8 +90,26 @@ export function isPropertyDetailDocumentAvailable(
   entry: PropertyDetailDocumentEntry,
 ): boolean {
   return Boolean(
-    entry.dataUrl || entry.attachmentId || entry.engineeringTaskId,
+    entry.dataUrl ||
+      entry.attachmentId ||
+      entry.engineeringTaskId ||
+      entry.inspectionPhoto?.attachment.attachmentId,
   );
+}
+
+function inspectionPhotoFields(
+  taskId: string,
+  photoRef: string,
+  attachment: InspectorPhotoAttachment,
+): Pick<
+  PropertyDetailDocumentEntry,
+  "dataUrl" | "attachmentId" | "inspectionPhoto"
+> {
+  return {
+    dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
+    attachmentId: attachment.attachmentId,
+    inspectionPhoto: { taskId, photoRef, attachment },
+  };
 }
 
 export function collectIntakeDocuments(input: {
@@ -337,13 +356,18 @@ export function collectFieldInspectionDocumentsFromSubmission(
     const slot = submission.definedPhotos[def.id];
     if (!slot || slot.none) continue;
     slot.photos
-      .filter(
-        (photo) =>
-          photo.approved || submission.status === "submitted",
+      .filter((photo) =>
+        includeInspectorPhotoForReaders(photo.approved, submission),
       )
       .forEach((photo, i) => {
         const photoRef = `slot:${def.id}:${photo.id}`;
         const kindLabel = def.kind === "service" ? "خدمة" : "مرفق";
+        const attachment = {
+          fileName: photo.fileName,
+          mimeType: photo.mimeType,
+          attachmentId: photo.attachmentId,
+          sizeBytes: photo.sizeBytes,
+        };
         pushEntry(docs, {
           id: `inspection-photo-${def.id}-${photo.id}`,
           documentTypeKey: "inspection-photo",
@@ -354,28 +378,23 @@ export function collectFieldInspectionDocumentsFromSubmission(
           fileName: photo.fileName,
           source,
           kind: fileKind(photo.fileName, photo.mimeType),
-          dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
-          inspectionPhoto: {
-            taskId,
-            photoRef,
-            attachment: {
-              fileName: photo.fileName,
-              mimeType: photo.mimeType,
-              attachmentId: photo.attachmentId,
-              sizeBytes: photo.sizeBytes,
-            },
-          },
+          ...inspectionPhotoFields(taskId, photoRef, attachment),
         });
       });
   }
 
   submission.freePhotos
-    .filter(
-      (photo) =>
-        photo.approved || submission.status === "submitted",
+    .filter((photo) =>
+      includeInspectorPhotoForReaders(photo.approved, submission),
     )
     .forEach((photo) => {
       const photoRef = `free:${photo.id}`;
+      const attachment = {
+        fileName: photo.fileName,
+        mimeType: photo.mimeType,
+        attachmentId: photo.attachmentId,
+        sizeBytes: photo.sizeBytes,
+      };
       pushEntry(docs, {
         id: `inspection-free-${photo.id}`,
         documentTypeKey: "inspection-photo",
@@ -383,17 +402,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
         fileName: photo.fileName,
         source,
         kind: fileKind(photo.fileName, photo.mimeType),
-        dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
-        inspectionPhoto: {
-          taskId,
-          photoRef,
-          attachment: {
-            fileName: photo.fileName,
-            mimeType: photo.mimeType,
-            attachmentId: photo.attachmentId,
-            sizeBytes: photo.sizeBytes,
-          },
-        },
+        ...inspectionPhotoFields(taskId, photoRef, attachment),
       });
     });
 
@@ -409,8 +418,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       fileName: attachment.fileName,
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),
-      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
-      inspectionPhoto: { taskId, photoRef, attachment },
+      ...inspectionPhotoFields(taskId, photoRef, attachment),
     });
   }
 
@@ -427,8 +435,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       fileName: attachment.fileName,
       source,
       kind: fileKind(attachment.fileName, attachment.mimeType),
-      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
-      inspectionPhoto: { taskId, photoRef, attachment },
+      ...inspectionPhotoFields(taskId, photoRef, attachment),
     });
   }
 
@@ -442,8 +449,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
       fileName: obs.photo.fileName,
       source,
       kind: fileKind(obs.photo.fileName, obs.photo.mimeType),
-      dataUrl: getInspectorPhotoDataUrl(taskId, photoRef),
-      inspectionPhoto: { taskId, photoRef, attachment: obs.photo },
+      ...inspectionPhotoFields(taskId, photoRef, obs.photo),
     });
   });
 

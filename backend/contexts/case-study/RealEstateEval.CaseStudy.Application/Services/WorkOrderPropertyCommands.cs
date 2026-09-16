@@ -122,7 +122,9 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                     RestrictionOtherReason = property.RestrictionOtherReason,
                     BoundariesAvailability = property.BoundariesAvailability,
                     BoundariesExternalDocName = property.BoundariesExternalDocName,
-                });
+                }, WorkOrderValidator.CompactRegisteredTitleBourse(
+                    property.IdentifierType,
+                    property.RealEstateRegNumber));
                 var errors = WorkOrderPropertyWriteRules.MergeErrors(enfathErrors, bourseErrors);
                 if (errors.Count > 0) return (null, errors);
                 WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
@@ -231,7 +233,11 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             out var existing);
         if (notEditable is not null) return (null, notEditable);
 
-        var errors = WorkOrderValidator.ValidatePropertyBourse(request);
+        var errors = WorkOrderValidator.ValidatePropertyBourse(
+            request,
+            WorkOrderValidator.CompactRegisteredTitleBourse(
+                PropertyIdentifierTypeLabels.ToApiValue(existing!.IdentifierType),
+                existing.RealEstateRegNumber));
         if (errors.Count > 0) return (null, errors);
 
         var bourseNow = _time.UtcNow();
