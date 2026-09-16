@@ -256,7 +256,7 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_requires_service_slot_photo_when_service_selected()
+    public void Validate_does_not_require_service_slot_photo_when_service_selected()
     {
         var json = MinimalValidPayload().Replace(
             """
@@ -269,7 +269,7 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Contains("خدمة", errors["definedPhotos"]);
+        Assert.DoesNotContain("definedPhotos", errors.Keys);
     }
 
     [Fact]

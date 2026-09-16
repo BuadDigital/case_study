@@ -176,17 +176,13 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(step1.inspectionConfirmed).toBeUndefined();
   });
 
-  it("blocks step 2 when a selected amenity has no proof photo", () => {
+  it("does not block step 2 when a selected amenity has no proof photo (optional)", () => {
     const draft = completeDraft();
     draft.amenities = ["مساجد", "مدارس"];
     const all = validateInspectorWorkspace(draft);
     const step2 = pickInspectorErrorsForWizardStep(all, 2);
-    expect(inspectorWorkspaceHasBlockingErrors(step2)).toBe(true);
-    expect(step2.definedPhotos).toBeDefined();
-    expect(step2.missingDefinedPhotoSlotId).toBe(
-      serviceAmenityPhotoSlotId("amenity", "مدارس"),
-    );
-    expect(pickInspectorErrorsForWizardStep(all, 1).definedPhotos).toBeUndefined();
+    expect(step2.definedPhotos).toBeUndefined();
+    expect(step2.missingDefinedPhotoSlotId).toBeUndefined();
   });
 
   it("maps error targets to the wizard step that owns the field", () => {
@@ -331,15 +327,15 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.componentPhotos).toBe("يجب إرفاق صورة المعرض");
   });
 
-  it("requires a photo when a service chip is selected without one", () => {
+  it("does not require a photo when a service chip is selected without one (optional)", () => {
     const draft = completeDraft();
     draft.services = ["كهرباء", "مياه"];
 
     const issues = listInspectorPhotoValidationIssues(draft);
     expect(issues.some((i) => i.includes("خدمة") || i.includes("مرفق"))).toBe(
-      true,
+      false,
     );
-    expect(validateInspectorWorkspace(draft).definedPhotos).toBeDefined();
+    expect(validateInspectorWorkspace(draft).definedPhotos).toBeUndefined();
   });
 
   it("does not block submit on an unapproved extra when the slot is already complete", () => {

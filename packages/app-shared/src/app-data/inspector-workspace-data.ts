@@ -1412,20 +1412,18 @@ export function listInspectorPhotoValidationIssues(
     issues.push("يجب إرفاق صورة البئر");
   }
 
-  const proofSlots = options?.specialistProofServicesOnly
-    ? listSpecialistProofServicePhotoSlots(draft)
-    : undefined;
-
-  const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
-    draft,
-    proofSlots,
-  );
-  if (requiredDone < requiredTotal) {
-    issues.push(
-      options?.specialistProofServicesOnly
-        ? "اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة"
-        : "وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»",
+  // «الخدمات والمرافق المحيطة» proof photos are optional and never block submit.
+  // The case-study specialist's كهرباء/ماء proof-from-transaction-photos step is a
+  // separate, stricter rule and keeps gating.
+  if (options?.specialistProofServicesOnly) {
+    const proofSlots = listSpecialistProofServicePhotoSlots(draft);
+    const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
+      draft,
+      proofSlots,
     );
+    if (requiredDone < requiredTotal) {
+      issues.push("اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة");
+    }
   }
 
   // Free-photo kind (واجهة / خدمة / مرفق / أخرى) is optional — bucket parent is enough.

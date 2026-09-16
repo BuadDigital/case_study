@@ -7,8 +7,8 @@ namespace RealEstateEval.Application.Rules;
 /// <summary>
 /// Server-side validation for field-inspection party task payloads —
 /// mirrors <c>validateInspectorWorkspace</c> / <c>listInspectorPhotoValidationIssues</c> in the MFE.
-/// Proof photos (feature table, showroom/well, services/amenities) are required
-/// when the corresponding value or slot is selected.
+/// Proof photos (feature table, showroom/well) are required when the corresponding
+/// value is selected; services/amenities proof photos are optional.
 /// Building-only rows and component counts are skipped for vacant land.
 /// </summary>
 public static class FieldInspectionSubmissionValidator
@@ -259,10 +259,7 @@ public static class FieldInspectionSubmissionValidator
             issues.Add("يجب إرفاق صورة البئر");
         }
 
-        var (requiredTotal, requiredDone, _) = ComputeDefinedPhotoCoverage(root);
-        if (requiredDone < requiredTotal)
-            issues.Add("وثّق بالصورة كل خدمة/مرفق اخترته في «الخدمات والمرافق المحيطة»");
-
+        // «الخدمات والمرافق المحيطة» proof photos are optional — do not block submission.
         // Free-photo kind tagging is optional — do not block submission.
         // Pending-approval extras in an otherwise complete slot are not a submit blocker.
 
@@ -325,101 +322,6 @@ public static class FieldInspectionSubmissionValidator
 
     private static bool HasPhotosWithoutServerAttachment(JsonElement root) =>
         FieldInspectionPayloadAttachments.HasPhotosWithoutServerAttachment(root);
-
-    private static List<string> ListServiceAmenitySlotIds(JsonElement root)
-    {
-        var slots = new List<string>();
-
-        void Append(string arrayName, string kind)
-        {
-            if (!root.TryGetProperty(arrayName, out var arr) || arr.ValueKind != JsonValueKind.Array)
-                return;
-
-            foreach (var item in arr.EnumerateArray())
-            {
-                var label = item.ValueKind == JsonValueKind.String
-                    ? item.GetString()?.Trim()
-                    : null;
-                if (string.IsNullOrWhiteSpace(label))
-                    continue;
-                slots.Add($"{kind}:{label}");
-            }
-        }
-
-        Append("services", "service");
-        Append("amenities", "amenity");
-        return slots;
-    }
-
-    private static (int RequiredTotal, int RequiredDone, int PendingApproval) ComputeDefinedPhotoCoverage(
-        JsonElement root)
-    {
-        var requiredTotal = 0;
-        var requiredDone = 0;
-        var pendingApproval = 0;
-
-        root.TryGetProperty("definedPhotos", out var definedPhotos);
-        if (definedPhotos.ValueKind != JsonValueKind.Object)
-            definedPhotos = default;
-
-        foreach (var slotId in ListServiceAmenitySlotIds(root))
-        {
-            requiredTotal++;
-            if (IsDefinedSlotComplete(definedPhotos, slotId))
-                requiredDone++;
-        }
-
-        if (definedPhotos.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var slotId in ListServiceAmenitySlotIds(root))
-            {
-                if (!definedPhotos.TryGetProperty(slotId, out var slot) ||
-                    slot.ValueKind != JsonValueKind.Object)
-                {
-                    continue;
-                }
-
-                if (!slot.TryGetProperty("photos", out var photos) ||
-                    photos.ValueKind != JsonValueKind.Array)
-                {
-                    continue;
-                }
-
-                foreach (var photo in photos.EnumerateArray())
-                {
-                    if (!GetBool(photo, "approved"))
-                        pendingApproval++;
-                }
-            }
-        }
-
-        return (requiredTotal, requiredDone, pendingApproval);
-    }
-
-    private static bool IsDefinedSlotComplete(JsonElement definedPhotos, string slotId)
-    {
-        if (definedPhotos.ValueKind != JsonValueKind.Object ||
-            !definedPhotos.TryGetProperty(slotId, out var slot) ||
-            slot.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-
-        if (GetBool(slot, "none"))
-            return true;
-
-        if (!slot.TryGetProperty("photos", out var photos) || photos.ValueKind != JsonValueKind.Array)
-            return false;
-
-        foreach (var photo in photos.EnumerateArray())
-        {
-            // Captured/uploaded file is enough — `approved` is review metadata.
-            if (HasPhotoFileName(photo))
-                return true;
-        }
-
-        return false;
-    }
 
     private static bool HasPhotoFileName(JsonElement element) =>
         HasNonEmptyString(element, "fileName");

@@ -38,6 +38,9 @@ import {
   InspectorMovablesDescriptionField,
 } from "./InspectorMovablesDescriptionField";
 import {
+  InspectorMovablesPhotosField,
+} from "./InspectorMovablesPhotosField";
+import {
   InspectorOccupancyDescriptionField,
 } from "./InspectorOccupancyDescriptionField";
 import {
@@ -288,6 +291,13 @@ export function InspectorFeaturesSection({
                         })
                       }
                     />
+                    <div className="mt-2">
+                      <InspectorMovablesPhotosField
+                        draft={draft}
+                        disabled={locked}
+                        onPatch={persist}
+                      />
+                    </div>
                   </Td>
                 </Tr>
               ) : null}
@@ -469,19 +479,26 @@ export function InspectorFeaturesSection({
               </div>
             ) : null}
             {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
-              <InspectorMovablesDescriptionField
-                value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
-                disabled={locked}
-                invalid={Boolean(fieldErrors.movablesDescription)}
-                onChange={(next) =>
-                  persist({
-                    featureValues: {
-                      ...draft.featureValues,
-                      [MOVABLES_DESCRIPTION_KEY]: next,
-                    },
-                  })
-                }
-              />
+              <div className="flex flex-col gap-2">
+                <InspectorMovablesDescriptionField
+                  value={draft.featureValues[MOVABLES_DESCRIPTION_KEY] ?? ""}
+                  disabled={locked}
+                  invalid={Boolean(fieldErrors.movablesDescription)}
+                  onChange={(next) =>
+                    persist({
+                      featureValues: {
+                        ...draft.featureValues,
+                        [MOVABLES_DESCRIPTION_KEY]: next,
+                      },
+                    })
+                  }
+                />
+                <InspectorMovablesPhotosField
+                  draft={draft}
+                  disabled={locked}
+                  onPatch={persist}
+                />
+              </div>
             ) : null}
             {field.key === OCCUPANCY_STATE_KEY && isOccupied(draft.featureValues) ? (
               <InspectorOccupancyDescriptionField
