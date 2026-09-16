@@ -38,14 +38,24 @@ describe("engineeringOfficeAvailable with prior survey", () => {
   });
 
   it("hides engineering office for registered title (سجل عيني)", () => {
-    const prop = {
+    const byIdentifier = {
       ...emptyProperty(),
       classification: "أرض",
       deedNumber: "1",
       identifierType: "real_estate_reg" as const,
     };
-    expect(engineeringOfficeAvailable(prop, false)).toBe(false);
-    expect(engineeringOfficeUnavailableReason(prop, false)).toContain("سجل عيني");
+    expect(engineeringOfficeAvailable(byIdentifier, false)).toBe(false);
+    expect(engineeringOfficeUnavailableReason(byIdentifier, false)).toContain("سجل عيني");
+
+    const byDeedKind = {
+      ...emptyProperty(),
+      classification: "أرض",
+      deedNumber: "1",
+      identifierType: "deed" as const,
+      deedKind: "registered_title",
+    };
+    expect(engineeringOfficeAvailable(byDeedKind, false)).toBe(false);
+    expect(engineeringOfficeUnavailableReason(byDeedKind, false)).toContain("سجل عيني");
   });
 
   it("hides engineering office when plan number and plot are both present", () => {

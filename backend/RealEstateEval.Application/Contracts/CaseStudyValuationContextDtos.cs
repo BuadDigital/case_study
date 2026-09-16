@@ -21,8 +21,15 @@ public sealed class CaseStudyValuationPropertyContextDto
     /// <summary>Work-order value premise — source for the final-opinion screen.</summary>
     public string? ValuePremiseKey { get; set; }
 
+    public string IdentifierType { get; set; } = "";
     public string DeedKind { get; set; } = "";
     public string DeedNumber { get; set; } = "";
+    public string? RealEstateRegNumber { get; set; }
+    /// <summary>
+    /// False for registered title, approved organizational plan, or unit-inside-building.
+    /// Issuance must not require the engineering-survey print attachment when this is false.
+    /// </summary>
+    public bool RequiresEngineeringSurvey { get; set; } = true;
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? DeedOwnersJson { get; set; }
@@ -94,9 +101,16 @@ public sealed class CaseStudyValuationPropertyContextDto
     public IReadOnlyList<string> ReportUserClientNamesAr { get; set; } = [];
 
     public Domain.DeedKind DeedKindValue() =>
-        Enum.TryParse<Domain.DeedKind>(DeedKind, ignoreCase: true, out var kind)
-            ? kind
-            : Domain.DeedKind.Traditional;
+        DeedKindLabels.TryParseApiValue(DeedKind, out var parsed)
+            ? parsed
+            : Enum.TryParse<Domain.DeedKind>(DeedKind, ignoreCase: true, out var kind)
+                ? kind
+                : Domain.DeedKind.Traditional;
+
+    public Domain.PropertyIdentifierType IdentifierTypeValue() =>
+        PropertyIdentifierTypeLabels.TryParseApiValue(IdentifierType, out var type)
+            ? type
+            : Domain.PropertyIdentifierType.Deed;
 
     public Domain.AssignmentType AssignmentTypeValue() =>
         AssignmentTypeLabels.TryParseLabel(AssignmentType, out var type)
@@ -107,8 +121,10 @@ public sealed class CaseStudyValuationPropertyContextDto
     {
         Id = Id,
         WorkOrderId = WorkOrderId,
+        IdentifierType = IdentifierTypeValue(),
         DeedKind = DeedKindValue(),
         DeedNumber = DeedNumber,
+        RealEstateRegNumber = RealEstateRegNumber,
         DeedDate = DeedDate,
         OwnerName = OwnerName,
         DeedOwnersJson = DeedOwnersJson,

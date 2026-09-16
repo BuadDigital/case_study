@@ -236,29 +236,6 @@ export function OrganizationSlaForm({
             }
           />
         </Field>
-        <Field
-          id="org-comp-time-gap"
-          label="عتبة الفارق الزمني للمقارن (أشهر) — تنبيه تسوية الزمن (ق-4)"
-        >
-          <input
-            id="org-comp-time-gap"
-            className={opsFldControl}
-            type="number"
-            min={1}
-            max={60}
-            dir="ltr"
-            value={String(valuation.comparableTimeGapMonths ?? FALLBACK.comparableTimeGapMonths)}
-            disabled={!canEdit}
-            onChange={(e) =>
-              patchValuation({
-                comparableTimeGapMonths: numberOr(
-                  e.target.value,
-                  FALLBACK.comparableTimeGapMonths,
-                ),
-              })
-            }
-          />
-        </Field>
         <Field id="org-area-factor" label="معامل تسوية المساحة ٪ (areaFactor) — منطق التسويات">
           <input
             id="org-area-factor"

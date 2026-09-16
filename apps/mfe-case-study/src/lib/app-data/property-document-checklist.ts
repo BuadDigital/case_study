@@ -110,6 +110,8 @@ export function buildPropertyDocumentChecklist(input: {
   entries: readonly PropertyDetailDocumentEntry[];
   attachmentsList?: readonly ValuationListItemDto[] | null;
   propertyType?: string | null;
+  /** False for registered title / approved plan / unit-inside-building. Default true. */
+  propertyRequiresSurvey?: boolean;
 }): PropertyDocumentChecklist {
   const settings = settingsByKey(input.attachmentsList);
   const propertyType = input.propertyType?.trim() ?? "";
@@ -143,7 +145,10 @@ export function buildPropertyDocumentChecklist(input: {
       !propertyType || propertyKeys.length === 0 || propertyKeys.includes(propertyType);
     const enabled = setting ? setting.isEnabled : true;
     const required =
-      applies && enabled && (setting ? setting.isRequired : type.defaultRequired);
+      applies &&
+      enabled &&
+      (setting ? setting.isRequired : type.defaultRequired) &&
+      (type.key !== "survey" || (input.propertyRequiresSurvey ?? true));
     const documents = byType.get(type.key) ?? [];
     const satisfiedBy = documents.length === 0 ? (satisfiers.get(type.key) ?? null) : null;
     const row: PropertyDocumentChecklistRow = {

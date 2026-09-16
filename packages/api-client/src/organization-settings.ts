@@ -250,7 +250,7 @@ export type OrganizationSlaSettings = {
 /** Configurable upper limit — P2-5 approved 2026-08-16. */
 export type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
-  /** Q-4: time-gap threshold in months for time-adjustment alert (m20). */
+  /** Kept for saved-settings compatibility. No longer drives a methodology alert. */
   comparableTimeGapMonths: number;
   /** Area adjustment factor % (adjustments logic). */
   areaFactorPct: number;

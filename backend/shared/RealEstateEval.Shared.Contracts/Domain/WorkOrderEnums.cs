@@ -40,7 +40,8 @@ public static class DeedKindLabels
     public static bool TryParseApiValue(string? value, out DeedKind kind)
     {
         var n = value?.Trim() ?? "";
-        if (n is RegisteredTitle or "registered" or "عينية" or "سجل عيني")
+        if (n is RegisteredTitle or "registered" or "RegisteredTitle"
+            or "عينية" or "سجل عيني")
         {
             kind = DeedKind.RegisteredTitle;
             return true;

@@ -3,8 +3,8 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Methodology alerts — 21 per package v2 (decisions 16 + 24 + Q-4 + Q-7):
-/// 7 hard / 8 require text rationale / 6 require acknowledgement.
+/// Methodology alerts — 20 per package v2 (decisions 16 + 24 + Q-4 + Q-7):
+/// 7 hard / 8 require text rationale / 5 require acknowledgement.
 /// m18/m21 evaluate only once inspection-scope data is captured (inspection boundaries).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
@@ -30,8 +30,6 @@ public static class ValuationMethodologyAlertCodes
     public const string LimitedInspection = "m18_limited_inspection";
  /// <summary>Q-4 — fewer than 3 adopted comparables (hard "zero" gate remains in m15).</summary>
     public const string FewAdoptedComparables = "m19_few_adopted_comparables";
- /// <summary>Q-4 — large time gap without a market-conditions adjustment (threshold is an admin setting).</summary>
-    public const string StaleComparableNoTimeAdjustment = "m20_stale_comparable_no_time_adjustment";
  /// <summary>Q-7 — "remote desktop" scope requires certified-valuer approval (hard gate).</summary>
     public const string RemoteInspectionUnapproved = "m21_remote_inspection_unapproved";
 }
@@ -75,9 +73,9 @@ public static class ValuationMethodologyAlertSeverity
     public static bool RequiresRationale(int number) =>
         number is 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19;
 
- /// <summary>Warning with acknowledgement (6): 1, 2, 7, 13, 14 + 20 (Q-4)</summary>
+ /// <summary>Warning with acknowledgement (5): 1, 2, 7, 13, 14</summary>
     public static bool RequiresAcknowledgement(int number) =>
-        number is 1 or 2 or 7 or 13 or 14 or 20;
+        number is 1 or 2 or 7 or 13 or 14;
 
     public static string KindFor(int number) =>
         IsHard(number) ? ValuationMethodologyAlertSeverityKinds.Hard
@@ -98,11 +96,7 @@ public sealed record ValuationMethodologyAlertCostLineInput(
 public sealed record ValuationMethodologyAlertComparableInput(
     string ComparablePropertyType,
     bool ExceedsLargeAdjustmentThreshold,
-    decimal SumIncludedPct,
- /// <summary>Deal age in months at the valuation date (m20).</summary>
-    int DealAgeMonths = 0,
- /// <summary>Was a non-zero enabled market-conditions adjustment entered? (m20)</summary>
-    bool HasMarketConditionsAdjustment = false);
+    decimal SumIncludedPct);
 
 public sealed record ValuationMethodologyAlertInput(
     bool HasStructuresToValue,
@@ -148,10 +142,8 @@ public sealed record ValuationMethodologyAlertInput(
     int UninspectedUnitCount = 0,
  /// <summary>Q-7 — certified-valuer approval for "remote desktop" scope.</summary>
     bool RemoteInspectionApprovedByAccredited = false,
- /// <summary>Q-4 — time-gap threshold in months (admin setting, default 6).</summary>
-    int TimeGapMonthsThreshold = ValuationMethodologyAlertRules.DefaultTimeGapMonths,
     /// <summary>
-    /// Market-approach comparable gates (m15/m16-comps/m17/m19/m20). False when أسلوب السوق is off —
+    /// Market-approach comparable gates (m15/m16-comps/m17/m19). False when أسلوب السوق is off —
     /// cost-only / «مبنى فقط» must not require adopted market comps.
     /// </summary>
     bool MarketApproachRelevant = true);
@@ -162,8 +154,6 @@ public static class ValuationMethodologyAlertRules
     public const decimal DeveloperProfitMinPct = 10m;
     public const decimal DeveloperProfitMaxPct = 20m;
     public const decimal IndirectRatesWarnPct = 45m;
- /// <summary>Q-4: package suggestion ~6 months — adjustable from organization settings.</summary>
-    public const int DefaultTimeGapMonths = 6;
  /// <summary>Q-4: fewer than 3 adopted comparables is a rationale warning.</summary>
     public const int MinComparablesWithoutRationale = 3;
 
@@ -326,15 +316,6 @@ public static class ValuationMethodologyAlertRules
                 () => input.AdoptedComparableCount is > 0
                           and < MinComparablesWithoutRationale,
                 "المقارنات المعتمدة أقل من ٣ — برّر الاكتفاء",
-                resolutions),
-
-            Eval(20, ValuationMethodologyAlertCodes.StaleComparableNoTimeAdjustment,
-                "فارق زمني كبير بلا تسوية زمن",
-                input.MarketApproachRelevant && comps.Count > 0,
-                () => comps.Any(c =>
-                    c.DealAgeMonths > Math.Max(1, input.TimeGapMonthsThreshold)
-                    && !c.HasMarketConditionsAdjustment),
-                "مقارن أقدم من العتبة بلا تسوية ظروف سوق — أقرّ بالوعي (لا عمر صلاحية للمقارنات)",
                 resolutions),
 
  // Q-7 — hard gate: certified-valuer approval for "remote desktop" scope.

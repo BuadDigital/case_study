@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
+import { propertyRequiresSurvey } from "@platform/app-shared/app-data/po-intake-identifiers";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
 import {
@@ -69,8 +70,9 @@ export function usePropertyDocumentsWorkflow({
         ],
         attachmentsList,
         propertyType,
+        propertyRequiresSurvey: propertyRequiresSurvey(property),
       }),
-    [sections, governed.data, attachmentsList, propertyType],
+    [sections, governed.data, attachmentsList, propertyType, property],
   );
   const uploadOptions = useMemo(
     () => propertyDocumentUploadOptions(attachmentsList),

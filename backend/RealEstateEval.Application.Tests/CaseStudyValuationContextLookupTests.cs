@@ -36,7 +36,7 @@ public class CaseStudyValuationContextLookupTests
         Assert.Equal(AssignmentType.Execution, context.AssignmentTypeValue());
         Assert.Equal("market", context.BasisOfValueKey);
         Assert.Equal("hau", context.ValuePremiseKey);
-        Assert.Equal(nameof(DeedKind.Traditional), context.DeedKind);
+        Assert.Equal(DeedKindLabels.Traditional, context.DeedKind);
         Assert.Equal(DeedKind.Traditional, context.DeedKindValue());
         Assert.Equal("yes", context.HasStructuresToValue);
         Assert.Equal("external", context.InspectionScopeKey);
@@ -77,6 +77,7 @@ public class CaseStudyValuationContextLookupTests
         Assert.Equal(WorkOrderId, property.WorkOrderId);
         Assert.Equal(DeedKind.Traditional, property.DeedKind);
         Assert.Equal("D-100", property.DeedNumber);
+        Assert.True(context.RequiresEngineeringSurvey);
         Assert.Equal("yes", property.HasStructuresToValue);
         Assert.Equal(2, property.BuildingInventoryLines.Count);
 

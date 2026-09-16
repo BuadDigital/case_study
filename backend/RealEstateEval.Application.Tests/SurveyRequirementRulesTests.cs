@@ -55,6 +55,19 @@ public class SurveyRequirementRulesTests
     }
 
     [Fact]
+    public void Registered_title_deed_kind_does_not_require_survey()
+    {
+        var prop = new WorkOrderProperty
+        {
+            Classification = "أرض",
+            IdentifierType = PropertyIdentifierType.Deed,
+            DeedKind = DeedKind.RegisteredTitle,
+        };
+        Assert.True(SurveyRequirementRules.HasRegisteredTitle(prop));
+        Assert.False(SurveyRequirementRules.PropertyRequiresSurvey(prop));
+    }
+
+    [Fact]
     public void Approved_organizational_plan_does_not_require_survey()
     {
         var prop = new WorkOrderProperty
