@@ -31,12 +31,15 @@ export function PoPropertyEnfathDocumentFields({
   showRegistryDoc,
   showExtended,
   showOtherDocs,
+  showAssignmentDoc,
 }: EnfathSectionProps & {
   attachPo: string;
   showDelegationDoc: boolean;
   showRegistryDoc: boolean;
   showExtended: boolean;
   showOtherDocs: boolean;
+  /** Nabr transactions have no قرار إسناد. */
+  showAssignmentDoc: boolean;
 }) {
   const { showToast } = useToast();
 
@@ -119,7 +122,7 @@ export function PoPropertyEnfathDocumentFields({
         />
       ) : null}
 
-      {showExtended ? (
+      {showAssignmentDoc ? (
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
           label={<>قرار الإسناد *</>}

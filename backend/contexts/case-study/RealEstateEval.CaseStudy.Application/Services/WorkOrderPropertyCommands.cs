@@ -51,7 +51,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             entity.AssignmentType,
             entity.PoNumber,
             null,
-            WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
+            WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
+            entity.ClientId == SeedClientIds.NabrRealEstate);
         if (errors.Count > 0) return (null, errors);
 
  // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
@@ -101,7 +102,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 entity.AssignmentType,
                 entity.PoNumber,
                 propertyId,
-                WorkOrderPropertyWriteRules.DeedTakenProbe(entity));
+                WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
+                entity.ClientId == SeedClientIds.NabrRealEstate);
 
             if (property.BourseDataCompleted)
             {

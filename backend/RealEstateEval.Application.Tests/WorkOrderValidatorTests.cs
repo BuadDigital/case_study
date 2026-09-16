@@ -256,6 +256,25 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void ValidatePropertyEnfath_skips_assignment_doc_and_owner_name_for_nabr()
+    {
+        var dto = ValidDeedProperty();
+        dto.AssignmentDocFileNames = [];
+        dto.OwnerName = "";
+
+        var errors = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            "PO-1",
+            null,
+            (_, _) => false,
+            isNabrClient: true);
+
+        Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileNames");
+        Assert.DoesNotContain(errors, e => e.Key == "ownerName");
+    }
+
+    [Fact]
     public void ValidatePropertyEnfath_requires_real_estate_reg_file_for_registration_type()
     {
         var dto = ValidDeedProperty();

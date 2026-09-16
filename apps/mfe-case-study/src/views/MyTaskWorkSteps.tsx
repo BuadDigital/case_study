@@ -22,6 +22,7 @@ type PropertyFormProps = Pick<
   | "layout"
   | "property"
   | "assignmentType"
+  | "clientId"
   | "fieldErrors"
   | "patchProperty"
   | "replaceProperty"
@@ -33,6 +34,7 @@ export function MyTaskWorkEnfathStep({
   layout,
   property,
   assignmentType,
+  clientId,
   fieldErrors,
   patchProperty,
   replaceProperty,
@@ -53,6 +55,7 @@ export function MyTaskWorkEnfathStep({
         <PoPropertyEnfathForm
           property={property}
           assignmentType={assignmentType}
+          clientId={clientId}
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
           onReplaceProperty={replaceProperty}
@@ -73,6 +76,7 @@ export function MyTaskWorkBourseStep({
   task,
   property,
   assignmentType,
+  clientId,
   fieldErrors,
   patchProperty,
   replaceProperty,
@@ -105,6 +109,7 @@ export function MyTaskWorkBourseStep({
         <PoPropertyEnfathForm
           property={property}
           assignmentType={assignmentType}
+          clientId={clientId}
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
           onReplaceProperty={replaceProperty}

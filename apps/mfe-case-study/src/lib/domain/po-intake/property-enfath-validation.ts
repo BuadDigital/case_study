@@ -51,6 +51,8 @@ function validateDeedOrRealEstateReg(p: PoPropertyIntake, errors: FieldErrors) {
 export function validatePropertyEnfathFields(
   p: PoPropertyIntake,
   assignmentType: AssignmentType,
+  /** Nabr transactions have no قرار إسناد — Infath assigns Nabr work directly. */
+  isNabrClient = false,
 ): FieldErrors {
   const needCourt = showsCourtFields(assignmentType);
   const needRequest =
@@ -62,7 +64,7 @@ export function validatePropertyEnfathFields(
       "assignmentMandateNumber",
       "assignmentMandateDate",
       "deedDate",
-      "ownerName",
+      ...(isNabrClient ? [] : (["ownerName"] as const)),
       ...(needCourt ? (["court", "circuit"] as const) : []),
       ...(needRequest ? (["requestNumber"] as const) : []),
     ];
@@ -81,7 +83,7 @@ export function validatePropertyEnfathFields(
         [...requiredKeys],
       ),
     );
-    if (p.assignmentDocFileNames.length === 0) {
+    if (!isNabrClient && p.assignmentDocFileNames.length === 0) {
       errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
     }
     const identifierError = validatePropertyIdentifierNumber(
@@ -95,7 +97,7 @@ export function validatePropertyEnfathFields(
   const requiredKeys = [
     "assignmentMandateNumber",
     "assignmentMandateDate",
-    "ownerName",
+    ...(isNabrClient ? [] : (["ownerName"] as const)),
     ...(needCourt ? (["court", "circuit"] as const) : []),
     ...(needRequest ? (["requestNumber"] as const) : []),
   ];
@@ -120,7 +122,7 @@ export function validatePropertyEnfathFields(
 
   validateDeedOrRealEstateReg(p, errors);
 
-  if (p.assignmentDocFileNames.length === 0) {
+  if (!isNabrClient && p.assignmentDocFileNames.length === 0) {
     errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
   }
 
@@ -130,9 +132,11 @@ export function validatePropertyEnfathFields(
 export function mergePropertyEnfathValidation(
   p: PoPropertyIntake,
   assignmentType: AssignmentType,
+  /** Nabr transactions have no قرار إسناد — Infath assigns Nabr work directly. */
+  isNabrClient = false,
 ): FieldErrors {
   return mergeFieldErrors(
-    validatePropertyEnfathFields(p, assignmentType),
+    validatePropertyEnfathFields(p, assignmentType, isNabrClient),
     validatePropertyContacts(p, {
       requireAtLeastOne: requiresContacts(assignmentType),
     }),

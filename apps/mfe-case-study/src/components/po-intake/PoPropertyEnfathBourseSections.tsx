@@ -14,10 +14,13 @@ export function PoPropertyEnfathBourseSections({
   showCourt,
   showRequestNumber,
   onDeedNumberChange,
+  isNabrClient = false,
 }: EnfathSectionProps & {
   showCourt: boolean;
   showRequestNumber: boolean;
   onDeedNumberChange: (value: string) => void;
+  /** Nabr transactions have no owner name on file. */
+  isNabrClient?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -144,7 +147,8 @@ export function PoPropertyEnfathBourseSections({
       <RegField
         id="owner_name_bourse"
         label="اسم المالك"
-        required
+        required={!isNabrClient}
+        hint={isNabrClient ? "لا ينطبق على نبر" : undefined}
         value={property.ownerName}
         error={fieldErrors.ownerName}
         onChange={(v) => onPatch("ownerName", v)}

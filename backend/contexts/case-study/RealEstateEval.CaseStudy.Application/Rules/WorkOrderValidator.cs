@@ -57,7 +57,9 @@ public static class WorkOrderValidator
         AssignmentType assignmentType,
         string poNumber,
         Guid? excludePropertyId,
-        Func<string, Guid?, bool> deedExistsInPo)
+        Func<string, Guid?, bool> deedExistsInPo,
+        /* Nabr transactions have no قرار إسناد / اسم مالك — Infath assigns Nabr work directly. */
+        bool isNabrClient = false)
     {
         var errors = new Dictionary<string, string>();
         PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
@@ -76,12 +78,12 @@ public static class WorkOrderValidator
                 errors["delegationLetterFileNames"] = "خطاب التكليف مطلوب";
         }
 
-        ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, errors);
+        ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, isNabrClient, errors);
 
  // Q-11: Order number ≠ Deed number changed from blocking restriction to warning check — literal match
  // It is a coincidence and not conclusive evidence of error; The alert is on the interface and the input confirms and proceeds.
 
-        if (dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
+        if (!isNabrClient && dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
         {
             errors["assignmentDocFileNames"] = "قرار الإسناد مطلوب";
         }
@@ -97,6 +99,7 @@ public static class WorkOrderValidator
         AssignmentType assignmentType,
         Guid? excludePropertyId,
         Func<string, Guid?, bool> deedExistsInPo,
+        bool isNabrClient,
         Dictionary<string, string> errors)
     {
         if (AssignmentTypeRules.RequiresRequestNumber(assignmentType) &&
@@ -107,7 +110,7 @@ public static class WorkOrderValidator
             errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
         if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
             errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
-        if (string.IsNullOrWhiteSpace(dto.OwnerName))
+        if (!isNabrClient && string.IsNullOrWhiteSpace(dto.OwnerName))
             errors["ownerName"] = "اسم المالك مطلوب";
         if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
         {

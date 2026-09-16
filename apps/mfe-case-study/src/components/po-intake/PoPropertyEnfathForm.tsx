@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
+  isNabrClient,
   sanitizePropertyIdentifierInput,
   type AssignmentType,
   type PoPropertyIntake,
@@ -45,6 +46,8 @@ type Props = {
   onReplaceProperty?: (next: PoPropertyIntake) => void;
   poNumber?: string;
   excludePoNumber?: string;
+  /** Work-order client — Nabr transactions skip قرار الإسناد and اسم المالك. */
+  clientId?: string;
   showStageNote?: boolean;
   /** Hide track-status / under-study UI for bourse inquiry (e.g. primary-data panel). */
   hideBoursePathStatus?: boolean;
@@ -60,11 +63,13 @@ export function PoPropertyEnfathForm({
   onReplaceProperty,
   poNumber,
   excludePoNumber,
+  clientId,
   showStageNote = true,
   hideBoursePathStatus = false,
   fieldsMode = "all",
 }: Props) {
   const attachPo = resolveAttachPo(poNumber, excludePoNumber);
+  const isNabr = isNabrClient(clientId ?? "");
   const { priorExcludePo, priorExcludePropertyId } = resolvePriorExclusion({
     poNumber,
     excludePoNumber,
@@ -77,6 +82,7 @@ export function PoPropertyEnfathForm({
     identifierType: property.identifierType,
     realEstateRegNumber: property.realEstateRegNumber,
     hasRequestNumber: property.hasRequestNumber,
+    isNabrClient: isNabr,
   });
 
   const patchDeedNumber = (value: string) => {
@@ -131,10 +137,6 @@ export function PoPropertyEnfathForm({
             </Badge>
           </CardBody>
         </Card>
-      ) : view.hasRealEstateReg ? (
-        <Note tone="success" className="mb-3">
-          يمكن تجاوز استعلام البورصة والمتابعة مباشرة لتوزيع المعاملات.
-        </Note>
       ) : null}
 
       {view.isIdentifierOnly ? null : (
@@ -156,6 +158,7 @@ export function PoPropertyEnfathForm({
           showCourt={view.showCourt}
           showRequestNumber={view.showRequestNumber}
           onDeedNumberChange={patchDeedNumber}
+          isNabrClient={isNabr}
         />
       ) : view.showDeedFields ? (
         <PoPropertyEnfathDeedSections
@@ -168,6 +171,7 @@ export function PoPropertyEnfathForm({
           hasRequestNumber={view.hasRequestNumber}
           onDeedNumberChange={patchDeedNumber}
           onRealEstateRegNumberChange={patchRealEstateRegNumber}
+          isNabrClient={isNabr}
         />
       ) : null}
 
@@ -180,6 +184,7 @@ export function PoPropertyEnfathForm({
         showRegistryDoc={view.showRegistryDoc}
         showExtended={view.showExtended}
         showOtherDocs={view.showOtherDocs}
+        showAssignmentDoc={view.showAssignmentDoc}
       />
 
       {view.showExtended ? (
