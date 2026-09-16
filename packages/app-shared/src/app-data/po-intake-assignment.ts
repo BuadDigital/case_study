@@ -81,6 +81,22 @@ export function isNabrClient(clientId: string): boolean {
   return clientId.trim() === NABR_SEED_CLIENT_ID;
 }
 
+/**
+ * Nabr work almost never sets Nabr as the primary العميل (it's Infath, per
+ * isSelectableWorkOrderClient) — Nabr shows up as the العميل الفرعي instead,
+ * persisted in reportUserClientIds. Check both so "is this a Nabr
+ * transaction" is correct for the normal case, not just the legacy one.
+ */
+export function isNabrTransaction(record: {
+  clientId: string;
+  reportUserClientIds?: readonly string[] | null;
+}): boolean {
+  return (
+    isNabrClient(record.clientId) ||
+    (record.reportUserClientIds ?? []).some((id) => isNabrClient(id))
+  );
+}
+
 /** Nabr is Infath's sub-client for now — not a peer work-order client. */
 export function isSelectableWorkOrderClient(
   clientId: string,

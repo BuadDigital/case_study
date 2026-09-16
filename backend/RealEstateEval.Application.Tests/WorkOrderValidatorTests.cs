@@ -15,6 +15,24 @@ public class WorkOrderValidatorTests
     public void RequiresAssignmentDecree_only_for_execution(AssignmentType type, bool expected) =>
         Assert.Equal(expected, WorkOrderValidator.RequiresAssignmentDecree(type));
 
+    [Fact]
+    public void IsNabrTransaction_true_for_report_user_not_just_primary_client()
+    {
+        // Normal case: client is Infath, Nabr is the sub-client / report user.
+        Assert.True(SeedClientIds.IsNabrTransaction(
+            SeedClientIds.InfathAssignmentCenter,
+            [SeedClientIds.NabrRealEstate]));
+
+        // Legacy case: Nabr set directly as the primary client.
+        Assert.True(SeedClientIds.IsNabrTransaction(SeedClientIds.NabrRealEstate, null));
+
+        // Neither — not a Nabr transaction.
+        Assert.False(SeedClientIds.IsNabrTransaction(
+            SeedClientIds.InfathAssignmentCenter,
+            [Guid.NewGuid()]));
+        Assert.False(SeedClientIds.IsNabrTransaction(SeedClientIds.InfathAssignmentCenter, null));
+    }
+
     [Theory]
     [InlineData(AssignmentType.Execution, true)]
     [InlineData(AssignmentType.Estates, false)]

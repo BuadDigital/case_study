@@ -29,4 +29,12 @@ public static class SeedClientIds
     /// </summary>
     public static readonly Guid NabrRealEstate =
         Guid.Parse("a1000001-0000-4000-8000-000000000002");
+
+    /// <summary>
+    /// Nabr work almost never sets Nabr as the primary client (Infath is — Nabr is not a
+    /// peer work-order client) — it shows up as a report-user instead. Check both so this
+    /// is correct for the normal case, not just the legacy one.
+    /// </summary>
+    public static bool IsNabrTransaction(Guid? clientId, IEnumerable<Guid>? reportUserClientIds) =>
+        clientId == NabrRealEstate || (reportUserClientIds ?? []).Contains(NabrRealEstate);
 }
