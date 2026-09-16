@@ -13,6 +13,8 @@ const SAVE_DEBOUNCE_MS = 400;
 const drafts = new Map<string, PoPropertyIntake>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const inFlight = new Map<string, Promise<boolean>>();
+/** False while the key has no real server property id yet — draft only, no network write. */
+const persistable = new Map<string, boolean>();
 let pagehideBound = false;
 
 export function propertyFieldAutosaveKey(
@@ -80,8 +82,12 @@ async function persistKey(key: string): Promise<boolean> {
   if (!draft) return true;
   if (!isMeaningfulPropertyDraft(draft)) {
     drafts.delete(key);
+    persistable.delete(key);
     return true;
   }
+  // No real server id yet (property not created — first حفظ still pending):
+  // keep the draft for same-tab recovery, but there is nothing to PUT to yet.
+  if (persistable.get(key) === false) return true;
   const [poNumber, propertyId] = key.split("|");
   if (!poNumber || !propertyId) return false;
 
@@ -118,6 +124,10 @@ export function queuePropertyFieldAutosave(
   poNumber: string,
   propertyId: string | null | undefined,
   property: PoPropertyIntake,
+  options?: {
+    /** False before the property has a real server id — draft only, no PUT. */
+    persistable?: boolean;
+  },
 ): void {
   const id = (propertyId ?? property.id ?? "").trim();
   const po = poNumber.trim();
@@ -127,6 +137,7 @@ export function queuePropertyFieldAutosave(
   bindPagehideFlush();
   const key = propertyFieldAutosaveKey(po, id);
   drafts.set(key, { ...property, id });
+  persistable.set(key, options?.persistable ?? true);
   clearTimer(key);
   timers.set(
     key,
@@ -179,4 +190,5 @@ export function cancelPropertyFieldAutosave(
   const key = propertyFieldAutosaveKey(po, id);
   clearTimer(key);
   drafts.delete(key);
+  persistable.delete(key);
 }

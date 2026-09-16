@@ -10,6 +10,7 @@ import {
   DISTRIBUTION_CONFIRM_ACTION,
   distributionValidationContext,
   isBourseObstructionPath,
+  newPropertyDraftKey,
   persistedEnfathProperty,
   removedPropertyNote,
   resolveTaskWorkScreen,
@@ -192,5 +193,10 @@ describe("property helpers", () => {
       circuit: "3",
       poNumber: "PO-1",
     });
+  });
+
+  it("keys a not-yet-created property's autosave draft to the task, not a re-rolled property id", () => {
+    expect(newPropertyDraftKey("t1")).toBe(newPropertyDraftKey("t1"));
+    expect(newPropertyDraftKey("t1")).not.toBe(newPropertyDraftKey("t2"));
   });
 });

@@ -48,7 +48,10 @@ import {
   completePropertyBourse,
   updatePropertyInPo,
 } from "../lib/app-data/po-intake-commands";
-import { flushPropertyFieldAutosave } from "../lib/app-data/property-field-autosave";
+import {
+  cancelPropertyFieldAutosave,
+  flushPropertyFieldAutosave,
+} from "../lib/app-data/property-field-autosave";
 import {
   advanceTaskAfterBourse,
   advanceTaskAfterEnfath,
@@ -70,6 +73,7 @@ import {
   distributionValidationContext,
   DUPLICATE_DEED_ERROR,
   ENFATH_SAVE_ACTION,
+  newPropertyDraftKey,
   NO_LINKED_PROPERTY_ERROR,
   persistedEnfathProperty,
   REMOVED_PROPERTY_SAVE_ERROR,
@@ -237,6 +241,10 @@ export function useMyTaskWorkCommands({
               assignToTaskId: task.id,
             });
         if (!result.ok) throw failure(result.error, result.errors);
+        if (!task.propertyId) {
+          // Now has a real server id — drop the local-only pre-save draft.
+          cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
+        }
 
         const updatedTask = await advanceTaskAfterEnfath(
           task.id,
@@ -353,6 +361,8 @@ export function useMyTaskWorkCommands({
           if (!insert.ok) throw failure(insert.error, insert.errors);
           prop = insert.data;
           propertyId = insert.data.id;
+          // Now has a real server id — drop the local-only pre-save draft.
+          cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
         } else if (bourseInquiryFastPath) {
           const updated = await updatePropertyInPo(
             task.poNumber,

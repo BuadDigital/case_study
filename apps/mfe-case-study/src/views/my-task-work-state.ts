@@ -252,3 +252,13 @@ export function savedEnfathProperty(
     ? { ...saved, bourseDataCompleted: true }
     : saved;
 }
+
+/**
+ * Stable local-draft key for a property that has no server id yet (task.propertyId
+ * is null before the first حفظ). Fixed to the task, not the property's own generated
+ * id — that id is re-rolled on every remount, which orphaned the autosave draft and
+ * made إنفاذ / استعلام بورصة data disappear on close→reopen before the first save.
+ */
+export function newPropertyDraftKey(taskId: string): string {
+  return `new:${taskId}`;
+}
