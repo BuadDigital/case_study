@@ -81,7 +81,9 @@ export function PoWorkOrderPartyFields({
           value={subClientId || defaultSubClientId()}
           error={subClientError}
           options={subClientOptions}
-          onChange={onSubClientChange}
+          // The placeholder option ("اختر...") sits above the one real choice —
+          // landing on it must not clear a field that only ever has one valid value.
+          onChange={(id) => onSubClientChange(id || defaultSubClientId())}
         />
       ) : null}
       <ValuationReportUserField
