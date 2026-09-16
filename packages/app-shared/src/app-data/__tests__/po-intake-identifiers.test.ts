@@ -31,5 +31,20 @@ describe("registered title vs bourse", () => {
         realEstateRegNumber: "",
       }),
     ).toBe(false);
+    expect(
+      propertyHasRegisteredTitle({
+        identifierType: "deed",
+        realEstateRegNumber: "",
+        deedKind: "registered_title",
+      }),
+    ).toBe(true);
+    expect(
+      propertyRequiresSurvey({
+        identifierType: "deed",
+        realEstateRegNumber: "",
+        classification: "أرض",
+        deedKind: "registered_title",
+      }),
+    ).toBe(false);
   });
 });

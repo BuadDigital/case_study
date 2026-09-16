@@ -87,14 +87,25 @@ export function classificationRequiresSurvey(classification: string): boolean {
   return classification.trim() !== "وحدة داخل مبنى";
 }
 
-/** Registered title (title registry) — registration number or identifier type. */
+/** Registered title (`registered_title`) — same path as identifier type `real_estate_reg`. */
+export function isRegisteredTitleDeedKind(deedKind: string | undefined | null): boolean {
+  const n = (deedKind ?? "").trim().toLowerCase();
+  return n === "registered_title" || n === "registered" || n === "registeredtitle";
+}
+
+/** Registered title — registration number, identifier type, or deed kind. */
 export function propertyHasRegisteredTitle(property: {
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
+  deedKind?: string | null;
+  suggestedDeedKind?: string | null;
 }): boolean {
+  if (property.realEstateRegNumber.trim().length > 0) return true;
+  if (property.identifierType === "real_estate_reg") return true;
+  if (isRegisteredTitleDeedKind(property.deedKind)) return true;
   return (
-    property.realEstateRegNumber.trim().length > 0 ||
-    property.identifierType === "real_estate_reg"
+    !(property.deedKind ?? "").trim() &&
+    isRegisteredTitleDeedKind(property.suggestedDeedKind)
   );
 }
 
@@ -116,6 +127,8 @@ export function propertyRequiresSurvey(property: {
   identifierType: PropertyIdentifierType;
   planNumber?: string | null;
   plotNumber?: string | null;
+  deedKind?: string | null;
+  suggestedDeedKind?: string | null;
 }): boolean {
   return (
     classificationRequiresSurvey(property.classification) &&

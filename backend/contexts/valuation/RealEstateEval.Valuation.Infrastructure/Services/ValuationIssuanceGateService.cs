@@ -48,6 +48,7 @@ public sealed class ValuationIssuanceGateService(
         var hasStructures = false;
         var propertyType = "";
         string? poNumber = null;
+        var propertyRequiresSurvey = true;
  // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
@@ -65,6 +66,7 @@ public sealed class ValuationIssuanceGateService(
                 deedKind = context.DeedKindValue();
                 propertyType = context.EffectivePropertyType();
                 poNumber = context.PoNumber;
+                propertyRequiresSurvey = context.RequiresEngineeringSurvey;
                 hasStructures = string.Equals(
                     context.HasStructuresToValue.Trim(),
                     "yes",
@@ -158,7 +160,12 @@ public sealed class ValuationIssuanceGateService(
                 recon?.WeightsSumTo100 ?? false),
             ValuationIssuanceGateRules.FinalOpinion(recon?.FinalOpinionValue ?? 0m),
             ValuationIssuanceGateRules.RequiredAttachments(
-                await FindMissingRequiredAttachmentLabelsAsync(propertyId, poNumber, propertyType, cancellationToken)),
+                await FindMissingRequiredAttachmentLabelsAsync(
+                    propertyId,
+                    poNumber,
+                    propertyType,
+                    propertyRequiresSurvey,
+                    cancellationToken)),
         };
 
         var resolutions = (recon?.MethodologyAlertOverrides ?? [])
@@ -205,12 +212,7 @@ public sealed class ValuationIssuanceGateService(
                 .Select(i => new ValuationMethodologyAlertComparableInput(
                     i.Comparable.ComparablePropertyType,
                     i.Market?.ExceedsLargeAdjustmentThreshold ?? false,
-                    i.Market?.SumIncludedPct ?? 0m,
-                    DealAgeMonths: i.Market?.DealAgeMonths ?? 0,
-                    HasMarketConditionsAdjustment: (i.Market?.AdjustmentLines ?? [])
-                        .Any(l => l.FactorKey == MarketAdjustmentFactorKeys.Market
-                                  && l.IsIncluded
-                                  && l.Percent != 0m)))
+                    i.Market?.SumIncludedPct ?? 0m))
                 .ToList(),
             UseRestrictionDiscountPct: cost?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale: cost?.UseRestrictionRationale,
@@ -231,7 +233,6 @@ public sealed class ValuationIssuanceGateService(
             InspectionScopeKey: inspectionScopeKey,
             UninspectedUnitCount: uninspectedUnitCount,
             RemoteInspectionApprovedByAccredited: remoteInspectionApproved,
-            TimeGapMonthsThreshold: org.Valuation.ComparableTimeGapMonths,
             MarketApproachRelevant: marketApproachEnabled);
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
@@ -296,15 +297,18 @@ public sealed class ValuationIssuanceGateService(
         string propertyId,
         string? poNumber,
         string propertyType,
+        bool propertyRequiresSurvey,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(propertyId)) return [];
 
         var dictionary = await printDictionary.GetAsync(cancellationToken);
-        var required = dictionary.Types
-            .Where(t => t.IsActive && t.IsRequired)
-            .Where(t => AppliesToPropertyType(t.PropertyTypeKeys, propertyType))
-            .ToList();
+        var required = ValuationIssuanceGateRules.RequiredAttachmentsForProperty(
+            dictionary.Types
+                .Where(t => t.IsActive && t.IsRequired)
+                .Where(t => AppliesToPropertyType(t.PropertyTypeKeys, propertyType)),
+            t => t.Key,
+            propertyRequiresSurvey);
         if (required.Count == 0) return [];
 
  // Intake documents are keyed «PO:propertyId»; party uploads use the property id itself.

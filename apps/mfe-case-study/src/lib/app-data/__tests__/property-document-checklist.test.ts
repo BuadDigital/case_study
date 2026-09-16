@@ -64,6 +64,20 @@ describe("buildPropertyDocumentChecklist", () => {
     expect(checklist.missingRequired).toEqual(["صك الملكية", "التقرير المساحي"]);
   });
 
+  it("does not require the survey report on registered-title land", () => {
+    const checklist = buildPropertyDocumentChecklist({
+      entries: [],
+      propertyType: "أرض",
+      propertyRequiresSurvey: false,
+    });
+
+    expect(checklist.missingRequired).toEqual(["صك الملكية"]);
+    expect(
+      checklist.groups.flatMap((g) => g.rows).find((r) => r.type.key === "survey")
+        ?.required,
+    ).toBe(false);
+  });
+
   it("accepts the bourse deed image for the deed but not the delegation letter", () => {
     const withDelegation = buildPropertyDocumentChecklist({
       entries: [doc("d", "delegation-letter")],

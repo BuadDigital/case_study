@@ -165,7 +165,7 @@ public sealed class OrganizationValuationSettingsDto
  /// <summary>Max comparables that can be adopted per valuation (1–20).</summary>
     public int MaxAdoptedComparables { get; init; } = 3;
 
- /// <summary>Q-4: Time lag threshold in months for m20 alert (administrative data, 1–60).</summary>
+ /// <summary>Kept for saved-settings compatibility. No longer drives a methodology alert.</summary>
     public int ComparableTimeGapMonths { get; init; } = 6;
 
  /// <summary>Area normalization factor % per instance/multiplier (logic-normalizations, default 5).</summary>

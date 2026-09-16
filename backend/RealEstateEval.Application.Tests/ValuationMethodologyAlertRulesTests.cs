@@ -6,11 +6,11 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationMethodologyAlertRulesTests
 {
     [Fact]
-    public void Evaluate_returns_21_alerts()
+    public void Evaluate_returns_20_alerts()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput());
-        Assert.Equal(21, checks.Count);
-        Assert.Equal(Enumerable.Range(1, 21), checks.Select(c => c.Number));
+        Assert.Equal(20, checks.Count);
+        Assert.Equal(Enumerable.Range(1, 19).Concat([21]), checks.Select(c => c.Number));
     }
 
     [Fact]
@@ -18,7 +18,7 @@ public class ValuationMethodologyAlertRulesTests
     {
         foreach (var n in new[] { 3, 4, 5, 11, 15, 16, 21 })
             Assert.True(ValuationMethodologyAlertSeverity.IsHard(n));
-        foreach (var n in new[] { 1, 2, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 20 })
+        foreach (var n in new[] { 1, 2, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19 })
             Assert.False(ValuationMethodologyAlertSeverity.IsHard(n));
     }
 
@@ -38,26 +38,6 @@ public class ValuationMethodologyAlertRulesTests
             EmptyInput() with { AdoptedComparableCount = 0 });
         Assert.False(zero.Single(c => c.Number == 19).Triggered);
         Assert.True(zero.Single(c => c.Number == 15).Triggered);
-    }
-
-    [Fact]
-    public void Stale_comparable_without_time_adjustment_needs_ack()
-    {
-        var stale = new ValuationMethodologyAlertComparableInput(
-            "أرض سكنية", false, 0m, DealAgeMonths: 9, HasMarketConditionsAdjustment: false);
-        var adjusted = stale with { HasMarketConditionsAdjustment = true };
-        var fresh = stale with { DealAgeMonths = 2 };
-
-        var triggered = ValuationMethodologyAlertRules.Evaluate(
-            EmptyInput() with { AdoptedComparables = [stale], TimeGapMonthsThreshold = 6 });
-        Assert.True(triggered.Single(c => c.Number == 20).Triggered);
-        Assert.Equal(
-            ValuationMethodologyAlertSeverityKinds.RequireAck,
-            triggered.Single(c => c.Number == 20).SeverityKind);
-
-        var ok = ValuationMethodologyAlertRules.Evaluate(
-            EmptyInput() with { AdoptedComparables = [adjusted, fresh], TimeGapMonthsThreshold = 6 });
-        Assert.False(ok.Single(c => c.Number == 20).Triggered);
     }
 
     [Fact]
@@ -120,7 +100,6 @@ public class ValuationMethodologyAlertRulesTests
         Assert.False(checks.Single(c => c.Number == 19).Evaluated);
         Assert.False(checks.Single(c => c.Number == 19).Triggered);
         Assert.False(checks.Single(c => c.Number == 17).Evaluated);
-        Assert.False(checks.Single(c => c.Number == 20).Evaluated);
         // Comparable-weight half of m16 is skipped; EmptyInput recon weights stay 100%.
         Assert.False(checks.Single(c => c.Number == 16).Triggered);
     }

@@ -111,4 +111,21 @@ public class ValuationIssuanceGateRulesTests
             adoptedCount: 0);
         Assert.True(landWithinCostOff.Passed);
     }
+
+    [Fact]
+    public void Required_attachments_drop_survey_when_the_property_does_not_need_one()
+    {
+        var types = new[] { "deed", "survey", "zoning-sketch" };
+        var stillRequired = ValuationIssuanceGateRules.RequiredAttachmentsForProperty(
+            types,
+            key => key,
+            propertyRequiresSurvey: true);
+        Assert.Equal(types, stillRequired);
+
+        var withoutSurvey = ValuationIssuanceGateRules.RequiredAttachmentsForProperty(
+            types,
+            key => key,
+            propertyRequiresSurvey: false);
+        Assert.Equal(["deed", "zoning-sketch"], withoutSurvey);
+    }
 }

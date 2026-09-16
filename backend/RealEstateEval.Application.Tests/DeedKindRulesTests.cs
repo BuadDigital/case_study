@@ -35,4 +35,15 @@ public class DeedKindRulesTests
             DeedKind.Traditional,
             DeedKindLabels.SuggestFromIdentifier(PropertyIdentifierType.Deed));
     }
+
+    [Theory]
+    [InlineData("registered_title")]
+    [InlineData("registered")]
+    [InlineData("RegisteredTitle")]
+    [InlineData("سجل عيني")]
+    public void TryParseApiValue_accepts_registered_title_aliases(string value)
+    {
+        Assert.True(DeedKindLabels.TryParseApiValue(value, out var kind));
+        Assert.Equal(DeedKind.RegisteredTitle, kind);
+    }
 }

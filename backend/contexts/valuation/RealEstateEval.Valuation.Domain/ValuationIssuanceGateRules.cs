@@ -209,6 +209,27 @@ public static class ValuationIssuanceGateRules
             IsHard: true,
             DetailAr: finalOpinionValue <= 0m ? "الرأي النهائي غير محسوب أو صفر" : null);
 
+    public const string SurveyAttachmentKey = "survey";
+
+    public static bool IsSurveyAttachmentKey(string? key) =>
+        string.Equals(
+            (key ?? "").Trim(),
+            SurveyAttachmentKey,
+            StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Registered title / approved plan / unit-inside-building never owe a survey PDF,
+    /// even when the attachments list marks التقرير المساحي required for أرض.
+    /// </summary>
+    public static IReadOnlyList<T> RequiredAttachmentsForProperty<T>(
+        IEnumerable<T> required,
+        Func<T, string> keySelector,
+        bool propertyRequiresSurvey)
+    {
+        if (propertyRequiresSurvey) return required as IReadOnlyList<T> ?? required.ToList();
+        return required.Where(t => !IsSurveyAttachmentKey(keySelector(t))).ToList();
+    }
+
  /// <summary>required dictionary types (matching the property type) need a printable upload.</summary>
     public static ValuationIssuanceGateCheck RequiredAttachments(IReadOnlyList<string> missingLabelsAr) =>
         new(

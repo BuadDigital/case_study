@@ -97,14 +97,14 @@ export function MethodologyAlertsPanel({
   return (
     <Card>
       <CardPad>
-        <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2.5">
-          <span className="text-[13.5px] font-extrabold text-heading">
+        <div className="mb-2.5">
+          <span className="block text-[13.5px] font-extrabold text-heading">
             التنبيهات المنهجية
           </span>
-          <span className="text-[11px] text-text-3">
-            تنبيهات أسلوب السوق (المقارنات والأوزان وتسوية الزمن). تُحفَظ
+          <p className="mt-0.5 text-[11px] leading-5 text-text-3">
+            تنبيهات أسلوب السوق (المقارنات والأوزان). تُحفَظ
             المعالجات من هذا التبويب.
-          </span>
+          </p>
         </div>
         {triggeredAlerts.length === 0 ? (
           <div className="text-[12.5px] font-bold text-[#2f7a4d]">
@@ -186,10 +186,10 @@ function MethodologyAlertRow({
               ? "يتطلب مبرراً نصياً"
               : "يتطلب إقراراً"}
         </span>
-        {a.detailAr ? (
-          <span className="text-[11.5px] text-text-2">{a.detailAr}</span>
-        ) : null}
       </div>
+      {a.detailAr ? (
+        <p className="text-[11.5px] leading-5 text-text-2">{a.detailAr}</p>
+      ) : null}
       {needsRationale ? (
         <>
           <input
