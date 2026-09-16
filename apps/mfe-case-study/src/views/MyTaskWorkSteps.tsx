@@ -22,7 +22,7 @@ type PropertyFormProps = Pick<
   | "layout"
   | "property"
   | "assignmentType"
-  | "clientId"
+  | "isNabrClient"
   | "fieldErrors"
   | "patchProperty"
   | "replaceProperty"
@@ -34,7 +34,7 @@ export function MyTaskWorkEnfathStep({
   layout,
   property,
   assignmentType,
-  clientId,
+  isNabrClient,
   fieldErrors,
   patchProperty,
   replaceProperty,
@@ -55,7 +55,7 @@ export function MyTaskWorkEnfathStep({
         <PoPropertyEnfathForm
           property={property}
           assignmentType={assignmentType}
-          clientId={clientId}
+          isNabrClient={isNabrClient}
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
           onReplaceProperty={replaceProperty}
@@ -76,7 +76,7 @@ export function MyTaskWorkBourseStep({
   task,
   property,
   assignmentType,
-  clientId,
+  isNabrClient,
   fieldErrors,
   patchProperty,
   replaceProperty,
@@ -109,7 +109,7 @@ export function MyTaskWorkBourseStep({
         <PoPropertyEnfathForm
           property={property}
           assignmentType={assignmentType}
-          clientId={clientId}
+          isNabrClient={isNabrClient}
           fieldErrors={fieldErrors}
           onPatch={patchProperty}
           onReplaceProperty={replaceProperty}

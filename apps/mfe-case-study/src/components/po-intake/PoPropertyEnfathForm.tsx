@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
-  isNabrClient,
   sanitizePropertyIdentifierInput,
   type AssignmentType,
   type PoPropertyIntake,
@@ -46,8 +45,8 @@ type Props = {
   onReplaceProperty?: (next: PoPropertyIntake) => void;
   poNumber?: string;
   excludePoNumber?: string;
-  /** Work-order client — Nabr transactions skip قرار الإسناد and اسم المالك. */
-  clientId?: string;
+  /** Work order is a Nabr transaction — skip قرار الإسناد and اسم المالك. */
+  isNabrClient?: boolean;
   showStageNote?: boolean;
   /** Hide track-status / under-study UI for bourse inquiry (e.g. primary-data panel). */
   hideBoursePathStatus?: boolean;
@@ -63,13 +62,12 @@ export function PoPropertyEnfathForm({
   onReplaceProperty,
   poNumber,
   excludePoNumber,
-  clientId,
+  isNabrClient: isNabr = false,
   showStageNote = true,
   hideBoursePathStatus = false,
   fieldsMode = "all",
 }: Props) {
   const attachPo = resolveAttachPo(poNumber, excludePoNumber);
-  const isNabr = isNabrClient(clientId ?? "");
   const { priorExcludePo, priorExcludePropertyId } = resolvePriorExclusion({
     poNumber,
     excludePoNumber,

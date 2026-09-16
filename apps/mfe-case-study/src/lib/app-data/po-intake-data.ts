@@ -15,6 +15,7 @@ export {
   showsValuationReportUserField,
   isInfathClient,
   isNabrClient,
+  isNabrTransaction,
   isSelectableWorkOrderClient,
   INFATH_SUB_CLIENT_IDS,
   showsSubClientField,

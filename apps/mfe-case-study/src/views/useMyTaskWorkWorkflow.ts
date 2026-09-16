@@ -19,7 +19,7 @@ import {
 import { myTasksPath } from "../lib/my-task-routes";
 import {
   emptyProperty,
-  isNabrClient,
+  isNabrTransaction,
   type AssignmentType,
   type BourseDeedVitality,
   type PoPropertyIntake,
@@ -260,7 +260,10 @@ export function useMyTaskWorkWorkflow({
   }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber, property.planNumber, property.plotNumber]);
 
   const steps = resolveTaskWorkSteps(effectivePhase, layout, property.identifierType);
-  const isNabr = isNabrClient(poRecord?.clientId ?? "");
+  const isNabr = isNabrTransaction({
+    clientId: poRecord?.clientId ?? "",
+    reportUserClientIds: poRecord?.reportUserClientIds,
+  });
 
   const commands = useMyTaskWorkCommands({
     task,
@@ -304,7 +307,6 @@ export function useMyTaskWorkWorkflow({
     onRefresh,
     property,
     assignmentType,
-    clientId: poRecord?.clientId ?? "",
     isNabrClient: isNabr,
     fieldErrors,
     formError,
