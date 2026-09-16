@@ -4,6 +4,7 @@ import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   sanitizePropertyIdentifierInput,
   type AssignmentType,
+  type ClientFieldPolicy,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
@@ -45,8 +46,8 @@ type Props = {
   onReplaceProperty?: (next: PoPropertyIntake) => void;
   poNumber?: string;
   excludePoNumber?: string;
-  /** Work order is a Nabr transaction — skip قرار الإسناد and اسم المالك. */
-  isNabrClient?: boolean;
+  /** Which fields this client relationship requires — e.g. Nabr skips قرار الإسناد و اسم المالك. */
+  fieldPolicy?: ClientFieldPolicy;
   showStageNote?: boolean;
   /** Hide track-status / under-study UI for bourse inquiry (e.g. primary-data panel). */
   hideBoursePathStatus?: boolean;
@@ -62,7 +63,7 @@ export function PoPropertyEnfathForm({
   onReplaceProperty,
   poNumber,
   excludePoNumber,
-  isNabrClient: isNabr = false,
+  fieldPolicy,
   showStageNote = true,
   hideBoursePathStatus = false,
   fieldsMode = "all",
@@ -80,7 +81,7 @@ export function PoPropertyEnfathForm({
     identifierType: property.identifierType,
     realEstateRegNumber: property.realEstateRegNumber,
     hasRequestNumber: property.hasRequestNumber,
-    isNabrClient: isNabr,
+    fieldPolicy,
   });
 
   const patchDeedNumber = (value: string) => {
@@ -156,7 +157,7 @@ export function PoPropertyEnfathForm({
           showCourt={view.showCourt}
           showRequestNumber={view.showRequestNumber}
           onDeedNumberChange={patchDeedNumber}
-          isNabrClient={isNabr}
+          fieldPolicy={fieldPolicy}
         />
       ) : view.showDeedFields ? (
         <PoPropertyEnfathDeedSections
@@ -169,7 +170,7 @@ export function PoPropertyEnfathForm({
           hasRequestNumber={view.hasRequestNumber}
           onDeedNumberChange={patchDeedNumber}
           onRealEstateRegNumberChange={patchRealEstateRegNumber}
-          isNabrClient={isNabr}
+          fieldPolicy={fieldPolicy}
         />
       ) : null}
 

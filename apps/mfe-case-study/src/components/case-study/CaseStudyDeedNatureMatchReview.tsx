@@ -30,6 +30,11 @@ export function CaseStudyDeedNatureMatchReview({
   surveyTaskId: string | null;
   inspectionTaskId: string | null;
   engineeringAssigned?: boolean;
+  /**
+   * Locked together with معاينة العقار — the caller passes true once the
+   * specialist accepts the inspector package («تأكيد مدخلات المعاين»), so
+   * both sections freeze/reopen as one unit («إعادة للتصحيح» unlocks both).
+   */
   readOnly?: boolean;
 }) {
   const { showToast } = useToast();

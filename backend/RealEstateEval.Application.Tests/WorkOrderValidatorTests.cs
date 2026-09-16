@@ -16,21 +16,23 @@ public class WorkOrderValidatorTests
         Assert.Equal(expected, WorkOrderValidator.RequiresAssignmentDecree(type));
 
     [Fact]
-    public void IsNabrTransaction_true_for_report_user_not_just_primary_client()
+    public void ClientFieldPolicyForClient_relaxes_for_report_user_not_just_primary_client()
     {
+        var relaxed = new ClientFieldPolicy(RequiresAssignmentDoc: false, RequiresOwnerName: false);
+
         // Normal case: client is Infath, Nabr is the sub-client / report user.
-        Assert.True(SeedClientIds.IsNabrTransaction(
+        Assert.Equal(relaxed, SeedClientIds.ClientFieldPolicyForClient(
             SeedClientIds.InfathAssignmentCenter,
             [SeedClientIds.NabrRealEstate]));
 
         // Legacy case: Nabr set directly as the primary client.
-        Assert.True(SeedClientIds.IsNabrTransaction(SeedClientIds.NabrRealEstate, null));
+        Assert.Equal(relaxed, SeedClientIds.ClientFieldPolicyForClient(SeedClientIds.NabrRealEstate, null));
 
-        // Neither — not a Nabr transaction.
-        Assert.False(SeedClientIds.IsNabrTransaction(
+        // Neither — the default policy (require everything).
+        Assert.Equal(ClientFieldPolicy.Default, SeedClientIds.ClientFieldPolicyForClient(
             SeedClientIds.InfathAssignmentCenter,
             [Guid.NewGuid()]));
-        Assert.False(SeedClientIds.IsNabrTransaction(SeedClientIds.InfathAssignmentCenter, null));
+        Assert.Equal(ClientFieldPolicy.Default, SeedClientIds.ClientFieldPolicyForClient(SeedClientIds.InfathAssignmentCenter, null));
     }
 
     [Theory]
@@ -286,7 +288,7 @@ public class WorkOrderValidatorTests
             "PO-1",
             null,
             (_, _) => false,
-            isNabrClient: true);
+            fieldPolicy: new ClientFieldPolicy(RequiresAssignmentDoc: false, RequiresOwnerName: false));
 
         Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileNames");
         Assert.DoesNotContain(errors, e => e.Key == "ownerName");

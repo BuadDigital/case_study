@@ -1083,11 +1083,6 @@ export const SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK =
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS =
   "تم تأكيد مدخلات المعاين — يمكن للمقيم بدء التقييم";
 
-export const SPECIALIST_SAVE_INSPECTOR_INPUTS_LABEL = "حفظ تعديلات المعاينة";
-
-export const SPECIALIST_SAVE_INSPECTOR_INPUTS_SUCCESS =
-  "تم حفظ تعديلات مدخلات المعاين";
-
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
   draft: Pick<InspectorWorkspaceDraft, "acceptedAtUtc"> | null | undefined,
@@ -1131,15 +1126,16 @@ export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
   "يظهر وصف العقار للمقيم بعد تأكيد الأخصائي لمدخلات المعاين.";
 
 /**
- * Inspector cannot edit after submit. Specialist may keep correcting the
- * package after they accept it (acceptance only opens the path for the appraiser).
+ * Inspector cannot edit after submit. Specialist may correct the package
+ * while reviewing it, but accepting it locks the form — acceptance both
+ * opens the path for the appraiser and closes out the specialist's review.
  */
 export function isInspectorWorkspaceReviewLocked(
   draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
   options?: { specialistReview?: boolean },
 ): boolean {
   if (draft.status === "reopened") return false;
-  if (options?.specialistReview) return false;
+  if (options?.specialistReview) return isInspectorWorkspaceAccepted(draft);
   return isInspectorWorkspaceLocked(draft.status);
 }
 
