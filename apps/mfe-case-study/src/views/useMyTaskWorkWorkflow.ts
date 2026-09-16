@@ -39,6 +39,7 @@ import {
   canShowPrimarySave,
   DEED_VITALITY_REQUIRED_ERROR,
   DISTRIBUTION_SAVE_ERROR,
+  newPropertyDraftKey,
   resolveTaskWorkScreen,
   resolveTaskWorkSteps,
   taskWorkRoleFlags,
@@ -162,7 +163,11 @@ export function useMyTaskWorkWorkflow({
         setHasPriorSurvey(false);
       }
     } else {
-      setProperty(emptyProperty());
+      const local = peekPropertyFieldAutosave(
+        task.poNumber,
+        newPropertyDraftKey(task.id),
+      );
+      setProperty(local ?? emptyProperty());
       setHasPriorSurvey(false);
     }
     setPropertyHydrated(true);
@@ -182,7 +187,12 @@ export function useMyTaskWorkWorkflow({
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
       setProperty((p) => {
         const next = { ...p, [key]: value };
-        queuePropertyFieldAutosave(task.poNumber, task.propertyId ?? next.id, next);
+        queuePropertyFieldAutosave(
+          task.poNumber,
+          task.propertyId ?? newPropertyDraftKey(task.id),
+          next,
+          { persistable: Boolean(task.propertyId) },
+        );
         return next;
       });
       setFieldErrors((e) => {
@@ -192,16 +202,21 @@ export function useMyTaskWorkWorkflow({
         return next;
       });
     },
-    [task.poNumber, task.propertyId],
+    [task.id, task.poNumber, task.propertyId],
   );
 
   const replaceProperty = useCallback(
     (next: PoPropertyIntake) => {
       setProperty(next);
       setFieldErrors({});
-      queuePropertyFieldAutosave(task.poNumber, task.propertyId ?? next.id, next);
+      queuePropertyFieldAutosave(
+        task.poNumber,
+        task.propertyId ?? newPropertyDraftKey(task.id),
+        next,
+        { persistable: Boolean(task.propertyId) },
+      );
     },
-    [task.poNumber, task.propertyId],
+    [task.id, task.poNumber, task.propertyId],
   );
 
   const onObstructionReasonChange = useCallback((value: string) => {

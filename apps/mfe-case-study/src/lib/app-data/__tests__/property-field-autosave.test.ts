@@ -92,4 +92,20 @@ describe("property field autosave drafts", () => {
     await flushPropertyFieldAutosave("PO-1", "prop-a");
     expect(updatePropertyInPo).not.toHaveBeenCalled();
   });
+
+  it("keeps a not-yet-created property's draft locally without a doomed PUT", async () => {
+    queuePropertyFieldAutosave(
+      "PO-1",
+      "new:task-1",
+      { ...emptyProperty(), id: "new:task-1", ownerName: "سالم" },
+      { persistable: false },
+    );
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPropertyFieldAutosave("PO-1", "new:task-1");
+    expect(updatePropertyInPo).not.toHaveBeenCalled();
+    expect(peekPropertyFieldAutosave("PO-1", "new:task-1")?.ownerName).toBe(
+      "سالم",
+    );
+    cancelPropertyFieldAutosave("PO-1", "new:task-1");
+  });
 });
