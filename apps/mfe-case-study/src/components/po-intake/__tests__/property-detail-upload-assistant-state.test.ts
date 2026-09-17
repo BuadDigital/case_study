@@ -16,7 +16,7 @@ import {
   readyAttachments,
   toggledSet,
   withCopiedKey,
-} from "../property-detail-enfath-upload-state";
+} from "../property-detail-upload-assistant-state";
 import type { PropertyDetailDocumentEntry } from "../../../lib/app-data/property-detail-documents";
 
 function doc(overrides: Partial<PropertyDetailDocumentEntry>): PropertyDetailDocumentEntry {

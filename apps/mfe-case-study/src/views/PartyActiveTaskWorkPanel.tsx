@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PartyActiveTaskWork } from "./PartyActiveTaskWork";
+import { PartyReassignmentNotice } from "./PartyReassignmentNotice";
 import type { PartyActiveTaskWorkHostRef } from "../lib/party-active-task-work-host";
 import { refreshPartyTaskWorkQueries } from "../lib/party-task-work-refresh";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
@@ -37,13 +38,16 @@ export function PartyActiveTaskWorkPanel({
   hostRef.current.onClose = onCloseAction;
 
   return (
-    <PartyActiveTaskWork
-      def={def}
-      task={task}
-      hostRef={hostRef}
-      layout={layout}
-      appraisalExtensions={appraisalExtensions}
-      engineeringSurveyExtensions={engineeringSurveyExtensions}
-    />
+    <>
+      <PartyReassignmentNotice taskId={task.id} roleId={def.roleId} />
+      <PartyActiveTaskWork
+        def={def}
+        task={task}
+        hostRef={hostRef}
+        layout={layout}
+        appraisalExtensions={appraisalExtensions}
+        engineeringSurveyExtensions={engineeringSurveyExtensions}
+      />
+    </>
   );
 }

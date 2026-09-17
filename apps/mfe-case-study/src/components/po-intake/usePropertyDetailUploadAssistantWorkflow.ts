@@ -43,7 +43,7 @@ import {
   toggledSet,
   withCopiedKey,
   type CopyKey,
-} from "./property-detail-enfath-upload-state";
+} from "./property-detail-upload-assistant-state";
 
 export type PropertyDetailEnfathUploadWorkflow = {
   model: InfathUploadModel;

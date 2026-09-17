@@ -5,6 +5,7 @@ import {
   canEditProperty,
   canRaisePropertyFailure,
   canReceivePo,
+  canRedistributeParties,
 } from "../po-roles";
 
 describe("po-roles", () => {
@@ -36,5 +37,17 @@ describe("po-roles", () => {
     expect(canReceivePo("engineering-office")).toBe(false);
     expect(canReceivePo("government-reviewer")).toBe(false);
     expect(canReceivePo("general-manager")).toBe(false);
+  });
+
+  it("case specialist, supervisor, general manager, and CDO can redistribute parties", () => {
+    expect(canRedistributeParties("case-specialist")).toBe(true);
+    expect(canRedistributeParties("section-supervisor")).toBe(true);
+    expect(canRedistributeParties("general-manager")).toBe(true);
+    expect(canRedistributeParties("cdo")).toBe(true);
+  });
+
+  it("party roles cannot redistribute parties", () => {
+    expect(canRedistributeParties("field-inspector")).toBe(false);
+    expect(canRedistributeParties("real-estate-appraiser")).toBe(false);
   });
 });

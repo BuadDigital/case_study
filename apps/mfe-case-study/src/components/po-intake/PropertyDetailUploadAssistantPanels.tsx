@@ -9,7 +9,7 @@ import {
   attachmentIcon,
   attachmentReady,
   attachmentStatusLabel,
-} from "./property-detail-enfath-upload-state";
+} from "./property-detail-upload-assistant-state";
 
 export function InfathCollapseControls({
   onSetAllCollapsed,

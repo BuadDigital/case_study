@@ -19,7 +19,7 @@ import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config"
 import {
   applyEnfathPrefillToInspectorDraft,
   inspectorDraftNeedsEnfathPrefill,
-} from "./inspector-enfath-prefill";
+} from "./inspector-deed-prefill";
 import {
   createInspectorWorkspaceDraft,
   inspectionStampFromNow,

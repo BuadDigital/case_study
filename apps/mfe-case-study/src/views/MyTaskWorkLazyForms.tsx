@@ -21,7 +21,7 @@ export const DistributionPartiesForm = dynamic(
 );
 export const PoPropertyEnfathForm = dynamic(
   () =>
-    import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm").then(
+    import("@case-study/mfe/components/po-intake/PoPropertyDeedForm").then(
       (m) => m.PoPropertyEnfathForm,
     ),
   { loading: formChunkFallback },

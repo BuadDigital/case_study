@@ -9,6 +9,7 @@ import {
   getCachedEvaluatorReport,
 } from "../evaluator-bridge";
 import { downloadDocumentFile } from "@platform/app-shared/app-data/download-document-file";
+import { openDataUrlInNewTab } from "@platform/app-shared/media/open-data-url";
 import {
   getCachedPropertyDocMatching,
   isImageMime,
@@ -591,7 +592,7 @@ export function openPropertyDetailDocumentPreview(
     return;
   }
   if (!entry.dataUrl) return;
-  window.open(entry.dataUrl, "_blank", "noopener,noreferrer");
+  openDataUrlInNewTab(entry.dataUrl);
 }
 
 export function downloadPropertyDetailDocument(

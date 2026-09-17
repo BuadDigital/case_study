@@ -2,7 +2,7 @@
 
 /** Line icons for the Infath upload assistant. */
 
-import type { InfazIconName } from "./property-detail-enfath-upload-state";
+import type { InfazIconName } from "./property-detail-upload-assistant-state";
 
 export function InfazIcon({
   name,

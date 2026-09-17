@@ -10,7 +10,37 @@ import { filterNotificationsForRole } from "@platform/app-shared/notifications/r
 import { formatNotificationTime } from "@platform/app-shared/notifications/format-notification-time";
 import type { NotificationCategory } from "@platform/app-shared/notifications/notification-store";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
+import {
+  intakeQuickFillFieldFor,
+  parseIntakeFieldGapSourceEvent,
+  poNumberFromNotificationHref,
+  type IntakeQuickFillField,
+} from "@platform/app-shared/app-data/intake-field-gap-quick-fill";
 import { cn, Button } from "@platform/ui-kit";
+import { IntakeFieldGapQuickFillDialog } from "./notifications/IntakeFieldGapQuickFillDialog";
+
+type QuickFillTarget = {
+  field: IntakeQuickFillField;
+  poNumber: string;
+  propertyId: string;
+};
+
+/** Only intake field-gap notifications on the short, ungated quick-fill list qualify. */
+function quickFillTargetFor(item: {
+  entityType?: string;
+  entityId?: string;
+  sourceEvent?: string;
+  href?: string;
+}): QuickFillTarget | null {
+  if (item.entityType !== "property" || !item.entityId) return null;
+  const parsed = parseIntakeFieldGapSourceEvent(item.sourceEvent);
+  if (!parsed) return null;
+  const field = intakeQuickFillFieldFor(parsed.fieldLabel);
+  if (!field) return null;
+  const poNumber = poNumberFromNotificationHref(item.href);
+  if (!poNumber) return null;
+  return { field, poNumber, propertyId: item.entityId };
+}
 
 function BellIcon() {
   return (
@@ -58,6 +88,7 @@ export function NotificationCenter() {
     [items],
   );
   const [open, setOpen] = useState(false);
+  const [quickFill, setQuickFill] = useState<QuickFillTarget | null>(null);
   const isDesktopViewport = useViewportDesktop();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -181,6 +212,24 @@ export function NotificationCenter() {
               {item.body ? (
                 <p className="m-0 mt-1 text-text-3">{item.body}</p>
               ) : null}
+              {(() => {
+                const target = quickFillTargetFor(item);
+                if (!target) return null;
+                return (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-1.5"
+                    onClick={() => {
+                      setQuickFill(target);
+                      markRead(item.id);
+                    }}
+                  >
+                    إدخال القيمة الآن
+                  </Button>
+                );
+              })()}
             </div>
           ))
         )}
@@ -224,6 +273,15 @@ export function NotificationCenter() {
             {panel}
           </div>
         </>
+      ) : null}
+      {quickFill ? (
+        <IntakeFieldGapQuickFillDialog
+          field={quickFill.field}
+          poNumber={quickFill.poNumber}
+          propertyId={quickFill.propertyId}
+          onClose={() => setQuickFill(null)}
+          onSaved={() => setQuickFill(null)}
+        />
       ) : null}
     </div>
   );

@@ -33,7 +33,8 @@ function isAllowedEngineeringOfficeNotification(
   return (
     isEngineeringSurveyLifecycleEvent(sourceEvent) ||
     sourceEvent?.startsWith("distribution-assigned:") === true ||
-    sourceEvent?.startsWith("distribution-assigned-batch:") === true
+    sourceEvent?.startsWith("distribution-assigned-batch:") === true ||
+    sourceEvent?.startsWith("distribution-replaced:") === true
   );
 }
 
@@ -45,7 +46,8 @@ export function shouldDeliverDomainNotification(
   return (
     isEngineeringSurveyLifecycleEvent(eventName) ||
     eventName.startsWith("distribution-assigned:") ||
-    eventName.startsWith("distribution-assigned-batch:")
+    eventName.startsWith("distribution-assigned-batch:") ||
+    eventName.startsWith("distribution-replaced:")
   );
 }
 

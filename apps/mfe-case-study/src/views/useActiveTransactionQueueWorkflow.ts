@@ -28,7 +28,7 @@ export { EMPTY_TASKS };
 // Prefetch on hover/focus of queue rows — the row opens an Infath step
 // in the work screen, and its chunk was only fetched after click (bundle-preload).
 const preloadPoPropertyEnfathForm = () =>
-  void import("@case-study/mfe/components/po-intake/PoPropertyEnfathForm");
+  void import("@case-study/mfe/components/po-intake/PoPropertyDeedForm");
 
 export function useActiveTransactionQueueWorkflow({
   config,

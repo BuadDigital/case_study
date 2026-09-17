@@ -23,7 +23,7 @@ import {
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
-} from "../lib/domain/po-intake/property-enfath-validation";
+} from "../lib/domain/po-intake/property-deed-validation";
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,

@@ -56,7 +56,7 @@ export const PropertyDetailPropertyKeys = dynamic(
 );
 export const PropertyDetailEnfathUpload = dynamic(
   () =>
-    import("./PropertyDetailEnfathUpload").then(
+    import("./PropertyDetailUploadAssistant").then(
       (m) => m.PropertyDetailEnfathUpload,
     ),
   { loading: tabChunkFallback },

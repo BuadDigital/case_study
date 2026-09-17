@@ -16,7 +16,7 @@ import {
   infathFieldAction,
   infathFieldHasValue,
   type CopyKey,
-} from "./property-detail-enfath-upload-state";
+} from "./property-detail-upload-assistant-state";
 
 export function CopyButton({
   done,

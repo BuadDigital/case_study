@@ -9,7 +9,7 @@ import {
   DEFAULT_CLIENT_FIELD_POLICY,
   type ClientFieldPolicy,
 } from "../../lib/app-data/po-intake-data";
-import type { EnfathSectionProps } from "./po-property-enfath-form-state";
+import type { EnfathSectionProps } from "./po-property-deed-form-state";
 
 export function PoPropertyEnfathBourseSections({
   property,

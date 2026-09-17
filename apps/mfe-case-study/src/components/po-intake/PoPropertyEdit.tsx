@@ -40,7 +40,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
-import { PoPropertyEnfathForm } from "./PoPropertyEnfathForm";
+import { PoPropertyEnfathForm } from "./PoPropertyDeedForm";
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
@@ -48,7 +48,7 @@ import {
 import {
   firstEnfathValidationMessage,
   mergePropertyEnfathValidation,
-} from "../../lib/domain/po-intake/property-enfath-validation";
+} from "../../lib/domain/po-intake/property-deed-validation";
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";

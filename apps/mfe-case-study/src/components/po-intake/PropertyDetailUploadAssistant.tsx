@@ -11,12 +11,12 @@ import type {
   PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
-import { InfathSectionBlock } from "./PropertyDetailEnfathUploadRows";
+import { InfathSectionBlock } from "./PropertyDetailUploadAssistantRows";
 import {
   InfathAttachmentsPanel,
   InfathCollapseControls,
-} from "./PropertyDetailEnfathUploadPanels";
-import { usePropertyDetailEnfathUploadWorkflow } from "./usePropertyDetailEnfathUploadWorkflow";
+} from "./PropertyDetailUploadAssistantPanels";
+import { usePropertyDetailEnfathUploadWorkflow } from "./usePropertyDetailUploadAssistantWorkflow";
 
 export function PropertyDetailEnfathUpload({
   record,

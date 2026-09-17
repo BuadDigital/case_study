@@ -77,11 +77,12 @@ export function canReviewUnlistedDocuments(role: RoleId): boolean {
   );
 }
 
-/** Reassign case-study parties — section-supervisor+ permission. */
+/** Reassign case-study parties — section-supervisor+ and the case specialist on the file. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
     role === "section-supervisor" ||
-    role === "general-manager"
+    role === "general-manager" ||
+    role === "case-specialist"
   );
 }
