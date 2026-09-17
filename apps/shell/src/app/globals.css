@@ -5,9 +5,9 @@
 @source "../../../../packages/**/*.{ts,tsx}";
 
 @theme inline {
-  --font-sans:
-    var(--font-arabic), "Tajawal", "Segoe UI", Tahoma, system-ui,
-    sans-serif;
+  --font-sans: var(--font-app);
+  --font-report: var(--font-report);
+  --font-letter: var(--font-letter);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -22,6 +22,9 @@
   --color-teal-light: var(--teal-light);
   --color-teal-text: var(--teal-text);
   --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-success: var(--on-ink-success);
+  --color-on-ink-danger: var(--on-ink-danger);
   --color-navy-3: var(--navy-3);
   --color-navy-soft: var(--navy-soft);
   --color-gold: var(--gold);
@@ -67,6 +70,10 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-modal: 0 8px 32px rgba(15, 52, 96, 0.18);
   --default-border-color: var(--color-border);
+  --ease-out-quart: var(--ease-out-quart);
+  --duration-fast: var(--motion-fast);
+  --duration-base: var(--motion-base);
+  --duration-slow: var(--motion-slow);
 }
 
 
@@ -116,17 +123,23 @@
 
   a:focus-visible,
 
-  button:focus-visible,
-
   input:focus-visible,
 
   select:focus-visible,
 
-  textarea:focus-visible,
+  textarea:focus-visible {
+
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 2px;
+
+  }
+
+  /* Every button and tab — docs/new-look decision: 3px gold ring (not the 2px primary-color one above). */
+  button:focus-visible,
 
   [role="tab"]:focus-visible {
 
-    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline: 3px solid color-mix(in srgb, var(--gold) 55%, transparent);
     outline-offset: 2px;
 
   }

@@ -21,15 +21,17 @@ export {
   queueTableWrapClassName,
 } from "../lib/page-layout-classes";
 
+export type PageShellProps = HTMLAttributes<HTMLDivElement> & {
+  /** `canvas` — gray KPI-style background; `sheet` — full white surface. @default "sheet" */
+  variant?: "sheet" | "canvas";
+};
+
 /** Full-width flat page shell (replaces `.page-shell`). */
 export function PageShell({
   className,
   variant = "sheet",
   ...props
-}: HTMLAttributes<HTMLDivElement> & {
-  /** `canvas` — gray KPI-style background; `sheet` — full white surface. */
-  variant?: "sheet" | "canvas";
-}) {
+}: PageShellProps) {
   return (
     <div
       className={cn(
@@ -44,11 +46,13 @@ export function PageShell({
   );
 }
 
+export type OperationalPanelProps = HTMLAttributes<HTMLDivElement>;
+
 /** White bordered panel on the operational canvas (tables, queues, forms). */
 export function OperationalPanel({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: OperationalPanelProps) {
   return (
     <div className={cn(operationalPanelClassName, className)} {...props} />
   );
@@ -62,13 +66,25 @@ function PageBody({
   return <div className={cn(pageBodyClassName, className)} {...props} />;
 }
 
+export type PageGutterProps = HTMLAttributes<HTMLDivElement>;
+
 /** Horizontal gutter padding only (replaces `.page-gutter`). */
 export function PageGutter({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: PageGutterProps) {
   return <div className={cn(pageGutterClassName, className)} {...props} />;
 }
+
+export type PageShellHeaderProps = HTMLAttributes<HTMLElement> & {
+  title?: ReactNode;
+  /** Render `meta`/`children` without the `<h1>` row. @default false */
+  hideTitle?: boolean;
+  /** Small text row under the title (breadcrumbs, counts). */
+  meta?: ReactNode;
+  /** Right-aligned controls (usually `Button`s). */
+  actions?: ReactNode;
+};
 
 /** Gradient header strip used on queue / PO / operational pages. */
 export function PageShellHeader({
@@ -78,12 +94,7 @@ export function PageShellHeader({
   actions,
   children,
   className,
-}: HTMLAttributes<HTMLElement> & {
-  title?: ReactNode;
-  hideTitle?: boolean;
-  meta?: ReactNode;
-  actions?: ReactNode;
-}) {
+}: PageShellHeaderProps) {
   return (
     <header className={cn(pageShellHeaderClassName, className)}>
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -108,13 +119,28 @@ export function PageShellHeader({
   );
 }
 
-/** Toolbar row under the page header (filters, search). */
+export type PageToolbarProps = HTMLAttributes<HTMLDivElement>;
+
+/**
+ * Toolbar row under the page header — row one of a stacked FilterBar:
+ * `OperationalToolbarSearch` | spacer | a "تصفية" `Button` (pair it with a
+ * live-count `Badge`/`StatusBadge` for the active-filter count, opens a
+ * `SideSheet`) | `OperationalToolbarPrimaryButton`. Put `FilterChips` (row
+ * two) directly below this as a sibling, not nested inside it.
+ */
 export function PageToolbar({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: PageToolbarProps) {
   return <div className={cn(pageToolbarClassName, className)} {...props} />;
 }
+
+export type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
+  line: ReactNode;
+  hint?: ReactNode;
+  /** Denser panel empty (keys / finance / properties). @default false */
+  panel?: boolean;
+};
 
 /** Standard empty queue / table state. */
 export function EmptyState({
@@ -124,12 +150,7 @@ export function EmptyState({
   children,
   panel = false,
   ...props
-}: HTMLAttributes<HTMLDivElement> & {
-  line: ReactNode;
-  hint?: ReactNode;
-  /** Denser panel empty (keys / finance / properties). */
-  panel?: boolean;
-}) {
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -154,7 +175,7 @@ export function EmptyState({
         <p
           className={cn(
             "text-text-3",
-            panel ? "mt-1 text-[13px]" : "mt-2 text-[11px]",
+            panel ? "mt-1 text-[13px]" : "mt-2 text-[12px]",
           )}
         >
           {hint}
@@ -164,12 +185,14 @@ export function EmptyState({
   );
 }
 
+export type QueueTableHintProps = HTMLAttributes<HTMLParagraphElement>;
+
 /** Hint line under operational queue tables. */
 export function QueueTableHint({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLParagraphElement>) {
+}: QueueTableHintProps) {
   return (
     <p className={cn(queueTableHintClassName, className)} {...props}>
       {children}
@@ -177,11 +200,13 @@ export function QueueTableHint({
   );
 }
 
+export type ReportPageBodyProps = HTMLAttributes<HTMLDivElement>;
+
 /** Dashboard / reporting pages — scrollable body with vertical rhythm. */
 export function ReportPageBody({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: ReportPageBodyProps) {
   return (
     <PageBody className={cn("flex flex-col gap-4", className)} {...props} />
   );

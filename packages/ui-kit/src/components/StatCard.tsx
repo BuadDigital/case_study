@@ -110,7 +110,7 @@ export function StatLabel({
   return (
     <div
       className={cn(
-        "mb-[7px] w-full text-start text-[11px] text-text-3",
+        "mb-[7px] w-full text-start text-[12px] text-text-3",
         className,
       )}
       {...props}

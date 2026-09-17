@@ -12,26 +12,60 @@ const toneClasses = {
   orange: "bg-orange-bg text-orange",
 } as const;
 
+/** Solid-fill pairing for `inTable` — the status color itself, not its light wash. */
+const toneFilledClasses = {
+  default: "bg-text-2 text-white",
+  primary: "bg-ink text-on-ink",
+  success: "bg-success text-on-ink",
+  warning: "bg-warning text-amber-text",
+  danger: "bg-danger text-on-ink",
+  info: "bg-info text-on-ink",
+  purple: "bg-purple text-white",
+  orange: "bg-orange text-white",
+} as const;
+
 export type BadgeTone = keyof typeof toneClasses;
 
+export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
+  /** Semantic tone — picks the fill/text pair from `tokens/colors.css`. @default "default" */
+  tone?: BadgeTone;
+  /** Leading status dot in `currentColor`. @default false */
+  dot?: boolean;
+  /**
+   * Uniform filled chip for a table cell — fixed 108×26px, centered text,
+   * no dot, `font-medium`/12px, filled with the tone's solid color instead
+   * of its light wash. Pair with a 132px-wide status column.
+   * @default false
+   */
+  inTable?: boolean;
+};
+
+/**
+ * Small pill for a status/tag value — tone-filled, optional leading dot.
+ * Inside a table cell it should render as `StatusBadge` instead, which
+ * standardizes size for column alignment.
+ */
 export function Badge({
   className,
   tone = "default",
   dot = false,
+  inTable = false,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone; dot?: boolean }) {
+}: BadgeProps) {
   return (
     <span
       dir="rtl"
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-[11px] py-[3px] text-xs font-bold whitespace-nowrap",
-        toneClasses[tone],
+        inTable
+          ? "inline-flex h-[26px] w-[108px] items-center justify-center rounded-md text-[12px] font-medium whitespace-nowrap"
+          : "inline-flex items-center gap-1.5 rounded-md px-[11px] py-[3px] text-xs font-bold whitespace-nowrap",
+        inTable ? toneFilledClasses[tone] : toneClasses[tone],
         className,
       )}
       {...props}
     >
-      {dot ? (
+      {dot && !inTable ? (
         <span className="size-1.5 shrink-0 rounded-full bg-current opacity-90" />
       ) : null}
       {children}

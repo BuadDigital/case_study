@@ -1,10 +1,13 @@
 import type { ButtonHTMLAttributes, HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
 
+export type ModalOverlayProps = HTMLAttributes<HTMLDivElement>;
+
+/** Full-viewport navy scrim + centering flex — the fixed-position backdrop behind `ModalCard`. Most call sites want `AppModal` instead, which composes this whole family. */
 export function ModalOverlay({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: ModalOverlayProps) {
   return (
     <div
       className={cn(
@@ -17,11 +20,17 @@ export function ModalOverlay({
   );
 }
 
+export type ModalCardProps = HTMLAttributes<HTMLDivElement> & {
+  /** 720px max-width instead of 420px — two-column forms. @default false */
+  wide?: boolean;
+};
+
+/** The dialog panel itself — compose with `ModalHeader`/`ModalBody`/`ModalFooter` inside a `ModalOverlay`. */
 export function ModalCard({
   className,
   wide,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { wide?: boolean }) {
+}: ModalCardProps) {
   return (
     <div
       className={cn(
@@ -35,10 +44,13 @@ export function ModalCard({
   );
 }
 
+export type ModalHeaderProps = HTMLAttributes<HTMLElement>;
+
+/** Dialog header row — pair with `ModalTitle` and (usually) `ModalClose`. */
 export function ModalHeader({
   className,
   ...props
-}: HTMLAttributes<HTMLElement>) {
+}: ModalHeaderProps) {
   return (
     <header
       className={cn(
@@ -50,10 +62,13 @@ export function ModalHeader({
   );
 }
 
+export type ModalTitleProps = HTMLAttributes<HTMLHeadingElement>;
+
+/** Dialog `<h2>` — give it an `id` and point `AppModal`'s (or your own) `aria-labelledby` at it. */
 export function ModalTitle({
   className,
   ...props
-}: HTMLAttributes<HTMLHeadingElement>) {
+}: ModalTitleProps) {
   return (
     <h2
       className={cn(
@@ -65,11 +80,14 @@ export function ModalTitle({
   );
 }
 
+export type ModalCloseProps = ButtonHTMLAttributes<HTMLButtonElement>;
+
+/** The `×` icon button in the header — wire `onClick` to your close handler; give it `aria-label="إغلاق"`. */
 export function ModalClose({
   className,
   type = "button",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+}: ModalCloseProps) {
   return (
     <button
       type={type}
@@ -82,10 +100,13 @@ export function ModalClose({
   );
 }
 
+export type ModalBodyProps = HTMLAttributes<HTMLDivElement>;
+
+/** Scrollable dialog content area between the header and footer. */
 export function ModalBody({
   className,
   ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: ModalBodyProps) {
   return (
     <div
       className={cn("min-h-0 flex-1 overflow-y-auto p-4", className)}
@@ -94,11 +115,14 @@ export function ModalBody({
   );
 }
 
+export type ModalFooterProps = HTMLAttributes<HTMLElement>;
+
+/** Dialog action row — right-aligned `Button`s; on narrow viewports they stack full-width automatically. */
 export function ModalFooter({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLElement>) {
+}: ModalFooterProps) {
   return (
     <footer
       className={cn(

@@ -64,7 +64,7 @@ function LoadingBox({
         <div
           className={cn(
             "text-text-3",
-            compact ? "mt-0.5 text-[11px]" : "mt-1 text-[12px]",
+            compact ? "mt-0.5 text-[12px]" : "mt-1 text-[12px]",
           )}
         >
           {hint}

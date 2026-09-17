@@ -14,6 +14,34 @@ import {
 } from "./Modal";
 import { opsModalClose, opsModalFooter } from "../lib/ops-chrome";
 
+export type AppModalProps = {
+  open: boolean;
+  title: string;
+  subtitle?: ReactNode;
+  /** Optional leading icon in the header (e.g. reopen lock). */
+  headerIcon?: ReactNode;
+  children: ReactNode;
+  /** Action row — usually `Button`s; right-aligned, stacks full-width on narrow viewports. */
+  footer?: ReactNode;
+  onClose: () => void;
+  /** Wider card (720px) for two-column forms (PO intake, etc.). @default false */
+  wide?: boolean;
+  /** Explicit max width in px (e.g. 720 for HTML task create). Overrides `wide`'s default. */
+  maxWidthPx?: number;
+  /** Ops create-task look: start-aligned title, gray ×, surface-2 footer. */
+  look?: "ops-html";
+  /** Sit above another already-open modal (`--z-modal-2`). @default false */
+  stacked?: boolean;
+};
+
+/**
+ * Composed confirmation/form dialog — `ModalOverlay` + `ModalCard` +
+ * `ModalHeader`/`ModalTitle`/`ModalClose` + `ModalBody` + optional
+ * `ModalFooter`. Escape closes; Tab is trapped inside the dialog; focus
+ * returns to whatever triggered the open on close; background scroll is
+ * locked; `aria-labelledby` points at `ModalTitle`. Prefer this over
+ * assembling the `Modal.*` pieces by hand.
+ */
 export function AppModal({
   open,
   title,
@@ -23,29 +51,13 @@ export function AppModal({
   footer,
   onClose,
   wide,
-  /** Explicit max width (e.g. 720 for HTML task create). Overrides wide default. */
   maxWidthPx,
-  /** Ops create-task look: start title, gray X, surface-2 footer */
   look,
-  /** Sit above another open modal (`--z-modal-2`). */
   stacked,
-}: {
-  open: boolean;
-  title: string;
-  subtitle?: ReactNode;
-  /** Optional leading icon in the header (e.g. reopen lock). */
-  headerIcon?: ReactNode;
-  children: ReactNode;
-  footer?: ReactNode;
-  onClose: () => void;
-  /** Wider card for two-column forms (PO intake, etc.). */
-  wide?: boolean;
-  maxWidthPx?: number;
-  look?: "ops-html";
-  stacked?: boolean;
-}) {
+}: AppModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const maxPx = maxWidthPx ?? (wide ? 720 : 420);
@@ -64,10 +76,51 @@ export function AppModal({
     };
   }, [open]);
 
+  // Remember the trigger and give it focus back once the dialog closes.
+  useEffect(() => {
+    if (!open) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    return () => {
+      openerRef.current?.focus?.();
+      openerRef.current = null;
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCloseRef.current();
+      if (e.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const root = panelRef.current;
+      if (!root) return;
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusables.length === 0) {
+        e.preventDefault();
+        root.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const insideRoot = !!active && root.contains(active);
+      if (e.shiftKey) {
+        if (!insideRoot || active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (!insideRoot || active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -127,7 +180,7 @@ export function AppModal({
                   className={
                     headerIcon
                       ? "m-0 mt-[5px] text-[12.5px] font-normal leading-[1.7] text-text-2"
-                      : "m-0 mt-1 text-[11.5px] font-normal text-text-3"
+                      : "m-0 mt-1 text-[12px] font-normal text-text-3"
                   }
                 >
                   {subtitle}

@@ -143,7 +143,7 @@ export const opsPpBadge =
 
 /** Round count badge. */
 export const opsCountBadge =
-  "inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-gold-soft px-1.5 text-[11px] font-bold text-gold-d";
+  "inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-gold-soft px-1.5 text-[12px] font-bold text-gold-d";
 
 export const opsIconBoxGold =
   "grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-gold-soft text-gold-d";
@@ -156,9 +156,9 @@ export const opsLetterHead =
 
 export const opsLetterTitle = "text-[13.5px] font-extrabold text-heading";
 
-export const opsLetterSub = "text-[11.5px] leading-relaxed text-text-3";
+export const opsLetterSub = "text-[12px] leading-relaxed text-text-3";
 
-export const opsLetterMeta = "text-[11.5px] font-semibold text-text-3";
+export const opsLetterMeta = "text-[12px] font-semibold text-text-3";
 
 const opsTfSegBase = "cursor-pointer border px-[15px] py-[9px] font-[inherit] text-[12.5px] font-semibold transition-[background,color,border-color] duration-[130ms] first:rounded-s-[9px] last:rounded-e-[9px] not-first:border-s-0";
 

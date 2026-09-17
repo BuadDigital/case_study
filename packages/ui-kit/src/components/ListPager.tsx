@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cn } from "../lib/cn";
 import { Button } from "./Button";
 
@@ -28,15 +31,6 @@ export function listPagerWindow(input: {
   };
 }
 
-/** Page numbers to show: every page up to 7, else first / last / the current ±1. */
-function visiblePages(totalPages: number, safePage: number): number[] {
-  return Array.from({ length: totalPages }, (_, i) => i + 1).filter((n) => {
-    if (totalPages <= 7) return true;
-    if (n === 1 || n === totalPages) return true;
-    return Math.abs(n - safePage) <= 1;
-  });
-}
-
 export type ListPagerProps = {
   page: number;
   totalCount: number;
@@ -55,14 +49,16 @@ export type ListPagerProps = {
   pending?: boolean;
   /** The inverse signal: `ready={false}` is the same as `pending`. */
   ready?: boolean;
+  /** The counted noun after the total (e.g. "معاملة", "طرف"). @default "نتيجة" */
+  unit?: string;
   className?: string;
 };
 
 /**
- * The shared list pager: the range label «عرض X–Y من N نتيجة», previous / next
- * buttons («الصفحة السابقة» / «الصفحة التالية») and the numbered pages with
- * `aria-current="page"` on the current one — the markup the PO list renders
- * and the finance journeys assert against.
+ * The shared list pager: total + range («2,480 معاملة · 1–25»), a
+ * type-to-jump «صفحة [ N ] من M» field, and previous/next — no numbered
+ * page-number strip (docs/new-look decision, option B). The markup the PO
+ * list renders and the finance journeys assert against.
  */
 export function ListPager({
   page,
@@ -74,6 +70,7 @@ export function ListPager({
   onPageChange,
   pending = false,
   ready,
+  unit = "نتيجة",
   className,
 }: ListPagerProps) {
   // Without an explicit page size, recover it from the envelope so the
@@ -93,6 +90,20 @@ export function ListPager({
   const end = rangeEnd ?? win.rangeEnd;
   const waiting = pending || ready === false;
 
+  const [pageDraft, setPageDraft] = useState(String(win.safePage));
+  useEffect(() => {
+    setPageDraft(String(win.safePage));
+  }, [win.safePage]);
+
+  function commitPageDraft() {
+    const n = Math.trunc(Number(pageDraft));
+    if (Number.isFinite(n) && n >= 1 && n <= win.totalPages && n !== win.safePage) {
+      onPageChange(n);
+    } else {
+      setPageDraft(String(win.safePage));
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -105,15 +116,34 @@ export function ListPager({
           "—"
         ) : (
           <>
-            عرض{" "}
-            <b className="font-bold text-heading">
-              {start}–{end}
+            <b className="font-medium text-heading tabular-nums">
+              {totalCount.toLocaleString("en-US")}
             </b>{" "}
-            من <b className="font-bold text-heading">{totalCount}</b> نتيجة
+            {unit} · <span className="tabular-nums">{start}–{end}</span>
           </>
         )}
       </span>
       <div className="flex items-center gap-1.5">
+        <span className="text-[13px] text-text-3">صفحة</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label="رقم الصفحة"
+          className="h-[30px] w-11 rounded-[9px] border border-border-md bg-surface text-center text-[13px] text-text tabular-nums outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
+          value={pageDraft}
+          disabled={waiting}
+          onChange={(e) => setPageDraft(e.target.value.replace(/\D/g, ""))}
+          onBlur={commitPageDraft}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitPageDraft();
+            }
+          }}
+        />
+        <span className="text-[13px] text-text-3 tabular-nums">
+          من {win.totalPages.toLocaleString("en-US")}
+        </span>
         <Button
           type="button"
           size="sm"
@@ -126,28 +156,6 @@ export function ListPager({
         >
           ‹
         </Button>
-        {visiblePages(win.totalPages, win.safePage).map((n, idx, arr) => {
-          const prev = arr[idx - 1];
-          const showGap = prev != null && n - prev > 1;
-          return (
-            <span key={n} className="contents">
-              {showGap ? (
-                <span className="px-1 text-[12px] text-text-3">…</span>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant={n === win.safePage ? "primary" : "default"}
-                className="h-[30px] min-w-[30px] px-1.5"
-                aria-current={n === win.safePage ? "page" : undefined}
-                onClick={() => onPageChange(n)}
-                showActionToast={false}
-              >
-                {n}
-              </Button>
-            </span>
-          );
-        })}
         <Button
           type="button"
           size="sm"

@@ -17,16 +17,6 @@ function mapPropertyTypeToAssetSubject(propertyType: string): string {
   return "";
 }
 
-function mapClassificationToUsage(classification: string): string {
-  const c = classification.trim();
-  if (!c) return "";
-  if (c.includes("سكن")) return "سكني";
-  if (c.includes("تجار")) return "تجاري";
-  if (c.includes("زراع")) return "زراعي";
-  if (c.includes("صناع")) return "صناعي";
-  return "";
-}
-
 function pickFeatureOption(
   fieldKey: string,
   raw: string,
@@ -56,7 +46,6 @@ export function applyEnfathPrefillToInspectorDraft(
   };
 
   setFeature("assetSubject", mapPropertyTypeToAssetSubject(property.propertyType));
-  setFeature("propertyUsage", mapClassificationToUsage(property.classification));
   setFeature(
     "zoneStatus",
     pickFeatureOption("zoneStatus", property.deedStatus),

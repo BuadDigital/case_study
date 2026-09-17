@@ -1,0 +1,87 @@
+/* Reference only — legacy class names (ej-*). Port the VALUES and structure to ui-kit / Tailwind; do not copy class names. */
+
+/* ── a11y: visible focus on every interactive control (added 2026-09-17 clean-up) ── */
+.ej-btn:focus-visible,.ot-primary:focus-visible,.ej-tab:focus-visible,.ej-modal__close:focus-visible,.ej-icon-btn:focus-visible,.ej-nav-item:focus-visible{outline:3px solid color-mix(in srgb,var(--gold) 55%,transparent);outline-offset:2px}
+.ej-btn--primary:focus-visible,.ot-primary:focus-visible{outline-color:var(--gold)}
+
+/* ── Row card: the transaction row below 900px (portals, phone) — a CSS pattern, not a bundle export ── */
+.ej-rows{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.ej-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--border);text-decoration:none;color:inherit;transition:background-color var(--motion-base,150ms)}
+.ej-row:first-child{border-top:0}
+.ej-row:hover{background:var(--row-hover)}
+.ej-row:focus-visible{outline:3px solid color-mix(in srgb,var(--gold) 55%,transparent);outline-offset:-3px}
+.ej-row__rail{width:3px;align-self:stretch;border-radius:2px;background:var(--border-md);flex-shrink:0}
+.ej-row__rail--success{background:var(--success)}.ej-row__rail--warning{background:var(--warning)}.ej-row__rail--danger{background:var(--danger)}.ej-row__rail--info{background:var(--info)}
+.ej-row__main{display:flex;flex-direction:column;gap:3px;flex-grow:1;min-width:0}
+.ej-row__title{display:flex;gap:10px;align-items:baseline;font-size:var(--fs-body);font-weight:500;color:var(--heading)}
+.ej-row__title .lat{font-size:var(--fs-hint);font-weight:400;color:var(--text-2)}
+.ej-row__meta{font-size:var(--fs-hint);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ej-row__actions{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text-2);flex-shrink:0}
+@media (max-width:900px){.ej-table-wrap--responsive .ej-table{display:none}.ej-table-wrap--responsive .ej-rows{display:flex}}
+@media (min-width:901px){.ej-table-wrap--responsive .ej-rows{display:none}}
+
+/* ── Status inside tables and row cards (approved 2026-09-17, option B): filled chip, one size 108×26, centred label, no dot ── */
+.ej-table td .ej-badge,.ej-row .ej-badge{min-width:108px;height:26px;box-sizing:border-box;padding:0 10px;justify-content:center;font-weight:500;font-size:var(--fs-hint);gap:0}
+.ej-table td .ej-badge__dot,.ej-row .ej-badge__dot{display:none}
+.ej-table th.ej-th--status,.ej-table td.ej-td--status{width:132px}
+
+/* ── Table footer (approved 2026-09-17, option B): total + range, page-of-N with a typeable page field, prev/next ── */
+.ej-table-foot{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface-2);font-size:var(--fs-label);color:var(--text-2)}
+.ej-table-foot__total{color:var(--heading);font-weight:500}
+.ej-table-foot__spacer{flex-grow:1}
+.ej-table-foot__page{display:inline-flex;align-items:center;gap:6px}
+.ej-table-foot__input{width:44px;height:30px;box-sizing:border-box;text-align:center;border-radius:var(--radius);border:1px solid var(--border-md);background:var(--surface);font-family:inherit;font-size:var(--fs-label);color:var(--ink);font-variant-numeric:tabular-nums}
+.ej-table-foot__input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 22%,transparent)}
+.ej-table-foot__nav{display:flex;gap:4px}
+.ej-table-foot__btn{height:30px;min-width:30px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius);border:1px solid var(--border-md);background:var(--surface);color:var(--ink);font-family:inherit;cursor:pointer;transition:background var(--motion-base,150ms)}
+.ej-table-foot__btn:hover:not(:disabled){background:var(--row-hover)}
+.ej-table-foot__btn:disabled{color:var(--text-3);cursor:default}
+.ej-table-foot__btn:focus-visible{outline:3px solid color-mix(in srgb,var(--gold) 55%,transparent);outline-offset:2px}
+
+/* ── Button icons (approved 2026-09-17): a 16px stroked glyph before the label on primary actions only ── */
+.ej-btn svg,.ot-primary svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ej-btn--sm svg{width:14px;height:14px}
+
+/* ── Toolbar filters (approved 2026-09-17): quick-filter chips with counts, advanced-filter button, active-filter tags ── */
+.ej-toolbar--stacked{flex-direction:column;align-items:stretch;gap:0}
+.ej-toolbar__row{display:flex;align-items:center;gap:10px;padding:12px 14px 8px}
+.ej-toolbar__chips{display:flex;align-items:center;gap:8px;padding:0 14px 12px;flex-wrap:wrap}
+.ej-chip{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--border-md);background:var(--surface);color:var(--ink);font-size:var(--fs-label);font-weight:500;font-family:inherit;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:background var(--motion-base,150ms),border-color var(--motion-base,150ms)}
+.ej-chip:hover{background:var(--row-hover)}
+.ej-chip:focus-visible{outline:3px solid color-mix(in srgb,var(--gold) 55%,transparent);outline-offset:2px}
+.ej-chip--active{background:var(--ink);border-color:var(--ink);color:var(--on-ink,#fff)}
+.ej-chip__count{font-size:var(--fs-hint);padding:1px 7px;border-radius:9px;background:var(--gold-soft);color:var(--text-1);font-variant-numeric:tabular-nums}
+.ej-chip--active .ej-chip__count{background:color-mix(in srgb,var(--on-ink,#fff) 18%,transparent);color:var(--on-ink,#fff)}
+.ej-chip__count--alert{color:var(--red-text)}
+.ej-filter-btn{height:38px;padding:0 14px;border-radius:var(--radius);border:1px solid var(--border-md);background:var(--surface);color:var(--ink);font-size:var(--fs-body);font-weight:500;font-family:inherit;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.ej-filter-btn__count{font-size:var(--fs-hint);padding:0 6px;border-radius:8px;background:var(--gold-soft);font-variant-numeric:tabular-nums}
+.ej-filter-tags{margin-inline-start:auto;display:inline-flex;gap:6px;align-items:center;font-size:var(--fs-hint);color:var(--text-2)}
+.ej-filter-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--radius-sm);background:var(--gold-soft);color:var(--text-1)}
+.ej-filter-tag__x{color:var(--text-3);cursor:pointer;border:0;background:transparent;font-family:inherit;padding:0}
+/* ── Bulk-action bar (approved 2026-09-17): replaces the toolbar while rows are selected ── */
+.ej-bulkbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--ink);color:var(--on-ink,#fff)}
+.ej-bulkbar__count{font-size:var(--fs-label);font-weight:500}
+.ej-bulkbar__sep{width:1px;height:20px;background:color-mix(in srgb,var(--on-ink,#fff) 20%,transparent)}
+.ej-bulkbar__btn{height:32px;padding:0 12px;border-radius:var(--radius);border:1px solid color-mix(in srgb,var(--on-ink,#fff) 30%,transparent);background:transparent;color:var(--on-ink,#fff);font-size:var(--fs-label);font-weight:500;font-family:inherit;cursor:pointer}
+.ej-bulkbar__btn:hover{background:color-mix(in srgb,var(--on-ink,#fff) 10%,transparent)}
+.ej-bulkbar__close{margin-inline-start:auto;height:32px;width:32px;border-radius:var(--radius);border:0;background:transparent;color:var(--on-ink,#fff);font-size:18px;cursor:pointer}
+.ej-table input[type=checkbox]{width:16px;height:16px;accent-color:var(--ink);margin:0}
+.ej-table th.ej-th--select,.ej-table td.ej-td--select{width:36px}
+
+/* ── Side sheet (approved 2026-09-17): advanced filters and any secondary form that must keep the list in view ── */
+.ej-sheet-overlay{position:fixed;inset:0;z-index:1000;background:color-mix(in srgb,var(--ink) 45%,transparent)}
+.ej-sheet{position:fixed;top:0;bottom:0;inset-inline-start:0;z-index:1001;width:380px;max-width:100vw;display:flex;flex-direction:column;background:var(--surface);box-shadow:var(--shadow-lg);animation:ej-sheet-in var(--motion-slow,280ms) var(--ease-out-quart,cubic-bezier(.22,1,.36,1))}
+@keyframes ej-sheet-in{from{transform:translateX(-100%)}to{transform:none}}
+[dir="ltr"] .ej-sheet{inset-inline-start:auto;inset-inline-end:0}
+.ej-sheet__header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border)}
+.ej-sheet__title{margin:0;font-size:16px;font-weight:700;color:var(--heading);flex-grow:1}
+.ej-sheet__close{width:30px;height:30px;border:0;background:transparent;color:var(--text-2);font-size:20px;cursor:pointer;font-family:inherit;border-radius:var(--radius)}
+.ej-sheet__close:hover{background:var(--row-hover)}
+.ej-sheet__body{padding:16px 20px;overflow:auto;flex-grow:1}
+.ej-sheet__footer{display:flex;gap:8px;align-items:center;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface-2)}
+.ej-sheet__footer .ej-btn--ghost{margin-inline-start:auto}
+.ej-check{display:flex;align-items:center;gap:8px;font-size:var(--fs-label);color:var(--text-1);cursor:pointer}
+.ej-check input{width:16px;height:16px;accent-color:var(--ink);margin:0}
+.ej-check-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ej-check-group__label{font-size:var(--fs-label);font-weight:500;color:var(--text-1)}
+@media (prefers-reduced-motion:reduce){.ej-sheet{animation:none}}

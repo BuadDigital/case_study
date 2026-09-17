@@ -202,14 +202,16 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
     await page.goto("/po", { waitUntil: "commit" });
     await waitForPageTitle(page, "أوامر العمل");
 
-    const rangeLabel = page.getByText(/عرض\s.+\sمن\s.+\sنتيجة/).first();
+    // docs/new-look ListPager: total + range first («N نتيجة · start–end»),
+    // then a type-to-jump «صفحة [ N ] من M» field — no numbered page strip.
+    const rangeLabel = page.getByText(/[\d,]+\s+نتيجة\s+·\s+\d+–\d+/).first();
     await expect(rangeLabel).toBeVisible({ timeout: 60_000 });
     await expect(
       page.getByRole("button", { name: "الصفحة السابقة" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "الصفحة التالية" })).toBeVisible();
-    // Numbered pager — the current page is marked with aria-current.
-    await expect(page.locator('[aria-current="page"]')).toHaveCount(1);
+    // The jump-to-page field reflects the current page.
+    await expect(page.getByLabel("رقم الصفحة").first()).toHaveValue("1");
 
     // PO_LIST_PAGE_SIZE = 10, and the server clamps rather than ignores it.
     expect(

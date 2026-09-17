@@ -47,17 +47,22 @@ function CaretGlyph() {
   );
 }
 
+export type OperationalToolbarSearchProps = InputHTMLAttributes<HTMLInputElement> & {
+  inputClassName?: string;
+  /** Extra control rendered before the input (after the search glyph). */
+  startAdornment?: ReactNode;
+  /** Extra control rendered after the input (e.g. a clear button). */
+  endAdornment?: ReactNode;
+};
+
+/** Search input for a `PageToolbar`/`FilterBar` row — leading magnifier glyph, optional adornments. */
 export function OperationalToolbarSearch({
   className,
   inputClassName,
   startAdornment,
   endAdornment,
   ...props
-}: InputHTMLAttributes<HTMLInputElement> & {
-  inputClassName?: string;
-  startAdornment?: ReactNode;
-  endAdornment?: ReactNode;
-}) {
+}: OperationalToolbarSearchProps) {
   return (
     <div className={cn(operationalToolbarSearchWrapClassName, className)}>
       <span className={operationalToolbarSearchIconClassName}>
@@ -80,14 +85,17 @@ export function OperationalToolbarSearch({
   );
 }
 
+export type OperationalToolbarSelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  selectClassName?: string;
+};
+
+/** Native `<select>` for a toolbar row, with the shared caret glyph and border styling. */
 export function OperationalToolbarSelect({
   className,
   selectClassName,
   children,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & {
-  selectClassName?: string;
-}) {
+}: OperationalToolbarSelectProps) {
   return (
     <div className={cn(operationalToolbarSelectWrapClassName, className)}>
       <select
@@ -103,17 +111,29 @@ export function OperationalToolbarSelect({
   );
 }
 
+export type OperationalToolbarPrimaryButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** Leading glyph, 16px, stroke 2 / `currentColor` (e.g. plus for create, up-arrow for upload). */
+  icon?: ReactNode;
+};
+
+/** The toolbar's one primary action (e.g. "طلب جديد") — navy fill, lifts 1px on hover. */
 export function OperationalToolbarPrimaryButton({
   className,
   children,
+  icon,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: OperationalToolbarPrimaryButtonProps) {
   return (
     <button
       type="button"
-      className={cn(operationalToolbarPrimaryButtonClassName, className)}
+      className={cn(
+        operationalToolbarPrimaryButtonClassName,
+        icon ? "[&>svg]:h-4 [&>svg]:w-4" : null,
+        className,
+      )}
       {...props}
     >
+      {icon}
       {children}
     </button>
   );

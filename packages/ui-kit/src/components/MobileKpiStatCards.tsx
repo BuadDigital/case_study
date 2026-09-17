@@ -81,7 +81,7 @@ export function MobileKpiStatCards({
                 <div className="mt-1.5 text-[12px] font-semibold leading-snug text-text">
                   {card.label}
                 </div>
-                <div className="mt-0.5 truncate text-[10.5px] text-text-3">
+                <div className="mt-0.5 truncate text-[12px] text-text-3">
                   {card.sub}
                 </div>
               </div>
