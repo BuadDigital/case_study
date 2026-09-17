@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyProperty } from "../../../app-data/po-intake-data";
-import { validatePropertyEnfathFields } from "../property-enfath-validation";
+import { validatePropertyEnfathFields } from "../property-deed-validation";
 
 describe("validatePropertyEnfathFields — field policy", () => {
   const deedProperty = () => ({

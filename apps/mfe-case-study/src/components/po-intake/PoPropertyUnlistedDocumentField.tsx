@@ -21,7 +21,7 @@ import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import {
   withoutFileName,
   type EnfathSectionProps,
-} from "./po-property-enfath-form-state";
+} from "./po-property-deed-form-state";
 
 export function PoPropertyUnlistedDocumentField({
   property,

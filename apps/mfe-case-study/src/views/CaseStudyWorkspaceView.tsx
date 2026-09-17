@@ -288,9 +288,7 @@ function CaseStudyAppraisalPanel({
       <section className="mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
-          <h3 className="m-0 text-[14px] font-extrabold text-heading">
-            معاينة العقار — مراجعة المشرف
-          </h3>
+          <h3 className="m-0 text-[14px] font-extrabold text-heading"> معاينة العقار — مراجعة الاخصائي </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
           {inspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)]">

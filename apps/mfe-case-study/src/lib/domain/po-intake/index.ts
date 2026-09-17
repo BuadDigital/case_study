@@ -8,4 +8,4 @@ export {
   validatePropertyEnfathFields,
   mergePropertyEnfathValidation,
   firstEnfathValidationMessage,
-} from "./property-enfath-validation";
+} from "./property-deed-validation";

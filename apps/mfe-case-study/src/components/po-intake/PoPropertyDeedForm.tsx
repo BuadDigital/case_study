@@ -17,9 +17,9 @@ import {
   Note,
 } from "@platform/ui-kit";
 import { PoContactEditor } from "./PoContactEditor";
-import { PoPropertyEnfathBourseSections } from "./PoPropertyEnfathBourseSections";
-import { PoPropertyEnfathDeedSections } from "./PoPropertyEnfathDeedSections";
-import { PoPropertyEnfathDocumentFields } from "./PoPropertyEnfathDocumentFields";
+import { PoPropertyEnfathBourseSections } from "./PoPropertyDeedBourseInquirySections";
+import { PoPropertyEnfathDeedSections } from "./PoPropertyDeedIdentifierSections";
+import { PoPropertyEnfathDocumentFields } from "./PoPropertyDeedDocumentFields";
 import { usePriorDeedAutofill } from "./usePriorDeedAutofill";
 import {
   contactsSectionTitle,
@@ -32,7 +32,7 @@ import {
   stageNoteText,
   type EnfathFieldsMode,
   type PoPropertyPatch,
-} from "./po-property-enfath-form-state";
+} from "./po-property-deed-form-state";
 
 type Props = {
   property: PoPropertyIntake;
