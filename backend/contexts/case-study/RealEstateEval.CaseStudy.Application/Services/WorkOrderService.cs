@@ -351,12 +351,14 @@ public partial class WorkOrderService : IWorkOrderService
         string poNumber,
         Guid propertyId,
         string? specialistReportExtrasJson,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null) =>
         _properties.UpdateSpecialistReportExtrasAsync(
             poNumber,
             propertyId,
             specialistReportExtrasJson,
-            cancellationToken);
+            cancellationToken,
+            actor);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
         string poNumber,

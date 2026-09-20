@@ -11,6 +11,9 @@ public class BuildingInventoryLineDto
     public string Label { get; set; } = "";
     public string? AreaSqm { get; set; }
     public string? Notes { get; set; }
+
+ /// <summary>Read-only: who wrote / last edited this line. Ignored on save.</summary>
+    public PartyFieldProvenanceEntryDto? Provenance { get; set; }
 }
 
 public class BuildingInventoryDto

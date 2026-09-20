@@ -116,6 +116,8 @@ export type WorkOrderPropertyDto = {
   finishingStructure?: string;
   /** JSON specialist valuation extras (ESG, search scope, print keys, Infath deposit). */
   specialistReportExtrasJson?: string | null;
+  /** Read-only: who wrote / last edited each extras key (JSON map, server-stamped). */
+  specialistReportExtrasProvenanceJson?: string | null;
   isRemoved?: boolean;
   removalReason?: string;
   removedAtUtc?: string;

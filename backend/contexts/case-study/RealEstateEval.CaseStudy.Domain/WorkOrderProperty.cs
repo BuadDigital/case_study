@@ -143,6 +143,9 @@ public class WorkOrderProperty : ITrackUpdatedAt
     /// </summary>
     public string? SpecialistReportExtrasJson { get; set; }
 
+ /// <summary>Who wrote / last edited each key of the extras bag (a <c>PartyFieldProvenance</c> map, jsonb).</summary>
+    public string SpecialistReportExtrasProvenanceJson { get; set; } = "{}";
+
  /// <summary>Are there buildings/structures to value? yes | no | ""</summary>
     public string HasStructuresToValue { get; set; } = "";
 

@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
@@ -30,7 +31,8 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
         string poNumber,
         Guid propertyId,
         SaveBuildingInventoryRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null)
     {
         var errors = new Dictionary<string, string>();
         if (!HasStructuresToValueValues.IsKnown(request.HasStructuresToValue))
@@ -79,17 +81,35 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
                 var lineId = line.Id is Guid g && g != Guid.Empty ? g : Guid.NewGuid();
                 if (existingById.TryGetValue(lineId, out var row))
                 {
+                    var kind = line.StructureKind.Trim();
+                    var label = line.Label.Trim();
+                    var area = string.IsNullOrWhiteSpace(line.AreaSqm) ? null : line.AreaSqm.Trim();
+                    var notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim();
+                    var changed = row.StructureKind != kind || row.Label != label
+                        || row.AreaSqm != area || row.Notes != notes;
                     row.SortOrder = order++;
-                    row.StructureKind = line.StructureKind.Trim();
-                    row.Label = line.Label.Trim();
-                    row.AreaSqm = string.IsNullOrWhiteSpace(line.AreaSqm) ? null : line.AreaSqm.Trim();
-                    row.Notes = string.IsNullOrWhiteSpace(line.Notes) ? null : line.Notes.Trim();
+                    row.StructureKind = kind;
+                    row.Label = label;
+                    row.AreaSqm = area;
+                    row.Notes = notes;
                     row.UpdatedAtUtc = now;
+                    if (changed && HasIdentity(actor))
+                    {
+                        row.ProvenanceJson = PartyFieldProvenance.SerializeSingle(
+                            PartyFieldProvenance.ApplyChange(
+                                PartyFieldProvenance.ParseSingle(row.ProvenanceJson),
+                                previouslyEmpty: false,
+                                actor!,
+                                now.ToString("O")));
+                    }
                 }
                 else
                 {
                     db.AddLine(new BuildingInventoryLine
                     {
+                        ProvenanceJson = HasIdentity(actor)
+                            ? PartyFieldProvenance.SerializeSingle(PartyFieldProvenance.NewEntryFor(actor!, now))
+                            : "{}",
                         Id = lineId,
                         PropertyId = prop.Id,
                         SortOrder = order++,
@@ -113,6 +133,10 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
         return (ToDto(fresh), null);
     }
 
+    private static bool HasIdentity(PartySubmissionActor? actor) =>
+        actor is not null
+        && (!string.IsNullOrWhiteSpace(actor.UserId) || !string.IsNullOrWhiteSpace(actor.DisplayName));
+
     private static BuildingInventoryDto ToDto(WorkOrderProperty prop) => new()
     {
         PropertyId = prop.Id,
@@ -127,6 +151,7 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
                 Label = l.Label,
                 AreaSqm = l.AreaSqm,
                 Notes = l.Notes,
+                Provenance = PartyFieldProvenance.ParseSingle(l.ProvenanceJson),
             })
             .ToList(),
     };

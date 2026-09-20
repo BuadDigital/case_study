@@ -115,4 +115,33 @@ public class PartyFieldProvenanceTests
         var json = PartyFieldProvenance.Stamp("{}", "{}", """{"a":"b"}""", null, T1);
         Assert.Equal("{}", json);
     }
+
+    [Fact]
+    public void Single_entry_changes_follow_the_same_writer_and_editor_rules()
+    {
+        var created = PartyFieldProvenance.NewEntryFor(Who("u1", "أحمد"), T1);
+        Assert.Equal("أحمد", created.WrittenByName);
+
+        var restored = PartyFieldProvenance.ParseSingle(PartyFieldProvenance.SerializeSingle(created));
+        Assert.NotNull(restored);
+
+        var edited = PartyFieldProvenance.ApplyChange(
+            restored, previouslyEmpty: false, Who("u2", "أسامة", "case-specialist"), T2.ToString("O"));
+        Assert.Equal("أحمد", edited.WrittenByName);
+        Assert.Equal("أسامة", edited.EditedByName);
+
+        var legacy = PartyFieldProvenance.ApplyChange(
+            null, previouslyEmpty: false, Who("u2", "أسامة"), T2.ToString("O"));
+        Assert.Null(legacy.WrittenByName);
+        Assert.Equal("أسامة", legacy.EditedByName);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("{}")]
+    public void An_empty_stored_entry_parses_to_nothing(string? json)
+    {
+        Assert.Null(PartyFieldProvenance.ParseSingle(json));
+    }
 }

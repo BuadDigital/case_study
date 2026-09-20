@@ -96,6 +96,8 @@ public class WorkOrderPropertyDto
     public string? FinishingStructure { get; set; }
     /// <summary>JSON specialist valuation extras (ESG, search scope, print keys, Infath deposit).</summary>
     public string? SpecialistReportExtrasJson { get; set; }
+    /// <summary>Read-only: who wrote / last edited each extras key (JSON map, server-stamped).</summary>
+    public string? SpecialistReportExtrasProvenanceJson { get; set; }
     public bool IsRemoved { get; set; }
     public string? RemovalReason { get; set; }
     public string? RemovedAtUtc { get; set; }

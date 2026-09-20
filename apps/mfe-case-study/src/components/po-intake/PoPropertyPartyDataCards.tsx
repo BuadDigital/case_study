@@ -19,25 +19,32 @@ import {
   CardBody,
   CardHeader,
   InlineLoadingSkeleton,
+  Input,
   Note,
+  Select,
+  cn,
   useToast,
 } from "@platform/ui-kit";
 import { partyChildTaskForProperty } from "../../lib/app-data/documentary-workflow-gates";
 import {
   PARTY_DATA_SECTIONS,
   applyPartyFieldEdits,
+  INSPECTOR_OBSERVATION_CATEGORIES,
   partyOptionLabel,
+  partyProvenanceFor,
   partyProvenanceLines,
   partyValueText,
   readPartyPayloadValue,
   type PartyDataSectionDef,
   type PartyFieldDef,
 } from "../../lib/app-data/property-party-fields";
+import type { InspectorObservation } from "../../lib/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
 import { resolveApiError, workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
-type Edits = Record<string, string | boolean>;
+type Edits = Record<string, unknown>;
+type EditValue = string | boolean | string[] | InspectorObservation[];
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "مسودة",
@@ -80,7 +87,7 @@ function PartyFieldRow({
   edits: Edits;
   editable: boolean;
   provenance: PartyFieldProvenanceEntry | undefined;
-  onEdit: (key: string, value: string | boolean) => void;
+  onEdit: (key: string, value: EditValue) => void;
 }) {
   const id = `${idPrefix}-${def.key.replace(/\./g, "-")}`;
   const original = readPartyPayloadValue(payload, def.key);
@@ -88,10 +95,121 @@ function PartyFieldRow({
   const textValue =
     typeof edited === "string" ? edited : partyValueText(original);
   const locked = !editable || def.input === "readonly";
-  const wide = def.input === "textarea";
+  const wide =
+    def.input === "textarea" ||
+    def.input === "multiselect" ||
+    def.input === "observations";
 
   let control;
-  if (def.input === "checkbox") {
+  if (def.input === "multiselect") {
+    const selected = Array.isArray(edited)
+      ? (edited as string[])
+      : Array.isArray(original)
+        ? (original as string[])
+        : [];
+    control = (
+      <div>
+        <span className="mb-1.5 block text-[12px] font-semibold text-text-2">{def.label}</span>
+        <div className="flex flex-wrap gap-1.5">
+          {(def.options ?? []).map((option) => {
+            const on = selected.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={on}
+                disabled={locked}
+                onClick={() =>
+                  onEdit(
+                    def.key,
+                    on ? selected.filter((v) => v !== option) : [...selected, option],
+                  )
+                }
+                className={cn(
+                  "min-h-8 rounded-lg border px-3 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                  on
+                    ? "border-ink bg-ink text-white"
+                    : "border-border-md bg-surface text-text-2",
+                )}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  } else if (def.input === "observations") {
+    const items: InspectorObservation[] = Array.isArray(edited)
+      ? (edited as InspectorObservation[])
+      : Array.isArray(original)
+        ? (original as InspectorObservation[])
+        : [];
+    const change = (index: number, patch: Partial<InspectorObservation>) =>
+      onEdit(def.key, items.map((o, i) => (i === index ? { ...o, ...patch } : o)));
+    control = (
+      <div>
+        <span className="mb-1.5 block text-[12px] font-semibold text-text-2">{def.label}</span>
+        <div className="flex flex-col gap-2">
+          {items.map((item, index) => (
+            <div
+              key={item.id || index}
+              className="grid gap-2 rounded-md border border-border bg-surface p-2 sm:grid-cols-[12rem_1fr_auto]"
+            >
+              <Select
+                disabled={locked}
+                value={item.category}
+                onChange={(e) => change(index, { category: e.target.value })}
+                className="text-xs"
+              >
+                {INSPECTOR_OBSERVATION_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                disabled={locked}
+                value={item.text}
+                onChange={(e) => change(index, { text: e.target.value })}
+                className="text-xs"
+              />
+              {!locked ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => onEdit(def.key, items.filter((_, i) => i !== index))}
+                >
+                  حذف
+                </Button>
+              ) : null}
+            </div>
+          ))}
+          {!locked ? (
+            <div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() =>
+                  onEdit(def.key, [
+                    ...items,
+                    {
+                      id: `obs-${Date.now()}-${items.length}`,
+                      category: INSPECTOR_OBSERVATION_CATEGORIES[0],
+                      text: "",
+                      photo: null,
+                    },
+                  ])
+                }
+              >
+                إضافة ملاحظة
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  } else if (def.input === "checkbox") {
     const checked = typeof edited === "boolean" ? edited : original === true;
     control = (
       <label className="flex items-center gap-2 py-2 text-sm text-text-1">
@@ -200,7 +318,7 @@ function PartyDataCard({
     };
   }, [taskId, section.title]);
 
-  const onEdit = useCallback((key: string, value: string | boolean) => {
+  const onEdit = useCallback((key: string, value: EditValue) => {
     setEdits((prev) => ({ ...prev, [key]: value }));
     setSaveError(null);
   }, []);
@@ -280,7 +398,7 @@ function PartyDataCard({
               payload={dto.payload}
               edits={edits}
               editable={editable}
-              provenance={dto.fieldProvenance?.[def.key]}
+              provenance={partyProvenanceFor(dto.fieldProvenance, def.key)}
               onEdit={onEdit}
             />
           ))}

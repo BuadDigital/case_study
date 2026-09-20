@@ -1,3 +1,4 @@
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
@@ -240,7 +241,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string poNumber,
         Guid propertyId,
         string? specialistReportExtrasJson,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -251,10 +253,17 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             out var existing);
         if (notEditable is not null) return (null, notEditable);
 
+        var previousExtras = SpecialistReportExtrasRules.ToWireJson(existing!);
         var extrasErrors = SpecialistReportExtrasRules.ApplyFromWireJson(
             existing!,
             specialistReportExtrasJson);
         if (extrasErrors is not null) return (null, extrasErrors);
+        existing!.SpecialistReportExtrasProvenanceJson = PartyFieldProvenance.Stamp(
+            existing.SpecialistReportExtrasProvenanceJson,
+            previousExtras,
+            SpecialistReportExtrasRules.ToWireJson(existing) ?? "{}",
+            actor,
+            _time.UtcNow());
 
         await _db.SaveChangesAsync(cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(existing), null);

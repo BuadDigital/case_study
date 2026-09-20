@@ -14,5 +14,6 @@ public interface IBuildingInventoryService
         string poNumber,
         Guid propertyId,
         SaveBuildingInventoryRequest request,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null);
 }

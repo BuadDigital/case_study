@@ -55,6 +55,8 @@ import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { canDeleteProperty, canEditProperty } from "../../lib/app-data/po-roles";
 import { PoPropertyPartyDataCards } from "./PoPropertyPartyDataCards";
+import { PoPropertySpecialistExtrasCard } from "./PoPropertySpecialistExtrasCard";
+import { BuildingInventorySection } from "../field-inspection/BuildingInventorySection";
 
 function EditChrome({
   title,
@@ -373,6 +375,31 @@ export function PoPropertyEdit({
           propertyId={propertyId}
           canEdit={canEditProperty(role)}
         />
+
+        <PoPropertySpecialistExtrasCard
+          poNumber={poNumber}
+          propertyId={propertyId}
+          canEdit={canEditProperty(role)}
+        />
+
+        <Card>
+          <CardHeader>
+            <div className="min-w-0">
+              <h2 className="m-0 text-sm font-bold">تفاصيل البناء</h2>
+              <p className="m-0 mt-0.5 text-xs text-text-3">
+                حصر الأدوار والأسوار والملاحق — مع اسم من كتب كل بند ومن عدّله
+              </p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <BuildingInventorySection
+              poNumber={poNumber}
+              propertyId={propertyId}
+              disabled={!canEditProperty(role)}
+              wide
+            />
+          </CardBody>
+        </Card>
       </FormDensityProvider>
     </EditChrome>
   );
