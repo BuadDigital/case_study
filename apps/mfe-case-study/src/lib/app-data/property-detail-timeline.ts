@@ -8,7 +8,7 @@ import {
   caseStudyTaskForProperty,
   taskPhaseLabel,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 
 import {
   normalizePropertyTimelineTone,

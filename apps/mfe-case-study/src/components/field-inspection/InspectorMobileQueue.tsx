@@ -14,7 +14,7 @@ import {
 } from "../../lib/app-data/my-task-row";
 import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
 import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { QueueTaskStatusBadge } from "../../lib/app-data/active-queue-list-filters";
 
 /**

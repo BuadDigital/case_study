@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "@platform/ui-kit";
-import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
 import {

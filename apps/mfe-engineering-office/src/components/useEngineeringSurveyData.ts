@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@platform/ui-kit";
-import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { surveyWorkGate } from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {

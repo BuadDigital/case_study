@@ -17,7 +17,7 @@ import {
   TdAction,
 } from "@platform/ui-kit";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import type { QueueRowContext } from "./active-transaction-queue-tables-state";
 
 const ROW = queueTableRowClassName;

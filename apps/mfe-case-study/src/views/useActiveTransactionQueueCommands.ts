@@ -27,7 +27,7 @@ import { skipsBourseForIdentifier } from "../lib/app-data/po-intake-data";
 import {
   TASKS_CHANGED_EVENT,
   type WorkflowTask,
-} from "../lib/app-data/tasks-storage";
+} from "../lib/app-data/tasks";
 import {
   buildRowAttentionFingerprint,
   rowHasAttentionDot,

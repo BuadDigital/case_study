@@ -6,7 +6,7 @@ import {
   loadPartyCaseStudyAnswersForParents,
   partyCaseStudyAnswersFromBatch,
 } from "../case-study-party-progress";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 const getCaseStudyFormsBatch = vi.fn();
 

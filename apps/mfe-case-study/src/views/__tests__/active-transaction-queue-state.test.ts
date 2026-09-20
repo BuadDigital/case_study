@@ -8,7 +8,7 @@ import {
   resolveQueueTaskFullPagePath,
   type AllTransactionsRowMeta,
 } from "../active-transaction-queue-state";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 const task = (id: string) => ({ id }) as WorkflowTask;
 

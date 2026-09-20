@@ -11,7 +11,7 @@ import { cn, formControlClassName, Select, Textarea } from "@platform/ui-kit";
 import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { PartyCaseStudyFormTab } from "../case-study/PartyCaseStudyFormTab";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";

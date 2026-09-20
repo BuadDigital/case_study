@@ -32,7 +32,7 @@ import {
   migrateDistribution,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../../lib/app-data/tasks-storage";
+} from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 type RedistributeRoleKey =

@@ -20,7 +20,7 @@ import {
 } from "../lib/my-task-routes";
 import type { PageId } from "@platform/types";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import {

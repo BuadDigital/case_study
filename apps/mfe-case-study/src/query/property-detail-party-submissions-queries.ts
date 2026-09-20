@@ -10,7 +10,7 @@ import {
   loadPropertyDetailPartySubmissions,
   type PropertyDetailPartySubmissionsMap,
 } from "../lib/app-data/property-detail-party-submissions";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { TASKS_CHANGED_EVENT } from "./case-study-queries";
 
 const STALE_MS = 60_000;

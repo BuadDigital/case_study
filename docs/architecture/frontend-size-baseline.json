@@ -12,11 +12,7 @@
     "frozen": []
   },
   "storageModules": {
-    "note": "The only *-storage.ts facades left after the lib/prototype split. No new ones may appear; these may only be removed.",
-    "frozen": [
-      "apps/mfe-case-study/src/lib/app-data/infath-deposit-storage.ts",
-      "apps/mfe-case-study/src/lib/app-data/tasks-storage.ts",
-      "apps/mfe-settings/src/lib/app-data/courts-storage.ts"
-    ]
+    "note": "No *-storage.ts facades remain after the lib/prototype split. The list may only stay empty; do not add new *-storage.ts modules.",
+    "frozen": []
   }
 }

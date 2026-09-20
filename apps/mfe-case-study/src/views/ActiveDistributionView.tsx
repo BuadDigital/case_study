@@ -10,7 +10,7 @@ import {
   distributionTaskPath,
 } from "../lib/my-task-routes";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
-import { TASKS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { TASKS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/tasks";
 import { filterTasksForDistribution } from "@case-study/mfe/lib/app-data/transaction-filters";
 
 const DISTRIBUTION_QUEUE: ActiveTransactionQueueConfig = {

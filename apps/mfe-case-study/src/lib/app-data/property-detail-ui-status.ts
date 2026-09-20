@@ -7,7 +7,7 @@ import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   caseStudyTaskForProperty,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 
 /**
  * Derive Case Study.html PSTATUS for the property hero badge.

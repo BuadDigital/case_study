@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
-# One-time copy of operations rows (operations schema plus D2 task tables in case_study)
-# from the shared database into the dedicated operations database.
+# One-time copy of operations rows from the leftover shared database into the
+# dedicated operations database. Leftover dumps still use pre-relocate names
+# (`case_study."OperationsTasks"`). Live owner DBs after 2026-09-20 store that
+# table in `operations`.
 # Schema/migrations must already have been applied to the target
 # (DbMigrate update with REAL_ESTATE_EVAL_PG_CONNECTION_STRING_OPERATIONS set).
 #

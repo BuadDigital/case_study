@@ -1,8 +1,18 @@
 # ADR 0006: Apply database migrations at deploy time
 
-- **Status:** Proposed — implementation in flight
+- **Status:** Accepted (2026-09-20)
 - **Date:** 2026-07-29
-- **Progress last reviewed:** 2026-08-18
+- **Progress last reviewed:** 2026-09-20
+- **Implemented:** production compose runs `backend/tools/DbMigrate` as a one-shot
+  `migrate` job (`depends_on: service_completed_successfully`) with
+  `Database__MigrateOnStartup: false` on every API. Development may still let Case Study
+  apply pending migrations at startup (`Database:MigrateOnStartup`, default
+  `IsDevelopment()`); architecture tests forbid any other host from calling `MigrateAsync`,
+  and Production rejects the flag. Streams apply in
+  `BoundedContextMigrations.ApplyOrder`.
+
+The Context section below describes the 2026-07 startup-migrator. That is no longer
+production behavior.
 
 ## Context
 

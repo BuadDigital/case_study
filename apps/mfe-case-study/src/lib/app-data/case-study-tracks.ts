@@ -15,7 +15,7 @@ import {
   type TaskDistributionDraft,
   type WorkflowTask,
   type WorkflowTaskKind,
-} from "./tasks-storage";
+} from "./tasks";
 
 export type CaseStudyTrackState =
   | typeof PropertyListRowStatuses.New

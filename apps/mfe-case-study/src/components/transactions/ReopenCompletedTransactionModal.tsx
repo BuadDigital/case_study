@@ -12,7 +12,7 @@ import {
   opsFldTextarea,
   opsTfLbl,
 } from "../../lib/app-data/ops-tasks-tw";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 function LockOpenIcon({ size = 20 }: { size?: number }) {
   return (

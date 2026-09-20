@@ -25,7 +25,7 @@ import type {
   WorkOrderListCountsQuery,
   WorkOrderListQuery,
 } from "@platform/api-client";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 
 export type SortKey = "created" | "po" | "received" | "due";
 export type SortDir = "asc" | "desc";

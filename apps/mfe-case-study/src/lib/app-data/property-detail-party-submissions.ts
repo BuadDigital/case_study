@@ -26,7 +26,7 @@ import type {
   EvaluatorChecklist,
   PropertyDetailPartySubmission,
 } from "./property-detail-party-submission-types";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 export const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
   "specialist",

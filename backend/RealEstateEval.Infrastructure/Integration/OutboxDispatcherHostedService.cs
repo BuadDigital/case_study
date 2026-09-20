@@ -43,6 +43,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly RabbitMqOptions _options;
     private readonly OutboxDispatcherOptions _dispatcherOptions;
+    private readonly OutboxMetrics _metrics;
     private readonly ILogger<OutboxDispatcherHostedService> _logger;
     private readonly TimeProvider _time;
     private int _emptyBackoffIndex;
@@ -51,12 +52,14 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         IServiceScopeFactory scopeFactory,
         IOptions<RabbitMqOptions> options,
         IOptions<OutboxDispatcherOptions> dispatcherOptions,
+        OutboxMetrics metrics,
         ILogger<OutboxDispatcherHostedService> logger,
         TimeProvider? time = null)
     {
         _scopeFactory = scopeFactory;
         _options = options.Value;
         _dispatcherOptions = dispatcherOptions.Value;
+        _metrics = metrics;
         _logger = logger;
         _time = time ?? TimeProvider.System;
     }
@@ -143,6 +146,7 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
                 if (message.AttemptCount >= MaxAttempts)
                 {
                     message.DeadLetteredAtUtc = _time.UtcNow();
+                    _metrics.RecordDeadLettered();
                     _logger.LogError(
                         ex,
                         "Outbox message {MessageId} dead-lettered after {Attempts} attempts",
@@ -161,6 +165,9 @@ public sealed class OutboxDispatcherHostedService : BackgroundService
         }
 
         await outbox.SaveChangesAsync(stoppingToken);
+
+        _metrics.RecordDispatched(delivered);
+        _metrics.RecordPublishFailed(undelivered);
 
         if (undelivered > 0)
         {

@@ -45,7 +45,7 @@ export * from "./lib/app-data/po-intake-model";
 export * from "./lib/app-data/po-intake-reads";
 export * from "./lib/app-data/po-intake-commands";
 export * from "./lib/app-data/po-roles";
-export * from "./lib/app-data/tasks-storage";
+export * from "./lib/app-data/tasks";
 export * from "./lib/app-data/transaction-filters";
 export * from "./lib/app-data/favorite-properties";
 export * from "./lib/app-data/distribution-parties";

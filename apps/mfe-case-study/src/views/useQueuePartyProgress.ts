@@ -17,7 +17,7 @@ import {
 } from "../lib/app-data/case-study-party-progress";
 import type { CaseStudyFormDraftsByParent } from "../lib/app-data/case-study-form-reads";
 import { PARTY_CASE_STUDY_FORM_CHANGED_EVENT } from "../lib/app-data/case-study-form-model";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { useCaseStudyFormBatchQuery } from "../query/case-study-queries";
 import type { PartyProgressByTask } from "./active-transaction-queue-tables-state";
 

@@ -4,7 +4,7 @@ The **`apps/`** folder holds the **browser applications** for **نظام إجا�
 
 The repo uses a **microfrontend-ready monorepo**: one **Next.js shell** (`apps/shell`) hosts routing and layout; feature screens live in **`apps/mfe-*` library packages** imported by the shell (single deploy until Module Federation).
 
-**See also:** [Project README](../README.md) (security, full stack, how to run everything) · [Architecture](./ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md) · [Local infra](./LOCAL_INFRA.md)
+**See also:** [Project README](../README.md) (security, full stack, how to run everything) · [Architecture](../../docs/ARCHITECTURE.md) · [MFE + services roadmap](../../docs/MICROFRONTENDS_AND_MICROSERVICES.md)
 
 ---
 
@@ -18,7 +18,7 @@ The platform supports end-to-end work around **property case study** and **valua
 | **التقييم العقاري** | طلبات التقييم, نموذج المعاين |
 | **الإدارة والعمليات** | لوحة التحكم, مؤشرات الأداء, إدارة المستخدمين, التقارير المالية |
 
-Different **roles** (مدير الإدارة, مشرف دراسة الحالة, أخصائي, مقيم, معاين, مالي, …) see different menu items and permissions. Screens are implemented; **business data is still mock** on the frontend while product and backend agree on core logic.
+Different **roles** (مدير الإدارة, مشرف دراسة الحالة, أخصائي, مقيم, معاين, مالي, …) see different menu items and permissions. Screens talk to the YARP gateway and owner APIs; **business data is persisted in PostgreSQL**, not mock arrays.
 
 ---
 
@@ -27,16 +27,17 @@ Different **roles** (مدير الإدارة, مشرف دراسة الحالة, 
 ```text
 apps/
   shell/              ← host: login, layout, nav, PO sub-routes, party-task host (Next.js 16)
-  mfe-evaluator/      ← @evaluator/mfe — مقيم عقاري (property-appraisal queue, advisory, recall)
-  mfe-case-study/     ← @case-study/mfe — PO + المعاملات النشطة + party queues (API-ready)
-  mfe-dashboard/      ← @dashboard/mfe — لوحة التحكم
-  mfe-survey/         ← @survey/mfe — الرفع المساحي (/survey)
-  mfe-keys/           ← @keys/mfe — إدارة المفاتيح
-  mfe-financial/      ← @financial/mfe — التقارير المالية
-  mfe-kpi/            ← @kpi/mfe — مؤشرات الأداء
-  mfe-failures/       ← @failures/mfe — إدارة التعذرات (localStorage until API)
-  mfe-settings/       ← @settings/mfe — الإعدادات + جميع حقول النظام (API)
-  mfe-valuation/      ← @valuation/mfe — طلبات التقييم (/valuation-requests)
+  mfe-evaluator/            ← @evaluator/mfe — مقيم عقاري
+  mfe-case-study/           ← @case-study/mfe — PO + المعاملات النشطة + party queues
+  mfe-engineering-office/   ← @engineering-office/mfe — الرفع المساحي (جهة)
+  mfe-dashboard/            ← @dashboard/mfe — لوحة التحكم
+  mfe-survey/               ← @survey/mfe — الرفع المساحي (/survey admin)
+  mfe-keys/                 ← @keys/mfe — إدارة المفاتيح
+  mfe-financial/            ← @financial/mfe — التقارير المالية
+  mfe-kpi/                  ← @kpi/mfe — مؤشرات الأداء
+  mfe-failures/             ← @failures/mfe — إدارة التعذرات (Failures API)
+  mfe-settings/             ← @settings/mfe — الإعدادات + جميع حقول النظام
+  mfe-valuation/            ← @valuation/mfe — طلبات التقييم (/valuation-requests)
 ```
 
 **Platform domain split (F4b):** [MFE_PLATFORM_DOMAINS.md](./MFE_PLATFORM_DOMAINS.md)
@@ -60,16 +61,17 @@ Shared UI and auth live in **`packages/`** at the repo root (not inside `apps/`)
 | `@platform/app-shared` | PrototypeContext, registration flows, shared nav/constants |
 | `@platform/ui-kit` | Styles (`prototype.css`), badges, shared look-and-feel |
 | `@platform/auth-client` | Session storage, auth gate |
-| `@platform/api-client` | API base URL (placeholder for real services) |
+| `@platform/api-client` | Typed REST client against the gateway |
 | `@platform/types` | `PageId`, `RoleId`, navigation types, `CASE_STUDY_READY_NAV` |
 | `@case-study/mfe` | PO + active transactions, party queues, field-form, government-review |
-| `@evaluator/mfe` | مقيم عقاري — upload, advisory panel, recall (localStorage prototype) |
+| `@evaluator/mfe` | مقيم عقاري — upload, advisory panel, recall |
+| `@engineering-office/mfe` | جهة الرفع المساحي — survey work panel |
 | `@dashboard/mfe` | لوحة التحكم |
 | `@survey/mfe` | الرفع المساحي (`/survey`) |
 | `@keys/mfe` | إدارة المفاتيح |
 | `@financial/mfe` | التقارير المالية |
 | `@kpi/mfe` | مؤشرات الأداء |
-| `@failures/mfe` | إدارة التعذرات — repository + localStorage prototype |
+| `@failures/mfe` | إدارة التعذرات — Failures API |
 | `@settings/mfe` | users, courts, info-roles, system-fields-catalog |
 | `@valuation/mfe` | `/valuation-requests` |
 
@@ -101,11 +103,13 @@ npm run dev
 | **`@financial/mfe`** | `/financial` |
 | **`@kpi/mfe`** | `/kpi` |
 | **`@case-study/mfe`** | `/po/*`, `/active-primary-data`, `/bourse-inquiry`, `/active-distribution`, `/active-case-study`, `/field-form`, party queues |
-| **`@failures/mfe`** | `/failures`, `/failure-types`, PO property failure form — **localStorage** until backend exists |
+| **`@engineering-office/mfe`** | جهة الرفع المساحي work panel (hosted from party-task / active-survey) |
+| **`@failures/mfe`** | `/failures`, `/failure-types`, PO property failure form — Failures API |
 | **`@settings/mfe`** | `/users`, `/courts`, `/case-study-info-roles`, `/system-fields-catalog` |
 | **`@valuation/mfe`** | `/valuation-requests` |
+| **`@evaluator/mfe`** | مقيم عقاري — property-appraisal queue, advisory, recall |
 
-**Remains in shell only:** login, layout/nav (`AppShell`), PO Next.js pages, evaluator prototype, `PartyActiveTaskViewHost`.
+**Remains in shell only:** login, layout/nav (`AppShell`), Next.js route hosts, `PartyActiveTaskViewHost` (wires evaluator + engineering-office extensions into case-study queues).
 
 The shell remains the **host**. Separate deploy URLs come in phase F5.
 
@@ -115,16 +119,16 @@ The shell remains the **host**. Separate deploy URLs come in phase F5.
 
 | Location | Purpose |
 |----------|---------|
-| `backend/` | ASP.NET API (Identity/JWT today; domain APIs later) |
-| `infra/` | Docker Compose — databases, messaging, cache, observability |
+| `backend/` | Nine ASP.NET APIs + YARP gateway (`docs/ARCHITECTURE.md`) |
+| `infra/` | Docker Compose — nine Postgres databases, messaging, cache, observability |
 | `requirements/` | Reference HTML — not runnable apps |
-| `docs/` | Architecture, local infra, demo credentials, this guide |
+| `docs/` | Architecture, local infra, demo credentials, ADRs |
 
 ---
 
 ## Platform stack (infra + backend — not inside `apps/`)
 
-The **shell and future MFEs** talk to APIs; the **platform services** below run in Docker for local dev. Config: [`infra/docker-compose.yml`](../infra/docker-compose.yml). URLs: [LOCAL_INFRA.md](./LOCAL_INFRA.md).
+The **shell and MFE packages** talk to the YARP gateway; the **platform services** below run in Docker for local dev. Config: [`infra/docker-compose.yml`](../../infra/docker-compose.yml). Database names: [`docs/DATABASE_OVERVIEW.md`](../../docs/DATABASE_OVERVIEW.md).
 
 ```bash
 # From repository root
@@ -135,7 +139,7 @@ docker compose -f infra/docker-compose.yml up -d
 
 | Technology | Role in this project | In local Docker? | Wired in app code yet? |
 |------------|----------------------|------------------|-------------------------|
-| **PostgreSQL** | System of record (Identity today; per-service DBs later) | Yes (`5432`) | Yes — API uses it |
+| **PostgreSQL 17** | System of record — nine owner databases on `127.0.0.1:5433` | Yes (`ree-postgres`) | Yes — every domain API |
 | **RabbitMQ** | Async events between microservices | Yes (`5672`, UI `15672`) | No — planned Phase B+ |
 | **Redis** | Cache, locks, rate limits, hot dashboard reads | Yes (`6379`) | No — planned Phase A–B |
 | **Prometheus** | Metrics (latency, errors, queue depth) | Yes (`9090`) | No — scrape targets TBD |
@@ -149,12 +153,12 @@ docker compose -f infra/docker-compose.yml up -d
 ### How they fit together
 
 ```text
-Browser (shell / MFEs)
-    → API Gateway / BFF (planned)
-        → Microservices (.NET)
-            → PostgreSQL (each service)
-            → Redis (cache)
-            → RabbitMQ (events)
+Browser (shell / MFE packages, one Next.js deploy)
+    → YARP gateway :5160
+        → Nine .NET APIs
+            → PostgreSQL (one database per owner + messaging)
+            → Local blob store (Attachments)
+            → SQL outbox / inbox (ADR 0004; not RabbitMQ on the product path)
 
 Observability (planned):
     Services → OpenTelemetry → OTLP collector → Prometheus
@@ -162,19 +166,21 @@ Observability (planned):
     Grafana ← Prometheus
 ```
 
-Details: [ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](./ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md) section 6.1.
+Details: [MFE + services roadmap](../../docs/MICROFRONTENDS_AND_MICROSERVICES.md) section 6.1.
 
 ---
 
 ## Remaining work (frontend)
 
-- [ ] Per-role login (`@ejadah.dev` users) — role from server, not only the sidebar switcher
+- [x] Per-role login (`@ejadah.dev` users) — role from `GET /api/permissions` (`prototypeRole`), not a sidebar switcher
+- [x] Retire leftover `*-storage.ts` facades — `tasks.ts`, `courts-catalog.ts`, `infath-deposit.ts`; baseline freeze is empty
+- [x] Component-size ratchet — seven screens split under 700 lines (`PropertyDetailInspectionTab`, `CaseStudyWorkspaceView`, `EvaluatorValuationReportOutputTab`, `EvaluatorWindow`, `AdjustmentsMatrixCells`, `ValuationWorkShell`, `login/page.tsx`)
 - [x] Create `mfe-case-study` + `@platform/app-shared` for API-ready flows (PO + primary data + bourse + distribution) — F3 complete (single deploy)
 - [x] Platform domain MFEs (`dashboard`, `survey`, `keys`, `financial`, `kpi`) — F4b complete
 - [x] Wire `@valuation/mfe` in shell `[page]/page.tsx`
 - [x] Remove orphaned shell view copies (`SurveyView`, `KeysView`, `FinancialView`, `KpiView`, `ValuationRequestsView`) — F4c complete
-- [ ] Module Federation + CI deploy per app (F5)
-- [ ] Replace mock data with `@platform/api-client` calls
-- [ ] PO/property detail; case study form (`requirements/case_study_form 2.html`); registration (`requirements/ejada-registration_1.html`) if in scope
+- [ ] Module Federation + CI deploy per app (F5) — deferred until independent release is needed
+- [x] Replace mock data with `@platform/api-client` calls (owner APIs via the gateway)
+- [x] PO/property detail and case-study flows on `@case-study/mfe`
 
-Full checklist: [README.md](../README.md) · Architecture: [ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](./ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md)
+Full checklist: [README.md](../README.md) · Architecture: [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)

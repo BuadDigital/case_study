@@ -13,7 +13,7 @@ import {
   favoritePropertyKey,
   useFavoriteProperties,
 } from "../lib/app-data/favorite-properties";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import {
   favoritesPath,
   favoritesTaskPath,

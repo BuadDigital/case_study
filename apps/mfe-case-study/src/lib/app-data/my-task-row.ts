@@ -9,7 +9,7 @@ import {
   taskPhaseLabel,
   taskStatusLabel,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 
 export type TaskTableRow = {
   deedLabel: string;

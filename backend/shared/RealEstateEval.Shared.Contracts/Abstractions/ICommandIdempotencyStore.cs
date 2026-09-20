@@ -2,6 +2,8 @@ namespace RealEstateEval.Application.Abstractions;
 
 /// <summary>
 /// Stores and replays HTTP command responses keyed by actor + route + Idempotency-Key (ADR 0008).
+/// Lives in Shared.Contracts (ADR 0002) so Shared.Web middleware does not reference the global
+/// Application assembly. Namespace is unchanged so call sites need no using churn.
 /// </summary>
 public interface ICommandIdempotencyStore
 {

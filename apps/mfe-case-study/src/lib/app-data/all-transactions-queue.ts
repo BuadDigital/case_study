@@ -12,7 +12,7 @@ import type { PoIntakeRecord } from "./po-intake-data";
 import {
   taskKindLabel,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */

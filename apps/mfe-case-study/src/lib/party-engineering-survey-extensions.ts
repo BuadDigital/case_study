@@ -1,7 +1,7 @@
 import type { RefObject, ReactNode } from "react";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { ActiveTransactionQueueConfig } from "../views/ActiveTransactionQueueView";
-import type { WorkflowTask } from "./app-data/tasks-storage";
+import type { WorkflowTask } from "./app-data/tasks";
 
 export type PartyEngineeringSurveyWorkHostRef = {
   submit?: () => Promise<boolean>;

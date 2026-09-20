@@ -1,6 +1,6 @@
 import type { RoleId } from "@platform/types";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 export function roleBypassesDocumentaryGates(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";

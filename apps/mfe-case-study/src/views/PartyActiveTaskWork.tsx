@@ -29,7 +29,7 @@ import {
   completeChildTask,
   taskDisplayPropertyLabel,
   type WorkflowTask,
-} from "../lib/app-data/tasks-storage";
+} from "../lib/app-data/tasks";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import {
   findSiblingInspectionTask,

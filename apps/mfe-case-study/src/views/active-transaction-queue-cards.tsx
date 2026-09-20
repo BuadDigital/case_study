@@ -18,7 +18,7 @@ import {
 } from "../lib/app-data/my-task-row";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { allTransactionsPhaseStyle } from "../lib/app-data/all-transactions-queue";
 import type {
   AllTransactionsRowMeta,

@@ -116,7 +116,7 @@ describe("no new storage facades", () => {
     .map(relativePath)
     .sort();
 
-  it("admits no *-storage.ts module beyond the frozen three", () => {
+  it("admits no *-storage.ts modules", () => {
     const offenders = found.filter((file) => !frozen.includes(file));
 
     expect(

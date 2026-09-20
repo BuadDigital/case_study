@@ -13,7 +13,7 @@ import {
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { loadPartyCaseStudyFormDraft } from "./case-study-form-reads";
-import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
+import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
 
 export type PartyQuestionContribution = {
   partyId: CaseStudyInfoPartyId | null;

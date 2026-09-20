@@ -520,7 +520,7 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("Status");
 
-                    b.ToTable("OperationsTasks", "case_study", t =>
+                    b.ToTable("OperationsTasks", "operations", t =>
                         {
                             t.HasCheckConstraint("CK_OperationsTasks_AgreedVisitFeeSar_NonNegative", "\"AgreedVisitFeeSar\" IS NULL OR \"AgreedVisitFeeSar\" >= 0");
 

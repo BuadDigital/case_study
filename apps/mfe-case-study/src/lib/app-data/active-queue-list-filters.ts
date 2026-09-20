@@ -8,7 +8,7 @@ import {
   type RemainingTimeState,
 } from "./my-task-row";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
 
 export type QueueTaskStatusBadge = { label: string; className: string };

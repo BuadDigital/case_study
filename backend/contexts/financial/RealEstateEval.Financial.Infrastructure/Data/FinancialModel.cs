@@ -6,10 +6,9 @@ using RealEstateEval.Financial.Domain;
 namespace RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Financial-owned tables: the <c>financial</c> schema plus inspector-fee ledgers / transitions /
-/// disbursement batches that still live in <c>case_study</c> physically (D1). Applied by
-/// <see cref="FinancialDbContext"/> (write path) and by the legacy context for transitional
-/// cross-boundary reads until owner APIs replace them.
+/// Financial-owned tables in the <c>financial</c> schema, including D1 inspector-fee
+/// ledgers, transitions, and disbursement batches (relocated from the <c>case_study</c>
+/// schema name). Applied by <see cref="FinancialDbContext"/>.
 /// </summary>
 // A8: public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
@@ -256,10 +255,10 @@ public static class FinancialModel
             e.HasIndex(x => new { x.TransactionKey, x.TargetAssigneeId, x.Status });
         });
 
- // D1: accrual/disbursement lifecycle is financial-owned while rows stay in case_study.
+ // D1: accrual/disbursement lifecycle is financial-owned (relocated from case_study).
         builder.Entity<InspectorFeeLedger>(e =>
         {
-            MapTable(e, "InspectorFeeLedgers", DatabaseSchemas.CaseStudy, ownsMigrations);
+            MapTable(e, "InspectorFeeLedgers", DatabaseSchemas.Financial, ownsMigrations);
             e.UseOptimisticConcurrency();
             e.HasKey(x => x.Id);
             e.Property(x => x.UserId).HasMaxLength(128).IsRequired();
@@ -299,8 +298,8 @@ public static class FinancialModel
                 "SupervisorDiscountSar",
                 "NetFeeSar",
                 "PaidAmountSar");
- // Both tables sit in case_study on the financial database (D1), so the link can be enforced;
- // deleting a batch releases its lines back to the unbatched pool instead of orphaning them.
+ // Both tables sit in financial (D1), so the link can be enforced; deleting a batch
+ // releases its lines back to the unbatched pool instead of orphaning them.
             e.HasOne<DisbursementBatch>()
                 .WithMany()
                 .HasForeignKey(x => x.DisbursementBatchId)
@@ -309,7 +308,7 @@ public static class FinancialModel
 
         builder.Entity<InspectorFeeTransition>(e =>
         {
-            MapTable(e, "InspectorFeeTransitions", DatabaseSchemas.CaseStudy, ownsMigrations);
+            MapTable(e, "InspectorFeeTransitions", DatabaseSchemas.Financial, ownsMigrations);
             e.HasKey(x => x.Id);
             e.Property(x => x.FromStatus).HasMaxLength(32);
             e.Property(x => x.ToStatus).HasMaxLength(32);
@@ -321,7 +320,7 @@ public static class FinancialModel
 
         builder.Entity<DisbursementBatch>(e =>
         {
-            MapTable(e, "DisbursementBatches", DatabaseSchemas.CaseStudy, ownsMigrations);
+            MapTable(e, "DisbursementBatches", DatabaseSchemas.Financial, ownsMigrations);
             e.HasKey(x => x.Id);
             e.Property(x => x.AssigneeId).HasMaxLength(128);
             e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);

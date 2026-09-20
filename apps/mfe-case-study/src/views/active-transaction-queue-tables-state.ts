@@ -8,7 +8,7 @@ import type { RowMoreMenuItem, StatusPillStyle } from "@platform/ui-kit";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import type { RemainingTimeState } from "../lib/app-data/my-task-row";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 
 /** Shared row context across every table branch — built once in the screen. */
 export type QueueRowContext = {

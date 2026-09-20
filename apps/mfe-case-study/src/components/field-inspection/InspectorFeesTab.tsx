@@ -13,7 +13,7 @@ import {
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { InspectorFeesBillingTable } from "./InspectorFeesBillingTable";
 import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 

@@ -101,7 +101,7 @@
       ],
       "migrations": "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "operations",
-      "note": "Phase 1 extraction order, step 3. Operations schema tables plus write path for OperationsTasks/Sequences (D2) still physically named in case_study. After the Phase 4 cutover those D2 tables live on the dedicated operations database, still in the case_study schema until a later relocate."
+      "note": "Phase 1 extraction order, step 3. Operations schema including D2 OperationsTasks (relocated from the case_study schema name on 2026-09-20)."
     },
     {
       "name": "FinancialDbContext",
@@ -113,7 +113,7 @@
       ],
       "migrations": "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "financial",
-      "note": "Phase 1 extraction order, step 4. financial schema plus D1 inspector-fee tables still physically named in case_study. After the Phase 4 cutover those D1 tables live on the dedicated financial database, still in the case_study schema until a later relocate."
+      "note": "Phase 1 extraction order, step 4. financial schema including D1 inspector-fee tables (relocated from the case_study schema name on 2026-09-20)."
     },
     {
       "name": "CaseStudyDbContext",
@@ -152,8 +152,8 @@
       "status": "approved",
       "decidedOn": "2026-07-30",
       "outcome": "financial",
-      "rationale": "Accrual, discount, exclusion, batching and disbursement are financial lifecycle states, and financial reporting plus engineering billing already read the ledger. The rows stay in the case_study schema: ownership is behavioural now, relocation is a Phase 4 data migration.",
-      "note": "Rows live in case_study but the accrual/disbursement lifecycle is financial. Moving the tables is a data migration, so ownership must be decided before any context takes the write path."
+      "rationale": "Accrual, discount, exclusion, batching and disbursement are financial lifecycle states, and financial reporting plus engineering billing already read the ledger. Tables relocated from the case_study schema name onto financial on 2026-09-20.",
+      "note": "Write path FinancialDbContext. Relocated onto the financial schema on the financial database on 2026-09-20."
     },
     {
       "id": "D2",
@@ -166,8 +166,8 @@
       "status": "approved",
       "decidedOn": "2026-07-30",
       "outcome": "operations owns OperationsTasks; financial owns CourtVisitFeeCharges",
-      "rationale": "The task lifecycle (court visits, letters, key handover) is operations work; the charge it produces is a financial artefact priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3; the OperationsTasks rows stay in the case_study schema until Phase 4.",
-      "note": "OperationsTasks lives in case_study and is written by OperationsTaskService on the Operations host; the same service writes financial.CourtVisitFeeCharges."
+      "rationale": "The task lifecycle (court visits, letters, key handover) is operations work; the charge it produces is a financial artefact priced and collected by Financial. OperationsTasks relocated from the case_study schema name onto operations on 2026-09-20.",
+      "note": "OperationsTasks lives in operations and is written by OperationsTaskService on the Operations host; court-visit charges remain financial.CourtVisitFeeCharges."
     },
     {
       "id": "D3",
@@ -630,7 +630,7 @@
     },
     {
       "table": "InspectorFeeLedgers",
-      "schema": "case_study",
+      "schema": "financial",
       "dbSet": "InspectorFeeLedgers",
       "entity": "InspectorFeeLedger",
       "owner": "financial",
@@ -641,11 +641,11 @@
       ],
       "transactionGroup": "inspector-fees.ledger",
       "decision": "D1",
-      "note": "Owned by financial, still physically in the case_study schema; relocation is Phase 4. Write path FinancialDbContext (A4)."
+      "note": "Owned by financial; relocated from the case_study schema name onto financial on 2026-09-20. Write path FinancialDbContext."
     },
     {
       "table": "InspectorFeeTransitions",
-      "schema": "case_study",
+      "schema": "financial",
       "dbSet": "InspectorFeeTransitions",
       "entity": "InspectorFeeTransition",
       "owner": "financial",
@@ -660,7 +660,7 @@
     },
     {
       "table": "DisbursementBatches",
-      "schema": "case_study",
+      "schema": "financial",
       "dbSet": "DisbursementBatches",
       "entity": "DisbursementBatch",
       "owner": "financial",
@@ -675,7 +675,7 @@
     },
     {
       "table": "OperationsTasks",
-      "schema": "case_study",
+      "schema": "operations",
       "dbSet": "OperationsTasks",
       "entity": "OperationsTask",
       "owner": "operations",
@@ -686,7 +686,7 @@
       ],
       "transactionGroup": "operations.tasks",
       "decision": "D2",
-      "note": "Owned by operations, still physically in case_study until Phase 4. Written via OperationsDbContext; financial CourtVisitFeeCharges still on ApplicationDbContext in the same business transaction."
+      "note": "Owned by operations; relocated from the case_study schema name onto operations on 2026-09-20. Written via OperationsDbContext."
     },
     {
       "table": "Courts",

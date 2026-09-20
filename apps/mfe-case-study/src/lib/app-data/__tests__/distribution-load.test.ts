@@ -5,7 +5,7 @@ import {
   taskCountsTowardDistributionLoad,
   withOpenLoadLabel,
 } from "../distribution-load";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 function task(partial: Partial<WorkflowTask>): WorkflowTask {
   return {

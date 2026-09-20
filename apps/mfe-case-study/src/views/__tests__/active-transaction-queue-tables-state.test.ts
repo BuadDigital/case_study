@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   assignedDateLabel,
   buildAppraisalPartyDeps,

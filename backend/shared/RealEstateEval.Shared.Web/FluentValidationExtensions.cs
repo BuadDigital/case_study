@@ -4,20 +4,18 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
-using RealEstateEval.Application.Validation;
 
 namespace RealEstateEval.Shared.Web;
 
 public static class FluentValidationExtensions
 {
  /// <summary>
- /// Registers the intentionally small set of boundary validators and runs them for
- /// controller action arguments. Async validation is supported without relying on
- /// the deprecated FluentValidation.AspNetCore package.
+ /// Registers the FluentValidation action filter. Hosts register their own validator
+ /// assemblies with <c>AddValidatorsFromAssemblyContaining</c> (ADR 0002: Shared.Web
+ /// does not scan the global Application assembly).
  /// </summary>
     public static IMvcBuilder AddRealEstateEvalValidation(this IMvcBuilder mvc)
     {
-        mvc.Services.AddValidatorsFromAssemblyContaining<UsernameLoginRequestValidator>();
         mvc.Services.AddScoped<FluentValidationActionFilter>();
         mvc.AddMvcOptions(options => options.Filters.AddService<FluentValidationActionFilter>());
         return mvc;

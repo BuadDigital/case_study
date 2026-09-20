@@ -5,6 +5,7 @@ namespace RealEstateEval.Application.Authorization;
 /// <summary>
 /// Shared JWT actor lookup so hosts and application services do not re-parse claim types.
 /// NameClaimType is <c>sub</c>, so <see cref="ClaimsIdentity.Name"/> is the user id.
+/// Lives in Shared.Contracts (ADR 0002) so Shared.Web does not reference the global Application assembly.
 /// </summary>
 public static class ActorIdentity
 {

@@ -27,7 +27,7 @@ import {
 import { INSPECTION_TABLE_TYPE } from "../lib/app-data/queue-table-type";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { buildCaseStudyPartyAssignees } from "../lib/app-data/case-study-tracks";
 import {
   distributionSkeletonCols,

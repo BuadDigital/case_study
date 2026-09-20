@@ -46,7 +46,7 @@ import {
 import { saveCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";

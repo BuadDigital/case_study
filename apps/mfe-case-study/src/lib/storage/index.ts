@@ -6,7 +6,7 @@
 export {
   loadInfathDeposit,
   type InfathDepositDraft,
-} from "../app-data/infath-deposit-storage";
+} from "@platform/app-shared/app-data/infath-deposit";
 export {
   loadSpecialistEsgInputs,
   saveSpecialistEsgInputs,

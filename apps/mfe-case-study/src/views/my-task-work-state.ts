@@ -15,7 +15,7 @@ import {
   type PropertyIdentifierType,
 } from "../lib/app-data/po-intake-data";
 import { taskDisplayPropertyLabel } from "../lib/app-data/tasks-model";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 
 export type TaskWorkLayout = "page" | "panel";
 

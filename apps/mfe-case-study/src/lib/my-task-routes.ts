@@ -4,7 +4,7 @@ import {
   poPropertyInspectionInputPath,
   propertyAppraisalWorkspacePath,
 } from "@platform/app-shared/domain/po-routes";
-import type { WorkflowTask } from "./app-data/tasks-storage";
+import type { WorkflowTask } from "./app-data/tasks";
 
 export { propertyAppraisalWorkspacePath };
 

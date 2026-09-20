@@ -20,7 +20,7 @@ const RedistributePartiesModal = dynamic(
 import {
   redistributeTaskParties,
   type WorkflowTask,
-} from "../lib/app-data/tasks-storage";
+} from "../lib/app-data/tasks";
 import {
   activeCaseStudyPath,
   caseStudyTaskPath,

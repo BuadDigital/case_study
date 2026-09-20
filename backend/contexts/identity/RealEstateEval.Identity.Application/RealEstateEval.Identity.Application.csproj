@@ -10,7 +10,12 @@
   <!-- No Identity.Domain project: the ASP.NET Identity entities are pinned to global
        Infrastructure by IdentityDbContext and the Identity EF package. -->
   <ItemGroup>
+    <ProjectReference Include="..\..\..\shared\RealEstateEval.Shared.Contracts\RealEstateEval.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
   </ItemGroup>
 
 </Project>

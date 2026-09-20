@@ -3,7 +3,7 @@ import {
   filterFieldInspectionListedTasks,
   isVisibleInFieldInspectionQueue,
 } from "../field-inspection-work-queue";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 function task(
   over: Partial<WorkflowTask> & Pick<WorkflowTask, "id" | "status">,

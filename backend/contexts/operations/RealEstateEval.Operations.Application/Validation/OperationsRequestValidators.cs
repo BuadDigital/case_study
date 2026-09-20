@@ -178,3 +178,12 @@ public sealed class CreateKeyEnvelopeHandoffRequestValidator
             .OverridePropertyName("notes");
     }
 }
+
+public sealed class MarkKeyReceiptFeeCollectedRequestValidator
+    : AbstractValidator<MarkKeyReceiptFeeCollectedRequest>
+{
+    public MarkKeyReceiptFeeCollectedRequestValidator() =>
+        RuleFor(x => x.InvoiceReference!).MaximumLength(128)
+            .When(x => x.InvoiceReference is not null)
+            .OverridePropertyName("invoiceReference");
+}

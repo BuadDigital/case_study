@@ -4,7 +4,7 @@ import {
   canViewWorkflowTask,
   resolveQueueTasksForViewer,
 } from "../viewer-task-access";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 const enfathTask: WorkflowTask = {
   id: "task-1",

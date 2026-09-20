@@ -21,7 +21,7 @@ import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBill
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 const FEE_KINDS = new Set([
   "field-inspection",

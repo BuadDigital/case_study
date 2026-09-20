@@ -11,9 +11,7 @@ import {
 import { useIdempotentAction } from "@platform/app-shared";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
 import {
-  PROPERTY_BOUNDARY_ROWS,
   approximatePropertyGeo,
-  boundariesMarkedUnavailable,
   formatDateAr,
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
@@ -25,7 +23,6 @@ import {
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import {
   getOrCreateInspectorWorkspace,
-  saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
 } from "../../lib/app-data/inspector-workspace-commands";
 import {
@@ -34,7 +31,6 @@ import {
   INSPECTOR_OBSERVATION_CATEGORIES,
   MOVABLES_DESCRIPTION_KEY,
   activeMapDiffersFromInspectorOriginal,
-  ensureInspectorOriginalMapOnSubmit,
   inspectorFeatureRequiresPhoto,
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
@@ -51,7 +47,6 @@ import {
   preserveInspectorOwnedFeatureValues,
   restoreInspectorOriginalMapPin,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
-  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK,
   visibleInspectorFeatureFields,
   type InspectorBoundaryKey,
@@ -92,23 +87,14 @@ import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStamped
 import { InspectorMovablesDescriptionField } from "../field-inspection/InspectorMovablesDescriptionField";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 import {
-  firstInspectorWorkspaceError,
-  inspectorInvalidControlClass,
-  inspectorWorkspaceHasBlockingErrors,
-  scheduleInspectorErrorScroll,
-  validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
 import {
   finalizeInspectorWorkspace,
   finalizeSpecialistInspectionAcceptance,
 } from "../../lib/app-data/finalize-field-inspection-submission";
-import {
-  notifySpecialistFinishingRequired,
-  specialistFinishingLevelMissingMessage,
-} from "../../lib/app-data/valuation-report-specialist-finishing";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
@@ -125,6 +111,7 @@ import {
   EditableFeaturePhotoCell,
   ComponentCountWithPhotoField,
 } from "./PropertyDetailInspectionParts";
+import { submitPropertyDetailInspection } from "./property-detail-inspection-submit";
 
 export function PropertyDetailInspectionTab({
   property,
@@ -534,100 +521,24 @@ export function PropertyDetailInspectionTab({
 
   async function handleSaveAndSubmit() {
     if (!inspectionTask || !draft) return;
-    setSaving(true);
-    setFormError(null);
-    try {
-      if (serviceProofFromTransactionPhotos) {
-        const finishingError = specialistFinishingLevelMissingMessage({
-          propertyId: property.id,
-          status: draft.status,
-          assetSubject: draft.featureValues.assetSubject,
-          initialAssetSubject:
-            property.propertyType?.trim() ||
-            property.classification?.trim() ||
-            "",
-        });
-        if (finishingError) {
-          notifySpecialistFinishingRequired(property.id);
-          setFormError(finishingError);
-          showToast(finishingError, "error");
-          return;
-        }
-      }
-
-      const baseConfirmed: InspectorWorkspaceDraft = {
-        ...draft,
-        inspectionConfirmed: true,
-      };
-      const confirmed =
-        mapActor === "inspector"
-          ? ensureInspectorOriginalMapOnSubmit(baseConfirmed)
-          : baseConfirmed;
-      const saved = await saveInspectorWorkspaceDraft(confirmed);
-      setDraft(saved);
-
-      const errors = validateInspectorWorkspace(saved, {
-        boundariesUnavailable: boundariesMarkedUnavailable(
-          property.boundariesAvailability,
-        ),
-        classification: property.classification,
-        propertyType: property.propertyType,
-        includeRetiredFeatureKeys,
-        specialistProofServicesOnly: serviceProofFromTransactionPhotos,
-      });
-      // Confirmation is set above — don't block on it for this path.
-      delete errors.inspectionConfirmed;
-      if (inspectorWorkspaceHasBlockingErrors(errors)) {
-        setFieldErrors(errors);
-        const message =
-          firstInspectorWorkspaceError(errors) ?? "يرجى مراجعة بيانات المعاينة";
-        setFormError(message);
-        showToast(message, "error");
-        scheduleInspectorErrorScroll(errors);
-        return;
-      }
-
-      const outcome = await executeInspectorSubmit();
-      if (outcome.status === "skipped") return;
-
-      const result = outcome.value;
-      if (!result.ok) {
-        if (result.errors) {
-          setFieldErrors(result.errors as InspectorWorkspaceFieldErrors);
-          scheduleInspectorErrorScroll(
-            result.errors as InspectorWorkspaceFieldErrors,
-          );
-        }
-        setFormError(result.message);
-        showToast(result.message, "error");
-        return;
-      }
-
-      setDraft(result.draft);
-      setFieldErrors({});
-      showToast(
-        result.queued
-          ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
-          : submitSuccessToast ??
-            (serviceProofFromTransactionPhotos
-              ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS
-              : "تم حفظ بيانات المعاينة وإرسالها."),
-        result.queued ? "info" : "success",
-      );
-      if (!result.queued) {
-        onSubmitted?.();
-      }
-      if (!lockEditMode && !result.queued) {
-        onEditModeChange?.(false);
-      }
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "تعذّر حفظ بيانات المعاينة";
-      setFormError(message);
-      showToast(message, "error");
-    } finally {
-      setSaving(false);
-    }
+    await submitPropertyDetailInspection({
+      inspectionTask,
+      draft,
+      property,
+      mapActor,
+      includeRetiredFeatureKeys,
+      serviceProofFromTransactionPhotos,
+      submitSuccessToast,
+      lockEditMode,
+      executeInspectorSubmit,
+      setSaving,
+      setFormError,
+      setDraft: (next) => setDraft(next),
+      setFieldErrors,
+      showToast,
+      onSubmitted,
+      onEditModeChange,
+    });
   }
 
   if (!inspectionCard) {

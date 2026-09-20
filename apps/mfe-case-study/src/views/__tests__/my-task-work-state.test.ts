@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyProperty } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   activeTaskWorkStep,
   BOURSE_OBSTRUCTION_ACTION,

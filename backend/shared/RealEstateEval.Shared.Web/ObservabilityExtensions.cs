@@ -81,6 +81,9 @@ public static class ObservabilityExtensions
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
+                .AddRuntimeInstrumentation()
+                .AddMeter("Npgsql")
+                .AddMeter("RealEstateEval.Outbox")
                 .AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint)));
 
         return builder;

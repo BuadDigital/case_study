@@ -27,7 +27,7 @@ import type {
   CaseStudyMeterType,
 } from "../../lib/app-data/case-study-form-model";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   CaseStudyMatrixBanner,
   FormProgressRings,

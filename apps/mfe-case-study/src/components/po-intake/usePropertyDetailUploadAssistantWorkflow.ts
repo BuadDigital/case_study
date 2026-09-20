@@ -29,7 +29,7 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import { loadInfathDeposit } from "../../lib/app-data/infath-deposit-storage";
+import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
 import {
   DEPOSIT_CERTIFICATE_FIELD_LABEL,
   DEPOSIT_CODE_FIELD_LABEL,
