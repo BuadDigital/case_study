@@ -39,7 +39,7 @@ public class PropertyDocumentUploadRulesTests
     }
 
     [Fact]
-    public void Documents_tab_upload_of_a_defined_type_needs_no_review()
+    public void Documents_tab_upload_of_a_defined_type_carries_no_custom_label()
     {
         var result = PropertyDocumentUploadRules.Resolve(Governed, ScopeKey, "Lease-Contract", "ignored", "ignored");
 
@@ -47,7 +47,6 @@ public class PropertyDocumentUploadRulesTests
         Assert.Equal("lease-contract", result.TypeKey);
         Assert.Null(result.CustomLabel);
         Assert.Null(result.CustomReason);
-        Assert.Null(result.ReviewStatus);
     }
 
     [Theory]
@@ -75,11 +74,10 @@ public class PropertyDocumentUploadRulesTests
 
         Assert.Null(result.Error);
         Assert.Equal(PropertyDocumentTypes.UnlistedKey, result.TypeKey);
-        Assert.Equal(PropertyDocumentReviewStatuses.Pending, result.ReviewStatus);
     }
 
     [Fact]
-    public void Unlisted_document_with_name_and_reason_waits_for_review()
+    public void Unlisted_document_with_name_and_reason_is_accepted()
     {
         var result = PropertyDocumentUploadRules.Resolve(
             Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey, " محضر لجنة ", Reason);
@@ -87,7 +85,6 @@ public class PropertyDocumentUploadRulesTests
         Assert.Null(result.Error);
         Assert.Equal(PropertyDocumentTypes.UnlistedKey, result.TypeKey);
         Assert.Equal("محضر لجنة", result.CustomLabel);
-        Assert.Equal(PropertyDocumentReviewStatuses.Pending, result.ReviewStatus);
     }
 
     [Fact]
@@ -97,7 +94,6 @@ public class PropertyDocumentUploadRulesTests
 
         var ok = PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, "محضر لجنة", null);
         Assert.Null(ok.Error);
-        Assert.Equal(PropertyDocumentReviewStatuses.Pending, ok.ReviewStatus);
     }
 
     [Theory]
@@ -142,7 +138,6 @@ public class PropertyDocumentUploadRulesTests
 
         Assert.Null(result.Error);
         Assert.Equal("owner-identity", result.TypeKey);
-        Assert.Null(result.ReviewStatus);
     }
 
     [Fact]
@@ -151,20 +146,5 @@ public class PropertyDocumentUploadRulesTests
         var result = PropertyDocumentUploadRules.Reclassify("property-deed-ownership", "lease-contract", null, null);
 
         Assert.NotNull(result.Error);
-    }
-
-    [Fact]
-    public void Review_applies_to_unlisted_documents_only()
-    {
-        Assert.NotNull(PropertyDocumentUploadRules.ValidateReview("deed", "approved", null));
-        Assert.Null(PropertyDocumentUploadRules.ValidateReview("unlisted", "approved", null));
-    }
-
-    [Fact]
-    public void Rejecting_an_unlisted_document_needs_a_note()
-    {
-        Assert.NotNull(PropertyDocumentUploadRules.ValidateReview("unlisted", "rejected", " "));
-        Assert.Null(PropertyDocumentUploadRules.ValidateReview("unlisted", "rejected", "ليس مستندًا للعقار"));
-        Assert.NotNull(PropertyDocumentUploadRules.ValidateReview("unlisted", "pending", null));
     }
 }

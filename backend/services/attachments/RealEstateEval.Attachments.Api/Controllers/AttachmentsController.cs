@@ -109,22 +109,6 @@ public class AttachmentsController : ControllerBase
         return meta is null ? NotFound() : Ok(meta);
     }
 
-    [HttpPost("{id:guid}/review")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
-    public async Task<ActionResult<FileAttachmentMetaDto>> ReviewDocument(
-        Guid id,
-        [FromBody] ReviewAttachmentDocumentRequest request,
-        CancellationToken ct)
-    {
-        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
-        if (!PoRoleMatrixRules.CanReviewUnlistedDocuments(actor?.PrototypeRole))
-            return this.ForbiddenProblem("مراجعة المستندات غير المعرّفة متاحة لمشرف القسم والإدارة");
-
-        var (meta, error) = await _attachments.ReviewDocumentAsync(id, request, actor, ct);
-        if (error is not null) return this.BadRequestProblem(error);
-        return meta is null ? NotFound() : Ok(meta);
-    }
-
     [HttpGet("lookup")]
     [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(

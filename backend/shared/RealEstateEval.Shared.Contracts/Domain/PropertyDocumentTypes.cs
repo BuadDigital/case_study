@@ -47,16 +47,6 @@ public static class PropertyDocumentGroups
         [Ownership, Assignment, Contracts, Engineering, Movables, Photos, Outputs, Unlisted];
 }
 
-/// <summary>Review state of a document uploaded outside the defined list.</summary>
-public static class PropertyDocumentReviewStatuses
-{
-    public const string Pending = "pending";
-    public const string Approved = "approved";
-    public const string Rejected = "rejected";
-
-    public static readonly string[] All = [Pending, Approved, Rejected];
-}
-
 /// <summary>
 /// The registry of documents the system recognises on a property. Mirrored by
 /// <c>packages/app-shared/src/domain/property-documents/property-document-types.ts</c>;

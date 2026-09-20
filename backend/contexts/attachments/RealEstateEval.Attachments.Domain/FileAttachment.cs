@@ -19,9 +19,4 @@ public class FileAttachment
     public string? CustomDocumentLabel { get; set; }
     /// <summary>Why a document outside the defined list was needed.</summary>
     public string? CustomDocumentReason { get; set; }
-    /// <summary><c>PropertyDocumentReviewStatuses</c>; set only for documents outside the defined list.</summary>
-    public string? ReviewStatus { get; set; }
-    public string? ReviewNote { get; set; }
-    public string? ReviewedByUserId { get; set; }
-    public DateTime? ReviewedAtUtc { get; set; }
 }

@@ -16,9 +16,6 @@ public class FileAttachmentMetaDto
     public string? DocumentTypeKey { get; init; }
     public string? CustomDocumentLabel { get; init; }
     public string? CustomDocumentReason { get; init; }
-    public string? ReviewStatus { get; init; }
-    public string? ReviewNote { get; init; }
-    public DateTime? ReviewedAtUtc { get; init; }
 }
 
 public sealed class AttachmentRefDto
@@ -69,15 +66,6 @@ public sealed class SetAttachmentDocumentTypeRequest
     public string? CustomDocumentLabel { get; init; }
     [MaxLength(512)]
     public string? CustomDocumentReason { get; init; }
-}
-
-/// <summary>Approve or reject a document uploaded outside the defined list.</summary>
-public sealed class ReviewAttachmentDocumentRequest
-{
-    [Required, MaxLength(16)]
-    public string Decision { get; init; } = "";
-    [MaxLength(512)]
-    public string? Note { get; init; }
 }
 
 public class PhotoMetadataInput

@@ -10,25 +10,23 @@ public sealed record ResolvedDocumentType(
     string? Error,
     string? TypeKey,
     string? CustomLabel,
-    string? CustomReason,
-    string? ReviewStatus)
+    string? CustomReason)
 {
-    public static readonly ResolvedDocumentType None = new(null, null, null, null, null);
+    public static readonly ResolvedDocumentType None = new(null, null, null, null);
 
-    public static ResolvedDocumentType Reject(string error) => new(error, null, null, null, null);
+    public static ResolvedDocumentType Reject(string error) => new(error, null, null, null);
 }
 
 /// <summary>
 /// Document governance for property uploads. The documents-tab scope must name a registry type;
 /// the older per-field scopes are classified by the field they were uploaded from; anything
-/// outside the defined list needs a name (reason optional) and waits for review.
+/// outside the defined list needs a name (reason optional).
 /// </summary>
 public static class PropertyDocumentUploadRules
 {
     public const int CustomLabelMinLength = 2;
     public const int CustomLabelMaxLength = 128;
     public const int CustomReasonMaxLength = 512;
-    public const int ReviewNoteMaxLength = 512;
 
     public static ResolvedDocumentType Resolve(
         string? scope,
@@ -82,25 +80,6 @@ public static class PropertyDocumentUploadRules
         return ClassifyTabDocument(requested, customLabel, customReason);
     }
 
-    /// <summary>Returns the rejection message, or null when the review may be recorded.</summary>
-    public static string? ValidateReview(string? documentTypeKey, string? decision, string? note)
-    {
-        if (NormalizeKey(documentTypeKey) != PropertyDocumentTypes.UnlistedKey)
-            return "المراجعة للمستندات غير المعرّفة فقط";
-
-        var normalizedDecision = NormalizeKey(decision);
-        if (normalizedDecision is not (PropertyDocumentReviewStatuses.Approved or PropertyDocumentReviewStatuses.Rejected))
-            return "قرار المراجعة يجب أن يكون اعتمادًا أو رفضًا";
-
-        var trimmedNote = note?.Trim() ?? "";
-        if (normalizedDecision == PropertyDocumentReviewStatuses.Rejected && trimmedNote.Length == 0)
-            return "اكتب سبب رفض المستند";
-        if (trimmedNote.Length > ReviewNoteMaxLength)
-            return "ملاحظة المراجعة أطول من المسموح";
-
-        return null;
-    }
-
     public static string? NormalizeKey(string? value)
     {
         var trimmed = value?.Trim().ToLowerInvariant();
@@ -126,7 +105,7 @@ public static class PropertyDocumentUploadRules
         string? customReason)
     {
         if (type.Key != PropertyDocumentTypes.UnlistedKey)
-            return new ResolvedDocumentType(null, type.Key, null, null, null);
+            return new ResolvedDocumentType(null, type.Key, null, null);
 
         var label = customLabel?.Trim() ?? "";
         var reason = customReason?.Trim() ?? "";
@@ -141,7 +120,6 @@ public static class PropertyDocumentUploadRules
             null,
             PropertyDocumentTypes.UnlistedKey,
             label,
-            reason.Length == 0 ? null : reason,
-            PropertyDocumentReviewStatuses.Pending);
+            reason.Length == 0 ? null : reason);
     }
 }

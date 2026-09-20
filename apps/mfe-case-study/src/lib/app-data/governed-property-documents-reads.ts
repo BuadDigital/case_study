@@ -49,8 +49,6 @@ export function governedEntryFromMeta(
       ? {
           customLabel,
           customReason: meta.customDocumentReason?.trim() ?? "",
-          reviewStatus: meta.reviewStatus ?? "pending",
-          reviewNote: meta.reviewNote ?? null,
         }
       : undefined,
   };

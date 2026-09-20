@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Tajawal } from "next/font/google";
+import { DocumentPreviewHost } from "@platform/app-shared/components/DocumentPreviewHost";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { ToastRootProvider } from "@/providers/ToastRootProvider";
@@ -80,6 +81,7 @@ export default function RootLayout({
           {children}
           <ServiceWorkerRegister />
           <PwaInstallPrompt />
+          <DocumentPreviewHost />
         </ToastRootProvider>
       </body>
     </html>

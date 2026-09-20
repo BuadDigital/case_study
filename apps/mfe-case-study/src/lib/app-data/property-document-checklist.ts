@@ -1,7 +1,7 @@
 /**
  * Pure model behind the «مستندات العقار» checklist: every governed document type that applies
  * to the property, the documents already on file for each, which requirements are still
- * missing, and the unlisted documents awaiting review. No React, no fetches.
+ * missing, and the unlisted documents. No React, no fetches.
  */
 import type { ValuationListItemDto } from "@platform/api-client";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
@@ -36,7 +36,6 @@ export type PropertyDocumentChecklistGroup = {
 export type PropertyDocumentChecklist = {
   groups: PropertyDocumentChecklistGroup[];
   photos: PropertyDetailDocumentEntry[];
-  outputs: PropertyDocumentChecklistRow[];
   unlisted: PropertyDetailDocumentEntry[];
   missingRequired: string[];
 };
@@ -48,7 +47,7 @@ export type PropertyDocumentTypeOption = {
   pdfOnly: boolean;
 };
 
-/** Groups the checklist lists as rows; photos, outputs and unlisted render on their own. */
+/** Groups the checklist lists as rows; photos and unlisted render on their own. */
 const CHECKLIST_GROUPS: readonly PropertyDocumentGroup[] = [
   "ownership",
   "assignment",
@@ -67,13 +66,13 @@ function typeLabel(type: PropertyDocumentType, settings: TypeSettings): string {
   return settings.get(type.key)?.name?.trim() || type.labelAr;
 }
 
-function hasReviewInfo(entry: PropertyDetailDocumentEntry): boolean {
+function hasGovernedInfo(entry: PropertyDetailDocumentEntry): boolean {
   return Boolean(entry.governed || entry.unlisted);
 }
 
 /**
  * One row per attachment. The same file can arrive from the per-field intake cache and from
- * the governed read; the governed row carries the stored type and review state, so it wins,
+ * the governed read; the governed row carries the stored type and custom label, so it wins,
  * keeping any preview the other already hydrated.
  */
 export function dedupeDocumentEntries(
@@ -94,16 +93,11 @@ export function dedupeDocumentEntries(
       continue;
     }
     const existing = result[index]!;
-    if (hasReviewInfo(entry) && !hasReviewInfo(existing)) {
+    if (hasGovernedInfo(entry) && !hasGovernedInfo(existing)) {
       result[index] = { ...existing, ...entry, dataUrl: entry.dataUrl ?? existing.dataUrl };
     }
   }
   return result;
-}
-
-function reviewOrder(entry: PropertyDetailDocumentEntry): number {
-  const status = entry.unlisted?.reviewStatus ?? "pending";
-  return status === "pending" ? 0 : status === "rejected" ? 1 : 2;
 }
 
 export function buildPropertyDocumentChecklist(input: {
@@ -175,15 +169,10 @@ export function buildPropertyDocumentChecklist(input: {
     };
   }).filter((group) => group.rows.length > 0);
 
-  const outputs = PROPERTY_DOCUMENT_TYPES.filter((type) => type.group === "outputs").map(
-    (type) => buildRow(type).row,
-  );
-
   return {
     groups,
     photos,
-    outputs,
-    unlisted: [...unlisted].sort((a, b) => reviewOrder(a) - reviewOrder(b)),
+    unlisted,
     missingRequired: groups.flatMap((group) =>
       group.rows.filter((row) => row.missing).map((row) => row.label),
     ),
