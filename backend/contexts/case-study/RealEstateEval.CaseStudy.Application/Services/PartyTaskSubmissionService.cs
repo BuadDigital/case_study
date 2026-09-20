@@ -19,17 +19,6 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 /// </summary>
 public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 {
-    /// <summary>Case-specialist / supervisor inbox copy for a party's submit action, by task kind.</summary>
-    private static readonly Dictionary<WorkflowTaskKind, (string Title, string Body)> SubmitNotificationText = new()
-    {
-        [WorkflowTaskKind.EngineeringSurvey] =
-            ("إرسال الرفع المساحي", "أرسل المكتب الهندسي مخرجات الرفع المساحي للمراجعة"),
-        [WorkflowTaskKind.FieldInspection] =
-            ("إرسال المعاينة الميدانية", "أرسل المعاين بيانات المعاينة الميدانية للمراجعة"),
-        [WorkflowTaskKind.PropertyAppraisal] =
-            ("إرسال تقرير التقييم", "أرسل المقيم تقرير التقييم العقاري للمراجعة"),
-    };
-
     private readonly IPartyTaskSubmissionRepository _repo;
     private readonly IPartyTaskFailureGate _failures;
     private readonly IWorkflowTaskService _tasks;
