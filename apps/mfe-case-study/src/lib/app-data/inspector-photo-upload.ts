@@ -1,5 +1,6 @@
 import { uploadAttachment } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import { uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
 import {
   apiErrorMessage,
@@ -428,5 +429,7 @@ export function inspectorPhotoAttachmentFromTransactionDoc(
 }
 
 export function openInspectorPhotoPreview(dataUrl: string): void {
+  // Same-page dialog (DocumentPreviewHost in the shell); a new tab only when none is mounted.
+  if (requestDocumentPreview({ fileName: "صورة", kind: "image", dataUrl })) return;
   window.open(dataUrl, "_blank", "noopener,noreferrer");
 }

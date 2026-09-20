@@ -2,7 +2,6 @@
   "$comment": "Contract for the governed property document registry. Backend: backend/shared/RealEstateEval.Shared.Contracts/Domain/PropertyDocumentTypes.cs. Frontend: packages/app-shared/src/domain/property-documents/property-document-types.ts. Both sides are tested against this file; change all three together.",
   "governedScope": "property-document",
   "unlistedKey": "unlisted",
-  "reviewStatuses": ["pending", "approved", "rejected"],
   "groups": ["ownership", "assignment", "contracts", "engineering", "movables", "photos", "outputs", "unlisted"],
   "types": [
     { "key": "deed", "labelAr": "صك الملكية", "group": "ownership", "appliesTo": "all", "defaultRequired": true, "uploadableFromTab": true, "pdfOnly": false, "countsAs": null, "legacyScopes": ["property-deed-ownership"] },

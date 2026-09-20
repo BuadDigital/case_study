@@ -1,6 +1,5 @@
 import {
   deleteAttachment,
-  reviewAttachmentDocument,
   setAttachmentDocumentType,
   uploadAttachment,
   type PrototypeModulesResult,
@@ -102,24 +101,6 @@ export async function reclassifyGovernedPropertyDocument(
     ...unlistedFields(input),
   });
   return failure(result, "تعذّر تصنيف المستند — حاول مجدداً");
-}
-
-export async function reviewUnlistedPropertyDocument(
-  attachmentId: string,
-  decision: "approved" | "rejected",
-  note?: string,
-): Promise<GovernedDocumentCommandResult> {
-  if (decision === "rejected" && !note?.trim()) {
-    return { ok: false, error: "اكتب سبب رفض المستند" };
-  }
-  const config = await freshPrototypeModulesApiConfig();
-  if (!config) return { ok: false, error: "انتهت الجلسة — سجّل الدخول مجدداً" };
-
-  const result = await reviewAttachmentDocument(config, attachmentId, {
-    decision,
-    note: note?.trim() || null,
-  });
-  return failure(result, "تعذّر حفظ قرار المراجعة — حاول مجدداً");
 }
 
 export async function deleteGovernedPropertyDocument(

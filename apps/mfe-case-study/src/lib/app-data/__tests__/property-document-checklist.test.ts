@@ -126,30 +126,21 @@ describe("buildPropertyDocumentChecklist", () => {
     expect(checklist.photos.map((d) => d.id)).toEqual(["facade"]);
   });
 
-  it("puts unlisted documents in review order, pending first", () => {
-    const unlisted = (id: string, reviewStatus: "pending" | "approved" | "rejected") =>
+  it("lists unlisted documents in upload order and never lets them satisfy a requirement", () => {
+    const unlisted = (id: string) =>
       doc(id, "unlisted", {
-        unlisted: { customLabel: id, customReason: "سبب كافٍ للرفع", reviewStatus },
+        unlisted: { customLabel: id, customReason: "سبب كافٍ للرفع" },
       });
 
     const checklist = buildPropertyDocumentChecklist({
-      entries: [unlisted("a", "approved"), unlisted("r", "rejected"), unlisted("p", "pending")],
+      entries: [unlisted("a"), unlisted("r"), unlisted("p")],
       propertyType: "فيلا",
     });
 
-    expect(checklist.unlisted.map((d) => d.id)).toEqual(["p", "r", "a"]);
-    // An unlisted document never satisfies a requirement.
+    expect(checklist.unlisted.map((d) => d.id)).toEqual(["a", "r", "p"]);
     expect(checklist.missingRequired).toEqual(["صك الملكية"]);
   });
 
-  it("shows outputs even before they are issued", () => {
-    const checklist = buildPropertyDocumentChecklist({ entries: [] });
-
-    expect(checklist.outputs.map((r) => r.type.key)).toEqual([
-      "valuation-report",
-      "deposit-certificate",
-    ]);
-  });
 });
 
 describe("dedupeDocumentEntries", () => {

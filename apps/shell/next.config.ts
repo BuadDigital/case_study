@@ -110,7 +110,10 @@ const nextConfig: NextConfig = {
               "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
               "connect-src 'self' https: http: ws: wss:",
               "worker-src 'self' blob:",
-              "frame-src 'self' https://www.google.com https://maps.google.com",
+              "frame-src 'self' blob: https://www.google.com https://maps.google.com",
+              // Blob tabs (document «معاينة») inherit this policy; without blob: here Chrome's
+              // built-in PDF viewer is blocked and the tab stays empty, while images still load.
+              "object-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

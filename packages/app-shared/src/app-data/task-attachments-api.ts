@@ -4,6 +4,7 @@ import {
   uploadAttachment,
 } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "./attachment-blob-cache";
+import { requestDocumentPreview } from "./document-preview-store";
 import { prototypeModulesApiConfig } from "./modules-api-config";
 import {
   blobToDataUrl,
@@ -239,6 +240,23 @@ export async function openTaskAttachmentPreviewAsync(
   const resolved = await ensureTaskAttachmentPreview(attachment, scope, taskId);
   const dataUrl = resolved?.dataUrl;
   if (!dataUrl) return;
+
+  // Same-page dialog (DocumentPreviewHost in the shell); a new tab only when none is mounted.
+  const mime = resolved?.mimeType || attachment.mimeType || "";
+  const fileName = resolved?.fileName || attachment.fileName;
+  if (
+    requestDocumentPreview({
+      fileName,
+      kind: mime.startsWith("image/")
+        ? "image"
+        : mime === "application/pdf" || /\.pdf$/i.test(fileName)
+          ? "pdf"
+          : "file",
+      dataUrl,
+    })
+  ) {
+    return;
+  }
 
   try {
     if (dataUrl.startsWith("data:")) {

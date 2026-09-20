@@ -59,15 +59,13 @@ describe("governedEntryFromMeta", () => {
     expect(entry.unlisted).toBeUndefined();
   });
 
-  it("carries the uploader's name, reason and review state for unlisted documents", () => {
+  it("carries the uploader's name and reason for unlisted documents", () => {
     const entry = governedEntryFromMeta({
       ...base,
       scope: "property-other",
       documentTypeKey: "unlisted",
       customDocumentLabel: "محضر لجنة",
       customDocumentReason: "طلبه العميل للمعاملة",
-      reviewStatus: "rejected",
-      reviewNote: "ليس للعقار",
     });
 
     expect(entry.name).toBe("محضر لجنة");
@@ -75,8 +73,6 @@ describe("governedEntryFromMeta", () => {
     expect(entry.unlisted).toEqual({
       customLabel: "محضر لجنة",
       customReason: "طلبه العميل للمعاملة",
-      reviewStatus: "rejected",
-      reviewNote: "ليس للعقار",
     });
   });
 });

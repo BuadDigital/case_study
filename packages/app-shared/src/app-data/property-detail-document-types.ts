@@ -25,12 +25,10 @@ export type PropertyDetailDocumentEntry = {
   documentTypeKey?: string;
   /** Uploaded from the documents tab itself (scope `property-document`) — deletable there. */
   governed?: boolean;
-  /** Documents outside the defined list: the uploader's name + reason and the review state. */
+  /** Documents outside the defined list: the uploader's name + reason. */
   unlisted?: {
     customLabel: string;
     customReason: string;
-    reviewStatus: "pending" | "approved" | "rejected";
-    reviewNote?: string | null;
   };
 };
 

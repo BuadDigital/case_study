@@ -31,8 +31,5 @@ internal static class AttachmentMetaMapper
         DocumentTypeKey = row.DocumentTypeKey,
         CustomDocumentLabel = row.CustomDocumentLabel,
         CustomDocumentReason = row.CustomDocumentReason,
-        ReviewStatus = row.ReviewStatus,
-        ReviewNote = row.ReviewNote,
-        ReviewedAtUtc = row.ReviewedAtUtc,
     };
 }

@@ -53,21 +53,6 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
-                    b.Property<string>("ReviewNote")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<string>("ReviewStatus")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<DateTime?>("ReviewedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ReviewedByUserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
                     b.Property<string>("Scope")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -94,10 +79,7 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
 
                     b.HasIndex("Scope", "ScopeKey");
 
-                    b.ToTable("FileAttachments", "attachments", t =>
-                        {
-                            t.HasCheckConstraint("CK_FileAttachments_ReviewStatus", "\"ReviewStatus\" IS NULL OR \"ReviewStatus\" IN ('pending', 'approved', 'rejected')");
-                        });
+                    b.ToTable("FileAttachments", "attachments");
                 });
 
             modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>

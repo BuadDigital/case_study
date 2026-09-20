@@ -36,11 +36,4 @@ public interface IAttachmentService
         SetAttachmentDocumentTypeRequest request,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
-
- /// <summary>Approve / reject an unlisted document. (null, null) = not found / not visible.</summary>
-    Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewDocumentAsync(
-        Guid id,
-        ReviewAttachmentDocumentRequest request,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken = default);
 }

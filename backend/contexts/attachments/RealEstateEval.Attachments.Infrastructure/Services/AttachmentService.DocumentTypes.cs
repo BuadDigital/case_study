@@ -7,7 +7,7 @@ using RealEstateEval.Attachments.Domain;
 
 namespace RealEstateEval.Attachments.Infrastructure.Services;
 
-/// <summary>Document governance on stored uploads: re-typing and reviewing unlisted documents.</summary>
+/// <summary>Document governance on stored uploads: re-typing documents-tab uploads.</summary>
 public sealed partial class AttachmentService
 {
     public async Task<(FileAttachmentMetaDto? Meta, string? Error)> SetDocumentTypeAsync(
@@ -27,33 +27,6 @@ public sealed partial class AttachmentService
         if (resolved.Error is not null) return (null, resolved.Error);
 
         ApplyDocumentType(row, resolved);
- // A new classification replaces any earlier review of the previous one.
-        row.ReviewNote = null;
-        row.ReviewedByUserId = null;
-        row.ReviewedAtUtc = null;
-        await _db.SaveChangesAsync(cancellationToken);
-        return (await MetaWithPhotoAsync(row, cancellationToken), null);
-    }
-
-    public async Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewDocumentAsync(
-        Guid id,
-        ReviewAttachmentDocumentRequest request,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null || !CanAccess(row, actor)) return (null, null);
-
-        var error = PropertyDocumentUploadRules.ValidateReview(
-            row.DocumentTypeKey,
-            request.Decision,
-            request.Note);
-        if (error is not null) return (null, error);
-
-        row.ReviewStatus = PropertyDocumentUploadRules.NormalizeKey(request.Decision);
-        row.ReviewNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
-        row.ReviewedByUserId = actor?.UserId;
-        row.ReviewedAtUtc = _time.UtcNow();
         await _db.SaveChangesAsync(cancellationToken);
         return (await MetaWithPhotoAsync(row, cancellationToken), null);
     }
@@ -63,7 +36,6 @@ public sealed partial class AttachmentService
         row.DocumentTypeKey = resolved.TypeKey;
         row.CustomDocumentLabel = resolved.CustomLabel;
         row.CustomDocumentReason = resolved.CustomReason;
-        row.ReviewStatus = resolved.ReviewStatus;
     }
 
     private async Task<FileAttachmentMetaDto> MetaWithPhotoAsync(FileAttachment row, CancellationToken ct)

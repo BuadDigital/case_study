@@ -2,6 +2,7 @@
 
 import { cn } from "@platform/ui-kit";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import { previewDocumentFile } from "@platform/app-shared/app-data/download-document-file";
 import type { ValuationPrintAttachmentRow } from "../../lib/evaluator/valuation-report-property-attachments";
 import { movePrintAttachmentKey } from "../../lib/evaluator/valuation-report-property-attachments";
@@ -32,15 +33,22 @@ function PropertyDocumentLinks({ docs }: { docs: PropertyDetailDocumentEntry[] }
             type="button"
             className="shrink-0 rounded border border-border bg-surface px-2 py-0.5 text-[10.5px] font-bold text-text-2"
             onClick={() => {
+              const attachmentId =
+                doc.attachmentId ?? doc.inspectionPhoto?.attachment.attachmentId;
+              if (
+                requestDocumentPreview({
+                  fileName: doc.fileName,
+                  title: doc.name,
+                  kind: doc.kind,
+                  dataUrl: doc.dataUrl,
+                  attachmentId,
+                })
+              ) {
+                return;
+              }
               const target = window.open("about:blank", "_blank");
               void previewDocumentFile(
-                {
-                  fileName: doc.fileName,
-                  dataUrl: doc.dataUrl,
-                  attachmentId:
-                    doc.attachmentId ??
-                    doc.inspectionPhoto?.attachment.attachmentId,
-                },
+                { fileName: doc.fileName, dataUrl: doc.dataUrl, attachmentId },
                 target,
               );
             }}

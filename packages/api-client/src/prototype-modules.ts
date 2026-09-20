@@ -776,9 +776,6 @@ export type FileAttachmentMetaDto = {
   documentTypeKey?: string | null;
   customDocumentLabel?: string | null;
   customDocumentReason?: string | null;
-  reviewStatus?: "pending" | "approved" | "rejected" | null;
-  reviewNote?: string | null;
-  reviewedAtUtc?: string | null;
 };
 
 type PhotoMetadataDto = {
@@ -816,11 +813,6 @@ export type SetAttachmentDocumentTypeRequest = {
   documentTypeKey: string;
   customDocumentLabel?: string | null;
   customDocumentReason?: string | null;
-};
-
-export type ReviewAttachmentDocumentRequest = {
-  decision: "approved" | "rejected";
-  note?: string | null;
 };
 
 async function sendAttachmentDocumentChange(
@@ -865,20 +857,6 @@ export function setAttachmentDocumentType(
     config,
     `/api/attachments/${encodeURIComponent(id)}/document-type`,
     "PUT",
-    body,
-  );
-}
-
-/** Approve or reject a document uploaded outside the defined list. */
-export function reviewAttachmentDocument(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  body: ReviewAttachmentDocumentRequest,
-): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
-  return sendAttachmentDocumentChange(
-    config,
-    `/api/attachments/${encodeURIComponent(id)}/review`,
-    "POST",
     body,
   );
 }

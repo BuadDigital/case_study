@@ -3,7 +3,7 @@
 /**
  * Documents tab of `PoPropertyDetailTabs` — the governed document checklist: every defined
  * document type that applies to the property, what is on file for each, missing required
- * documents, unlisted documents under review, inspection photos and valuation outputs.
+ * documents, unlisted documents and inspection photos.
  * Behaviour lives in `usePropertyDocumentsWorkflow`; the model in `property-document-checklist`.
  */
 
@@ -17,12 +17,8 @@ import type {
 import { InfoBox } from "./PropertyDetailFields";
 import {
   ChecklistRowsList,
-  ValuationOutputsSection,
 } from "./PropertyDocumentChecklistParts";
-import {
-  RejectUnlistedDocumentDialog,
-  UnlistedDocumentsSection,
-} from "./PropertyDocumentUnlistedSection";
+import { UnlistedDocumentsSection } from "./PropertyDocumentUnlistedSection";
 import {
   PropertyDocumentUploadDialog,
   type PropertyDocumentDialogState,
@@ -41,7 +37,6 @@ export function DocumentsTab({
   const workflow = usePropertyDocumentsWorkflow({ sections, property, poNumber });
   const { checklist } = workflow;
   const [dialog, setDialog] = useState<PropertyDocumentDialogState | null>(null);
-  const [rejecting, setRejecting] = useState<PropertyDetailDocumentEntry | null>(null);
 
   return (
     <>
@@ -90,7 +85,6 @@ export function DocumentsTab({
       <UnlistedDocumentsSection
         entries={checklist.unlisted}
         canUpload={workflow.canUpload}
-        canReview={workflow.canReview}
         busy={workflow.busy}
         onClassify={(entry) =>
           setDialog({
@@ -101,12 +95,8 @@ export function DocumentsTab({
             customReason: entry.unlisted?.customReason,
           })
         }
-        onApprove={(entry) => void workflow.approve(entry.attachmentId!)}
-        onReject={setRejecting}
         onDelete={(attachmentId) => void workflow.remove(attachmentId)}
       />
-
-      <ValuationOutputsSection rows={checklist.outputs} />
 
       <PropertyDocumentUploadDialog
         state={dialog}
@@ -115,18 +105,6 @@ export function DocumentsTab({
         onClose={() => setDialog(null)}
         onUpload={workflow.upload}
         onClassify={workflow.reclassify}
-      />
-      <RejectUnlistedDocumentDialog
-        entry={rejecting}
-        busy={workflow.busy}
-        onClose={() => setRejecting(null)}
-        onConfirm={(note) => {
-          const attachmentId = rejecting?.attachmentId;
-          if (!attachmentId) return;
-          void workflow.reject(attachmentId, note).then((ok) => {
-            if (ok) setRejecting(null);
-          });
-        }}
       />
     </>
   );

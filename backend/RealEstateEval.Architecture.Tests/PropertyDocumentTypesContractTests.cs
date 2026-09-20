@@ -23,7 +23,6 @@ public sealed class PropertyDocumentTypesContractTests
 
         Assert.Equal(PropertyDocumentTypes.GovernedScope, root.GetProperty("governedScope").GetString());
         Assert.Equal(PropertyDocumentTypes.UnlistedKey, root.GetProperty("unlistedKey").GetString());
-        Assert.Equal(PropertyDocumentReviewStatuses.All, Strings(root.GetProperty("reviewStatuses")));
         Assert.Equal(PropertyDocumentGroups.All, Strings(root.GetProperty("groups")));
 
         var contract = root.GetProperty("types").EnumerateArray().Select(Describe).ToList();

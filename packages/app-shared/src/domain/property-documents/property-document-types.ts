@@ -18,8 +18,6 @@ export type PropertyDocumentGroup =
 
 export type PropertyDocumentApplicability = "all" | "built" | "land";
 
-export type PropertyDocumentReviewStatus = "pending" | "approved" | "rejected";
-
 export type PropertyDocumentType = {
   key: string;
   labelAr: string;
@@ -39,12 +37,6 @@ export type PropertyDocumentType = {
 export const PROPERTY_DOCUMENT_GOVERNED_SCOPE = "property-document";
 
 export const UNLISTED_DOCUMENT_KEY = "unlisted";
-
-export const PROPERTY_DOCUMENT_REVIEW_STATUSES: readonly PropertyDocumentReviewStatus[] = [
-  "pending",
-  "approved",
-  "rejected",
-];
 
 export const PROPERTY_DOCUMENT_GROUPS: readonly {
   key: PropertyDocumentGroup;

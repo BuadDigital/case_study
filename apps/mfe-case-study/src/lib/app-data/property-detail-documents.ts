@@ -8,8 +8,11 @@ import {
   getCachedEvaluatorDepositCertificate,
   getCachedEvaluatorReport,
 } from "../evaluator-bridge";
-import { downloadDocumentFile } from "@platform/app-shared/app-data/download-document-file";
-import { openDataUrlInNewTab } from "@platform/app-shared/media/open-data-url";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
+import {
+  downloadDocumentFile,
+  previewDocumentFile,
+} from "@platform/app-shared/app-data/download-document-file";
 import {
   getCachedPropertyDocMatching,
   isImageMime,
@@ -591,8 +594,28 @@ export function openPropertyDetailDocumentPreview(
     );
     return;
   }
-  if (!entry.dataUrl) return;
-  openDataUrlInNewTab(entry.dataUrl);
+  // Rows listed from metadata only (documents-tab uploads) carry an attachment id but no
+  // dataUrl — fetch on demand. The tab opens now, inside the click, so it isn't popup-blocked.
+  const attachmentId =
+    entry.attachmentId ?? entry.inspectionPhoto?.attachment.attachmentId;
+  if (!entry.dataUrl && !attachmentId) return;
+  // Same-page dialog (DocumentPreviewHost in the shell); a new tab only when none is mounted.
+  if (
+    requestDocumentPreview({
+      fileName: entry.fileName,
+      title: entry.name,
+      kind: entry.kind === "image" || entry.kind === "pdf" ? entry.kind : "file",
+      dataUrl: entry.dataUrl,
+      attachmentId,
+    })
+  ) {
+    return;
+  }
+  const target = window.open("about:blank", "_blank");
+  void previewDocumentFile(
+    { fileName: entry.fileName, dataUrl: entry.dataUrl, attachmentId },
+    target,
+  );
 }
 
 export function downloadPropertyDetailDocument(

@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   PROPERTY_DOCUMENT_GOVERNED_SCOPE,
   PROPERTY_DOCUMENT_GROUPS,
-  PROPERTY_DOCUMENT_REVIEW_STATUSES,
   PROPERTY_DOCUMENT_TYPES,
   UNLISTED_DOCUMENT_KEY,
   normalizePropertyTypeKeys,
@@ -33,7 +32,6 @@ const contract = JSON.parse(
 ) as {
   governedScope: string;
   unlistedKey: string;
-  reviewStatuses: string[];
   groups: string[];
   types: ContractType[];
 };
@@ -42,7 +40,6 @@ describe("property document registry", () => {
   it("matches the shared contract with the backend", () => {
     expect(PROPERTY_DOCUMENT_GOVERNED_SCOPE).toBe(contract.governedScope);
     expect(UNLISTED_DOCUMENT_KEY).toBe(contract.unlistedKey);
-    expect([...PROPERTY_DOCUMENT_REVIEW_STATUSES]).toEqual(contract.reviewStatuses);
     expect(PROPERTY_DOCUMENT_GROUPS.map((g) => g.key)).toEqual(contract.groups);
     expect(
       PROPERTY_DOCUMENT_TYPES.map((type) => ({

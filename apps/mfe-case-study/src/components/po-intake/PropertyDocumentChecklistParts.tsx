@@ -239,23 +239,3 @@ export function ChecklistRowsList({
     </section>
   );
 }
-
-export function ValuationOutputsSection({
-  rows,
-}: {
-  rows: PropertyDocumentChecklistRow[];
-}) {
-  // Only outputs actually issued — no more «لم يصدر بعد» placeholder rows.
-  const issuedRows = rows.filter((row) => row.documents.length > 0);
-  if (issuedRows.length === 0) return null;
-  return (
-    <section className="mb-3.5">
-      <ChecklistSectionTitle title="مخرجات التقييم" hint="يصدرها المقيّم" />
-      <div className="grid gap-2">
-        {issuedRows.map((row) =>
-          row.documents.map((doc) => <DocumentFileLine key={doc.id} doc={doc} />),
-        )}
-      </div>
-    </section>
-  );
-}

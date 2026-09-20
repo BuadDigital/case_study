@@ -41,16 +41,3 @@ public sealed class SetAttachmentDocumentTypeRequestValidator
             .OverridePropertyName("customDocumentReason");
     }
 }
-
-public sealed class ReviewAttachmentDocumentRequestValidator
-    : AbstractValidator<ReviewAttachmentDocumentRequest>
-{
-    public ReviewAttachmentDocumentRequestValidator()
-    {
-        RuleFor(x => x.Decision).NotEmpty().WithMessage("اختر قرار المراجعة")
-            .MaximumLength(16)
-            .OverridePropertyName("decision");
-        RuleFor(x => x.Note).MaximumLength(512)
-            .OverridePropertyName("note");
-    }
-}

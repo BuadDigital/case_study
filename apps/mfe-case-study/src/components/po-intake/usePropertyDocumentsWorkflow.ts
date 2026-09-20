@@ -3,7 +3,7 @@
 /**
  * Everything behind the governed «مستندات العقار» checklist: the per-source documents the
  * page already collects, the documents-tab uploads, the admin type settings, role gates and
- * the upload / classify / review commands. The tab component keeps JSX only.
+ * the upload / classify commands. The tab component keeps JSX only.
  */
 
 import { useMemo, useState } from "react";
@@ -15,7 +15,6 @@ import { propertyRequiresSurvey } from "@platform/app-shared/app-data/po-intake-
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
 import {
-  canReviewUnlistedDocuments,
   canUploadPropertyDocuments,
 } from "../../lib/app-data/po-roles";
 import {
@@ -25,7 +24,6 @@ import {
 import {
   deleteGovernedPropertyDocument,
   reclassifyGovernedPropertyDocument,
-  reviewUnlistedPropertyDocument,
   uploadGovernedPropertyDocument,
   type GovernedDocumentCommandResult,
   type GovernedDocumentTypeInput,
@@ -105,7 +103,6 @@ export function usePropertyDocumentsWorkflow({
     uploadOptions,
     propertyType,
     canUpload: canUploadPropertyDocuments(role),
-    canReview: canReviewUnlistedDocuments(role),
     busy,
     loadFailed: governed.isError,
     upload: (input: GovernedDocumentTypeInput & { file: File }) =>
@@ -122,16 +119,6 @@ export function usePropertyDocumentsWorkflow({
       run(
         () => reclassifyGovernedPropertyDocument(attachmentId, input),
         "تم تصنيف المستند",
-      ),
-    approve: (attachmentId: string) =>
-      run(
-        () => reviewUnlistedPropertyDocument(attachmentId, "approved"),
-        "تم اعتماد المستند",
-      ),
-    reject: (attachmentId: string, note: string) =>
-      run(
-        () => reviewUnlistedPropertyDocument(attachmentId, "rejected", note),
-        "تم رفض المستند",
       ),
     remove: (attachmentId: string) =>
       run(() => deleteGovernedPropertyDocument(attachmentId), "تم حذف المستند"),

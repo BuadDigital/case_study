@@ -65,18 +65,6 @@ export function canUploadPropertyDocuments(role: RoleId): boolean {
   );
 }
 
-/**
- * Approve / reject documents uploaded outside the defined list —
- * mirrors backend `PoRoleMatrixRules.CanReviewUnlistedDocuments`.
- */
-export function canReviewUnlistedDocuments(role: RoleId): boolean {
-  return (
-    isSuperAdmin(role) ||
-    role === "section-supervisor" ||
-    role === "general-manager"
-  );
-}
-
 /** Reassign case-study parties — section-supervisor+ and the case specialist on the file. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (
