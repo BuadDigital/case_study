@@ -271,6 +271,11 @@ export function PropertyTransactionTimeline({
                   <div className="text-[11.5px] font-semibold leading-snug text-text">
                     {event.title}
                   </div>
+                  {event.detail?.trim() ? (
+                    <div className="truncate text-[10.5px] leading-snug text-text-2">
+                      {event.detail.trim()}
+                    </div>
+                  ) : null}
                   <div className="text-[10px] text-text-3 [direction:ltr] [unicode-bidi:isolate]">
                     {formatTimelineDate(event.at)}
                   </div>

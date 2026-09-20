@@ -46,6 +46,34 @@ public partial class WorkOrderService
             cancellationToken);
     }
 
+    /// <summary>CDO / super-admin oversight feed — one broadcast per new PO, not per property.</summary>
+    private async Task NotifyCdoWorkOrderCreatedAsync(
+        string poNumber,
+        int propertyCount,
+        CancellationToken cancellationToken)
+    {
+        var cdoUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "cdo",
+            cancellationToken);
+        if (cdoUserIds.Count == 0) return;
+
+        var po = poNumber.Trim();
+        await _notifications.CreateForUsersAsync(
+            cdoUserIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "أمر عمل جديد",
+                Body = $"سُجّل أمر العمل {po} — {propertyCount} عقار.",
+                Tone = "info",
+                Href = $"/po/{Uri.EscapeDataString(po)}/property",
+                Category = "workflow",
+                EntityType = "work-order",
+                EntityId = po,
+                SourceEvent = $"work-order-created:{po}",
+            },
+            cancellationToken);
+    }
+
     private async Task NotifySpecialistAssignedIfChangedAsync(
         string poNumber,
         string? previousEmail,

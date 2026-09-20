@@ -273,18 +273,6 @@ export function PoPropertyDetailTabs({
                     </div>
                   </div>
                 ))}
-                <p className="mt-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:border-t max-lg:border-border max-lg:bg-surface/95 max-lg:px-4 max-lg:py-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="max-lg:min-h-11 max-lg:w-full"
-                    onClick={() =>
-                      router.push(poPropertyFailurePath(poNumber, property.id))
-                    }
-                  >
-                    تسجيل تعذّر جديد
-                  </Button>
-                </p>
               </>
             ) : (
               <>
@@ -294,18 +282,6 @@ export function PoPropertyDetailTabs({
                   title="لا توجد تعذرات"
                   sub="لم يُسجَّل أي تعذر لهذا العقار."
                 />
-                <p className="mt-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-4 max-lg:border-t max-lg:border-border max-lg:bg-surface/95 max-lg:px-4 max-lg:py-3 max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-lg:backdrop-blur-sm">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="max-lg:min-h-11 max-lg:w-full"
-                    onClick={() =>
-                      router.push(poPropertyFailurePath(poNumber, property.id))
-                    }
-                  >
-                    تسجيل تعذّر جديد
-                  </Button>
-                </p>
               </>
             )}
             </Activity>

@@ -66,6 +66,37 @@ public sealed class WorkOrderAssignmentNotificationTests
     }
 
     [Fact]
+    public async Task CreateAsync_also_notifies_cdo_users_of_the_new_work_order()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(db);
+        var messaging = TestInspectorFeeServiceFactory.ShareMessaging(db);
+        SeedUser(identity, "user-feras", "feras@ejadah.dev");
+        SeedCdoUser(identity, "cdo-1");
+        SeedClient(db);
+        await db.SaveChangesAsync();
+        await identity.SaveChangesAsync();
+        var service = CreateService(bundle);
+
+        var (result, errors) = await service.CreateAsync(
+            ValidCreate("PO-CDO-NOTIFY", "feras@ejadah.dev"),
+            CancellationToken.None);
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        var rows = await messaging.OutboxMessages.OrderBy(r => r.CreatedAtUtc).ToListAsync();
+        Assert.Equal(2, rows.Count);
+        var cdoPayload = rows.Select(Deserialize).Single(p => p.UserIds.Contains("cdo-1"));
+        Assert.Equal("أمر عمل جديد", cdoPayload.Title);
+        Assert.Equal(NotificationContract.Categories.Workflow, cdoPayload.Category);
+        Assert.Equal(NotificationContract.EntityTypes.WorkOrder, cdoPayload.EntityType);
+        Assert.Equal("PO-CDO-NOTIFY", cdoPayload.EntityId);
+        Assert.Equal("/po/PO-CDO-NOTIFY/property", cdoPayload.Href);
+        Assert.Equal("work-order-created:PO-CDO-NOTIFY", cdoPayload.SourceEvent);
+    }
+
+    [Fact]
     public async Task CreateAsync_skips_notification_when_email_unmapped()
     {
         var bundle = CreateDb();
@@ -203,6 +234,17 @@ public sealed class WorkOrderAssignmentNotificationTests
             Email = email,
             NormalizedEmail = email.ToUpperInvariant(),
             DisplayName = userId,
+        });
+    }
+
+    private static void SeedCdoUser(IdentityDbContext db, string userId)
+    {
+        db.UserProfiles.Add(new UserProfile
+        {
+            UserId = userId,
+            RoleId = "cdo",
+            JobTitle = "مسؤول التحول الرقمي",
+            Status = UserStatus.Active,
         });
     }
 

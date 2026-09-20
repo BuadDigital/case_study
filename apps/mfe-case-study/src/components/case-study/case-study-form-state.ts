@@ -31,7 +31,6 @@ export type SectionQuestions = Record< CaseStudyQuestionSection, readonly string
 /** Question is visible to the current viewer (specialist or party). */
 export type QuestionVisibilityPredicate = (key: string) => boolean;
 
-/** Clamp step index; only shift when value is from legacy six-tab drafts (promulgation + 5 sections). */
 export function normalizeFormStep(storedStep: number): number {
   const max = FORM_STEP_SECTIONS.length - 1;
   let step = storedStep;

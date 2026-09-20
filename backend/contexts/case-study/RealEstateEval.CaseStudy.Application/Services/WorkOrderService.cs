@@ -231,6 +231,7 @@ public partial class WorkOrderService : IWorkOrderService
             previousEmail: null,
             newEmail: workOrder.AssignmentSpecialistEmail,
             cancellationToken);
+        await NotifyCdoWorkOrderCreatedAsync(po, workOrder.Properties.Count, cancellationToken);
 
         var loaded = await _loader.LoadAsync(po, cancellationToken, asNoTracking: true);
         return (loaded is null

@@ -14,10 +14,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
-import {
-  CaseStudyWorkspaceStepNav,
-  type CaseStudyWorkspaceTab,
-} from "../components/case-study/CaseStudyWorkspaceStepNav";
+import { CaseStudyWorkspaceStepNav, type CaseStudyWorkspaceTab } from "../components/case-study/CaseStudyWorkspaceStepNav";
 import { SpecialistValuationReportInputs } from "../components/po-intake/SpecialistValuationReportInputs";
 import { CaseStudyDeedNatureMatchReview } from "../components/case-study/CaseStudyDeedNatureMatchReview";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
@@ -32,10 +29,7 @@ import { findPropertyForTask } from "../lib/app-data/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/app-data/viewer-task-access";
 import type { WorkflowTask } from "../lib/app-data/tasks-storage";
 import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-answers";
-import {
-  CASE_STUDY_SPECIALIST_FEATURE_KEYS,
-  isInspectorWorkspaceAccepted,
-  submittedInspectorAssetIsLand,
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS, isInspectorWorkspaceAccepted, submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,
@@ -43,27 +37,17 @@ import {
 import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { reopenInspectorWorkspace } from "../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
-import {
-  buildPropertyDetailPartyCards,
-  type PropertyDetailPartyCard,
-} from "../lib/app-data/property-detail-parties";
+import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../lib/app-data/property-detail-parties";
 import { listPropertyDetailPhotos } from "../lib/app-data/property-detail-documents";
-import {
-  usePoRecordQuery,
-  useWorkflowTasksQuery,
-} from "../query/case-study-queries";
+import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { usePropertyDetailDocuments } from "../query/property-detail-documents-query";
 import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail-party-submissions-queries";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
-import {
-  CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
-  CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
-} from "../lib/case-study-workspace-events";
+import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT, CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT } from "../lib/case-study-workspace-events";
 import { migrateDistribution } from "../lib/app-data/tasks-storage";
-import {
-  loadSpecialistFinishingLevel,
+import { loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
   specialistFinishingLevelForInspection,
 } from "../lib/app-data/valuation-report-specialist-finishing";
