@@ -144,7 +144,7 @@ function PartyFieldRow({
   }
 
   return (
-    <div className={wide ? "sm:col-span-2 lg:col-span-3" : undefined}>
+    <div className={wide ? "sm:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-6" : undefined}>
       {control}
       <ProvenanceLine entry={provenance} />
     </div>
@@ -271,7 +271,7 @@ function PartyDataCard({
             {saveError}
           </Note>
         ) : null}
-        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {visibleFields.map((def) => (
             <PartyFieldRow
               key={def.key}

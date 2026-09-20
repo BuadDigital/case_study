@@ -33,6 +33,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  FormDensityProvider,
   InlineLoadingSkeleton,
   Note,
   PageShell,
@@ -322,55 +323,57 @@ export function PoPropertyEdit({
     >
       {formError ? <Note tone="warn">{formError}</Note> : null}
 
-      <Card>
-        <CardHeader>
-          <h2 className="m-0 text-sm font-bold">بيانات إنفاذ (الصك)</h2>
-        </CardHeader>
-        <CardBody>
-          <PoPropertyEnfathForm
-            property={property}
-            assignmentType={initialRecord.assignmentType}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            onReplaceProperty={replaceProperty}
-            poNumber={poNumber}
-            excludePoNumber={poNumber}
-            fieldPolicy={clientFieldPolicyFor(initialRecord)}
-          />
-        </CardBody>
-      </Card>
+      <FormDensityProvider value="compact">
+        <Card>
+          <CardHeader>
+            <h2 className="m-0 text-sm font-bold">بيانات إنفاذ (الصك)</h2>
+          </CardHeader>
+          <CardBody>
+            <PoPropertyEnfathForm
+              property={property}
+              assignmentType={initialRecord.assignmentType}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              onReplaceProperty={replaceProperty}
+              poNumber={poNumber}
+              excludePoNumber={poNumber}
+              fieldPolicy={clientFieldPolicyFor(initialRecord)}
+            />
+          </CardBody>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="min-w-0">
-            <h2 className="m-0 text-sm font-bold">بيانات الموقع والمساحة</h2>
-            <p className="m-0 mt-0.5 text-xs text-text-3">
-              المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة
-            </p>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <PoPropertyBourseForm
-            property={property}
-            fieldErrors={fieldErrors}
-            onPatch={patchProperty}
-            poNumber={poNumber}
-            showIntroNote={false}
-          />
-          {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
-            <Note tone="info" className="mt-3">
-              بيانات البورصة الرسمية لم تُكتمل بعد — يمكنك تعبئة المساحة والموقع
-              يدوياً هنا، أو إكمالها لاحقاً من «استعلام البورصة».
-            </Note>
-          ) : null}
-        </CardBody>
-      </Card>
+        <Card>
+          <CardHeader>
+            <div className="min-w-0">
+              <h2 className="m-0 text-sm font-bold">بيانات الموقع والمساحة</h2>
+              <p className="m-0 mt-0.5 text-xs text-text-3">
+                المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة
+              </p>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <PoPropertyBourseForm
+              property={property}
+              fieldErrors={fieldErrors}
+              onPatch={patchProperty}
+              poNumber={poNumber}
+              showIntroNote={false}
+            />
+            {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
+              <Note tone="info" className="mt-3">
+                بيانات البورصة الرسمية لم تُكتمل بعد — يمكنك تعبئة المساحة والموقع
+                يدوياً هنا، أو إكمالها لاحقاً من «استعلام البورصة».
+              </Note>
+            ) : null}
+          </CardBody>
+        </Card>
 
-      <PoPropertyPartyDataCards
-        poNumber={poNumber}
-        propertyId={propertyId}
-        canEdit={canEditProperty(role)}
-      />
+        <PoPropertyPartyDataCards
+          poNumber={poNumber}
+          propertyId={propertyId}
+          canEdit={canEditProperty(role)}
+        />
+      </FormDensityProvider>
     </EditChrome>
   );
 }

@@ -3,7 +3,7 @@
 /** Enfath form — bourse-inquiry primary sections (deed, mandate, plan, owner/court). */
 
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { FormRow, InfathSection } from "@platform/ui-kit";
+import { FormFlowGrid, FormRow, InfathSection } from "@platform/ui-kit";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
 import {
   DEFAULT_CLIENT_FIELD_POLICY,
@@ -26,7 +26,7 @@ export function PoPropertyEnfathBourseSections({
   fieldPolicy?: ClientFieldPolicy;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <FormFlowGrid>
     <InfathSection title="بيانات الصك">
       <FormRow>
       <RegField
@@ -173,6 +173,6 @@ export function PoPropertyEnfathBourseSections({
       </FormRow>
     </InfathSection>
     ) : null}
-    </div>
+    </FormFlowGrid>
   );
 }

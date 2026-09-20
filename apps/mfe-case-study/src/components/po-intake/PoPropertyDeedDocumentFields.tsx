@@ -6,7 +6,7 @@
  * `assignment-doc-attachments`; they are moved here verbatim.
  */
 
-import { useToast } from "@platform/ui-kit";
+import { COMPACT_FORM_GRID_CLASS, cn, useFormDensity, useToast } from "@platform/ui-kit";
 import {
   cacheAssignmentDoc,
   cacheDeedOwnershipDoc,
@@ -42,9 +42,10 @@ export function PoPropertyEnfathDocumentFields({
   showAssignmentDoc: boolean;
 }) {
   const { showToast } = useToast();
+  const compact = useFormDensity() === "compact";
 
   return (
-    <>
+    <div className={cn(compact ? cn(COMPACT_FORM_GRID_CLASS, "items-start") : "contents")}>
       {showDelegationDoc ? (
         <PropertyFileUploadField
           id={`delegation_${property.id}`}
@@ -198,12 +199,14 @@ export function PoPropertyEnfathDocumentFields({
       ) : null}
 
       {showOtherDocs ? (
-        <PoPropertyUnlistedDocumentField
-          property={property}
-          onPatch={onPatch}
-          attachPo={attachPo}
-        />
+        <div className="col-span-full">
+          <PoPropertyUnlistedDocumentField
+            property={property}
+            onPatch={onPatch}
+            attachPo={attachPo}
+          />
+        </div>
       ) : null}
-    </>
+    </div>
   );
 }
