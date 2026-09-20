@@ -48,6 +48,7 @@ import type {
   EvaluatorReportWorker,
 } from "../../lib/evaluator/evaluator-window-data";
 import { type EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
+import { EvaluatorBasicDocumentsCard } from "./EvaluatorBasicDocumentsCard";
 import { EvaluatorValuationReportTab } from "./EvaluatorValuationReportTab";
 import {
   appraiserInspectionDone,
@@ -666,56 +667,77 @@ export function EvaluatorWindow({
               <Activity
                 mode={activeTab !== "output" ? "visible" : "hidden"}
               >
-                <div className="mb-5">
-                  <EvaluatorValuationReportTab
-                    draft={draft}
-                    disabled={formDisabled}
-                    property={summary.property}
-                    inspectionTaskId={summary.inspectionTaskId}
-                    surveyTaskId={summary.surveyTaskId}
-                    appraisalTaskId={task.id}
-                    assignmentType={task.assignmentType}
-                    fieldErrors={fieldErrors}
-                    onChange={onReportChoicesChange}
-                    onDraftPatch={onDraftPatch}
-                    showPropertyMedia={workScreen === "basic"}
-                  />
+                <div className="flex flex-col">
+                  {workScreen === "basic" && property ? (
+                    <div className="order-1">
+                      <EvaluatorBasicDocumentsCard
+                        property={property}
+                        poNumber={draft.poNumber}
+                        surveyTaskId={summary.surveyTaskId ?? null}
+                        inspectionTaskId={summary.inspectionTaskId ?? null}
+                        appraisalTaskId={task.id}
+                      />
+                    </div>
+                  ) : null}
+                  <div
+                    className={cn(
+                      "mb-5",
+                      // «البيانات الأساسية»: documents + type, then approaches, then maps + property info.
+                      workScreen === "basic" ? "order-3 mt-3.5" : "order-1",
+                    )}
+                  >
+                    <EvaluatorValuationReportTab
+                      draft={draft}
+                      disabled={formDisabled}
+                      property={summary.property}
+                      inspectionTaskId={summary.inspectionTaskId}
+                      surveyTaskId={summary.surveyTaskId}
+                      appraisalTaskId={task.id}
+                      assignmentType={task.assignmentType}
+                      fieldErrors={fieldErrors}
+                      onChange={onReportChoicesChange}
+                      onDraftPatch={onDraftPatch}
+                      showPropertyMedia={workScreen === "basic"}
+                    />
+                  </div>
+                  <div className="order-2">
+                    {property?.id ? (
+                      <ValuationWorkShell
+                        propertyId={property.id}
+                        poNumber={draft.poNumber}
+                        assignmentType={task.assignmentType ?? undefined}
+                        districtHint={property.district}
+                        property={{
+                          area: property.area,
+                          district: property.district,
+                          city: property.city,
+                          deedNumber: property.deedNumber,
+                          propertyType: property.propertyType,
+                          classification: property.classification,
+                        }}
+                        intakeProperty={property}
+                        onFinalOpinionChange={syncFinalOpinion}
+                        draft={draft}
+                        disabled={formDisabled}
+                        fieldErrors={fieldErrors}
+                        onDraftPatch={onDraftPatch}
+                        onReportChoicesPatch={onReportChoicesPatch}
+                        onSubmit={() => void submit()}
+                        submitting={submitBusy}
+                        showSubmit={false}
+                        screen={workScreen}
+                        onScreenChange={onWorkScreenChange}
+                        embeddedInTopTabs
+                        onNavAvailabilityChange={onNavAvailabilityChange}
+                        onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+                      />
+                    ) : (
+                      <p className="text-[13px] text-text-3">
+                        لا يتوفر عقار مرتبط لهذه المهمة.
+                      </p>
+                    )}
+                  </div>
                 </div>
-                {property?.id ? (
-                  <ValuationWorkShell
-                    propertyId={property.id}
-                    poNumber={draft.poNumber}
-                    assignmentType={task.assignmentType ?? undefined}
-                    districtHint={property.district}
-                    property={{
-                      area: property.area,
-                      district: property.district,
-                      city: property.city,
-                      deedNumber: property.deedNumber,
-                      propertyType: property.propertyType,
-                      classification: property.classification,
-                    }}
-                    intakeProperty={property}
-                    onFinalOpinionChange={syncFinalOpinion}
-                    draft={draft}
-                    disabled={formDisabled}
-                    fieldErrors={fieldErrors}
-                    onDraftPatch={onDraftPatch}
-                    onReportChoicesPatch={onReportChoicesPatch}
-                    onSubmit={() => void submit()}
-                    submitting={submitBusy}
-                    showSubmit={false}
-                    screen={workScreen}
-                    onScreenChange={onWorkScreenChange}
-                    embeddedInTopTabs
-                    onNavAvailabilityChange={onNavAvailabilityChange}
-                    onRetrospectiveDraftChange={onRetrospectiveDraftChange}
-                  />
-                ) : (
-                  <p className="text-[13px] text-text-3">
-                    لا يتوفر عقار مرتبط لهذه المهمة.
-                  </p>
-                )}
               </Activity>
             ) : null}
 

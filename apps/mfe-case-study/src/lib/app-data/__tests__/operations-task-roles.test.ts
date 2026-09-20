@@ -24,6 +24,7 @@ describe("operationsTasksUseAssigneeScope", () => {
       "general-manager",
       "section-supervisor",
       "case-specialist",
+      "real-estate-appraiser",
     ] as RoleId[]) {
       expect(canManageOperationsTasks(role)).toBe(true);
       expect(operationsTasksUseAssigneeScope(role)).toBe(false);
@@ -32,7 +33,6 @@ describe("operationsTasksUseAssigneeScope", () => {
 
   it("executors get an independent assignee-scoped queue", () => {
     for (const role of [
-      "real-estate-appraiser",
       "field-inspector",
       "government-reviewer",
       "engineering-office",

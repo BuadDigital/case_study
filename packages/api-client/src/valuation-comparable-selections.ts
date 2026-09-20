@@ -22,7 +22,7 @@ export type ValuationComparableMarketDto = {
   sumSequentialPct: number;
   sumDifferencePct: number;
   sumIncludedPct: number;
-  /** |factorsSum| > 35% — justification required (interactive form spec). */
+  /** |factorsSum| > 40% — justification required (interactive form spec). */
   exceedsLargeAdjustmentThreshold: boolean;
   /** Deal age in months — shown for inference; market-conditions adjustment is manual. */
   dealAgeMonths: number;

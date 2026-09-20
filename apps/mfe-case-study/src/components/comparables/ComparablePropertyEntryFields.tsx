@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, GoogleMapPin, Input, Label, Select, cn, useToast } from "@platform/ui-kit";
+import {
+  Button,
+  GoogleMapPin,
+  Input,
+  Label,
+  Select,
+  cn,
+  reverseGeocodeLocation,
+  useToast,
+} from "@platform/ui-kit";
 import {
   COMPARABLE_SOURCE_OPTIONS,
   LAND_COMPARABLE_TYPE,
@@ -9,6 +18,9 @@ import {
   comparablePlaceLine,
   computedPricePerSqm,
   parseComparableCoords,
+  parseCoordinatePair,
+  contactNumbers,
+  formatContactNumbersInput,
   type ComparableEntryDraft,
   type ComparableEntryFieldErrors,
   type ComparableKind,
@@ -102,6 +114,8 @@ export function ComparablePropertyEntryFields({
   const [placeLookup, setPlaceLookup] = useState<"idle" | "loading" | "done">(
     "idle",
   );
+  const [coordsText, setCoordsText] = useState("");
+  const [coordsError, setCoordsError] = useState<string | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const patch = <K extends keyof ComparableEntryDraft>(
@@ -150,6 +164,55 @@ export function ComparablePropertyEntryFields({
             ? ""
             : draft.comparablePropertyType,
     });
+  }
+
+  function applyLocationDetail(detail: {
+    lat: number;
+    lng: number;
+    city?: string;
+    district?: string;
+  }) {
+    const current = draftRef.current;
+    const pin = parseComparableCoords(current.latitude, current.longitude);
+    if (
+      pin &&
+      (Math.abs(pin.lat - detail.lat) > 0.0002 ||
+        Math.abs(pin.lng - detail.lng) > 0.0002)
+    ) {
+      return;
+    }
+    onChange({
+      ...current,
+      latitude: detail.lat.toFixed(6),
+      longitude: detail.lng.toFixed(6),
+      city: detail.city?.trim() || current.city,
+      district: detail.district?.trim() || current.district,
+    });
+    setPlaceLookup("done");
+  }
+
+  /** Returns true when the text was a valid pair and the pin moved. */
+  function applyTypedCoords(text: string, { reportInvalid = true } = {}): boolean {
+    if (!text.trim()) return false;
+    const pin = parseCoordinatePair(text);
+    if (!pin) {
+      if (reportInvalid) {
+        setCoordsError("إحداثيات غير صحيحة — اكتب خط العرض ثم خط الطول، مثل 24.7136, 46.6753");
+      }
+      return false;
+    }
+    setCoordsText("");
+    setCoordsError(null);
+    setPlaceLookup("loading");
+    onChange({
+      ...draftRef.current,
+      latitude: pin.lat.toFixed(6),
+      longitude: pin.lng.toFixed(6),
+      city: "",
+      district: "",
+    });
+    void reverseGeocodeLocation(pin.lat, pin.lng).then(applyLocationDetail);
+    return true;
   }
 
   function restoreSubjectView() {
@@ -220,34 +283,47 @@ export function ComparablePropertyEntryFields({
                     }
                   : undefined
               }
-              onLocationDetail={
-                disabled
-                  ? undefined
-                  : (detail) => {
-                      const current = draftRef.current;
-                      const pin = parseComparableCoords(
-                        current.latitude,
-                        current.longitude,
-                      );
-                      if (
-                        pin &&
-                        (Math.abs(pin.lat - detail.lat) > 0.0002 ||
-                          Math.abs(pin.lng - detail.lng) > 0.0002)
-                      ) {
-                        return;
-                      }
-                      onChange({
-                        ...current,
-                        latitude: detail.lat.toFixed(6),
-                        longitude: detail.lng.toFixed(6),
-                        city: detail.city?.trim() || current.city,
-                        district: detail.district?.trim() || current.district,
-                      });
-                      setPlaceLookup("done");
-                    }
-              }
+              onLocationDetail={disabled ? undefined : applyLocationDetail}
             />
           </div>
+          {mapInteractive ? (
+            <div className="mt-2.5">
+              <Label className={FIELD_LABEL}>أو أدخل الإحداثيات</Label>
+              <Input
+                id="cmp-coords"
+                dir="ltr"
+                inputMode="decimal"
+                value={coordsText}
+                placeholder="24.713600, 46.675300"
+                className={cn(coordsError && invalidControlClass)}
+                onChange={(e) => {
+                  setCoordsText(e.target.value);
+                  setCoordsError(null);
+                }}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData("text");
+                  if (applyTypedCoords(pasted, { reportInvalid: false })) {
+                    e.preventDefault();
+                  }
+                }}
+                onBlur={() => applyTypedCoords(coordsText)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  applyTypedCoords(coordsText);
+                }}
+              />
+              {coordsError ? (
+                <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
+                  {coordsError}
+                </p>
+              ) : (
+                <p className="mb-0 mt-1 text-[11.5px] text-text-3">
+                  الصق الإحداثيات (خط العرض ثم خط الطول) وسيُوضع الدبوس تلقائياً.
+                </p>
+              )}
+            </div>
+          ) : null}
           {!disabled ? (
             <div className="mt-2.5 flex flex-col gap-2">
               {comparablePin && !mapPinned ? (
@@ -515,13 +591,24 @@ export function ComparablePropertyEntryFields({
           onChange={(e) => patch("listingNumber", e.target.value)}
         />
       </Field>
-      <Field label="رقم التواصل">
+      <Field label="رقم التواصل" error={fieldErrors?.advertiserPhone}>
         <Input
+          id="cmp-phone"
           dir="ltr"
+          inputMode="numeric"
+          placeholder="0500000000"
           value={draft.advertiserPhone}
           disabled={fieldsLocked}
-          onChange={(e) => patch("advertiserPhone", e.target.value)}
+          className={cn(fieldErrors?.advertiserPhone && invalidControlClass)}
+          onChange={(e) =>
+            patch("advertiserPhone", formatContactNumbersInput(e.target.value))
+          }
         />
+        <p className="mb-0 mt-1 text-[11px] text-text-3">
+          {draft.advertiserPhone.trim()
+            ? `${contactNumbers(draft.advertiserPhone).length} رقم — كل ١٠ أرقام رقم مستقل`
+            : "كل ١٠ أرقام تُحتسب رقم تواصل مستقلاً"}
+        </p>
       </Field>
       <Field label="رقم المخطط">
         <Input

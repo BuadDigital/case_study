@@ -119,7 +119,7 @@ public class PartyTaskSubmissionAuthorizationTests
     }
 
     [Fact]
-    public async Task SaveDraft_forbids_case_specialist_correcting_submitted_non_inspection()
+    public async Task SaveDraft_lets_case_specialist_correct_submitted_survey_and_stamps_the_editor()
     {
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
@@ -143,7 +143,7 @@ public class PartyTaskSubmissionAuthorizationTests
             Status = PartyTaskSubmissionStatus.Submitted,
             PropertyId = PropertyId,
             PoNumber = "PO-AUTH",
-            PayloadJson = """{"status":"submitted"}""",
+            PayloadJson = """{"status":"submitted","onSiteAreaSqm":"400"}""",
             SubmittedAtUtc = now,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
@@ -151,7 +151,59 @@ public class PartyTaskSubmissionAuthorizationTests
         db.SaveChanges();
         var service = CreateService(db);
 
-        var payload = JsonDocument.Parse("""{"status":"submitted","note":"x"}""").RootElement;
+        var payload = JsonDocument.Parse("""{"status":"submitted","onSiteAreaSqm":"450"}""").RootElement;
+        var (result, errors) = await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = payload },
+            new PartySubmissionActor
+            {
+                UserId = "staff-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        Assert.Equal(PartyTaskSubmissionStatus.Submitted, result!.Status);
+        Assert.Contains("450", result.Payload.GetRawText());
+        var entry = result.FieldProvenance["onSiteAreaSqm"];
+        Assert.Equal("أخصائي", entry.EditedByName);
+        Assert.Equal("case-specialist", entry.EditedByRole);
+    }
+
+    [Fact]
+    public async Task SaveDraft_forbids_case_specialist_writing_a_survey_draft()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-AUTH",
+            now,
+            title: "الرفع المساحي",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "engineering-office",
+            assigneeName: "مكتب",
+            id: TaskId,
+            propertyId: PropertyId,
+            assigneeId: "eng-1"));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.EngineeringSurvey,
+            Status = PartyTaskSubmissionStatus.Draft,
+            PropertyId = PropertyId,
+            PoNumber = "PO-AUTH",
+            PayloadJson = """{"status":"draft"}""",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+        var service = CreateService(db);
+
+        var payload = JsonDocument.Parse("""{"status":"draft","note":"x"}""").RootElement;
         var (result, errors) = await service.SaveDraftAsync(
             TaskId,
             new SavePartyTaskSubmissionRequest { Payload = payload },
@@ -164,7 +216,7 @@ public class PartyTaskSubmissionAuthorizationTests
 
         Assert.Null(result);
         Assert.NotNull(errors);
-        Assert.Contains("صلاحية", errors!["_"]);
+        Assert.Contains("بعد إرسالها", errors!["_"]);
     }
 
     [Fact]

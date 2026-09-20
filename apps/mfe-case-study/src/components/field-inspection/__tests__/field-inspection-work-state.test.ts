@@ -8,6 +8,7 @@ import {
   inspectorMapCoordsLabel,
   inspectorServiceMeters,
   newerInspectorDraft,
+  resolvedBoundaryDeedField,
 } from "../field-inspection-work-state";
 import type { InspectorWorkspaceDraft } from "../../../lib/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../../lib/app-data/inspector-workspace-validation";
@@ -34,6 +35,19 @@ describe("boundaryMatchPatch", () => {
   it("does not mutate the source draft", () => {
     boundaryMatchPatch({ boundaryMatches }, "north", { facade: "ممر" });
     expect(boundaryMatches.north.facade).toBe("شارع");
+  });
+});
+
+describe("resolvedBoundaryDeedField", () => {
+  it("prefers the inspector draft when it has text", () => {
+    expect(resolvedBoundaryDeedField(" شارع 20م ", "قطعة")).toBe(" شارع 20م ");
+  });
+
+  it("falls back to the specialist/PO value when the draft is blank", () => {
+    expect(resolvedBoundaryDeedField("", "قطعة")).toBe("قطعة");
+    expect(resolvedBoundaryDeedField("   ", "قطعة")).toBe("قطعة");
+    expect(resolvedBoundaryDeedField(undefined, "قطعة")).toBe("قطعة");
+    expect(resolvedBoundaryDeedField(undefined, undefined)).toBe("");
   });
 });
 

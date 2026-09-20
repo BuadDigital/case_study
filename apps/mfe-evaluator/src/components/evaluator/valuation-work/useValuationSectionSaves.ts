@@ -7,6 +7,7 @@
  * data — never a loading-skeleton flash.
  */
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   ValuationApproachSettingsDto,
   ValuationCostApproachDto,
@@ -42,6 +43,7 @@ export function useValuationSectionSaves({
     current: FinalOpinionChangeHandler | undefined;
   };
 }) {
+  const queryClient = useQueryClient();
   /** After cost save: update the batch and silent-reload — no loading-skeleton flash. */
   const onCostSaved = useCallback(
     (dto: ValuationCostApproachDto) => {
@@ -69,9 +71,12 @@ export function useValuationSectionSaves({
     (dto: ValuationApproachSettingsDto) => {
       setApproachSettings(dto);
       setSettingsHydrateKey((k) => k + 1);
+      // The printed report reads these settings (special assumptions, retrospective line, approaches)
+      // from its own cached bundle — drop it so the next open shows what was just saved.
+      void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
       void reloadRef.current({ silent: true, scope: "derived" });
     },
-    [setApproachSettings, setSettingsHydrateKey, reloadRef],
+    [setApproachSettings, setSettingsHydrateKey, reloadRef, queryClient],
   );
 
   return { onCostSaved, onReconSaved, onSettingsSaved };

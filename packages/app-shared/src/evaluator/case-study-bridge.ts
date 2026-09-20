@@ -53,6 +53,9 @@ export type EvaluatorCaseStudyBridge = {
     submission: InspectorWorkspaceDraft,
   ) => PropertyDetailDocumentEntry[];
   downloadPropertyDetailDocument: (entry: PropertyDetailDocumentEntry) => void;
+  openPropertyDetailDocumentPreview: (
+    entry: PropertyDetailDocumentEntry,
+  ) => void;
 };
 
 let bridge: EvaluatorCaseStudyBridge | null = null;

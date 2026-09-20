@@ -13,6 +13,8 @@ public class PartyTaskSubmission
     public string? PoNumber { get; set; }
  /// <summary>JSON payload matching frontend submission types per kind.</summary>
     public string PayloadJson { get; set; } = "{}";
+ /// <summary>Per-field writer / last-editor stamps for <see cref="PayloadJson"/> (jsonb).</summary>
+    public string FieldProvenanceJson { get; set; } = "{}";
     public string? ReturnNote { get; set; }
     public DateTime? SubmittedAtUtc { get; set; }
  /// <summary>

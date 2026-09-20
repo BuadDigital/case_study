@@ -550,12 +550,12 @@ function includedPct(
   return line ? formatSheetPct(line.percent) : "";
 }
 
-/** One column per approved comparable (up to 5) — three dash columns when none (template structure). */
+/** One column per approved comparable (up to 5) — a single dash column when none. */
 function compCols(
   comps: ValuationComparableSelectionDto[],
   pick: (item: ValuationComparableSelectionDto) => string,
 ): string[] {
-  const count = Math.min(Math.max(comps.length, 3), MAX_REPORT_COMPARABLES);
+  const count = Math.min(Math.max(comps.length, 1), MAX_REPORT_COMPARABLES);
   return Array.from({ length: count }, (_, i) =>
     dashSheet(comps[i] ? pick(comps[i]!) : ""),
   );

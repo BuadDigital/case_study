@@ -16,6 +16,10 @@ export type InspectorBoundaryMatch = {
   mismatchNote: string;
   /** «نوع الواجهة» — facade finish on this side; options come from the report dictionary. */
   facade: string;
+  /** «الحد حسب الصك» — inspector can fill this when the specialist left it blank. */
+  deedDesc: string;
+  /** «الطول (م)» — inspector-entered deed length for this side. */
+  deedLength: string;
 };
 
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
@@ -1016,10 +1020,10 @@ function emptyBoundaryMatches(): Record<
   InspectorBoundaryMatch
 > {
   return {
-    north: { matches: true, mismatchNote: "", facade: "" },
-    south: { matches: true, mismatchNote: "", facade: "" },
-    east: { matches: true, mismatchNote: "", facade: "" },
-    west: { matches: true, mismatchNote: "", facade: "" },
+    north: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    south: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    east: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    west: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
   };
 }
 

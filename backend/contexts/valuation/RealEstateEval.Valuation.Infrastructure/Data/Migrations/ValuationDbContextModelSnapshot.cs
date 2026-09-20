@@ -85,8 +85,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnType("uuid");
 
                     b.Property<string>("AdvertiserPhone")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<decimal>("AreaSqm")
                         .HasPrecision(18, 2)

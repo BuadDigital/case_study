@@ -41,13 +41,29 @@ public class PartyTaskSubmissionRulesTests
     }
 
     [Fact]
-    public void Staff_may_correct_a_field_inspection_only()
+    public void Staff_may_correct_any_party_package_but_parties_and_anonymous_may_not()
     {
-        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(Actor("case-specialist"), MakeTask()));
-        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(
+        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(Actor("case-specialist"), MakeTask()));
+        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
             Actor("case-specialist"), MakeTask(WorkflowTaskKind.EngineeringSurvey)));
-        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(Actor("field-inspector"), MakeTask()));
-        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(null, MakeTask()));
+        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
+            Actor("case-specialist"), MakeTask(WorkflowTaskKind.PropertyAppraisal)));
+        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
+            Actor("case-specialist"), MakeTask(WorkflowTaskKind.CaseStudyProperty)));
+        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(Actor("field-inspector"), MakeTask()));
+        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(null, MakeTask()));
+    }
+
+    [Fact]
+    public void Staff_write_survey_and_appraisal_only_once_submitted_but_inspection_any_time()
+    {
+        Assert.True(PartyTaskSubmissionRules.StaffMayWriteWhileStatus(MakeTask(), PartyTaskSubmissionStatus.Draft));
+        Assert.False(PartyTaskSubmissionRules.StaffMayWriteWhileStatus(
+            MakeTask(WorkflowTaskKind.EngineeringSurvey), PartyTaskSubmissionStatus.Draft));
+        Assert.False(PartyTaskSubmissionRules.StaffMayWriteWhileStatus(
+            MakeTask(WorkflowTaskKind.PropertyAppraisal), PartyTaskSubmissionStatus.Reopened));
+        Assert.True(PartyTaskSubmissionRules.StaffMayWriteWhileStatus(
+            MakeTask(WorkflowTaskKind.PropertyAppraisal), PartyTaskSubmissionStatus.Submitted));
     }
 
     [Fact]

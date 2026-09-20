@@ -6,7 +6,11 @@ import {
 } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
-import { downloadPropertyDetailDocument, usePropertyDetailDocuments } from "../../lib/case-study-bridge";
+import {
+  downloadPropertyDetailDocument,
+  openPropertyDetailDocumentPreview,
+  usePropertyDetailDocuments,
+} from "../../lib/case-study-bridge";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
 import { EvaluatorInspectionFactsSection } from "./EvaluatorInspectionFactsSection";
 import {
@@ -39,7 +43,7 @@ function docExtLabel(doc: PropertyDetailDocumentEntry): string {
   return ext.slice(0, 4) || "DOC";
 }
 
-function TransactionDocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
+export function TransactionDocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
   const canDownload = Boolean(
     doc.dataUrl || doc.attachmentId || doc.engineeringTaskId,
   );
@@ -74,28 +78,37 @@ function TransactionDocumentRow({ doc }: { doc: PropertyDetailDocumentEntry }) {
         </span>
       </div>
       {canDownload ? (
-        <button
-          type="button"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2"
-          onClick={() => downloadPropertyDetailDocument(doc)}
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2"
+            onClick={() => openPropertyDetailDocumentPreview(doc)}
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          تنزيل
-        </button>
+            معاينة
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2"
+            onClick={() => downloadPropertyDetailDocument(doc)}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            تنزيل
+          </button>
+        </div>
       ) : (
         <span className="shrink-0 text-[10.5px] text-text-3">لم يُرفع بعد</span>
       )}

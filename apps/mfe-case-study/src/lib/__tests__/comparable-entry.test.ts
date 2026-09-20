@@ -10,6 +10,11 @@ import {
   emptyComparableEntryDraft,
   firstComparableEntryError,
   parseComparableCoords,
+  parseCoordinatePair,
+  contactNumbers,
+  contactNumbersError,
+  contactNumbersForSave,
+  formatContactNumbersInput,
   validateComparableEntry,
 } from "../comparable-entry";
 
@@ -21,6 +26,49 @@ describe("parseComparableCoords", () => {
       lat: 24.84,
       lng: 46.65,
     });
+  });
+});
+
+describe("parseCoordinatePair", () => {
+  it("reads pasted map coordinates in the usual notations", () => {
+    const expected = { lat: 24.7136, lng: 46.6753 };
+    expect(parseCoordinatePair("24.7136, 46.6753")).toEqual(expected);
+    expect(parseCoordinatePair("24.7136 46.6753")).toEqual(expected);
+    expect(parseCoordinatePair("٢٤٫٧١٣٦، ٤٦٫٦٧٥٣")).toEqual(expected);
+  });
+
+  it("rejects partial, extra or off-earth values", () => {
+    expect(parseCoordinatePair("24.7136")).toBeNull();
+    expect(parseCoordinatePair("24.7, 46.6, 12")).toBeNull();
+    expect(parseCoordinatePair("240.7, 46.6")).toBeNull();
+    expect(parseCoordinatePair("abc, def")).toBeNull();
+  });
+});
+
+describe("contact numbers", () => {
+  it("counts every 10 digits as one number", () => {
+    expect(contactNumbers("0501234567")).toEqual(["0501234567"]);
+    expect(contactNumbers("05012345670507654321")).toEqual(["0501234567", "0507654321"]);
+    expect(contactNumbers("050123456705076543210555")).toHaveLength(3);
+    expect(contactNumbers("٠٥٠١٢٣٤٥٦٧")).toEqual(["0501234567"]);
+    expect(contactNumbers("")).toEqual([]);
+  });
+
+  it("groups the input by 10 while typing and drops non-digits", () => {
+    expect(formatContactNumbersInput("050-123 4567 0507")).toBe("0501234567 0507");
+    expect(formatContactNumbersInput("abc")).toBe("");
+  });
+
+  it("caps the count at 10 numbers", () => {
+    expect(contactNumbers("1".repeat(150))).toHaveLength(10);
+  });
+
+  it("flags an unfinished number and saves the complete ones joined", () => {
+    expect(contactNumbersError("")).toBeNull();
+    expect(contactNumbersError("0501234567")).toBeNull();
+    expect(contactNumbersError("0501234567 05076")).toContain("الرقم 2");
+    expect(contactNumbersForSave("")).toBeNull();
+    expect(contactNumbersForSave("0501234567 0507654321")).toBe("0501234567، 0507654321");
   });
 });
 

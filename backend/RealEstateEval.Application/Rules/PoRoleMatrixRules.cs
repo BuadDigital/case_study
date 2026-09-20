@@ -59,7 +59,8 @@ public static class PoRoleMatrixRules
     {
         var role = Normalize(prototypeRole);
         return IsSuperAdmin(role)
-            || role is "case-specialist" or "section-supervisor" or "general-manager";
+            || role is "case-specialist" or "section-supervisor" or "general-manager"
+                or "real-estate-appraiser";
     }
 
  /// <summary>

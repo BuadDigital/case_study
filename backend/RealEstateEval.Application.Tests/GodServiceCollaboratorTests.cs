@@ -40,6 +40,7 @@ public class GodServiceCollaboratorTests
         Assert.True(OperationsTaskLifecycleRules.IsManager("case-specialist"));
         Assert.True(OperationsTaskLifecycleRules.IsManager("section-supervisor"));
         Assert.True(OperationsTaskLifecycleRules.IsManager("CDO"));
+        Assert.True(OperationsTaskLifecycleRules.IsManager("real-estate-appraiser"));
         Assert.False(OperationsTaskLifecycleRules.IsManager("field-inspector"));
     }
 

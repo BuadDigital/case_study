@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ensureOpenValuationRequestByProperty,
   getValuationApproachSettings,
@@ -107,6 +108,9 @@ export function EvaluatorFinalReviewTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Edits not yet saved — the report only prints what is saved with the valuation settings. */
+  const [dirty, setDirty] = useState(false);
+  const queryClient = useQueryClient();
 
   const propertyId = property?.id ?? draft.propertyId;
 
@@ -162,6 +166,7 @@ export function EvaluatorFinalReviewTab({
     const noSpecialistClause = resolveNoSpecialistClause(library);
     setSpecialistUsed(s.externalSpecialistUsed);
     setSpecialistDetails(s.externalSpecialistDetails ?? "");
+    setDirty(false);
     setAssumptions(
       shouldUseDefaultSpecialAssumptions(loaded)
         ? defaultSelectedSpecialAssumptions(library, s.externalSpecialistUsed)
@@ -263,6 +268,7 @@ export function EvaluatorFinalReviewTab({
   );
 
   function applySpecialistUsed(used: boolean) {
+    setDirty(true);
     setSpecialistUsed(used);
     setAssumptions((prev) =>
       assumptionsAfterSpecialistChoice({
@@ -280,10 +286,19 @@ export function EvaluatorFinalReviewTab({
       showToast("توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»", "error");
       return;
     }
+    // Text typed in «بند افتراض إضافي» but never added with «إضافة» is still the appraiser's intent.
+    const pending = freeAssumption.trim();
+    const withPending =
+      pending &&
+      pending !== EXTERNAL_SPECIALIST_USED_LABEL &&
+      !isNoExternalSpecialistAssumption(pending) &&
+      !assumptions.includes(pending)
+        ? [...assumptions, pending]
+        : assumptions;
     setSaving(true);
     const selected = assumptionsAfterSpecialistChoice({
       specialistUsed,
-      assumptions,
+      assumptions: withPending,
       noSpecialistClause,
     });
     const res = await saveValuationApproachSettings(
@@ -316,6 +331,11 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSettings(res.data);
+    setAssumptions(selected);
+    setFreeAssumption("");
+    setDirty(false);
+    // The report tab keeps its data bundle cached for a minute — without this it kept printing the old list.
+    void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
     onSettingsSaved?.(res.data);
     showToast("تم حفظ الافتراضات الخاصة", "success");
   }
@@ -405,6 +425,7 @@ export function EvaluatorFinalReviewTab({
                         applySpecialistUsed(false);
                         return;
                       }
+                      setDirty(true);
                       setAssumptions((prev) =>
                         e.target.checked
                           ? [...prev, row.text]
@@ -427,7 +448,10 @@ export function EvaluatorFinalReviewTab({
             placeholder="بند افتراض إضافي"
             value={freeAssumption}
             disabled={disabled || saving}
-            onChange={(e) => setFreeAssumption(e.target.value)}
+            onChange={(e) => {
+              setFreeAssumption(e.target.value);
+              setDirty(true);
+            }}
             className={cn(opsFldControl, "flex-1 font-medium")}
           />
           <button
@@ -449,6 +473,7 @@ export function EvaluatorFinalReviewTab({
                 setAssumptions((prev) => [...prev, t]);
               }
               setFreeAssumption("");
+              setDirty(true);
             }}
           >
             إضافة
@@ -463,6 +488,14 @@ export function EvaluatorFinalReviewTab({
           {saving ? <Spinner /> : null}
           <span>{saving ? "جاري الحفظ…" : "حفظ الافتراضات الخاصة"}</span>
         </button>
+        {dirty && !saving ? (
+          <p
+            className="mb-0 mt-2 text-[11.5px] font-semibold text-amber-text"
+            role="status"
+          >
+            تعديلاتك لم تُحفظ بعد — لن تظهر في التقرير إلا بعد الضغط على «حفظ الافتراضات الخاصة».
+          </p>
+        ) : null}
       </ValCard>
 
       <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">

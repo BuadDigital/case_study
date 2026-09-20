@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { Button, Label, cn } from "@platform/ui-kit";
+import { Button, Label, cn, useFormDensity } from "@platform/ui-kit";
 import {
   clearCachedPropertyDoc,
   type PropertyDocKind,
@@ -75,6 +75,8 @@ export function PropertyFileUploadField({
     typeof maxFiles === "number" && names.length >= maxFiles && multiple;
   const showPicker = !atMax;
 
+  // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars.
+  const tile = useFormDensity() === "compact";
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +118,149 @@ export function PropertyFileUploadField({
       ? "إضافة ملفات"
       : "ارفع المستند";
 
+  if (tile) {
+    return (
+      <div className="w-40 max-w-full">
+        <Label className="mb-1 line-clamp-2 min-h-[2rem] text-[11px]" htmlFor={id}>
+          {label}
+        </Label>
+
+        {hasFiles ? (
+          names.map((name) => (
+            <div
+              key={name}
+              className="mb-2 flex h-40 w-40 max-w-full flex-col items-center justify-between gap-1 overflow-hidden rounded-[10px] border border-border-md bg-surface-2 p-2 text-center"
+            >
+              <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden">
+                {showPreview ? (
+                  <div className="[&_.min-w-0>span:not(:first-child)]:hidden [&_.min-w-0>span]:line-clamp-2 [&_.min-w-0>span]:text-center">
+                    <AssignmentDocAttachment
+                      key={`${docKind}-${attachPo}-${propertyId}-${name}`}
+                      poNumber={attachPo!}
+                      propertyId={propertyId!}
+                      fileName={name}
+                      docKind={docKind}
+                      variant="thumb"
+                    />
+                  </div>
+                ) : (
+                  <p className="m-0 line-clamp-3 break-all text-[11px] font-medium text-text">
+                    📎 {name}
+                  </p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {!multiple ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-1.5 text-[11px] text-primary"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    استبدال
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-1.5 text-[11px] text-danger-text"
+                  onClick={() => (multiple && onRemove ? onRemove(name) : handleClearAll())}
+                >
+                  إزالة
+                </Button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`${typeof label === "string" ? label : "مرفق"} — اختر ملفاً أو اسحبه هنا`}
+            className={cn(
+              "flex h-40 w-40 max-w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 border-dashed p-2 text-center transition-[border-color,background]",
+              dragOver
+                ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
+                : error
+                  ? "border-danger bg-danger-bg/30"
+                  : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
+            )}
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+              setDragOver(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              applyFiles(e.dataTransfer.files);
+            }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-primary"
+              aria-hidden
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M12 18v-6" />
+              <path d="M9 15l3-3 3 3" />
+            </svg>
+            <span className="text-[12px] font-bold text-heading">
+              {dragOver ? "أفلِت الملف هنا" : "ارفع المستند"}
+            </span>
+            <span className="text-[10px] leading-snug text-text-3">
+              PDF أو صورة
+            </span>
+          </div>
+        )}
+
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          accept={ACCEPT}
+          multiple={multiple}
+          className="sr-only"
+          onChange={(e) => {
+            applyFiles(e.target.files);
+            e.target.value = "";
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+
+        {error ? (
+          <p className="mt-1 text-[10px] text-danger-text" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-2 w-full">
       <Label className="mb-1.5 text-[11px]" htmlFor={id}>
@@ -127,7 +272,7 @@ export function PropertyFileUploadField({
           {names.map((name) => (
             <li
               key={name}
-              className="flex items-start justify-between gap-2 rounded-[10px] border border-[#a9dfbf] bg-[#d5f5ef]/40 px-3 py-2"
+              className="flex items-start justify-between gap-2 rounded-[10px] border border-border-md bg-surface-2 px-3 py-2"
             >
               <div className="min-w-0 flex-1">
                 {showPreview ? (

@@ -110,7 +110,7 @@ public class UpsertComparablePropertyRequest
     [MaxLength(64)]
     public string? TransactionReference { get; init; }
 
-    [MaxLength(32)]
+    [MaxLength(128)]
     public string? AdvertiserPhone { get; init; }
 
     [MaxLength(512)]

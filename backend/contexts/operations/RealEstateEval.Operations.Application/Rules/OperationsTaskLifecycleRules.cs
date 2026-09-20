@@ -15,6 +15,7 @@ public static class OperationsTaskLifecycleRules
     {
         var role = actorRole.Trim();
         return role is "case-specialist" or "section-supervisor" or "general-manager"
+                or "real-estate-appraiser"
             || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
     }
 

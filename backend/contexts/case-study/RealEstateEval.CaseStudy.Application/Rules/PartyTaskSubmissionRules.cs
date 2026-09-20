@@ -25,11 +25,23 @@ public static class PartyTaskSubmissionRules
 
     public static Dictionary<string, string> Error(string message) => new() { ["_"] = message };
 
-    /// <summary>Case staff may correct a submitted field-inspection package (map pin, etc.).</summary>
-    public static bool StaffMayCorrectFieldInspection(PartySubmissionActor? actor, WorkflowTask task) =>
+    /// <summary>
+    /// Case staff may correct a party package from the property-edit screen: a submitted
+    /// inspection / survey / appraisal package (field values, map pin, etc.), and an inspection
+    /// draft (the specialist's long-standing inspection-tab edits).
+    /// </summary>
+    public static bool StaffMayCorrectPartyPackage(PartySubmissionActor? actor, WorkflowTask task) =>
         actor is not null
-        && task.Kind == WorkflowTaskKind.FieldInspection
+        && IsPartySubmissionKind(task.Kind)
         && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.PrototypeRole);
+
+    /// <summary>
+    /// Survey / appraisal drafts belong to their party — the party's next autosave would overwrite a
+    /// staff edit — so staff correct those only once the package is submitted.
+    /// </summary>
+    public static bool StaffMayWriteWhileStatus(WorkflowTask task, string entityStatus) =>
+        task.Kind == WorkflowTaskKind.FieldInspection
+        || entityStatus is PartyTaskSubmissionStatus.Submitted;
 
     /// <summary>
     /// The assignee (or an anonymous caller) may write a draft; case staff may only when they
@@ -171,6 +183,7 @@ public static class PartyTaskSubmissionRules
             ReopenedByUserId = entity.ReopenedByUserId,
             ReopenedByName = entity.ReopenedByName,
             UpdatedAtUtc = entity.UpdatedAtUtc.ToString("O"),
+            FieldProvenance = PartyFieldProvenance.Parse(entity.FieldProvenanceJson),
         };
     }
 }

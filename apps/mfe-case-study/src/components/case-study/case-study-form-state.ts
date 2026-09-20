@@ -75,9 +75,7 @@ export function hydrateCaseStudyFormDraft(args: {
   const parentSubmitted = parentDraft?.status === "submitted";
   return {
     parentSubmitted,
-    draft: {
-      ...base,
-      ...seed,
+    draft: { ...base, ...seed,
       answers: mergedAnswers,
       status: parentSubmitted && isParty ? "submitted" : base.status,
       specialistReviewApproved: {

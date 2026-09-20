@@ -3,7 +3,7 @@
 /** Enfath form — deed / real-estate-registration sections (identifier, mandate, plan, owner/court). */
 
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import { FormRow, InfathSection, Input } from "@platform/ui-kit";
+import { FormFlowGrid, FormRow, InfathSection, Input } from "@platform/ui-kit";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
 import {
   DEFAULT_CLIENT_FIELD_POLICY,
@@ -24,13 +24,7 @@ function EnfathRequestNumberField({
   showRequestNumber: boolean;
   hasRequestNumber: boolean;
 }) {
-  if (!showRequestNumber) {
-    return (
-      <p className="m-0 text-[10px] text-text-3">
-        رقم الطلب: لا ينطبق على إسناد المحاكم.
-      </p>
-    );
-  }
+  if (!showRequestNumber) return null;
   return (
     <>
       <label
@@ -117,9 +111,9 @@ export function PoPropertyEnfathDeedSections({
   fieldPolicy?: ClientFieldPolicy;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <FormFlowGrid>
     <InfathSection title="معرّف العقار">
-      <p className="mb-2.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
+      <p className="col-span-full mb-2.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
         أدخل رقم الصك أو رقم التسجيل العيني — أحدهما إلزامي.
       </p>
       <FormRow>
@@ -182,7 +176,7 @@ export function PoPropertyEnfathDeedSections({
         error={fieldErrors.assignmentMandateDate}
         onChange={(v) => onPatch("assignmentMandateDate", v)}
       />
-      <div className="w-full">
+      <div className="w-full empty:hidden">
         <EnfathRequestNumberField
           property={property}
           fieldErrors={fieldErrors}
@@ -282,6 +276,6 @@ export function PoPropertyEnfathDeedSections({
       </FormRow>
     </InfathSection>
     ) : null}
-    </div>
+    </FormFlowGrid>
   );
 }

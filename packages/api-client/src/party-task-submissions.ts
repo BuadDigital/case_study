@@ -8,6 +8,18 @@ import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
+/** Who wrote / last edited one payload field (server-stamped from the caller's identity). */
+export type PartyFieldProvenanceEntry = {
+  writtenByUserId?: string;
+  writtenByName?: string;
+  writtenByRole?: string;
+  writtenAtUtc?: string;
+  editedByUserId?: string;
+  editedByName?: string;
+  editedByRole?: string;
+  editedAtUtc?: string;
+};
+
 export type PartyTaskSubmissionDto = {
   id?: string;
   taskId: string;
@@ -30,6 +42,11 @@ export type PartyTaskSubmissionDto = {
   fieldInspectionCompleted?: boolean | null;
   /** Property-appraisal: sibling inspection package specialist-accepted (server). */
   fieldInspectionAccepted?: boolean | null;
+  /**
+   * Payload key → writer / latest editor. Keys are top-level payload keys, or `parent.child`
+   * for one level of nesting (e.g. `featureValues.assetSubject`).
+   */
+  fieldProvenance?: Record<string, PartyFieldProvenanceEntry>;
 };
 
 export type SavePartyTaskSubmissionRequest = {
@@ -60,6 +77,36 @@ function headers(token: string, idempotencyKey?: string): HeadersInit {
     Authorization: `Bearer ${token}`,
   };
   return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
+}
+
+function normalizeProvenanceEntry(raw: unknown): PartyFieldProvenanceEntry {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  const str = (a: string, b: string) => {
+    const v = row[a] ?? row[b];
+    return typeof v === "string" && v.trim() ? v : undefined;
+  };
+  return {
+    writtenByUserId: str("writtenByUserId", "WrittenByUserId"),
+    writtenByName: str("writtenByName", "WrittenByName"),
+    writtenByRole: str("writtenByRole", "WrittenByRole"),
+    writtenAtUtc: str("writtenAtUtc", "WrittenAtUtc"),
+    editedByUserId: str("editedByUserId", "EditedByUserId"),
+    editedByName: str("editedByName", "EditedByName"),
+    editedByRole: str("editedByRole", "EditedByRole"),
+    editedAtUtc: str("editedAtUtc", "EditedAtUtc"),
+  };
+}
+
+function normalizeProvenance(
+  raw: unknown,
+): Record<string, PartyFieldProvenanceEntry> {
+  if (typeof raw !== "object" || raw === null) return {};
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      normalizeProvenanceEntry(entry),
+    ]),
+  );
 }
 
 function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
@@ -108,6 +155,9 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
       if (raw === true || raw === false) return raw;
       return undefined;
     })(),
+    fieldProvenance: normalizeProvenance(
+      row.fieldProvenance ?? row.FieldProvenance,
+    ),
   };
 }
 

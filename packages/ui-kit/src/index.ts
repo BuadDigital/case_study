@@ -94,6 +94,13 @@ export { Select, type SelectProps, type SelectVariant } from "./components/Selec
 export { Label, type LabelProps } from "./components/Label";
 export { FormGroup, type FormGroupProps } from "./components/FormGroup";
 export { FormRow, type FormRowProps } from "./components/FormRow";
+export {
+  COMPACT_FORM_GRID_CLASS,
+  FormDensityProvider,
+  FormFlowGrid,
+  useFormDensity,
+  type FormDensity,
+} from "./lib/form-density";
 export { Card, CardBody, CardHeader } from "./components/Card";
 export { Badge, type BadgeTone, type BadgeProps } from "./components/Badge";
 export { Note } from "./components/Note";

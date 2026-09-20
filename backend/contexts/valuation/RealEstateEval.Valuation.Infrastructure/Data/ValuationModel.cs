@@ -71,7 +71,7 @@ public static class ValuationModel
             e.Property(x => x.PriceDescription).HasMaxLength(16);
             e.Property(x => x.Source).HasMaxLength(32).IsRequired();
             e.Property(x => x.ListingNumber).HasMaxLength(64);
-            e.Property(x => x.AdvertiserPhone).HasMaxLength(32);
+            e.Property(x => x.AdvertiserPhone).HasMaxLength(128);
             e.Property(x => x.ListingImageFileName).HasMaxLength(512);
             e.Property(x => x.Latitude).HasPrecision(9, 6);
             e.Property(x => x.Longitude).HasPrecision(9, 6);

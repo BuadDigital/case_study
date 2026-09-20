@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Wizard step 2 card of `InspectorWorkspaceWizard` - the deed-vs-reality
- * boundary match table (facade type, match verdict, mismatch note).
+ * Wizard step 2 card of `InspectorWorkspaceWizard` - deed text/length plus
+ * facade type, match verdict, and mismatch note.
  */
 
 import { cn, Select } from "@platform/ui-kit";
@@ -24,6 +24,10 @@ import {
 import { INS_TD_CLASS, INS_TH_CLASS } from "./FieldInspectionWorkParts";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "./inspector-wizard-state";
+import {
+  boundaryMatchPatch,
+  resolvedBoundaryDeedField,
+} from "./field-inspection-work-state";
 
 export function InspectorBoundaryMatchTable({
   property,
@@ -49,13 +53,13 @@ export function InspectorBoundaryMatchTable({
           title="الحدود والأطوال"
           badge={
             <DetailBadge tone="teal">
-              للمطابقة — المصدر: الأخصائي (البورصة)
+              أدخل الحدود ثم طابقها مع الواقع
             </DetailBadge>
           }
         >
           <p className="mb-2.5 text-[11.5px] leading-relaxed text-text-3">
-            دور المعاين هنا مطابقة بيانات البورصة واكتشاف الخطأ — يؤكد المطابقة أو
-            يعلّق بعدم المطابقة.
+            أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
+            علّق بعدم المطابقة.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-xs">
@@ -89,6 +93,14 @@ export function InspectorBoundaryMatchTable({
                   const match = draft.boundaryMatches[matchKey];
                   const ok = match?.matches !== false;
                   const facadeKey = `boundaryFacade:${matchKey}`;
+                  const deedDesc = resolvedBoundaryDeedField(
+                    match?.deedDesc,
+                    property[row.descKey],
+                  );
+                  const deedLength = resolvedBoundaryDeedField(
+                    match?.deedLength,
+                    property[row.lenKey],
+                  );
                   return (
                     <tr key={row.descKey} id={`ins-boundary-${matchKey}`}>
                       <td className={cn(INS_TD_CLASS, "font-bold text-heading")}>
@@ -118,15 +130,49 @@ export function InspectorBoundaryMatchTable({
                         </Select>
                       </td>
                       <td className={INS_TD_CLASS}>
-                        {property[row.descKey].trim() || "—"}
+                        {editable ? (
+                          <input
+                            className={cn(EDIT_CONTROL_CLASS, "text-[11.5px]")}
+                            placeholder="مثال: شارع عرض 15م"
+                            aria-label={`الحد حسب الصك — ${row.label}`}
+                            value={deedDesc}
+                            onChange={(e) =>
+                              onPatch(
+                                boundaryMatchPatch(draft, matchKey, {
+                                  deedDesc: e.target.value,
+                                }),
+                              )
+                            }
+                          />
+                        ) : (
+                          deedDesc.trim() || "—"
+                        )}
                       </td>
                       <td
                         className={cn(INS_TD_CLASS, "text-center tabular-nums")}
                         dir="ltr"
                       >
-                        {property[row.lenKey].trim()
-                          ? `${property[row.lenKey].trim()} م`
-                          : "—"}
+                        {editable ? (
+                          <input
+                            className={cn(
+                              EDIT_CONTROL_CLASS,
+                              "text-center text-[11.5px]",
+                            )}
+                            placeholder="25.00"
+                            inputMode="decimal"
+                            aria-label={`الطول (م) — ${row.label}`}
+                            value={deedLength}
+                            onChange={(e) =>
+                              onPatch(
+                                boundaryMatchPatch(draft, matchKey, {
+                                  deedLength: e.target.value,
+                                }),
+                              )
+                            }
+                          />
+                        ) : (
+                          deedLength.trim() ? `${deedLength.trim()} م` : "—"
+                        )}
                       </td>
                       <td className={cn(INS_TD_CLASS, "text-center")}>
                         <div className="inline-flex gap-1.5">

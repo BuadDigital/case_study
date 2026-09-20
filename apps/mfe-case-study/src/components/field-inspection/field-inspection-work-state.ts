@@ -178,6 +178,16 @@ export function boundaryMatchPatch(
   };
 }
 
+/** Inspector-entered deed text wins; otherwise the specialist/PO value. */
+export function resolvedBoundaryDeedField(
+  draftValue: string | undefined,
+  propertyValue: string | undefined,
+): string {
+  const fromDraft = draftValue?.trim();
+  if (fromDraft) return draftValue ?? "";
+  return propertyValue ?? "";
+}
+
 /** Deed side of a boundary row as the card prints it: blank → «—», length in metres. */
 export function boundaryDeedDisplay(
   description: string | undefined,

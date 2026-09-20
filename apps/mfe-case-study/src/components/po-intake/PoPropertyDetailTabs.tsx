@@ -48,6 +48,8 @@ import {
   PropertyDetailPropertyKeys,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
+import { canEditProperty } from "../../lib/app-data/po-roles";
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../../lib/app-data/inspector-workspace-data";
 
 export type PoPropertyDetailInspectorWorkspace = {
   /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
@@ -339,17 +341,26 @@ export function PoPropertyDetailTabs({
               editMode={
                 workspaceForced
                   ? inspectorWorkspace?.forceEdit !== false
-                  : false
+                  : inspectEdit
               }
               lockEditMode={
                 workspaceForced && inspectorWorkspace?.forceEdit !== false
+              }
+              /* Case staff review the inspector's package like the case-study workspace: a
+                 submitted (not yet accepted) inspection stays editable, only acceptance locks it. */
+              serviceProofFromTransactionPhotos={
+                !workspaceForced && canEditProperty(role)
+              }
+              includeRetiredFeatureKeys={
+                !workspaceForced && canEditProperty(role)
+                  ? CASE_STUDY_SPECIALIST_FEATURE_KEYS
+                  : undefined
               }
               onEditModeChange={(edit) => {
                 if (workspaceForced && !edit) {
                   inspectorWorkspace?.onCancel?.();
                   return;
                 }
-                if (!workspaceForced) return;
                 setInspectEdit(edit);
                 replaceInspectQuery(edit ? "edit" : null);
               }}

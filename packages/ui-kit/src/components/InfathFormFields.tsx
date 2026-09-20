@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, formControlClassName } from "@platform/ui-kit";
+import { useFormFlow } from "../lib/form-density";
 import { useState } from "react";
 import type {
   InputHTMLAttributes,
@@ -209,9 +210,18 @@ export function InfathSection({
   children,
   className,
 }: InfathSectionProps) {
+  const flows = useFormFlow();
   return (
-    <section className={cn("min-w-0", className)}>
-      <h4 className="m-0 mb-3 text-[13px] font-bold text-heading">{title}</h4>
+    <section className={cn(flows ? "contents" : "min-w-0", className)}>
+      <h4
+        className={cn(
+          "m-0 text-[13px] font-bold text-heading",
+          // In a flowing grid the title would break the row — keep it for screen readers only.
+          flows ? "sr-only" : "mb-3",
+        )}
+      >
+        {title}
+      </h4>
       {children}
     </section>
   );
