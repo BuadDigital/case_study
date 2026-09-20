@@ -66,7 +66,11 @@ function AssignedPartiesCell({
   const members = assignedCaseStudyParties(parent, tasks, staffUsers).map(
     (p) => ({ name: p.name, role: p.role }),
   );
-  return <TeamStack members={members} />;
+  return (
+    <div className="flex justify-center">
+      <TeamStack members={members} />
+    </div>
+  );
 }
 
 const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
