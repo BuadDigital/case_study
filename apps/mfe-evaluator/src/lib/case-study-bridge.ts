@@ -55,6 +55,12 @@ export function collectFieldInspectionDocumentsFromSubmission(
   );
 }
 
+export function openPropertyDetailDocumentPreview(
+  entry: PropertyDetailDocumentEntry,
+) {
+  return getEvaluatorCaseStudyBridge().openPropertyDetailDocumentPreview(entry);
+}
+
 export function downloadPropertyDetailDocument(
   entry: PropertyDetailDocumentEntry,
 ) {

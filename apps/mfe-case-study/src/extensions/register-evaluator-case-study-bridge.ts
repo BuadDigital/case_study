@@ -16,6 +16,7 @@ import { prefetchInspectorWorkspacePhotos } from "../lib/app-data/inspector-phot
 import {
   collectFieldInspectionDocumentsFromSubmission,
   downloadPropertyDetailDocument,
+  openPropertyDetailDocumentPreview,
 } from "../lib/app-data/property-detail-documents";
 import { loadPartyCaseStudyFormDraft } from "../lib/app-data/case-study-form-reads";
 import { savePartyCaseStudyFormDraft } from "../lib/app-data/case-study-form-commands";
@@ -40,6 +41,7 @@ export function ensureEvaluatorCaseStudyBridgeRegistered(): void {
     savePartyCaseStudyFormDraft,
     collectFieldInspectionDocumentsFromSubmission,
     downloadPropertyDetailDocument,
+    openPropertyDetailDocumentPreview,
   });
   registerComparablePropertyEntryFields(ComparablePropertyEntryFields);
   registerPropertyDetailMediaGlance(PropertyDetailMediaGlance);

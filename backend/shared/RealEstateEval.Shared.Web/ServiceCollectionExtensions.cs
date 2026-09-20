@@ -105,7 +105,15 @@ public static class AuthorizationExtensions
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
                     ctx,
                     PlatformCapabilities.ManageWorkOrders,
-                    PlatformCapabilities.ManageOperations)));
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.SubmitValuationReport)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ManageOperationsTasks,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitValuationReport)));
 
             options.AddPolicy(
                 CapabilityPolicyNames.ManagePartyFeePricing,

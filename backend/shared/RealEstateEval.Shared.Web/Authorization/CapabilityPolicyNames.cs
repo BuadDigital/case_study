@@ -100,5 +100,11 @@ public static class CapabilityPolicyNames
     /// </summary>
     public const string ReadInspectionContext = "Capability:read-inspection-context";
 
+    /// <summary>
+    /// Create and reassign operations tasks — case staff (work orders) and the real-estate appraiser
+    /// (valuation report), matching <c>PoRoleMatrixRules.CanManageOperationsTasks</c>.
+    /// </summary>
+    public const string ManageOperationsTasks = "Capability:manage-operations-tasks";
+
     public static string For(string capability) => $"Capability:{capability}";
 }

@@ -292,10 +292,10 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
-                "مجموع التسويات > ٣٥٪",
+                "مجموع التسويات > ٤٠٪",
                 input.MarketApproachRelevant && comps.Count > 0,
                 () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
-                "تجاوز عتبة ±٣٥٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
+                "تجاوز عتبة ±٤٠٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
                 resolutions),
 
  // Decision 24 — evaluated only after inspection scope is captured (inspection-boundaries feature).

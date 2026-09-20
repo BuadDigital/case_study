@@ -27,8 +27,8 @@ public class ValuationComparableAdjustmentLine
 
 public static class MarketApproachRules
 {
-    /// <summary>Interactive model spec: ±35% adjustments-sum breach — rationale required with comparable-validity review.</summary>
-    public const decimal LargeAdjustmentThresholdPct = 35m;
+    /// <summary>Interactive model spec: ±40% adjustments-sum breach — rationale required with comparable-validity review.</summary>
+    public const decimal LargeAdjustmentThresholdPct = 40m;
     /// <summary>Adjustments logic: score = 1 / (|factorsSum| + 0.5).</summary>
     public const decimal WeightEpsilon = 0.5m;
     /// <summary>Default annual market-change rate (%) for suggesting the market-conditions adjustment.</summary>

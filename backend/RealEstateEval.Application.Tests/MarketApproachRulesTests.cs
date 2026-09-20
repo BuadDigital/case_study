@@ -17,10 +17,10 @@ public class MarketApproachRulesTests
     public void Sum_and_thresholds_match_prototype_spec()
     {
         Assert.Equal(40m, MarketApproachRules.SumIncludedPercents([10m, 30m]));
-        // Interactive model specification: 1 threshold ±35% — justification is mandatory.
-        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(36m));
-        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(-36m));
-        Assert.False(MarketApproachRules.ExceedsLargeAdjustmentThreshold(35m));
+        // Interactive model specification: 1 threshold ±40% — justification is mandatory.
+        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(41m));
+        Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(-41m));
+        Assert.False(MarketApproachRules.ExceedsLargeAdjustmentThreshold(40m));
     }
 
     [Fact]

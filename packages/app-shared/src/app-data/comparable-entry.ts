@@ -54,6 +54,24 @@ export function parseComparableCoords(
   return { lat, lng };
 }
 
+const ARABIC_INDIC_ZERO = 0x0660;
+
+/**
+ * Reads a "lat, lng" pair typed or pasted from a map app (Google Maps copies "24.7136, 46.6753").
+ * Accepts Arabic-Indic digits, «،» / «؛» separators and «٫» decimals; returns null when it is not a
+ * valid on-earth pair.
+ */
+export function parseCoordinatePair(text: string): ComparableSubjectPin | null {
+  const normalized = text
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - ARABIC_INDIC_ZERO))
+    .replace(/٫/g, ".")
+    .replace(/[،؛;]/g, ",")
+    .trim();
+  const parts = normalized.split(/\s*,\s*|\s+/).filter(Boolean);
+  if (parts.length !== 2) return null;
+  return parseComparableCoords(parts[0], parts[1]);
+}
+
 export function comparableKindFromType(
   type: string | null | undefined,
 ): ComparableKind | "" {
@@ -132,6 +150,48 @@ function positiveAmount(raw: string): boolean {
   return Number.isFinite(n) && n > 0;
 }
 
+/** One contact number is 10 digits; the field takes several, each the next 10 digits. */
+export const CONTACT_NUMBER_DIGITS = 10;
+export const MAX_CONTACT_NUMBERS = 10;
+
+function contactDigits(raw: string): string {
+  return raw
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/\D/g, "")
+    .slice(0, CONTACT_NUMBER_DIGITS * MAX_CONTACT_NUMBERS);
+}
+
+/** «رقم التواصل»: every 10 digits typed or pasted is one number — the next 10 are the next number. */
+export function contactNumbers(raw: string): string[] {
+  const digits = contactDigits(raw);
+  const out: string[] = [];
+  for (let i = 0; i < digits.length; i += CONTACT_NUMBER_DIGITS) {
+    out.push(digits.slice(i, i + CONTACT_NUMBER_DIGITS));
+  }
+  return out;
+}
+
+/** What the field shows while typing: digits only, a space after each complete number. */
+export function formatContactNumbersInput(raw: string): string {
+  return contactNumbers(raw).join(" ");
+}
+
+/** Null when empty or every number is complete; otherwise the message for the unfinished one. */
+export function contactNumbersError(raw: string): string | null {
+  const numbers = contactNumbers(raw);
+  const last = numbers[numbers.length - 1];
+  if (last && last.length !== CONTACT_NUMBER_DIGITS) {
+    return `كل رقم تواصل ${CONTACT_NUMBER_DIGITS} أرقام — أكمل الرقم ${numbers.length}`;
+  }
+  return null;
+}
+
+/** Stored as one string, numbers separated by «،»; null when none. */
+export function contactNumbersForSave(raw: string): string | null {
+  const numbers = contactNumbers(raw);
+  return numbers.length > 0 ? numbers.join("، ") : null;
+}
+
 function hasIsoDate(raw: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw.trim());
 }
@@ -145,7 +205,8 @@ export type ComparableEntryFieldErrors = Partial<
     | "areaSqm"
     | "transactionDate"
     | "priceDescription"
-    | "source",
+    | "source"
+    | "advertiserPhone",
     string
   >
 >;
@@ -162,6 +223,7 @@ const COMPARABLE_ENTRY_ERROR_ORDER: {
   { key: "transactionDate", targetId: "cmp-date" },
   { key: "priceDescription", targetId: "cmp-price-description" },
   { key: "source", targetId: "cmp-source" },
+  { key: "advertiserPhone", targetId: "cmp-phone" },
 ];
 
 /** Field-level gates for the add-comparable form (office + field). */
@@ -205,6 +267,9 @@ export function validateComparableEntry(
   if (!draft.source.trim()) {
     errors.source = "اختر مصدر المعلومة";
   }
+
+  const phoneError = contactNumbersError(draft.advertiserPhone);
+  if (phoneError) errors.advertiserPhone = phoneError;
 
   return errors;
 }
@@ -253,7 +318,7 @@ export function comparableDraftToUpsert(
     source: draft.source,
     listingNumber: executed ? null : draft.listingNumber.trim() || null,
     transactionReference: executed ? draft.listingNumber.trim() || null : null,
-    advertiserPhone: draft.advertiserPhone.trim() || null,
+    advertiserPhone: contactNumbersForSave(draft.advertiserPhone),
     latitude: coords?.lat ?? 0,
     longitude: coords?.lng ?? 0,
     areaSqm: Number(draft.areaSqm.replace(",", ".")) || 0,

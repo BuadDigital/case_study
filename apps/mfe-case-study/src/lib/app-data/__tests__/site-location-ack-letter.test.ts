@@ -107,5 +107,11 @@ describe("site location ack letter", () => {
     expect(html).toContain("window.print()");
     expect(html).not.toContain('<table class="facts-table"');
     expect(html).not.toContain("lh-slice");
+
+    // Empty client signature box sits between the signature and the company stamp.
+    const at = (needle: string) => html.indexOf(needle, html.indexOf('class="sign-block"'));
+    expect(at("توقيع العميل")).toBeGreaterThan(at(">التوقيع<"));
+    expect(at("توقيع العميل")).toBeLessThan(at(">ختم الشركة<"));
+    expect(html).toContain('<div class="client-signature-slot"></div>');
   });
 });

@@ -251,6 +251,12 @@ export function officialLetterShellCss(options?: {
       border-bottom: 1px solid #c5ccd6;
       padding-bottom: 2px;
     }
+    /* Left empty on purpose: the letter is printed and the client signs on the line. */
+    .client-signature-slot {
+      width: 46mm;
+      height: 24mm;
+      border-bottom: 1px solid #c5ccd6;
+    }
     .stamp-slot img, .signature-slot img {
       display: block;
       max-width: 100%;
@@ -300,7 +306,16 @@ export function officialLetterToolbarHtml(title: string): string {
 export function officialLetterSignBlockHtml(options: {
   stampUrl: string;
   signatureUrl: string;
+  /** Adds an empty «توقيع العميل» box between the signature and the stamp, signed by hand after printing. */
+  clientSignature?: boolean;
 }): string {
+  const clientSignature = options.clientSignature
+    ? `
+      <div class="sign-item">
+        <div class="sign-caption">توقيع العميل</div>
+        <div class="client-signature-slot"></div>
+      </div>`
+    : "";
   return `
     <div class="sign-block">
       <div class="sign-item">
@@ -308,7 +323,7 @@ export function officialLetterSignBlockHtml(options: {
         <div class="signature-slot">
           <img src="${options.signatureUrl}" alt="التوقيع" />
         </div>
-      </div>
+      </div>${clientSignature}
       <div class="sign-item">
         <div class="sign-caption">ختم الشركة</div>
         <div class="stamp-slot">

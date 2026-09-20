@@ -7,7 +7,8 @@ export function canManageOperationsTasks(role: RoleId): boolean {
     isSuperAdmin(role) ||
     role === "case-specialist" ||
     role === "section-supervisor" ||
-    role === "general-manager"
+    role === "general-manager" ||
+    role === "real-estate-appraiser"
   );
 }
 

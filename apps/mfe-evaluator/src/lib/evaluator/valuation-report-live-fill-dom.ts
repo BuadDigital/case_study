@@ -422,8 +422,9 @@ export function syncNumberedRows(scope: Element, count: number) {
 }
 
 export function fillAdjustmentSection(sec: Element, fill: ValuationReportLiveFill) {
+  // One column per comparable: the per-comparable rows carry `count` values, the two total rows one.
   const colCount = fill.adjustmentRows.reduce(
-    (m, r) => Math.max(m, r.values.length > 1 ? r.values.length : 0),
+    (m, r) => Math.max(m, r.values.length),
     0,
   );
   if (colCount > 0) syncAdjustmentColumns(sec, colCount);
@@ -919,6 +920,8 @@ function formatFinishingHtml(text: string): string {
     .join("<br>");
 }
 
+const FINISHING_LEVEL_PENDING_TEXT = "مستوى التشطيب لم يحدد بعد";
+
 export function fillFinishingLevelSection(
   sec: Element | null,
   fill: ValuationReportLiveFill,
@@ -978,8 +981,26 @@ export function fillFinishingLevelSection(
   }
   (header as HTMLElement).style.display = "";
   (body as HTMLElement).style.display = "";
+  table.querySelector("[data-finishing-pending]")?.remove();
 
-  if (!label) return;
+  if (!label) {
+    // No level chosen yet: printing all three reference levels reads as if none were picked
+    // on purpose — say plainly that it is still pending.
+    hideEl(header);
+    hideEl(body);
+    if (noneRow) hideEl(noneRow);
+    const doc = table.ownerDocument;
+    const tr = doc.createElement("tr");
+    tr.setAttribute("data-finishing-pending", "");
+    const td = doc.createElement("td");
+    td.className = "v";
+    td.setAttribute("colspan", String(Math.max(headers.length, 1)));
+    td.style.textAlign = "center";
+    td.textContent = FINISHING_LEVEL_PENDING_TEXT;
+    tr.appendChild(td);
+    table.appendChild(tr);
+    return;
+  }
 
   if (level === "none" && noneRow) {
     hideEl(header);

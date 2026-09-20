@@ -146,7 +146,7 @@ export function siteLocationAckLetterHtml(letter: SiteLocationAckLetter): string
         سواء كانت ذات طابع قانوني أو فني أو غيره.
       </p>
 
-      ${officialLetterSignBlockHtml({ stampUrl: stamp, signatureUrl: signature })}
+      ${officialLetterSignBlockHtml({ stampUrl: stamp, signatureUrl: signature, clientSignature: true })}
     </div>
   </div>
 </body>

@@ -34,6 +34,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.WriteComparableBank,
                      CapabilityPolicyNames.ReadComparableBank,
                      CapabilityPolicyNames.ListDistributionAssignees,
+                     CapabilityPolicyNames.ManageOperationsTasks,
                      CapabilityPolicyNames.ManagePartyFeePricing,
                      CapabilityPolicyNames.ReadCaseStudyWorkspace,
                      CapabilityPolicyNames.ReadAttachments,
@@ -63,6 +64,29 @@ public class CapabilityPolicyRegistrationTests
             PrincipalWith(PlatformCapabilities.ManageFinancial),
             resource: null,
             CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+    }
+
+    [Fact]
+    public async Task Operations_task_managers_are_case_staff_and_the_appraiser()
+    {
+        var authorization = BuildAuthorizationService();
+
+        foreach (var capability in new[]
+                 {
+                     PlatformCapabilities.ManageWorkOrders,
+                     PlatformCapabilities.SubmitValuationReport,
+                 })
+        {
+            Assert.True((await authorization.AuthorizeAsync(
+                PrincipalWith(capability),
+                resource: null,
+                CapabilityPolicyNames.ManageOperationsTasks)).Succeeded);
+        }
+
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ManageOperationsTasks)).Succeeded);
     }
 
     [Fact]

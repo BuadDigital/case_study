@@ -26,7 +26,7 @@ public class ValuationComparableMarketDto
     public decimal SumDifferencePct { get; init; }
  /// <summary>Algebraic sum of all included %.</summary>
     public decimal SumIncludedPct { get; init; }
- /// <summary>|factorsSum| &gt; 35% — rationale required (interactive model spec).</summary>
+ /// <summary>|factorsSum| &gt; 40% — rationale required (interactive model spec).</summary>
     public bool ExceedsLargeAdjustmentThreshold { get; init; }
  /// <summary>Deal age in months — display-only hint ("deal age N months"); adjustment is manual.</summary>
     public int DealAgeMonths { get; init; }

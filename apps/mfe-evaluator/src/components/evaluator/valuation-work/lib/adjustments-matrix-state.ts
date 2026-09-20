@@ -152,7 +152,7 @@ export function buildMatrixAlerts(
     alerts.push({
       kind: "error",
       title: `المقارن ${c.comparable.referenceCode} — مجموع التسويات ${formatPct(c.market?.sumDifferencePct ?? 0)}`,
-      body: "تجاوز ±٣٥٪ — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
+      body: "تجاوز ±٤٠٪ — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
     });
   }
   if (alerts.length === 0) {

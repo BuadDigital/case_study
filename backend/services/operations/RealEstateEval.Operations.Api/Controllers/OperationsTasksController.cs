@@ -94,7 +94,7 @@ public class OperationsTasksController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperationsTasks)]
     public async Task<ActionResult<OperationsTaskDto>> Create(
         [FromBody] CreateOperationsTaskRequest request,
         CancellationToken ct)
@@ -146,7 +146,7 @@ public class OperationsTasksController : ControllerBase
     }
 
     [HttpPost("{id:guid}/reassign")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperationsTasks)]
     public async Task<ActionResult<OperationsTaskDto>> Reassign(
         Guid id,
         [FromBody] ReassignOperationsTaskRequest request,

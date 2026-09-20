@@ -1222,6 +1222,11 @@ describe("valuation report live fill from intake", () => {
     expect(deal[1]?.textContent).toBe("فيلا سكنية");
     expect(deal[2]?.textContent).toContain("منصة عقارية");
     expect(dom.querySelector('[data-sec="19"]')?.textContent).toContain("-3.00٪");
+    // One approved comparable → one comparable column (the template ships three), total rows span it.
+    const adjRows = [...dom.querySelectorAll('[data-sec="19"] table')[0]!.querySelectorAll("tr")];
+    expect(adjRows[0]!.querySelectorAll("th")).toHaveLength(2);
+    expect(adjRows[1]!.querySelectorAll("td")).toHaveLength(2);
+    expect(adjRows[2]!.querySelector("td.num")?.getAttribute("colspan")).toBe("1");
     expect(dom.querySelector('[data-sec="19"]')?.textContent).toContain(
       "الحد سقف أعلى",
     );

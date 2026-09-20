@@ -620,4 +620,30 @@ describe("search notes and comparable map live fill", () => {
     const headerRow = dom.querySelector("[data-sec=\"12\"] tr:first-child");
     expect((headerRow as HTMLElement)?.style.display).toBe("none");
   });
+
+  it("says the level is not set yet instead of listing every level in §12", () => {
+    const d = draft();
+    d.reportChoices = { ...d.reportChoices!, finishingLevel: "" };
+    const fill = buildValuationReportLiveFill({ draft: d });
+    const dom = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body>
+        <section data-sec="12">
+          <table>
+            <tr><th>تشطيب فاخر</th><th>تشطيب متوسط</th><th>تشطيب عادي</th></tr>
+            <tr><td>a</td><td>b</td><td>c</td></tr>
+            <tr><th colspan="3">بدون تشطيب</th></tr>
+          </table>
+        </section>
+      </body></html>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    applyValuationReportLiveFill(dom, fill);
+
+    const rows = [...dom.querySelectorAll('[data-sec="12"] tr')] as HTMLElement[];
+    expect(rows.filter((tr) => tr.style.display !== "none")).toHaveLength(1);
+    const pending = dom.querySelectorAll('[data-sec="12"] [data-finishing-pending]');
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.textContent).toBe("مستوى التشطيب لم يحدد بعد");
+  });
 });
