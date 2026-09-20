@@ -22,6 +22,9 @@ public class BuildingInventoryLine
     public string? AreaSqm { get; set; }
 
     public string? Notes { get; set; }
+
+ /// <summary>Who first wrote this line and who last changed it (one <c>PartyFieldProvenanceEntryDto</c> as jsonb).</summary>
+    public string ProvenanceJson { get; set; } = "{}";
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

@@ -1,3 +1,4 @@
+using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
@@ -29,7 +30,8 @@ public interface IWorkOrderPropertyCommands
         string poNumber,
         Guid propertyId,
         string? specialistReportExtrasJson,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null);
 
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
         string poNumber,

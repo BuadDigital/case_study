@@ -383,7 +383,13 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             propertyId,
             request.SpecialistReportExtrasJson,
-            cancellationToken);
+            cancellationToken,
+            new PartySubmissionActor
+            {
+                UserId = userId,
+                DisplayName = ActorClaims.DisplayName(User),
+                PrototypeRole = perms?.PrototypeRole,
+            });
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();

@@ -1,5 +1,14 @@
 import type { PartyFieldProvenanceEntry } from "@platform/api-client";
-import { INSPECTOR_FEATURE_FIELDS } from "./inspector-workspace-data";
+import {
+  INSPECTOR_AMENITY_OPTIONS,
+  INSPECTOR_FEATURE_FIELDS,
+  INSPECTOR_OBSERVATION_CATEGORIES,
+  INSPECTOR_SERVICE_OPTIONS,
+  MOVABLES_DESCRIPTION_KEY,
+  MOVABLES_DESCRIPTION_LABEL,
+  OCCUPANCY_DESCRIPTION_KEY,
+  OCCUPANCY_DESCRIPTION_LABEL,
+} from "./inspector-workspace-data";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 
 /**
@@ -19,6 +28,8 @@ export type PartyFieldInput =
   | "textarea"
   | "select"
   | "checkbox"
+  | "multiselect"
+  | "observations"
   | "readonly";
 
 export type PartyFieldDef = {
@@ -59,6 +70,16 @@ const flag = (key: string, label: string): PartyFieldDef => ({
   label,
   input: "checkbox",
 });
+const chips = (
+  key: string,
+  label: string,
+  options: readonly string[],
+): PartyFieldDef => ({ key, label, input: "multiselect", options });
+const observations = (key: string, label: string): PartyFieldDef => ({
+  key,
+  label,
+  input: "observations",
+});
 const readonly = (key: string, label: string): PartyFieldDef => ({
   key,
   label,
@@ -80,6 +101,30 @@ const INSPECTOR_FEATURE_DEFS: PartyFieldDef[] = INSPECTOR_FEATURE_FIELDS.map(
         },
 );
 
+/** Free-text feature values that sit beside the yes/no features but are not in the feature list. */
+const MOVABLES_AND_OCCUPANCY_DEFS: PartyFieldDef[] = [
+  area(`featureValues.${MOVABLES_DESCRIPTION_KEY}`, MOVABLES_DESCRIPTION_LABEL),
+  area(`featureValues.${OCCUPANCY_DESCRIPTION_KEY}`, OCCUPANCY_DESCRIPTION_LABEL),
+];
+
+const BOUNDARY_SIDES: readonly { key: string; label: string }[] = [
+  { key: "north", label: "الشمالي" },
+  { key: "south", label: "الجنوبي" },
+  { key: "east", label: "الشرقي" },
+  { key: "west", label: "الغربي" },
+];
+
+/** The inspector's per-side boundary check: deed text, length, facade finish, and the match verdict. */
+const BOUNDARY_MATCH_DEFS: PartyFieldDef[] = BOUNDARY_SIDES.flatMap(
+  ({ key, label }): PartyFieldDef[] => [
+    text(`boundaryMatches.${key}.deedDesc`, `الحد ${label} حسب الصك`),
+    text(`boundaryMatches.${key}.deedLength`, `طول الحد ${label} (م)`, true),
+    text(`boundaryMatches.${key}.facade`, `نوع واجهة الحد ${label}`),
+    flag(`boundaryMatches.${key}.matches`, `الحد ${label} مطابق للواقع`),
+    text(`boundaryMatches.${key}.mismatchNote`, `ملاحظة عدم تطابق الحد ${label}`),
+  ],
+);
+
 export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
   kind: "field-inspection",
   title: "بيانات المعاينة الميدانية",
@@ -92,6 +137,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     ...INSPECTOR_FEATURE_DEFS,
     text("streetName", L.streetName),
     text("mainStreetName", L.mainStreet),
+    area("accessRouteDescription", "تأكيد موقع العقار"),
     text("streetWidthM", L.streetWidth, true),
     text("accessContactName", "اسم من أتاح الوصول"),
     text("accessContactPhone", "جوال من أتاح الوصول", true),
@@ -117,6 +163,10 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("basementTotal", L.basementTotal, true),
     yesNo("hasAnnex", "يوجد ملحق"),
     text("annexTotal", "إجمالي مساحة الملحق (م²)", true),
+    text("annexUpperCount", "عدد الملاحق العلوية", true),
+    text("annexGroundCount", "عدد الملاحق الأرضية", true),
+    readonly("buildingsTotal", "إجمالي مساحة المباني (م²)"),
+    flag("vacantLand", "أرض فضاء"),
     text("propertyAgeYears", L.propertyAge, true),
     text("buildLicenseNumber", L.buildLicenseNumber, true),
     text("buildLicenseDate", L.buildLicenseDate, true),
@@ -130,10 +180,12 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     area("propertyDescription", L.propertyDescription),
     area("districtProsCons", L.districtProsCons),
     area("assetNotes", L.assetNotes),
-    readonly("services", L.services),
-    readonly("amenities", L.amenities),
+    ...MOVABLES_AND_OCCUPANCY_DEFS,
+    ...BOUNDARY_MATCH_DEFS,
+    chips("services", L.services, INSPECTOR_SERVICE_OPTIONS),
+    chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS),
+    observations("observations", "الملاحظات الميدانية (العيوب والمزايا)"),
     readonly("freePhotos", "الصور الحرة"),
-    readonly("observations", "الملاحظات الميدانية"),
     flag("clientDeclarationSigned", "إقرار صحة الموقع موقَّع"),
     flag("inspectionConfirmed", "تأكيد المعاينة"),
   ],
@@ -213,6 +265,8 @@ export const PARTY_DATA_SECTIONS: readonly PartyDataSectionDef[] = [
   PROPERTY_APPRAISAL_SECTION,
 ];
 
+export { INSPECTOR_OBSERVATION_CATEGORIES };
+
 const DEED_MATCH_LABELS: Record<string, string> = { yes: "نعم", no: "لا" };
 
 /** Arabic label for a select option's stored value (engineering deed-match uses yes/no). */
@@ -235,18 +289,19 @@ export function partyRoleLabel(role: string | undefined): string {
   return ROLE_LABELS[key] ?? "";
 }
 
-/** Value at `key` — `a.b` reads one level into `payload.a`. */
+/** Value at `key` — `a.b.c` walks nested objects one segment at a time. */
 export function readPartyPayloadValue(
   payload: Record<string, unknown>,
   key: string,
 ): unknown {
-  const dot = key.indexOf(".");
-  if (dot < 0) return payload[key];
-  const parent = payload[key.slice(0, dot)];
-  if (typeof parent !== "object" || parent === null || Array.isArray(parent)) {
-    return undefined;
+  let current: unknown = payload;
+  for (const segment of key.split(".")) {
+    if (typeof current !== "object" || current === null || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
   }
-  return (parent as Record<string, unknown>)[key.slice(dot + 1)];
+  return current;
 }
 
 /** Text shown in an input (or a read-only summary) for a payload value. */
@@ -263,28 +318,48 @@ export function partyValueText(value: unknown): string {
   return "";
 }
 
-/** Returns a copy of `payload` with every edit applied (`a.b` writes into a copied `payload.a`). */
+function withNestedValue(
+  target: Record<string, unknown>,
+  path: readonly string[],
+  value: unknown,
+): Record<string, unknown> {
+  const [head, ...rest] = path;
+  if (rest.length === 0) return { ...target, [head!]: value };
+  const existing = target[head!];
+  const child =
+    typeof existing === "object" && existing !== null && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  return { ...target, [head!]: withNestedValue(child, rest, value) };
+}
+
+/** Returns a copy of `payload` with every edit applied (`a.b.c` writes into copied parents). */
 export function applyPartyFieldEdits(
   payload: Record<string, unknown>,
-  edits: Readonly<Record<string, string | boolean>>,
+  edits: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...payload };
+  let next: Record<string, unknown> = { ...payload };
   for (const [key, value] of Object.entries(edits)) {
-    const dot = key.indexOf(".");
-    if (dot < 0) {
-      next[key] = value;
-      continue;
-    }
-    const parentKey = key.slice(0, dot);
-    const existing = next[parentKey];
-    const parent =
-      typeof existing === "object" && existing !== null && !Array.isArray(existing)
-        ? { ...(existing as Record<string, unknown>) }
-        : {};
-    parent[key.slice(dot + 1)] = value;
-    next[parentKey] = parent;
+    next = withNestedValue(next, key.split("."), value);
   }
   return next;
+}
+
+/**
+ * Provenance for `key`. The server stamps top-level keys and one level of nesting
+ * (`boundaryMatches.north`), so a deeper key uses its nearest stamped ancestor.
+ */
+export function partyProvenanceFor(
+  provenance: Record<string, PartyFieldProvenanceEntry> | undefined,
+  key: string,
+): PartyFieldProvenanceEntry | undefined {
+  if (!provenance) return undefined;
+  const parts = key.split(".");
+  for (let n = parts.length; n >= 1; n--) {
+    const entry = provenance[parts.slice(0, n).join(".")];
+    if (entry) return entry;
+  }
+  return undefined;
 }
 
 export type PartyProvenanceLines = {

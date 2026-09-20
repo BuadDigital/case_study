@@ -82,42 +82,7 @@ public static class PartyFieldProvenance
             }
 
             map.TryGetValue(key, out var entry);
-            if (prevEmpty)
-            {
-                map[key] = NewEntry(actor, at);
-            }
-            else if (entry is null)
-            {
-                // Value predates provenance tracking: the writer is unknown, but this edit is not.
-                map[key] = new PartyFieldProvenanceEntryDto
-                {
-                    EditedByUserId = Clean(actor.UserId),
-                    EditedByName = Clean(actor.DisplayName),
-                    EditedByRole = Clean(actor.PrototypeRole),
-                    EditedAtUtc = at,
-                };
-            }
-            else
-            {
-                var touchedBy = string.IsNullOrWhiteSpace(entry.EditedByUserId ?? entry.EditedByName)
-                    ? (entry.WrittenByUserId, entry.WrittenByName)
-                    : (entry.EditedByUserId, entry.EditedByName);
-                if (SamePerson(touchedBy.Item1, touchedBy.Item2, actor))
-                {
-                    if (string.IsNullOrWhiteSpace(entry.EditedByUserId ?? entry.EditedByName))
-                        entry.WrittenAtUtc = at;
-                    else
-                        entry.EditedAtUtc = at;
-                }
-                else
-                {
-                    entry.EditedByUserId = Clean(actor.UserId);
-                    entry.EditedByName = Clean(actor.DisplayName);
-                    entry.EditedByRole = Clean(actor.PrototypeRole);
-                    entry.EditedAtUtc = at;
-                }
-            }
-
+            map[key] = ApplyChange(entry, prevEmpty, actor, at);
             changed = true;
         }
 
@@ -134,6 +99,72 @@ public static class PartyFieldProvenance
 
         return changed ? Serialize(map) : existing;
     }
+
+    /// <summary>
+    /// One value changed. A first write (previously empty) stamps the writer; a change by
+    /// someone other than the latest toucher stamps the editor; the same person only refreshes the time.
+    /// A value that predates tracking (no entry) records the editor and leaves the writer unknown.
+    /// </summary>
+    public static PartyFieldProvenanceEntryDto ApplyChange(
+        PartyFieldProvenanceEntryDto? entry,
+        bool previouslyEmpty,
+        PartySubmissionActor actor,
+        string at)
+    {
+        if (previouslyEmpty) return NewEntry(actor, at);
+        if (entry is null)
+        {
+            return new PartyFieldProvenanceEntryDto
+            {
+                EditedByUserId = Clean(actor.UserId),
+                EditedByName = Clean(actor.DisplayName),
+                EditedByRole = Clean(actor.PrototypeRole),
+                EditedAtUtc = at,
+            };
+        }
+
+        var hasEditor = !string.IsNullOrWhiteSpace(entry.EditedByUserId ?? entry.EditedByName);
+        var touchedBy = hasEditor
+            ? (entry.EditedByUserId, entry.EditedByName)
+            : (entry.WrittenByUserId, entry.WrittenByName);
+        if (SamePerson(touchedBy.Item1, touchedBy.Item2, actor))
+        {
+            if (hasEditor) entry.EditedAtUtc = at;
+            else entry.WrittenAtUtc = at;
+        }
+        else
+        {
+            entry.EditedByUserId = Clean(actor.UserId);
+            entry.EditedByName = Clean(actor.DisplayName);
+            entry.EditedByRole = Clean(actor.PrototypeRole);
+            entry.EditedAtUtc = at;
+        }
+
+        return entry;
+    }
+
+    public static PartyFieldProvenanceEntryDto? ParseSingle(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var entry = JsonSerializer.Deserialize<PartyFieldProvenanceEntryDto>(json, JsonOpts);
+            return entry is null || (string.IsNullOrEmpty(entry.WrittenAtUtc) && entry.EditedAtUtc is null
+                && string.IsNullOrWhiteSpace(entry.WrittenByName) && string.IsNullOrWhiteSpace(entry.EditedByName))
+                ? null
+                : entry;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    public static string SerializeSingle(PartyFieldProvenanceEntryDto entry) =>
+        JsonSerializer.Serialize(entry, JsonOpts);
+
+    public static PartyFieldProvenanceEntryDto NewEntryFor(PartySubmissionActor actor, DateTime nowUtc) =>
+        NewEntry(actor, nowUtc.ToString("O"));
 
     private static PartyFieldProvenanceEntryDto NewEntry(PartySubmissionActor actor, string at) => new()
     {

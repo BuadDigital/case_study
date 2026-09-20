@@ -125,6 +125,7 @@ public static class WorkOrderMapper
             FinishingType = p.FinishingType,
             FinishingStructure = p.FinishingStructure,
             SpecialistReportExtrasJson = SpecialistReportExtrasRules.ToWireJson(p),
+            SpecialistReportExtrasProvenanceJson = p.SpecialistReportExtrasProvenanceJson,
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),

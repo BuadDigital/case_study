@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PARTY_DATA_SECTIONS,
   applyPartyFieldEdits,
+  partyProvenanceFor,
   partyProvenanceLines,
   partyValueText,
   readPartyPayloadValue,
@@ -35,6 +36,29 @@ describe("property-party-fields", () => {
     expect(applyPartyFieldEdits({}, { "checklist.technical_notes_text": "x" })).toEqual({
       checklist: { technical_notes_text: "x" },
     });
+  });
+
+  it("reads and writes three-level keys and finds the nearest stamped ancestor", () => {
+    const payload = { boundaryMatches: { north: { deedDesc: "شارع", matches: true }, south: {} } };
+    expect(readPartyPayloadValue(payload, "boundaryMatches.north.deedDesc")).toBe("شارع");
+    const next = applyPartyFieldEdits(payload, {
+      "boundaryMatches.south.deedLength": "25",
+      "boundaryMatches.north.matches": false,
+    });
+    expect(next).toEqual({
+      boundaryMatches: {
+        north: { deedDesc: "شارع", matches: false },
+        south: { deedLength: "25" },
+      },
+    });
+    expect(payload.boundaryMatches.south).toEqual({});
+
+    const stamps = { "boundaryMatches.north": { writtenByName: "أحمد" } };
+    expect(partyProvenanceFor(stamps, "boundaryMatches.north.deedDesc")).toBe(
+      stamps["boundaryMatches.north"],
+    );
+    expect(partyProvenanceFor(stamps, "boundaryMatches.south.deedDesc")).toBeUndefined();
+    expect(partyProvenanceFor(undefined, "x")).toBeUndefined();
   });
 
   it("summarises values for read-only rows", () => {

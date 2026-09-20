@@ -77,7 +77,8 @@ public interface IWorkOrderService
         string poNumber,
         Guid propertyId,
         string? specialistReportExtrasJson,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        PartySubmissionActor? actor = null);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> CompleteBourseDataAsync(
         string poNumber,
         Guid propertyId,

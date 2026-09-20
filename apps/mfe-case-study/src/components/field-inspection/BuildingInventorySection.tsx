@@ -19,6 +19,7 @@ import {
   type BuildingStructureKind,
 } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { partyProvenanceLines } from "../../lib/app-data/property-party-fields";
 
 const KIND_OPTIONS: { value: BuildingStructureKind; label: string }[] = [
   { value: "floor", label: "دور / طابق" },
@@ -27,6 +28,29 @@ const KIND_OPTIONS: { value: BuildingStructureKind; label: string }[] = [
   { value: "basement", label: "قبو" },
   { value: "other", label: "إنشاء آخر" },
 ];
+
+/** «كتبه …» / «عدّله …» under a saved line — new unsaved lines have no stamp yet. */
+function LineProvenance({
+  line,
+  wide,
+}: {
+  line: BuildingInventoryLineDto;
+  wide?: boolean;
+}) {
+  const { written, edited } = partyProvenanceLines(line.provenance ?? undefined);
+  if (!written && !edited) return null;
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-0.5 text-[10px] leading-4 text-text-3",
+        wide ? "sm:col-span-2 lg:col-span-4" : "sm:col-span-2",
+      )}
+    >
+      {written ? <span>{written}</span> : null}
+      {edited ? <span className="font-semibold text-text-2">{edited}</span> : null}
+    </div>
+  );
+}
 
 function emptyLine(sortOrder: number): BuildingInventoryLineDto {
   return {
@@ -47,11 +71,14 @@ export function BuildingInventorySection({
   propertyId,
   disabled,
   mobile,
+  wide,
 }: {
   poNumber: string;
   propertyId: string;
   disabled?: boolean;
   mobile?: boolean;
+  /** Lay each line out in four columns (the property-edit screen). */
+  wide?: boolean;
 }) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -213,7 +240,7 @@ export function BuildingInventorySection({
                   key={line.id ?? `new-${index}`}
                   className={cn(
                     "grid gap-2 rounded-md border border-border bg-surface p-2.5",
-                    mobile ? "grid-cols-1" : "sm:grid-cols-2",
+                    mobile ? "grid-cols-1" : wide ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2",
                   )}
                 >
                   <FormGroup>
@@ -270,8 +297,9 @@ export function BuildingInventorySection({
                       className="text-xs"
                     />
                   </FormGroup>
+                  <LineProvenance line={line} wide={wide} />
                   {!disabled ? (
-                    <div className="sm:col-span-2">
+                    <div className={wide ? "sm:col-span-2 lg:col-span-4" : "sm:col-span-2"}>
                       <Button
                         type="button"
                         size="sm"

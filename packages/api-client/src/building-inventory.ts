@@ -1,6 +1,7 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import type { PartyFieldProvenanceEntry } from "./party-task-submissions";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type BuildingStructureKind =
@@ -17,6 +18,8 @@ export type BuildingInventoryLineDto = {
   label: string;
   areaSqm?: string | null;
   notes?: string | null;
+  /** Read-only: who wrote / last edited this line (server-stamped). Ignored on save. */
+  provenance?: PartyFieldProvenanceEntry | null;
 };
 
 export type BuildingInventoryDto = {

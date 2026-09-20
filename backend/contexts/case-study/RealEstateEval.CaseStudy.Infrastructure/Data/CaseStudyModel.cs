@@ -133,6 +133,7 @@ public static class CaseStudyModel
             e.Property(x => x.InfathDepositCertificateName).HasMaxLength(512);
             e.Property(x => x.SpecialistEsgJson).HasColumnType("jsonb");
             e.Property(x => x.SpecialistReportExtrasJson).HasColumnType("jsonb");
+            e.Property(x => x.SpecialistReportExtrasProvenanceJson).HasColumnType("jsonb").HasDefaultValue("{}");
             e.Property(x => x.RemovalReason).HasMaxLength(500);
             e.Property(x => x.Area).HasMaxLength(128);
             e.Property(x => x.Court).HasMaxLength(256);
@@ -174,6 +175,7 @@ public static class CaseStudyModel
             e.Property(x => x.Label).HasMaxLength(256).IsRequired();
             e.Property(x => x.AreaSqm).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.ProvenanceJson).HasColumnType("jsonb").HasDefaultValue("{}");
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => new { x.PropertyId, x.SortOrder });
         });

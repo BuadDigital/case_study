@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Contracts;
@@ -13,10 +14,14 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class BuildingInventoryController : ControllerBase
 {
     private readonly IBuildingInventoryService _inventory;
+    private readonly IPermissionService _permissions;
 
-    public BuildingInventoryController(IBuildingInventoryService inventory)
+    public BuildingInventoryController(
+        IBuildingInventoryService inventory,
+        IPermissionService permissions)
     {
         _inventory = inventory;
+        _permissions = permissions;
     }
 
     [HttpGet]
@@ -42,9 +47,27 @@ public class BuildingInventoryController : ControllerBase
             poNumber,
             propertyId,
             request,
-            cancellationToken);
+            cancellationToken,
+            await ResolveActorAsync(cancellationToken));
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
         return Ok(result);
+    }
+
+    /// <summary>Identity comes from the token, never the body — it stamps who wrote each line.</summary>
+    private async Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct)
+    {
+        var userId = ActorClaims.Id(User);
+        var permissions = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
+            ? null
+            : await _permissions.GetForUserIdAsync(userId, ct);
+
+        return new PartySubmissionActor
+        {
+            UserId = userId == "unknown" ? "" : userId,
+            DisplayName = ActorClaims.DisplayName(User),
+            PrototypeRole = permissions?.PrototypeRole,
+            DistributionAssigneeId = permissions?.DistributionAssigneeId,
+        };
     }
 }
