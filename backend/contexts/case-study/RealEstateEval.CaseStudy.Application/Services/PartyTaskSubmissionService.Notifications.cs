@@ -6,6 +6,34 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 
 public partial class PartyTaskSubmissionService
 {
+    /// <summary>CDO / super-admin oversight feed — fee accrual is the "financial" milestone.</summary>
+    private async Task NotifyCdoFeeAccruedAsync(
+        WorkflowTask task,
+        Guid propertyId,
+        decimal netFeeSar,
+        CancellationToken cancellationToken)
+    {
+        var cdoUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "cdo",
+            cancellationToken);
+        if (cdoUserIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            cdoUserIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "احتساب أتعاب الرفع المساحي",
+                Body = $"احتُسبت أتعاب صافية {netFeeSar:N0} ر.س على أمر العمل {task.PoNumber}.",
+                Tone = "info",
+                Href = $"/po/{Uri.EscapeDataString(task.PoNumber)}/property/{propertyId:D}",
+                Category = "financial",
+                EntityType = "property",
+                EntityId = propertyId.ToString(),
+                SourceEvent = $"fee-accrued:{task.Id}",
+            },
+            cancellationToken);
+    }
+
     private async Task NotifyPartyAssigneeAsync(
         WorkflowTask task,
         string title,
@@ -144,6 +172,13 @@ public partial class PartyTaskSubmissionService
             "section-supervisor",
             cancellationToken);
         foreach (var id in supervisorUserIds)
+            userIds.Add(id);
+
+        // CDO / super-admin oversight feed — same "party finished their work" signal.
+        var cdoUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "cdo",
+            cancellationToken);
+        foreach (var id in cdoUserIds)
             userIds.Add(id);
 
         if (userIds.Count == 0) return;

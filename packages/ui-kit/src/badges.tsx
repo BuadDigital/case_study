@@ -7,16 +7,19 @@ export type StatusPillStyle = {
   live?: boolean;
 };
 
-/** Status chip with dot — matches docs/new look `.status` (work orders). */
-export function StatusPill({
-  label,
-  style,
-  className,
-}: {
+export type StatusPillProps = {
   label: string;
+  /** Color pair — build with `finStatusStyle`/`queueLegacyStatusStyle`/`statusPillStyleFromColor`. */
   style: StatusPillStyle;
   className?: string;
-}) {
+};
+
+/**
+ * Free-form status chip with a dot, colored by an explicit `StatusPillStyle`
+ * rather than the fixed `StatusBadge` vocabulary — for finance/legacy tones
+ * that don't map onto `BadgeTone`.
+ */
+export function StatusPill({ label, style, className }: StatusPillProps) {
   return (
     <span
       dir="rtl"
@@ -129,11 +132,32 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
   removed: ["محذوف", "danger"],
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export type StatusBadgeProps = {
+  /**
+   * Fixed status key — one of the closed set in `STATUS_MAP` (new, progress,
+   * done, fail, incomplete, review, approved, pending, under_study, removed).
+   * Unknown keys render an em dash, not free text.
+   */
+  status: string;
+  /** Render as the uniform 108×26px filled table chip (no dot) — set this whenever the badge sits inside a `Td`. @default false */
+  inTable?: boolean;
+};
+
+/**
+ * Ejadah's fixed status vocabulary as a `Badge` with a dot — the single
+ * source of the Arabic label + tone pairing (e.g. `fail` → "متعذر", danger).
+ * Use this over a raw `Badge` whenever the value is a workflow status.
+ */
+export function StatusBadge({ status, inTable = false }: StatusBadgeProps) {
   const [label, tone] = STATUS_MAP[status] ?? ["—", "default"];
   return (
-    <Badge tone={tone} dot>
+    <Badge tone={tone} dot={!inTable} inTable={inTable}>
       {label}
     </Badge>
   );
+}
+
+/** The `BadgeTone` a `STATUS_MAP` status key resolves to — e.g. for `TransactionRow`'s status-colored edge. */
+export function statusTone(status: string): BadgeTone {
+  return (STATUS_MAP[status] ?? ["—", "default"])[1];
 }

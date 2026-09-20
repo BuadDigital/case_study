@@ -40,4 +40,4 @@ export const queueTableRowActiveClassName =
 export const queueTableWrapClassName = "w-full min-w-0 overflow-x-auto";
 
 export const queueTableHintClassName =
-  "m-0 px-4 py-2 pb-3 text-[11px] text-text-3";
+  "m-0 px-4 py-2 pb-3 text-[12px] text-text-3";

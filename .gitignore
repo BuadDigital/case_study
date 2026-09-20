@@ -67,3 +67,11 @@ datasets/osoul-croquis/
 
 # Playwright storageState dumps — these hold live session JWTs.
 auth-*.json
+
+# design-sync (packages/ui-kit -> claude.ai/design)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+packages/ui-kit/.ds-sync-cache/

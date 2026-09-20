@@ -11,7 +11,7 @@ export function formatPoDisplay(poNumber: string): string {
 
 /** Base chrome for a PO code — bidi-isolated so it reads LTR inside RTL text. */
 export const poNumberClassName =
-  "inline-block font-sans text-[11px] font-medium [unicode-bidi:isolate]";
+  "inline-block font-sans text-[12px] font-medium [unicode-bidi:isolate]";
 
 /** Added when the PO code is rendered as a link. */
 export const poNumberLinkClassName =

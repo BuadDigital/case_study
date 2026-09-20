@@ -5,8 +5,8 @@
  * the defined list; «مستند غير معرّف» asks for a name (reason optional) and goes to review.
  */
 
-import { useEffect, useState } from "react";
-import { AppModal, Button, Input, Label, Select, Textarea } from "@platform/ui-kit";
+import { useEffect, useRef, useState } from "react";
+import { AppModal, Button, Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
 import { UNLISTED_DOCUMENT_KEY } from "@platform/app-shared/domain/property-documents/property-document-types";
 import type { GovernedDocumentTypeInput } from "../../lib/app-data/governed-property-documents-commands";
 import type { PropertyDocumentTypeOption } from "../../lib/app-data/property-document-checklist";
@@ -48,6 +48,8 @@ export function PropertyDocumentUploadDialog({
   const [reason, setReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!state) return;
@@ -190,19 +192,115 @@ export function PropertyDocumentUploadDialog({
             <Label className="mb-1 text-[11px]" htmlFor="property-document-file">
               الملف *
             </Label>
-            <input
-              id="property-document-file"
-              type="file"
-              accept={propertyDocumentFileAccept(option?.pdfOnly ?? false)}
-              className="block w-full text-[12px]"
-              onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null);
-                setError(null);
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="الملف — اختر ملفاً أو اسحبه هنا"
+              className={cn(
+                "rounded-[10px] border-2 border-dashed p-4 text-center transition-[border-color,background]",
+                "cursor-pointer",
+                dragOver
+                  ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
+                  : error && !file
+                    ? "border-danger bg-danger-bg/30"
+                    : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
+              )}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
               }}
-            />
-            <p className="m-0 mt-1 text-[10.5px] text-text-3">
-              {option?.pdfOnly ? "PDF فقط" : "PDF أو صورة JPG / PNG / WebP"}
-            </p>
+              onDragEnter={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOver(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const dropped = e.dataTransfer.files?.[0];
+                if (dropped) {
+                  setFile(dropped);
+                  setError(null);
+                }
+              }}
+            >
+              {file ? (
+                <div className="flex items-center justify-between gap-2 text-start">
+                  <span className="min-w-0 truncate text-[12px] font-semibold text-text">
+                    📎 {file.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto shrink-0 px-1.5 text-[11px] text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    استبدال
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-primary"
+                    aria-hidden
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 2v6h6" />
+                      <path d="M12 18v-6" />
+                      <path d="M9 15l3-3 3 3" />
+                    </svg>
+                  </div>
+                  <div className="mb-2 text-[11px] leading-relaxed text-text-3">
+                    {dragOver
+                      ? "أفلِت الملف هنا"
+                      : option?.pdfOnly
+                        ? "PDF فقط · اسحب الملف وأفلِته هنا، أو اختر من الجهاز"
+                        : "PDF أو صورة JPG / PNG / WebP · اسحب الملف وأفلِته هنا، أو اختر من الجهاز"}
+                  </div>
+                  <span className="inline-flex items-center justify-center rounded-lg bg-[var(--ink,#102B4E)] px-4 py-1.5 text-[11.5px] font-semibold text-white">
+                    اختيار ملف
+                  </span>
+                </>
+              )}
+              <input
+                ref={fileInputRef}
+                id="property-document-file"
+                type="file"
+                accept={propertyDocumentFileAccept(option?.pdfOnly ?? false)}
+                className="sr-only"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null);
+                  setError(null);
+                  e.target.value = "";
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           </div>
         ) : null}
 

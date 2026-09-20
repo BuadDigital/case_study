@@ -16,8 +16,7 @@ import type {
 } from "../../lib/app-data/property-detail-documents";
 import { InfoBox } from "./PropertyDetailFields";
 import {
-  ChecklistGroupSection,
-  InspectionPhotosSection,
+  ChecklistRowsList,
   ValuationOutputsSection,
 } from "./PropertyDocumentChecklistParts";
 import {
@@ -80,16 +79,13 @@ export function DocumentsTab({
         <InfoBox icon="!">تعذّر تحميل المستندات المرفوعة من هذا التبويب — حدّث الصفحة.</InfoBox>
       ) : null}
 
-      {checklist.groups.map((group) => (
-        <ChecklistGroupSection
-          key={group.key}
-          group={group}
-          canUpload={workflow.canUpload}
-          busy={workflow.busy}
-          onUpload={(typeKey) => setDialog({ mode: "upload", typeKey })}
-          onDelete={(attachmentId) => void workflow.remove(attachmentId)}
-        />
-      ))}
+      <ChecklistRowsList
+        groups={checklist.groups}
+        canUpload={workflow.canUpload}
+        busy={workflow.busy}
+        onUpload={(typeKey) => setDialog({ mode: "upload", typeKey })}
+        onDelete={(attachmentId) => void workflow.remove(attachmentId)}
+      />
 
       <UnlistedDocumentsSection
         entries={checklist.unlisted}
@@ -110,14 +106,7 @@ export function DocumentsTab({
         onDelete={(attachmentId) => void workflow.remove(attachmentId)}
       />
 
-      <InspectionPhotosSection photos={checklist.photos} />
       <ValuationOutputsSection rows={checklist.outputs} />
-
-      <p className="m-0 text-[11.5px] leading-relaxed text-text-3">
-        كل مستند على العقار يُعرَّف بنوعه من القائمة المعرّفة. التقرير المساحي يُرفع من
-        المكتب الهندسي، وصور المعاينة من المعاين، وتقرير التقييم من المقيّم. المستند غير
-        المعرّف للحالات النادرة ويخضع لمراجعة مشرف القسم.
-      </p>
 
       <PropertyDocumentUploadDialog
         state={dialog}

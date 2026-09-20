@@ -242,6 +242,62 @@ export function patchInspectorFeatureValues(
  * - Closed-list rows with `photoOnYes`: proof whenever a value is chosen
  *   — matches desktop HTML table column for origin / facade / usage / build state.
  */
+/** أرض / مبنى مفرد / مجمع / وحدة داخل مبنى / مرفق عام — 47 قيمة، مشتركة مع نموذج استعلام البورصة. */
+export const PROPERTY_USAGE_OPTIONS: readonly string[] = [
+  // أرض
+  "أرض سكنية",
+  "أرض تجارية",
+  "أرض صناعية",
+  "أرض زراعية",
+  "أرض مختلطة",
+  // مبنى مفرد
+  "فيلا",
+  "عمارة",
+  "منزل",
+  "بيت شعبي",
+  "قصر",
+  "برج",
+  "مستودع",
+  "مصنع",
+  "ورشة",
+  "فندق",
+  "محطة بنزين",
+  "مزرعة",
+  "شاليه",
+  "منتجع",
+  "عيادة",
+  "مواقف سيارات",
+  // مجمع
+  "مجمع سكني",
+  "مجمع تجاري",
+  "مجمع فلل",
+  "مجمع تعليمي",
+  "مجمع حكومي",
+  "مجمع عيادات",
+  "مجمع ترفيهي",
+  "مدينة رياضية",
+  "مجمع متعدد الاستخدامات",
+  // وحدة داخل مبنى
+  "شقة سكنية",
+  "محل تجاري",
+  "معرض",
+  "مكتب",
+  "دور",
+  // مرفق عام
+  "مستشفى",
+  "مركز صحي",
+  "مركز شرطة",
+  "استراحة",
+  "قاعة أفراح",
+  "سوق تجاري",
+  "مسجد",
+  "مقبرة",
+  "محطة تحلية مياه",
+  "محطة كهرباء",
+  "برج اتصالات",
+  "مطار",
+];
+
 export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {
     key: "assetSubject",
@@ -267,7 +323,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {
     key: "propertyUsage",
     label: "استخدام العقار",
-    options: ["سكني", "تجاري", "زراعي", "صناعي"],
+    options: PROPERTY_USAGE_OPTIONS,
     photoOnYes: false,
     shared: true,
   },

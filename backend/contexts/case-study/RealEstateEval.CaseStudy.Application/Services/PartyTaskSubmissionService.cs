@@ -399,18 +399,19 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
+        InspectorFeeRowDto? accruedFee = null;
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
         {
             // Fee accrual and acceptance timestamp must succeed or fail together.
-            var feeError = await _repo.ExecuteInTransactionAsync(
+            var (feeError, feeRow) = await _repo.ExecuteInTransactionAsync(
                 async ct =>
                 {
-                    var (_, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
+                    var (row, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
                         taskId,
                         actorUserId,
                         ct);
                     if (error is not null)
-                        return (Commit: false, Result: error);
+                        return (Commit: false, Result: (Error: error, Row: (InspectorFeeRowDto?)null));
 
                     if (!alreadyAccepted)
                     {
@@ -418,12 +419,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                         await _repo.SaveChangesAsync(ct);
                     }
 
-                    return (Commit: true, Result: (string?)null);
+                    return (Commit: true, Result: (Error: (string?)null, Row: row));
                 },
                 cancellationToken);
 
             if (feeError is not null)
                 return (null, Error(feeError));
+            accruedFee = feeRow;
         }
         else if (!alreadyAccepted)
         {
@@ -444,6 +446,20 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 "done",
                 _time.UtcNow(),
                 cancellationToken);
+
+            if (accruedFee is not null)
+            {
+                await _timeline.RecordAsync(
+                    task.PoNumber,
+                    propertyId,
+                    $"party:{taskId}:fee-accrued",
+                    "احتساب أتعاب الرفع المساحي",
+                    $"{accruedFee.NetFeeSar:N0} ر.س",
+                    "done",
+                    _time.UtcNow(),
+                    cancellationToken);
+                await NotifyCdoFeeAccruedAsync(task, propertyId, accruedFee.NetFeeSar, cancellationToken);
+            }
         }
 
         if (!alreadyAccepted)

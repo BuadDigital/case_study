@@ -5,7 +5,10 @@
 import type { ReactNode } from "react";
 import { Button, cn } from "@platform/ui-kit";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
-import { downloadPropertyDetailDocument } from "../../lib/app-data/property-detail-documents";
+import {
+  downloadPropertyDetailDocument,
+  openPropertyDetailDocumentPreview,
+} from "../../lib/app-data/property-detail-documents";
 import type {
   PropertyDocumentChecklistGroup,
   PropertyDocumentChecklistRow,
@@ -76,6 +79,15 @@ export function DocumentFileLine({
           >
             حذف
           </Button>
+        ) : null}
+        {doc.kind === "image" || doc.kind === "pdf" ? (
+          <button
+            type="button"
+            className="rounded-md border border-border-md bg-surface px-3 py-1 text-[11px] font-bold text-text-2 max-lg:min-h-11"
+            onClick={() => openPropertyDetailDocumentPreview(doc)}
+          >
+            معاينة
+          </button>
         ) : null}
         <button
           type="button"
@@ -153,6 +165,9 @@ export function ChecklistRowView({
           </span>
         </div>
         {canUpload && row.type.uploadableFromTab ? (
+          // Only rows with a document on file reach this component now
+          // (ChecklistGroupSection filters the rest out), so this is always
+          // "add another of this type" — never the missing-doc prompt.
           <Button
             type="button"
             variant="outline"
@@ -160,7 +175,7 @@ export function ChecklistRowView({
             disabled={busy}
             onClick={() => onUpload(row.type.key)}
           >
-            {row.documents.length > 0 ? "إضافة" : "رفع"}
+            إضافة
           </Button>
         ) : null}
       </div>
@@ -184,27 +199,33 @@ export function ChecklistRowView({
   );
 }
 
-export function ChecklistGroupSection({
-  group,
+/**
+ * Every document on file across all checklist groups, as one flat list —
+ * no «الملكية والنظامية» / «التكليف والأطراف» category split, no count
+ * badge, no rows for the still-missing types. The top-of-tab «+ إضافة
+ * مستند» stays the one way to add a document.
+ */
+export function ChecklistRowsList({
+  groups,
   canUpload,
   busy,
   onUpload,
   onDelete,
 }: {
-  group: PropertyDocumentChecklistGroup;
+  groups: PropertyDocumentChecklistGroup[];
   canUpload: boolean;
   busy: boolean;
   onUpload: (typeKey: string) => void;
   onDelete: (attachmentId: string) => void;
 }) {
+  const uploadedRows = groups
+    .flatMap((group) => group.rows)
+    .filter((row) => row.documents.length > 0);
+  if (uploadedRows.length === 0) return null;
   return (
     <section className="mb-3.5">
-      <ChecklistSectionTitle
-        title={group.title}
-        hint={`${group.completed}/${group.rows.length}`}
-      />
       <div className="grid gap-2">
-        {group.rows.map((row) => (
+        {uploadedRows.map((row) => (
           <ChecklistRowView
             key={row.type.key}
             row={row}
@@ -219,50 +240,20 @@ export function ChecklistGroupSection({
   );
 }
 
-export function InspectionPhotosSection({
-  photos,
-}: {
-  photos: PropertyDetailDocumentEntry[];
-}) {
-  if (photos.length === 0) return null;
-  return (
-    <details className="mb-3.5 rounded border border-border bg-surface-2 px-3 py-2.5">
-      <summary className="cursor-pointer text-xs font-bold text-heading">
-        صور المعاينة{" "}
-        <span className="text-[10.5px] font-normal text-text-3">
-          {photos.length} صورة — من المعاين الميداني
-        </span>
-      </summary>
-      <div className="mt-2 grid gap-1.5">
-        {photos.map((doc) => (
-          <DocumentFileLine key={doc.id} doc={doc} />
-        ))}
-      </div>
-    </details>
-  );
-}
-
 export function ValuationOutputsSection({
   rows,
 }: {
   rows: PropertyDocumentChecklistRow[];
 }) {
+  // Only outputs actually issued — no more «لم يصدر بعد» placeholder rows.
+  const issuedRows = rows.filter((row) => row.documents.length > 0);
+  if (issuedRows.length === 0) return null;
   return (
     <section className="mb-3.5">
       <ChecklistSectionTitle title="مخرجات التقييم" hint="يصدرها المقيّم" />
       <div className="grid gap-2">
-        {rows.map((row) =>
-          row.documents.length > 0 ? (
-            row.documents.map((doc) => <DocumentFileLine key={doc.id} doc={doc} />)
-          ) : (
-            <div
-              key={row.type.key}
-              className="flex items-center justify-between rounded border border-dashed border-border px-3 py-2 text-[12px] text-text-3"
-            >
-              <span className="font-semibold text-text-2">{row.label}</span>
-              <span className="text-[10.5px]">لم يصدر بعد</span>
-            </div>
-          ),
+        {issuedRows.map((row) =>
+          row.documents.map((doc) => <DocumentFileLine key={doc.id} doc={doc} />),
         )}
       </div>
     </section>

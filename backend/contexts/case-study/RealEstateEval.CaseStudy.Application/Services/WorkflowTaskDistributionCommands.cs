@@ -155,6 +155,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
         if (distribution.CaseSpecialist)
             await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
+        await NotifyCdoDistributionConfirmedAsync(parent, children, deed, cancellationToken);
 
         await _valuationDispatch.TryCreateWhenAppraisalSpawnedAsync(parent.Id, cancellationToken);
 

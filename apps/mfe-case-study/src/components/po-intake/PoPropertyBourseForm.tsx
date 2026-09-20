@@ -21,6 +21,7 @@ import {
   cacheBourseDeedImageDoc,
   clearCachedPropertyDoc,
 } from "../../lib/app-data/assignment-doc-attachments";
+import { PROPERTY_USAGE_OPTIONS } from "../../lib/app-data/inspector-workspace-data";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
@@ -173,13 +174,13 @@ export function PoPropertyBourseForm({
             onChange={(v) => onPatch("classification", v)}
             placeholder="أرض · مبنى · وحدة داخل مبنى…"
           />
-          <RegField
+          <RegSelect
             id="property_type"
             label="النوع / الاستخدام"
+            options={[...PROPERTY_USAGE_OPTIONS]}
             value={property.propertyType}
             error={fieldErrors.propertyType}
             onChange={(v) => onPatch("propertyType", v)}
-            placeholder="سكني · تجاري · فيلا…"
           />
           {vitalityFlow || compactRegisteredTitle ? null : (
             <RegSelect

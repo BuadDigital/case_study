@@ -144,12 +144,12 @@ function CaseStudySectionAccordion({
     : "الملاحظات";
 
   return (
-    <div className="mb-3">
+    <div>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 text-start font-inherit"
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded border border-border bg-surface-2 px-3 py-2.5 text-start font-inherit"
       >
         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-ink text-xs font-extrabold text-gold-2">
           {SECTION_AR_NUMS[section.id]}
@@ -467,29 +467,16 @@ export function PropertyDetailCaseStudyReport({
         </button>
       </div>
 
-      {reportModel.sections.map((section) => (
-        <CaseStudySectionAccordion
-          key={section.id}
-          section={section}
-          open={openSections[section.id]}
-          onToggle={() => toggleSection(section.id)}
-        />
-      ))}
-
-      {showWorkspaceLink ? (
-        <p className="mt-3">
-          <Link
-            href={caseStudyWorkspacePath(task.id)}
-            className={cn(
-              "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-DEFAULT)] border font-normal whitespace-nowrap transition-colors",
-              "px-2 py-1 text-[11px]",
-              "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid",
-            )}
-          >
-            فتح دراسة الحالة
-          </Link>
-        </p>
-      ) : null}
+      <div className="grid gap-2">
+        {reportModel.sections.map((section) => (
+          <CaseStudySectionAccordion
+            key={section.id}
+            section={section}
+            open={openSections[section.id]}
+            onToggle={() => toggleSection(section.id)}
+          />
+        ))}
+      </div>
 
       {previewOpen ? (
         <ModalOverlay

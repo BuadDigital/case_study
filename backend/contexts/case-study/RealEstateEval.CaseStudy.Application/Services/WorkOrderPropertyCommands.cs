@@ -18,6 +18,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     private readonly IUserLabelLookup _labels;
     private readonly IWorkOrderLoader _loader;
     private readonly IPropertyTimelineService _timeline;
+    private readonly INotificationService _notifications;
+    private readonly INotificationRecipientResolver _recipients;
     private readonly TimeProvider _time;
 
     [ActivatorUtilitiesConstructor]
@@ -27,6 +29,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         IUserLabelLookup labels,
         IWorkOrderLoader loader,
         IPropertyTimelineService timeline,
+        INotificationService notifications,
+        INotificationRecipientResolver recipients,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
@@ -36,6 +40,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         _labels = labels;
         _loader = loader;
         _timeline = timeline;
+        _notifications = notifications;
+        _recipients = recipients;
     }
 
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
@@ -89,6 +95,9 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (notEditable is not null) return (null, notEditable);
 
         var previousLocationMapUrl = existing!.LocationMapUrl;
+        // Recorded once, only for the plain حفظ (not autosave, not the bourse-complete
+        // save — that path already writes its own "بيانات البورصة للعقار" row).
+        var recordEnfathCompletion = false;
 
         if (softDraft)
         {
@@ -142,6 +151,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             {
                 if (enfathErrors.Count > 0) return (null, enfathErrors);
                 WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
+                recordEnfathCompletion = true;
             }
         }
 
@@ -165,6 +175,32 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             existing,
             previousLocationMapUrl,
             cancellationToken);
+
+        if (recordEnfathCompletion)
+        {
+            var po = IWorkOrderLoader.NormalizePo(poNumber);
+            // EventKey dedupes at the DB level — later re-saves of the same property
+            // silently no-op here instead of piling up repeat rows.
+            await _timeline.RecordAsync(
+                po,
+                propertyId,
+                "property-enfath",
+                "إتمام البيانات الأولية",
+                null,
+                PropertyTimelineTones.Done,
+                _time.UtcNow(),
+                cancellationToken);
+            var deedRef = existing.DeedNumber.Trim();
+            await NotifyCdoPropertyMilestoneAsync(
+                po,
+                propertyId,
+                "إتمام البيانات الأولية",
+                deedRef.Length > 0
+                    ? $"اكتملت البيانات الأولية للعقار على الصك {deedRef} — أمر العمل {po}."
+                    : $"اكتملت البيانات الأولية لعقار على أمر العمل {po}.",
+                $"property-enfath-completed:{propertyId:N}",
+                cancellationToken);
+        }
 
         var saved = await _db.GetSavedPropertyWithContactsAsync(propertyId, cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(saved), null);
@@ -271,14 +307,25 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 cancellationToken);
         }
 
+        var bourseNormPo = IWorkOrderLoader.NormalizePo(poNumber);
         await _timeline.RecordAsync(
-            IWorkOrderLoader.NormalizePo(poNumber),
+            bourseNormPo,
             propertyId,
             "property-bourse",
             "بيانات البورصة للعقار",
             WorkOrderPropertyWriteRules.BourseTimelineLocation(existing!.City, existing.District),
             PropertyTimelineTones.Done,
             bourseNow,
+            cancellationToken);
+        var bourseDeedRef = existing.DeedNumber.Trim();
+        await NotifyCdoPropertyMilestoneAsync(
+            bourseNormPo,
+            propertyId,
+            "اكتمل استعلام البورصة",
+            bourseDeedRef.Length > 0
+                ? $"اكتمل استعلام البورصة للعقار على الصك {bourseDeedRef} — أمر العمل {bourseNormPo}."
+                : $"اكتمل استعلام البورصة لعقار على أمر العمل {bourseNormPo}.",
+            $"property-bourse-completed:{propertyId:N}",
             cancellationToken);
 
         return (WorkOrderMapper.ToPropertyDto(existing), null);
@@ -320,6 +367,37 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     {
         _db.DetachContacts(entity.Contacts.ToList());
         entity.Contacts.Clear();
+    }
+
+    /// <summary>CDO / super-admin oversight feed — same broadcast shape wherever a property
+    /// milestone (إنفاذ save, بورصة completion) finishes here.</summary>
+    private async Task NotifyCdoPropertyMilestoneAsync(
+        string poNumber,
+        Guid propertyId,
+        string title,
+        string body,
+        string sourceEvent,
+        CancellationToken cancellationToken)
+    {
+        var cdoUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "cdo",
+            cancellationToken);
+        if (cdoUserIds.Count == 0) return;
+
+        await _notifications.CreateForUsersAsync(
+            cdoUserIds,
+            new CreateUserNotificationRequest
+            {
+                Title = title,
+                Body = body,
+                Tone = "info",
+                Href = $"/po/{Uri.EscapeDataString(poNumber)}/property/{propertyId:D}",
+                Category = "workflow",
+                EntityType = "property",
+                EntityId = propertyId.ToString(),
+                SourceEvent = sourceEvent,
+            },
+            cancellationToken);
     }
 
     private async Task RewritePropertyContactsAsync(

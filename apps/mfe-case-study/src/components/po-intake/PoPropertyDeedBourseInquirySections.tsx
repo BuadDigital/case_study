@@ -145,17 +145,19 @@ export function PoPropertyEnfathBourseSections({
       </FormRow>
     </InfathSection>
 
+    {fieldPolicy.requiresOwnerName || showCourt ? (
     <InfathSection title="المالك والمحكمة">
       <FormRow>
-      <RegField
-        id="owner_name_bourse"
-        label="اسم المالك"
-        required={fieldPolicy.requiresOwnerName}
-        hint={fieldPolicy.requiresOwnerName ? undefined : "لا ينطبق على نبر"}
-        value={property.ownerName}
-        error={fieldErrors.ownerName}
-        onChange={(v) => onPatch("ownerName", v)}
-      />
+      {fieldPolicy.requiresOwnerName ? (
+        <RegField
+          id="owner_name_bourse"
+          label="اسم المالك"
+          required
+          value={property.ownerName}
+          error={fieldErrors.ownerName}
+          onChange={(v) => onPatch("ownerName", v)}
+        />
+      ) : null}
       {showCourt ? (
         <CourtCircuitSelects
           courtId="court_bourse"
@@ -170,6 +172,7 @@ export function PoPropertyEnfathBourseSections({
       ) : null}
       </FormRow>
     </InfathSection>
+    ) : null}
     </div>
   );
 }

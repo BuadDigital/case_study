@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -68,6 +69,45 @@ public sealed partial class WorkflowTaskDistributionCommands
                 WorkflowTaskDistributionRules.AssignmentReplacedRequest(child, refLabel, reason),
                 cancellationToken);
         }
+    }
+
+    /// <summary>CDO / super-admin oversight feed — one broadcast naming every party just
+    /// assigned, so "who" doesn't require opening the transaction to see.</summary>
+    private async Task NotifyCdoDistributionConfirmedAsync(
+        WorkflowTask parent,
+        IReadOnlyCollection<WorkflowTask> children,
+        string deed,
+        CancellationToken cancellationToken)
+    {
+        var cdoUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
+            "cdo",
+            cancellationToken);
+        if (cdoUserIds.Count == 0) return;
+
+        var who = children
+            .Select(c => $"{WorkflowTaskKindLabels.NotificationLabelAr(c.Kind)}: {c.AssigneeName.Trim()}")
+            .Where(s => !s.EndsWith(": ", StringComparison.Ordinal))
+            .ToList();
+        if (!string.IsNullOrWhiteSpace(parent.AssigneeName))
+            who.Insert(0, $"أخصائي دراسة الحالة: {parent.AssigneeName.Trim()}");
+
+        var refLabel = WorkflowTaskDistributionRules.RefLabel(deed, parent.PoNumber);
+        await _notifications.CreateForUsersAsync(
+            cdoUserIds,
+            new CreateUserNotificationRequest
+            {
+                Title = "توزيع المعاملة",
+                Body = who.Count > 0
+                    ? $"وُزّعت المعاملة على {refLabel} — {string.Join(" · ", who)}."
+                    : $"وُزّعت المعاملة على {refLabel}.",
+                Tone = "info",
+                Href = $"/case-study/{Uri.EscapeDataString(parent.Id.ToString())}",
+                Category = "workflow",
+                EntityType = "task",
+                EntityId = parent.Id.ToString(),
+                SourceEvent = $"distribution-confirmed:{parent.Id}",
+            },
+            cancellationToken);
     }
 
     private async Task NotifyDistributionAssignedAsync(

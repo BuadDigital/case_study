@@ -51,7 +51,7 @@ internal static class TestWorkOrderServiceFactory
         var loader = new WorkOrderLoader(caseStudy);
         var visibility = new WorkOrderVisibilityFilter(caseStudy);
         var query = new WorkOrderQueryService(caseStudy, new FailureLookup(failuresCtx), new PoEnfazInvoiceLookup(financial), new UserLabelLookup(identity), loader, visibility, dbOptions);
-        var properties = new WorkOrderPropertyCommands(new WorkOrderPropertyRepository(caseStudy), new CaseStudyFailureGate(new FailureLookup(failuresCtx), failures), new UserLabelLookup(identity), loader, timeline);
+        var properties = new WorkOrderPropertyCommands(new WorkOrderPropertyRepository(caseStudy), new CaseStudyFailureGate(new FailureLookup(failuresCtx), failures), new UserLabelLookup(identity), loader, timeline, notifications, recipients);
         return new WorkOrderService(
             new WorkOrderRepository(caseStudy),
             timeline,
