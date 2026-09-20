@@ -220,6 +220,7 @@ export {
   reopenPartyTaskSubmission,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
+  type PartyFieldProvenanceEntry,
   type PartyTaskSubmissionDto,
   type ReopenPartyTaskSubmissionRequest,
   type SavePartyTaskSubmissionRequest,

@@ -137,11 +137,22 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, Error("نوع المهمة غير مدعوم"));
 
         var canStaffCorrectFieldInspection =
-            PartyTaskSubmissionRules.StaffMayCorrectFieldInspection(actor, task);
+            PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(actor, task);
         if (!PartyTaskSubmissionRules.MayWriteDraft(actor, task, canStaffCorrectFieldInspection))
             return (null, Error("ليس لديك صلاحية تعديل هذه المهمة"));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
+
+        // Staff who are not the assignee may only write when the package state allows it.
+        if (actor is not null
+            && canStaffCorrectFieldInspection
+            && !PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole, task.AssigneeId, actor.UserId, actor.DistributionAssigneeId)
+            && !PartyTaskSubmissionRules.StaffMayWriteWhileStatus(
+                task, entity?.Status ?? PartyTaskSubmissionStatus.Draft))
+        {
+            return (null, Error("يمكن تعديل هذه المهمة بعد إرسالها فقط"));
+        }
 
         var now = _time.UtcNow();
         if (entity is null)
@@ -181,9 +192,12 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 payloadJson,
                 PartyTaskSubmissionStatus.Submitted,
                 entity.SubmittedAtUtc ?? now);
+            var correctedProvenance = PartyFieldProvenance.Stamp(
+                entity.FieldProvenanceJson, entity.PayloadJson, payloadJson, actor, now);
             var correctError = entity.CorrectSubmittedPayload(payloadJson, now);
             if (correctError is not null)
                 return (null, Error(correctError));
+            entity.FieldProvenanceJson = correctedProvenance;
 
             if (task.Kind == WorkflowTaskKind.FieldInspection)
                 await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
@@ -193,6 +207,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         }
 
         // B2: Intra-root transition rules — service coordinates only.
+        var draftProvenance = PartyFieldProvenance.Stamp(
+            entity.FieldProvenanceJson, entity.PayloadJson, payloadJson, actor, now);
         var draftError = entity.SaveDraft(
             payloadJson,
             PartyTaskSubmissionPayloadRules.ExtractStatus(payloadJson) ?? entity.Status,
@@ -201,6 +217,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             now);
         if (draftError is not null)
             return (null, Error(draftError));
+        entity.FieldProvenanceJson = draftProvenance;
 
         if (task.Kind == WorkflowTaskKind.FieldInspection)
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);

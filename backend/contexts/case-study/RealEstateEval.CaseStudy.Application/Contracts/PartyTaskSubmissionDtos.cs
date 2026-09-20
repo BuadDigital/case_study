@@ -33,6 +33,29 @@ public class PartyTaskSubmissionDto
  /// (authoritative for appraiser start). Also on WorkflowTaskDto list items.
  /// </summary>
     public bool? FieldInspectionAccepted { get; set; }
+
+ /// <summary>
+ /// Who wrote / last edited each payload field. Keys are top-level payload keys, or
+ /// <c>parent.child</c> for one level of nesting (e.g. <c>featureValues.assetSubject</c>).
+ /// </summary>
+    public Dictionary<string, PartyFieldProvenanceEntryDto> FieldProvenance { get; set; } = new();
+}
+
+/// <summary>
+/// Attribution for one party-payload field: the first writer, and — when someone else
+/// changed the value afterwards — the latest editor.
+/// </summary>
+public class PartyFieldProvenanceEntryDto
+{
+    public string? WrittenByUserId { get; set; }
+    public string? WrittenByName { get; set; }
+    public string? WrittenByRole { get; set; }
+    public string WrittenAtUtc { get; set; } = "";
+
+    public string? EditedByUserId { get; set; }
+    public string? EditedByName { get; set; }
+    public string? EditedByRole { get; set; }
+    public string? EditedAtUtc { get; set; }
 }
 
 public class SavePartyTaskSubmissionRequest

@@ -80,4 +80,37 @@ describe("specialist inspection review contract", () => {
     expect(reloaded.inspectionTime).toBe("11:30");
     expect(reloaded.featureValues.assetSubject).toBe("فيلا");
   });
+
+  it("persists inspector-entered deed boundary text and length", () => {
+    const draft = createInspectorWorkspaceDraft({
+      taskId: "task-1",
+      propertyId: "prop-1",
+      poNumber: "PO-1",
+    });
+    draft.boundaryMatches.north = {
+      ...draft.boundaryMatches.north,
+      deedDesc: "شارع عرض 15م",
+      deedLength: "25.00",
+    };
+
+    const payload = draftToPayload(draft);
+    const matches = payload.boundaryMatches as Record<
+      string,
+      { deedDesc?: string; deedLength?: string }
+    >;
+    expect(matches.north.deedDesc).toBe("شارع عرض 15م");
+    expect(matches.north.deedLength).toBe("25.00");
+
+    const reloaded = payloadToDraft({
+      taskId: draft.taskId,
+      propertyId: draft.propertyId,
+      poNumber: draft.poNumber,
+      kind: "field-inspection",
+      status: "draft",
+      payload,
+      updatedAtUtc: "2026-09-20T12:00:00Z",
+    });
+    expect(reloaded.boundaryMatches.north.deedDesc).toBe("شارع عرض 15م");
+    expect(reloaded.boundaryMatches.north.deedLength).toBe("25.00");
+  });
 });

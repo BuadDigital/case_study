@@ -61,6 +61,8 @@ function readBoundaryMatches(
       matches: obj.matches !== false,
       mismatchNote: readString(obj.mismatchNote),
       facade: readString(obj.facade),
+      deedDesc: readString(obj.deedDesc),
+      deedLength: readString(obj.deedLength),
     };
   }
   return base;

@@ -268,6 +268,7 @@ public static class CaseStudyModel
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.PoNumber).HasMaxLength(64);
             e.Property(x => x.PayloadJson).HasColumnType("jsonb");
+            e.Property(x => x.FieldProvenanceJson).HasColumnType("jsonb").HasDefaultValue("{}");
             e.Property(x => x.ReturnNote).HasMaxLength(4000);
             e.Property(x => x.SubmittedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.SubmittedByName).HasMaxLength(256);

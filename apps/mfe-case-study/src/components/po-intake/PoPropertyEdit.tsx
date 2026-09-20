@@ -52,7 +52,8 @@ import {
 import { contactsForApi } from "../../lib/domain/po-intake/property-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import { canDeleteProperty } from "../../lib/app-data/po-roles";
+import { canDeleteProperty, canEditProperty } from "../../lib/app-data/po-roles";
+import { PoPropertyPartyDataCards } from "./PoPropertyPartyDataCards";
 
 function EditChrome({
   title,
@@ -364,6 +365,12 @@ export function PoPropertyEdit({
           ) : null}
         </CardBody>
       </Card>
+
+      <PoPropertyPartyDataCards
+        poNumber={poNumber}
+        propertyId={propertyId}
+        canEdit={canEditProperty(role)}
+      />
     </EditChrome>
   );
 }

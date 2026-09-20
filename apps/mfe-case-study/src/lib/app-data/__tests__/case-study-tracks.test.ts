@@ -34,6 +34,14 @@ const staff: StaffUser[] = [
     roleId: "engineering-office",
     type: "external",
   },
+  {
+    id: "u-cs",
+    name: "أسامة الصالح",
+    distributionAssigneeId: "cs-1",
+    role: "أخصائي دراسة الحالة",
+    roleId: "case-specialist",
+    type: "internal",
+  },
 ];
 
 function task(
@@ -323,5 +331,67 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
 
     expect(badgeFor(true)).toBe("مكتمل");
     expect(badgeFor(false)).toBe("لم يبدأ");
+  });
+
+  describe("specialist row", () => {
+    const distribution = {
+      governmentAuditor: false,
+      governmentAuditorId: "",
+      valuationDepartment: true,
+      inspectorId: "fi-ahmed",
+      valuatorId: "val-abdullah",
+      engineeringOffice: false,
+      engineeringOfficeId: "",
+      caseSpecialist: true,
+      caseSpecialistId: "cs-1",
+    };
+
+    it("leads the list with the parent's assignee and status", () => {
+      const parent = task({
+        id: "parent-1",
+        kind: "case-study-property",
+        assigneeName: "أسامة الصالح",
+        assigneeId: "cs-1",
+        distribution,
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: parent,
+        allTasks: [parent],
+        staffUsers: staff,
+      });
+      expect(rows[0]).toMatchObject({
+        key: "specialist",
+        label: "أسامة الصالح",
+        role: "أخصائي دراسة الحالة",
+        badge: "قيد التنفيذ",
+      });
+    });
+
+    it("never shows the appraiser as the specialist when only the child is visible", () => {
+      const appraisal = task({
+        id: "val-1",
+        kind: "property-appraisal",
+        parentTaskId: "parent-1",
+        assigneeRole: "real-estate-appraiser",
+        assigneeName: "عبدالله الكثيري",
+        assigneeId: "val-abdullah",
+        distribution,
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: appraisal,
+        allTasks: [appraisal],
+        staffUsers: staff,
+      });
+      expect(rows[0]).toMatchObject({ key: "specialist", label: "أسامة الصالح" });
+    });
+
+    it("reads «لم يُعيَّن» without a task", () => {
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: null,
+        allTasks: [],
+        staffUsers: staff,
+      });
+      expect(rows[0]).toMatchObject({ key: "specialist", label: "لم يُعيَّن" });
+    });
   });
 });

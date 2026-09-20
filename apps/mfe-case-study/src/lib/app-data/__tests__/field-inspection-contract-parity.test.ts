@@ -164,6 +164,8 @@ describe("Field inspection frontend/backend rule parity", () => {
       matches: false,
       mismatchNote: "",
       facade: "",
+      deedDesc: "",
+      deedLength: "",
     };
     expect(validateInspectorWorkspace(draft).boundaries).toBe(
       "أضف ملاحظة عدم التطابق لكل حد غير مطابق",

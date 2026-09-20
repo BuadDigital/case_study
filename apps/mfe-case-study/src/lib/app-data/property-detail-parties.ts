@@ -1,9 +1,12 @@
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   buildCaseStudyPartyAssignees,
+  buildCaseStudyTracks,
+  caseStudyFamilyParentId,
   type CaseStudyTrackState,
 } from "./case-study-tracks";
-import type { WorkflowTask } from "./tasks-storage";
+import { assigneeLabel, getCaseSpecialists } from "./distribution-parties";
+import { migrateDistribution, type WorkflowTask } from "./tasks-storage";
 
 export type PropertyDetailPartyRoleKey =
   | "specialist"
@@ -100,6 +103,64 @@ export function buildPropertyDetailPartyCards(input: {
   ];
 }
 
+/**
+ * The case specialist owns the real case-study parent. When the viewer only
+ * sees a party child (e.g. the appraiser), the child must not stand in for the
+ * parent — its assignee is the appraiser, not the specialist.
+ */
+function timelineSpecialistRow(input: {
+  task: WorkflowTask | null;
+  allTasks: WorkflowTask[];
+  staffUsers?: StaffUser[];
+}): PropertyDetailPartyStatusRow {
+  const { task, allTasks } = input;
+  const staffUsers = input.staffUsers ?? [];
+  const role = "أخصائي دراسة الحالة";
+  const unassigned = {
+    key: "specialist",
+    label: "لم يُعيَّن",
+    role,
+    ...timelineBadgeForParty(false, "new"),
+  };
+  if (!task) return unassigned;
+
+  const parent =
+    task.kind === "case-study-property"
+      ? task
+      : allTasks.find(
+          (t) =>
+            t.id === caseStudyFamilyParentId(task) &&
+            t.kind === "case-study-property",
+        );
+
+  if (parent) {
+    const track = buildCaseStudyTracks(parent, allTasks, staffUsers).find(
+      (t) => t.id === "caseStudy",
+    );
+    const name = track?.assigneeName.trim();
+    if (!name || name === "—") return unassigned;
+    return {
+      key: "specialist",
+      label: name,
+      role,
+      ...timelineBadgeForParty(true, track?.state ?? "new"),
+    };
+  }
+
+  // Parent hidden from this viewer: the child still carries the distribution.
+  const name = assigneeLabel(
+    getCaseSpecialists(staffUsers),
+    migrateDistribution(task.distribution).caseSpecialistId,
+  ).trim();
+  if (!name) return unassigned;
+  return {
+    key: "specialist",
+    label: name,
+    role,
+    ...timelineBadgeForParty(true, "progress"),
+  };
+}
+
 /** Timeline sidebar party rows — assignee names with status badges. */
 export function buildPropertyDetailTimelinePartyRows(input: {
   task: WorkflowTask | null;
@@ -119,7 +180,7 @@ export function buildPropertyDetailTimelinePartyRows(input: {
     { key: "appraisal", role: "المقيّم", trackId: "appraisal" },
   ] as const;
 
-  return defs.map((def) => {
+  const workParties = defs.map((def) => {
     const party = byTrack(def.trackId);
     const enabled = party?.enabled ?? false;
     const state = party?.state ?? "new";
@@ -134,4 +195,6 @@ export function buildPropertyDetailTimelinePartyRows(input: {
       ...timelineBadgeForParty(enabled, state),
     };
   });
+
+  return [timelineSpecialistRow(input), ...workParties];
 }

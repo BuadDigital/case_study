@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Step-2 card «الحدود والأطوال»: deed boundaries entered by the specialist,
- * matched (facade type, match verdict, mismatch note) by the inspector.
+ * Step-2 card «الحدود والأطوال»: deed text/length (inspector can fill),
+ * then facade type, match verdict, and mismatch note.
  * Lifted out of `FieldInspectionWorkBody` — same markup, state stays with
  * the workflow hook.
  */
@@ -21,7 +21,11 @@ import {
   MobilePills,
   mobileControlClassName,
 } from "./InspectMobileControls";
-import { boundaryDeedDisplay, boundaryMatchPatch } from "./field-inspection-work-state";
+import {
+  boundaryDeedDisplay,
+  boundaryMatchPatch,
+  resolvedBoundaryDeedField,
+} from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorBoundariesCard({
@@ -49,7 +53,7 @@ export function InspectorBoundariesCard({
       badge={
         mobile ? undefined : (
           <InsBadge
-            label="للمطابقة — المصدر: الأخصائي (البورصة)"
+            label="أدخل الحدود ثم طابقها مع الواقع"
             tone="info"
           />
         )
@@ -60,15 +64,22 @@ export function InspectorBoundariesCard({
     >
       {mobile ? null : (
         <p className="mb-3 text-[11px] text-text-3">
-          الحدود والأطوال يُدخلها الأخصائي عند الاستعلام عن الصك من البورصة.
-          دور المعاين هنا <strong>المطابقة واكتشاف الخطأ</strong> فقط — ويطابقها
-          أيضاً المكتب الهندسي.
+          أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
+          علّق بعدم المطابقة. ويطابقها أيضاً المكتب الهندسي.
         </p>
       )}
       {BOUNDARY_KEYS.map((key) => {
         const row = BOUNDARY_ROW_MAP[key];
-        const deed = boundaryDeedDisplay(property[row.descKey], property[row.lenKey]);
         const match = draft.boundaryMatches[key];
+        const deedDesc = resolvedBoundaryDeedField(
+          match?.deedDesc,
+          property[row.descKey],
+        );
+        const deedLength = resolvedBoundaryDeedField(
+          match?.deedLength,
+          property[row.lenKey],
+        );
+        const deed = boundaryDeedDisplay(deedDesc, deedLength);
         const mismatchInvalid = fieldErrors.missingBoundaryKey === key;
         if (mobile) {
           return (
@@ -81,10 +92,41 @@ export function InspectorBoundariesCard({
                 <span className="text-[14px] font-bold text-heading">
                   {row.label}
                 </span>
-                <span className="shrink-0 text-[13px] text-text-3">
-                  {deed.desc} · {deed.length}
-                </span>
+                {locked ? (
+                  <span className="shrink-0 text-[13px] text-text-3">
+                    {deed.desc} · {deed.length}
+                  </span>
+                ) : null}
               </div>
+              <MobileFieldLabel>الحد حسب الصك</MobileFieldLabel>
+              <Input
+                aria-label={`الحد حسب الصك — ${row.label}`}
+                placeholder="مثال: شارع عرض 15م"
+                value={deedDesc}
+                disabled={locked}
+                className={cn(mobileControlClassName, "mb-2.5")}
+                onChange={(e) =>
+                  persist(
+                    boundaryMatchPatch(draft, key, { deedDesc: e.target.value }),
+                  )
+                }
+              />
+              <MobileFieldLabel>الطول (م)</MobileFieldLabel>
+              <Input
+                aria-label={`الطول (م) — ${row.label}`}
+                placeholder="25.00"
+                inputMode="decimal"
+                value={deedLength}
+                disabled={locked}
+                className={cn(mobileControlClassName, "mb-2.5")}
+                onChange={(e) =>
+                  persist(
+                    boundaryMatchPatch(draft, key, {
+                      deedLength: e.target.value,
+                    }),
+                  )
+                }
+              />
               <MobileFieldLabel>نوع الواجهة</MobileFieldLabel>
               <Select
                 aria-label={`نوع الواجهة — ${row.label}`}
@@ -156,8 +198,39 @@ export function InspectorBoundariesCard({
                 </option>
               ))}
             </Select>
-            <span className="text-xs">{deed.desc}</span>
-            <span className="text-xs font-semibold">{deed.length}</span>
+            {locked ? (
+              <span className="text-xs">{deed.desc}</span>
+            ) : (
+              <Input
+                aria-label={`الحد حسب الصك — ${row.label}`}
+                placeholder="مثال: شارع عرض 15م"
+                value={deedDesc}
+                className="text-[11.5px]"
+                onChange={(e) =>
+                  persist(
+                    boundaryMatchPatch(draft, key, { deedDesc: e.target.value }),
+                  )
+                }
+              />
+            )}
+            {locked ? (
+              <span className="text-xs font-semibold">{deed.length}</span>
+            ) : (
+              <Input
+                aria-label={`الطول (م) — ${row.label}`}
+                placeholder="25.00"
+                inputMode="decimal"
+                value={deedLength}
+                className="text-[11.5px]"
+                onChange={(e) =>
+                  persist(
+                    boundaryMatchPatch(draft, key, {
+                      deedLength: e.target.value,
+                    }),
+                  )
+                }
+              />
+            )}
             <div>
               <label className="flex min-h-9 cursor-pointer items-center gap-2.5">
                 <input

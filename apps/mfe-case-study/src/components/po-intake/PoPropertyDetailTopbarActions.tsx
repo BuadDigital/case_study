@@ -11,9 +11,11 @@ import {
   useToast,
   type RowMoreMenuItem,
 } from "@platform/ui-kit";
+import type { RoleId } from "@platform/types";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
+  FAILURE_RAISER_LABEL_BY_KIND,
   FAILURE_RAISER_SPECIALIST,
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe/lib/failure-party-roles";
@@ -50,6 +52,13 @@ const shellBtn = (variant: "default" | "primary" = "default") =>
       ? "border-primary bg-primary text-white hover:border-primary-mid hover:bg-primary-mid"
       : "border-border-md bg-surface text-text hover:bg-surface-2",
   );
+
+/** Party viewers who raise a failure from the property screen — the label is who raised it. */
+const PARTY_FAILURE_RAISER_BY_ROLE: Partial<Record<RoleId, string>> = {
+  "field-inspector": FAILURE_RAISER_LABEL_BY_KIND["field-inspection"],
+  "engineering-office": FAILURE_RAISER_LABEL_BY_KIND["engineering-survey"],
+  "real-estate-appraiser": FAILURE_RAISER_LABEL_BY_KIND["property-appraisal"],
+};
 
 type PartyAction = {
   id: string;
@@ -102,17 +111,30 @@ export function PoPropertyDetailTopbarActions({
     return canOpenCaseStudyWorkspace(role, task, tasks);
   }, [task, role, tasks]);
 
+  // Party workspaces (hideOpenCaseStudy) already carry their own failures tab.
+  const partyFailureRaiser = hideOpenCaseStudy
+    ? undefined
+    : PARTY_FAILURE_RAISER_BY_ROLE[role];
+  const holdsPartyTask = useMemo(() => {
+    if (!partyFailureRaiser || !property) return false;
+    const po = poNumber.trim();
+    return tasksForRole(role, tasks).some(
+      (item) => item.poNumber.trim() === po && item.propertyId === property.id,
+    );
+  }, [partyFailureRaiser, property, poNumber, role, tasks]);
+
   const canOpenFailureModal = Boolean(
-    showFailure &&
+    (showFailure || holdsPartyTask) &&
       property &&
       !property.isRemoved &&
       !getPropertyFailure(poNumber.trim(), property.id),
   );
 
   const failureRaisedByRole =
-    role === "section-supervisor"
+    partyFailureRaiser ??
+    (role === "section-supervisor"
       ? FAILURE_RAISER_SUPERVISOR
-      : FAILURE_RAISER_SPECIALIST;
+      : FAILURE_RAISER_SPECIALIST);
   const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
 
   const partyActions = useMemo((): PartyAction[] => {
@@ -242,7 +264,8 @@ export function PoPropertyDetailTopbarActions({
   const heroMenuItems = useMemo((): RowMoreMenuItem[] => {
     if (!isHero) return [];
     return buildPropertyDetailHeroMenuItems({
-      hideOpenCaseStudy,
+      // Party viewers raise a failure from here; the tab bar already has دراسة العقار.
+      hideOpenCaseStudy: hideOpenCaseStudy || Boolean(partyFailureRaiser),
       caseStudyWorkspaceHref:
         showCaseStudyLink && task ? caseStudyWorkspacePath(task.id) : null,
       reportTabHref: isAllowedPropertyTab(role, "report")
@@ -257,6 +280,7 @@ export function PoPropertyDetailTopbarActions({
   }, [
     isHero,
     hideOpenCaseStudy,
+    partyFailureRaiser,
     showCaseStudyLink,
     task,
     role,
