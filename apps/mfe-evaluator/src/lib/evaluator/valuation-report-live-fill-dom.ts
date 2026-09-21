@@ -816,7 +816,12 @@ function rebuildDefinitionTable(
     k.style.width = keyWidth;
     k.textContent = pair.term;
     const v = doc.createElement("td");
-    v.textContent = pair.text;
+    // U+2028 inside a definition is a line break of its own (the standards list their principles
+    // one per line); a plain newline would split the organisation text into separate terms.
+    pair.text.split("\u2028").forEach((part, index) => {
+      if (index > 0) v.append(doc.createElement("br"));
+      v.append(part);
+    });
     tr.append(k, v);
     table.appendChild(tr);
   }

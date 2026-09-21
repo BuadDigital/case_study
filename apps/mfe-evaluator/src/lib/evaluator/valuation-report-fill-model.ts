@@ -1228,7 +1228,12 @@ export function buildValuationReportLiveFill(input: {
         slashDateFromIso(draft.appraisalDate || draft.reportIssueDate),
       ),
     ),
-    restrictionsBullets: linesFromOrgText(input.restrictionsText),
+    restrictionsBullets: linesFromOrgText(
+      applyReportDateToken(
+        input.restrictionsText,
+        slashDateFromIso(draft.appraisalDate || draft.reportIssueDate),
+      ),
+    ),
     reportDateSlash: slashDateFromIso(
       draft.appraisalDate || draft.reportIssueDate,
     ),

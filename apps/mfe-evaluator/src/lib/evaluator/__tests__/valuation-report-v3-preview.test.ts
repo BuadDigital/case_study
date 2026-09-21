@@ -171,6 +171,19 @@ describe("valuation report v3 header meta and page numbers", () => {
   });
 });
 
+describe("valuation report v3 print text colour", () => {
+  it("prints section text in the design system's secondary grey with its 1.75 line height", () => {
+    const html = prepareValuationReportV3Html(SAMPLE, {}, "print");
+    expect(html).toContain(".val-rpt-v3 .sec{font-size:12px;color:#73767f}");
+    expect(html).toMatch(/\.val-rpt-v3\{[^}]*line-height:1\.75/);
+  });
+
+  it("leaves the on-screen preview's own text colour alone", () => {
+    const html = prepareValuationReportV3Html(SAMPLE, {}, "screen");
+    expect(html).not.toContain("#73767f}");
+  });
+});
+
 describe("valuation report v3 print branding", () => {
   it("paints a distinct signature per participant column from the roster", () => {
     const html = prepareValuationReportV3Html(
@@ -216,7 +229,7 @@ describe("valuation report v3 print branding", () => {
     expect(html).toContain("height:1.5cm!important");
   });
 
-  it("applies letterhead margins, stamp size, and signatures from settings", () => {
+  it("applies letterhead strips, stamp size, and signatures from settings", () => {
     const html = prepareValuationReportV3Html(
       SAMPLE,
       {
@@ -245,7 +258,8 @@ describe("valuation report v3 print branding", () => {
       "print",
     );
 
-    expect(html).toContain("padding:40mm 14mm 29mm 18mm");
+    // Content, header and page number keep the design's millimetres, not the settings' margins.
+    expect(html).not.toContain("padding:40mm 14mm 29mm 18mm");
     expect(html).toMatch(/custom-lh\.png/);
     expect(html).toContain("width:14mm");
     expect(html).toContain("width:18mm");
@@ -255,9 +269,8 @@ describe("valuation report v3 print branding", () => {
     expect(html).toContain("min-height:3.5cm");
     expect(html).toMatch(/khalid-sign\.png/);
     expect(html).toContain("@page{size:A4;margin:0}");
-    expect(html).toContain("top:calc(268mm + 1px)");
-    expect(html).toContain("inset-inline-start:14mm");
-    expect(html).toContain("translateX(-4px)");
+    expect(html).not.toContain("top:calc(268mm + 1px)");
+    expect(html).not.toContain("translateX(-4px)");
     expect(html).toMatch(/<base href="/);
   });
 

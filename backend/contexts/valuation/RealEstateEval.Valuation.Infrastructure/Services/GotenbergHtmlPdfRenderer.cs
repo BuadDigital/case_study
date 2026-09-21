@@ -28,6 +28,9 @@ public sealed class GotenbergHtmlPdfRenderer(
 {
     public const string RendererName = "gotenberg-chromium";
 
+    internal const string ReadyExpression =
+        "document.fonts.status === 'loaded' && (!document.querySelector('[data-rpt-block],[data-rpt-sheet]') || document.documentElement.getAttribute('data-rpt-ready') === '1')";
+
  /// <summary>A4 in inches — Gotenberg's paper unit.</summary>
     private const string A4WidthIn = "8.27";
     private const string A4HeightIn = "11.69";
@@ -57,7 +60,8 @@ public sealed class GotenbergHtmlPdfRenderer(
         AddField(form, "emulatedMediaType", "print");
         // Embedded @font-face data URLs: print only after the font set settled (status is
         // "loaded" also when nothing is loading, so this never blocks a font-less document).
-        AddField(form, "waitForExpression", "document.fonts.status === 'loaded'");
+        // A report that packs its own sheets in the page also says when it has finished.
+        AddField(form, "waitForExpression", ReadyExpression);
         AddField(form, "failOnConsoleExceptions", "false");
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

@@ -446,12 +446,17 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
             dto.Independence, ValuationReportSettingsDefaults.Independence),
         ResearchScopeText = ValuationReportSettingsDefaults.Clip(
             dto.ResearchScopeText, ValuationReportSettingsDefaults.ResearchScopeText),
-        Terms = ValuationReportSettingsDefaults.Clip(dto.Terms, ValuationReportSettingsDefaults.Terms),
+        Terms = ValuationReportSettingsDefaults.Clip(
+            ValuationReportSettingsDefaults.UpgradeTerms(dto.Terms), ValuationReportSettingsDefaults.Terms),
         Restrictions = ValuationReportSettingsDefaults.Clip(
-            dto.Restrictions, ValuationReportSettingsDefaults.Restrictions),
+            ValuationReportSettingsDefaults.UpgradeRestrictions(dto.Restrictions),
+            ValuationReportSettingsDefaults.Restrictions),
         IvsStandards = ValuationReportSettingsDefaults.Clip(
-            dto.IvsStandards, ValuationReportSettingsDefaults.IvsStandards),
-        Glossary = ValuationReportSettingsDefaults.Clip(dto.Glossary, ValuationReportSettingsDefaults.Glossary),
+            ValuationReportSettingsDefaults.UpgradeIvsStandards(dto.IvsStandards),
+            ValuationReportSettingsDefaults.IvsStandards),
+        Glossary = ValuationReportSettingsDefaults.Clip(
+            ValuationReportSettingsDefaults.UpgradeGlossary(dto.Glossary),
+            ValuationReportSettingsDefaults.Glossary),
         FinishingLuxury = ValuationReportSettingsDefaults.Clip(
             dto.FinishingLuxury, ValuationReportSettingsDefaults.FinishingLuxury),
         FinishingMedium = ValuationReportSettingsDefaults.Clip(
