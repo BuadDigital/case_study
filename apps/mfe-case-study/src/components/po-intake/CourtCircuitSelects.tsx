@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { RegSearchSelect } from "@platform/app-shared/registration/RegSearchSelect";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {
@@ -31,7 +30,9 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   CUSTOM_CIRCUIT_VALUE,
   isCustomCircuitValue,
+  isCustomCourtValue,
   resolveSelectedCircuitId,
+  resolveSelectedCourtId,
 } from "./court-circuit-select-state";
 
 type Props = {
@@ -89,11 +90,13 @@ export function CourtCircuitSelects({
     };
   }, []);
 
-  const selectedCourtId = useMemo(() => {
-    if (propertyCourtId?.trim()) return propertyCourtId.trim();
-    const byName = courts.find((row) => row.name === court.trim());
-    return byName?.id ?? "";
-  }, [propertyCourtId, courts, court]);
+  const selectedCourtValue = useMemo(
+    () => resolveSelectedCourtId({ propertyCourtId, court, courts }),
+    [propertyCourtId, courts, court],
+  );
+  const isCustomCourt = isCustomCourtValue(selectedCourtValue);
+  // A typed court has no catalog id, so it has no catalog circuits either.
+  const selectedCourtId = isCustomCourt ? "" : selectedCourtValue;
 
   useEffect(() => {
     let cancelled = false;
@@ -135,17 +138,17 @@ export function CourtCircuitSelects({
       label: row.name,
     }));
     if (
-      selectedCourtId &&
-      !options.some((option) => option.value === selectedCourtId) &&
+      selectedCourtValue &&
+      !options.some((option) => option.value === selectedCourtValue) &&
       court.trim()
     ) {
       options.unshift({
-        value: selectedCourtId,
+        value: selectedCourtValue,
         label: court.trim(),
       });
     }
     return options;
-  }, [courts, selectedCourtId, court]);
+  }, [courts, selectedCourtValue, court]);
 
   const circuitOptions = useMemo(() => {
     const options = circuits.map((row) => ({
@@ -177,7 +180,12 @@ export function CourtCircuitSelects({
 
   const createOrLinkCircuit = (query: string) => {
     const q = query.trim();
-    if (!q || !selectedCourtId) return;
+    if (!q || !selectedCourtValue) return;
+    if (!selectedCourtId) {
+      applyCustomCircuit(q);
+      setSuggestPrompt(null);
+      return;
+    }
     const linked = findLinkedCircuit(circuits, q);
     if (linked) {
       applyCatalogCircuit(linked);
@@ -193,27 +201,50 @@ export function CourtCircuitSelects({
     setSuggestPrompt(null);
   };
 
+  const createOrLinkCourt = (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    const linked = courts.find((row) => row.name === q);
+    onPatch("courtId", linked?.id ?? "");
+    onPatch("court", linked?.name ?? q);
+    onPatch("circuitId", "");
+    onPatch("circuit", "");
+    setSuggestPrompt(null);
+  };
+
   const isCustom = isCustomCircuitValue(selectedCircuitId);
 
   return (
     <>
-      <RegSelect
-        id={courtId}
-        label="المحكمة"
-        required
-        options={courtOptions}
-        value={selectedCourtId}
-        error={fieldErrors.court}
-        placeholder="اختر المحكمة..."
-        onChange={(value) => {
-          const selected = courts.find((row) => row.id === value);
-          onPatch("courtId", value || "");
-          onPatch("court", selected?.name ?? "");
-          onPatch("circuitId", "");
-          onPatch("circuit", "");
-          setSuggestPrompt(null);
-        }}
-      />
+      <div>
+        <RegSearchSelect
+          id={courtId}
+          label="المحكمة"
+          required
+          options={courtOptions}
+          value={selectedCourtValue}
+          error={fieldErrors.court}
+          placeholder="اختر المحكمة أو اكتب اسمها…"
+          hint="إن لم تكن المحكمة في الدليل اكتب اسمها وأضفها كمحكمة مبدئية"
+          createMinLength={2}
+          createLabel={(q) => `إضافة «${q}» كمحكمة مبدئية`}
+          onCreate={createOrLinkCourt}
+          onChange={(value) => {
+            if (isCustomCourtValue(value)) return;
+            const selected = courts.find((row) => row.id === value);
+            onPatch("courtId", value || "");
+            onPatch("court", selected?.name ?? "");
+            onPatch("circuitId", "");
+            onPatch("circuit", "");
+            setSuggestPrompt(null);
+          }}
+        />
+        {isCustomCourt ? (
+          <Badge tone="warning" className="mt-1">
+            مسمّى محكمة مبدئي
+          </Badge>
+        ) : null}
+      </div>
       <div>
         <RegSearchSelect
           id={circuitId}
@@ -222,9 +253,9 @@ export function CourtCircuitSelects({
           options={circuitOptions}
           value={selectedCircuitId}
           error={fieldErrors.circuit}
-          disabled={!selectedCourtId}
+          disabled={!selectedCourtValue}
           placeholder={
-            selectedCourtId
+            selectedCourtValue
               ? "اكتب رقم أو اسم الدائرة…"
               : "اختر المحكمة أولاً"
           }

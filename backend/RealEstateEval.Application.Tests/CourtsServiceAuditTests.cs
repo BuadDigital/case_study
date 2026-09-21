@@ -177,7 +177,7 @@ public class CourtsServiceAuditTests
     }
 
     [Fact]
-    public async Task EnsureSeededAsync_adds_fourteen_execution_courts_with_thirty_five_circuits_each()
+    public async Task EnsureSeededAsync_adds_fifteen_execution_courts_with_thirty_five_circuits_each()
     {
         await using var db = CreateDb();
         var service = CreateService(db);
@@ -189,7 +189,7 @@ public class CourtsServiceAuditTests
             .Where(c => c.Name.StartsWith("محكمة التنفيذ ب"))
             .ToListAsync();
 
-        Assert.Equal(14, executionCourts.Count);
+        Assert.Equal(15, executionCourts.Count);
         Assert.All(executionCourts, court =>
         {
             Assert.True(court.IsActive);
@@ -198,7 +198,7 @@ public class CourtsServiceAuditTests
                 Enumerable.Range(1, 35).Select(n => n.ToString()),
                 court.Circuits.OrderBy(c => int.Parse(c.CircuitNo)).Select(c => c.CircuitNo));
         });
-        Assert.Equal(490, executionCourts.Sum(c => c.Circuits.Count));
+        Assert.Equal(525, executionCourts.Sum(c => c.Circuits.Count));
     }
 
     [Fact]
@@ -237,8 +237,8 @@ public class CourtsServiceAuditTests
         Assert.Equal(35, seeded.Circuits.Count);
         var first = Assert.Single(seeded.Circuits, c => c.CircuitNo == "1");
         Assert.Equal("دائرة التنفيذ الأولى", first.CircuitName);
-        Assert.Equal(14, await db.Courts.CountAsync(c => c.Name.StartsWith("محكمة التنفيذ ب")));
-        Assert.Equal(490, await db.CourtCircuits.CountAsync(c =>
+        Assert.Equal(15, await db.Courts.CountAsync(c => c.Name.StartsWith("محكمة التنفيذ ب")));
+        Assert.Equal(525, await db.CourtCircuits.CountAsync(c =>
             c.Court!.Name.StartsWith("محكمة التنفيذ ب")));
     }
 
