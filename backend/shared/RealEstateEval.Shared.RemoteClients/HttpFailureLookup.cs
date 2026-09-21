@@ -36,6 +36,10 @@ public sealed class HttpFailureLookup(
         CancellationToken cancellationToken = default) =>
         await GetAsync<List<string>>("/api/failure-dispatch/approved-keys", cancellationToken);
 
+    public async Task<IReadOnlyList<string>> ListBlockingPropertyKeysAsync(
+        CancellationToken cancellationToken = default) =>
+        await GetAsync<List<string>>("/api/failure-dispatch/blocking-keys", cancellationToken);
+
     public async Task<IReadOnlyList<FailureRecordDto>> ListForPropertyAsync(
         string poNumber,
         string propertyId,

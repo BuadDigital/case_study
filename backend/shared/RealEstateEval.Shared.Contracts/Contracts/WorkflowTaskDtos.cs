@@ -74,6 +74,13 @@ public class WorkflowTaskDto
     public string? FieldInspectionTaskId { get; set; }
 
  /// <summary>
+ /// The task's property has a failure that is neither resolved nor suspended. Display only —
+ /// the task itself is not blocked until the supervisor approves — so every party's queue can
+ /// say «متعذر» from the moment the failure is raised. Null when the task has no property.
+ /// </summary>
+    public bool? PropertyFailureBlocked { get; set; }
+
+ /// <summary>
  /// PO-record columns of the property this task hangs off, joined from
  /// <c>case_study.WorkOrderProperties</c> so the queue can page. Optional and additive: null when
  /// the task has no property (or the property row is gone), and every field the queue used to

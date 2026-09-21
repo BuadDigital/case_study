@@ -37,6 +37,11 @@ public sealed class FailureDispatchController(
         CancellationToken cancellationToken) =>
         Ok(await lookup.ListApprovedPropertyKeysAsync(cancellationToken));
 
+    [HttpGet("blocking-keys")]
+    public async Task<ActionResult<IReadOnlyList<string>>> BlockingKeys(
+        CancellationToken cancellationToken) =>
+        Ok(await lookup.ListBlockingPropertyKeysAsync(cancellationToken));
+
     [HttpGet("property")]
     public async Task<ActionResult<IReadOnlyList<FailureRecordDto>>> ListForProperty(
         [FromQuery] string poNumber,

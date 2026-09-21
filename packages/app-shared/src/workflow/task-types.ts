@@ -71,6 +71,8 @@ export type WorkflowTask = {
   engineeringSurveyCompleted?: boolean;
   /** Server flag on property-appraisal: a sibling engineering-survey task exists. */
   engineeringSurveyAssigned?: boolean;
+  /** Server flag: the task's property has a failure that is neither resolved nor suspended. */
+  propertyFailureBlocked?: boolean;
   /*
    * The task's property, as the server joined it onto the row
    * (`docs/architecture/pagination-contract.md` §2). Undefined when the task has

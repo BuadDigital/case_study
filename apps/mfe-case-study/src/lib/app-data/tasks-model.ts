@@ -137,6 +137,10 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
       typeof dto.engineeringSurveyAssigned === "boolean"
         ? dto.engineeringSurveyAssigned
         : undefined,
+    propertyFailureBlocked:
+      typeof dto.propertyFailureBlocked === "boolean"
+        ? dto.propertyFailureBlocked
+        : undefined,
     // The five PO-record columns the server joins onto every row
     // (pagination-contract §2) — absent-as-null becomes absent-as-undefined.
     deedNumber: dto.deedNumber?.trim() || undefined,

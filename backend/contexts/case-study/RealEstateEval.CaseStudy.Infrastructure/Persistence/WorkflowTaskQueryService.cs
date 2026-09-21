@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
@@ -18,13 +19,16 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 {
     private readonly CaseStudyDbContext _caseStudy;
     private readonly DatabaseOptions _dbOptions;
+    private readonly IFailureLookup? _failureLookup;
 
     public WorkflowTaskQueryService(
         CaseStudyDbContext caseStudy,
-        IOptions<DatabaseOptions>? dbOptions = null)
+        IOptions<DatabaseOptions>? dbOptions = null,
+        IFailureLookup? failureLookup = null)
     {
         _caseStudy = caseStudy;
         _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
+        _failureLookup = failureLookup;
     }
 
     public Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
@@ -44,6 +48,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             take,
             cancellationToken);
         await EnrichSiblingPartyFlagsAsync(dtos, cancellationToken);
+        await EnrichFailureBlockedAsync(dtos, cancellationToken);
         return dtos;
     }
 
@@ -74,6 +79,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         var total = await rows.CountAsync(cancellationToken);
         var items = await MaterializeAsync(rows, skip, take, cancellationToken);
         await EnrichSiblingPartyFlagsAsync(items, cancellationToken);
+        await EnrichFailureBlockedAsync(items, cancellationToken);
 
         return new PagedResultDto<WorkflowTaskDto>
         {
@@ -291,6 +297,23 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
  /// hides them). Queries are scoped to parent+property pairs present in the
  /// page (no full-table scan).
  /// </summary>
+    internal async Task EnrichFailureBlockedAsync(
+        IReadOnlyList<WorkflowTaskDto> dtos,
+        CancellationToken cancellationToken)
+    {
+        if (_failureLookup is null) return;
+        var withProperty = dtos.Where(d => !string.IsNullOrWhiteSpace(d.PropertyId)).ToList();
+        if (withProperty.Count == 0) return;
+
+        var blocking = (await _failureLookup.ListBlockingPropertyKeysAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var dto in withProperty)
+        {
+            dto.PropertyFailureBlocked = blocking.Contains(
+                $"{dto.PoNumber.Trim()}|{dto.PropertyId!.Trim()}");
+        }
+    }
+
     internal async Task EnrichSiblingPartyFlagsAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
         CancellationToken cancellationToken)

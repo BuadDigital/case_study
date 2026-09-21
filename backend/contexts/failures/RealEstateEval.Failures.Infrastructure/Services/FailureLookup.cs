@@ -60,6 +60,21 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             .ToList();
     }
 
+    public async Task<IReadOnlyList<string>> ListBlockingPropertyKeysAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await db.PropertyFailures.AsNoTracking()
+            .Where(f => f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Suspended)
+            .Select(f => new { f.PoNumber, f.PropertyId })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId:D}")
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<FailureRecordDto>> ListForPropertyAsync(
         string poNumber,
         string propertyId,

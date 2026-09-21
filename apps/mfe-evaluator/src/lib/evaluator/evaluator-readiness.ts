@@ -1,4 +1,8 @@
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import {
+  FAILURE_OBSTRUCTED_BADGE,
+  isTaskFailureObstructed,
+} from "@platform/app-shared/workflow/task-failure-status";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
 import { loadEvaluatorSubmission } from "./evaluator-submission-model";
 import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
@@ -90,6 +94,7 @@ export function appraiserQueueStatusBadge(
   if (task.status === "completed") {
     return { label: "مكتملة على النظام", className: "b-done" };
   }
+  if (isTaskFailureObstructed(task)) return { ...FAILURE_OBSTRUCTED_BADGE };
   const sub = loadEvaluatorSubmission(task.id);
   const st = sub?.status ?? "draft";
   if (st === "submitted") {

@@ -15,6 +15,10 @@ import {
 } from "./case-study-form-model";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
+  FAILURE_OBSTRUCTED_LABEL,
+  isTaskFailureObstructed,
+} from "@platform/app-shared/workflow/task-failure-status";
+import {
   INSPECTOR_FEATURE_FIELDS,
   MOVABLES_DESCRIPTION_KEY,
   MOVABLES_DESCRIPTION_LABEL,
@@ -81,8 +85,12 @@ export function formStatusLabel(status: CaseStudyFormStatus): string {
   return "جديد";
 }
 
-export function workflowStatusLabel(status: WorkflowTaskStatus): string {
+export function workflowStatusLabel(
+  status: WorkflowTaskStatus,
+  failureObstructed = false,
+): string {
   if (status === "completed") return "مكتمل";
+  if (failureObstructed) return FAILURE_OBSTRUCTED_LABEL;
   if (status === "blocked") return "معلّق";
   return "قيد التنفيذ";
 }
@@ -394,7 +402,7 @@ export function buildFromEngineeringSurvey(
   if (childTask) {
     fields.push({
       label: "حالة المهمة",
-      value: workflowStatusLabel(childTask.status),
+      value: workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask)),
     });
   }
 
@@ -454,7 +462,7 @@ export function buildFromEngineeringSurvey(
       accepted: surveyAccepted,
     }),
     taskStatusLabel: childTask
-      ? workflowStatusLabel(childTask.status)
+      ? workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask))
       : undefined,
     submittedAtUtc: submission.submittedAtUtc ?? null,
     acceptedAtUtc: submission.acceptedAtUtc ?? null,
@@ -545,7 +553,7 @@ export function buildFromFormDraft(
   if (childTask) {
     fields.push({
       label: "حالة المهمة",
-      value: workflowStatusLabel(childTask.status),
+      value: workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask)),
     });
   }
 
@@ -561,7 +569,7 @@ export function buildFromFormDraft(
     emptyReason: hasData ? undefined : "لم يُقدَّم بعد",
     statusLabel: formStatusLabel(draft.status),
     taskStatusLabel: childTask
-      ? workflowStatusLabel(childTask.status)
+      ? workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask))
       : undefined,
     submittedAtUtc:
       draft.status === "submitted" ? draft.savedAtUtc?.trim() || null : null,
@@ -889,7 +897,7 @@ export function buildFromFieldInspection(
   if (childTask) {
     fields.push({
       label: "حالة المهمة",
-      value: workflowStatusLabel(childTask.status),
+      value: workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask)),
     });
   }
 
@@ -940,7 +948,7 @@ export function buildFromFieldInspection(
       accepted: inspectionAccepted,
     }),
     taskStatusLabel: childTask
-      ? workflowStatusLabel(childTask.status)
+      ? workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask))
       : undefined,
     submittedAtUtc: submission.submittedAtUtc ?? null,
     acceptedAtUtc: submission.acceptedAtUtc ?? null,
