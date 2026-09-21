@@ -1,5 +1,9 @@
 # Backend architecture split plan
 
+> **2026-09-20:** Phases 0–5 described below are **complete**. This file is the original
+> sequence and the 2026-07 baseline. Current topology: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+> Remaining tail: ADR 0002 shared assemblies, production metrics.
+
 This plan decomposes the shared persistence and code core without changing network or data
 boundaries in one release. It deliberately does **not** assume that nine API processes are
 already nine autonomous services.
@@ -34,26 +38,36 @@ already nine autonomous services.
 - `xmin` concurrency is configured on 19 mutable entity types; the shared exception
   middleware returns HTTP 409.
 
-## Implementation status (2026-08-18)
+## Implementation status (2026-09-20)
 
-Ownership is approved, so Phase 0's ownership gate is closed and Phase 1 is complete
-(A6 exit). Phase 4 has a dedicated database for every extracted owner, including Messaging
-(Case Study / Platform outbox, inbox, and notifications). Valuation still drains its own
-outbox from the valuation database. Phase 2/3/5 have not started yet.
-Artifacts and guardrails live in
+The plan below is the original sequence. **Phases 0–5 are done.** Live topology:
+[`docs/ARCHITECTURE.md`](ARCHITECTURE.md). Remaining tail (not a new phase):
+
+- D1/D2 tables relocated onto `financial` / `operations` schema names (2026-09-20).
+- ADR 0002 remainder: global `RealEstateEval.Application` still holds cross-service ports that mention owner entities; TimeProvider/cache/inbox + financial/identity owner types moved 2026-09-20. `Shared.Web` no longer references Application.
+- Production metrics instruments (HTTP p95, Npgsql pool, outbox backlog/dispatch) export over OTLP as of 2026-09-20; Grafana dashboard `ree-service-overview` charts them. Live production capture is ops.
+
+Ownership catalog, baseline, and tests:
 [`docs/architecture/table-ownership-catalog.md`](architecture/table-ownership-catalog.md),
-[`docs/architecture/table-ownership.json`](architecture/table-ownership.json), and
-[`docs/architecture/boundary-baseline.json`](architecture/boundary-baseline.json), enforced by
-`backend/RealEstateEval.Architecture.Tests`. Current build and test results are in
-[`docs/status/architecture-split-status.md`](status/architecture-split-status.md).
+[`docs/architecture/table-ownership.json`](architecture/table-ownership.json),
+[`docs/architecture/boundary-baseline.json`](architecture/boundary-baseline.json),
+`backend/RealEstateEval.Architecture.Tests`.
+Closeout narrative: [`docs/status/architecture-split-status.md`](status/architecture-split-status.md).
 
 | Phase | State |
 | --- | --- |
-| 0 — freeze and measure | Repository work complete: 60-table ownership catalog (53 `DbSet`s plus seven inherited Identity tables), cross-boundary classification, and boundary tests. All 60 rows are approved and D1–D6 are recorded with outcomes and rationale; D6 is accepted with residual risk rather than answered. Owner nomination, the production-consumer inventory, and the captured production metrics are still outstanding and now block Phase 3/4 rather than Phase 1. |
-| 1 — split EF contexts | **Done (A6 Phase 1 exit).** All service hosts now use `AddHostSharedInfrastructure(...)` plus owned bounded-context persistence registrations; no host calls `AddPersistence(...)`. Case Study no longer registers the legacy `ApplicationDbContext` pool. Core slices were rewired service-by-service (including Failures/Operations, Financial/Case Study, and Messaging-owned paths) while keeping one physical database. Closeout proof and grep/build evidence are recorded in [`backend/plan/A6_CLOSEOUT.md`](../backend/plan/A6_CLOSEOUT.md). |
-| 2–3 | Phase 3 lookup residuals that drop a second connection are done (Attachments, Platform catalogs, Valuation dispatch, Identity directory, Platform’s Case Study assignee lookup, Failures commands/gates, Operations tasks/keys/envelopes — Case Study no longer opens `OperationsDbContext`). Platform audit append is HTTP (`IAuditLogAppend`); Identity no longer opens Platform. Phase 2 libraries are not started. Write residuals remain (Case Study still hosts billing/fees; Valuation still opens Case Study for reports). |
-| 4 — split databases | **Owner databases only.** Residual readers still open owner contexts over a second connection. There is no leftover shared Postgres. |
-| 5 | Not started. |
+| 0 — freeze and measure | **Done.** Ownership catalog approved; boundary tests freeze it. |
+| 1 — split EF contexts | **Done (A6).** Hosts use owner persistence; no `AddPersistence`. |
+| 2 — split libraries | **Done (A8).** Context Domain/Application/Infrastructure libraries; physical DbContext+migrations in those libraries; global Domain deleted. |
+| 3 — remove cross-schema access | **Done (A9).** Cross-boundary traffic is owner HTTP (`AddRemote*`). Messaging second connections remain by design (D5). |
+| 4 — split databases | **Done.** Nine owner databases; leftover shared DB dropped. |
+| 5 — remove shims | **Done (A10).** `ApplicationDbContext` deleted (tag `a10-legacy-stream-final`). |
+
+The "Boundary facts that block an immediate database split" section that follows is the
+**2026-07 inventory**. Those joins were replaced with owner HTTP; do not treat the file
+paths there as current.
+
+---
 
 Historical findings that refined the original baseline (kept for traceability):
 

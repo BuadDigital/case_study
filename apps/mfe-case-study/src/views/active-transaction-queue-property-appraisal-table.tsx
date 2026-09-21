@@ -24,7 +24,7 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { assignedCaseStudyParties } from "../lib/app-data/case-study-tracks";
 import {
   appraiserInspectionDone,

@@ -13,7 +13,7 @@ import {
   pinsExceedMatchMeters,
 } from "@platform/app-shared/media/photo-location";
 import { loadInspectorWorkspaceSnapshot } from "@case-study/mfe/lib/app-data/inspector-workspace-reads";
-import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { findSiblingInspectionTask } from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 

@@ -2,7 +2,7 @@ import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { isBlockingFailureStatus } from "@platform/app-shared/failures/failures-types";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 function hasActiveFailureOnTask(task: WorkflowTask): boolean {
   const propertyId = task.propertyId?.trim();

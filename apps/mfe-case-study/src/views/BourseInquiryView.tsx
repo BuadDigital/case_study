@@ -76,7 +76,7 @@ import { ActiveTransactionPageLayout } from "../components/active-transactions/A
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { buildBourseQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
-import { caseStudyTaskForProperty } from "../lib/app-data/tasks-storage";
+import { caseStudyTaskForProperty } from "../lib/app-data/tasks";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";

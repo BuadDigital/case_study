@@ -40,7 +40,7 @@ vi.mock("@platform/app-shared/app-data/party-submission-api", () => ({
   payloadFromDto: (dto: PartyTaskSubmissionDto) => dto.payload,
 }));
 
-vi.mock("@case-study/mfe/lib/app-data/tasks-storage", () => ({
+vi.mock("@case-study/mfe/lib/app-data/tasks", () => ({
   notifyTasksChanged: () => undefined,
 }));
 

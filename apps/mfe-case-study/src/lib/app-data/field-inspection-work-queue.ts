@@ -1,5 +1,5 @@
 import type { FieldInspectionWorkspaceListItemDto } from "@platform/api-client";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,

@@ -5,7 +5,7 @@ import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
 import { evaluatorValuationReportPreview } from "../../lib/evaluator-bridge";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
 

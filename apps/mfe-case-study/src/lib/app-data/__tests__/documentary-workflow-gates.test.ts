@@ -8,7 +8,7 @@ import {
   resolveInspectionTaskForProperty,
   surveyWorkGate,
 } from "../documentary-workflow-gates";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 const baseTask = (overrides: Partial<WorkflowTask>): WorkflowTask =>
   ({

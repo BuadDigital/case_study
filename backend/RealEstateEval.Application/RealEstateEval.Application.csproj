@@ -12,7 +12,6 @@
     <!-- A10 cleanup: shared contracts/rules that reference owner entities now resolve them
          from the context Domain libraries (entities left the global Domain assembly). -->
     <ProjectReference Include="..\contexts\case-study\RealEstateEval.CaseStudy.Domain\RealEstateEval.CaseStudy.Domain.csproj" />
-    <ProjectReference Include="..\contexts\financial\RealEstateEval.Financial.Domain\RealEstateEval.Financial.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

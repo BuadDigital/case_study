@@ -2,9 +2,7 @@
 
 import {
   InlineLoadingSkeleton,
-  Spinner,
   cn,
-  opsPpHeadCard,
   opsWorkspaceCard,
   useToast,
 } from "@platform/ui-kit";
@@ -15,7 +13,6 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { useIdempotentAction } from "@platform/app-shared";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import dynamic from "next/dynamic";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
@@ -56,78 +53,27 @@ import {
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
-import { EngInfo, ValTabBar } from "./EvaluatorHtmlPrimitives";
+import { ValTabBar } from "./EvaluatorHtmlPrimitives";
 import {
   ValuationWorkShell,
   type ValuationWorkNavAvailability,
   type ValuationWorkScreenId,
 } from "./EvaluatorComparableSelectionPanel";
-import { PrimaryBtn } from "./valuation-work/atoms";
-import { ValuationReportLoading } from "./ValuationReportLoading";
+import {
+  type EvaluatorWindowTab,
+  WORK_SCREENS,
+  isWorkScreen,
+  visibleEvaluatorTabs,
+} from "./evaluator-window-tabs";
+import { EvaluatorWindowBanners, EvaluatorWindowSubmitBar, EvaluatorWindowTitle } from "./EvaluatorWindowBanners";
+import {
+  EvaluatorValuationReportOutputTabLazy as EvaluatorValuationReportOutputTab,
+  preloadValuationReportOutputTab,
+} from "./EvaluatorWindowOutputTab";
 
-export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
+export type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
 const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
-
-const WORK_SCREENS: ValuationWorkScreenId[] = [
-  "basic",
-  "market",
-  "cost",
-  "final",
-  "review",
-];
-
-const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = [
-  {
-    id: "basic",
-    label: "البيانات الأساسية",
-    hint: "إعدادات الأساليب وتاريخ التقييم ومدخلات التقرير",
-  },
-  {
-    id: "market",
-    label: "طريقة المقارنة",
-    hint: "بنك المقارنات وتسويات أسلوب السوق",
-  },
-  {
-    id: "cost",
-    label: "طريقة المقاول",
-    hint: "تكلفة الإحلال والإهلاك",
-  },
-  {
-    id: "final",
-    label: "رأي القيمة النهائي",
-    hint: "الرأي النهائي وخصم التصفية",
-  },
-  {
-    id: "review",
-    label: "المراجعة النهائية",
-    hint: "الافتراضات الخاصة وإرسال التقييم",
-  },
-  {
-    id: "output",
-    label: "تقرير التقييم",
-    hint: "معاينة التقرير وطباعته",
-  },
-];
-
-function isWorkScreen(id: EvaluatorWindowTab): id is ValuationWorkScreenId {
-  return id !== "output";
-}
-
-const EvaluatorValuationReportOutputTab = dynamic(
-  () =>
-    import("./EvaluatorValuationReportOutputTab").then(
-      (m) => m.EvaluatorValuationReportOutputTab,
-    ),
-  {
-    ssr: false,
-    // Same line the tab shows while its data loads — one loader, not two in a row.
-    loading: () => <ValuationReportLoading />,
-  },
-);
-
-const preloadValuationReportOutputTab = () =>
-  void import("./EvaluatorValuationReportOutputTab");
 
 export function EvaluatorWindow({
   task,
@@ -222,12 +168,7 @@ export function EvaluatorWindow({
   const submitBusy = submitting || appraiserSubmitting;
 
   const visibleTabs = useMemo(
-    () =>
-      VAL_TAB_DEFS.filter((t) => {
-        if (t.id === "market") return navAvail.market;
-        if (t.id === "cost") return navAvail.cost;
-        return true;
-      }),
+    () => visibleEvaluatorTabs(navAvail),
     [navAvail.cost, navAvail.market],
   );
 
@@ -611,16 +552,11 @@ export function EvaluatorWindow({
 
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
-      {embeddedInPropertyChrome ? null : (
-        <div className={opsPpHeadCard}>
-          <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
-            <span>نافذة المقيم العقاري</span>
-            <span className="text-[14px] font-bold text-gold-d" dir="ltr">
-              صك {deedLabel ?? summary.deedNumber}
-            </span>
-          </h1>
-        </div>
-      )}
+      <EvaluatorWindowTitle
+        embedded={embeddedInPropertyChrome}
+        deedLabel={deedLabel}
+        deedNumber={summary.deedNumber}
+      />
 
       <div
         className={cn(
@@ -642,25 +578,13 @@ export function EvaluatorWindow({
         </div>
 
         <div className="pt-5">
-          {needsSurvey && !surveyed && !locked && gate.ready ? (
-            <EngInfo variant="amber">
-              ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي
-              وصف إضافي: قد يلزم تعديل التقييم بعد صدوره.
-            </EngInfo>
-          ) : null}
-
-          {locked ? (
-            <EngInfo variant="amber">
-              تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
-              الأخصائي.
-            </EngInfo>
-          ) : null}
-
-          {formError ? (
-            <EngInfo variant="red">
-              <strong>!</strong> {formError}
-            </EngInfo>
-          ) : null}
+          <EvaluatorWindowBanners
+            needsSurvey={needsSurvey}
+            surveyed={surveyed}
+            locked={locked}
+            gateReady={gate.ready}
+            formError={formError}
+          />
 
           <div className={cn(formDisabled ? "opacity-75" : undefined)}>
             {workVisited || isWorkScreen(activeTab) ? (
@@ -756,21 +680,11 @@ export function EvaluatorWindow({
               </Activity>
             ) : null}
 
-            {!formDisabled && activeTab === "review" ? (
-              <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-                <PrimaryBtn
-                  disabled={submitBusy}
-                  onClick={() => void submit()}
-                >
-                  {submitBusy ? <Spinner /> : null}
-                  <span>
-                    {submitBusy
-                      ? "جاري الاعتماد…"
-                      : "اعتماد التقييم وإرسال للأخصائي"}
-                  </span>
-                </PrimaryBtn>
-              </div>
-            ) : null}
+            <EvaluatorWindowSubmitBar
+              visible={!formDisabled && activeTab === "review"}
+              submitBusy={submitBusy}
+              onSubmit={() => void submit()}
+            />
           </div>
         </div>
       </div>

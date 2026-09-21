@@ -206,7 +206,7 @@
 | `failureStatus` / `status` | `Status` |
 | `failureSpecialist` / `specialist` | `Specialist` |
 
-### 3.10 Optional: `case_study.InspectorFeeLedgers`
+### 3.10 Optional: `financial.InspectorFeeLedgers`
 
 | Frontend DTO | DB column |
 |--------------|-----------|

@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 /** Open queue statuses — same idea as reporting team-load / active queues. */
 function isActiveWorkloadStatus(status: string): boolean {

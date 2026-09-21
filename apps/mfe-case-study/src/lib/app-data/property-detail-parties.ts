@@ -6,7 +6,7 @@ import {
   type CaseStudyTrackState,
 } from "./case-study-tracks";
 import { assigneeLabel, getCaseSpecialists } from "./distribution-parties";
-import { migrateDistribution, type WorkflowTask } from "./tasks-storage";
+import { migrateDistribution, type WorkflowTask } from "./tasks";
 
 export type PropertyDetailPartyRoleKey =
   | "specialist"

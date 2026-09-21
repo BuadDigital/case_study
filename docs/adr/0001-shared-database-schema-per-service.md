@@ -1,7 +1,16 @@
 # ADR 0001: Shared PostgreSQL database with schema-per-service
 
-- **Status:** Accepted (transitional)
+- **Status:** Superseded (2026-09-20)
 - **Date:** 2026-07-29
+- **Superseded by:** Phase 4 dedicated databases (A10 closeout, 2026-08-28). Each bounded
+  context now has its own PostgreSQL database (`realestate_eval_*` / `realestate_eval_prod_*`).
+  Schema-per-service remains the naming convention **inside** each owner database. D1
+  inspector-fee tables live in `financial`; D2 `OperationsTasks` lives in `operations`
+  (relocated from the `case_study` schema name on 2026-09-20).
+- **See:** [`docs/DATABASE_OVERVIEW.md`](../DATABASE_OVERVIEW.md), [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
+
+The body below is the original 2026-07 decision record. Do not treat the "one physical
+database" paragraphs as the live topology.
 
 ## Context
 

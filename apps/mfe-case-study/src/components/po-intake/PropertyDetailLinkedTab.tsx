@@ -25,7 +25,7 @@ import {
   listPriorDeedsFull,
 } from "../../lib/app-data/po-intake-reads";
 import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {

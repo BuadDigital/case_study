@@ -4,7 +4,7 @@ import {
   isPropertySuspended,
   notifySuspendedTransactionsChanged,
 } from "./suspended-transactions-model";
-import { suspendWorkflowTasksForProperty } from "./tasks-storage";
+import { suspendWorkflowTasksForProperty } from "./tasks";
 
 export type SuspendPropertyResult =
   | { ok: true }

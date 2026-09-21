@@ -57,7 +57,7 @@ import {
   propertySuspensionKey,
   type SuspendedTransaction,
 } from "../lib/app-data/suspended-transactions-model";
-import { tasksForPartyAssignee } from "../lib/app-data/tasks-storage";
+import { tasksForPartyAssignee } from "../lib/app-data/tasks";
 import { usePoRecordsQuery, useWorkflowTasksQuery } from "../query/case-study-queries";
 import { useSuspendedTransactionsQuery } from "../query/suspended-transactions-queries";
 

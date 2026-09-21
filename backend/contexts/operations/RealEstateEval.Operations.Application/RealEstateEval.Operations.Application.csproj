@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Operations.Domain\RealEstateEval.Operations.Domain.csproj" />
+    <ProjectReference Include="..\..\financial\RealEstateEval.Financial.Application\RealEstateEval.Financial.Application.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
   </ItemGroup>
 

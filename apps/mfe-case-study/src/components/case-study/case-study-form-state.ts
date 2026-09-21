@@ -16,7 +16,7 @@ import {
   propertyHasRegisteredTitle,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "deed",

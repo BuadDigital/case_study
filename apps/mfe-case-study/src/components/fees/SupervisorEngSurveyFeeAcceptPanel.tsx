@@ -31,7 +31,7 @@ import {
   isEngineeringSurveyOutputsAccepted,
 } from "../../lib/engineering-survey-bridge";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { PoNumber } from "../ui/PoNumber";
 
 function deedFromTitle(title: string | undefined): string {

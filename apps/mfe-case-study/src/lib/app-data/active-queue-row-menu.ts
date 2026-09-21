@@ -11,7 +11,7 @@ import {
   deletePrimaryDataTransaction,
   revertTaskToPhase,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 import {
   canDeleteTransaction,
   canEditProperty,

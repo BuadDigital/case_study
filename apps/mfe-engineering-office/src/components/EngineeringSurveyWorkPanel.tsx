@@ -8,7 +8,7 @@ import {
   opsWorkspaceCard,
 } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";

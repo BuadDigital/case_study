@@ -161,7 +161,7 @@ regrowing unnoticed.
 | --- | --- | --- | --- |
 | `component-size.test.ts` | `apps/*/src/**/*.tsx` (excludes `node_modules`, `.next`, `dist`/`build`, `__tests__`, `*.test.tsx`) | 700 lines | 24 of 336 components |
 | `hook-size.test.ts` | `use*.ts` under `apps/*/src` and `packages/*/src` | 500 lines | 4 of 50 hooks |
-| `storage-module-purity.test.ts` | `apps/*/src/lib/app-data`, `packages/app-shared/src/app-data`, plus a repo-wide `*-storage.ts` sweep | n/a | 3 storage facades |
+| `storage-module-purity.test.ts` | `apps/*/src/lib/app-data`, `packages/app-shared/src/app-data`, plus a repo-wide `*-storage.ts` sweep | n/a | 0 (empty freeze; 2026-09-20 renamed `tasks.ts`, `courts-catalog.ts`, `infath-deposit.ts`) |
 
 Finding 4 above is what these cap. The 24 frozen components are the tail the third pass did not reach;
 the four frozen hooks are the workflow hooks that absorbed orchestration when the big views were split
@@ -175,9 +175,10 @@ Storage purity encodes the shape slice 4 moved to — `-model` / `-reads` / `-co
   `repositoryFetch` with a `method` option, and may not import runtime code from a `*-commands`
   sibling (`import type` is fine);
 - a `*-commands.ts` module may not own a TanStack `useQuery` / `useInfiniteQuery` / `useSuspenseQuery`;
-- no new `*-storage.ts` facade anywhere in `apps/*/src` or `packages/*/src`. The three left are
-  `apps/mfe-case-study/src/lib/app-data/{tasks,infath-deposit}-storage.ts` and
-  `apps/mfe-settings/src/lib/app-data/courts-storage.ts`.
+- no `*-storage.ts` facade anywhere in `apps/*/src` or `packages/*/src`. The last three
+  (`tasks-storage.ts`, `infath-deposit-storage.ts`, `courts-storage.ts`) were renamed
+  2026-09-20; `frontend-size-baseline.json` `storageModules.frozen` is empty and may
+  only stay empty.
 
 All three rules pass on the current tree with no exemptions, and each was verified to fail when
 deliberately broken (a component pushed to 703 lines, a hook to 506, a `POST` literal added to

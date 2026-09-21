@@ -18,7 +18,7 @@ import {
   isLandInspectionContext,
   visibleInspectorFeatureFields,
 } from "../../lib/app-data/inspector-workspace-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 export type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 import {

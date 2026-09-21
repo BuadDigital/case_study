@@ -3,7 +3,7 @@ import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pa
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import type { PoIntakeRecord } from "./po-intake-data";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 /** POs where the assignment specialist matches the signed-in user (case-study property tasks only). */
 export function filterTasksAssignedToSpecialist(

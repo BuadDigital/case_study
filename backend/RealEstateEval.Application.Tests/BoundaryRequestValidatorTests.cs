@@ -1,5 +1,4 @@
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Application.Validation;
 using RealEstateEval.Domain;
 using RealEstateEval.Attachments.Application.Validation;
 using RealEstateEval.Attachments.Application.Contracts;
@@ -12,6 +11,7 @@ using RealEstateEval.Platform.Application.Validation;
 using RealEstateEval.Platform.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Financial.Application.Validation;
+using RealEstateEval.Identity.Application.Validation;
 
 namespace RealEstateEval.Application.Tests;
 

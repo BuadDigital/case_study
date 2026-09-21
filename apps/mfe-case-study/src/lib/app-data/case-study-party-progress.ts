@@ -20,7 +20,7 @@ import {
   loadPartyCaseStudyFormDraft,
   type CaseStudyFormDraftsForParent,
 } from "./case-study-form-reads";
-import type { WorkflowTask, WorkflowTaskKind } from "./tasks-storage";
+import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
 
 const FORM_SECTIONS: CaseStudyQuestionSection[] = [
   "deed",

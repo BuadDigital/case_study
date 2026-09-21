@@ -63,7 +63,7 @@ import {
   resolveTaskObstruction,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../lib/app-data/tasks-storage";
+} from "../lib/app-data/tasks";
 import {
   activeTaskWorkStep,
   BOURSE_OBSTRUCTION_ACTION,

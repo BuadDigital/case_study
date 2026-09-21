@@ -46,7 +46,7 @@ import {
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export function InspectorWorkspaceWizard({
   property,

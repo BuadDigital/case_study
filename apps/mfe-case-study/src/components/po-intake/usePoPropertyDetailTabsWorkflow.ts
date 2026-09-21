@@ -27,7 +27,7 @@ import {
 } from "../../lib/app-data/property-detail-parties";
 import { buildPropertyDetailTimeline } from "../../lib/app-data/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
-import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import {
   partyChildTaskForProperty,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 import {
   assignedCaseStudyParties,
   buildCaseStudyPartyAssignees,

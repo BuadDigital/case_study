@@ -21,7 +21,7 @@ import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import type { RemainingTimeState } from "../lib/app-data/my-task-row";
 import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import {
   isStudySlotLabel,
   primarySkeletonCols,

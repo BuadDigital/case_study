@@ -12,7 +12,7 @@ import {
 } from "@platform/ui-kit";
 import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { findInspectionChildForParent } from "../../lib/field-inspection-task";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";

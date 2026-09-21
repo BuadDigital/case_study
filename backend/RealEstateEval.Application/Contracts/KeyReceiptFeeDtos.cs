@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Application.Contracts;
 
-// Stays global (A8 Operations slice): bound by the financial host's charges dispatch
-// endpoint, whose validation comes from the global-assembly FluentValidation scan.
+// Stays global: bound by both the financial charges-dispatch host and the operations
+// key-envelope host. Validator lives in Operations.Application.
 public class MarkKeyReceiptFeeCollectedRequest
 {
     [MaxLength(128)]

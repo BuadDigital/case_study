@@ -16,7 +16,7 @@ import {
   openLoadForAssignee,
   withOpenLoadLabel,
 } from "../../lib/app-data/distribution-load";
-import type { TaskDistributionDraft } from "../../lib/app-data/tasks-storage";
+import type { TaskDistributionDraft } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 
 function toOptions(

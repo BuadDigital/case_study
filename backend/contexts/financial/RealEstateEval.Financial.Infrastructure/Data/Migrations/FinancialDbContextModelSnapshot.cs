@@ -206,7 +206,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("CreatedAtUtc");
 
-                    b.ToTable("DisbursementBatches", "case_study", t =>
+                    b.ToTable("DisbursementBatches", "financial", t =>
                         {
                             t.HasCheckConstraint("CK_DisbursementBatches_TotalNetSar_NonNegative", "\"TotalNetSar\" IS NULL OR \"TotalNetSar\" >= 0");
                         });
@@ -509,7 +509,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .IsUnique()
                         .HasDatabaseName("UX_InspectorFeeLedgers_Transaction_Deed_User");
 
-                    b.ToTable("InspectorFeeLedgers", "case_study", t =>
+                    b.ToTable("InspectorFeeLedgers", "financial", t =>
                         {
                             t.HasCheckConstraint("CK_InspectorFeeLedgers_AgreedFeeSar_NonNegative", "\"AgreedFeeSar\" IS NULL OR \"AgreedFeeSar\" >= 0");
 
@@ -562,7 +562,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("WorkflowTaskId");
 
-                    b.ToTable("InspectorFeeTransitions", "case_study");
+                    b.ToTable("InspectorFeeTransitions", "financial");
                 });
 
             modelBuilder.Entity("RealEstateEval.Financial.Domain.KeyReceiptFeeCharge", b =>

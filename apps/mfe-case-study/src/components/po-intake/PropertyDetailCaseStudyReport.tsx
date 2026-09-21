@@ -31,7 +31,7 @@ import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";

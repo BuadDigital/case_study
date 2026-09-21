@@ -8,7 +8,7 @@ import {
   linkNewPropertyToTaskSlot,
   loadWorkflowTasks,
   syncTaskSlotsForPo,
-} from "./tasks-storage";
+} from "./tasks";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import {
   addWorkOrderProperty,

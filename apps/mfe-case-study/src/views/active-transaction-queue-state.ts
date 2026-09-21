@@ -15,7 +15,7 @@ import type {
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import {
   compareQueueTasksByUpdatedNewestFirst,
   compareQueueTasksNewestFirst,

@@ -1,8 +1,17 @@
 # ADR 0003: Split ApplicationDbContext before splitting databases
 
-- **Status:** Accepted — partially implemented (extraction step 1 of 5)
+- **Status:** Accepted — complete (2026-09-20)
 - **Date:** 2026-07-29
-- **Progress last reviewed:** 2026-07-30
+- **Progress last reviewed:** 2026-09-20
+- **Completed:** nine owner `DbContext`s, each with its own migration stream and
+  `<schema>.__EFMigrationsHistory`. `ApplicationDbContext` and its 166-file stream were
+  deleted on 2026-08-28 (archive tag `a10-legacy-stream-final`). Fresh databases provision
+  from the nine context streams alone. D1 inspector-fee tables live in `financial`; D2
+  `OperationsTasks` lives in `operations` (relocated from the `case_study` schema name on
+  2026-09-20). That relocate is not this ADR.
+
+The body and "Implementation progress (2026-07-30)" section below are the original
+record. They are not the live state.
 
 ## Context
 

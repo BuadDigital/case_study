@@ -14,7 +14,7 @@ import {
   resolveQueueLayoutFlags,
   type ActiveTransactionQueueConfig,
 } from "../active-transaction-queue-state";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 function config(
   over: Partial<ActiveTransactionQueueConfig> = {},

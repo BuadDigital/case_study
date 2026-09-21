@@ -46,4 +46,14 @@ public class OutboxDispatcherHostTests
         Assert.DoesNotContain("typeof(ValuationDbContext)", caseStudy, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(MessagingDbContext)", valuation, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Dispatcher_hosts_register_outbox_metrics_collector()
+    {
+        var di = File.ReadAllText(
+            RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "DependencyInjection.cs"));
+
+        Assert.Contains("AddSingleton<OutboxMetrics>()", di, StringComparison.Ordinal);
+        Assert.Contains("AddHostedService<OutboxMetricsCollectorHostedService>()", di, StringComparison.Ordinal);
+    }
 }

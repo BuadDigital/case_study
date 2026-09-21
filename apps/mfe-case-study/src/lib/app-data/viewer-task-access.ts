@@ -7,7 +7,7 @@ import {
   tasksForPartyAssignee,
   tasksForRole,
   type WorkflowTask,
-} from "./tasks-storage";
+} from "./tasks";
 
 /** Case-study workflow queues where the section supervisor oversees all rows. */
 const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([

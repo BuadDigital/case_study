@@ -15,7 +15,7 @@ vi.mock("../suspended-transactions-model", () => ({
     notifySuspendedTransactionsChanged(...args),
 }));
 
-vi.mock("../tasks-storage", () => ({
+vi.mock("../tasks", () => ({
   suspendWorkflowTasksForProperty: (...args: unknown[]) =>
     suspendWorkflowTasksForProperty(...args),
 }));

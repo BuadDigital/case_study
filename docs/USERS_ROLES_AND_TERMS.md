@@ -346,7 +346,7 @@ Source: `packages/app-shared/src/prototype/party-task-pages.ts:24-124`.
 | Property failure | `internal`, `review`, `approved`, `returned`, `suspended`, `resolved` — active: the first four |
 | Evaluator recall | `pending`, `approved`, `rejected` |
 
-Source: `backend/RealEstateEval.Domain/WorkflowStatuses.cs`.
+Source: `backend/shared/RealEstateEval.Shared.Contracts/Domain/WorkflowStatuses.cs`.
 
 ---
 
@@ -362,7 +362,7 @@ Source: `backend/RealEstateEval.Domain/WorkflowStatuses.cs`.
 `UserStatus` is load-bearing for authentication: a profile that is not `Active` cannot
 log in and cannot refresh an existing session.
 
-Source: `backend/RealEstateEval.Domain/Enums.cs`.
+Source: `backend/shared/RealEstateEval.Shared.Contracts/Domain/Enums.cs`.
 
 ---
 
@@ -408,15 +408,15 @@ Details in `backend/README.md`, section "Session tokens".
 
 | Concern | File |
 | --- | --- |
-| Job title → prototype role | `backend/RealEstateEval.Infrastructure/Permissions/PrototypeRoleResolver.cs` |
-| Role → pages and capabilities (server) | `backend/RealEstateEval.Infrastructure/Permissions/PlatformPermissionCatalog.cs` |
+| Job title → prototype role | `backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Permissions/PrototypeRoleResolver.cs` |
+| Role → pages and capabilities (server) | `backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Permissions/PlatformPermissionCatalog.cs` |
 | Capability names | `backend/RealEstateEval.Application/Authorization/PlatformCapabilities.cs` |
 | Policy names | `backend/shared/RealEstateEval.Shared.Web/Authorization/CapabilityPolicyNames.cs` |
 | PO / party action matrix | `backend/RealEstateEval.Application/Rules/PoRoleMatrixRules.cs` |
-| Seeded users | `backend/RealEstateEval.Infrastructure/Data/DataSeeder.cs` |
-| Identity role constants | `backend/RealEstateEval.Domain/OrgRoles.cs` |
-| Status constants | `backend/RealEstateEval.Domain/WorkflowStatuses.cs` |
-| Role → pages and Arabic labels (client) | `packages/app-shared/src/prototype/constants.ts` |
+| Seeded users | `backend/tools/DevSeed/DataSeeder.cs` |
+| Identity role constants | `backend/contexts/identity/RealEstateEval.Identity.Application/Domain/OrgRoles.cs` |
+| Status constants | `backend/shared/RealEstateEval.Shared.Contracts/Domain/WorkflowStatuses.cs` |
+| Role → pages and Arabic labels (client) | `packages/app-shared/src/app-data/constants.ts` |
 | Page ids and role ids (types) | `packages/types/src/navigation.ts` |
 | Landing page rule | `packages/app-shared/src/prototype/page-access.ts` |
 | API page filtering | `packages/app-shared/src/prototype/permissions-pages.ts` |

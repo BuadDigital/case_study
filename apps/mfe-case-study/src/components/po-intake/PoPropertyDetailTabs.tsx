@@ -26,7 +26,7 @@ import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { formatDateAr, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { poPropertyFailurePath } from "@platform/app-shared/domain/po-routes";
 import { formatTimelineDate } from "../../lib/app-data/property-detail-timeline";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { propertyTabHasNewDot } from "../../lib/app-data/property-detail-local-ui";
 import { DocumentsTab } from "./PropertyDetailDocumentsTab";
 import {

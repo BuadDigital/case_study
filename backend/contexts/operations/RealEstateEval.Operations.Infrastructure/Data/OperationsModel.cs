@@ -6,9 +6,9 @@ using RealEstateEval.Operations.Domain;
 namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Operations-owned tables: the <c>operations</c> schema plus task rows that still live in
-/// <c>case_study</c> physically (D2). Applied by <see cref="OperationsDbContext"/> (write path)
-/// and by the legacy context for transitional cross-boundary reads until owner APIs replace them.
+/// Operations-owned tables in the <c>operations</c> schema, including D2
+/// <c>OperationsTasks</c> (relocated from the <c>case_study</c> schema name). Applied by
+/// <see cref="OperationsDbContext"/>.
 /// </summary>
 // A8: public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
@@ -170,10 +170,10 @@ public static class OperationsModel
                 PropertyCourtAccessStatuses.All);
         });
 
- // D2: task lifecycle is operations-owned while rows stay in case_study physically.
+ // D2: task lifecycle is operations-owned; rows live in the operations schema.
         builder.Entity<OperationsTask>(e =>
         {
-            MapTable(e, "OperationsTasks", DatabaseSchemas.CaseStudy, ownsMigrations);
+            MapTable(e, "OperationsTasks", DatabaseSchemas.Operations, ownsMigrations);
             e.UseOptimisticConcurrency();
             e.Property(x => x.DisplayId).HasMaxLength(32);
             e.Property(x => x.Type)

@@ -6,7 +6,7 @@ import {
   type CaseStudyInfoRolesMatrix,
 } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { childTasksForCaseStudyParent } from "../case-study-party-answers";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 const matrix: CaseStudyInfoRolesMatrix = {
   deed_0: { specA: "verify" },

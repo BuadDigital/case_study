@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks-storage";
+import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import {
   isVisibleInEngineeringSurveyQueue,
   loadEngineeringSurveySubmission,

@@ -4,7 +4,7 @@ import {
   formatAllTransactionsDeedWithPhase,
   type AllTransactionsQueueRowMeta,
 } from "../all-transactions-queue";
-import type { WorkflowTask } from "../tasks-storage";
+import type { WorkflowTask } from "../tasks";
 
 function task(
   partial: Partial<WorkflowTask> &

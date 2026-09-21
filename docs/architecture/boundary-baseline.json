@@ -418,14 +418,14 @@
       "financial"
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Persistence/InspectorFeeLedgerStore.cs": [
-      "case_study"
+      "financial"
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeSummaryQuery.cs": [
-      "case_study"
+      "financial"
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/InspectorFeeTransitionApplier.cs": [
       "audit",
-      "case_study"
+      "financial"
     ],
     "backend/contexts/financial/RealEstateEval.Financial.Infrastructure/Services/KeyReceiptFeeChargeService.cs": [
       "financial"
@@ -473,7 +473,7 @@
       "case_study"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/OperationsTaskVisitFeeHelper.cs": [
-      "case_study"
+      "operations"
     ],
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/PropertyKeyGateResolver.cs": [
       "operations"

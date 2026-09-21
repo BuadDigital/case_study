@@ -267,8 +267,10 @@ public static class DependencyInjection
     {
         services.AddValidatedRabbitMqOptions(configuration, environment);
         services.AddOptions<OutboxDispatcherOptions>();
+        services.AddSingleton<OutboxMetrics>();
         services.AddSingleton<RabbitMqMessagePublisher>();
         services.AddHostedService<OutboxDispatcherHostedService>();
+        services.AddHostedService<OutboxMetricsCollectorHostedService>();
  // The host that drains an outbox is also the one that prunes it (and, on the messaging
  // database, the inbox, idempotency and read-notification rows).
         services.AddOptions<MessagingRetentionOptions>()

@@ -18,7 +18,7 @@ import {
   keyHandedLabelAr,
   keysStatusLabelAr,
 } from "../../query/use-property-key-gate-query";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export type InspectorKeyAvailability = {
   keyHandedToInspector: string;

@@ -26,6 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RealEstateEval.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Application\RealEstateEval.Attachments.Application.csproj" />
     <ProjectReference Include="..\contexts\case-study\RealEstateEval.CaseStudy.Application\RealEstateEval.CaseStudy.Application.csproj" />

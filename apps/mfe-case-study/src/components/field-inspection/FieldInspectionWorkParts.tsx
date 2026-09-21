@@ -95,7 +95,7 @@ import {
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export const BOUNDARY_KEYS: InspectorBoundaryKey[] = [
   "north",

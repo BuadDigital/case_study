@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
-# One-time copy of financial rows (financial schema plus D1 inspector-fee tables in case_study)
-# from the shared database into the dedicated financial database.
+# One-time copy of financial rows from the leftover shared database into the
+# dedicated financial database. Leftover dumps still use pre-relocate names
+# (`case_study."InspectorFee*"` / `DisbursementBatches`). Live owner DBs after
+# 2026-09-20 store those tables in `financial`.
 # Schema/migrations must already have been applied to the target
 # (DbMigrate update with REAL_ESTATE_EVAL_PG_CONNECTION_STRING_FINANCIAL set).
 #

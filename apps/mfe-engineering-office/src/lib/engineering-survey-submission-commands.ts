@@ -1,4 +1,4 @@
-import { notifyTasksChanged } from "@case-study/mfe/lib/app-data/tasks-storage";
+import { notifyTasksChanged } from "@case-study/mfe/lib/app-data/tasks";
 import {
   dispatchWorkflowSubmitted,
   ENGINEERING_SURVEY_ACCEPTED_EVENT,

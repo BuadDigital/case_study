@@ -2,7 +2,7 @@
 
 **نظام إجادة الداخلي** is an internal platform for property case study, valuation workflows, and operations. The interface is Arabic (RTL).
 
-Current stack: Next.js 16, React 19, TypeScript 5, ASP.NET Core 10, PostgreSQL, Docker Compose. The architecture targets microfrontends and domain microservices behind an API gateway. Core case-study and valuation flows are API-backed; specialist valuation extras sync through `specialistReportExtrasJson` (DB columns + wire bag; IndexedDB offline cache).
+The architecture **is** microfrontends (logical, one deploy) and domain microservices behind a YARP gateway. Nine owner PostgreSQL databases. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
@@ -277,36 +277,41 @@ Report vulnerabilities to the project owner internally. Do not open public issue
 
 ## Architecture
 
-The platform uses microfrontends on the client and a gateway with domain microservices on the server. See [backend/README.md](backend/README.md).
+The platform uses logical microfrontends on the client (one Next.js deploy) and a YARP gateway with nine domain APIs on the server. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [backend/README.md](backend/README.md).
 
 ### Current structure (logical microfrontends, single deployment)
 
 ```text
 property_study/
 ├── apps/
-│   ├── shell/                 # Next.js host — login, layout, navigation, PO routes, evaluator
-│   ├── mfe-case-study/        # @case-study/mfe — purchase orders and active transactions
-│   ├── mfe-dashboard/         # @dashboard/mfe — dashboard
-│   ├── mfe-survey/            # @survey/mfe — survey
-│   ├── mfe-keys/              # @keys/mfe — keys
-│   ├── mfe-financial/         # @financial/mfe — financial reports
-│   ├── mfe-kpi/               # @kpi/mfe — performance indicators
-│   ├── mfe-failures/          # @failures/mfe — impediments
-│   ├── mfe-settings/          # @settings/mfe — users, courts, information roles, system fields
-│   └── mfe-valuation/         # @valuation/mfe — valuation requests
+│   ├── shell/                      # Next.js host — login, layout, navigation
+│   ├── mfe-case-study/             # @case-study/mfe
+│   ├── mfe-evaluator/              # @evaluator/mfe
+│   ├── mfe-engineering-office/     # @engineering-office/mfe
+│   ├── mfe-dashboard/              # @dashboard/mfe
+│   ├── mfe-survey/                 # @survey/mfe
+│   ├── mfe-keys/                   # @keys/mfe
+│   ├── mfe-financial/              # @financial/mfe
+│   ├── mfe-kpi/                    # @kpi/mfe
+│   ├── mfe-failures/               # @failures/mfe
+│   ├── mfe-settings/               # @settings/mfe
+│   └── mfe-valuation/              # @valuation/mfe
 ├── packages/
-│   ├── app-shared/            # prototype context, registration, navigation constants
-│   ├── ui-kit/                # shared React chrome, tokens, badges
-│   ├── auth-client/           # sessionStorage helpers
-│   ├── api-client/            # HTTP clients
-│   └── types/                 # PageId, RoleId, navigation types
+│   ├── app-shared/
+│   ├── ui-kit/
+│   ├── auth-client/
+│   ├── api-client/
+│   └── types/
 ├── backend/
-│   ├── gateway/               # YARP API gateway (:5160)
-│   ├── services/              # Identity, Case Study, and related services
-│   └── RealEstateEval.{Domain,Application,Infrastructure}/
-├── infra/                     # Docker Compose, Prometheus, Fluent Bit
-├── docs/                      # architecture, local infrastructure, demo credentials
-└── requirements/              # HTML prototypes (reference only)
+│   ├── gateway/                    # YARP (:5160)
+│   ├── services/                   # nine API hosts
+│   ├── contexts/                   # per-context Domain / Application / Infrastructure
+│   ├── shared/                     # Contracts, Web, RemoteClients
+│   ├── RealEstateEval.{Application,Infrastructure}/  # shared remainder
+│   └── tools/{DbMigrate,DevSeed}/
+├── infra/
+├── docs/
+└── requirements/
 ```
 
 
@@ -558,7 +563,7 @@ Future service split: [docs/ARCHITECTURE_MICROFRONTENDS_AND_MICROSERVICES.md](do
 | Principal user interface screens                         | Yes      | Navigation and roles in `packages/app-shared`; some screens still use mock data             |
 | Sign-in and JWT                                          | Yes      | Requires the API and PostgreSQL                                                             |
 | Security (Identity, JWT, auth gate, password policy)     | Yes      | See [Security](#security)                                                                   |
-| Role switcher (demonstration)                            | Yes      | Sidebar control; not equivalent to server-side authorization                                |
+| Role from server JWT / permissions                       | Yes      | `AppAccessContext` uses `prototypeRole` from `GET /api/permissions`                         |
 | Add user                                                 | Yes      | API (`POST /api/users/hr                                                                    |
 | Monorepo (F0)                                            | Yes      | `apps/shell` and `packages/*`                                                               |
 | Logical microfrontends (F3 and F4b)                      | Yes      | Case study, failures, settings, and platform domains; single deployment                     |
@@ -692,7 +697,7 @@ To reset the session, sign out from the top bar, or clear the auth token in deve
 | Elasticsearch out of memory | Lower `ES_JAVA_OPTS` in `infra/docker-compose.yml`, or allocate more RAM to Docker      |
 | TypeScript path `@/` errors | Restart the TypeScript server; open the repository root; see `tsconfig.json` references |
 | Added users disappeared     | Stored in `localStorage` for that browser profile only                                  |
-| Grafana empty               | Expected until applications export `/metrics` to Prometheus                             |
+| Grafana empty               | Confirm OTLP Collector (`:8889`) is scraped by Prometheus; apps export via OTLP, not `/metrics`. Dashboard **Real Estate Eval — Service Overview** needs live traffic for HTTP p95, Npgsql pool, and outbox panels. |
 
 
 More: [docs/LOCAL_INFRA.md](docs/LOCAL_INFRA.md)

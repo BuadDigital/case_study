@@ -3,18 +3,20 @@
 Honest running status of [`docs/architecture-split-plan.md`](../architecture-split-plan.md).
 Update this file with every slice; do not summarise a partial slice as a finished phase.
 
-**2026-08-18 (resolved):** the Case Study Development host DI boot blocker is fixed — single public constructors, `AddDevelopmentSystemMaintenance` removed, `ValuationReportWorkflowHandler` on `CaseStudyDbContext`; `/ready` verified 200. Residual: Dev system reset returns 501 pending a per-owner design. Details: [`docs/remaining-work.md`](../remaining-work.md) § Pickup.
+**Current snapshot (2026-09-20):** Phases 0–5 are **done**. Live picture:
+[`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Remaining tail: ADR 0002 leftover entity-shaped ports in global Application (TimeProvider/cache/inbox + identity/financial owner types moved 2026-09-20). Frontend `*-storage.ts` facades retired the same day. Metrics instruments (HTTP p95, Npgsql pool, outbox backlog) export over OTLP as of 2026-09-20; reading them in production is ops.
+The sections below keep the slice-by-slice closeout notes from 2026-08.
 
-## Where the split is (2026-08-18)
+## Where the split is (2026-09-20)
 
 | Phase | State | Evidence |
 | --- | --- | --- |
 | 0 — freeze and measure | Ownership gate **closed**. | [`table-ownership.json`](../architecture/table-ownership.json) |
 | 1 — split EF contexts | **Done (A6).** Hosts no longer call `AddPersistence`. | [`backend/plan/A6_CLOSEOUT.md`](../../backend/plan/A6_CLOSEOUT.md) |
-| 2 — split libraries | **All extraction slices done: Failures + Attachments + Valuation 2026-08-18; Platform + Operations + Financial + Identity + Case Study 2026-08-19. Messaging and Reporting closed as no-op slices (shared plumbing / pure HTTP read model); platform-only notification handlers folded into the Platform slice. Migration-catalog de-typing enabler landed 2026-08-19 (name-keyed catalog + validated concrete lists in DbMigrate/tests); physical context moves await a supervised session.** `backend/contexts/failures/RealEstateEval.Failures.{Domain,Application,Infrastructure}` with context-local DI and host-registered validators; DbContext+migrations stay global pending migration-catalog decomposition; namespaces unchanged until global projects retire. | `docs/remaining-work.md` A8 row |
-| 3 — remove cross-schema access | **Done (A9, 2026-08-18).** Every cross-boundary reader/writer is on owner HTTP APIs; no host outside Case Study opens `CaseStudyDbContext`; D10 Identity reads closed. The only remaining foreign contexts are the messaging outboxes — D5 by design. Migrator owner + D6 consumer inventory recorded; p95/connection/outbox metrics capture is Phase 5 evidence. | `docs/remaining-work.md` A9 row |
-| 4 — split databases | **Owner databases only.** No leftover shared Postgres. Residual readers still open owner contexts over a second connection. | `BoundedContextConnections`, `infra/postgres/init-*.sql` |
-| 5 — remove shims | **Runtime shims removed 2026-08-18.** No runtime composition registers `ApplicationDbContext`: seeder ported to owner contexts, maintenance provider bounded-context-only, Messaging fallbacks collapsed, dead reset service deleted, `AddPersistence`/`AddLegacyApplicationPersistence` deleted. Remaining: retire the idle leftover database and archive the frozen legacy stream (blocked on the metrics gate + backup decision). | `docs/remaining-work.md` A10 row |
+| 2 — split libraries | **Done (A8, 2026-08-28).** Context Domain/Application/Infrastructure libraries; DbContext + migrations live in those libraries; global Domain deleted; namespaces `RealEstateEval.<Ctx>.*`. | `docs/remaining-work.md` A8 row |
+| 3 — remove cross-schema access | **Done (A9, 2026-08-18).** Owner HTTP; no host outside Case Study opens `CaseStudyDbContext`. Messaging second connections remain (D5). | `docs/remaining-work.md` A9 row |
+| 4 — split databases | **Done.** Nine owner databases; leftover shared Postgres dropped 2026-08-28. | `BoundedContextConnections`, `infra/postgres/init-*.sql` |
+| 5 — remove shims | **Done (A10, 2026-08-28).** `ApplicationDbContext` + 166-file stream deleted (tag `a10-legacy-stream-final`). | `docs/remaining-work.md` A10 row |
 
 ## What Phase 3 lookup residuals changed
 
@@ -50,8 +52,8 @@ Write residuals that still open a second owner connection (all Messaging, D5 by 
 - Identity and Platform now use dedicated databases (`realestate_eval_identity` / `realestate_eval_platform`). Identity audit rows are written through `PlatformDbContext` so the append-only ledger stays on Platform.
 - Valuation now uses a dedicated database (`realestate_eval_valuation`). Case Study still writes valuation requests through `ValuationDbContext` on a second connection. Valuation hosts its own outbox dispatcher so those rows are not stranded on the new database.
 - Failures now uses a dedicated database (`realestate_eval_failures`). Case Study and Operations call the Failures HTTP API for gates, timelines, and access holds; they no longer open `FailuresDbContext`. Failures schema migrations are applied by DbMigrate (not Case Study startup).
-- Operations now uses a dedicated database (`realestate_eval_operations`), including D2 `case_study.OperationsTasks` / `OperationsTaskSequences` which `OperationsDbContext` maps. Copy those task tables with the operations schema.
-- Financial now uses a dedicated database (`realestate_eval_financial`), including D1 inspector-fee tables still physically named in `case_study`. Fee/enfaz audit rows written through `FinancialDbContext` land on that database's `audit.AuditLogs` (the Platform ledger stays on Platform).
+- Operations now uses a dedicated database (`realestate_eval_operations`), including D2 `operations.OperationsTasks` which `OperationsDbContext` maps. Copy those task tables with the operations schema.
+- Financial now uses a dedicated database (`realestate_eval_financial`), including D1 inspector-fee tables in `financial`. Fee/enfaz audit rows written through `FinancialDbContext` land on that database's `audit.AuditLogs` (the Platform ledger stays on Platform).
 - Case Study now uses a dedicated database (`realestate_eval_case_study`) for Case Study–owned tables only. Residual readers (Failures, Valuation) still open `CaseStudyDbContext` on a second connection. Operations and Financial call Case Study HTTP.
 - Messaging now uses a dedicated database (`realestate_eval_messaging`). Case Study drains that outbox; Platform / Failures / Operations write notification and inbox rows there. Valuation still drains `valuation.%` outbox rows from the valuation database. Copy messaging **after** Valuation so those rows are not double-published.
 - One-time row copy: `infra/postgres/copy-*-data.sh` for each owner (if leftover still has rows). Copy Case Study **after** Operations and Financial so D1/D2 rows are already claimed by those owners; the Case Study script excludes those tables. Then drop leftover databases with `infra/postgres/drop-leftover-shared.sh`. There is no shared-database fallback.
@@ -107,16 +109,16 @@ that script (or `down -v`) runs.
 ## What extraction step 3 changed
 
 - `FailuresDbContext` / `OperationsDbContext` + empty baseline migration streams (`failures` /
-  `operations` history schemas). Ops tasks still live physically in `case_study`; ownership is
-  Operations. Idempotent follow-up: key-envelope revenue entitlement on Operations.
+  `operations` history schemas). Ops tasks live in `operations` (relocated from the
+  `case_study` schema name on 2026-09-20); ownership is Operations. Idempotent follow-up: key-envelope revenue entitlement on Operations.
 - Writers use own context (or dual App + owned for financial / case-study cross-writes).
 - Hosts: Failures API owns `FailuresDbContext`. Case Study and Operations call Failures HTTP for gates and access holds.
 
 ## What extraction step 4 changed
 
 - `FinancialDbContext` / `CaseStudyDbContext` + empty baselines (`financial` / `case_study`
-  history schemas). D1 inspector-fee tables stay physically in `case_study` mapped by Financial;
-  D2 ops tasks stay on Operations (not Case Study).
+  history schemas). D1 inspector-fee tables live in `financial` mapped by Financial (relocated
+  2026-09-20); D2 ops tasks stay on Operations (not Case Study).
 - Legacy cutover advanced to `20260802093148_SyncLocationCatalogModelOnLegacy` so post-cutover
   fee/pricing migrations already applied on the legacy stream stay valid after extraction.
 - Hosts register `AddFinancialPersistence` / `AddCaseStudyPersistence` (Case Study + Failures +
@@ -198,8 +200,8 @@ The frozen legacy god context is gone from the codebase:
   are retired: Architecture suite is 54.
 - **Unblocked next (cosmetic/structural, no production coupling):** namespace alignment,
   entity moves into ctx Domain libraries, retirement of the near-empty global assemblies.
-- **Still production-gated:** the metrics window and the `realestate_eval_dev` leftover
-  decision (do not drop — the tag + leftover are the restore pair).
+- **Still production-gated:** live p95 / pool / outbox observation (instruments shipped 2026-09-20).
+  (~~`realestate_eval_dev` leftover~~ dropped 2026-08-28.)
 
 ## Cosmetic cleanup — entity distribution, Domain retirement, namespace alignment (2026-08-28, late)
 

@@ -8,7 +8,7 @@ import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadWorkflowTasksForQuery,
   type WorkflowTask,
-} from "@case-study/mfe/lib/app-data/tasks-storage";
+} from "@case-study/mfe/lib/app-data/tasks";
 import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-reads";
 import {
   prefetchPoRecord,

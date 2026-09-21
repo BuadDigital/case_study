@@ -11,20 +11,11 @@ import {
 } from "react";
 import {
   InlineLoadingSkeleton,
-  Spinner,
   cn,
   opsLetterCard,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
-import type {
-  EvaluatorReportChoices,
-  EvaluatorReportWorker,
-  EvaluatorSubmission,
-} from "../../../lib/evaluator/evaluator-window-data";
-import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
 import {
   retrospectiveDraftFromSettings,
-  type EvaluatorRetrospectiveDraft,
 } from "../../../lib/evaluator/evaluator-validation";
 
 import {
@@ -32,7 +23,6 @@ import {
   CardPad,
   CardTitle,
   GhostBtn,
-  PrimaryBtn,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
@@ -43,11 +33,13 @@ import {
   resolveEffectiveScreen,
   type ValuationWorkScreenId,
 } from "./lib/shell-state";
-import type { FinalOpinionChangeHandler } from "./lib/valuation-data-state";
+import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
-import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
+import { ValuationWorkReviewScreen } from "./ValuationWorkReviewScreen";
+import type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
 
+export type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
 export type {
   ValuationWorkNavAvailability,
   ValuationWorkPropertyHint,
@@ -58,11 +50,6 @@ import type {
   ValuationWorkPropertyHint,
 } from "./lib/shell-state";
 
-const EvaluatorFinalReviewTab = lazy(() =>
-  import("../EvaluatorFinalReviewTab").then((m) => ({
-    default: m.EvaluatorFinalReviewTab,
-  })),
-);
 const AdjustmentsMatrix = lazy(() =>
   import("./AdjustmentsMatrix").then((m) => ({ default: m.AdjustmentsMatrix })),
 );
@@ -76,42 +63,6 @@ const FinalOpinionSection = lazy(() =>
     default: m.FinalOpinionSection,
   })),
 );
-
-export type ValuationWorkShellProps = {
-  propertyId: string;
-  poNumber?: string;
-  assignmentType?: string;
-  districtHint?: string;
-  /** Field-inspection task — seeds cost actual age from the inspector package. */
-  inspectionTaskId?: string | null;
-  onFinalOpinionChange?: FinalOpinionChangeHandler;
-  property?: ValuationWorkPropertyHint;
-  /** Full intake row when available (final-review screen). */
-  intakeProperty?: PoPropertyIntake | null;
-  draft?: EvaluatorSubmission;
-  disabled?: boolean;
-  fieldErrors?: Record<string, string>;
-  onDraftPatch?: (patch: {
-    evaluatorPrice?: string;
-    forcedSaleDiscountPct?: string;
-    assetDataConfirmed?: boolean;
-    assetDataVarianceNotes?: string;
-    independenceDeclared?: boolean;
-    reportWorkers?: EvaluatorReportWorker[];
-  }) => void;
-  onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
-  onSubmit?: () => void;
-  submitting?: boolean;
-  showSubmit?: boolean;
-  /** Controlled screen when embedded in EvaluatorWindow top tabs. */
-  screen?: ValuationWorkScreenId;
-  onScreenChange?: (screen: ValuationWorkScreenId) => void;
-  /** Hide inner header/nav — top ValTabBar owns navigation. */
-  embeddedInTopTabs?: boolean;
-  /** Notify parent which approach tabs should appear (Rule Q-2). */
-  onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
-  onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
-};
 
 /**
  * Appraiser valuation work shell — matches the sales-comparison valuation design docs.
@@ -527,45 +478,24 @@ export function ValuationWorkShell({
   }
 
   function renderReview() {
-    const reviewDraft =
-      draft ??
-      createEvaluatorDraft({
-        taskId: "",
-        propertyId,
-        poNumber: poNumber ?? "",
-        assignmentType,
-      });
     return (
-      <>
-        <Suspense fallback={<InlineLoadingSkeleton />}>
-          <EvaluatorFinalReviewTab
-            draft={reviewDraft}
-            disabled={disabled}
-            property={intakeProperty}
-            valuationRequestId={valuationRequestId}
-            approachSettings={approachSettings}
-            fieldErrors={fieldErrors}
-            onDraftPatch={onDraftPatch}
-            onReportChoicesPatch={onReportChoicesPatch}
-            onSettingsSaved={onSettingsSaved}
-          />
-        </Suspense>
-        {showSubmit ? (
-          <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-            <PrimaryBtn
-              disabled={disabled || submitting}
-              onClick={() => onSubmit?.()}
-            >
-              {submitting ? <Spinner /> : null}
-              <span>
-                {submitting
-                  ? "جاري الاعتماد…"
-                  : "اعتماد التقييم وإرسال للأخصائي"}
-              </span>
-            </PrimaryBtn>
-          </div>
-        ) : null}
-      </>
+      <ValuationWorkReviewScreen
+        draft={draft}
+        propertyId={propertyId}
+        poNumber={poNumber}
+        assignmentType={assignmentType}
+        disabled={disabled}
+        intakeProperty={intakeProperty}
+        valuationRequestId={valuationRequestId}
+        approachSettings={approachSettings}
+        fieldErrors={fieldErrors}
+        onDraftPatch={onDraftPatch}
+        onReportChoicesPatch={onReportChoicesPatch}
+        onSettingsSaved={onSettingsSaved}
+        showSubmit={showSubmit}
+        submitting={submitting}
+        onSubmit={onSubmit}
+      />
     );
   }
 

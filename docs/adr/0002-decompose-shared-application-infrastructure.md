@@ -1,7 +1,21 @@
 # ADR 0002: Decompose shared Application and Infrastructure assemblies
 
-- **Status:** Accepted
+- **Status:** Accepted — remainder (2026-09-20)
 - **Date:** 2026-07-29
+- **Implemented:** eight `backend/contexts/<ctx>/RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}`
+  libraries; global `RealEstateEval.Domain` deleted; owner-to-owner HTTP in
+  `Shared.RemoteClients`; wire types in `Shared.Contracts`.
+- **Remainder (deliberate):** `RealEstateEval.Infrastructure` stays for messaging + outbox,
+  audit mapping, and connection plumbing. Global `RealEstateEval.Application` still holds
+  cross-service ports that mention owner entities (`ICaseStudyLookup`, notifications, …).
+  2026-09-20 slice: TimeProvider/cache/inbox ports, `PermissionsDto`, and `FieldFormats`
+  live in `Shared.Contracts`; identity login/staff validators and DTOs live in
+  `Identity.Application`; financial billing/fee ports, DTOs, rules, and the seven
+  party-billing/Enfaz validators live in `Financial.Application`. `Shared.Web` does not
+  reference Application. Tracked in [`docs/remaining-work.md`](../remaining-work.md) §1 and
+  [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
+
+The body below is the original 2026-07 decision. The file counts in Context are historical.
 
 ## Context
 

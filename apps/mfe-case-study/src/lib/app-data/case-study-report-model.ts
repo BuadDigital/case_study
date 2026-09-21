@@ -21,7 +21,7 @@ import {
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "./po-intake-data";
-import type { WorkflowTask } from "./tasks-storage";
+import type { WorkflowTask } from "./tasks";
 
 export type CaseStudyReportQuestionRow = {
   question: string;

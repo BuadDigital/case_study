@@ -9,7 +9,7 @@ import { refreshPartyTaskWorkQueries } from "../lib/party-task-work-refresh";
 import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 
 /** Thin wrapper at the list boundary — *Action names to satisfy Next.js conventions. */
 export function PartyActiveTaskWorkPanel({

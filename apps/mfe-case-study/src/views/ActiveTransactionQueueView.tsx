@@ -29,7 +29,7 @@ const CopyFromPriorTransactionModal = dynamic(
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
 import { AllTransactionsQueueTable } from "./active-transaction-queue-all-transactions-table";
 import { DistributionQueueTable } from "./active-transaction-queue-distribution-table";

@@ -10,7 +10,7 @@ import { RegistrationFormCard } from "@platform/app-shared/registration/Registra
 import { Button, InlineLoadingSkeleton, Note } from "@platform/ui-kit";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
-import { migrateDistribution } from "../lib/app-data/tasks-storage";
+import { migrateDistribution } from "../lib/app-data/tasks";
 import { DistributionPartiesForm } from "./MyTaskWorkLazyForms";
 import { removedPropertyNote, type TaskWorkScreen } from "./my-task-work-state";
 import type { MyTaskWorkflow } from "./useMyTaskWorkWorkflow";

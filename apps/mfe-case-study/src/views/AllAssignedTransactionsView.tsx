@@ -16,7 +16,7 @@ import { isTaskOnSuspendedProperty } from "../lib/app-data/suspended-transaction
 import {
   reopenCompletedTransaction,
   type WorkflowTask,
-} from "../lib/app-data/tasks-storage";
+} from "../lib/app-data/tasks";
 import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";

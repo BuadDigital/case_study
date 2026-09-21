@@ -1,4 +1,4 @@
-import type { WorkflowTask } from "./app-data/tasks-storage";
+import type { WorkflowTask } from "./app-data/tasks";
 
 export function findInspectionChildForParent(
   parentTaskId: string,

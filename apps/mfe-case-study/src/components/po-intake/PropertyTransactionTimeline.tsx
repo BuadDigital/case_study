@@ -18,7 +18,7 @@ import {
 import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks-storage";
+import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";

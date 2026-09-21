@@ -1,6 +1,10 @@
 namespace RealEstateEval.Application.Authorization;
 
 /// <summary>Server capability names (aligned with <c>PlatformPermissionCatalog.AllCapabilities</c>).</summary>
+/// <remarks>
+/// Lives in Shared.Contracts (ADR 0002) so Shared.Web can authorize without the global
+/// Application assembly. Namespace is unchanged so call sites need no using churn.
+/// </remarks>
 public static class PlatformCapabilities
 {
     public const string ClaimType = "capability";

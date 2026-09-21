@@ -100,6 +100,27 @@ public class ProjectReferenceBoundaryTests
             references.ToArray());
     }
 
+    /// <summary>
+    /// ADR 0002 remainder: Shared.Web is hosting plumbing. Capability names, actor identity,
+    /// and the idempotency store live in Shared.Contracts so this library must not pull the
+    /// global Application assembly.
+    /// </summary>
+    [Fact]
+    public void SharedWebDoesNotReferenceTheGlobalApplicationAssembly()
+    {
+        var references = ReferencesOf(
+            "backend/shared/RealEstateEval.Shared.Web/RealEstateEval.Shared.Web.csproj");
+
+        Assert.DoesNotContain(
+            references,
+            reference => reference.EndsWith(
+                "RealEstateEval.Application.csproj", StringComparison.Ordinal));
+        Assert.Contains(
+            references,
+            reference => reference.EndsWith(
+                "RealEstateEval.Shared.Contracts.csproj", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void ApiProjectsDoNotReferenceOtherApis()
     {

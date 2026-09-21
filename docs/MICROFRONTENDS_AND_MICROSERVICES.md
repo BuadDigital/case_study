@@ -1,25 +1,29 @@
 # Architecture roadmap: microfrontends + microservices
 
-This document defines **what to implement** when evolving the Real Estate Evaluation platform from the current **monolithic Next.js shell + single ASP.NET API** into a **microfrontend (MFE) web platform** backed by **domain microservices**.
+**Current picture (2026-09-20):** the backend split this document originally targeted **is done** — nine APIs behind YARP, nine owner databases, context libraries, owner HTTP, SQL outbox/inbox. The frontend is a **logical** MFE monorepo (shell imports `apps/mfe-*` packages, one deploy). Module Federation remains the optional next step when two domains need independent release cadence.
+
+Treat sections 2–3 as the **target for independent MFE deploys**, not as a description of today's missing backend. Live topology: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md).
+
+Original framing (kept for the federation checklist): evolving the platform into independently deployable MFEs behind the existing domain microservices.
 
 It is grounded in:
 
 - Current UI routes (`dashboard`, `po`, `properties`, `assignment`, `survey`, `keys`, `failures`, `valuation-requests`, `field-form`, `financial`, `kpi`, `users`)
-- Current backend: **YARP gateway** (`backend/gateway`) + **domain services** under `backend/services/` (Identity, Case Study, Operations, Reporting, Financial, Valuation). Legacy monolith `RealEstateEval.Api` removed.
+- Current backend: **YARP gateway** (`backend/gateway`) + **domain services** under `backend/services/` (Identity, Case Study, Operations, Reporting, Financial, Valuation, Failures, Platform, Attachments).
 - Reference prototype: `requirment/system_prototype_4.html`
 
 ---
 
 ## 1. Current state (baseline)
 
-| Layer | Today | Gap |
-|--------|--------|-----|
-| **Frontend** | Monorepo: `apps/shell` (host) + `packages/*` (ui-kit, auth-client, api-client, types); pages under `apps/shell/src/app/(app)/[page]`; mock data in `constants.ts` | No federated remotes yet; no independent MFE deploys |
-| **Backend** | One API project; `AuthController` + PostgreSQL Identity | No domain services; no API gateway; no async integration |
-| **Auth** | JWT in `sessionStorage`; prototype role switcher separate from API roles | No centralized policy across MFEs/services |
-| **Data** | `MOCK_*` arrays | No service-owned databases |
+| Layer | Today | Remaining gap |
+|--------|--------|----------------|
+| **Frontend** | Monorepo: `apps/shell` (host) + `apps/mfe-*` packages + `packages/*`. Shell dynamically imports remotes. Data from owner APIs. | No Module Federation; one deploy (F5 deferred). |
+| **Backend** | Nine API hosts + YARP. Context libraries under `backend/contexts/*`. Cross-owner traffic is HTTP (`AddRemote*`). `Shared.Web` does not reference global Application. | Global `Application` + `Infrastructure` assemblies remain for leftover shared abstractions (ADR 0002 remainder). |
+| **Auth** | JWT via Identity; claims carry prototype role, pages, distribution assignee. Shell uses `@platform/auth-client`. | Federation session matrix only when remotes deploy separately. |
+| **Data** | Nine PostgreSQL databases. Attachment bytes in local blob store. | D1/D2 tables live in `financial` / `operations` on their owner databases. |
 
-**Principle:** Do not rewrite everything at once. Extract by **bounded context** (case study vs valuation vs platform) in parallel on backend and frontend.
+**Principle:** Do not rewrite everything at once. Extract by **bounded context**. The backend extraction is complete; further frontend federation waits on a real independent-release need.
 
 ---
 
@@ -416,8 +420,8 @@ flowchart LR
 
 **Implement:**
 
-- [ ] Expose `/metrics` (Prometheus format) on each service or use OpenTelemetry → Prometheus exporter
-- [ ] **Grafana** dashboards (Prometheus is storage; **Kibana is not** the standard metrics UI)
+- [x] OpenTelemetry → Collector Prometheus exporter (`:8889`); services do **not** expose `/metrics`
+- [x] **Grafana** dashboard `ree-service-overview` (HTTP rate/p95, RabbitMQ depth, outbox backlog, Npgsql pool, HTTP 5xx)
 - [ ] **Alertmanager**: alert on error rate, p95 latency, disk, broker DLQ
 
 **When:** As soon as the second service runs in staging.

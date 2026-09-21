@@ -18,7 +18,7 @@ import {
   caseStudyAnswerKey,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   CASE_STUDY_ANSWER_LABEL_A,
   CASE_STUDY_ANSWER_LABEL_B,

@@ -380,8 +380,8 @@ OR "DeedsText" LIKE '%<q>%' ESCAPE '\'   -- partial deed number
 ```
 
 Both are created by migration **`20260904093334_AddOperationsTaskDeedSearchIndex`** (Operations
-stream, raw SQL because the D2 task tables are Operations-owned but still physically named in the
-`case_study` schema):
+stream, raw SQL because the D2 task tables were still physically named in `case_study` at
+the time; `SET SCHEMA` on 2026-09-20 moved the table and these indexes onto `operations`):
 
 | Object | Why |
 | --- | --- |

@@ -1,39 +1,28 @@
 # Backend — microservices
 
-The platform runs as an **API gateway** plus **domain services** (shared Postgres stepping stone).
+The platform runs as an **API gateway** plus **domain services**, each with its own
+PostgreSQL database. See [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
 
 ## Layout
 
 ```text
-
 backend/
-
 ├── gateway/RealEstateEval.Gateway/              # YARP — public :5160
-
 ├── services/
-
 │   ├── identity/RealEstateEval.Identity.Api/        # Auth + Users (:5161)
-
 │   ├── case-study/RealEstateEval.CaseStudy.Api/     # PO, workflow, forms, system (:5162)
-
 │   ├── operations/RealEstateEval.Operations.Api/    # Survey offices, property keys (:5163)
-
 │   ├── reporting/RealEstateEval.Reporting.Api/      # Dashboard BFF (:5164)
-
 │   ├── financial/RealEstateEval.Financial.Api/      # Financial summary (:5165)
-
 │   ├── valuation/RealEstateEval.Valuation.Api/      # VR list, evaluator recalls (:5166)
-
 │   ├── failures/RealEstateEval.Failures.Api/        # Failures + failure-types catalog (:5167)
-
 │   ├── platform/RealEstateEval.Platform.Api/        # Field dict, courts, custom screens, info-roles (:5168)
-
 │   └── attachments/RealEstateEval.Attachments.Api/  # File blobs (:5169)
-
-├── shared/RealEstateEval.Shared.{Contracts,Web}/
-
-├── RealEstateEval.{Domain,Application,Infrastructure}/
-
+├── contexts/<ctx>/RealEstateEval.<Ctx>.{Domain,Application,Infrastructure}
+├── shared/RealEstateEval.Shared.{Contracts,Web,RemoteClients}/
+├── RealEstateEval.{Application,Infrastructure}/     # Shared remainder (ADR 0002)
+├── tools/DbMigrate/                                 # Deploy-time migrator
+└── tools/DevSeed/                                   # Development seed / reset
 ```
 
 ## Gateway routes
@@ -101,7 +90,11 @@ Individual services: `dev:identity`, `dev:case-study`, `dev:operations`, `dev:re
 
 ## EF migrations
 
-Migrations live in `RealEstateEval.Infrastructure/Data/Migrations/`.
+Each bounded context owns its stream under
+`backend/contexts/<ctx>/RealEstateEval.<Ctx>.Infrastructure/Data/Migrations/`
+(messaging lives beside the shared Messaging model). History tables are
+`<schema>.__EFMigrationsHistory`. ADR 0006: production never migrates from an
+app host.
 
 **Development / `npm run dev:api`:** Case Study applies pending migrations at
 startup when `Database:MigrateOnStartup` is true (default in Development via
@@ -113,10 +106,10 @@ startup when `Database:MigrateOnStartup` is true (default in Development via
 start. The deploy workflow runs `docker compose … run --rm migrate`.
 
 ```bash
-# Create a migration
+# Create a migration (owner context, not the retired global stream)
 dotnet ef migrations add <Name> \
-  --project backend/RealEstateEval.Infrastructure \
-  --startup-project backend/services/case-study/RealEstateEval.CaseStudy.Api
+  --project backend/contexts/<ctx>/RealEstateEval.<Ctx>.Infrastructure \
+  --startup-project backend/services/<ctx>/RealEstateEval.<Ctx>.Api
 
 # Apply (local tool or migrate container)
 dotnet run --project backend/tools/DbMigrate
@@ -626,6 +619,12 @@ All services export **traces and metrics** via OTLP (default `http://localhost:4
 In Compose, that endpoint is the **OpenTelemetry Collector**, which discards
 traces (no trace UI in the stack) and exposes Prometheus metrics on `:8889` (scraped by Prometheus).
 Services do **not** expose a Prometheus `/metrics` HTTP endpoint.
+
+Meters on that path: ASP.NET HTTP duration (p95 / 5xx), runtime GC/thread-pool,
+Npgsql `db.client.connections.usage`, and `RealEstateEval.Outbox` (dispatch counters,
+pending/dead-letter gauges, oldest pending age). Grafana dashboard **Real Estate Eval —
+Service Overview** charts them. Outbox gauges are sampled only on Case Study and Valuation
+(the hosts that drain an outbox).
 
 | Endpoint                  | Purpose                                |
 |---------------------------|----------------------------------------|

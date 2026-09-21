@@ -1,6 +1,5 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using RealEstateEval.Application.Validation;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
@@ -24,8 +23,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddClaimsPermissionService();
         // A8: blob storage folds into the context registration below.
         builder.Services.AddAttachmentsInfrastructure(builder.Configuration, connectionString!);
-        // A8: the attachment validators live in the Attachments context assembly, outside
-        // the global-Application scan in AddRealEstateEvalValidation.
+        // A8: the attachment validators live in the Attachments context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<UploadAttachmentRequestValidator>();
     }
 

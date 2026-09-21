@@ -22,7 +22,7 @@ import { seesAllCaseStudyWorkflowTasks } from "@case-study/mfe/lib/app-data/view
 import {
   tasksForPartyAssignee,
   tasksForRole,
-} from "@case-study/mfe/lib/app-data/tasks-storage";
+} from "@case-study/mfe/lib/app-data/tasks";
 import type { PoIntakeRecord } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
   useFailuresQuery,

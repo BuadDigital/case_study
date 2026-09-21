@@ -104,8 +104,8 @@ public class KeyEnvelopeFeeReportRowDto
     public DateTime CreatedAtUtc { get; init; }
 }
 
-// MarkKeyReceiptFeeCollectedRequest stays in the global Application Contracts: the
-// financial host binds it and its validator relies on the global FluentValidation scan.
+// MarkKeyReceiptFeeCollectedRequest stays in global Application Contracts: both the
+// financial charges-dispatch host and the operations key-envelope host bind it.
 
 public class KeyEnvelopeAssignmentInput
 {

@@ -1,13 +1,13 @@
 # Ownership catalog and boundary guardrails
 
-> **Status (2026-09-06): historical record.** The split this catalog planned is complete
-> (2026-08-28: the legacy context and `ApplicationDbContext` are gone, every context owns its
-> own database and migration stream) and the 2026-09 integrity pass added the foreign keys,
-> CHECK constraints and row versions. The ownership table and decisions D1–D6 below are still
-> the reference the boundary tests enforce (`TableOwnershipCatalog`, `SchemaAccessBoundaryTests`,
-> `docs/architecture/boundary-baseline.json`); for the database as it is today read
-> [`docs/DATABASE_OVERVIEW.md`](../DATABASE_OVERVIEW.md). The "Phase status" paragraphs that
-> follow are left as written.
+> **Status (2026-09-20): historical record, still the test source of truth.** The split
+> this catalog planned is complete (A10: `ApplicationDbContext` gone; each context owns its
+> database and migration stream). D1 inspector-fee tables live in `financial`; D2
+> `OperationsTasks` lives in `operations` (relocated from the `case_study` schema name on
+> 2026-09-20). The ownership table and decisions D1–D6 are what
+> `TableOwnershipCatalog` / `SchemaAccessBoundaryTests` enforce. For the database as it is
+> today read [`docs/DATABASE_OVERVIEW.md`](../DATABASE_OVERVIEW.md). The "Phase status"
+> paragraphs that follow were written 2026-07-30 and are left as written.
 
 This is the Phase 0 artifact required by [`docs/architecture-split-plan.md`](../architecture-split-plan.md):
 a table ownership catalog, a classification of every verified cross-boundary use, and
@@ -58,8 +58,8 @@ coupling is entirely in queries and transactions, not in referential constraints
 
 | Id | Question | Outcome | Note |
 | --- | --- | --- | --- |
-| D1 | Inspector-fee ledgers, transitions, disbursement batches | **financial** | Accrual/discount/exclusion/batching are financial lifecycle states, and financial reporting and engineering billing already read the ledger. Rows stay named in `case_study`; after the Phase 4 cutover they live on the dedicated financial database until a later relocate. |
-| D2 | Operations tasks, court-visit charges | **operations** owns `OperationsTasks` (display-id numbering moved to `operations.OperationsReferenceSequences` on 2026-09-05); **financial** owns `CourtVisitFeeCharges` | The task lifecycle is operations work; the charge it produces is priced and collected by Financial. Charge creation moves behind a Financial command in Phase 3. |
+| D1 | Inspector-fee ledgers, transitions, disbursement batches | **financial** | Accrual/discount/exclusion/batching are financial lifecycle states, and financial reporting and engineering billing already read the ledger. Tables live in `financial` on the financial database (relocated 2026-09-20). |
+| D2 | Operations tasks, court-visit charges | **operations** owns `OperationsTasks` (in `operations` since 2026-09-20; display-id numbering in `operations.OperationsReferenceSequences`); **financial** owns `CourtVisitFeeCharges` | The task lifecycle is operations work; the charge it produces is priced and collected by Financial. |
 | D3 | Notification inbox rows and recipient resolution | **platform** | Platform already owns the list/mutation endpoints and non-owners already request notifications through the outbox. Recipient resolution becomes a Platform projection or an owner contract in Phase 3. |
 | D4 | Document-reference counters | **case-study** | The counter is the correspondence-numbering sequence of the case-study document set; engineering billing is a consumer and gets numbers through a Case Study command in Phase 3. |
 | D5 | Service-local shape of outbox/inbox | **per-producer outbox, per-consumer inbox** | Each producing context maps `messaging.OutboxMessages` and owns only the rows it inserts, so a business write and its event stay in one `SaveChanges`. Consumers own the rows carrying their own `Consumer` value. |
@@ -73,10 +73,10 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
   The catalog resolves this with an `ownershipModel` field: `single-owner` tables may appear
   in exactly one context, `per-producer`/`per-consumer` tables own rows rather than the table.
   The guardrail enforces that distinction rather than the blanket rule.
-- **Ownership is behavioural, not physical.** `InspectorFee*`, `DisbursementBatches`, and
-  `OperationsTasks` are owned by Financial and Operations while their rows stay named in the
-  `case_study` schema. After the Phase 4 cutover those tables live on the owner databases;
-  renaming them out of `case_study` is a later relocate.
+- **Ownership is behavioural, then physical.** `InspectorFee*`, `DisbursementBatches`, and
+  `OperationsTasks` were owned by Financial and Operations while their rows still used the
+  `case_study` schema name. After the Phase 4 cutover those tables lived on the owner
+  databases; on 2026-09-20 they were renamed into `financial` / `operations`.
 - **A table can be owned by a context that is not yet extracted.** `UserNotifications` is
   Platform-owned (D3) but stays on the legacy context until the messaging slice, because
   extracting it separately would split notification writes from the outbox that carries them.
@@ -102,9 +102,6 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | `WorkOrders`, `WorkOrderProperties`, `PropertyContacts`, `PropertyTimelineEntries` | case-study | `ApplicationDbContext` | `case-study.work-order` |
 | `WorkflowTasks`, `CaseStudyForms`, `PartyTaskSubmissions`, `FieldInspectionWorkspaces` | case-study | `ApplicationDbContext` | `case-study.workflow` |
 | `InternalDelegationLetterSets`, `PoIntakeDrafts`, `DocumentReferenceCounters` (D4) | case-study | `ApplicationDbContext` | `case-study.documents` |
-| `InspectorFeeLedgers`, `InspectorFeeTransitions` (D1) | financial | `ApplicationDbContext` | `inspector-fees.ledger` |
-| `DisbursementBatches` (D1) | financial | `ApplicationDbContext` | `inspector-fees.disbursement` |
-| `OperationsTasks` (D2) | operations | `ApplicationDbContext` | `operations.tasks` |
 
 ### `platform` — extracted
 
@@ -122,6 +119,7 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | `PropertyFailures` | failures | `FailuresDbContext` | `failures.lifecycle` |
 | `FailureTypesCatalogConfigs` | failures | `ApplicationDbContext` | `failures.catalog` |
 | `SurveyOffices` | operations | `ApplicationDbContext` | `operations.reference` |
+| `OperationsTasks` (D2) | operations | `OperationsDbContext` | `operations.tasks` |
 | `PropertyKeyRecords`, `KeyEnvelopes`, `KeyEnvelopeAssignments`, `KeyEnvelopeHandoffs`, `KeyEnvelopeTimelineEntries`, `PropertyCourtAccesses` | operations | `ApplicationDbContext` | `operations.keys` |
 | `ValuationRequests` | valuation | `ValuationDbContext` | `valuation.requests` |
 | `EvaluatorRecallRecords` | valuation | `ValuationDbContext` | `valuation.recalls` |
@@ -132,6 +130,8 @@ Judgment calls made while approving, beyond the catalog's proposed owners:
 | Table | Owner | Context | Transaction group |
 | --- | --- | --- | --- |
 | `PoEnfazInvoices`, `PoEnfazRevenueLines` | financial | `ApplicationDbContext` | `financial.enfaz-invoicing` |
+| `InspectorFeeLedgers`, `InspectorFeeTransitions` (D1) | financial | `FinancialDbContext` | `inspector-fees.ledger` |
+| `DisbursementBatches` (D1) | financial | `FinancialDbContext` | `inspector-fees.disbursement` |
 | `PartyBillingStatements`, `PartyBillingStatementLines` | financial | `ApplicationDbContext` | `financial.party-billing` |
 | `KeyReceiptFeeCharges`, `CourtVisitFeeCharges` (D2) | financial | `ApplicationDbContext` | `financial.charges` |
 | `PartyFeePricingTables`, `PartyFeePricingTiers`, `PartyFeePricingAssignments` | financial | `ApplicationDbContext` | `financial.pricing` |
@@ -263,6 +263,6 @@ repository and must be delivered by the named owners.
 | --- | --- | --- |
 | Nominate a service owner per API and an owner for the deploy-time migrator | engineering management | formal sign-off of the approvals recorded here |
 | Inventory production-only SQL clients, BI jobs, database roles, backup/restore procedures, and cross-schema database objects (D6) | operations / data platform | Phase 3 grant changes; hard stop for Phase 4 |
-| Capture p95 latency, error rate, connection counts, outbox backlog age, dead-letter count, consumer redeliveries, and key row counts | operations | comparison baseline for the rest of Phase 1 |
+| Capture p95 latency, error rate, connection counts, outbox backlog age, dead-letter count, consumer redeliveries, and key row counts | operations | **Instruments shipped 2026-09-20** (HTTP p95, Npgsql pool, outbox backlog/dispatch on Grafana `ree-service-overview`). Live production numbers still need an observation window. |
 | Validate ADR 0006 deploy-time migration against a restored production-like database, including the `xmin` migration SQL (the blank-database half is done) | migrator owner | **Met (2026-08-18)** on leftover `realestate_eval_dev` copy. Not a Hetzner production dump. |
-| Measure connection-pool counts per process now that each service opens a second pooled context | operations | extraction steps 2–5 (the plan's connection-growth risk) |
+| Measure connection-pool counts per process now that each service opens a second pooled context | operations | **Npgsql `db.client.connections.usage` exported 2026-09-20.** Read per-service used/idle in Grafana; live production still an observation window. |

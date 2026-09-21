@@ -34,7 +34,7 @@ import {
 import {
   caseStudyTaskForProperty,
   tasksForRole,
-} from "../../lib/app-data/tasks-storage";
+} from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";

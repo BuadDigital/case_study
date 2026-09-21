@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
@@ -6,6 +7,7 @@ using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Identity.Infrastructure;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Application.Validation;
 
 namespace RealEstateEval.Identity.Api;
 
@@ -22,6 +24,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddIdentityInfrastructure(builder.Configuration, connectionString!);
+        builder.Services.AddValidatorsFromAssemblyContaining<UsernameLoginRequestValidator>();
     }
 
     public async Task ConfigureAppAsync(WebApplication app, string? connectionString)

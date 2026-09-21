@@ -46,7 +46,7 @@ import {
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 import {
   inspectorErrorLinks,

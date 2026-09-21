@@ -35,7 +35,7 @@ import {
   useWorkflowTasksPageQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
-import type { WorkflowTask } from "../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../lib/app-data/tasks";
 import { resolveQueueTasksForViewer } from "../lib/app-data/viewer-task-access";
 import {
   buildDistributionQueueRowMeta,

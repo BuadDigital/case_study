@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { deedsMatch, normalizeDeedNumber } from "../deed-number";
-import { engineeringOfficeAvailable, engineeringOfficeUnavailableReason } from "../tasks-storage";
+import { engineeringOfficeAvailable, engineeringOfficeUnavailableReason } from "../tasks";
 import { emptyProperty } from "../po-intake-data";
 import { buildPropertyFromPriorDeed } from "../po-intake-model";
 

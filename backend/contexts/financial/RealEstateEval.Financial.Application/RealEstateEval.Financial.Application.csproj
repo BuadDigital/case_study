@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Financial.Domain\RealEstateEval.Financial.Domain.csproj" />
+    <!-- Leaf Domain: inspector-fee ensure-ledgers still takes WorkflowTask so one
+         Case Study write and its fee rows stay in one call. -->
+    <ProjectReference Include="..\..\case-study\RealEstateEval.CaseStudy.Domain\RealEstateEval.CaseStudy.Domain.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
   </ItemGroup>
 

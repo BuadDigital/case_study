@@ -32,7 +32,7 @@ import {
   taskDisplayPropertyLabel,
   type TaskDistributionDraft,
   type WorkflowTask,
-} from "../../lib/app-data/tasks-storage";
+} from "../../lib/app-data/tasks";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";

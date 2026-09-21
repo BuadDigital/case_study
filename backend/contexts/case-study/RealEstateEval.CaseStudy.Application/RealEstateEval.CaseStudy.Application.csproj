@@ -12,6 +12,7 @@
     <!-- Leaf Domain of another context: the case-study submit gate quotes
          PropertyComparableLinkRules so the minimum stays single-sourced. -->
     <ProjectReference Include="..\..\valuation\RealEstateEval.Valuation.Domain\RealEstateEval.Valuation.Domain.csproj" />
+    <ProjectReference Include="..\..\financial\RealEstateEval.Financial.Application\RealEstateEval.Financial.Application.csproj" />
     <ProjectReference Include="..\..\..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
   </ItemGroup>
 

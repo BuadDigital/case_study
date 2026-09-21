@@ -22,7 +22,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
-import { caseStudyTaskForProperty } from "../../lib/app-data/tasks-storage";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-status";

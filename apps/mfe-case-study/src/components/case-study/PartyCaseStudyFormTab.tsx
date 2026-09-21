@@ -6,7 +6,7 @@ import { CaseStudyForm } from "./CaseStudyForm";
 import { partyIdForRoleId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "../../lib/app-data/tasks-storage";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   usePoRecordQuery,
   useWorkflowTasksQuery,
