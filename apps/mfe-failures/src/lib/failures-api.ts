@@ -20,6 +20,7 @@ import {
   notifyWorkOrdersChanged,
   workOrdersApiConfig,
   apiErrorMessage,
+  resolveApiError,
 } from "@platform/app-shared/app-data/work-orders-api-config";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
@@ -180,6 +181,17 @@ export type FailureMutationResult =
   | { ok: true; data: FailureRecord }
   | { ok: false; error: string };
 
+type FailureApiErr = {
+  ok: false;
+  kind: string;
+  errors?: Record<string, string>;
+};
+
+/** The server's own reason (a 400 carries one) beats the generic "check the required fields". */
+function failureMutationError(result: FailureApiErr): string {
+  return resolveApiError(result.kind, result.errors);
+}
+
 async function mutateFailure(
   id: string,
   apiCall: (
@@ -187,13 +199,13 @@ async function mutateFailure(
     failureId: string,
   ) => Promise<
     | { ok: true; data: FailureRecordDto }
-    | { ok: false; kind: string }
+    | FailureApiErr
   >,
 ): Promise<FailureMutationResult> {
   const config = requireFailuresApi();
   const result = await apiCall(config, id);
   if (!result.ok) {
-    return { ok: false, error: apiErrorMessage(result.kind) };
+    return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
@@ -221,7 +233,7 @@ export async function suspendFailureAsync(
   const config = requireFailuresApi();
   const result = await apiSuspendFailure(config, id, note);
   if (!result.ok) {
-    return { ok: false, error: apiErrorMessage(result.kind) };
+    return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
@@ -233,7 +245,7 @@ export async function resolveFailureAsync(
   const config = requireFailuresApi();
   const result = await apiResolveFailure(config, id, input);
   if (!result.ok) {
-    return { ok: false, error: apiErrorMessage(result.kind) };
+    return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
@@ -245,7 +257,7 @@ export async function approveFailureAsync(
   const config = requireFailuresApi();
   const result = await apiApproveFailure(config, id, finalNote);
   if (!result.ok) {
-    return { ok: false, error: apiErrorMessage(result.kind) };
+    return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
 }
@@ -257,7 +269,7 @@ export async function returnFailureAsync(
   const config = requireFailuresApi();
   const result = await apiReturnFailure(config, id, finalNote);
   if (!result.ok) {
-    return { ok: false, error: apiErrorMessage(result.kind) };
+    return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
 }

@@ -148,11 +148,11 @@ public class CourtCatalogRulesTests
     // ---- seed catalog ----
 
     [Fact]
-    public void Seed_ships_fourteen_courts_and_thirty_five_circuit_names()
+    public void Seed_ships_fifteen_courts_and_thirty_five_circuit_names()
     {
-        Assert.Equal(14, CourtCatalogSeed.ExecutionCourts.Count);
+        Assert.Equal(15, CourtCatalogSeed.ExecutionCourts.Count);
         Assert.Equal(35, CourtCatalogSeed.ExecutionCircuitNames.Count);
-        Assert.Equal(14, CourtCatalogSeed.ExecutionCourts.Select(c => c.Name).Distinct().Count());
+        Assert.Equal(15, CourtCatalogSeed.ExecutionCourts.Select(c => c.Name).Distinct().Count());
         Assert.All(CourtCatalogSeed.ExecutionCourts, c => Assert.StartsWith("محكمة التنفيذ ب", c.Name));
     }
 

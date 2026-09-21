@@ -1,7 +1,7 @@
 namespace RealEstateEval.Platform.Application.Rules;
 
 /// <summary>
-/// The shipped execution-court catalog: fourteen courts and the thirty-five numbered circuits
+/// The shipped execution-court catalog: fifteen courts and the thirty-five numbered circuits
 /// each of them is seeded with. Pure data plus the legacy-name mapping used to recognise
 /// circuits seeded before the numbered scheme.
 /// </summary>
@@ -17,6 +17,7 @@ public static class CourtCatalogSeed
         ("الشرقية", "الدمام", "محكمة التنفيذ بالدمام"),
         ("الشرقية", "الخبر", "محكمة التنفيذ بالخبر"),
         ("الشرقية", "الأحساء", "محكمة التنفيذ بالأحساء"),
+        ("الشرقية", "حفر الباطن", "محكمة التنفيذ بحفر الباطن"),
         ("القصيم", "بريدة", "محكمة التنفيذ ببريدة"),
         ("عسير", "أبها", "محكمة التنفيذ بأبها"),
         ("تبوك", "تبوك", "محكمة التنفيذ بتبوك"),

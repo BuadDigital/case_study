@@ -155,7 +155,7 @@ public class FailuresController : ControllerBase
             request,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر — تغيّرت حالته أو لم يعد موجوداً، حدّث الصفحة");
         return Ok(dto);
     }
 
