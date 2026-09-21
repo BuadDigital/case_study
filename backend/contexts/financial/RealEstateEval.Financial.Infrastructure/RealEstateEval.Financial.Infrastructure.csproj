@@ -18,6 +18,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Same Ejadah letterhead/stamp the court and site-ack letters print on. -->
+    <EmbeddedResource Include="Assets\ejadah-letterhead.png" />
+    <EmbeddedResource Include="Assets\ejadah-stamp.png" />
+    <EmbeddedResource Include="Assets\emad-signature.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Design-time only: lets dotnet ef regenerate this stream's snapshot in place. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
       <PrivateAssets>all</PrivateAssets>
