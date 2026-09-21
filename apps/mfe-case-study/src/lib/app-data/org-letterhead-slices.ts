@@ -67,12 +67,12 @@ export function orgLetterheadSliceCss(
     .lh-start {
       top: ${headMm}mm; bottom: ${footMm}mm; right: 0;
       width: ${startMm}mm;
-      background-position: top right;
+      background-position: right 0 top -${headMm}mm;
     }
     .lh-end {
       top: ${headMm}mm; bottom: ${footMm}mm; left: 0;
       width: ${endMm}mm;
-      background-position: top left;
+      background-position: left 0 top -${headMm}mm;
     }
   `;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { allocateNumberedDocument } from "@platform/api-client";
@@ -16,7 +16,10 @@ import {
   ModalTitle,
   useToast,
 } from "@platform/ui-kit";
-import { CaseStudyReportDocument } from "../case-study/CaseStudyReportDocument";
+import {
+  CaseStudyReportFrame,
+  type CaseStudyReportFrameHandle,
+} from "../case-study/CaseStudyReportFrame";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
 import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-model";
 import {
@@ -304,10 +307,14 @@ export function PropertyDetailCaseStudyReport({
  // and fixed for the session — no new number on every click.
   const [reportReference, setReportReference] = useState<string | null>(null);
 
+  const reportFrameRef = useRef<CaseStudyReportFrameHandle>(null);
+  const printAfterLoad = useRef(false);
+
   const { data: tasks = [] } = useWorkflowTasksQuery();
 
   const printReport = useCallback(async () => {
     let reference = reportReference;
+    let allocatedNow = false;
     if (!reference) {
       const config = apiConfig();
       const propertyId = /^[0-9a-fA-F-]{36}$/.test(property.id)
@@ -323,12 +330,20 @@ export function PropertyDetailCaseStudyReport({
         if (allocated.ok) {
           reference = allocated.data.referenceNumber;
           setReportReference(reference);
+          allocatedNow = true;
         }
       }
     }
-    // One frame so the number paints in the header before the print dialog.
-    requestAnimationFrame(() => window.print());
+    // A new number reloads the preview page; print once that page has laid out its sheets.
+    if (allocatedNow) printAfterLoad.current = true;
+    else void reportFrameRef.current?.print();
   }, [reportReference, record.poNumber, property.id, property.deedNumber]);
+
+  const onReportFrameLoad = useCallback(() => {
+    if (!printAfterLoad.current) return;
+    printAfterLoad.current = false;
+    void reportFrameRef.current?.print();
+  }, []);
 
   const refreshDraft = useCallback(async () => {
     if (!task) {
@@ -507,14 +522,13 @@ export function PropertyDetailCaseStudyReport({
                 </Button>
               </div>
             </ModalHeader>
-            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto p-0 print:max-h-none print:overflow-visible print:bg-white">
-              <div className="cs-report-preview-shell print:p-0">
-                <CaseStudyReportDocument
-                  model={reportModel}
-                  id="cs-report-print-root"
-                  referenceNumber={reportReference}
-                />
-              </div>
+            <ModalBody className="p-0">
+              <CaseStudyReportFrame
+                ref={reportFrameRef}
+                model={reportModel}
+                referenceNumber={reportReference}
+                onLoad={onReportFrameLoad}
+              />
             </ModalBody>
           </div>
         </ModalOverlay>

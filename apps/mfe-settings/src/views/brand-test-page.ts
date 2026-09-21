@@ -31,8 +31,8 @@ html,body{margin:0;background:#e9e6df}
 .slice{position:absolute;background-image:url("${letterhead}");background-size:210mm 297mm;background-repeat:no-repeat}
 .head{top:0;left:0;right:0;height:${headMm}mm;background-position:top center}
 .foot{bottom:0;left:0;right:0;height:${footMm}mm;background-position:bottom center}
-.start{top:${headMm}mm;bottom:${footMm}mm;right:0;width:${startMm}mm;background-position:top right}
-.end{top:${headMm}mm;bottom:${footMm}mm;left:0;width:${endMm}mm;background-position:top left}
+.start{top:${headMm}mm;bottom:${footMm}mm;right:0;width:${startMm}mm;background-position:right 0 top -${headMm}mm}
+.end{top:${headMm}mm;bottom:${footMm}mm;left:0;width:${endMm}mm;background-position:left 0 top -${headMm}mm}
 .content{position:absolute;top:${headMm}mm;bottom:${footMm}mm;right:${startMm}mm;left:${endMm}mm;padding:6mm;box-sizing:border-box;outline:.3mm dashed #a4906f}
 h1{font-size:13pt;margin:0 0 4mm}
 table{width:100%;border-collapse:collapse;font-size:10pt}

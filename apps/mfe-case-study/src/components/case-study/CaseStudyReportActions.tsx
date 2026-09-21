@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button, ModalBody, ModalHeader, ModalOverlay, ModalTitle, useToast } from "@platform/ui-kit";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
-import { CaseStudyReportDocument } from "./CaseStudyReportDocument";
+import {
+  CaseStudyReportFrame,
+  type CaseStudyReportFrameHandle,
+} from "./CaseStudyReportFrame";
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
@@ -18,8 +21,9 @@ export function CaseStudyReportActions({ model }: Props) {
 
   useEscapeKey(previewOpen, () => setPreviewOpen(false));
 
+  const frameRef = useRef<CaseStudyReportFrameHandle>(null);
   const printFromPreview = useCallback(() => {
-    window.print();
+    void frameRef.current?.print();
   }, []);
 
   const openPrintWindow = useCallback(() => {
@@ -68,10 +72,8 @@ export function CaseStudyReportActions({ model }: Props) {
                 </Button>
               </div>
             </ModalHeader>
-            <ModalBody className="max-h-[calc(100vh-120px)] overflow-auto p-0 print:max-h-none print:overflow-visible print:bg-white">
-              <div className="cs-report-preview-shell print:p-0">
-                <CaseStudyReportDocument model={model} id="cs-report-print-root" />
-              </div>
+            <ModalBody className="p-0">
+              <CaseStudyReportFrame ref={frameRef} model={model} />
             </ModalBody>
           </div>
         </ModalOverlay>
