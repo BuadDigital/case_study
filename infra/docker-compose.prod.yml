@@ -337,6 +337,10 @@ services:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__IdentityBaseUrl: http://identity:8080
+      # Every failure action appends an audit row through Platform; without this the client
+      # falls back to localhost:5168 and each resolve/approve/return/suspend answers 500 after
+      # it has already been saved.
+      UpstreamServices__PlatformBaseUrl: http://platform:8080
       # A9: Case Study reads/side-effects via HTTP. Deliberately no depends_on case-study —
       # case-study already depends_on failures; calls happen at request time.
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
