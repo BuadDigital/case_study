@@ -10,6 +10,10 @@ import {
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks";
 import { fieldInspectionTaskStatusBadge } from "./field-inspection-work-queue";
+import {
+  FAILURE_OBSTRUCTED_BADGE,
+  isTaskFailureObstructed,
+} from "@platform/app-shared/workflow/task-failure-status";
 
 export type QueueTaskStatusBadge = { label: string; className: string };
 
@@ -22,6 +26,7 @@ export function resolveQueueTaskStatusBadge(
   },
 ): QueueTaskStatusBadge | null {
   void options.partySubmission;
+  if (isTaskFailureObstructed(task)) return { ...FAILURE_OBSTRUCTED_BADGE };
   if (task.kind === "field-inspection") {
     return fieldInspectionTaskStatusBadge(
       task.id,

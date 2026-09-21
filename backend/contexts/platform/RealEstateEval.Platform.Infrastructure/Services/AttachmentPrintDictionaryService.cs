@@ -154,7 +154,10 @@ public sealed class AttachmentPrintDictionaryService
                 var rows = JsonSerializer.Deserialize<List<ValuationListItemDto>>(arr.GetRawText(), JsonOptions);
                 if (rows is { Count: > 0 })
                 {
-                    state.Lists[id] = NormalizeList(id, rows);
+                    // An untouched copy of the previous glossary follows the current seed.
+                    state.Lists[id] = IsUntouchedPreviousSeed(id, rows)
+                        ? seeded[id]
+                        : NormalizeList(id, rows);
                 }
                 else if (seeded.TryGetValue(id, out var seedRows) && seedRows.Count > 0)
                 {
@@ -175,6 +178,10 @@ public sealed class AttachmentPrintDictionaryService
             state.Lists.GetValueOrDefault(ValuationListIds.Attachments) ?? []);
         return state;
     }
+
+    private static bool IsUntouchedPreviousSeed(string listId, IReadOnlyList<ValuationListItemDto> rows) =>
+        (listId == ValuationListIds.Glossary && ValuationListsSeed.IsPreviousGlossaryDefault(rows))
+        || (listId == ValuationListIds.IvsStandards && ValuationListsSeed.IsPreviousIvsStandardsDefault(rows));
 
     private static List<ValuationListItemDto> NormalizeList(
         string listId,

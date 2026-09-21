@@ -4,8 +4,8 @@ using RealEstateEval.Financial.Application.Abstractions;
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
 /// <summary>
-/// QuestPDF adapter for <see cref="IEnfazInvoicePdfRenderer"/>. The layout itself stays in
-/// <see cref="EnfazInvoicePdfGenerator"/>; this only puts it behind the Application port.
+/// QuestPDF adapter for <see cref="IEnfazInvoicePdfRenderer"/>. Layout matches the official
+/// Ejadah letters (letterhead, navy table, stamp) inside <see cref="EnfazInvoicePdfGenerator"/>.
 /// </summary>
 public sealed class EnfazInvoicePdfRenderer : IEnfazInvoicePdfRenderer
 {

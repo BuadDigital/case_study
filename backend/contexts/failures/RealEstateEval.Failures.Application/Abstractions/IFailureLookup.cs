@@ -21,6 +21,14 @@ public interface IFailureLookup
     Task<IReadOnlyList<string>> ListApprovedPropertyKeysAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// "PO|propertyId" of every property with a failure that is neither resolved nor suspended
+    /// (the same set <see cref="HasBlockingAsync"/> answers per property), so a list can mark
+    /// its rows obstructed with one call.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListBlockingPropertyKeysAsync(
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<FailureRecordDto>> ListForPropertyAsync(
         string poNumber,
         string propertyId,

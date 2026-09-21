@@ -4,6 +4,7 @@ import {
 } from "@platform/ui-kit";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
+import { isTaskFailureObstructed } from "@platform/app-shared/workflow/task-failure-status";
 import {
   buildPrimaryDataTableRow,
   findPropertyForTask,
@@ -18,6 +19,7 @@ import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/dom
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (task.status === "completed" || task.phase === "done") return "مكتمل";
+  if (isTaskFailureObstructed(task)) return "تعذر";
   if (task.kind === "government-review") return "المراجعة الحكومية";
   if (task.kind === "field-inspection") return "معاينة العقار";
   if (task.kind === "property-appraisal") return "تقييم العقار";

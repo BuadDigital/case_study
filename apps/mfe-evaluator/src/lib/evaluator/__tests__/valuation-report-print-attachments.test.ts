@@ -224,6 +224,37 @@ describe("valuation report live fill attachments and glossary", () => {
     expect([...glossTerms, ...glossB].join("|")).toContain("العضو");
   });
 
+  it("renders a U+2028 inside a definition as a line break, not a new term", () => {
+    const fill = buildValuationReportLiveFill({
+      draft: draft(),
+      ivsStandardsText: "المعيار 100: أ- المبادئ\u2028ب- الجودة\u2028ج- الامتثال\nالمعيار 101: نطاق",
+    });
+    expect(fill.ivsPairs).toHaveLength(2);
+
+    const dom = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body><section data-sec="37"><table class="def"><tr><td class="k">قديم</td><td>نص</td></tr></table></section></body></html>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+
+    const first = dom.querySelectorAll('[data-sec="37"] tr')[0]!.querySelectorAll("td")[1]!;
+    expect(first.querySelectorAll("br")).toHaveLength(2);
+    expect(first.textContent).toBe("أ- المبادئب- الجودةج- الامتثال");
+    expect(dom.querySelectorAll('[data-sec="37"] tr')).toHaveLength(2);
+  });
+
+  it("fills the valuation date into the restrictions clause, like the terms", () => {
+    const fill = buildValuationReportLiveFill({
+      draft: { ...draft(), appraisalDate: "2026-09-10" },
+      restrictionsText:
+        "بند أول.\nكانت قائمة في تاريخ التقييم ({{reportDate}}) في حال اتضحت للمقيم.",
+    });
+    expect(fill.restrictionsBullets).toEqual([
+      "بند أول.",
+      "كانت قائمة في تاريخ التقييم (2026/09/10) في حال اتضحت للمقيم.",
+    ]);
+  });
+
   it("keeps IVS template when org text is empty", () => {
     const fill = buildValuationReportLiveFill({ draft: draft() });
     expect(fill.ivsPairs).toEqual([]);

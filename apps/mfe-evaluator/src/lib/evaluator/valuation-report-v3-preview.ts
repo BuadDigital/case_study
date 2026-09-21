@@ -12,6 +12,9 @@ const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 export { escHtml } from "./html-escape";
 import { escHtml } from "./html-escape";
 import { PRINT_FONT_FACE_CSS } from "./valuation-report-print-assets";
+import { paginatePropertyPhotoPages } from "./valuation-report-photo-pages";
+import { mergeGlossarySections } from "./valuation-report-glossary-merge";
+import { markPrintFlow, valuationReportPaginateScript } from "./valuation-report-print-flow";
 
 export type ValuationReportV3Meta = {
   reportNo?: string;
@@ -501,19 +504,20 @@ function applyBrandIdentity(
     }
   });
 
-  /* Visual-identity margins: top / bottom / right (padStart) / left (pad). */
+  /*
+   * The letterhead strips follow the visual-identity settings; the page content, the header block
+   * and the page number keep the millimetres of the v3 design (46 / 16 / 32 / 16, header at
+   * 13 mm / 19 mm, page number 22.5 mm / 20.6 mm) that the template's own CSS carries.
+   */
   return (
-    `.page.pg{position:relative;background:#fff!important;` +
-    `padding:${head}mm ${padStart}mm ${footH}mm ${padEnd}mm!important;` +
-    `box-sizing:border-box}` +
+    `.page.pg{position:relative;background:#fff!important;box-sizing:border-box}` +
     `.lh-slice{position:absolute;pointer-events:none;z-index:0;background-image:url("${letterhead}")}` +
     `.lh-head{top:0;left:0;right:0;height:${head}mm;background-size:210mm 297mm;background-position:top center;background-repeat:no-repeat}` +
     `.lh-foot{bottom:0;left:0;right:0;height:${footH}mm;background-size:210mm 297mm;background-position:bottom center;background-repeat:no-repeat}` +
-    `.lh-start{top:${head}mm;bottom:${footH}mm;inset-inline-start:0;width:${padStart}mm;background-size:210mm 297mm;background-position:top right;background-repeat:no-repeat}` +
-    `.lh-end{top:${head}mm;bottom:${footH}mm;inset-inline-end:0;width:${padEnd}mm;background-size:210mm 297mm;background-position:top left;background-repeat:no-repeat}` +
+    `.lh-start{top:${head}mm;bottom:${footH}mm;inset-inline-start:0;width:${padStart}mm;background-size:210mm 297mm;background-position:right 0 top -${head}mm;background-repeat:no-repeat}` +
+    `.lh-end{top:${head}mm;bottom:${footH}mm;inset-inline-end:0;width:${padEnd}mm;background-size:210mm 297mm;background-position:left 0 top -${head}mm;background-repeat:no-repeat}` +
     `.page.pg > *:not(.lh-slice):not(.pg-num):not(.pg-meta){position:relative;z-index:1}` +
-    `.val-rpt-v3 .pg-meta{position:absolute;top:8mm;inset-inline-start:${Math.max(6, padStart + 4)}mm;inset-inline-end:auto;right:auto;z-index:2}` +
-    `.val-rpt-v3 .pg-num{position:absolute!important;top:calc(${footTop}mm + 1px)!important;bottom:auto!important;left:auto!important;right:auto!important;inset-inline-start:${padStart}mm!important;inset-inline-end:auto!important;z-index:2;text-align:start;transform:translateX(-4px)}` +
+    `.val-rpt-v3 .pg-meta,.val-rpt-v3 .pg-num{z-index:2}` +
     stampBoxCss(".val-rpt-v3", mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!), mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!)) +
     signatureBoxCss(
       ".val-rpt-v3",
@@ -536,7 +540,11 @@ html,body{margin:0;direction:rtl}
   direction:rtl;
   color:#15150f;
   font-family:"IBM Plex Sans Arabic","IBM Plex Sans",Tajawal,system-ui,sans-serif;
+  /* The design system's body type: the template's cells and lists inherit this line height. */
+  font-size:14px;line-height:1.75;font-weight:400;
 }
+/* Design system .sec class: every section's text is the secondary grey, not the page ink. */
+.val-rpt-v3 .sec{font-size:12px;color:#73767f}
 .val-rpt-v3 .page.pg{
   width:210mm;height:297mm;overflow:hidden;margin:0 auto 16px;
   box-shadow:0 2px 10px rgba(0,0,0,.25);border-radius:7px;box-sizing:border-box;
@@ -690,6 +698,8 @@ export function prepareValuationReportV3Html(
     });
     removeEmptyPages(dom);
   }
+  mergeGlossarySections(dom);
+  if (mode === "print") paginatePropertyPhotoPages(dom);
   renumberPages(dom);
   const branding = meta.branding ?? BRAND_IDENTITY_DEFAULTS;
   const valuers = meta.valuers ?? [];
@@ -713,6 +723,7 @@ export function prepareValuationReportV3Html(
 
   const brandCss = applyBrandIdentity(dom, branding, valuers, origin);
   const printCss = authored.replace(/doc-page/g, ".val-rpt-v3");
+  const metaTemplate = markPrintFlow(dom);
   const pages = [...dom.querySelectorAll("section.page.pg")]
     .map((p) => p.outerHTML)
     .join("\n");
@@ -724,7 +735,9 @@ export function prepareValuationReportV3Html(
 ${base}
 <title>تقرير التقييم</title>
 <style>${printCss}\n${brandCss}\n${PRINT_CHROME}</style></head>
-<body class="val-rpt-v3">${pages}</body></html>`;
+<body class="val-rpt-v3">${pages}
+${metaTemplate}
+<script>${valuationReportPaginateScript()}</script></body></html>`;
 }
 
 // The template (~20 pages) is stable for the session — fetch once to avoid a network round-trip on every

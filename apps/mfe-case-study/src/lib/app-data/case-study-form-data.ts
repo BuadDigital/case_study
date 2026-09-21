@@ -37,7 +37,14 @@ export function caseStudyApproverName(): string {
   return name || DEFAULT_APPROVER_NAME;
 }
 export function caseStudySignatureImage(): string {
-  return getCachedOrganizationBranding()?.signatureUrl || DEFAULT_SIGNATURE;
+  // The branding default points at ejadah-signature.png, which is not shipped — only an
+  // uploaded signature replaces the built-in one, or the report prints a broken image.
+  return (
+    customBrandLogoUrl(
+      getCachedOrganizationBranding()?.signatureUrl,
+      BRAND_IDENTITY_DEFAULTS.signatureUrl,
+    ) || DEFAULT_SIGNATURE
+  );
 }
 export function caseStudyStampImage(): string {
   return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;

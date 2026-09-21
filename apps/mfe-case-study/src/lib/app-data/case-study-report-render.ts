@@ -2,25 +2,34 @@ import {
   CASE_STUDY_REPORT_SUBTITLE,
   CASE_STUDY_REPORT_TITLE,
   CASE_STUDY_SECTION_REMARKS_HINT,
-  caseStudyHeaderLogoImage,
   caseStudySignatureImage,
   caseStudyStampImage,
 } from "./case-study-form-data";
-import type { CaseStudyQuestionSection } from "./case-study-form-data";
 import type {
   CaseStudyReportModel,
   CaseStudyReportSection,
 } from "./case-study-report-model";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
+import { getCachedOrganizationBranding } from "@platform/app-shared/organization/organization-settings-cache";
+import {
+  orgLetterheadLayout,
+  orgLetterheadSliceCss,
+  orgLetterheadUrl,
+} from "./org-letterhead-slices";
+import {
+  officialLetterFontsHtml,
+  officialLetterShellCss,
+  officialLetterToolbarHtml,
+} from "./official-letter-layout";
+import { caseStudyReportPaginateScript } from "./case-study-report-paginate";
 
 export type CaseStudyReportRenderOptions = {
   origin?: string;
+  /** CS-{year}-{seq} — printed under the title once allocated (Decision 25, entity 6). */
+  referenceNumber?: string | null;
+  /** Drop the print toolbar when the page is shown inside the app's own preview modal. */
+  embedded?: boolean;
 };
-
-const SECTIONS_WITH_ALERT: ReadonlySet<CaseStudyQuestionSection> = new Set([
-  "deed",
-  "survey",
-]);
 
 const EXTRA_SUB_NOTE_DEFAULT =
   "في حال وجود اختلاف يتم التوضيح في الملاحظات ادناه / لا يوجد";
@@ -30,6 +39,9 @@ export function caseStudyReportAssetUrl(
   origin?: string,
 ): string {
   if (!origin) return path;
+  // An uploaded signature/stamp is a data: URL and a hosted one is absolute — only a
+  // site-relative path needs the origin (report opens as a blob: page with no base).
+  if (!path.startsWith("/")) return path;
   return `${origin.replace(/\/$/, "")}${path}`;
 }
 
@@ -38,55 +50,6 @@ export { escapeCaseStudyReportHtml };
 
 function renderCb(checked: boolean): string {
   return `<span class="csrd-cb${checked ? " csrd-cb--on" : ""}" aria-hidden="true">${checked ? "☑" : "☐"}</span>`;
-}
-
-const WATERMARK_REPEAT_COUNT = 22;
-
-function renderWatermarkHtml(): string {
-  const words = Array.from({ length: WATERMARK_REPEAT_COUNT })
-    .map(() => '<span class="csrd-watermark-word">EJADAH</span>')
-    .join("");
-  return `<div class="csrd-watermark" aria-hidden="true">
-  <div class="csrd-watermark-repeat">${words}</div>
-</div>`;
-}
-
-function renderPageChrome(): string {
-  const logo = caseStudyHeaderLogoImage();
-  const logoHtml = logo
-    ? `<img class="csrd-header-logo-img" src="${escapeCaseStudyReportHtml(logo)}" alt="" />`
-    : `<div class="csrd-header-wordmark">EJADAH<span class="csrd-header-wordmark-dot">.</span></div>
-      <div class="csrd-header-sub">PROFESSIONAL</div>`;
-  return `
-<div class="csrd-header" aria-hidden="true">
-  <div class="csrd-header-placeholder">
-    <div class="csrd-header-logo">
-      ${logoHtml}
-    </div>
-    <div class="csrd-header-divider"></div>
-    <div class="csrd-header-service">
-      <div class="csrd-header-service-en">VALUATION<br/>SERVICES</div>
-    </div>
-  </div>
-</div>
-<div class="csrd-footer" aria-hidden="true">
-  <div class="csrd-footer-placeholder">
-    <div class="csrd-footer-col">
-      <div>📍 Jeddah 23326 – Building No. 9360 add No. 4150</div>
-      <div>📞 920011838</div>
-      <div>✉ info@ejadah-sa.com</div>
-    </div>
-    <div class="csrd-footer-sep"></div>
-    <div class="csrd-footer-col">
-      <div>C.R. 4030297680</div>
-      <div>VAT: 310163856300003</div>
-      <div>CL: 11000007</div>
-      <div class="csrd-footer-gold">Ejadah-sa.com</div>
-    </div>
-    <div class="csrd-footer-ar">شركة إجادة المهنية<br/>Ejadah Professional Company</div>
-  </div>
-</div>
-${renderWatermarkHtml()}`;
 }
 
 function renderCommissionTable(model: CaseStudyReportModel): string {
@@ -121,9 +84,6 @@ function renderCommissionTable(model: CaseStudyReportModel): string {
 function renderSection(section: CaseStudyReportSection): string {
   const esc = escapeCaseStudyReportHtml;
   const pageBreak = section.id === "comp" ? " csrd-section--break" : "";
-  const alert = SECTIONS_WITH_ALERT.has(section.id)
-    ? `<div class="csrd-alert">⚠ ${esc(CASE_STUDY_SECTION_REMARKS_HINT)}</div>`
-    : "";
   const notesLabel =
     section.id === "deed" || section.id === "survey"
       ? CASE_STUDY_SECTION_REMARKS_HINT
@@ -165,7 +125,6 @@ function renderSection(section: CaseStudyReportSection): string {
       : "";
 
   return `<div class="csrd-section${pageBreak}">
-    ${alert}
     <table class="csrd-table"><tbody>
       <tr class="csrd-sec-hdr"><td colspan="3">${esc(section.title)}</td></tr>
       <tr class="csrd-col-hdr">
@@ -211,40 +170,36 @@ export function caseStudyReportPrintCss(): string {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: "IBM Plex Sans Arabic", "Segoe UI", Arial, sans-serif;
-  background: #fff;
   direction: rtl;
 }
-@page { size: A4 portrait; margin: 0; }
 .csrd-root {
   --navy:#0f2a4e; --gold:#a38f67; --border:#c8c8c8; --row-alt:#f9fafc;
   --sub-bg:#f5f6f8; --approval-bg:#f8f9fa; --yellow-bg:#fffbeb; --yellow-bdr:#e5c84a;
   --yellow-text:#7a5f00; --text:#1c1c1c; --text-muted:#5a5a5a; --white:#fff;
-  --header-h:38mm; --footer-h:24mm; --margin-top:42mm; --margin-btm:28mm;
-  --margin-side:14mm; --wm-w:17mm;
   font-size:9.5pt; line-height:1.45; color:var(--text); direction:rtl;
-  width:210mm; margin:0 auto; padding:var(--margin-top) var(--margin-side) var(--margin-btm);
-  min-height:297mm; position:relative; background:#fff;
+  display:flex; flex-direction:column; align-items:center; gap:16px;
 }
-.csrd-header { position:absolute; top:0; right:0; left:0; height:var(--header-h); z-index:200; background:#fff; overflow:hidden; }
-.csrd-header-placeholder { width:100%; height:100%; display:flex; border-bottom:3px solid var(--gold); }
-.csrd-header-logo { background:var(--navy); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 14px; min-width:55mm; gap:3px; }
-.csrd-header-logo-img { max-width:48mm; max-height:14mm; object-fit:contain; display:block; }
-.csrd-header-wordmark { color:#fff; font-size:20pt; font-weight:700; line-height:1; }
-.csrd-header-wordmark-dot { color:var(--gold); }
-.csrd-header-sub { color:var(--gold); font-size:7.5pt; font-weight:600; letter-spacing:3px; }
-.csrd-header-divider { width:4px; background:var(--gold); align-self:stretch; }
-.csrd-header-service { display:flex; flex-direction:column; justify-content:center; padding:0 16px; }
-.csrd-header-service-en { color:var(--gold); font-size:9.5pt; font-weight:600; letter-spacing:2.5px; line-height:1.4; }
-.csrd-footer { position:absolute; bottom:0; right:0; left:0; height:var(--footer-h); z-index:200; background:#fff; overflow:hidden; }
-.csrd-footer-placeholder { width:100%; height:100%; display:flex; align-items:center; padding:0 14mm; border-top:1.5px solid var(--border); direction:ltr; }
-.csrd-footer-col { display:flex; flex-direction:column; gap:2px; font-size:7.5pt; color:var(--text-muted); }
-.csrd-footer-sep { width:1px; height:22px; background:var(--border); margin:0 18px; }
-.csrd-footer-gold { color:var(--gold); font-weight:600; }
-.csrd-footer-ar { margin-left:auto; text-align:right; direction:rtl; font-size:8pt; font-weight:600; }
-.csrd-watermark { position:absolute; top:var(--header-h); bottom:var(--footer-h); right:0; left:auto; width:var(--wm-w); z-index:0; pointer-events:none; overflow:hidden; }
-.csrd-watermark-repeat { display:flex; flex-direction:column; align-items:center; justify-content:space-between; height:100%; width:100%; padding:3mm 0; }
-.csrd-watermark-word { font-family:"Segoe UI",Arial,sans-serif; font-size:6.5pt; font-weight:900; letter-spacing:0.6px; line-height:1; color:transparent; -webkit-text-stroke:0.35px rgba(15,42,78,0.18); opacity:0.55; white-space:nowrap; }
-.csrd-content { position:relative; z-index:1; }
+/* Measuring area: same width as a sheet's content box, laid out but never shown. It must not
+   sit off-screen to the left — in an RTL page that makes the page scroll sideways forever. */
+.csrd-flow {
+  position:absolute; top:0; right:0; visibility:hidden; height:0; overflow:hidden;
+  width:calc(210mm - var(--lh-start) - var(--lh-end) - 8mm);
+}
+.csrd-flow > * { display:flow-root; }
+.csrd-root:not([data-paginated]) .csrd-flow {
+  position:static; visibility:visible; height:auto; overflow:visible;
+  width:180mm; background:#fff; padding:10mm;
+}
+.csrd-sheets { display:flex; flex-direction:column; align-items:center; gap:16px; }
+.csrd-sheet {
+  position:relative; width:210mm; height:297mm; overflow:hidden; background:#fff;
+  box-shadow:0 4px 24px rgba(15,42,78,.15);
+}
+.csrd-sheet-content {
+  position:absolute; z-index:1; background:#fff;
+  top:var(--lh-head); bottom:var(--lh-foot); right:var(--lh-start); left:var(--lh-end);
+  padding:5mm 4mm; overflow:hidden;
+}
 .csrd-title-block { text-align:center; margin-bottom:5mm; padding-bottom:4mm; border-bottom:1.5px solid var(--gold); }
 .csrd-title-main { font-size:14pt; font-weight:700; color:var(--navy); }
 .csrd-title-sub { font-size:10pt; font-weight:600; color:var(--gold); margin-top:2px; }
@@ -261,21 +216,18 @@ body {
 .csrd-table .csrd-sub-row td { background:var(--sub-bg); font-size:8.5pt; color:var(--text-muted); font-style:italic; border-top:none; }
 .csrd-table .csrd-notes-row td { background:var(--approval-bg); font-size:9pt; line-height:1.55; }
 .csrd-notes-label { display:block; font-weight:700; color:var(--navy); margin-bottom:2px; }
-.csrd-alert { background:var(--yellow-bg); border:1px solid var(--yellow-bdr); border-radius:3px; padding:4px 10px; font-size:9pt; color:var(--yellow-text); margin-bottom:1.5mm; }
 .csrd-cb { font-size:14px; display:inline-block; width:18px; text-align:center; color:#444; }
 .csrd-cb--on { color:var(--navy); font-size:15px; }
 .csrd-approval-decl { background:var(--approval-bg); border-right:4px solid var(--gold); padding:7px 12px; font-size:9.5pt; margin-bottom:3mm; line-height:1.5; }
 .csrd-approval-table th { background:var(--navy); color:#fff; font-size:9.5pt; font-weight:600; text-align:center; }
 .csrd-approval-table td { height:26mm; text-align:center; vertical-align:middle; }
 .csrd-approval-table img { max-height:22mm; max-width:100%; object-fit:contain; display:block; margin:0 auto; }
-.csrd-section { page-break-inside:avoid; }
-.csrd-section--break { page-break-before:always; }
-.csrd-approval-block { page-break-inside:avoid; }
 @media print {
-  .csrd-root { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  .csrd-header { position:fixed; top:0; right:0; left:0; width:210mm; margin:0 auto; height:var(--header-h); }
-  .csrd-footer { position:fixed; bottom:0; right:0; left:0; width:210mm; margin:0 auto; height:var(--footer-h); }
-  .csrd-watermark { position:fixed; top:var(--header-h); bottom:var(--footer-h); right:calc(50% - 105mm); left:auto; width:var(--wm-w); }
+  .csrd-root { display:block; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .csrd-flow { display:none !important; }
+  .csrd-sheets { display:block; }
+  .csrd-sheet { box-shadow:none; margin:0; page-break-after:always; break-after:page; }
+  .csrd-sheet:last-child { page-break-after:auto; break-after:auto; }
 }
 `;
 }
@@ -291,18 +243,24 @@ export function buildCaseStudyReportBodyHtml(
   );
   const stampSrc = caseStudyReportAssetUrl(caseStudyStampImage(), origin);
   const esc = escapeCaseStudyReportHtml;
+  const layout = orgLetterheadLayout(getCachedOrganizationBranding());
+  const reference = options?.referenceNumber?.trim();
+  const referenceHtml = reference
+    ? `
+    <div class="csrd-title-sub csrd-ltr" dir="ltr">${esc(reference)}</div>`
+    : "";
 
-  return `<div class="csrd-root" lang="ar" dir="rtl">
-${renderPageChrome()}
-<div class="csrd-content">
+  return `<div class="csrd-root" lang="ar" dir="rtl" style="--lh-head:${layout.headMm}mm;--lh-foot:${layout.footMm}mm;--lh-start:${layout.startMm}mm;--lh-end:${layout.endMm}mm">
+<div class="csrd-flow">
   <div class="csrd-title-block">
     <div class="csrd-title-main">${esc(CASE_STUDY_REPORT_TITLE)}</div>
-    <div class="csrd-title-sub">${esc(CASE_STUDY_REPORT_SUBTITLE)}</div>
+    <div class="csrd-title-sub">${esc(CASE_STUDY_REPORT_SUBTITLE)}</div>${referenceHtml}
   </div>
   ${renderCommissionTable(model)}
   ${model.sections.map(renderSection).join("")}
   ${renderApproval(model, signatureSrc, stampSrc)}
 </div>
+<div class="csrd-sheets"></div>
 </div>`;
 }
 
@@ -311,18 +269,26 @@ export function buildCaseStudyReportPrintHtml(
   options?: CaseStudyReportRenderOptions,
 ): string {
   const esc = escapeCaseStudyReportHtml;
+  const branding = getCachedOrganizationBranding();
+  const layout = orgLetterheadLayout(branding);
+  const letterhead = esc(
+    caseStudyReportAssetUrl(orgLetterheadUrl(branding), options?.origin),
+  );
+  const toolbar = options?.embedded
+    ? ""
+    : officialLetterToolbarHtml(CASE_STUDY_REPORT_TITLE);
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8" />
 <title>${esc(CASE_STUDY_REPORT_TITLE)} — ${esc(model.deedNumber)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet" />
-<style>${caseStudyReportPrintCss()}</style>
+${officialLetterFontsHtml()}
+<style>${officialLetterShellCss()}${caseStudyReportPrintCss()}${orgLetterheadSliceCss(letterhead, layout)}</style>
 </head>
 <body>
+${toolbar}
 ${buildCaseStudyReportBodyHtml(model, options)}
+<script>${caseStudyReportPaginateScript()}</script>
 </body>
 </html>`;
 }

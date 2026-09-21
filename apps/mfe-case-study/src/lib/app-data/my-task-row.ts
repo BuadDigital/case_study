@@ -1,4 +1,8 @@
 import { pad2 } from "@platform/app-shared/format/date";
+import {
+  FAILURE_OBSTRUCTED_BADGE,
+  isTaskFailureObstructed,
+} from "@platform/app-shared/workflow/task-failure-status";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
@@ -234,7 +238,17 @@ export function buildTaskTableRow(
       statusLabel: "مكتملة",
     };
   }
-  if (task.status === "blocked" || task.phase === "obstruction") {
+  if (isTaskFailureObstructed(task)) {
+    return {
+      deedLabel,
+      location,
+      typeDisplay,
+      deedStatus,
+      statusBadgeClass: FAILURE_OBSTRUCTED_BADGE.className,
+      statusLabel: FAILURE_OBSTRUCTED_BADGE.label,
+    };
+  }
+  if (task.status === "blocked") {
     return {
       deedLabel,
       location,
