@@ -184,7 +184,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     ...BOUNDARY_MATCH_DEFS,
     chips("services", L.services, INSPECTOR_SERVICE_OPTIONS),
     chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS),
-    observations("observations", "الملاحظات الميدانية (العيوب والمزايا)"),
+    observations("observations", "الملاحظات الميدانية — وصف العيوب الإنشائية في التقرير"),
     readonly("freePhotos", "الصور الحرة"),
     flag("clientDeclarationSigned", "إقرار صحة الموقع موقَّع"),
     flag("inspectionConfirmed", "تأكيد المعاينة"),
