@@ -66,11 +66,14 @@ export function MobileChips({
   selected,
   disabled,
   onChange,
+  labelOf,
 }: {
   options: readonly string[];
   selected: readonly string[];
   disabled?: boolean;
   onChange: (next: string[]) => void;
+  /** Display wording for a stored option value (the value itself is what gets saved). */
+  labelOf?: (option: string) => string;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -98,7 +101,7 @@ export function MobileChips({
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             ) : null}
-            {opt}
+            {labelOf ? labelOf(opt) : opt}
           </button>
         );
       })}

@@ -15,6 +15,8 @@ import {
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import { PROPERTY_BOUNDARY_TYPE_OPTIONS } from "@platform/app-shared/app-data/po-intake-boundaries";
+import { OTHER_ATTACHMENTS_KEY } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { approximatePropertyGeo } from "@platform/app-shared/domain/property-geo";
 import {
   clientNameFromRecord,
@@ -22,9 +24,13 @@ import {
 } from "./valuation-report-users";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
-  approvedInspectorPropertyDescription,
+  reportInspectorPropertyDescription,
   isLandInspectionContext,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  formatReportPropertyAgeYears,
+  reportPropertyAgeYearsFromLicense,
+} from "./valuation-report-property-age";
 import {
   applyIvsDateToStandards,
   isNoExternalSpecialistAssumption,
@@ -180,6 +186,36 @@ function pickLength(
 
 function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean {
   return survey?.deedMatchesNature === "no";
+}
+
+const BUILTIN_BOUNDARY_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  PROPERTY_BOUNDARY_TYPE_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]),
+);
+
+/**
+ * Unified facade type: inspector dropdown first, then the intake «الواجهات» boundary type
+ * (شارع/قطعة… from تعديل العقار), and the legacy free-text property field last.
+ */
+function sideFacadeType(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+  property: PoPropertyIntake | null | undefined,
+  side: "north" | "south" | "east" | "west",
+  boundaryTypeLabels?: Record<string, string> | null,
+): string {
+  const fromMatch = (inspector?.boundaryMatches?.[side]?.facade ?? "").trim();
+  if (fromMatch) return fromMatch;
+  const legacyKey = `boundaryFacade:${side}`;
+  const fromFeature = (inspector?.featureValues?.[legacyKey] ?? "").trim();
+  if (fromFeature) return fromFeature;
+  const typeKey = (property?.[`${side}BoundaryType`] ?? "").trim();
+  if (typeKey) {
+    return (
+      boundaryTypeLabels?.[typeKey] ??
+      BUILTIN_BOUNDARY_TYPE_LABELS[typeKey] ??
+      typeKey
+    );
+  }
+  return (property?.[`${side}FacadeFinishing`] ?? "").trim();
 }
 
 export function dash(value: string | null | undefined): string {
@@ -344,6 +380,8 @@ export type ValuationReportLiveFill = {
   adjustmentComparisonLabel: string;
   adjustmentNotes: string;
   surroundingsOther: string;
+  /** §11 «أخرى» — the inspector/specialist free text «ملحقات أخرى». */
+  attachmentsOther: string;
   costRows: Array<{ key: string; values: string[] }>;
   indirectRows: Array<{ key: string; values: string[] }>;
   indirectTotalLabel: string;
@@ -432,6 +470,8 @@ export function buildValuationReportLiveFill(input: {
   recon?: ValuationReconciliationDto | null;
   clients?: Pick<ClientDto, "id" | "nameAr">[];
   purposeLabel?: string | null;
+  /** Catalog «أنواع الحد» (key → Arabic name) — prints in §08 «الواجهات» when the inspector left the facade empty. */
+  boundaryTypeLabels?: Record<string, string> | null;
   basisLabel?: string | null;
   premiseLabel?: string | null;
   basisDefinition?: string | null;
@@ -469,6 +509,8 @@ export function buildValuationReportLiveFill(input: {
   specialAssumptionLibrary?: string[] | null;
   /** When true, drop the library clause that denies using an external specialist. */
   externalSpecialistUsed?: boolean;
+  /** Printed into §29 when an external specialist was used. */
+  externalSpecialistDetails?: string | null;
   finishingLuxuryText?: string | null;
   finishingMediumText?: string | null;
   finishingOrdinaryText?: string | null;
@@ -529,12 +571,9 @@ export function buildValuationReportLiveFill(input: {
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
   const licenseDate =
     slashReportDate(licenseDateRaw) || licenseDateRaw;
-  const license = [
-    inspector?.buildLicenseNumber?.trim(),
-    licenseDate,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const reportAgeYears = reportPropertyAgeYearsFromLicense(licenseDateRaw);
+  const reportAgeLabel =
+    reportAgeYears == null ? "" : formatReportPropertyAgeYears(reportAgeYears);
   const subjectCoords = subjectCoordsForReport(inspector, property);
   const coordsLabel = subjectCoords
     ? formatSubjectCoordsLabel(subjectCoords.lat, subjectCoords.lng)
@@ -596,20 +635,14 @@ export function buildValuationReportLiveFill(input: {
     "إحداثيات الموقع": dash(coordsLabel),
     "رقم الصك": dash(property?.deedNumber),
     "تاريخ الصك": dash(property?.deedDate),
-    "رقم رخصة البناء وتاريخها": dash(license),
+    "رقم رخصة البناء": dash(inspector?.buildLicenseNumber),
+    "تاريخ رخصة البناء": dash(licenseDate),
     ...(isLand
       ? {}
       : {
-          "عمر البناء": dash(
-            inspector?.propertyAgeYears
-              ? `${inspector.propertyAgeYears.trim()} سنوات`
-              : "",
-          ),
-          "عمر العقار": dash(
-            inspector?.propertyAgeYears
-              ? `${inspector.propertyAgeYears.trim()} سنوات`
-              : "",
-          ),
+          // Report-only: years since license issue − 2 (not the inspector age field).
+          "عمر البناء": dash(reportAgeLabel),
+          "عمر العقار": dash(reportAgeLabel),
         }),
     "حالة البناء": dash(inspector?.featureValues?.buildState),
     "حالة الإشغال": dash(inspector?.featureValues?.occupancyState),
@@ -626,7 +659,7 @@ export function buildValuationReportLiveFill(input: {
     "قيمة العقار": dash(price ? formatAmountNumberDisplay(price) : ""),
     "نسبة خصم التصفية المنظمة": "—",
     "مبرر معامل التصفية": "—",
-    "وصف العقار": dash(approvedInspectorPropertyDescription(inspector)),
+    "وصف العقار": dash(reportInspectorPropertyDescription(inspector)),
   };
 
   const areas = areasFromInventory(input.inventoryLines, inspector);
@@ -772,10 +805,23 @@ export function buildValuationReportLiveFill(input: {
       .filter(Boolean)
       .join(" · "),
   );
-  cells["تشطيب الواجهة الشمالية"] = dash(property?.northFacadeFinishing);
-  cells["تشطيب الواجهة الشرقية"] = dash(property?.eastFacadeFinishing);
-  cells["تشطيب الواجهة الجنوبية"] = dash(property?.southFacadeFinishing);
-  cells["تشطيب الواجهة الغربية"] = dash(property?.westFacadeFinishing);
+  cells["نوع الواجهة الشمالية"] = dash(
+    sideFacadeType(inspector, property, "north", input.boundaryTypeLabels),
+  );
+  cells["نوع الواجهة الشرقية"] = dash(
+    sideFacadeType(inspector, property, "east", input.boundaryTypeLabels),
+  );
+  cells["نوع الواجهة الجنوبية"] = dash(
+    sideFacadeType(inspector, property, "south", input.boundaryTypeLabels),
+  );
+  cells["نوع الواجهة الغربية"] = dash(
+    sideFacadeType(inspector, property, "west", input.boundaryTypeLabels),
+  );
+  // Legacy labels still present in older templates / tab sheets.
+  cells["تشطيب الواجهة الشمالية"] = cells["نوع الواجهة الشمالية"];
+  cells["تشطيب الواجهة الشرقية"] = cells["نوع الواجهة الشرقية"];
+  cells["تشطيب الواجهة الجنوبية"] = cells["نوع الواجهة الجنوبية"];
+  cells["تشطيب الواجهة الغربية"] = cells["نوع الواجهة الغربية"];
   const finLevel = finishingLevelLabel(choices.finishingLevel);
   if (finLevel) cells["مستوى التشطيب"] = finLevel;
 
@@ -1036,7 +1082,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.northBoundaryLengthM,
           property?.northBoundaryLengthM,
         ),
-        face: property?.northFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "north", input.boundaryTypeLabels),
       },
       {
         name: "الجنوبية",
@@ -1052,7 +1098,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.southBoundaryLengthM,
           property?.southBoundaryLengthM,
         ),
-        face: property?.southFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "south", input.boundaryTypeLabels),
       },
       {
         name: "الشرقية",
@@ -1068,7 +1114,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.eastBoundaryLengthM,
           property?.eastBoundaryLengthM,
         ),
-        face: property?.eastFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "east", input.boundaryTypeLabels),
       },
       {
         name: "الغربية",
@@ -1084,7 +1130,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.westBoundaryLengthM,
           property?.westBoundaryLengthM,
         ),
-        face: property?.westFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "west", input.boundaryTypeLabels),
       },
     ],
     areaRows: extraInventoryAreaRows(input.inventoryLines, [
@@ -1173,6 +1219,7 @@ export function buildValuationReportLiveFill(input: {
     adjustmentComparisonLabel: adj.comparisonLabel,
     adjustmentNotes: buildAdjustmentRationaleText(comps),
     surroundingsOther: dash(surroundings["أخرى"]),
+    attachmentsOther: dash(inspector?.featureValues?.[OTHER_ATTACHMENTS_KEY]),
     costRows: buildDirectCostSheetRows(input.cost, areas),
     indirectRows: indirect.rows,
     indirectTotalLabel: indirect.totalLabel,
@@ -1192,7 +1239,7 @@ export function buildValuationReportLiveFill(input: {
     isLiquidation,
     liquidationDiscountOn: liqOn,
     isLand,
-    propertyDescription: approvedInspectorPropertyDescription(inspector),
+    propertyDescription: reportInspectorPropertyDescription(inspector),
     reportWorkers: draft.reportWorkers ?? [],
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
     assignedAppraiserId: (input.assignedAppraiserId ?? "").trim(),
@@ -1211,6 +1258,7 @@ export function buildValuationReportLiveFill(input: {
       library: input.specialAssumptionLibrary,
       toggles: choices.specialAssumptionOn,
       dropNoSpecialistClause: Boolean(input.externalSpecialistUsed),
+      externalSpecialistDetails: input.externalSpecialistDetails,
     }),
     ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
     glossaryPairs: pairsFromOrgLines(input.glossaryText),
@@ -1258,23 +1306,36 @@ export function buildValuationReportLiveFill(input: {
  * Legacy fallback: org library filtered by `reportChoices.specialAssumptionOn`.
  * `null` = no selection source → keep HTML template.
  * `[]` = none selected → clear the printed list.
+ * When a specialist is used, prints the valuer's details text verbatim and drops the denial clause.
  */
 export function resolveSpecialAssumptionBullets(input: {
   selected?: string[] | null;
   library?: string[] | null;
   toggles?: boolean[] | null;
   dropNoSpecialistClause?: boolean;
+  externalSpecialistDetails?: string | null;
 }): string[] | null {
+  const details = (input.externalSpecialistDetails ?? "").trim();
+  const specialistBullet =
+    input.dropNoSpecialistClause && details ? details : null;
+
+  const withSpecialist = (items: string[]): string[] => {
+    if (!specialistBullet || items.includes(specialistBullet)) return items;
+    return [specialistBullet, ...items];
+  };
+
   if (input.selected !== undefined && input.selected !== null) {
-    const items = input.selected.map((x) => x.trim()).filter(Boolean);
+    let items = input.selected.map((x) => x.trim()).filter(Boolean);
     if (input.dropNoSpecialistClause) {
-      return items.filter((item) => !isNoExternalSpecialistAssumption(item));
+      items = items.filter((item) => !isNoExternalSpecialistAssumption(item));
     }
-    return items;
+    return withSpecialist(items);
   }
-  return filterSpecialAssumptionBullets(input.library, input.toggles, {
+  const filtered = filterSpecialAssumptionBullets(input.library, input.toggles, {
     dropNoSpecialistClause: input.dropNoSpecialistClause,
   });
+  if (filtered == null) return null;
+  return withSpecialist(filtered);
 }
 
 /**

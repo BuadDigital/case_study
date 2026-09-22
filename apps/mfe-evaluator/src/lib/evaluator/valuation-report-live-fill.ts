@@ -158,6 +158,22 @@ function removeLabeledPairs(dom: Document, labels: ReadonlySet<string>) {
   });
 }
 
+/** Optional site fields — omit the label/value pair when intake left them blank. */
+const HIDE_WHEN_EMPTY_LABELS = ["محضر التجزئة", "اسم المخطط"] as const;
+
+function isBlankReportCell(value: string | undefined): boolean {
+  const t = (value ?? "").trim();
+  return !t || t === "—" || t === "-";
+}
+
+function removeEmptyOptionalPairs(dom: Document, fill: ValuationReportLiveFill) {
+  const labels = new Set<string>();
+  for (const label of HIDE_WHEN_EMPTY_LABELS) {
+    if (isBlankReportCell(fill.cells[label])) labels.add(label);
+  }
+  if (labels.size) removeLabeledPairs(dom, labels);
+}
+
 function keepLandAreaOnly(dom: Document) {
   const areaSection = dom.querySelector('[data-sec="9"]');
   if (!areaSection) return;
@@ -209,6 +225,8 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
     dom,
     new Set([
       "رخصة البناء",
+      "رقم رخصة البناء",
+      "تاريخ رخصة البناء",
       "رقم رخصة البناء وتاريخها",
       "عمر البناء",
       "عمر العقار",
@@ -217,6 +235,10 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
       "حالة الإشغال",
       "العمر الفعلي",
       "تشطيب الواجهات",
+      "نوع الواجهة الشمالية",
+      "نوع الواجهة الشرقية",
+      "نوع الواجهة الجنوبية",
+      "نوع الواجهة الغربية",
       "تشطيب الواجهة الشمالية",
       "تشطيب الواجهة الشرقية",
       "تشطيب الواجهة الجنوبية",
@@ -239,6 +261,7 @@ export function applyValuationReportLiveFill(
   },
 ): ReportMissingField[] {
   applyStructuralVisibility(dom, fill);
+  removeEmptyOptionalPairs(dom, fill);
 
   SAMPLE_SECS.forEach((id) => {
     const sec = dom.querySelector(`[data-sec="${id}"]`);
@@ -307,7 +330,7 @@ export function applyValuationReportLiveFill(
   if (surr) fillKeyedInSection(surr, "أخرى", fill.surroundingsOther);
 
   const feat = dom.querySelector('[data-sec="11"]');
-  if (feat) fillKeyedInSection(feat, "أخرى", "—");
+  if (feat) fillKeyedInSection(feat, "أخرى", fill.attachmentsOther);
 
   const services = dom.querySelector('[data-sec="14"]');
   if (services) fillKeyedRows(services, fill.serviceRows);

@@ -120,9 +120,9 @@ describe("markReportMissingFields — tables", () => {
         <tr><td class="k">صرف صحي</td><td class="v" colspan="3">متوفر</td></tr>
       </table></section>`);
     markReportMissingFields(dom, fillWith({ boundariesSource: "intake" }));
-    // Facades are not marked: sides next to a neighbour have none.
     expect(missing(dom)).toEqual([
       { label: "طول الضلع (الجهة الشمالية)", source: "intake" },
+      { label: "الواجهات (الجهة الشمالية)", source: "inspector" },
       { label: "عدد العدادات (كهرباء)", source: "inspector" },
     ]);
   });
@@ -130,7 +130,10 @@ describe("markReportMissingFields — tables", () => {
   it("sends boundary gaps to the engineering office when a survey exists", () => {
     const dom = doc(boundaries);
     markReportMissingFields(dom, fillWith({ boundariesSource: "survey" }));
-    expect(missing(dom)).toEqual([{ label: "طول الضلع (الجهة الشمالية)", source: "survey" }]);
+    expect(missing(dom)).toEqual([
+      { label: "طول الضلع (الجهة الشمالية)", source: "survey" },
+      { label: "الواجهات (الجهة الشمالية)", source: "inspector" },
+    ]);
   });
 
   it("marks comparable and adjustment gaps but not factors that were not applied", () => {

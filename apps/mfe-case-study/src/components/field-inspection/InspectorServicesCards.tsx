@@ -10,6 +10,7 @@ import { RegField } from "@platform/app-shared/registration/FormFields";
 import {
   INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_SERVICE_OPTIONS,
+  inspectorAmenityLabel,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
@@ -56,6 +57,7 @@ export function InspectorServicesCards({
               options={INSPECTOR_AMENITY_OPTIONS}
               selected={draft.amenities}
               disabled={locked}
+              labelOf={inspectorAmenityLabel}
               onChange={(amenities) => persist({ amenities })}
             />
           </>
@@ -77,6 +79,7 @@ export function InspectorServicesCards({
               options={INSPECTOR_AMENITY_OPTIONS}
               selected={draft.amenities}
               disabled={locked}
+              labelOf={inspectorAmenityLabel}
               onChange={(amenities) => persist({ amenities })}
             />
           </>

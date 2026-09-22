@@ -359,6 +359,7 @@ export function payloadToDraft(
     submittedAtUtc: dto.submittedAtUtc ?? null,
     acceptedAtUtc: dto.acceptedAtUtc ?? null,
     acceptedByName: dto.acceptedByName ?? null,
+    fieldProvenance: dto.fieldProvenance ?? null,
     updatedAtUtc: dto.updatedAtUtc || draft.updatedAtUtc,
   };
   return sanitizeInspectorDraftForLand({

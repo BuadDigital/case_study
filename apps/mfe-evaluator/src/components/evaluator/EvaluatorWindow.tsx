@@ -35,6 +35,7 @@ import {
   evaluatorWorkScreenForErrorTarget,
   validateEvaluatorSubmission,
   type EvaluatorRetrospectiveDraft,
+  type EvaluatorSpecialistDraft,
   type EvaluatorValidationErrors,
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
@@ -146,9 +147,16 @@ export function EvaluatorWindow({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editVersionRef = useRef(0);
   const retrospectiveRef = useRef<EvaluatorRetrospectiveDraft | null>(null);
+  const specialistRef = useRef<EvaluatorSpecialistDraft | null>(null);
   const onRetrospectiveDraftChange = useCallback(
     (draft: EvaluatorRetrospectiveDraft) => {
       retrospectiveRef.current = draft;
+    },
+    [],
+  );
+  const onSpecialistDraftChange = useCallback(
+    (draft: EvaluatorSpecialistDraft) => {
+      specialistRef.current = draft;
     },
     [],
   );
@@ -308,6 +316,7 @@ export function EvaluatorWindow({
       reportChoices: draft.reportChoices,
       skipManualLandBuilding: approachesOn,
       retrospective: retrospectiveRef.current,
+      specialist: specialistRef.current,
     });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -654,6 +663,7 @@ export function EvaluatorWindow({
                         embeddedInTopTabs
                         onNavAvailabilityChange={onNavAvailabilityChange}
                         onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+                        onSpecialistDraftChange={onSpecialistDraftChange}
                       />
                     ) : (
                       <p className="text-[13px] text-text-3">

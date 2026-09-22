@@ -229,7 +229,7 @@ export function ReportSourceTables({
       </section>
 
       <section className="rpt-page">
-        <Sec n="10" title="تفاصيل البناء" open={isOpen("10")} onToggle={() => toggle("10")}>
+        <Sec n="10" title="مكونات العقار" open={isOpen("10")} onToggle={() => toggle("10")}>
           <p className="sysnote">
             حقول هذا البند — مصدر كل حقل مبيّن أمامه: من النظام / إدخال / اختيار من قائمة.
           </p>
@@ -266,7 +266,7 @@ export function ReportSourceTables({
             </tbody>
           </table>
         </Sec>
-        <Sec n="11" title="مكونات العقار" open={isOpen("11")} onToggle={() => toggle("11")}>
+        <Sec n="11" title="ملحقات العقار" open={isOpen("11")} onToggle={() => toggle("11")}>
           <p className="sysnote">
             حقول هذا البند — مصدر كل حقل مبيّن أمامه: من النظام / إدخال / اختيار من قائمة.
           </p>

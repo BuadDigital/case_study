@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   clientFieldPolicyFor,
-  formatPoDisplay,
   hasBourseDetailFields,
   isBourseInquiryIdentifier,
   type PoIntakeRecord,
@@ -23,6 +22,10 @@ import {
   queuePropertyFieldAutosave,
 } from "../../lib/app-data/property-field-autosave";
 import {
+  propertyToBourseRequest,
+  propertyToDto,
+} from "../../lib/app-data/po-intake-model";
+import {
   hasFieldErrors,
   mergeFieldErrors,
   type FieldErrors,
@@ -38,6 +41,7 @@ import {
   Note,
   PageShell,
   PageShellHeader,
+  cn,
   useToast,
 } from "@platform/ui-kit";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
@@ -58,34 +62,103 @@ import { PoPropertyPartyDataCards } from "./PoPropertyPartyDataCards";
 import { PoPropertySpecialistExtrasCard } from "./PoPropertySpecialistExtrasCard";
 import { BuildingInventorySection } from "../field-inspection/BuildingInventorySection";
 
+type EditSection = "enfath" | "bourse";
+
+const SECTION_TITLES: Record<EditSection, string> = {
+  enfath: "بيانات إنفاذ (الصك)",
+  bourse: "بيانات الموقع والمساحة",
+};
+
+/** Fields changed since the last save, split by card: bourse-stage keys vs everything else. */
+function sectionDirtyCount(
+  section: EditSection,
+  property: PoPropertyIntake,
+  saved: PoPropertyIntake,
+): number {
+  const now = propertyToDto(property) as Record<string, unknown>;
+  const was = propertyToDto(saved) as Record<string, unknown>;
+  const bourseKeys = new Set(Object.keys(propertyToBourseRequest(property)));
+  return Object.keys(now).filter(
+    (key) =>
+      bourseKeys.has(key) === (section === "bourse") &&
+      JSON.stringify(now[key] ?? null) !== JSON.stringify(was[key] ?? null),
+  ).length;
+}
+
+function SectionHeader({
+  title,
+  subtitle,
+  dirtyCount,
+  saving,
+  disabled,
+  onSave,
+}: {
+  title: string;
+  subtitle?: string;
+  dirtyCount: number;
+  saving: boolean;
+  disabled: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <CardHeader>
+      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="m-0 text-sm font-bold">{title}</h2>
+          {subtitle ? (
+            <p className="m-0 mt-0.5 text-xs text-text-3">{subtitle}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={saving}
+          disabled={disabled || saving || dirtyCount === 0}
+          showActionToast={false}
+          onClick={onSave}
+        >
+          {dirtyCount > 0 ? `حفظ (${dirtyCount})` : "حفظ"}
+        </Button>
+      </div>
+    </CardHeader>
+  );
+}
+
 function EditChrome({
   title,
-  meta,
+  hideTitle = false,
   onBack,
   actions,
   children,
 }: {
   title: string;
-  meta?: string;
-  onBack: () => void;
+  hideTitle?: boolean;
+  /** Omit on the edit form itself — navigation lives in the top bar, so the header goes away. */
+  onBack?: () => void;
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const showHeader = Boolean(!hideTitle || onBack || actions);
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-      <PageShellHeader
-        title={title}
-        meta={meta}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {actions}
-            <Button type="button" size="sm" onClick={onBack}>
-              {REG_BACK}
-            </Button>
-          </div>
-        }
-      />
-      <div className="mt-4 flex flex-col gap-4">{children}</div>
+      {showHeader ? (
+        <PageShellHeader
+          title={title}
+          hideTitle={hideTitle}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {actions}
+              {onBack ? (
+                <Button type="button" size="sm" onClick={onBack}>
+                  {REG_BACK}
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
+      ) : null}
+      <div className={cn("flex flex-col gap-4", showHeader && "mt-4")}>{children}</div>
     </PageShell>
   );
 }
@@ -95,21 +168,28 @@ export function PoPropertyEdit({
   propertyId,
   onBackAction,
   onSavedAction,
+  onSectionSavedAction,
   onDeletedAction,
 }: {
   poNumber: string;
   propertyId: string;
   onBackAction: () => void;
+  /** After delete (fallback when `onDeletedAction` is absent). */
   onSavedAction: () => void;
+  /** After a card's «حفظ» — refresh caches; the page stays open. */
+  onSectionSavedAction?: () => void;
   onDeletedAction?: () => void;
 }) {
   const { role } = useAppAccess();
   const [initialRecord, setInitialRecord] = useState<PoIntakeRecord | null>(null);
   const [property, setProperty] = useState<PoPropertyIntake | null>(null);
+  /** Last server-committed copy — the dirty counters on each card compare against it. */
+  const [savedProperty, setSavedProperty] = useState<PoPropertyIntake | null>(null);
   const [loading, setLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingSection, setSavingSection] = useState<EditSection | null>(null);
   const { showToast } = useToast();
   const showDeleteProperty =
     canDeleteProperty(role) && Boolean(property && !property.isRemoved);
@@ -126,12 +206,15 @@ export function PoPropertyEdit({
       if (found) {
         setInitialRecord(found.record);
         setProperty(stillLocal ?? found.property);
+        setSavedProperty(found.property);
       } else if (stillLocal) {
         setInitialRecord(null);
         setProperty(stillLocal);
+        setSavedProperty(stillLocal);
       } else {
         setInitialRecord(null);
         setProperty(null);
+        setSavedProperty(null);
       }
       setLoading(false);
     });
@@ -201,24 +284,30 @@ export function PoPropertyEdit({
     );
   }
 
-  async function handleSave() {
+  /** Each card validates only its own fields; the API still receives the whole property. */
+  async function handleSaveSection(section: EditSection) {
     if (!initialRecord || !property) return;
     if (property.isRemoved) {
       setFormError("لا يمكن تعديل عقار محذوف");
       return;
     }
 
-    const enfathErrors = mergePropertyEnfathValidation(
-      property,
-      initialRecord.assignmentType,
-      clientFieldPolicyFor(initialRecord),
-    );
-    const bourseErrors = property.bourseDataCompleted
-      ? validatePropertyBourseFields(property)
-      : {};
-    const errors = mergeFieldErrors(enfathErrors, bourseErrors);
+    const errors: FieldErrors =
+      section === "enfath"
+        ? mergeFieldErrors(
+            mergePropertyEnfathValidation(
+              property,
+              initialRecord.assignmentType,
+              clientFieldPolicyFor(initialRecord),
+            ),
+            {},
+          )
+        : property.bourseDataCompleted
+          ? validatePropertyBourseFields(property)
+          : {};
 
     if (
+      section === "enfath" &&
       !isBourseInquiryIdentifier(property.identifierType) &&
       (await deedExistsInPo(poNumber, property.deedNumber, propertyId))
     ) {
@@ -228,14 +317,15 @@ export function PoPropertyEdit({
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
       setFormError(
-        firstEnfathValidationMessage(errors) ||
-          firstBourseValidationMessage(errors),
+        section === "enfath"
+          ? firstEnfathValidationMessage(errors)
+          : firstBourseValidationMessage(errors),
       );
       scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
 
-    setSaving(true);
+    setSavingSection(section);
     setFormError(null);
     await flushPropertyFieldAutosave(poNumber, propertyId);
 
@@ -245,8 +335,8 @@ export function PoPropertyEdit({
     };
 
     const result = await updatePropertyInPo(poNumber, propertyId, committed);
+    setSavingSection(null);
     if (!result.ok) {
-      setSaving(false);
       setFormError(result.error);
       if (result.errors) {
         setFieldErrors(result.errors);
@@ -256,9 +346,10 @@ export function PoPropertyEdit({
       return;
     }
 
-    setSaving(false);
-    showToast("تم حفظ التعديلات.", "success");
-    onSavedAction();
+    setSavedProperty(committed);
+    setFieldErrors({});
+    showToast(`تم حفظ ${SECTION_TITLES[section]}.`, "success");
+    onSectionSavedAction?.();
   }
 
   async function handleDelete() {
@@ -291,45 +382,37 @@ export function PoPropertyEdit({
 
   return (
     <EditChrome
-      title={`تعديل عقار — ${property.deedNumber || poNumber}`}
-      meta={`أخصائي دراسة الحالة · ${formatPoDisplay(poNumber)}`}
-      onBack={onBackAction}
+      title="تعديل العقار"
+      hideTitle
       actions={
-        <>
-          {showDeleteProperty ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="danger"
-              className="border-red/30 bg-transparent hover:bg-danger-bg/60"
-              loading={saving}
-              disabled={saving}
-              onClick={() => void handleDelete()}
-            >
-              حذف العقار
-            </Button>
-          ) : null}
+        showDeleteProperty ? (
           <Button
             type="button"
-            variant="primary"
             size="sm"
+            variant="danger"
+            className="border-red/30 bg-transparent hover:bg-danger-bg/60"
             loading={saving}
-            disabled={saving}
-            showActionToast={false}
-            onClick={() => void handleSave()}
+            disabled={saving || savingSection !== null}
+            onClick={() => void handleDelete()}
           >
-            حفظ التعديلات
+            حذف العقار
           </Button>
-        </>
+        ) : null
       }
     >
       {formError ? <Note tone="warn">{formError}</Note> : null}
 
       <FormDensityProvider value="compact">
         <Card>
-          <CardHeader>
-            <h2 className="m-0 text-sm font-bold">بيانات إنفاذ (الصك)</h2>
-          </CardHeader>
+          <SectionHeader
+            title={SECTION_TITLES.enfath}
+            dirtyCount={
+              savedProperty ? sectionDirtyCount("enfath", property, savedProperty) : 0
+            }
+            saving={savingSection === "enfath"}
+            disabled={saving || savingSection !== null}
+            onSave={() => void handleSaveSection("enfath")}
+          />
           <CardBody>
             <PoPropertyEnfathForm
               property={property}
@@ -345,14 +428,16 @@ export function PoPropertyEdit({
         </Card>
 
         <Card>
-          <CardHeader>
-            <div className="min-w-0">
-              <h2 className="m-0 text-sm font-bold">بيانات الموقع والمساحة</h2>
-              <p className="m-0 mt-0.5 text-xs text-text-3">
-                المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة
-              </p>
-            </div>
-          </CardHeader>
+          <SectionHeader
+            title={SECTION_TITLES.bourse}
+            subtitle="المدينة والحي والمساحة والتصنيف والحدود — قابلة للتعديل هنا مباشرة"
+            dirtyCount={
+              savedProperty ? sectionDirtyCount("bourse", property, savedProperty) : 0
+            }
+            saving={savingSection === "bourse"}
+            disabled={saving || savingSection !== null}
+            onSave={() => void handleSaveSection("bourse")}
+          />
           <CardBody>
             <PoPropertyBourseForm
               property={property}
@@ -385,7 +470,7 @@ export function PoPropertyEdit({
         <Card>
           <CardHeader>
             <div className="min-w-0">
-              <h2 className="m-0 text-sm font-bold">تفاصيل البناء</h2>
+              <h2 className="m-0 text-sm font-bold">مكونات العقار</h2>
               <p className="m-0 mt-0.5 text-xs text-text-3">
                 حصر الأدوار والأسوار والملاحق — مع اسم من كتب كل بند ومن عدّله
               </p>

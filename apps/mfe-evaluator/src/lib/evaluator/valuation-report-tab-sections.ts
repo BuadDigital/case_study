@@ -5,7 +5,7 @@ export type ReportTabField = {
   label: string;
   /** Catalog keys from `ValuationReportFieldCatalog`. First filled wins. */
   keys?: readonly string[];
-  compose?: "coords" | "license";
+  compose?: "coords";
   span?: 1 | 2;
   ltr?: boolean;
 };
@@ -174,10 +174,15 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
       { id: "deed-no", label: "رقم الصك", keys: ["deed_number"], ltr: true },
       { id: "deed-date", label: "تاريخ الصك", keys: ["deed_date_h"], ltr: true },
       {
-        id: "license",
-        label: "رقم رخصة البناء وتاريخها",
-        keys: ["client_license_number", "client_license_date_h"],
-        compose: "license",
+        id: "license-no",
+        label: "رقم رخصة البناء",
+        keys: ["client_license_number"],
+        ltr: true,
+      },
+      {
+        id: "license-date",
+        label: "تاريخ رخصة البناء",
+        keys: ["client_license_date_h"],
         ltr: true,
       },
       {
@@ -284,7 +289,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   },
   {
     n: "10",
-    title: "تفاصيل البناء",
+    title: "مكونات العقار",
     hint: "وصف الأدوار من الحصر الميداني — يظهر للمقيم ولا يُعاد إدخاله.",
     tables: [
       {
@@ -300,7 +305,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   },
   {
     n: "11",
-    title: "مكونات العقار",
+    title: "ملحقات العقار",
     fields: [
       { id: "fence", label: "سور" },
       { id: "parking", label: "مواقف", keys: ["inventory.6490"] },
@@ -333,22 +338,22 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
     fields: [
       {
         id: "fin-n",
-        label: "تشطيب الواجهة الشمالية",
+        label: "نوع الواجهة الشمالية",
         keys: ["finishing_facade_north"],
       },
       {
         id: "fin-e",
-        label: "تشطيب الواجهة الشرقية",
+        label: "نوع الواجهة الشرقية",
         keys: ["finishing_facade_east"],
       },
       {
         id: "fin-s",
-        label: "تشطيب الواجهة الجنوبية",
+        label: "نوع الواجهة الجنوبية",
         keys: ["finishing_facade_south"],
       },
       {
         id: "fin-w",
-        label: "تشطيب الواجهة الغربية",
+        label: "نوع الواجهة الغربية",
         keys: ["finishing_facade_west"],
       },
     ],
@@ -1077,7 +1082,6 @@ export function firstFilledValue(
     .filter(Boolean);
   if (!parts.length) return "";
   if (compose === "coords") return parts.join(", ");
-  if (compose === "license") return parts.join(" · ");
   return parts[0] ?? "";
 }
 

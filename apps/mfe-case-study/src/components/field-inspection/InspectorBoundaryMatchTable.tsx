@@ -92,7 +92,6 @@ export function InspectorBoundaryMatchTable({
                   ) as InspectorBoundaryKey;
                   const match = draft.boundaryMatches[matchKey];
                   const ok = match?.matches !== false;
-                  const facadeKey = `boundaryFacade:${matchKey}`;
                   const deedDesc = resolvedBoundaryDeedField(
                     match?.deedDesc,
                     property[row.descKey],
@@ -110,15 +109,14 @@ export function InspectorBoundaryMatchTable({
                         <Select
                           className="text-[11.5px]"
                           disabled={!editable}
-                          value={draft.featureValues[facadeKey] ?? ""}
+                          value={match?.facade ?? ""}
                           onChange={(e) =>
                             editable &&
-                            onPatch({
-                              featureValues: {
-                                ...draft.featureValues,
-                                [facadeKey]: e.target.value,
-                              },
-                            })
+                            onPatch(
+                              boundaryMatchPatch(draft, matchKey, {
+                                facade: e.target.value,
+                              }),
+                            )
                           }
                         >
                           <option value="">— اختر —</option>

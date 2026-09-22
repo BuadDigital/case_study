@@ -42,6 +42,7 @@ import type { InspectorObservation } from "../../lib/app-data/inspector-workspac
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { resolveApiError, workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { InsDualCalendarDateField } from "./PropertyDetailInspectionDateField";
 
 type Edits = Record<string, unknown>;
 type EditValue = string | boolean | string[] | InspectorObservation[];
@@ -99,6 +100,7 @@ function PartyFieldRow({
     def.input === "textarea" ||
     def.input === "multiselect" ||
     def.input === "observations";
+  const [customDraft, setCustomDraft] = useState("");
 
   let control;
   if (def.input === "multiselect") {
@@ -107,11 +109,26 @@ function PartyFieldRow({
       : Array.isArray(original)
         ? (original as string[])
         : [];
+    const options = def.options ?? [];
+    // Free-text entries («أخرى») live in the same array as the fixed options.
+    const custom = selected.filter((v) => !options.includes(v));
+    const chipClass = (on: boolean) =>
+      cn(
+        "min-h-8 rounded-lg border px-3 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        on ? "border-ink bg-ink text-white" : "border-border-md bg-surface text-text-2",
+      );
+    const addCustom = () => {
+      const value = customDraft.trim();
+      if (!value) return;
+      setCustomDraft("");
+      if (selected.includes(value)) return;
+      onEdit(def.key, [...selected, value]);
+    };
     control = (
       <div>
         <span className="mb-1.5 block text-[12px] font-semibold text-text-2">{def.label}</span>
         <div className="flex flex-wrap gap-1.5">
-          {(def.options ?? []).map((option) => {
+          {options.map((option) => {
             const on = selected.includes(option);
             return (
               <button
@@ -125,18 +142,45 @@ function PartyFieldRow({
                     on ? selected.filter((v) => v !== option) : [...selected, option],
                   )
                 }
-                className={cn(
-                  "min-h-8 rounded-lg border px-3 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                  on
-                    ? "border-ink bg-ink text-white"
-                    : "border-border-md bg-surface text-text-2",
-                )}
+                className={chipClass(on)}
               >
-                {option}
+                {partyOptionLabel(def.key, option)}
               </button>
             );
           })}
+          {custom.map((value) => (
+            <button
+              key={`custom:${value}`}
+              type="button"
+              aria-pressed
+              disabled={locked}
+              title="إزالة"
+              onClick={() => onEdit(def.key, selected.filter((v) => v !== value))}
+              className={chipClass(true)}
+            >
+              {value} ×
+            </button>
+          ))}
         </div>
+        {def.customLabel && !locked ? (
+          <div className="mt-2 flex max-w-md gap-2">
+            <Input
+              aria-label={`${def.customLabel} — ${def.label}`}
+              placeholder={def.customLabel}
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                addCustom();
+              }}
+              className="text-xs"
+            />
+            <Button type="button" size="sm" disabled={!customDraft.trim()} onClick={addCustom}>
+              إضافة
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   } else if (def.input === "observations") {
@@ -222,6 +266,16 @@ function PartyFieldRow({
         />
         {def.label}
       </label>
+    );
+  } else if (def.input === "date") {
+    control = (
+      <InsDualCalendarDateField
+        id={id}
+        label={def.label}
+        value={textValue}
+        disabled={locked}
+        onChange={(v) => onEdit(def.key, v)}
+      />
     );
   } else if (def.input === "select" && !locked) {
     control = (

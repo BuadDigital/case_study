@@ -17,7 +17,10 @@ import {
   useToast,
 } from "@platform/ui-kit";
 
-import { invalidControlClass } from "@platform/app-shared/form-ux";
+import {
+  invalidControlClass,
+  scheduleScrollToFormField,
+} from "@platform/app-shared/form-ux";
 import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
@@ -26,6 +29,7 @@ import type {
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
 import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import type { EvaluatorSpecialistDraft } from "../../lib/evaluator/evaluator-validation";
 import {
   EXTERNAL_SPECIALIST_USED_LABEL,
   assumptionsAfterSpecialistChoice,
@@ -47,6 +51,7 @@ import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 
 const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
+const ASSUMPTIONS_AUTOSAVE_MS = 500;
 
 /** Final review: asset confirmation, special assumptions, ESG + attachments (appraiser). */
 export function EvaluatorFinalReviewTab({
@@ -58,6 +63,7 @@ export function EvaluatorFinalReviewTab({
   onDraftPatch,
   onReportChoicesPatch,
   onSettingsSaved,
+  onSpecialistDraftChange,
   fieldErrors,
 }: {
   draft: EvaluatorSubmission;
@@ -76,6 +82,8 @@ export function EvaluatorFinalReviewTab({
   }) => void;
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
+  /** Live specialist choice for submit validation (before autosave settles). */
+  onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
   fieldErrors?: Record<string, string>;
 }) {
   const { showToast } = useToast();
@@ -108,9 +116,44 @@ export function EvaluatorFinalReviewTab({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Edits not yet saved — the report only prints what is saved with the valuation settings. */
+  /** Local edits awaiting debounced autosave into approach settings. */
   const [dirty, setDirty] = useState(false);
+  const [saveHint, setSaveHint] = useState<string | null>(null);
+  /** Red highlight after a save attempt / submit while specialist details are still empty. */
+  const [detailsInvalid, setDetailsInvalid] = useState(false);
   const queryClient = useQueryClient();
+  const persistSeq = useRef(0);
+  const editVersionRef = useRef(0);
+  const assumptionsRef = useRef(assumptions);
+  const specialistUsedRef = useRef(specialistUsed);
+  const specialistDetailsRef = useRef(specialistDetails);
+  const freeAssumptionRef = useRef(freeAssumption);
+  const settingsRef = useRef(settings);
+  const dirtyRef = useRef(dirty);
+  const noSpecialistClauseRef = useRef("");
+  const persistAssumptionsRef = useRef<() => Promise<void>>(async () => {});
+  /** Settings echoed back from this tab's own autosave — reseeding from them would wipe in-flight typing. */
+  const lastSavedSettingsRef = useRef<ValuationApproachSettingsDto | null>(null);
+  assumptionsRef.current = assumptions;
+  specialistUsedRef.current = specialistUsed;
+  specialistDetailsRef.current = specialistDetails;
+  freeAssumptionRef.current = freeAssumption;
+  settingsRef.current = settings;
+  dirtyRef.current = dirty;
+
+  useEffect(() => {
+    onSpecialistDraftChange?.({
+      used: specialistUsed,
+      details: specialistDetails,
+    });
+  }, [specialistUsed, specialistDetails, onSpecialistDraftChange]);
+
+  // Submit / parent validation asked for this field — paint it red and scroll to it.
+  useEffect(() => {
+    if (!fieldErrors?.specialist_details) return;
+    setDetailsInvalid(true);
+    scheduleScrollToFormField("val-specialist-details", 80, { retries: 24 });
+  }, [fieldErrors?.specialist_details]);
 
   const propertyId = property?.id ?? draft.propertyId;
 
@@ -199,6 +242,7 @@ export function EvaluatorFinalReviewTab({
     }`;
     if (seededForRequestRef.current === seedKey) return;
     seededForRequestRef.current = seedKey;
+    if (approachSettingsFromShell === lastSavedSettingsRef.current) return;
     seedAssumptions(approachSettingsFromShell);
   }, [
     approachSettingsFromShell,
@@ -266,9 +310,16 @@ export function EvaluatorFinalReviewTab({
   const noSpecialistClause = resolveNoSpecialistClause(
     settings?.assumptionLibrary ?? [],
   );
+  noSpecialistClauseRef.current = noSpecialistClause;
+
+  function markDirty() {
+    editVersionRef.current += 1;
+    setDirty(true);
+    setSaveHint(null);
+  }
 
   function applySpecialistUsed(used: boolean) {
-    setDirty(true);
+    markDirty();
     setSpecialistUsed(used);
     setAssumptions((prev) =>
       assumptionsAfterSpecialistChoice({
@@ -277,68 +328,114 @@ export function EvaluatorFinalReviewTab({
         noSpecialistClause,
       }),
     );
+    if (used && !specialistDetailsRef.current.trim()) {
+      setDetailsInvalid(true);
+      scheduleScrollToFormField("val-specialist-details", 80, { retries: 16 });
+    } else {
+      setDetailsInvalid(false);
+    }
   }
 
-  async function saveAssumptions() {
+  const persistAssumptions = useCallback(async () => {
     const config = apiConfig();
-    if (!config || !settings || disabled) return;
-    if (specialistUsed && !specialistDetails.trim()) {
-      showToast("توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»", "error");
+    const currentSettings = settingsRef.current;
+    if (!config || !currentSettings || disabled) return;
+
+    const used = specialistUsedRef.current;
+    const details = specialistDetailsRef.current.trim();
+    if (used && !details) {
+      setDetailsInvalid(true);
+      setSaveHint("أكمل وصف الاستعانة بالأخصائي ليُحفظ تلقائياً");
       return;
     }
-    // Text typed in «بند افتراض إضافي» but never added with «إضافة» is still the appraiser's intent.
-    const pending = freeAssumption.trim();
+
+    // Text still in «بند افتراض إضافي» (not yet «إضافة») is only flushed if somehow still dirty with text.
+    const pending = freeAssumptionRef.current.trim();
+    const base = assumptionsRef.current;
     const withPending =
       pending &&
       pending !== EXTERNAL_SPECIALIST_USED_LABEL &&
       !isNoExternalSpecialistAssumption(pending) &&
-      !assumptions.includes(pending)
-        ? [...assumptions, pending]
-        : assumptions;
-    setSaving(true);
+      !base.includes(pending)
+        ? [...base, pending]
+        : base;
     const selected = assumptionsAfterSpecialistChoice({
-      specialistUsed,
+      specialistUsed: used,
       assumptions: withPending,
-      noSpecialistClause,
+      noSpecialistClause: noSpecialistClauseRef.current,
     });
+
+    const versionAtSave = editVersionRef.current;
+    const seq = ++persistSeq.current;
+    setSaving(true);
+    setSaveHint(null);
     const res = await saveValuationApproachSettings(
       config,
-      settings.valuationRequestId,
+      currentSettings.valuationRequestId,
       {
-        marketApproachEnabled: settings.marketApproachEnabled,
-        costApproachEnabled: settings.costApproachEnabled,
+        marketApproachEnabled: currentSettings.marketApproachEnabled,
+        costApproachEnabled: currentSettings.costApproachEnabled,
         incomeApproachEnabled: false,
-        costBasisKey: settings.costBasisKey,
-        costScopeKey: settings.costScopeKey,
-        costMeasurementUnitKey: settings.costMeasurementUnitKey,
-        adjustmentsEditUnlocked: settings.adjustmentsEditUnlocked,
-        valuationPurposeKey: settings.valuationPurposeKey,
-        valuationPurposeNote: settings.valuationPurposeNote ?? null,
-        externalSpecialistUsed: specialistUsed,
-        externalSpecialistDetails: specialistUsed
-          ? specialistDetails.trim()
-          : null,
-        valuationDateMode: settings.valuationDateMode,
-        retrospectiveDate: settings.retrospectiveDate ?? null,
-        retrospectiveDateEnd: settings.retrospectiveDateEnd ?? null,
+        costBasisKey: currentSettings.costBasisKey,
+        costScopeKey: currentSettings.costScopeKey,
+        costMeasurementUnitKey: currentSettings.costMeasurementUnitKey,
+        adjustmentsEditUnlocked: currentSettings.adjustmentsEditUnlocked,
+        valuationPurposeKey: currentSettings.valuationPurposeKey,
+        valuationPurposeNote: currentSettings.valuationPurposeNote ?? null,
+        externalSpecialistUsed: used,
+        externalSpecialistDetails: used ? details : null,
+        valuationDateMode: currentSettings.valuationDateMode,
+        retrospectiveDate: currentSettings.retrospectiveDate ?? null,
+        retrospectiveDateEnd: currentSettings.retrospectiveDateEnd ?? null,
         retrospectiveRationale: null,
         selectedAssumptions: selected,
       },
     );
+    if (seq !== persistSeq.current) return;
     setSaving(false);
     if (!res.ok) {
+      setSaveHint(res.message ?? "تعذّر حفظ الافتراضات الخاصة");
       showToast(res.message ?? "تعذّر حفظ الافتراضات الخاصة", "error");
       return;
     }
     setSettings(res.data);
-    setAssumptions(selected);
-    setFreeAssumption("");
-    setDirty(false);
-    // The report tab keeps its data bundle cached for a minute — without this it kept printing the old list.
-    void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
+    lastSavedSettingsRef.current = res.data;
     onSettingsSaved?.(res.data);
-    showToast("تم حفظ الافتراضات الخاصة", "success");
-  }
+    void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
+    // Skip applying server state if the user edited again while this request was in flight.
+    if (editVersionRef.current !== versionAtSave) return;
+    setAssumptions(selected);
+    if (withPending !== base) setFreeAssumption("");
+    setDirty(false);
+    setSaveHint("تم الحفظ تلقائياً");
+  }, [disabled, onSettingsSaved, queryClient, showToast]);
+
+  // Debounced autosave — same cadence as EvaluatorWindow draft saves.
+  useEffect(() => {
+    if (!dirty || disabled || !settings) return;
+    const timer = window.setTimeout(() => {
+      void persistAssumptions();
+    }, ASSUMPTIONS_AUTOSAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [
+    dirty,
+    disabled,
+    settings,
+    assumptions,
+    specialistUsed,
+    specialistDetails,
+    persistAssumptions,
+  ]);
+
+  persistAssumptionsRef.current = persistAssumptions;
+
+  // Flush pending edits when leaving the tab so the report does not miss the last change.
+  useEffect(() => {
+    return () => {
+      if (!dirtyRef.current || disabled) return;
+      void persistAssumptionsRef.current();
+    };
+  }, [disabled]);
 
   const err = (key: string) => fieldErrors?.[key];
 
@@ -358,8 +455,8 @@ export function EvaluatorFinalReviewTab({
 
       <ValCard title="الافتراضات الخاصة">
         <p className={noteClassName}>
-          أزل العبارة التي لا تصح على هذا العقار، أو أضف بنداً إضافياً. يُحفظ مع
-          إعدادات التقييم ويُطبع المُبقى فقط.
+          أزل العبارة التي لا تصح على هذا العقار، أو أضف بنداً إضافياً. يُحفظ
+          تلقائياً مع إعدادات التقييم ويُطبع المُبقى فقط.
         </p>
         {assumptionRows.length > 0 ? (
           <div className="mb-3 overflow-hidden rounded-[var(--radius)] border border-border">
@@ -375,7 +472,7 @@ export function EvaluatorFinalReviewTab({
                         type="radio"
                         name="val-specialist-assumption"
                         className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                        disabled={disabled || saving}
+                        disabled={disabled}
                         checked={specialistUsed}
                         onChange={() => applySpecialistUsed(true)}
                       />
@@ -391,12 +488,34 @@ export function EvaluatorFinalReviewTab({
                         </label>
                         <input
                           id="val-specialist-details"
-                          placeholder="الأخصائي، دوره، ونتيجته"
+                          placeholder="يُطبع النص كما تكتبه ضمن الافتراضات الخاصة"
                           value={specialistDetails}
-                          disabled={disabled || saving}
-                          onChange={(e) => setSpecialistDetails(e.target.value)}
-                          className={cn(opsFldControl, "font-medium")}
+                          disabled={disabled}
+                          onChange={(e) => {
+                            setSpecialistDetails(e.target.value);
+                            if (e.target.value.trim()) setDetailsInvalid(false);
+                            markDirty();
+                          }}
+                          className={cn(
+                            opsFldControl,
+                            "font-medium",
+                            (detailsInvalid || err("specialist_details")) &&
+                              !specialistDetails.trim() &&
+                              invalidControlClass,
+                          )}
+                          aria-invalid={
+                            (detailsInvalid ||
+                              Boolean(err("specialist_details"))) &&
+                            !specialistDetails.trim()
+                          }
                         />
+                        {((detailsInvalid || err("specialist_details")) &&
+                        !specialistDetails.trim()) ? (
+                          <p className="mt-1 text-[11.5px] font-semibold text-danger-text">
+                            {err("specialist_details") ??
+                              "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»"}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -414,7 +533,7 @@ export function EvaluatorFinalReviewTab({
                       isNoSpecialist ? "val-specialist-assumption" : undefined
                     }
                     className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                    disabled={disabled || saving}
+                    disabled={disabled}
                     checked={
                       isNoSpecialist
                         ? !specialistUsed
@@ -425,7 +544,7 @@ export function EvaluatorFinalReviewTab({
                         applySpecialistUsed(false);
                         return;
                       }
-                      setDirty(true);
+                      markDirty();
                       setAssumptions((prev) =>
                         e.target.checked
                           ? [...prev, row.text]
@@ -447,17 +566,21 @@ export function EvaluatorFinalReviewTab({
           <input
             placeholder="بند افتراض إضافي"
             value={freeAssumption}
-            disabled={disabled || saving}
-            onChange={(e) => {
-              setFreeAssumption(e.target.value);
-              setDirty(true);
+            disabled={disabled}
+            onChange={(e) => setFreeAssumption(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              (
+                e.currentTarget.nextElementSibling as HTMLButtonElement | null
+              )?.click();
             }}
             className={cn(opsFldControl, "flex-1 font-medium")}
           />
           <button
             type="button"
             className={cn(opsBtnPrimary, "shrink-0 !px-3 !py-2 text-[12px]")}
-            disabled={disabled || saving || !freeAssumption.trim()}
+            disabled={disabled || !freeAssumption.trim()}
             onClick={() => {
               const t = freeAssumption.trim();
               if (!t || t === EXTERNAL_SPECIALIST_USED_LABEL) {
@@ -473,27 +596,31 @@ export function EvaluatorFinalReviewTab({
                 setAssumptions((prev) => [...prev, t]);
               }
               setFreeAssumption("");
-              setDirty(true);
+              markDirty();
             }}
           >
             إضافة
           </button>
         </div>
-        <button
-          type="button"
-          className={opsBtnPrimary}
-          disabled={disabled || saving || !settings}
-          onClick={() => void saveAssumptions()}
-        >
-          {saving ? <Spinner /> : null}
-          <span>{saving ? "جاري الحفظ…" : "حفظ الافتراضات الخاصة"}</span>
-        </button>
-        {dirty && !saving ? (
+        {saving ? (
+          <p className="mb-0 text-[11.5px] text-text-3" role="status">
+            جاري الحفظ…
+          </p>
+        ) : saveHint ? (
           <p
-            className="mb-0 mt-2 text-[11.5px] font-semibold text-amber-text"
+            className={cn(
+              "mb-0 text-[11.5px]",
+              saveHint.startsWith("تم")
+                ? "text-text-3"
+                : "font-semibold text-amber-text",
+            )}
             role="status"
           >
-            تعديلاتك لم تُحفظ بعد — لن تظهر في التقرير إلا بعد الضغط على «حفظ الافتراضات الخاصة».
+            {saveHint}
+          </p>
+        ) : dirty ? (
+          <p className="mb-0 text-[11.5px] text-text-3" role="status">
+            يُحفظ تلقائياً…
           </p>
         ) : null}
       </ValCard>

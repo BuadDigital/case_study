@@ -47,16 +47,15 @@ export function PoPropertyBoundariesEntrySection({
         </span>
       </div>
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        أدخل وصف كل حد ونوعه وطوله — نوع الحد يُحسب منه عدد الشوارع في التسويات.
+        أدخل كل حد وطوله وواجهته — واجهة «شارع» يُحسب منها عدد الشوارع في التسويات.
       </p>
       <Table className="min-w-[720px]">
         <THead>
           <Tr hoverable={false}>
-            <Th>الاتجاه</Th>
-            <Th>النوع</Th>
-            <Th>الوصف</Th>
+            <Th>الجهة</Th>
+            <Th>الحد</Th>
             <Th className="w-28">الطول (م)</Th>
-            <Th>تشطيب الواجهة</Th>
+            <Th>الواجهات</Th>
           </Tr>
         </THead>
         <TBody>
@@ -67,21 +66,6 @@ export function PoPropertyBoundariesEntrySection({
               <Tr key={row.descKey} hoverable={false}>
                 <Td className="align-top font-semibold text-text-2">
                   {row.label}
-                </Td>
-                <Td className="align-top">
-                    <Select
-                    id={`bnd_type_${row.typeKey}`}
-                    className="text-xs"
-                    value={property[row.typeKey]}
-                    onChange={(e) => onPatch(row.typeKey, e.target.value)}
-                  >
-                    <option value="">—</option>
-                    {boundaryTypeOptions.map((o) => (
-                      <option key={o.value || "empty"} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
                 </Td>
                 <Td className="align-top">
                   <Input
@@ -111,13 +95,19 @@ export function PoPropertyBoundariesEntrySection({
                   ) : null}
                 </Td>
                 <Td className="align-top">
-                  <Input
-                    id={`bnd_facade_${row.facadeKey}`}
+                  <Select
+                    id={`bnd_type_${row.typeKey}`}
                     className="text-xs"
-                    value={property[row.facadeKey]}
-                    placeholder="مثال: حجر / دهان"
-                    onChange={(e) => onPatch(row.facadeKey, e.target.value)}
-                  />
+                    value={property[row.typeKey]}
+                    onChange={(e) => onPatch(row.typeKey, e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {boundaryTypeOptions.map((o) => (
+                      <option key={o.value || "empty"} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
                 </Td>
               </Tr>
             );

@@ -25,6 +25,9 @@ export function PoPropertyEditRoute({
         void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
         router.push(poPropertiesPath(poNumber));
       }}
+      onSectionSavedAction={() => {
+        void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
+      }}
       onDeletedAction={() => {
         void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
         router.push(poPropertiesPath(poNumber));

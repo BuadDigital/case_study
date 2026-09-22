@@ -4,7 +4,10 @@ import type {
   EvaluatorReportWorker,
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
-import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
+import type {
+  EvaluatorRetrospectiveDraft,
+  EvaluatorSpecialistDraft,
+} from "../../../lib/evaluator/evaluator-validation";
 import type { FinalOpinionChangeHandler } from "./lib/valuation-data-state";
 import type {
   ValuationWorkNavAvailability,
@@ -46,4 +49,5 @@ export type ValuationWorkShellProps = {
   /** Notify parent which approach tabs should appear (Rule Q-2). */
   onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
   onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
+  onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
 };

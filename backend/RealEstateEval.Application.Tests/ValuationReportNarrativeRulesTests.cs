@@ -48,8 +48,8 @@ public class ValuationReportNarrativeRulesTests
             externalSpecialistUsed: true,
             externalSpecialistDetails: "خبير إنشائي — تقدير العمر الاقتصادي");
 
-        Assert.Contains("خبير إنشائي", text);
-        Assert.Contains("تقريره مرفق", text);
+        Assert.Contains("خبير إنشائي — تقدير العمر الاقتصادي", text);
+        Assert.DoesNotContain("بأخصائي خارجي:", text);
         Assert.DoesNotContain("لم يستعن المقيّم", text);
     }
 

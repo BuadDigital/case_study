@@ -50,7 +50,7 @@ describe("valuation report tab sections", () => {
     ]);
   });
 
-  it("joins coordinates and license parts", () => {
+  it("joins coordinates", () => {
     expect(
       firstFilledValue(["geo_latitude", "geo_longitude"], {
         geo_latitude: "21.54",
@@ -58,11 +58,15 @@ describe("valuation report tab sections", () => {
       }, "coords"),
     ).toBe("21.54, 39.17");
     expect(
-      firstFilledValue(["client_license_number", "client_license_date_h"], {
+      firstFilledValue(["client_license_number"], {
         client_license_number: "1441/2345",
+      }),
+    ).toBe("1441/2345");
+    expect(
+      firstFilledValue(["client_license_date_h"], {
         client_license_date_h: "1441/03/15",
-      }, "license"),
-    ).toBe("1441/2345 · 1441/03/15");
+      }),
+    ).toBe("1441/03/15");
   });
 
   it("collects catalog keys used in the sheet", () => {
