@@ -385,7 +385,7 @@ export function PoPropertyEdit({
         <Card>
           <CardHeader>
             <div className="min-w-0">
-              <h2 className="m-0 text-sm font-bold">تفاصيل البناء</h2>
+              <h2 className="m-0 text-sm font-bold">مكونات العقار</h2>
               <p className="m-0 mt-0.5 text-xs text-text-3">
                 حصر الأدوار والأسوار والملاحق — مع اسم من كتب كل بند ومن عدّله
               </p>

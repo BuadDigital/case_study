@@ -131,19 +131,25 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
             ] as Array<[string, string, string, string]>)
           : []),
         ["الحي", field(doc, 7, "district"), "رقم المخطط", field(doc, 7, "planNumber")],
-        ["اسم المخطط", field(doc, 7, "planName"), "القطعة", field(doc, 7, "plotNumber")],
+        ...(field(doc, 7, "planName") !== "-"
+          ? ([
+              ["اسم المخطط", field(doc, 7, "planName"), "القطعة", field(doc, 7, "plotNumber")],
+            ] as Array<[string, string, string, string]>)
+          : ([
+              ["القطعة", field(doc, 7, "plotNumber")],
+            ] as Array<[string, string]>)),
         ["البلوك", field(doc, 7, "blockNumber")],
       ]);
     case 8:
       return kvTable([
         ["شمال", field(doc, 8, "north"), "نوع الحد", field(doc, 8, "northType")],
-        ["تشطيب الواجهة شمالاً", field(doc, 8, "northFacade")],
+        ["نوع الواجهة شمالاً", field(doc, 8, "northFacade")],
         ["جنوب", field(doc, 8, "south"), "نوع الحد", field(doc, 8, "southType")],
-        ["تشطيب الواجهة جنوباً", field(doc, 8, "southFacade")],
+        ["نوع الواجهة جنوباً", field(doc, 8, "southFacade")],
         ["شرق", field(doc, 8, "east"), "نوع الحد", field(doc, 8, "eastType")],
-        ["تشطيب الواجهة شرقاً", field(doc, 8, "eastFacade")],
+        ["نوع الواجهة شرقاً", field(doc, 8, "eastFacade")],
         ["غرب", field(doc, 8, "west"), "نوع الحد", field(doc, 8, "westType")],
-        ["تشطيب الواجهة غرباً", field(doc, 8, "westFacade")],
+        ["نوع الواجهة غرباً", field(doc, 8, "westFacade")],
         ["عدد الشوارع", field(doc, 8, "streetCount")],
       ]);
     case 9:

@@ -47,7 +47,7 @@ export function PoPropertyBoundariesEntrySection({
         </span>
       </div>
       <p className="mb-3 text-[11px] leading-relaxed text-text-3">
-        أدخل وصف كل حد ونوعه وطوله — نوع الحد يُحسب منه عدد الشوارع في التسويات.
+        أدخل وصف كل حد ونوعه وطوله — نوع الحد يُحسب منه عدد الشوارع في التسويات. نوع الواجهة يُدخل من المعاينة الميدانية.
       </p>
       <Table className="min-w-[720px]">
         <THead>
@@ -56,7 +56,6 @@ export function PoPropertyBoundariesEntrySection({
             <Th>النوع</Th>
             <Th>الوصف</Th>
             <Th className="w-28">الطول (م)</Th>
-            <Th>تشطيب الواجهة</Th>
           </Tr>
         </THead>
         <TBody>
@@ -109,15 +108,6 @@ export function PoPropertyBoundariesEntrySection({
                   {lenError ? (
                     <p className="mt-1 text-[10px] text-danger-text">{lenError}</p>
                   ) : null}
-                </Td>
-                <Td className="align-top">
-                  <Input
-                    id={`bnd_facade_${row.facadeKey}`}
-                    className="text-xs"
-                    value={property[row.facadeKey]}
-                    placeholder="مثال: حجر / دهان"
-                    onChange={(e) => onPatch(row.facadeKey, e.target.value)}
-                  />
                 </Td>
               </Tr>
             );

@@ -26,6 +26,10 @@ import {
   isLandInspectionContext,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
+  formatReportPropertyAgeYears,
+  reportPropertyAgeYearsFromLicense,
+} from "./valuation-report-property-age";
+import {
   applyIvsDateToStandards,
   isNoExternalSpecialistAssumption,
   type BuildingInventoryLineDto,
@@ -180,6 +184,25 @@ function pickLength(
 
 function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean {
   return survey?.deedMatchesNature === "no";
+}
+
+/** Unified facade type: inspector dropdown first; legacy free-text property field last. */
+function sideFacadeType(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+  property: PoPropertyIntake | null | undefined,
+  side: "north" | "south" | "east" | "west",
+): string {
+  const fromMatch = (inspector?.boundaryMatches?.[side]?.facade ?? "").trim();
+  if (fromMatch) return fromMatch;
+  const legacyKey = `boundaryFacade:${side}`;
+  const fromFeature = (inspector?.featureValues?.[legacyKey] ?? "").trim();
+  if (fromFeature) return fromFeature;
+  const propKey = `${side}FacadeFinishing` as
+    | "northFacadeFinishing"
+    | "southFacadeFinishing"
+    | "eastFacadeFinishing"
+    | "westFacadeFinishing";
+  return (property?.[propKey] ?? "").trim();
 }
 
 export function dash(value: string | null | undefined): string {
@@ -529,12 +552,9 @@ export function buildValuationReportLiveFill(input: {
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
   const licenseDate =
     slashReportDate(licenseDateRaw) || licenseDateRaw;
-  const license = [
-    inspector?.buildLicenseNumber?.trim(),
-    licenseDate,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const reportAgeYears = reportPropertyAgeYearsFromLicense(licenseDateRaw);
+  const reportAgeLabel =
+    reportAgeYears == null ? "" : formatReportPropertyAgeYears(reportAgeYears);
   const subjectCoords = subjectCoordsForReport(inspector, property);
   const coordsLabel = subjectCoords
     ? formatSubjectCoordsLabel(subjectCoords.lat, subjectCoords.lng)
@@ -596,20 +616,14 @@ export function buildValuationReportLiveFill(input: {
     "إحداثيات الموقع": dash(coordsLabel),
     "رقم الصك": dash(property?.deedNumber),
     "تاريخ الصك": dash(property?.deedDate),
-    "رقم رخصة البناء وتاريخها": dash(license),
+    "رقم رخصة البناء": dash(inspector?.buildLicenseNumber),
+    "تاريخ رخصة البناء": dash(licenseDate),
     ...(isLand
       ? {}
       : {
-          "عمر البناء": dash(
-            inspector?.propertyAgeYears
-              ? `${inspector.propertyAgeYears.trim()} سنوات`
-              : "",
-          ),
-          "عمر العقار": dash(
-            inspector?.propertyAgeYears
-              ? `${inspector.propertyAgeYears.trim()} سنوات`
-              : "",
-          ),
+          // Report-only: years since license issue − 2 (not the inspector age field).
+          "عمر البناء": dash(reportAgeLabel),
+          "عمر العقار": dash(reportAgeLabel),
         }),
     "حالة البناء": dash(inspector?.featureValues?.buildState),
     "حالة الإشغال": dash(inspector?.featureValues?.occupancyState),
@@ -772,10 +786,15 @@ export function buildValuationReportLiveFill(input: {
       .filter(Boolean)
       .join(" · "),
   );
-  cells["تشطيب الواجهة الشمالية"] = dash(property?.northFacadeFinishing);
-  cells["تشطيب الواجهة الشرقية"] = dash(property?.eastFacadeFinishing);
-  cells["تشطيب الواجهة الجنوبية"] = dash(property?.southFacadeFinishing);
-  cells["تشطيب الواجهة الغربية"] = dash(property?.westFacadeFinishing);
+  cells["نوع الواجهة الشمالية"] = dash(sideFacadeType(inspector, property, "north"));
+  cells["نوع الواجهة الشرقية"] = dash(sideFacadeType(inspector, property, "east"));
+  cells["نوع الواجهة الجنوبية"] = dash(sideFacadeType(inspector, property, "south"));
+  cells["نوع الواجهة الغربية"] = dash(sideFacadeType(inspector, property, "west"));
+  // Legacy labels still present in older templates / tab sheets.
+  cells["تشطيب الواجهة الشمالية"] = cells["نوع الواجهة الشمالية"];
+  cells["تشطيب الواجهة الشرقية"] = cells["نوع الواجهة الشرقية"];
+  cells["تشطيب الواجهة الجنوبية"] = cells["نوع الواجهة الجنوبية"];
+  cells["تشطيب الواجهة الغربية"] = cells["نوع الواجهة الغربية"];
   const finLevel = finishingLevelLabel(choices.finishingLevel);
   if (finLevel) cells["مستوى التشطيب"] = finLevel;
 
@@ -1036,7 +1055,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.northBoundaryLengthM,
           property?.northBoundaryLengthM,
         ),
-        face: property?.northFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "north"),
       },
       {
         name: "الجنوبية",
@@ -1052,7 +1071,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.southBoundaryLengthM,
           property?.southBoundaryLengthM,
         ),
-        face: property?.southFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "south"),
       },
       {
         name: "الشرقية",
@@ -1068,7 +1087,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.eastBoundaryLengthM,
           property?.eastBoundaryLengthM,
         ),
-        face: property?.eastFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "east"),
       },
       {
         name: "الغربية",
@@ -1084,7 +1103,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.westBoundaryLengthM,
           property?.westBoundaryLengthM,
         ),
-        face: property?.westFacadeFinishing ?? "",
+        face: sideFacadeType(inspector, property, "west"),
       },
     ],
     areaRows: extraInventoryAreaRows(input.inventoryLines, [

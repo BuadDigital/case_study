@@ -167,7 +167,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["الغرض من التقييم"]).toBe("البيع");
   });
 
-  it("joins build license number and date for §07", () => {
+  it("fills build license number and date separately for §07", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -178,11 +178,21 @@ describe("valuation report live fill from intake", () => {
       inspector: {
         buildLicenseNumber: "1441/2345",
         buildLicenseDate: "هـ1441/03/15",
+        propertyAgeYears: "99",
+        featureValues: { assetSubject: "فيلا" },
+      } as never,
+      property: {
+        propertyType: "فيلا",
+        city: "جدة",
+        deedNumber: "1",
       } as never,
     });
-    expect(fill.cells["رقم رخصة البناء وتاريخها"]).toBe(
-      "1441/2345 · هـ1441/03/15",
-    );
+    expect(fill.cells["رقم رخصة البناء"]).toBe("1441/2345");
+    expect(fill.cells["تاريخ رخصة البناء"]).toBe("هـ1441/03/15");
+    // Report age is derived from the license date (−2), not the inspector age field.
+    expect(fill.cells["عمر العقار"]).not.toBe("99 سنوات");
+    expect(fill.cells["عمر العقار"]).toMatch(/^\d+ سنوات$/);
+    expect(fill.cells["عمر البناء"]).toBe(fill.cells["عمر العقار"]);
   });
 
   it("overwrites previously seeded assignment keys from the current PO", () => {
@@ -432,7 +442,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.isLand).toBe(true);
 
     const dom = new DOMParser().parseFromString(
-      `<section data-sec="10"><h2>تفاصيل البناء</h2></section>
+      `<section data-sec="10"><h2>مكونات العقار</h2></section>
        <section data-sec="14"><h2>الخدمات والمرافق المتوفرة بالعقار</h2>
          <table><tr><td class="k">كهرباء</td><td class="v">غير متوفر</td></tr></table>
        </section>
@@ -443,6 +453,58 @@ describe("valuation report live fill from intake", () => {
     expect(dom.querySelector('[data-sec="10"]')).toBeNull();
     expect(dom.querySelector('[data-sec="14"]')).toBeNull();
     expect(dom.querySelector('[data-sec="15"]')).not.toBeNull();
+  });
+
+  it("hides محضر التجزئة and اسم المخطط when intake left them blank", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const empty = buildValuationReportLiveFill({
+      draft,
+      property: {
+        city: "جدة",
+        deedNumber: "1",
+        planName: "",
+        partitionMinutesNumber: "",
+        partitionMinutesDate: "",
+      } as never,
+    });
+    const emptyDom = new DOMParser().parseFromString(
+      `<section data-sec="7"><table>
+        <tr><td class="k">اسم المخطط</td><td class="v">-</td><td class="k">رقم المخطط</td><td class="v num">203</td></tr>
+        <tr><td class="k">رقم رخصة البناء</td><td class="v">123</td><td class="k">تاريخ رخصة البناء</td><td class="v">-</td><td class="k">محضر التجزئة</td><td class="v">-</td></tr>
+      </table></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(emptyDom, empty);
+    expect(emptyDom.body.textContent).not.toContain("اسم المخطط");
+    expect(emptyDom.body.textContent).not.toContain("محضر التجزئة");
+    expect(emptyDom.body.textContent).toContain("رقم المخطط");
+
+    const filled = buildValuationReportLiveFill({
+      draft,
+      property: {
+        city: "جدة",
+        deedNumber: "1",
+        planName: "مخطط الصواري",
+        partitionMinutesNumber: "44/12",
+        partitionMinutesDate: "1444/01/01",
+      } as never,
+    });
+    const filledDom = new DOMParser().parseFromString(
+      `<section data-sec="7"><table>
+        <tr><td class="k">اسم المخطط</td><td class="v">-</td><td class="k">رقم المخطط</td><td class="v num">203</td></tr>
+        <tr><td class="k">رقم رخصة البناء</td><td class="v">123</td><td class="k">تاريخ رخصة البناء</td><td class="v">-</td><td class="k">محضر التجزئة</td><td class="v">-</td></tr>
+      </table></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(filledDom, filled);
+    expect(filledDom.body.textContent).toContain("اسم المخطط");
+    expect(filledDom.body.textContent).toContain("مخطط الصواري");
+    expect(filledDom.body.textContent).toContain("محضر التجزئة");
+    expect(filledDom.body.textContent).toContain("44/12");
   });
 
   it("hides inspector property description until specialist acceptance", () => {
@@ -470,6 +532,59 @@ describe("valuation report live fill from intake", () => {
     });
     expect(accepted.propertyDescription).toBe("وصف من المعاين");
     expect(accepted.cells["وصف العقار"]).toBe("وصف من المعاين");
+  });
+
+  it("fills boundary facade types from the inspector dropdown, not property free text", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: {
+        northFacadeFinishing: "نص حر قديم",
+        city: "جدة",
+        deedNumber: "1",
+      } as never,
+      inspector: {
+        boundaryMatches: {
+          north: {
+            matches: true,
+            mismatchNote: "",
+            facade: "حجر",
+            deedDesc: "",
+            deedLength: "",
+          },
+          south: {
+            matches: true,
+            mismatchNote: "",
+            facade: "",
+            deedDesc: "",
+            deedLength: "",
+          },
+          east: {
+            matches: true,
+            mismatchNote: "",
+            facade: "دهان",
+            deedDesc: "",
+            deedLength: "",
+          },
+          west: {
+            matches: true,
+            mismatchNote: "",
+            facade: "",
+            deedDesc: "",
+            deedLength: "",
+          },
+        },
+      } as never,
+    });
+    expect(fill.boundaries[0]?.face).toBe("حجر");
+    expect(fill.boundaries[2]?.face).toBe("دهان");
+    expect(fill.cells["نوع الواجهة الشمالية"]).toBe("حجر");
+    expect(fill.cells["تشطيب الواجهة الشمالية"]).toBe("حجر");
+    expect(fill.cells["نوع الواجهة الجنوبية"]).toBe("—");
   });
 
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {

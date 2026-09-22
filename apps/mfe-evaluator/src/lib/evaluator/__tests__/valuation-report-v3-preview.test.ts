@@ -112,7 +112,7 @@ describe("valuation report v3 header meta and page numbers", () => {
       `<section class="page pg">
         <section data-sec="6"><table><tr><td class="k">نوع العقار</td><td class="v">فيلا</td><td class="k">حالة العقار</td><td class="v">جيد</td></tr></table></section>
         <section data-sec="7"><table>
-          <tr><td class="k">رقم رخصة البناء وتاريخها</td><td class="v">123</td><td class="k">محضر التجزئة</td><td class="v">—</td></tr>
+          <tr><td class="k">رقم رخصة البناء</td><td class="v">123</td><td class="k">تاريخ رخصة البناء</td><td class="v">—</td><td class="k">محضر التجزئة</td><td class="v">—</td></tr>
           <tr><td class="k">حالة البناء</td><td class="v">جيد</td><td class="k">حالة الإشغال</td><td class="v">شاغر</td></tr>
         </table></section>
         <section data-sec="8"><table><tr><th>الجهة</th><th>الحد</th><th>طول الضلع</th><th>الواجهات</th></tr><tr><td>شمال</td><td>شارع</td><td>20</td><td>حجر</td></tr></table></section>
@@ -134,9 +134,11 @@ describe("valuation report v3 header meta and page numbers", () => {
     }
     expect(html).toContain("مساحة الأرض (حسب الصك)");
     expect(html).not.toContain("مجموع مسطحات البناء");
-    expect(html).not.toContain("رقم رخصة البناء وتاريخها");
+    expect(html).not.toContain("رقم رخصة البناء");
+    expect(html).not.toContain("تاريخ رخصة البناء");
     expect(html).not.toContain("حالة العقار");
     expect(html).not.toContain("حالة الإشغال");
+    expect(html).not.toContain("محضر التجزئة");
     expect(html).not.toContain("الواجهات");
     expect(html).toContain("صفحة 1 من 2");
     expect(html).toContain("صفحة 2 من 2");

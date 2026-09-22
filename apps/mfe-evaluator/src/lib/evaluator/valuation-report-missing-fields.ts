@@ -90,7 +90,7 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
     "اسم المنطقة": INTAKE,
     "اسم المدينة": INTAKE,
     "اسم الحي": INTAKE,
-    "اسم المخطط": INTAKE,
+    // اسم المخطط / محضر التجزئة — اختياريان؛ يُخفيان من المطبوع عند الفراغ.
     "رقم المخطط": INTAKE,
     "رقم البلك": INTAKE,
     "رقم القطعة": INTAKE,
@@ -99,9 +99,9 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
     "اسم المالك": INTAKE,
     "رقم الصك": INTAKE,
     "تاريخ الصك": INTAKE,
-    "رقم رخصة البناء وتاريخها": INSPECTOR,
-    "عمر البناء": INSPECTOR,
-    "محضر التجزئة": INTAKE,
+    "رقم رخصة البناء": INSPECTOR,
+    "تاريخ رخصة البناء": INSPECTOR,
+    // عمر البناء / عمر العقار — مشتقّان في التقرير من تاريخ الرخصة (لا يُعلَّمان كحقل إدخال).
     "حالة البناء": INSPECTOR,
     "حالة الإشغال": INSPECTOR,
   },
@@ -276,6 +276,10 @@ function markBoundaries(sec: Element, origin: FieldOrigin, mark: MarkCell) {
       if (!BOUNDARY_SIDES.has(side)) continue;
       for (const i of [1, 2]) {
         mark(cells[i], `${headers[i] || "الحد"} (الجهة ${side})`, origin);
+      }
+      // Column «الواجهات» — inspector facade type (dropdown), not intake free text.
+      if (cells[3]) {
+        mark(cells[3], `${headers[3] || "الواجهات"} (الجهة ${side})`, INSPECTOR);
       }
     }
   }
