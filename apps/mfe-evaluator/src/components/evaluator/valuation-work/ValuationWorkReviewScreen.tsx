@@ -10,6 +10,7 @@ import type {
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
 import type { ValuationApproachSettingsDto } from "@platform/api-client";
+import type { EvaluatorSpecialistDraft } from "../../../lib/evaluator/evaluator-validation";
 import { PrimaryBtn } from "./atoms";
 
 const EvaluatorFinalReviewTab = lazy(() =>
@@ -34,6 +35,7 @@ export function ValuationWorkReviewScreen({
   showSubmit = false,
   submitting = false,
   onSubmit,
+  onSpecialistDraftChange,
 }: {
   draft?: EvaluatorSubmission;
   propertyId: string;
@@ -57,6 +59,7 @@ export function ValuationWorkReviewScreen({
   showSubmit?: boolean;
   submitting?: boolean;
   onSubmit?: () => void;
+  onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
 }) {
   const reviewDraft =
     draft ??
@@ -79,6 +82,7 @@ export function ValuationWorkReviewScreen({
           onDraftPatch={onDraftPatch}
           onReportChoicesPatch={onReportChoicesPatch}
           onSettingsSaved={onSettingsSaved}
+          onSpecialistDraftChange={onSpecialistDraftChange}
         />
       </Suspense>
       {showSubmit ? (

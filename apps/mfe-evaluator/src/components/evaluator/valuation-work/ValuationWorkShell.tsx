@@ -91,6 +91,7 @@ export function ValuationWorkShell({
   embeddedInTopTabs = false,
   onNavAvailabilityChange,
   onRetrospectiveDraftChange,
+  onSpecialistDraftChange,
 }: ValuationWorkShellProps) {
   const [internalScreen, setInternalScreen] =
     useState<ValuationWorkScreenId>("basic");
@@ -222,10 +223,21 @@ export function ValuationWorkShell({
   }, [effectiveScreen, onScreenChange, screen, screenControlled]);
 
   useEffect(() => {
-    if (!loading) return;
+    if (loading) return;
     const fromSaved = retrospectiveDraftFromSettings(approachSettings);
     if (fromSaved) onRetrospectiveDraftChange?.(fromSaved);
-  }, [approachSettings, loading, onRetrospectiveDraftChange]);
+    if (approachSettings) {
+      onSpecialistDraftChange?.({
+        used: approachSettings.externalSpecialistUsed,
+        details: approachSettings.externalSpecialistDetails ?? "",
+      });
+    }
+  }, [
+    approachSettings,
+    loading,
+    onRetrospectiveDraftChange,
+    onSpecialistDraftChange,
+  ]);
 
   /* ─── screens ─── */
   function renderMarket() {
@@ -492,6 +504,7 @@ export function ValuationWorkShell({
         onDraftPatch={onDraftPatch}
         onReportChoicesPatch={onReportChoicesPatch}
         onSettingsSaved={onSettingsSaved}
+        onSpecialistDraftChange={onSpecialistDraftChange}
         showSubmit={showSubmit}
         submitting={submitting}
         onSubmit={onSubmit}

@@ -246,6 +246,8 @@ export function EvaluatorValuationReportOutputTab({
             ? approachSettings.selectedAssumptions
             : undefined,
           externalSpecialistUsed: approachSettings?.externalSpecialistUsed,
+          externalSpecialistDetails:
+            approachSettings?.externalSpecialistDetails ?? null,
           finishingLuxuryText: finishingTextForReport(
             vr.finishingLuxury,
             REPORT_DEFAULTS.finishingLuxury,

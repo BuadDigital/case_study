@@ -17,6 +17,12 @@ export type EvaluatorRetrospectiveDraft = {
   dateEnd: string;
 };
 
+/** Live specialist choice from the final-review assumptions panel (may be unsaved). */
+export type EvaluatorSpecialistDraft = {
+  used: boolean;
+  details: string;
+};
+
 export function retrospectiveDraftFromSettings(settings: {
   valuationDateMode?: string | null;
   retrospectiveDate?: string | null;
@@ -41,6 +47,7 @@ const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "building_value", targetId: "inf-building" },
   { key: "evaluator_price", targetId: "final-inf-total" },
   { key: "forced_sale_discount", targetId: "final-inf-discount" },
+  { key: "specialist_details", targetId: "val-specialist-details" },
   { key: "esg_impact_notes", targetId: "val-esg" },
 ] as const;
 
@@ -57,7 +64,7 @@ const FINAL_OPINION_TARGET_IDS = new Set([
   "final-inf-discount",
 ]);
 
-const REVIEW_TARGET_IDS = new Set(["val-esg"]);
+const REVIEW_TARGET_IDS = new Set(["val-esg", "val-specialist-details"]);
 
 export function evaluatorWorkScreenForErrorTarget(
   targetId: string | null,
@@ -94,6 +101,8 @@ export function validateEvaluatorSubmission(input: {
   /** When approaches panel is source of truth — skip manual land/building. */
   skipManualLandBuilding?: boolean;
   retrospective?: EvaluatorRetrospectiveDraft | null;
+  /** Special assumptions — external specialist details when «نعم». */
+  specialist?: EvaluatorSpecialistDraft | null;
 }): EvaluatorValidationErrors {
   const errors: EvaluatorValidationErrors = {};
   const {
@@ -105,6 +114,7 @@ export function validateEvaluatorSubmission(input: {
     skipManualLandBuilding = false,
     retrospective,
     reportChoices,
+    specialist,
   } = input;
 
   if (retrospective?.mode === "retrospective") {
@@ -156,6 +166,11 @@ export function validateEvaluatorSubmission(input: {
   if (!evaluatorPrice.trim() || !Number.isFinite(priceRaw) || priceRaw <= 0) {
     errors.evaluator_price =
       "مطلوب إدخال إجمالي قيمة العقار — رقم موجب أكبر من صفر.";
+  }
+
+  if (specialist?.used && !specialist.details.trim()) {
+    errors.specialist_details =
+      "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم».";
   }
 
   if (

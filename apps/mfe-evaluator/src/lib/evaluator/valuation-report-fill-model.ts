@@ -77,6 +77,7 @@ import {
   linesFromOrgText,
   pairsFromOrgLines,
 } from "./valuation-report-print-attachments";
+import { externalSpecialistAssumptionClause } from "./special-assumption-rows";
 import {
   collectComparablesMapPins,
   formatSubjectCoordsLabel,
@@ -492,6 +493,8 @@ export function buildValuationReportLiveFill(input: {
   specialAssumptionLibrary?: string[] | null;
   /** When true, drop the library clause that denies using an external specialist. */
   externalSpecialistUsed?: boolean;
+  /** Printed into §29 when an external specialist was used. */
+  externalSpecialistDetails?: string | null;
   finishingLuxuryText?: string | null;
   finishingMediumText?: string | null;
   finishingOrdinaryText?: string | null;
@@ -1230,6 +1233,7 @@ export function buildValuationReportLiveFill(input: {
       library: input.specialAssumptionLibrary,
       toggles: choices.specialAssumptionOn,
       dropNoSpecialistClause: Boolean(input.externalSpecialistUsed),
+      externalSpecialistDetails: input.externalSpecialistDetails,
     }),
     ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
     glossaryPairs: pairsFromOrgLines(input.glossaryText),
@@ -1277,23 +1281,44 @@ export function buildValuationReportLiveFill(input: {
  * Legacy fallback: org library filtered by `reportChoices.specialAssumptionOn`.
  * `null` = no selection source → keep HTML template.
  * `[]` = none selected → clear the printed list.
+ * When a specialist is used, injects the details clause and drops the denial clause.
  */
 export function resolveSpecialAssumptionBullets(input: {
   selected?: string[] | null;
   library?: string[] | null;
   toggles?: boolean[] | null;
   dropNoSpecialistClause?: boolean;
+  externalSpecialistDetails?: string | null;
 }): string[] | null {
+  const details = (input.externalSpecialistDetails ?? "").trim();
+  const specialistBullet =
+    input.dropNoSpecialistClause && details
+      ? externalSpecialistAssumptionClause(details)
+      : null;
+
+  const withSpecialist = (items: string[]): string[] => {
+    if (!specialistBullet) return items;
+    const already = items.some(
+      (item) =>
+        item.includes(details) &&
+        (item.includes("أخصائي خارجي") || item.includes("اخصائي خارجي")),
+    );
+    if (already) return items;
+    return [specialistBullet, ...items];
+  };
+
   if (input.selected !== undefined && input.selected !== null) {
-    const items = input.selected.map((x) => x.trim()).filter(Boolean);
+    let items = input.selected.map((x) => x.trim()).filter(Boolean);
     if (input.dropNoSpecialistClause) {
-      return items.filter((item) => !isNoExternalSpecialistAssumption(item));
+      items = items.filter((item) => !isNoExternalSpecialistAssumption(item));
     }
-    return items;
+    return withSpecialist(items);
   }
-  return filterSpecialAssumptionBullets(input.library, input.toggles, {
+  const filtered = filterSpecialAssumptionBullets(input.library, input.toggles, {
     dropNoSpecialistClause: input.dropNoSpecialistClause,
   });
+  if (filtered == null) return null;
+  return withSpecialist(filtered);
 }
 
 /**

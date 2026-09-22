@@ -132,4 +132,34 @@ describe("§29 special assumption live fill", () => {
       "ليست زائدة تنظيمية",
     ]);
   });
+
+  it("prints the external specialist details clause in §29", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      selectedSpecialAssumptions: [
+        "افتراض ESG",
+        "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.",
+      ],
+      externalSpecialistUsed: true,
+      externalSpecialistDetails: "احمد و دوره اخصائي",
+    });
+    expect(fill.specialAssumptionBullets).toEqual([
+      "استُعين في هذه المهمة بأخصائي خارجي: احمد و دوره اخصائي، وتقريره مرفق بالتقرير.",
+      "افتراض ESG",
+    ]);
+
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="29"><ul><li>قالب قديم</li></ul></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.body.textContent).toContain("احمد و دوره اخصائي");
+    expect(dom.body.textContent).not.toContain("لم يستعن المقيّم");
+    expect(dom.body.textContent).not.toContain("قالب قديم");
+  });
 });
