@@ -228,18 +228,19 @@ public static class ValuationReportFieldBuilder
                 break;
 
             case ValuationReportSectionKeys.Boundaries:
+                // «الواجهات» prints the intake boundary type (شارع/قطعة…) whenever no facade finishing was recorded.
                 d["north"] = JoinBoundary(prop?.NorthBoundary, prop?.NorthBoundaryLengthM);
                 d["northType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType);
-                d["northFacade"] = prop?.NorthFacadeFinishing;
+                d["northFacade"] = FacadeOrType(prop?.NorthFacadeFinishing, d["northType"]);
                 d["south"] = JoinBoundary(prop?.SouthBoundary, prop?.SouthBoundaryLengthM);
                 d["southType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType);
-                d["southFacade"] = prop?.SouthFacadeFinishing;
+                d["southFacade"] = FacadeOrType(prop?.SouthFacadeFinishing, d["southType"]);
                 d["east"] = JoinBoundary(prop?.EastBoundary, prop?.EastBoundaryLengthM);
                 d["eastType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType);
-                d["eastFacade"] = prop?.EastFacadeFinishing;
+                d["eastFacade"] = FacadeOrType(prop?.EastFacadeFinishing, d["eastType"]);
                 d["west"] = JoinBoundary(prop?.WestBoundary, prop?.WestBoundaryLengthM);
                 d["westType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType);
-                d["westFacade"] = prop?.WestFacadeFinishing;
+                d["westFacade"] = FacadeOrType(prop?.WestFacadeFinishing, d["westType"]);
                 d["streetCount"] = PropertyBoundaryTypes.CountStreets(
                     prop?.NorthBoundaryType,
                     prop?.SouthBoundaryType,
@@ -515,6 +516,11 @@ public static class ValuationReportFieldBuilder
             return "موجودة";
         return string.Join(" — ", new[] { type, other }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
+
+    public static string? FacadeOrType(string? facadeFinishing, string? typeLabel) =>
+        string.IsNullOrWhiteSpace(facadeFinishing)
+            ? (string.IsNullOrWhiteSpace(typeLabel) ? null : typeLabel.Trim())
+            : facadeFinishing.Trim();
 
     public static string? JoinBoundary(string? text, string? lengthM)
     {

@@ -132,6 +132,8 @@ export function EvaluatorFinalReviewTab({
   const dirtyRef = useRef(dirty);
   const noSpecialistClauseRef = useRef("");
   const persistAssumptionsRef = useRef<() => Promise<void>>(async () => {});
+  /** Settings echoed back from this tab's own autosave — reseeding from them would wipe in-flight typing. */
+  const lastSavedSettingsRef = useRef<ValuationApproachSettingsDto | null>(null);
   assumptionsRef.current = assumptions;
   specialistUsedRef.current = specialistUsed;
   specialistDetailsRef.current = specialistDetails;
@@ -240,6 +242,7 @@ export function EvaluatorFinalReviewTab({
     }`;
     if (seededForRequestRef.current === seedKey) return;
     seededForRequestRef.current = seedKey;
+    if (approachSettingsFromShell === lastSavedSettingsRef.current) return;
     seedAssumptions(approachSettingsFromShell);
   }, [
     approachSettingsFromShell,
@@ -396,6 +399,7 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSettings(res.data);
+    lastSavedSettingsRef.current = res.data;
     onSettingsSaved?.(res.data);
     void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
     // Skip applying server state if the user edited again while this request was in flight.
@@ -468,7 +472,7 @@ export function EvaluatorFinalReviewTab({
                         type="radio"
                         name="val-specialist-assumption"
                         className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                        disabled={disabled || saving}
+                        disabled={disabled}
                         checked={specialistUsed}
                         onChange={() => applySpecialistUsed(true)}
                       />
@@ -484,9 +488,9 @@ export function EvaluatorFinalReviewTab({
                         </label>
                         <input
                           id="val-specialist-details"
-                          placeholder="الأخصائي، دوره، ونتيجته"
+                          placeholder="يُطبع النص كما تكتبه ضمن الافتراضات الخاصة"
                           value={specialistDetails}
-                          disabled={disabled || saving}
+                          disabled={disabled}
                           onChange={(e) => {
                             setSpecialistDetails(e.target.value);
                             if (e.target.value.trim()) setDetailsInvalid(false);
@@ -529,7 +533,7 @@ export function EvaluatorFinalReviewTab({
                       isNoSpecialist ? "val-specialist-assumption" : undefined
                     }
                     className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--ink)]"
-                    disabled={disabled || saving}
+                    disabled={disabled}
                     checked={
                       isNoSpecialist
                         ? !specialistUsed
@@ -562,7 +566,7 @@ export function EvaluatorFinalReviewTab({
           <input
             placeholder="بند افتراض إضافي"
             value={freeAssumption}
-            disabled={disabled || saving}
+            disabled={disabled}
             onChange={(e) => setFreeAssumption(e.target.value)}
             onKeyDown={(e) => {
               if (e.key !== "Enter") return;
@@ -576,7 +580,7 @@ export function EvaluatorFinalReviewTab({
           <button
             type="button"
             className={cn(opsBtnPrimary, "shrink-0 !px-3 !py-2 text-[12px]")}
-            disabled={disabled || saving || !freeAssumption.trim()}
+            disabled={disabled || !freeAssumption.trim()}
             onClick={() => {
               const t = freeAssumption.trim();
               if (!t || t === EXTERNAL_SPECIALIST_USED_LABEL) {

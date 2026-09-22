@@ -8,6 +8,7 @@
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import {
   INSPECTOR_SERVICE_OPTIONS,
+  inspectorAmenityLabel,
   isSpecialistProofService,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -77,6 +78,7 @@ export function InspectorWizardServicesCard({
           </span>
           <ChipRow
             items={[...DESIGN_AMENITIES]}
+            labelOf={inspectorAmenityLabel}
             selected={draft.amenities.filter((a) =>
               (DESIGN_AMENITIES as readonly string[]).includes(a),
             )}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   approvedInspectorPropertyDescription,
+  propertyDescriptionStaffAttribution,
+  reportInspectorPropertyDescription,
   isLandInspectionContext,
   preserveInspectorOwnedFeatureValues,
   resolvedInspectorAssetSubject,
@@ -124,6 +126,54 @@ describe("submitted inspector type ownership", () => {
         acceptedAtUtc: "2026-09-09T08:00:00.000Z",
       }),
     ).toBe("وصف معتمد");
+  });
+
+  it("shows a description the case-study staff wrote or corrected before acceptance, with attribution", () => {
+    const specialistEdited = {
+      propertyDescription: "فلة سكنية في حي الأندلس",
+      acceptedAtUtc: null,
+      fieldProvenance: {
+        propertyDescription: {
+          writtenByName: "أحمد سعيد",
+          writtenByRole: "field-inspector",
+          editedByName: "أسامة الصالحي",
+          editedByRole: "case-specialist",
+        },
+      },
+    };
+    expect(approvedInspectorPropertyDescription(specialistEdited)).toBe(
+      "فلة سكنية في حي الأندلس",
+    );
+    expect(propertyDescriptionStaffAttribution(specialistEdited)).toBe(
+      "عدّله أسامة الصالحي (أخصائي دراسة الحالة)",
+    );
+    expect(reportInspectorPropertyDescription(specialistEdited)).toBe(
+      "فلة سكنية في حي الأندلس — عدّله أسامة الصالحي (أخصائي دراسة الحالة)",
+    );
+
+    const specialistWrote = {
+      propertyDescription: "وصف الأخصائي",
+      acceptedAtUtc: null,
+      fieldProvenance: {
+        propertyDescription: { writtenByName: "أسامة الصالحي", writtenByRole: "case-specialist" },
+      },
+    };
+    expect(reportInspectorPropertyDescription(specialistWrote)).toBe(
+      "وصف الأخصائي — كتبه أسامة الصالحي (أخصائي دراسة الحالة)",
+    );
+
+    const inspectorOnly = {
+      propertyDescription: "وصف المعاين",
+      acceptedAtUtc: null,
+      fieldProvenance: {
+        propertyDescription: { writtenByName: "أحمد سعيد", writtenByRole: "field-inspector" },
+      },
+    };
+    expect(approvedInspectorPropertyDescription(inspectorOnly)).toBe("");
+    expect(reportInspectorPropertyDescription(inspectorOnly)).toBe("");
+
+    const acceptedInspectorText = { ...inspectorOnly, acceptedAtUtc: "2026-09-09T08:00:00.000Z" };
+    expect(reportInspectorPropertyDescription(acceptedInspectorText)).toBe("وصف المعاين");
   });
 });
 

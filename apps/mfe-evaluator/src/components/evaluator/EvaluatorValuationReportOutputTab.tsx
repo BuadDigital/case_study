@@ -7,6 +7,7 @@ import { Button } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
+  activeValuationListOptions,
   type OrganizationSettingsDto,
 } from "@platform/api-client";
 import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
@@ -156,6 +157,17 @@ export function EvaluatorValuationReportOutputTab({
     poKeys.valueBasisKey,
   ]);
 
+  // Catalog «أنواع الحد» names, so §08 «الواجهات» prints «مشاه» rather than its key.
+  const boundaryTypeLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        activeValuationListOptions(outputBundle?.lists ?? undefined, "boundaryTypes").map(
+          (o) => [o.value, o.label],
+        ),
+      ),
+    [outputBundle?.lists],
+  );
+
   const photoSlots = useMemo(() => {
     const attach = outputBundle?.attach;
     if (!attach) return EMPTY_PHOTO_SLOTS;
@@ -242,6 +254,7 @@ export function EvaluatorValuationReportOutputTab({
           ivsStandardsText: vr.ivsStandards,
           glossaryText: vr.glossary,
           researchScopeText: vr.researchScopeText,
+          boundaryTypeLabels,
           selectedSpecialAssumptions: approachSettings?.isSaved
             ? approachSettings.selectedAssumptions
             : undefined,

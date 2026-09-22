@@ -20,7 +20,6 @@ import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/insp
 import {
   approvedInspectorPropertyDescription,
   PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT,
-  isInspectorWorkspaceAccepted,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
@@ -397,9 +396,8 @@ export function EvaluatorValuationReportTab({
             property={property}
             primaryPhoto={primaryPhoto}
             inspectorDescription={
-              isInspectorWorkspaceAccepted(inspector)
-                ? approvedInspectorPropertyDescription(inspector) || undefined
-                : PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT
+              approvedInspectorPropertyDescription(inspector) ||
+              PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT
             }
             latitude={inspector?.mapLatitude}
             longitude={inspector?.mapLongitude}

@@ -189,7 +189,17 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             entity.FieldProvenanceJson = correctedProvenance;
 
             if (task.Kind == WorkflowTaskKind.FieldInspection)
+            {
                 await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
+                // A correction after confirmation keeps the intake boundary table in step with the inspector's.
+                if (entity.AcceptedAtUtc is not null && task.PropertyId is Guid correctedPropertyId)
+                {
+                    await _repo.SyncInspectorDeedBoundariesAsync(
+                        correctedPropertyId,
+                        InspectorBoundarySyncRules.FromPayload(entity.PayloadJson),
+                        cancellationToken);
+                }
+            }
 
             await _repo.SaveChangesAsync(cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);
@@ -438,6 +448,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             // Appraisal accept = specialist اعتماد of تقرير التقييم in دراسة الحالة.
             // Field inspection accept stamp is legacy/optional (no longer gates appraisal).
             _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
+            if (task.Kind == WorkflowTaskKind.FieldInspection && task.PropertyId is Guid boundaryPropertyId)
+            {
+                await _repo.SyncInspectorDeedBoundariesAsync(
+                    boundaryPropertyId,
+                    InspectorBoundarySyncRules.FromPayload(entity.PayloadJson),
+                    cancellationToken);
+            }
             await _repo.SaveChangesAsync(cancellationToken);
         }
 

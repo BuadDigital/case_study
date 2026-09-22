@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
@@ -116,6 +117,18 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         property.HasStructuresToValue = HasStructuresToValueValues.No;
         if (property.BuildingInventoryLines.Count > 0)
             db.BuildingInventoryLines.RemoveRange(property.BuildingInventoryLines);
+    }
+
+    public async Task SyncInspectorDeedBoundariesAsync(
+        Guid propertyId,
+        IReadOnlyDictionary<string, InspectorDeedBoundary> sides,
+        CancellationToken cancellationToken)
+    {
+        if (sides.Count == 0) return;
+        var property = await db.WorkOrderProperties
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is null) return;
+        InspectorBoundarySyncRules.Apply(property, sides);
     }
 
     public void Add(PartyTaskSubmission submission) => db.PartyTaskSubmissions.Add(submission);

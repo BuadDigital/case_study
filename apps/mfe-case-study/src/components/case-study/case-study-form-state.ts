@@ -77,10 +77,7 @@ export function hydrateCaseStudyFormDraft(args: {
       answers: mergedAnswers,
       answerNotes: mergedNotes,
       status: parentSubmitted && isParty ? "submitted" : base.status,
-      specialistReviewApproved: {
-        ...base.specialistReviewApproved,
-        ...stored?.specialistReviewApproved,
-      },
+      specialistReviewApproved: { ...base.specialistReviewApproved, ...stored?.specialistReviewApproved },
       requestNumber: seed.requestNumber ?? base.requestNumber,
       deedNumber: seed.deedNumber ?? base.deedNumber,
       requestDate: seed.requestDate ?? base.requestDate,
@@ -167,8 +164,7 @@ export function firstCaseStudyFormScrollTarget(args: {
         return {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
           step: 0,
-          message:
-            "أكّد مطابقة الصك على الطبيعة من تبويب مدخلات المعاين قبل رفع تقرير دراسة الحالة.",
+          message: "أكّد مطابقة الصك على الطبيعة من تبويب مدخلات المعاين قبل رفع تقرير دراسة الحالة.",
           blocking: true,
           invalidDeedNature: true,
         };

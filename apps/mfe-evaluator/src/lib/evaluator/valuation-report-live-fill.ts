@@ -330,7 +330,7 @@ export function applyValuationReportLiveFill(
   if (surr) fillKeyedInSection(surr, "أخرى", fill.surroundingsOther);
 
   const feat = dom.querySelector('[data-sec="11"]');
-  if (feat) fillKeyedInSection(feat, "أخرى", "—");
+  if (feat) fillKeyedInSection(feat, "أخرى", fill.attachmentsOther);
 
   const services = dom.querySelector('[data-sec="14"]');
   if (services) fillKeyedRows(services, fill.serviceRows);

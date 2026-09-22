@@ -133,7 +133,7 @@ describe("§29 special assumption live fill", () => {
     ]);
   });
 
-  it("prints the external specialist details clause in §29", () => {
+  it("prints the external specialist details verbatim in §29", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -149,7 +149,7 @@ describe("§29 special assumption live fill", () => {
       externalSpecialistDetails: "احمد و دوره اخصائي",
     });
     expect(fill.specialAssumptionBullets).toEqual([
-      "استُعين في هذه المهمة بأخصائي خارجي: احمد و دوره اخصائي، وتقريره مرفق بالتقرير.",
+      "احمد و دوره اخصائي",
       "افتراض ESG",
     ]);
 

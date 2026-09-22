@@ -73,8 +73,9 @@ public static class ValuationReportNarrativeRules
 
  // Specialist clause — the external specialist the valuer engaged for this valuation only
  // (not the assignment specialist nor the case-study specialist — internal transaction roles).
+ // «Yes» prints the valuer's own wording verbatim — no fixed template around it.
         bits.Add(externalSpecialistUsed && !string.IsNullOrWhiteSpace(externalSpecialistDetails)
-            ? $"استُعين في هذه المهمة بأخصائي خارجي: {externalSpecialistDetails.Trim()}، وتقريره مرفق بالتقرير."
+            ? externalSpecialistDetails.Trim()
             : "لم يستعن المقيّم بأي أخصائي خارجي في أداء مهمة التقييم هذه.");
 
         if (!string.IsNullOrWhiteSpace(retrospectiveLine))

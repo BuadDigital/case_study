@@ -122,7 +122,67 @@ public class PartyTaskSubmissionAcceptTests
         Assert.False(await fin.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == TaskId));
     }
 
-    private static void SeedAcceptedableFieldInspection(CaseStudyDbContext db)
+    [Fact]
+    public async Task Accept_field_inspection_mirrors_inspector_deed_boundaries_onto_the_property()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedAcceptedableFieldInspection(
+            db,
+            payloadJson:
+                """
+                {"boundaryMatches":{
+                  "north":{"deedDesc":"رقم 11","deedLength":"40.28","facade":"","matches":true,"mismatchNote":""},
+                  "south":{"deedDesc":"","deedLength":"38.50","facade":"","matches":true,"mismatchNote":""},
+                  "east":{"deedDesc":"  ","deedLength":"","facade":"","matches":false,"mismatchNote":"فرق"}
+                }}
+                """);
+        db.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = PropertyId,
+            WorkOrderId = Guid.NewGuid(),
+            DeedNumber = "DEED-501",
+            NorthBoundary = "شارع عرض 15م",
+            NorthBoundaryLengthM = "25.00",
+            NorthBoundaryType = "street",
+            SouthBoundary = "قطعة 12",
+            SouthBoundaryLengthM = "25.00",
+            EastBoundary = "قطعة 13",
+            EastBoundaryLengthM = "25.00",
+            WestBoundary = "ممر",
+            WestBoundaryLengthM = "25.00",
+        });
+        db.SaveChanges();
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
+
+        var (result, errors) = await service.AcceptAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "specialist-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+
+        var property = await db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Equal("رقم 11", property.NorthBoundary);
+        Assert.Equal("40.28", property.NorthBoundaryLengthM);
+        Assert.Equal("street", property.NorthBoundaryType);
+        // Blank inspector text keeps the intake value; a recorded length still lands.
+        Assert.Equal("قطعة 12", property.SouthBoundary);
+        Assert.Equal("38.50", property.SouthBoundaryLengthM);
+        // Whitespace-only text and an empty length change nothing.
+        Assert.Equal("قطعة 13", property.EastBoundary);
+        Assert.Equal("25.00", property.EastBoundaryLengthM);
+        // A side missing from the payload is untouched.
+        Assert.Equal("ممر", property.WestBoundary);
+        Assert.Equal("25.00", property.WestBoundaryLengthM);
+    }
+
+    private static void SeedAcceptedableFieldInspection(CaseStudyDbContext db, string payloadJson = "{}")
     {
         var now = DateTime.UtcNow;
         db.WorkflowTasks.Add(WorkflowTask.Create(
@@ -142,7 +202,7 @@ public class PartyTaskSubmissionAcceptTests
             Status = PartyTaskSubmissionStatus.Submitted,
             PropertyId = PropertyId,
             PoNumber = "PO-501",
-            PayloadJson = "{}",
+            PayloadJson = payloadJson,
             SubmittedAtUtc = now,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,

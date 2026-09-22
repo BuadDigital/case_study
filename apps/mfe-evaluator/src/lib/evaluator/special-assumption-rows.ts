@@ -6,11 +6,6 @@ export const EXTERNAL_SPECIALIST_USED_LABEL = "استُعين بأخصائي خ�
 export const DEFAULT_NO_EXTERNAL_SPECIALIST_ASSUMPTION =
   "لم يستعن المقيّم بأي أخصائي أو مؤسسة خدمات أثناء تنفيذ مهمة التقييم، وجميع الإجراءات والتحليلات اللازمة نُفّذت بواسطة فريق العمل بإدارة التقييم.";
 
-/** Printed §29 bullet when the valuer engaged an external specialist (matches backend narrative). */
-export function externalSpecialistAssumptionClause(details: string): string {
-  return `استُعين في هذه المهمة بأخصائي خارجي: ${details.trim()}، وتقريره مرفق بالتقرير.`;
-}
-
 export type SpecialAssumptionRow =
   | { kind: "specialist-used"; key: "specialist-used" }
   | { kind: "clause"; key: string; text: string };

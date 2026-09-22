@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
@@ -65,6 +66,15 @@ public interface IPartyTaskSubmissionRepository
         Guid propertyId,
         string inspectedPropertyType,
         bool isLand,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stages the inspector's confirmed deed boundaries (text + length per side) onto the property's
+    /// intake boundary fields. Saved with the unit of work.
+    /// </summary>
+    Task SyncInspectorDeedBoundariesAsync(
+        Guid propertyId,
+        IReadOnlyDictionary<string, InspectorDeedBoundary> sides,
         CancellationToken cancellationToken);
 
     void Add(PartyTaskSubmission submission);

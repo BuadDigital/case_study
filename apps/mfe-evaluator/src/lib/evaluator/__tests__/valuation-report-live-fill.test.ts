@@ -455,6 +455,33 @@ describe("valuation report live fill from intake", () => {
     expect(dom.querySelector('[data-sec="15"]')).not.toBeNull();
   });
 
+  it("prints «ملحقات أخرى» in the §11 «أخرى» cell", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { id: "p1", deedNumber: "1", city: "جدة", district: "الشاطئ" } as never,
+      inspector: {
+        featureValues: { assetSubject: "فيلا", otherAttachments: "ملعب تنس، غرفة مولد" },
+      } as never,
+    });
+    expect(fill.attachmentsOther).toBe("ملعب تنس، غرفة مولد");
+
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="11"><table><tr><td class="k">تشجير</td><td class="v">-</td><td class="k">أخرى</td><td class="v">-</td></tr></table></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    const cells = [...dom.querySelectorAll("td.k")].map((k) => [
+      k.textContent,
+      k.nextElementSibling?.textContent,
+    ]);
+    expect(cells).toContainEqual(["أخرى", "ملعب تنس، غرفة مولد"]);
+  });
+
   it("hides محضر التجزئة and اسم المخطط when intake left them blank", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
@@ -585,6 +612,40 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع الواجهة الشمالية"]).toBe("حجر");
     expect(fill.cells["تشطيب الواجهة الشمالية"]).toBe("حجر");
     expect(fill.cells["نوع الواجهة الجنوبية"]).toBe("—");
+  });
+
+  it("falls back to the intake boundary type for «الواجهات» when the inspector left the facade empty", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: {
+        id: "p1",
+        deedNumber: "1",
+        city: "جدة",
+        district: "الشاطئ",
+        northBoundaryType: "street",
+        southBoundaryType: "pedestrian",
+        eastBoundaryType: "",
+        eastFacadeFinishing: "دهان قديم",
+        westBoundaryType: "plot",
+      } as never,
+      boundaryTypeLabels: { pedestrian: "مشاه" },
+      inspector: {
+        boundaryMatches: {
+          north: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+          south: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+          east: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+          west: { matches: true, mismatchNote: "", facade: "حجر", deedDesc: "", deedLength: "" },
+        },
+      } as never,
+    });
+    // Built-in label, catalog label, legacy free text when no type, inspector facade wins.
+    expect(fill.boundaries.map((b) => b.face)).toEqual(["شارع", "مشاه", "دهان قديم", "حجر"]);
+    expect(fill.cells["نوع الواجهة الشمالية"]).toBe("شارع");
   });
 
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {

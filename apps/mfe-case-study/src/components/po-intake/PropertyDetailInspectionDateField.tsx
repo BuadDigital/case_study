@@ -130,6 +130,8 @@ export function InsDualCalendarDateField({
         return;
       }
       const target = event.target as Node;
+      // A year/day button re-renders away before this listener runs — a detached target is never "outside".
+      if (!target.isConnected) return;
       if (rootRef.current?.contains(target)) return;
       if (panelRef.current?.contains(target)) return;
       setOpen(false);
@@ -182,7 +184,8 @@ export function InsDualCalendarDateField({
         </button>
         {open
           ? createPortal(
-              <div ref={panelRef} style={panelStyle}>
+              // w-max: the first measurement runs before the fixed style lands — a block wrapper reads the full body width and clamps the panel to the far edge.
+              <div ref={panelRef} className="w-max" style={panelStyle}>
                 <DualCalendarPickerPanel
                   selected={parsed}
                   calendar={panelCalendar}

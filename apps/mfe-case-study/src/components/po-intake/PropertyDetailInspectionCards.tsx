@@ -51,10 +51,13 @@ export function ChipRow({
   items,
   selected,
   onToggle,
+  labelOf,
 }: {
   items: string[];
   selected: string[];
   onToggle?: (item: string) => void;
+  /** Display wording for a stored item value (the value itself is what gets saved). */
+  labelOf?: (item: string) => string;
 }) {
   return (
     <div className="flex flex-wrap gap-[7px]">
@@ -81,7 +84,7 @@ export function ChipRow({
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             ) : null}
-            {item}
+            {labelOf ? labelOf(item) : item}
           </>
         );
         if (onToggle) {

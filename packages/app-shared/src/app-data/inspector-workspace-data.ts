@@ -597,16 +597,41 @@ export function isSpecialistProofService(
   return (SPECIALIST_PROOF_SERVICES as readonly string[]).includes(label);
 }
 
+/**
+ * Stored amenity values — ordered like the report's «المحيط المؤثر للعقار» (§15).
+ * The strings are payload values and photo-slot ids, so they never change; the
+ * screens show them through `inspectorAmenityLabel` with the report wording.
+ */
 export const INSPECTOR_AMENITY_OPTIONS = [
-  "مدارس",
-  "مستشفيات",
   "مساجد",
-  "أسواق تجارية",
-  "طرق رئيسية",
-  "حدائق",
+  "مستشفيات",
   "مرفق أمني",
+  "أسواق تجارية",
+  "حدائق",
+  "مدارس",
   "مقر حكومي",
+  "طرق رئيسية",
 ] as const;
+
+/** Display wording per stored amenity — identical to the §15 report cells. */
+export const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
+  مساجد: "جامع",
+  مستشفيات: "مرفق طبي",
+  "مرفق أمني": "مرفق أمني",
+  "أسواق تجارية": "سوق تجاري",
+  حدائق: "حديقة",
+  مدارس: "مرفق تعليمي",
+  "مقر حكومي": "مقر حكومي",
+  "طرق رئيسية": "طريق سريع",
+};
+
+export function inspectorAmenityLabel(value: string): string {
+  return INSPECTOR_AMENITY_LABELS[value.trim()] ?? value;
+}
+
+/** Free-text «ملحقات أخرى» stored beside the yes/no features — prints in §11 «أخرى». */
+export const OTHER_ATTACHMENTS_KEY = "otherAttachments";
+export const OTHER_ATTACHMENTS_LABEL = "ملحقات أخرى";
 
 export const INSPECTOR_OBSERVATION_CATEGORIES = [
   "عيب ظاهر",
@@ -655,7 +680,7 @@ export function listServiceAmenityPhotoSlots(draft: {
     out.push({
       id: serviceAmenityPhotoSlotId("amenity", trimmed),
       kind: "amenity",
-      label: trimmed,
+      label: inspectorAmenityLabel(trimmed),
     });
   }
   return out;
@@ -966,7 +991,18 @@ export type InspectorWorkspaceDraft = {
   /** Specialist acceptance stamp — gates package into Infath. */
   acceptedAtUtc?: string | null;
   acceptedByName?: string | null;
+  /** Who wrote / last corrected each payload field — stamped by the server, keyed by payload key. */
+  fieldProvenance?: Record<string, InspectorFieldProvenance> | null;
   updatedAtUtc: string;
+};
+
+export type InspectorFieldProvenance = {
+  writtenByName?: string;
+  writtenByRole?: string;
+  writtenAtUtc?: string;
+  editedByName?: string;
+  editedByRole?: string;
+  editedAtUtc?: string;
 };
 
 export function patchAccessContact(
@@ -1165,19 +1201,67 @@ export function includeInspectorPhotoForReaders(
   );
 }
 
+const STAFF_ROLE_LABELS: Record<string, string> = {
+  "case-specialist": "أخصائي دراسة الحالة",
+  "section-supervisor": "مشرف القسم",
+  "general-manager": "مدير الإدارة",
+  cdo: "مسؤول التحول الرقمي",
+};
+
+type PropertyDescriptionSource = Pick<
+  InspectorWorkspaceDraft,
+  "propertyDescription" | "acceptedAtUtc" | "fieldProvenance"
+>;
+
+/** The case-study staff member who wrote or last corrected «وصف العقار» (from تعديل العقار), if any. */
+function propertyDescriptionStaffStamp(
+  draft: PropertyDescriptionSource | null | undefined,
+): { verb: "كتبه" | "عدّله"; name: string; roleLabel: string } | null {
+  const entry = draft?.fieldProvenance?.propertyDescription;
+  if (!entry) return null;
+  const edited = STAFF_ROLE_LABELS[(entry.editedByRole ?? "").trim().toLowerCase()];
+  if (edited) {
+    return { verb: "عدّله", name: (entry.editedByName ?? "").trim(), roleLabel: edited };
+  }
+  const written = STAFF_ROLE_LABELS[(entry.writtenByRole ?? "").trim().toLowerCase()];
+  if (written) {
+    return { verb: "كتبه", name: (entry.writtenByName ?? "").trim(), roleLabel: written };
+  }
+  return null;
+}
+
 /**
- * Appraiser-facing property description — only after specialist acceptance of
- * the inspector package. Before that, returns empty so report/glance UIs do
- * not leak the inspector's draft wording.
+ * Appraiser-facing property description. The inspector's own wording stays hidden
+ * until the specialist accepts the package; wording the case-study staff wrote or
+ * corrected themselves (تعديل العقار) is already reviewed, so it shows at once.
  */
 export function approvedInspectorPropertyDescription(
-  draft:
-    | Pick<InspectorWorkspaceDraft, "propertyDescription" | "acceptedAtUtc">
-    | null
-    | undefined,
+  draft: PropertyDescriptionSource | null | undefined,
 ): string {
-  if (!isInspectorWorkspaceAccepted(draft)) return "";
-  return (draft?.propertyDescription ?? "").trim();
+  const text = (draft?.propertyDescription ?? "").trim();
+  if (!text) return "";
+  if (isInspectorWorkspaceAccepted(draft)) return text;
+  return propertyDescriptionStaffStamp(draft) ? text : "";
+}
+
+/** «كتبه/عدّله فلان (الدور)» when case-study staff authored the printed description; empty otherwise. */
+export function propertyDescriptionStaffAttribution(
+  draft: PropertyDescriptionSource | null | undefined,
+): string {
+  const stamp = propertyDescriptionStaffStamp(draft);
+  if (!stamp || !approvedInspectorPropertyDescription(draft)) return "";
+  const who = stamp.name || stamp.roleLabel;
+  return stamp.name ? `${stamp.verb} ${who} (${stamp.roleLabel})` : `${stamp.verb} ${who}`;
+}
+
+/** Report cell text: the approved description, with the staff attribution appended when there is one. */
+export function reportInspectorPropertyDescription(
+  draft: PropertyDescriptionSource | null | undefined,
+): string {
+  const text = approvedInspectorPropertyDescription(draft);
+  if (!text) return "";
+  const attribution = propertyDescriptionStaffAttribution(draft);
+  return attribution ? `${text} — ${attribution}` : text;
 }
 
 /** Placeholder when the appraiser opens the report before specialist accept. */

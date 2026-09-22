@@ -8,6 +8,9 @@ import {
   MOVABLES_DESCRIPTION_LABEL,
   OCCUPANCY_DESCRIPTION_KEY,
   OCCUPANCY_DESCRIPTION_LABEL,
+  OTHER_ATTACHMENTS_KEY,
+  OTHER_ATTACHMENTS_LABEL,
+  inspectorAmenityLabel,
 } from "./inspector-workspace-data";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 
@@ -25,6 +28,7 @@ export type PartyDataKind =
 
 export type PartyFieldInput =
   | "text"
+  | "date"
   | "textarea"
   | "select"
   | "checkbox"
@@ -38,6 +42,8 @@ export type PartyFieldDef = {
   input: PartyFieldInput;
   options?: readonly string[];
   ltr?: boolean;
+  /** Multiselect only: label of a free-text entry that adds values outside `options` (e.g. «أخرى»). */
+  customLabel?: string;
 };
 
 export type PartyDataSectionDef = {
@@ -53,6 +59,13 @@ const text = (key: string, label: string, ltr = false): PartyFieldDef => ({
   label,
   input: "text",
   ltr,
+});
+/** Hijri/Gregorian picker — same stored format as the inspector's dual-calendar field. */
+const date = (key: string, label: string): PartyFieldDef => ({
+  key,
+  label,
+  input: "date",
+  ltr: true,
 });
 const area = (key: string, label: string): PartyFieldDef => ({
   key,
@@ -74,7 +87,8 @@ const chips = (
   key: string,
   label: string,
   options: readonly string[],
-): PartyFieldDef => ({ key, label, input: "multiselect", options });
+  customLabel?: string,
+): PartyFieldDef => ({ key, label, input: "multiselect", options, customLabel });
 const observations = (key: string, label: string): PartyFieldDef => ({
   key,
   label,
@@ -89,16 +103,23 @@ const readonly = (key: string, label: string): PartyFieldDef => ({
 /** The inspector owns the property type — the server rejects a staff change to it. */
 const INSPECTOR_OWNED_FEATURE_KEYS = new Set(["assetSubject"]);
 
-const INSPECTOR_FEATURE_DEFS: PartyFieldDef[] = INSPECTOR_FEATURE_FIELDS.map(
-  (f): PartyFieldDef =>
-    INSPECTOR_OWNED_FEATURE_KEYS.has(f.key)
+/** Last yes/no of the «ملحقات» run (سور/مسبح/مصعد/تكييف/خزانات/تشجير) — «ملحقات أخرى» sits right after it. */
+const LAST_ATTACHMENT_FEATURE_KEY = "hasLandscaping";
+
+const INSPECTOR_FEATURE_DEFS: PartyFieldDef[] = INSPECTOR_FEATURE_FIELDS.flatMap(
+  (f): PartyFieldDef[] => {
+    const def: PartyFieldDef = INSPECTOR_OWNED_FEATURE_KEYS.has(f.key)
       ? readonly(`featureValues.${f.key}`, f.label)
       : {
           key: `featureValues.${f.key}`,
           label: f.label,
           input: "select",
           options: f.options,
-        },
+        };
+    return f.key === LAST_ATTACHMENT_FEATURE_KEY
+      ? [def, text(`featureValues.${OTHER_ATTACHMENTS_KEY}`, OTHER_ATTACHMENTS_LABEL)]
+      : [def];
+  },
 );
 
 /** Free-text feature values that sit beside the yes/no features but are not in the feature list. */
@@ -169,7 +190,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     flag("vacantLand", "أرض فضاء"),
     text("propertyAgeYears", L.propertyAge, true),
     text("buildLicenseNumber", L.buildLicenseNumber, true),
-    text("buildLicenseDate", L.buildLicenseDate, true),
+    date("buildLicenseDate", L.buildLicenseDate),
     text("electricityMeterCount", "عدد عدادات الكهرباء", true),
     text("electricityMeterNumbers", "أرقام عدادات الكهرباء", true),
     text("waterMeterCount", "عدد عدادات المياه", true),
@@ -183,7 +204,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     ...MOVABLES_AND_OCCUPANCY_DEFS,
     ...BOUNDARY_MATCH_DEFS,
     chips("services", L.services, INSPECTOR_SERVICE_OPTIONS),
-    chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS),
+    chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS, "أخرى"),
     observations("observations", "الملاحظات الميدانية — وصف العيوب الإنشائية في التقرير"),
     readonly("freePhotos", "الصور الحرة"),
     flag("clientDeclarationSigned", "إقرار صحة الموقع موقَّع"),
@@ -269,9 +290,11 @@ export { INSPECTOR_OBSERVATION_CATEGORIES };
 
 const DEED_MATCH_LABELS: Record<string, string> = { yes: "نعم", no: "لا" };
 
-/** Arabic label for a select option's stored value (engineering deed-match uses yes/no). */
+/** Arabic label for a stored option value (deed-match yes/no; amenities use the report wording). */
 export function partyOptionLabel(key: string, value: string): string {
-  return key === "deedMatchesNature" ? (DEED_MATCH_LABELS[value] ?? value) : value;
+  if (key === "deedMatchesNature") return DEED_MATCH_LABELS[value] ?? value;
+  if (key === "amenities") return inspectorAmenityLabel(value);
+  return value;
 }
 
 const ROLE_LABELS: Record<string, string> = {
