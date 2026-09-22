@@ -108,6 +108,7 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.featureValues.assetSubject = "عمارة";
     draft.featureValues.facade = "شمالية";
     draft.featureValues.propertyUsage = "سكني";
+    draft.featureValues.zoneStatus = "غير موقوفة";
     draft.featureValues.buildState = "جيد";
     draft.featureValues.occupancyState = "شاغر";
     draft.featureValues.districtState = "متوسط";
@@ -132,11 +133,23 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.features).toBeUndefined();
   });
 
-  it("does not demand retired fields the inspector never filled when the specialist re-shows them", () => {
+  it("shows سور، تكييف، خزانات، تشجير، وحالة المنطقة on the inspector form", () => {
+    const keys = visibleInspectorFeatureFields(false).map((field) => field.key);
+    expect(keys).toEqual(expect.arrayContaining([
+      "hasFence",
+      "hasCentralAc",
+      "hasTanks",
+      "hasLandscaping",
+      "zoneStatus",
+    ]));
+  });
+
+  it("does not demand yes/no presence fields the inspector left off", () => {
     const draft = completeDraft();
     draft.featureValues.assetSubject = "عمارة";
     draft.featureValues.facade = "شمالية";
     draft.featureValues.propertyUsage = "سكني";
+    draft.featureValues.zoneStatus = "غير موقوفة";
     draft.featureValues.buildState = "جيد";
     draft.featureValues.occupancyState = "شاغر";
     draft.featureValues.districtState = "متوسط";
@@ -151,10 +164,11 @@ describe("Field inspection frontend/backend rule parity", () => {
       attachmentId: "att-build",
     };
 
-    const errors = validateInspectorWorkspace(draft, {
-      includeRetiredFeatureKeys: ["zoneStatus"],
-    });
-    expect(errors.emptyFeatureKeys ?? []).not.toContain("zoneStatus");
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("hasFence");
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("hasCentralAc");
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("hasTanks");
+    expect(errors.emptyFeatureKeys ?? []).not.toContain("hasLandscaping");
     expect(errors.features).toBeUndefined();
   });
 
@@ -207,13 +221,38 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(inspectorWizardStepForErrorTarget("ins-map-section")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-property-photos")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-photos")).toBe(2);
-    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(1);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-hasElevator")).toBe(2);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-photo-carEntrance")).toBe(2);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-facade")).toBe(1);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-photo-facade")).toBe(1);
+    expect(inspectorWizardStepForErrorTarget("ins-feature-photo-hasLandscaping")).toBe(1);
     expect(inspectorWizardStepForErrorTarget("ins-defined-slot-service:مياه")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-component-photo-showroom")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-boundaries-section")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-boundary-south")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-confirm")).toBe(3);
     expect(inspectorWizardStepForErrorTarget("ins-observation-obs-1")).toBe(3);
+  });
+
+  it("keeps تشجير / خزانات / سور / تكييف photos optional", () => {
+    expect(
+      visibleInspectorFeatureFields(false).some((field) => field.key === "hasLandscaping"),
+    ).toBe(true);
+
+    const draft = completeDraft();
+    draft.featureValues = fillRequiredFeatureValues(draft.featureValues);
+    draft.featureValues.hasLandscaping = "نعم";
+    draft.featureValues.hasTanks = "نعم";
+    draft.featureValues.hasFence = "نعم";
+    draft.featureValues.hasCentralAc = "نعم";
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.featurePhotos).toBeUndefined();
+    expect(errors.missingFeaturePhotoKey).toBeUndefined();
+
+    const landscaping = visibleInspectorFeatureFields(false).find(
+      (field) => field.key === "hasLandscaping",
+    )!;
+    expect(inspectorFeatureRequiresPhoto(landscaping, "نعم")).toBe(false);
   });
 
   it("scrolls to the precise control for the first inspector error", () => {

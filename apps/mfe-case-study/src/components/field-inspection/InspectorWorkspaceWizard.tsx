@@ -8,13 +8,10 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Button, cn, useToast } from "@platform/ui-kit";
+import { Button, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
-import {
-  boundariesMarkedUnavailable,
-  type PoPropertyIntake,
-} from "../../lib/app-data/po-intake-data";
+import { type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   isLandInspectionContext,
   isCommercialShopInspectionContext,
@@ -36,13 +33,9 @@ import { InspectorFieldObservationsCard } from "./InspectorFieldObservationsCard
 import { COMPONENT_BOOL_KEYS } from "./inspector-wizard-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
-  firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
   inspectorWizardStepForErrorTarget,
-  inspectorWorkspaceHasBlockingErrors,
-  pickInspectorErrorsForWizardStep,
   scheduleInspectorErrorScroll,
-  validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
@@ -77,8 +70,6 @@ export function InspectorWorkspaceWizard({
   flat = false,
   /** Hide inline submit footer — parent renders it after extra sections. */
   hideSubmitFooter = false,
-  onStepGateFailed,
-  onStepGateClear,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -107,17 +98,8 @@ export function InspectorWorkspaceWizard({
   engineeringMapPin?: { lat: number; lng: number } | null;
   flat?: boolean;
   hideSubmitFooter?: boolean;
-  onStepGateFailed?: (
-    errors: InspectorWorkspaceFieldErrors,
-    message: string,
-  ) => void;
-  onStepGateClear?: () => void;
 }) {
-  const { showToast } = useToast();
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
-  const [doneSteps, setDoneSteps] = useState<Set<InspectorStepId>>(
-    () => new Set(flat ? ([1, 2, 3] as InspectorStepId[]) : []),
-  );
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
   const initialAssetSubject =
@@ -160,70 +142,8 @@ export function InspectorWorkspaceWizard({
     [isLand, includeRetiredFeatureKeys],
   );
 
-  const validationOptions = {
-    boundariesUnavailable: boundariesMarkedUnavailable(
-      property.boundariesAvailability,
-    ),
-    classification: property.classification,
-    propertyType: property.propertyType,
-    includeRetiredFeatureKeys,
-    specialistProofServicesOnly: serviceProofFromTransactionPhotos,
-  };
-
-  function revealStepErrors(
-    step: InspectorStepId,
-    stepErrors: InspectorWorkspaceFieldErrors,
-  ) {
-    const message =
-      firstInspectorWorkspaceError(stepErrors) ??
-      "أكمل الحقول الناقصة قبل المتابعة";
-    onStepGateFailed?.(stepErrors, message);
-    showToast(message, "error");
-    setActiveStep(step);
-  }
-
-  function stepHasGaps(step: InspectorStepId): InspectorWorkspaceFieldErrors | null {
-    const stepErrors = pickInspectorErrorsForWizardStep(
-      validateInspectorWorkspace(draft, validationOptions),
-      step,
-    );
-    return inspectorWorkspaceHasBlockingErrors(stepErrors) ? stepErrors : null;
-  }
-
-  function gateStep(step: InspectorStepId): boolean {
-    const stepErrors = stepHasGaps(step);
-    if (!stepErrors) return true;
-    revealStepErrors(step, stepErrors);
-    return false;
-  }
-
   function advance() {
-    if (!gateStep(activeStep)) return;
-    onStepGateClear?.();
-    setDoneSteps((prev) => {
-      const next = new Set(prev);
-      next.add(activeStep);
-      return next;
-    });
     setActiveStep((prev) => (prev === 3 ? prev : ((prev + 1) as InspectorStepId)));
-  }
-
-  function selectStep(next: InspectorStepId) {
-    if (next <= activeStep) {
-      setActiveStep(next);
-      return;
-    }
-    for (let step = activeStep; step < next; step += 1) {
-      const current = step as InspectorStepId;
-      if (!gateStep(current)) return;
-      setDoneSteps((prev) => {
-        const copy = new Set(prev);
-        copy.add(current);
-        return copy;
-      });
-    }
-    onStepGateClear?.();
-    setActiveStep(next);
   }
 
   useEffect(() => {
@@ -232,7 +152,7 @@ export function InspectorWorkspaceWizard({
     if (!flat) {
       setActiveStep(inspectorWizardStepForErrorTarget(targetId));
     }
-    scheduleInspectorErrorScroll(fieldErrors, flat ? 60 : 100);
+    scheduleInspectorErrorScroll(fieldErrors, flat ? 60 : 180);
   }, [fieldErrors, flat]);
 
   return (
@@ -240,8 +160,7 @@ export function InspectorWorkspaceWizard({
       {!flat ? (
         <InspectorStepNav
           activeStep={activeStep}
-          doneSteps={doneSteps}
-          onSelect={selectStep}
+          onSelect={setActiveStep}
         />
       ) : null}
 
@@ -459,8 +378,8 @@ function StepContinue({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3">
       <span className="text-[11.5px] text-text-3">
-        كل بطاقة تُحفظ تلقائياً عند الإدخال — «حفظ ومتابعة» يعتمد المرحلة وينتقل
-        للتالية.
+        كل بطاقة تُحفظ تلقائياً عند الإدخال — يمكنك تصفح المراحل بحرية، والتحقق
+        يتم عند الإرسال.
       </span>
       <span className="flex-1" />
       <Button type="button" variant="primary" size="sm" onClick={onContinue}>

@@ -54,7 +54,10 @@ public static class AuthorizationExtensions
                 CapabilityPolicyNames.ReadManagementReports,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
                     ctx,
-                    PlatformCapabilities.ManageWorkOrders)));
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageFinancial)));
 
             options.AddPolicy(
                 CapabilityPolicyNames.ReadKeyData,

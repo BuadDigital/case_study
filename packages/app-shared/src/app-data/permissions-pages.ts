@@ -10,6 +10,14 @@ const ALL_PAGE_SET = new Set<string>([
   ...ORPHAN_SCREENS_PAGE_IDS,
 ]);
 
+/** Nav row `all-transactions` — CDO plus the case specialist (not party roles). */
+export function roleSeesAllTransactionsPage(
+  role: string | null | undefined,
+): boolean {
+  const normalized = role?.trim().toLowerCase();
+  return normalized === "cdo" || normalized === "case-specialist";
+}
+
 /** Map API permission page ids to shell navigation pages. */
 export function pagesFromPermissions(
   apiPages: readonly string[],
@@ -21,18 +29,14 @@ export function pagesFromPermissions(
   }
 
   const role = options?.prototypeRole?.trim().toLowerCase();
-  const dashboardAllowed = role === "cdo";
-  if (!dashboardAllowed) {
-    merged.delete("dashboard");
-  }
   // Legacy draft screens removed from nav — strip if still granted by API.
   if (role !== "cdo") {
     for (const pageId of ORPHAN_SCREENS_PAGE_IDS) {
       merged.delete(pageId);
     }
   }
-  // "All transactions" is CDO-only.
-  if (role !== "cdo") {
+  // "All transactions" — CDO and the case specialist.
+  if (!roleSeesAllTransactionsPage(role)) {
     merged.delete("all-transactions");
   }
 

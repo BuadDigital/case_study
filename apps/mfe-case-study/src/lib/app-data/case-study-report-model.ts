@@ -31,6 +31,7 @@ export type CaseStudyReportQuestionRow = {
   markA: boolean;
   markB: boolean;
   markNa: boolean;
+  note?: string;
 };
 
 export type CaseStudyReportSection = {
@@ -131,12 +132,14 @@ function buildSectionRows(
   section: CaseStudyQuestionSection,
   answers: Record<string, CaseStudyFormAnswer | null>,
   sectionQuestions: CaseStudyQuestionCatalog["sectionQuestions"],
+  answerNotes?: Record<string, string>,
 ): CaseStudyReportQuestionRow[] {
   const headers = CASE_STUDY_TABLE_HEADERS[section];
   const questions = sectionQuestions[section];
   return questions.map((question, i) => {
     const key = caseStudyAnswerKey(section, i);
     const val = answers[key] ?? null;
+    const note = answerNotes?.[key]?.trim() || undefined;
     return {
       question,
       colAHeader: headers.colA,
@@ -145,6 +148,7 @@ function buildSectionRows(
       markA: val === "A",
       markB: val === "B",
       markNa: val === "NA",
+      note,
     };
   });
 }
@@ -196,7 +200,12 @@ export function buildCaseStudyReportModel(
       colAHeader: headers.colA,
       colBHeader: headers.colB,
       colNaHeader: headers.colNa,
-      rows: buildSectionRows(id, draft.answers, catalog.sectionQuestions),
+      rows: buildSectionRows(
+        id,
+        draft.answers,
+        catalog.sectionQuestions,
+        draft.answerNotes,
+      ),
     };
 
     if (id === "deed" && draft.deedRemarks.trim()) {

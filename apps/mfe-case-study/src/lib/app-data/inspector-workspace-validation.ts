@@ -443,6 +443,28 @@ const WIZARD_STEP_ERROR_KEYS: Record<
   3: ["observations", "inspectionConfirmed"],
 };
 
+/** Presence pills rendered on step 2 (مكوّنات العقار) — keep in sync with COMPONENT_BOOL_KEYS. */
+const WIZARD_STEP_2_FEATURE_KEYS = new Set([
+  "carEntrance",
+  "hasBasement",
+  "hasElevator",
+  "hasPool",
+  "kitchen",
+]);
+
+function isWizardStep2FeatureKey(key: string): boolean {
+  return WIZARD_STEP_2_FEATURE_KEYS.has(key);
+}
+
+function splitFeatureKeysByWizardStep(
+  keys: readonly string[] | undefined,
+  step: 1 | 2,
+): string[] | undefined {
+  if (!keys?.length) return undefined;
+  const picked = keys.filter((key) => isWizardStep2FeatureKey(key) === (step === 2));
+  return picked.length ? picked : undefined;
+}
+
 export function pickInspectorErrorsForWizardStep(
   errors: InspectorWorkspaceFieldErrors,
   step: InspectorWizardStepId,
@@ -455,14 +477,28 @@ export function pickInspectorErrorsForWizardStep(
     }
   }
   if (step === 1) {
-    if (errors.emptyFeatureKeys?.length) {
-      picked.emptyFeatureKeys = errors.emptyFeatureKeys;
+    const emptyOnStep1 = splitFeatureKeysByWizardStep(errors.emptyFeatureKeys, 1);
+    if (emptyOnStep1) {
+      picked.emptyFeatureKeys = emptyOnStep1;
     }
-    if (errors.missingFeaturePhotoKey) {
+    if (
+      errors.missingFeaturePhotoKey &&
+      !isWizardStep2FeatureKey(errors.missingFeaturePhotoKey)
+    ) {
       picked.missingFeaturePhotoKey = errors.missingFeaturePhotoKey;
     }
   }
   if (step === 2) {
+    const emptyOnStep2 = splitFeatureKeysByWizardStep(errors.emptyFeatureKeys, 2);
+    if (emptyOnStep2) {
+      picked.emptyFeatureKeys = emptyOnStep2;
+    }
+    if (
+      errors.missingFeaturePhotoKey &&
+      isWizardStep2FeatureKey(errors.missingFeaturePhotoKey)
+    ) {
+      picked.missingFeaturePhotoKey = errors.missingFeaturePhotoKey;
+    }
     if (errors.missingDefinedPhotoSlotId) {
       picked.missingDefinedPhotoSlotId = errors.missingDefinedPhotoSlotId;
     }
@@ -482,6 +518,10 @@ export function pickInspectorErrorsForWizardStep(
 export function inspectorWizardStepForErrorTarget(
   targetId: string,
 ): InspectorWizardStepId {
+  const featureKeyMatch = targetId.match(/^ins-feature(?:-photo)?-(.+)$/);
+  if (featureKeyMatch && isWizardStep2FeatureKey(featureKeyMatch[1])) {
+    return 2;
+  }
   if (
     targetId === "ins-date" ||
     targetId === "ins-time" ||

@@ -187,6 +187,21 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_does_not_require_optional_yes_photos()
+    {
+        var json = MinimalValidPayload().Replace(
+            "\"featureValues\": {}",
+            """
+            "featureValues": { "hasLandscaping": "نعم", "hasTanks": "نعم", "hasFence": "نعم", "hasCentralAc": "نعم" }
+            """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+    }
+
+    [Fact]
     public void Validate_skips_building_features_and_showroom_photo_on_land()
     {
         var json = MinimalValidPayload()

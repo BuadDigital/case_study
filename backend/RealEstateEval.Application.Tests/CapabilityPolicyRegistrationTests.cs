@@ -136,6 +136,22 @@ public class CapabilityPolicyRegistrationTests
             CapabilityPolicyNames.ReadInspectionContext)).Succeeded);
     }
 
+    [Theory]
+    [InlineData(PlatformCapabilities.ManageWorkOrders)]
+    [InlineData(PlatformCapabilities.SubmitPartyWork)]
+    [InlineData(PlatformCapabilities.ManageFinancial)]
+    public async Task Operational_roles_read_management_reports(string capability)
+    {
+        var authorization = BuildAuthorizationService();
+
+        var result = await authorization.AuthorizeAsync(
+            PrincipalWith(capability),
+            resource: null,
+            CapabilityPolicyNames.ReadManagementReports);
+
+        Assert.True(result.Succeeded);
+    }
+
     /// <summary>
     /// The case specialist holds manage-work-orders and no valuation capability. She reads the
     /// property's valuation report but never the queue that gate protects.

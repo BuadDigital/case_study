@@ -26,6 +26,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      "dashboard",
       "po",
       "property-map",
       "favorites",
@@ -54,6 +55,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
     pages: [
+      "dashboard",
       "po",
       "property-map",
       "favorites",
@@ -79,8 +81,11 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--success-bg)",
     tc: "var(--success)",
     // Match supervisor pages (includes party-fees + fee pricing) — without financial.
+    // Plus all-transactions so the specialist can open every case, not only assigned ones.
     pages: [
+      "dashboard",
       "po",
+      "all-transactions",
       "property-map",
       "favorites",
       "active-primary-data",
@@ -105,6 +110,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      "dashboard",
       "po",
       "property-map",
       "favorites",
@@ -122,6 +128,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      "dashboard",
       "po",
       "favorites",
       "operations-tasks",
@@ -137,6 +144,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--orange-bg)",
     tc: "var(--orange)",
     pages: [
+      "dashboard",
       "operations-tasks",
       "keys",
       "po",
@@ -152,6 +160,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--purple-bg)",
     tc: "var(--purple)",
     pages: [
+      "dashboard",
       "po",
       "operations-tasks",
       "favorites",
@@ -166,7 +175,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "إن",
     bg: "var(--danger-bg)",
     tc: "var(--danger)",
-    pages: ["financial"],
+    pages: ["dashboard", "financial"],
   },
 };
 

@@ -98,6 +98,8 @@ export type InspectorFeatureField = {
   label: string;
   options: readonly string[];
   photoOnYes: boolean;
+  /** Offer a proof-photo picker on «نعم» without blocking submit. */
+  optionalPhoto?: boolean;
   shared?: boolean;
 };
 
@@ -391,24 +393,28 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     label: "يوجد سور",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasCentralAc",
     label: "تكييف مركزي",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasTanks",
     label: "خزانات",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasLandscaping",
     label: "تشجير",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "kitchen",
@@ -537,17 +543,10 @@ export function isLandHiddenInspectorFeatureKey(key: string): boolean {
 }
 
 /**
- * Feature keys retired from the inspector screen (Field Inspection Workspace
- * design). Kept on the draft model because the valuation report and the Infath
- * upload still read them for previously-captured inspections.
+ * Previously hidden from the inspector screen. Empty — those rows are back on
+ * the field-inspection form (سور، تكييف، خزانات، تشجير، حالة المنطقة).
  */
-export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([
-  "hasFence",
-  "hasCentralAc",
-  "hasTanks",
-  "hasLandscaping",
-  "zoneStatus",
-]);
+export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([]);
 
 /**
  * Retired for the field inspector — shown again in case-study specialist appraisal.
@@ -1392,15 +1391,23 @@ export function computeBuildingsTotalSqm(
   return String(Math.round(sum * 100) / 100);
 }
 
-export function inspectorFeatureRequiresPhoto(
+export function inspectorFeatureOffersPhoto(
   field: InspectorFeatureField,
   value: string,
 ): boolean {
-  if (!field.photoOnYes) return false;
+  if (!field.photoOnYes && !field.optionalPhoto) return false;
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (field.options.includes("نعم")) return trimmed === "نعم";
   return true;
+}
+
+export function inspectorFeatureRequiresPhoto(
+  field: InspectorFeatureField,
+  value: string,
+): boolean {
+  if (field.optionalPhoto) return false;
+  return inspectorFeatureOffersPhoto(field, value);
 }
 
 /** Yes/no presence pills — leaving them off means «لا», not a missing answer. */

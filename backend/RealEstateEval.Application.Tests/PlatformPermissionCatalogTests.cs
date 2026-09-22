@@ -55,11 +55,14 @@ public class PlatformPermissionCatalogTests
             "case-specialist", specialistPages, specialistCaps);
 
         Assert.Equal(
-            supervisorPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase),
-            specialistPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
-        Assert.Equal(
             supervisorCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase),
             specialistCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
+        Assert.Contains("all-transactions", specialistPages);
+        Assert.DoesNotContain("all-transactions", supervisorPages);
+        specialistPages.Remove("all-transactions");
+        Assert.Equal(
+            supervisorPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase),
+            specialistPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
         Assert.Contains("fee-pricing", specialistPages);
         Assert.DoesNotContain("financial", specialistPages);
         Assert.DoesNotContain("manage-financial", specialistCaps);
@@ -81,7 +84,11 @@ public class PlatformPermissionCatalogTests
     [InlineData("case-specialist", "fee-pricing")]
     [InlineData("case-specialist", "party-fees")]
     [InlineData("case-specialist", "property-map")]
+    [InlineData("case-specialist", "all-transactions")]
+    [InlineData("case-specialist", "dashboard")]
     [InlineData("financial-officer", "financial")]
+    [InlineData("financial-officer", "dashboard")]
+    [InlineData("field-inspector", "dashboard")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -110,7 +117,6 @@ public class PlatformPermissionCatalogTests
     }
 
     [Theory]
-    [InlineData("case-specialist")]
     [InlineData("section-supervisor")]
     [InlineData("government-reviewer")]
     [InlineData("general-manager")]
@@ -118,7 +124,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("field-inspector")]
     [InlineData("engineering-office")]
     [InlineData("financial-officer")]
-    public void Non_cdo_roles_exclude_all_transactions(string role)
+    public void Other_non_cdo_roles_exclude_all_transactions(string role)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -135,26 +141,30 @@ public class PlatformPermissionCatalogTests
         Assert.Contains("all-transactions", pages);
     }
 
+    [Fact]
+    public void Case_specialist_includes_all_transactions()
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("case-specialist", pages, capabilities);
+        Assert.Contains("all-transactions", pages);
+    }
+
     [Theory]
     [InlineData("field-inspector")]
     [InlineData("section-supervisor")]
     [InlineData("general-manager")]
     [InlineData("government-reviewer")]
     [InlineData("case-specialist")]
-    public void Prototype_roles_except_cdo_exclude_dashboard(string role)
+    [InlineData("real-estate-appraiser")]
+    [InlineData("engineering-office")]
+    [InlineData("financial-officer")]
+    [InlineData("cdo")]
+    public void Every_prototype_role_includes_dashboard(string role)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
-        Assert.DoesNotContain("dashboard", pages);
-    }
-
-    [Fact]
-    public void Cdo_includes_dashboard()
-    {
-        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", pages, capabilities);
         Assert.Contains("dashboard", pages);
     }
 

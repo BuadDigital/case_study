@@ -589,14 +589,6 @@ export function PropertyDetailInspectionTab({
           fieldErrors={fieldErrors}
           flat={!steps}
           hideSubmitFooter={Boolean(submitFooterAfter)}
-          onStepGateFailed={(errors, message) => {
-            setFieldErrors(errors);
-            setFormError(message);
-          }}
-          onStepGateClear={() => {
-            setFieldErrors({});
-            setFormError(null);
-          }}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}

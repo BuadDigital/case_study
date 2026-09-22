@@ -13,7 +13,7 @@ import {
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
   OCCUPANCY_STATE_KEY,
-  inspectorFeatureRequiresPhoto,
+  inspectorFeatureOffersPhoto,
   isMovablesPresent,
   isOccupied,
   patchInspectorFeatureValues,
@@ -193,12 +193,12 @@ export function InspectorFeaturesSection({
                         featurePhotoAttachments: {
                           ...draft.featurePhotoAttachments,
                           [field.key]:
-                            inspectorFeatureRequiresPhoto(field, next)
+                            inspectorFeatureOffersPhoto(field, next)
                               ? draft.featurePhotoAttachments[field.key]
                               : null,
                         },
                       });
-                      if (!inspectorFeatureRequiresPhoto(field, next)) {
+                      if (!inspectorFeatureOffersPhoto(field, next)) {
                         clearInspectorPhotoDataUrl(draft.taskId, photoRef);
                       }
                     }}
@@ -224,7 +224,7 @@ export function InspectorFeaturesSection({
                   )}
                 >
                   <DesktopFeaturePhotoCell
-                    needsPhoto={inspectorFeatureRequiresPhoto(field, value)}
+                    needsPhoto={inspectorFeatureOffersPhoto(field, value)}
                     hasPhoto={Boolean(attachment?.fileName)}
                     disabled={locked}
                     taskId={draft.taskId}
@@ -341,7 +341,7 @@ export function InspectorFeaturesSection({
         const value = draft.featureValues[field.key] ?? "";
         const attachment = draft.featurePhotoAttachments[field.key];
         const photoRef = `feature:${field.key}`;
-        const needsPhoto = inspectorFeatureRequiresPhoto(field, value);
+        const needsPhoto = inspectorFeatureOffersPhoto(field, value);
         const usePills = featureUsesPills(field);
         const valueMissing = Boolean(
           fieldErrors.emptyFeatureKeys?.includes(field.key),
@@ -358,12 +358,12 @@ export function InspectorFeaturesSection({
             ),
             featurePhotoAttachments: {
               ...liveDraft.featurePhotoAttachments,
-              [field.key]: inspectorFeatureRequiresPhoto(field, next)
+              [field.key]: inspectorFeatureOffersPhoto(field, next)
                 ? liveDraft.featurePhotoAttachments[field.key]
                 : null,
             },
           });
-          if (!inspectorFeatureRequiresPhoto(field, next)) {
+          if (!inspectorFeatureOffersPhoto(field, next)) {
             clearInspectorPhotoDataUrl(liveDraft.taskId, photoRef);
           }
         }

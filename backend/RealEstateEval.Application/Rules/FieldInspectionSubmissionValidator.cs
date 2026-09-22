@@ -283,10 +283,10 @@ public static class FieldInspectionSubmissionValidator
         ("hasBasement", "يوجد قبو", true, true),
         ("hasElevator", "يوجد مصعد", true, true),
         ("hasPool", "يوجد مسبح", true, true),
-        ("hasFence", "يوجد سور", true, true),
-        ("hasCentralAc", "تكييف مركزي", true, true),
-        ("hasTanks", "خزانات", true, true),
-        ("hasLandscaping", "تشجير", true, true),
+        ("hasFence", "يوجد سور", false, true),
+        ("hasCentralAc", "تكييف مركزي", false, true),
+        ("hasTanks", "خزانات", false, true),
+        ("hasLandscaping", "تشجير", false, true),
         ("kitchen", "مطبخ", true, true),
     ];
 

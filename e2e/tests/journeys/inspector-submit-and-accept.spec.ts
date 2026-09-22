@@ -148,6 +148,10 @@ test.describe("Field inspector: submit → specialist accept", () => {
       .locator("#ins-feature-districtState")
       .getByRole("button", { name: "جديد", exact: true })
       .click();
+    await ws
+      .locator("#ins-feature-zoneStatus")
+      .getByRole("button", { name: "غير موقوفة", exact: true })
+      .click();
 
     // Every yes/no feature has to carry a value, and "نعم" would demand a proof
     // photo the desktop wizard offers no control for — answer them all "لا".

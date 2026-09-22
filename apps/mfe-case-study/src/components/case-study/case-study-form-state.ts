@@ -1,15 +1,10 @@
 import { caseStudyAnswerKey, type CaseStudyFormAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-form-data";
 import { emptyCaseStudyFormDraft, type CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
-import {
-  CASE_STUDY_DEED_NATURE_MATCH_ID,
+import { CASE_STUDY_DEED_NATURE_MATCH_ID, 
   CASE_STUDY_DEED_NATURE_NOTES_ID,
-  CASE_STUDY_DEED_REMARKS_ID,
   caseStudyQuestionTargetId,
 } from "../../lib/app-data/case-study-form-ux";
-import {
-  deedNatureMatchAllowsDownstreamWork,
-  deedNatureMatchRequiresNotes,
-  isDeedNatureMatchChosen,
+import { deedNatureMatchAllowsDownstreamWork, deedNatureMatchRequiresNotes, isDeedNatureMatchChosen,
   normalizeDeedNatureMatchOutcome,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import {
@@ -72,11 +67,15 @@ export function hydrateCaseStudyFormDraft(args: {
   const mergedAnswers = isParty
     ? { ...parentDraft?.answers, ...base.answers }
     : base.answers;
+  const mergedNotes = isParty
+    ? { ...parentDraft?.answerNotes, ...base.answerNotes }
+    : base.answerNotes;
   const parentSubmitted = parentDraft?.status === "submitted";
   return {
     parentSubmitted,
     draft: { ...base, ...seed,
       answers: mergedAnswers,
+      answerNotes: mergedNotes,
       status: parentSubmitted && isParty ? "submitted" : base.status,
       specialistReviewApproved: {
         ...base.specialistReviewApproved,
@@ -111,17 +110,6 @@ export function caseStudyAnswerSummary(
   return { total, answered, pending, pct };
 }
 
-/** Visible deed questions answered «غير مطابق» — remarks become mandatory. */
-export function deedNonMatchAnswerKeys(
-  answers: CaseStudyFormDraft["answers"],
-  sectionQuestions: SectionQuestions,
-  isQuestionVisible: QuestionVisibilityPredicate,
-): string[] {
-  return sectionQuestions.deed
-    .map((_, i) => caseStudyAnswerKey("deed", i))
-    .filter((key) => isQuestionVisible(key) && answers[key] === "B");
-}
-
 /** Unanswered visible questions plus the first one, for the scroll-to on submit. */
 export function collectMissingCaseStudyAnswers(
   answers: CaseStudyFormDraft["answers"],
@@ -150,7 +138,7 @@ export type CaseStudyFormScrollTarget = {
   targetId: string;
   step: number;
   message: string;
-  /** Blocks submit (deed remarks / match gate). Matrix gaps still allow confirm. */
+  /** Blocks submit (deed-nature match gate). Matrix gaps still allow confirm. */
   blocking: boolean;
   invalidDeedRemarks?: boolean;
   invalidDeedNature?: boolean;
@@ -168,22 +156,6 @@ export function firstCaseStudyFormScrollTarget(args: {
   const { draft, sectionQuestions, isQuestionVisible, property, isParty } = args;
 
   if (!isParty) {
-    const deedNonMatch = deedNonMatchAnswerKeys(
-      draft.answers,
-      sectionQuestions,
-      isQuestionVisible,
-    );
-    if (deedNonMatch.length > 0 && !String(draft.deedRemarks ?? "").trim()) {
-      return {
-        targetId: CASE_STUDY_DEED_REMARKS_ID,
-        step: 0,
-        message:
-          "الملاحظات إلزامية عند إجابة «غير مطابق» في أسئلة الصك — أكمل ملاحظات قسم الصك.",
-        blocking: true,
-        invalidDeedRemarks: true,
-      };
-    }
-
     const skipMatch =
       property != null && propertyHasRegisteredTitle(property);
     if (!skipMatch) {

@@ -174,6 +174,52 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
     ],
   );
 
+  const setAnswerNote = useCallback(
+    (key: string, note: string) => {
+      if (!canEditKey(key)) return;
+      const nextNotes = { ...(draft.answerNotes ?? {}) };
+      if (note.trim()) nextNotes[key] = note;
+      else delete nextNotes[key];
+      const next: CaseStudyFormDraft = { ...draft, answerNotes: nextNotes };
+      setDraft(next);
+
+      if (isParty && partyChildTaskId) {
+        void loadPartyCaseStudyFormDraft(partyChildTaskId)
+          .then((prevParty) => {
+            const partyNotes = { ...(prevParty?.answerNotes ?? {}) };
+            if (note.trim()) partyNotes[key] = note;
+            else delete partyNotes[key];
+            return savePartyCaseStudyFormDraft({
+              ...next,
+              taskId: partyChildTaskId,
+              answers: { ...(prevParty?.answers ?? {}), ...next.answers },
+              answerNotes: partyNotes,
+            });
+          })
+          .then((result) => {
+            if (result && !result.ok) showToast(result.error, "error");
+          })
+          .catch((err: unknown) => {
+            showToast(
+              err instanceof Error
+                ? err.message
+                : "تعذّر حفظ الملاحظة — حاول مرة أخرى",
+              "error",
+            );
+          });
+      } else {
+        void saveCaseStudyFormDraft(next)
+          .then((result) => {
+            if (!result.ok) showToast(result.error, "error");
+          })
+          .catch(() => {
+            showToast("تعذّر حفظ نموذج دراسة الحالة — حاول مرة أخرى", "error");
+          });
+      }
+    },
+    [canEditKey, draft, isParty, partyChildTaskId, setDraft, showToast],
+  );
+
   const goStep = (n: number) => {
     const step = Math.max(0, Math.min(CASE_STUDY_FORM_STEPS.length - 1, n));
     persist({ ...draft, currentStep: step });
@@ -331,6 +377,7 @@ export function useCaseStudyFormCommands(data: CaseStudyFormData) {
     submittingForm,
     persist,
     setAnswer,
+    setAnswerNote,
     goStep,
     patch,
     saveDraft,

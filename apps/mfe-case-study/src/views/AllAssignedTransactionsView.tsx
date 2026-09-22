@@ -86,7 +86,7 @@ export function AllAssignedTransactionsView() {
       emptyLine: "لا توجد معاملات مطابقة.",
       emptyHint: isPartyRole
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
-        : "تظهر هنا المعاملات المسندة لك — صف واحد لكل صك مع آخر مرحلة وصل إليها (البيانات الأولية حتى الإكمال).",
+        : "تظهر هنا جميع المعاملات — صف واحد لكل صك مع آخر مرحلة وصل إليها (البيانات الأولية حتى الإكمال).",
       panelId: "all-assigned-transactions-panel",
       tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,

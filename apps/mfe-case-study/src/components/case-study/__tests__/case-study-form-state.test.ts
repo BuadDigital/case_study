@@ -79,7 +79,7 @@ describe("firstCaseStudyFormScrollTarget", () => {
     expect(hit?.message).toMatch(/مسار تعذر/);
   });
 
-  it("sends the specialist to deed remarks when غير مطابق has no note", () => {
+  it("does not require deed remarks when غير مطابق has no note", () => {
     const draft = emptyCaseStudyFormDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "B";
     const hit = firstCaseStudyFormScrollTarget({
@@ -89,9 +89,8 @@ describe("firstCaseStudyFormScrollTarget", () => {
       property: traditionalProperty,
       isParty: false,
     });
-    expect(hit?.targetId).toBe("cs-deed-remarks");
-    expect(hit?.step).toBe(0);
-    expect(hit?.blocking).toBe(true);
+    expect(hit?.targetId).not.toBe("cs-deed-remarks");
+    expect(hit?.invalidDeedRemarks).toBeFalsy();
   });
 
   it("skips the nature-match gate for registered title", () => {
