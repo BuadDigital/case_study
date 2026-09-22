@@ -45,7 +45,7 @@ public static class PlatformPermissionCatalog
         ["cdo"] = AllPages.ToArray(),
         ["general-manager"] =
         [
-            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "dashboard", "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
             "valuation-requests",
             "comparable-properties",
@@ -53,40 +53,40 @@ public static class PlatformPermissionCatalog
         ],
         ["section-supervisor"] =
         [
-            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "dashboard", "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
         ],
- // Supervisor matching (pages + fees + Pricing) — none financial / manage-financial
+ // Supervisor matching (pages + fees + Pricing) plus all-transactions — none financial / manage-financial
         ["case-specialist"] =
         [
-            "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
+            "dashboard", "po", "all-transactions", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
             "party-fees",
             "fee-pricing",
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
+            "dashboard", "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
             "comparable-properties",
             "failures", "suspended-transactions",
         ],
         ["field-inspector"] =
         [
-            "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
+            "dashboard", "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
         ],
         ["government-reviewer"] =
         [
-            "po", "favorites", "operations-tasks", "party-fees", "keys", "failures",
+            "dashboard", "po", "favorites", "operations-tasks", "party-fees", "keys", "failures",
         ],
         ["engineering-office"] =
         [
-            "po", "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
+            "dashboard", "po", "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
         ],
         ["financial-officer"] =
         [
-            "financial",
+            "dashboard", "financial",
         ],
     };
 

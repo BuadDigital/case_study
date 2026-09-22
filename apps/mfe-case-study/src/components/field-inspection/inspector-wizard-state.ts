@@ -7,7 +7,7 @@ import { cn, type GoogleMapContextPin } from "@platform/ui-kit";
 import {
   activeMapDiffersFromInspectorOriginal,
   hasInspectorOriginalMapPin,
-  inspectorFeatureRequiresPhoto,
+  inspectorFeatureOffersPhoto,
   isServiceAmenityPhotoSlotComplete,
   listServiceAmenityPhotoSlots,
   type InspectorDefinedPhotoSlot,
@@ -69,7 +69,7 @@ export function listComponentBoolPhotoSlots(
       key,
       label: field.label,
       on: value === "نعم",
-      needsPhoto: inspectorFeatureRequiresPhoto(field, value),
+      needsPhoto: inspectorFeatureOffersPhoto(field, value),
       hasPhoto: Boolean(draft.featurePhotoAttachments[key]?.attachmentId),
     });
   }

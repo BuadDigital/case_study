@@ -50,6 +50,22 @@ describe("resolveQueueTasksForViewer", () => {
     });
     expect(listed).toEqual([enfathTask]);
   });
+
+  it("shows every task to the case specialist on all-transactions", () => {
+    const inspectionTask: WorkflowTask = {
+      ...enfathTask,
+      id: "task-fi",
+      kind: "field-inspection",
+      assigneeRole: "field-inspector",
+      assigneeName: "معاين",
+    };
+    const listed = resolveQueueTasksForViewer({
+      role: "case-specialist",
+      tasks: [enfathTask, inspectionTask],
+      pageId: "all-transactions",
+    });
+    expect(listed.map((t) => t.id).sort()).toEqual(["task-1", "task-fi"]);
+  });
 });
 
 describe("canOpenCaseStudyWorkspace", () => {

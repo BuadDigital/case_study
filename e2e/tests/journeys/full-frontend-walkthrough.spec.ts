@@ -240,6 +240,10 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
       .locator("#ins-feature-districtState")
       .getByRole("button", { name: "جديد", exact: true })
       .click();
+    await ws
+      .locator("#ins-feature-zoneStatus")
+      .getByRole("button", { name: "غير موقوفة", exact: true })
+      .click();
     for (const label of [
       "يوجد منقولات",
       "مدخل السيارة",

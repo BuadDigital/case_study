@@ -1,12 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Button,
   TBody,
   Table,
   TableFrame,
   Td,
+  Input,
   Th,
   THead,
   Tr,
@@ -165,6 +166,41 @@ function OfficialAnswerCell({
   );
 }
 
+function NoteCheckCell({
+  checked,
+  disabled,
+  onToggle,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center justify-center">
+      <button
+        type="button"
+        className={cn(
+          "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[6px] border transition-colors",
+          checked
+            ? "border-ink bg-ink text-white"
+            : "border-border-md bg-surface text-text-3 hover:border-[color-mix(in_srgb,var(--ink)_30%,var(--border))] hover:text-heading",
+          disabled &&
+            "cursor-not-allowed opacity-45 hover:border-border-md hover:text-text-3",
+        )}
+        aria-pressed={checked}
+        aria-label={checked ? "إخفاء ملاحظة الصف" : "إضافة ملاحظة للصف"}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          onToggle();
+        }}
+      >
+        {checked ? <IconCheck size={12} /> : null}
+      </button>
+    </div>
+  );
+}
+
 function RowStatusChip({ kind }: { kind: "conflict" | "awaiting" }) {
   if (kind === "conflict") {
     return (
@@ -193,6 +229,8 @@ export function CaseStudyMatrixTable({
   onRefreshParty,
   footer,
   missingAnswerKeys,
+  answerNotes,
+  onNote,
 }: {
   section: CaseStudyQuestionSection;
   sectionTitle?: string;
@@ -210,7 +248,10 @@ export function CaseStudyMatrixTable({
   footer?: ReactNode;
   /** Highlight & target unanswered rows after a failed submit attempt. */
   missingAnswerKeys?: ReadonlySet<string>;
+  answerNotes?: Record<string, string>;
+  onNote?: (key: string, note: string) => void;
 }) {
+  const [openNoteKeys, setOpenNoteKeys] = useState<Record<string, boolean>>({});
   const questionRows = questions ?? CASE_STUDY_SECTION_QUESTIONS[section];
   const visibleRows = questionRows
     .map((q, i) => ({ q, i, key: caseStudyAnswerKey(section, i) }))
@@ -256,17 +297,19 @@ export function CaseStudyMatrixTable({
         </span>
       </p>
 
-      <Table className="min-w-[640px] table-fixed" dir="rtl">
+      <Table className="min-w-[720px] table-fixed" dir="rtl">
         <colgroup>
           {showPartyColumn ? (
             <>
-              <col style={{ width: "36%" }} />
+              <col style={{ width: "30%" }} />
+              <col style={{ width: "16%" }} />
               <col />
               <col style={{ width: 72 }} />
               <col style={{ width: 72 }} />
             </>
           ) : (
             <>
+              <col style={{ width: "36%" }} />
               <col />
               <col style={{ width: 72 }} />
               <col style={{ width: 72 }} />
@@ -284,6 +327,9 @@ export function CaseStudyMatrixTable({
                 <span className="font-normal text-text-3">(استدلال)</span>
               </Th>
             ) : null}
+            <Th scope="col" title="ملاحظة" className={headClass}>
+              ملاحظة
+            </Th>
             <Th
               scope="col"
               title={CASE_STUDY_ANSWER_LABEL_A}
@@ -335,6 +381,10 @@ export function CaseStudyMatrixTable({
 
             const unansweredHighlight =
               missingAnswerKeys?.has(key) && official === null;
+            const storedNote = answerNotes?.[key] ?? "";
+            const noteOpen =
+              openNoteKeys[key] ?? Boolean(storedNote.trim());
+            const showNoteBox = noteOpen || Boolean(storedNote.trim());
 
             return (
               <Tr
@@ -389,6 +439,34 @@ export function CaseStudyMatrixTable({
                     )}
                   </Td>
                 ) : null}
+
+                <Td className={cn(cellClass, "align-middle", conflictBg)}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <NoteCheckCell
+                      checked={noteOpen}
+                      disabled={!editable}
+                      onToggle={() => {
+                        const nextOpen = !noteOpen;
+                        setOpenNoteKeys((prev) => ({
+                          ...prev,
+                          [key]: nextOpen,
+                        }));
+                        if (!nextOpen) onNote?.(key, "");
+                      }}
+                    />
+                    {showNoteBox ? (
+                      <Input
+                        id={`cs-note-${key}`}
+                        placeholder="الملاحظة..."
+                        value={storedNote}
+                        disabled={!editable}
+                        aria-label={`ملاحظة: ${q}`}
+                        onChange={(e) => onNote?.(key, e.target.value)}
+                        className="min-w-0 flex-1"
+                      />
+                    ) : null}
+                  </div>
+                </Td>
 
                 <Td className={cn(cellClass, ynColClass, conflictBg)}>
                   <OfficialAnswerCell

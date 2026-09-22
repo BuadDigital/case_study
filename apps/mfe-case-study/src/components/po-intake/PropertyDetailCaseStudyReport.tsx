@@ -219,6 +219,11 @@ function CaseStudySectionAccordion({
                           بانتظار الإجابة
                         </span>
                       ) : null}
+                      {row.note?.trim() ? (
+                        <p className="mt-1 mb-0 text-[11px] leading-relaxed text-text-2">
+                          {row.note}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="w-[130px] border-b border-s border-border px-2 py-1.5 text-center">
                       {row.markA ? (

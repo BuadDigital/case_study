@@ -28,7 +28,8 @@ public static class CapabilityPolicyNames
 
  /// <summary>
  /// Management dashboards and cross-queue aggregates. Cached on a single global key, so this is
- /// deliberately an all-or-nothing gate rather than per-actor scoping.
+ /// deliberately an all-or-nothing gate rather than per-actor scoping. Every operational role
+ /// (case staff, parties, finance) may read the same published snapshot.
  /// </summary>
     public const string ReadManagementReports = "Capability:read-management-reports";
 

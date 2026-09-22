@@ -104,6 +104,21 @@ describe("resolveQueueServerAssigneeRole", () => {
       resolveQueueServerAssigneeRole({ role: "field-inspector" }),
     ).toBe("field-inspector");
   });
+
+  it("does not narrow the specialist on all-transactions", () => {
+    expect(
+      resolveQueueServerAssigneeRole({
+        role: "case-specialist",
+        pageId: "all-transactions",
+      }),
+    ).toBeUndefined();
+    expect(
+      resolveQueueServerAssigneeRole({
+        role: "case-specialist",
+        pageId: "active-primary-data",
+      }),
+    ).toBe("case-specialist");
+  });
 });
 
 describe("buildQueueServerQuery", () => {

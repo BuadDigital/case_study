@@ -8,7 +8,7 @@
 import { cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
-  inspectorFeatureRequiresPhoto,
+  inspectorFeatureOffersPhoto,
   patchInspectorFeatureValues,
   type InspectorFeatureField,
   type InspectorWorkspaceDraft,
@@ -88,9 +88,9 @@ export function InspectorFeatureWizardFields({
     (f) => f.options.length > 3 && !f.options.includes("نعم"),
   );
   const choiceFields = fields.filter(
-    (f) => f.options.length <= 3 && !f.options.includes("نعم"),
+    (f) => f.key !== "movables" && f.options.length <= 3,
   );
-  /** Design: only «يوجد منقولات» lives in the features card; other yes/no are under components. */
+  /** Design: only «يوجد منقولات» lives as a pill in this card. */
   const boolFields = fields.filter(
     (f) => f.options.includes("نعم") && f.key === "movables",
   );
@@ -102,7 +102,7 @@ export function InspectorFeatureWizardFields({
       featureValues: patchInspectorFeatureValues(draft.featureValues, key, next),
       featurePhotoAttachments: {
         ...draft.featurePhotoAttachments,
-        [key]: inspectorFeatureRequiresPhoto(
+        [key]: inspectorFeatureOffersPhoto(
           fields.find((f) => f.key === key)!,
           next,
         )
@@ -111,7 +111,7 @@ export function InspectorFeatureWizardFields({
       },
     });
     if (
-      !inspectorFeatureRequiresPhoto(
+      !inspectorFeatureOffersPhoto(
         fields.find((f) => f.key === key)!,
         next,
       )
@@ -127,7 +127,7 @@ export function InspectorFeatureWizardFields({
           const fieldDisabled = disabled || readOnlyKeys.has(field.key);
           const rawVal = draft.featureValues[field.key]?.trim() ?? "";
           const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
-          const needsPhoto = inspectorFeatureRequiresPhoto(field, rawVal);
+          const needsPhoto = inspectorFeatureOffersPhoto(field, rawVal);
           const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
@@ -233,7 +233,7 @@ export function InspectorFeatureWizardFields({
           const fieldDisabled = disabled || readOnlyKeys.has(field.key);
           const rawVal = draft.featureValues[field.key]?.trim() ?? "";
           const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
-          const needsPhoto = inspectorFeatureRequiresPhoto(field, rawVal);
+          const needsPhoto = inspectorFeatureOffersPhoto(field, rawVal);
           const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
@@ -333,7 +333,7 @@ export function InspectorFeatureWizardFields({
             {boolFields.map((field) => {
               const fieldDisabled = disabled || readOnlyKeys.has(field.key);
               const on = (draft.featureValues[field.key] ?? "") === "نعم";
-              const needsPhoto = inspectorFeatureRequiresPhoto(field, on ? "نعم" : "لا");
+              const needsPhoto = inspectorFeatureOffersPhoto(field, on ? "نعم" : "لا");
               const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
               const photoMissing = missingFeaturePhotoKey === field.key;
               return (

@@ -99,15 +99,18 @@ function renderSection(section: CaseStudyReportSection): string {
         occExtra
           ? `<span class="csrd-muted"> — ${esc(occExtra)}</span>`
           : "";
-      const main = `<tr>
+      const noteText = row.note?.trim();
+      const hasSub = section.id === "extra" || Boolean(noteText);
+      const main = `<tr${hasSub ? ' class="csrd-q-row--noted"' : ""}>
         <td>${esc(row.question)}${occSuffix}</td>
         <td class="csrd-yn">${renderCb(row.markA)}</td>
         <td class="csrd-yn">${renderCb(row.markB)}</td>
       </tr>`;
-      const sub =
-        section.id === "extra"
-          ? `<tr class="csrd-sub-row"><td colspan="3">${esc(EXTRA_SUB_NOTE_DEFAULT)}</td></tr>`
-          : "";
+      const sub = hasSub
+        ? `<tr class="csrd-sub-row"><td colspan="3">${esc(
+            noteText || EXTRA_SUB_NOTE_DEFAULT,
+          )}</td></tr>`
+        : "";
       return main + sub;
     })
     .join("");
@@ -213,6 +216,8 @@ body {
 .csrd-table .csrd-col-hdr th:first-child { text-align:right; }
 .csrd-yn { text-align:center !important; width:28mm; }
 .csrd-data-lbl { font-weight:600; color:var(--navy); width:38%; background:var(--row-alt); }
+/* A note belongs to the question above it — no rule between them. */
+.csrd-table .csrd-q-row--noted td { border-bottom:none; }
 .csrd-table .csrd-sub-row td { background:var(--sub-bg); font-size:8.5pt; color:var(--text-muted); font-style:italic; border-top:none; }
 .csrd-table .csrd-notes-row td { background:var(--approval-bg); font-size:9pt; line-height:1.55; }
 .csrd-notes-label { display:block; font-weight:700; color:var(--navy); margin-bottom:2px; }

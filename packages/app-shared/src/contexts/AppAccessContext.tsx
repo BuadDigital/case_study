@@ -3,7 +3,10 @@
 import { createContext, use, useEffect, useMemo } from "react";
 import type { PageId, RoleId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
-import { pagesFromPermissions } from "@platform/app-shared/app-data/permissions-pages";
+import {
+  pagesFromPermissions,
+  roleSeesAllTransactionsPage,
+} from "@platform/app-shared/app-data/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/app-data/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 import { useValidAuthSession } from "../auth/use-auth-session";
@@ -92,8 +95,10 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
   const rolePages = useMemo(() => {
     if (!permissionsResolved) return [];
     const baseline = ROLES[role].pages.filter((page) => {
-      // "All transactions" — admin only (mirrors pagesFromPermissions)
-      if (role !== "cdo" && page === "all-transactions") return false;
+      // "All transactions" — CDO and case specialist (mirrors pagesFromPermissions)
+      if (page === "all-transactions" && !roleSeesAllTransactionsPage(role)) {
+        return false;
+      }
       return true;
     });
     if (permissions?.pages?.length) {

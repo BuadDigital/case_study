@@ -44,4 +44,16 @@ describe("defaultLandingPage", () => {
       "/financial",
     );
   });
+
+  it("keeps work-queue landings when dashboard is also granted", () => {
+    expect(defaultLandingPage(["dashboard", "active-inspection"])).toBe(
+      "active-inspection",
+    );
+    expect(defaultLandingPage(["dashboard", "po", "active-case-study"])).toBe(
+      "po",
+    );
+    expect(defaultLandingPage(["dashboard", "operations-tasks", "keys"])).toBe(
+      "operations-tasks",
+    );
+  });
 });

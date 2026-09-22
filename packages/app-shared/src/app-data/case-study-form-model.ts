@@ -23,6 +23,57 @@ export type CaseStudyAnswerProvenanceEntry = {
   answeredAtUtc: string;
 };
 
+/** Nested inside `answers` JSON so notes persist without a schema migration. */
+export const CASE_STUDY_ANSWER_NOTES_KEY = "__answerNotes";
+
+function isFormAnswer(value: unknown): value is CaseStudyFormAnswer {
+  return value === "A" || value === "B" || value === "NA";
+}
+
+export function splitCaseStudyAnswersPayload(
+  raw: Record<string, unknown> | null | undefined,
+): {
+  answers: Record<string, CaseStudyFormAnswer | null>;
+  answerNotes: Record<string, string>;
+} {
+  const answers: Record<string, CaseStudyFormAnswer | null> = {};
+  const answerNotes: Record<string, string> = {};
+  if (!raw) return { answers, answerNotes };
+
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === CASE_STUDY_ANSWER_NOTES_KEY) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        for (const [noteKey, noteValue] of Object.entries(
+          value as Record<string, unknown>,
+        )) {
+          if (typeof noteValue === "string" && noteValue.trim()) {
+            answerNotes[noteKey] = noteValue;
+          }
+        }
+      }
+      continue;
+    }
+    if (isFormAnswer(value) || value === null) {
+      answers[key] = value;
+    }
+  }
+  return { answers, answerNotes };
+}
+
+export function mergeCaseStudyAnswersPayload(
+  answers: Record<string, CaseStudyFormAnswer | null>,
+  answerNotes: Record<string, string> | undefined,
+): Record<string, unknown> {
+  const notes: Record<string, string> = {};
+  for (const [key, value] of Object.entries(answerNotes ?? {})) {
+    const trimmed = value.trim();
+    if (trimmed) notes[key] = value;
+  }
+  return Object.keys(notes).length > 0
+    ? { ...answers, [CASE_STUDY_ANSWER_NOTES_KEY]: notes }
+    : { ...answers };
+}
+
 export type CaseStudyFormDraft = {
   taskId: string;
   propertyId?: string;
@@ -33,6 +84,8 @@ export type CaseStudyFormDraft = {
   requestDate: string;
   deedNumber: string;
   answers: Record<string, CaseStudyFormAnswer | null>;
+  /** Per-question notes — opened from the row check in the study table. */
+  answerNotes?: Record<string, string>;
   deedRemarks: string;
   surveyRemarks: string;
   componentsRemarks: string;
@@ -59,6 +112,9 @@ export type CaseStudyFormDraft = {
 };
 
 export function caseStudyFormDtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDraft {
+  const { answers, answerNotes } = splitCaseStudyAnswersPayload(
+    dto.answers as Record<string, unknown>,
+  );
   return {
     taskId: dto.taskId,
     propertyId: dto.propertyId,
@@ -68,7 +124,8 @@ export function caseStudyFormDtoToDraft(dto: CaseStudyFormDto): CaseStudyFormDra
     requestNumber: dto.requestNumber,
     requestDate: dto.requestDate,
     deedNumber: dto.deedNumber,
-    answers: dto.answers as Record<string, CaseStudyFormAnswer | null>,
+    answers,
+    answerNotes,
     deedRemarks: dto.deedRemarks,
     surveyRemarks: dto.surveyRemarks,
     componentsRemarks: dto.componentsRemarks,
@@ -104,7 +161,7 @@ export function caseStudyFormDraftToDto(draft: CaseStudyFormDraft): CaseStudyFor
     requestNumber: draft.requestNumber,
     requestDate: draft.requestDate,
     deedNumber: draft.deedNumber,
-    answers: draft.answers,
+    answers: mergeCaseStudyAnswersPayload(draft.answers, draft.answerNotes),
     deedRemarks: draft.deedRemarks,
     surveyRemarks: draft.surveyRemarks,
     componentsRemarks: draft.componentsRemarks,
@@ -152,6 +209,7 @@ export function emptyCaseStudyFormDraft(
     requestDate: seed?.requestDate ?? today,
     deedNumber: seed?.deedNumber ?? "",
     answers: {},
+    answerNotes: {},
     deedRemarks: "",
     surveyRemarks: "",
     componentsRemarks: "",

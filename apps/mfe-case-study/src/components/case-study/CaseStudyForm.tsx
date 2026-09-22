@@ -118,6 +118,7 @@ export function CaseStudyForm({
     goStep,
     patch,
     setAnswer,
+    setAnswerNote,
     saveDraft,
     submitForm,
   } = { ...data, ...commands };
@@ -175,6 +176,8 @@ export function CaseStudyForm({
     sectionIndex: navSteps.indexOf(step) + 1,
     sectionTotal: navSteps.length || 1,
     missingAnswerKeys,
+    answerNotes: draft.answerNotes,
+    onNote: setAnswerNote,
     ...(isParty
       ? { showPartyColumn: false }
       : {

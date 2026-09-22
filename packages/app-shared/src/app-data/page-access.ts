@@ -25,9 +25,19 @@ const PARTY_WORK_QUEUE_PAGES = [
   "active-survey",
 ] as const satisfies readonly PageId[];
 
+/**
+ * Super-admin home: the shared dashboard is on every role now, but only the
+ * CDO catalog (`users`) — or a dashboard-only page list — should land there.
+ */
+function isDashboardHome(rolePages: readonly PageId[]): boolean {
+  if (!rolePages.includes("dashboard")) return false;
+  if (rolePages.includes("users")) return true;
+  return rolePages.every((page) => page === "dashboard");
+}
+
 /** First permitted page in sidebar order — post-login and access-denied redirect. */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
-  if (rolePages.includes("dashboard")) return "dashboard";
+  if (isDashboardHome(rolePages)) return "dashboard";
 
   // Appraiser / inspector / engineering office → their primary work queue.
   for (const pageId of PARTY_WORK_QUEUE_PAGES) {
@@ -47,16 +57,17 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   // dedicated queue — land on the operations-tasks hub.
   if (
     rolePages.includes("operations-tasks") &&
-    !rolePages.includes("dashboard") &&
     !rolePages.includes("active-case-study")
   ) {
     return "operations-tasks";
   }
 
   for (const pageId of NAV_PAGE_ORDER) {
+    if (pageId === "dashboard") continue;
     if (rolePages.includes(pageId)) return pageId;
   }
-  return rolePages[0] ?? "dashboard";
+  if (rolePages.includes("financial")) return "financial";
+  return rolePages.find((page) => page !== "dashboard") ?? rolePages[0] ?? "dashboard";
 }
 
 export function defaultLandingPath(rolePages: readonly PageId[]): string {

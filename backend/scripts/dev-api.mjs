@@ -128,11 +128,60 @@ process.on("SIGTERM", () => shutdown(0));
 
 console.log(`[dev-api] mode: ${useWatch ? "dotnet watch run" : "dotnet run"}`);
 
+const localPg = {
+  host: process.env.REE_PG_HOST || "localhost",
+  port: process.env.REE_PG_PORT || "5433",
+  user: process.env.REE_PG_USER || "postgres",
+  password: process.env.REE_PG_PASSWORD || "Admin",
+};
+
+const localDatabases = {
+  ATTACHMENTS: "realestate_eval_attachments",
+  IDENTITY: "realestate_eval_identity",
+  PLATFORM: "realestate_eval_platform",
+  VALUATION: "realestate_eval_valuation",
+  FAILURES: "realestate_eval_failures",
+  OPERATIONS: "realestate_eval_operations",
+  FINANCIAL: "realestate_eval_financial",
+  CASESTUDY: "realestate_eval_case_study",
+  MESSAGING: "realestate_eval_messaging",
+};
+
+function localConnection(database) {
+  return `Host=${localPg.host};Port=${localPg.port};Database=${database};Username=${localPg.user};Password=${localPg.password}`;
+}
+
+function migrateEnv() {
+  const env = { ...process.env };
+  for (const [service, database] of Object.entries(localDatabases)) {
+    env[`REAL_ESTATE_EVAL_PG_CONNECTION_STRING_${service}`] = localConnection(database);
+  }
+  return env;
+}
+
+/** Operations/Financial (and the other extracted streams) do not migrate on host startup. */
+function migrateLocalStreams() {
+  console.log("[dev-api] applying pending EF migrations (DbMigrate)…");
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "dotnet",
+      ["run", "--project", "backend/tools/DbMigrate/DbMigrate.csproj", "--no-build", "--", "update"],
+      { cwd: root, stdio: "inherit", env: migrateEnv() },
+    );
+    child.on("exit", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`DbMigrate exited ${code}`)),
+    );
+  });
+}
+
 stopStaleProcesses();
 
 // Shared backend projects must be built once before parallel `dotnet watch` instances
 // compete for the same obj/bin DLLs (especially on Windows + Defender).
 await run("dotnet", ["build", "backend/RealEstateEval.slnx", "-v", "q"]);
+await migrateLocalStreams();
 
 if (!useWatch && !skipBuild) {
   // `--run` uses --no-build below; solution already built above.
@@ -145,8 +194,8 @@ const others = services.filter(
   (s) => s.name !== "identity" && s.name !== "gateway" && s.name !== "case-study",
 );
 
-// case-study applies EF migrations to the shared DB; identity serves login.
-// Start sequentially so watch processes do not lock the same shared assemblies.
+// Identity serves login. Streams other than Case Study/Messaging are migrated
+// above via DbMigrate (those hosts do not run MigrateAsync at startup).
 startService(caseStudy);
 await waitForReady("http://127.0.0.1:5162/ready", "case-study");
 

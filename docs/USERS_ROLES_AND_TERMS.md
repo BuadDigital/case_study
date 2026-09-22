@@ -129,19 +129,21 @@ capabilities granted, and the page the user lands on after login.
 Pages and capabilities are granted by the server catalog
 (`PlatformPermissionCatalog`) and mirrored by the frontend `ROLES` table. The landing
 page is the first granted page in sidebar order, with two exceptions coded into
-`defaultLandingPage`: `dashboard` always wins, and a role holding both `operations-tasks`
-and `keys` without `all-transactions`/`active-case-study` lands on `operations-tasks`.
+`defaultLandingPage`: CDO still lands on `dashboard`. Every other role also has the
+dashboard in the sidebar, but keeps its work-queue home (PO, inspection, survey,
+appraisal, operations-tasks, or financial). A role holding both `operations-tasks`
+and `keys` without `active-case-study` lands on `operations-tasks`.
 
 ### `cdo` — المسؤول / مسؤول التحول الرقمي
 
 - **Pages:** all 28 navigation pages.
 - **Capabilities:** all 12.
 - **Landing:** `dashboard` — لوحة التحكم.
-- Only role that sees the dashboard and the orphan/legacy screens.
+- Only role that sees the orphan/legacy screens. Every role now sees `dashboard`.
 
 ### `general-manager` — مدير إدارة التقييم العقاري
 
-- **Pages:** `po`, `all-transactions`, `active-primary-data`, `bourse-inquiry`,
+- **Pages:** `dashboard`, `po`, `all-transactions`, `active-primary-data`, `bourse-inquiry`,
   `active-distribution`, `active-case-study`, `keys`, `failures`,
   `suspended-transactions`, `valuation-requests`, `financial`, `courts`,
   `failure-types`, `case-study-info-roles`, `system-screen-catalog`.
@@ -151,7 +153,7 @@ and `keys` without `all-transactions`/`active-case-study` lands on `operations-t
 
 ### `section-supervisor` — مشرف قسم دراسة الحالة
 
-- **Pages:** `po`, `active-primary-data`, `bourse-inquiry`, `active-distribution`,
+- **Pages:** `dashboard`, `po`, `active-primary-data`, `bourse-inquiry`, `active-distribution`,
   `active-case-study`, `operations-tasks`, `keys`, `failures`, `suspended-transactions`,
   `failure-types`, `party-fees`, `system-screen-catalog`.
 - **Capabilities:** `manage-failures`, `manage-work-orders`, `submit-party-work`,
@@ -161,13 +163,14 @@ and `keys` without `all-transactions`/`active-case-study` lands on `operations-t
 
 ### `case-specialist` — أخصائي دراسة حالة
 
-- **Pages:** `po`, `active-primary-data`, `bourse-inquiry`, `active-distribution`,
+- **Pages:** `dashboard`, `po`, `all-transactions`, `active-primary-data`, `bourse-inquiry`, `active-distribution`,
   `active-case-study`, `operations-tasks`, `failures`, `suspended-transactions`,
   `system-screen-catalog`.
 - **Capabilities:** `manage-failures`, `manage-work-orders`, `submit-party-work`,
   `manage-attachments`.
 - **Landing:** `po` — أوامر العمل.
 - Owns property editing and accept/reopen of party submissions.
+- Sees **all** transactions on `all-transactions` (not only those named as assignment specialist).
 
 ### `real-estate-appraiser` — مقيم عقاري
 

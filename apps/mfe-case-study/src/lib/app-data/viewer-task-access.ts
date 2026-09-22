@@ -27,6 +27,9 @@ export function seesAllCaseStudyWorkflowTasks(
   pageId?: PageId,
 ): boolean {
   if (isSuperAdmin(role)) return true;
+  // All-transactions lists one row per property at its latest stage, which
+  // needs sibling party tasks — not only the specialist's own assigneeRole.
+  if (isCaseStudySpecialist(role) && pageId === "all-transactions") return true;
   if (!isCaseStudyWorkflowOverseer(role)) return false;
   if (!pageId) return true;
   return CASE_STUDY_WORKFLOW_QUEUE_PAGES.has(pageId);

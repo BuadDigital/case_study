@@ -41,7 +41,6 @@ import {
   firstInspectorWorkspaceErrorTarget,
   inspectorWizardStepForErrorTarget,
   inspectorWorkspaceHasBlockingErrors,
-  pickInspectorErrorsForWizardStep,
   scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
@@ -417,35 +416,6 @@ export function useFieldInspectionWorkflow({
     setMapPinEpoch((n) => n + 1);
   }
 
-  function selectInspectorStep(next: InspectorStepId) {
-    if (!draft || next <= activeStep) {
-      setActiveStep(next);
-      return;
-    }
-    const allErrors = validateInspectorWorkspace(draft, {
-      boundariesUnavailable,
-      classification: property?.classification,
-      propertyType: property?.propertyType,
-    });
-    for (let step = activeStep; step < next; step += 1) {
-      const current = step as InspectorStepId;
-      const stepErrors = pickInspectorErrorsForWizardStep(allErrors, current);
-      if (!inspectorWorkspaceHasBlockingErrors(stepErrors)) continue;
-      const message =
-        firstInspectorWorkspaceError(stepErrors) ??
-        "أكمل الحقول الناقصة قبل المتابعة";
-      setFieldErrors(stepErrors);
-      setFormError(message);
-      showToast(message, "error");
-      setActiveStep(current);
-      scheduleInspectorErrorScroll(stepErrors);
-      return;
-    }
-    setFieldErrors({});
-    setFormError(null);
-    setActiveStep(next);
-  }
-
   return {
     activeStep,
     boundariesUnavailable,
@@ -472,7 +442,7 @@ export function useFieldInspectionWorkflow({
     saveDraft,
     saveState,
     scrollToErrorTarget,
-    setActiveStep: selectInspectorStep,
+    setActiveStep,
     setMapPinned,
     showToast,
     submit,
