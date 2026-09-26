@@ -3,8 +3,9 @@
 #
 #   ./setup-hetzner-server.sh app.example.com you@example.com
 #
-# Installs Docker, locks the firewall down to SSH/HTTP/HTTPS, issues a Let's Encrypt
-# certificate, generates /app/.env, and prints the values to paste into GitHub secrets.
+# Installs Docker, locks the firewall down to SSH/HTTP/HTTPS, adds swap, caps the system
+# journal, installs fail2ban, issues a Let's Encrypt certificate, generates /app/.env, and
+# prints the values to paste into GitHub secrets.
 # Safe to re-run: nothing already provisioned is recreated or overwritten.
 
 set -euo pipefail
@@ -33,11 +34,11 @@ step "Checking resources"
 ram_mb=$(awk '/MemTotal/ {printf "%d", $2 / 1024}' /proc/meminfo)
 cpus=$(nproc)
 echo "RAM: ${ram_mb} MB, vCPU: ${cpus}"
+# Measured 2026-09-26: the whole stack (9 .NET services + gateway + Next.js + Postgres +
+# RabbitMQ + Redis + Gotenberg + nginx) uses about 3 GB. 8 GB leaves room for peaks.
 if [ "$ram_mb" -lt 7500 ]; then
-  warn "The full stack (9 .NET services + Postgres + RabbitMQ + Redis + Elasticsearch +
-         Prometheus + Grafana) needs about 8 GB. With ${ram_mb} MB containers
-         will be OOM-killed. Resize the server, or drop the observability services from
-         docker-compose.prod.yml before deploying."
+  warn "The stack uses about 3 GB at rest; 8 GB is the recommended size. With ${ram_mb} MB,
+         report PDF rendering and deploys (old + new containers) may run out of memory."
 fi
 
 # ── Docker ─────────────────────────────────────────────────────────────────────
@@ -84,9 +85,39 @@ ufw default allow outgoing
 ufw --force enable
 ufw status verbose
 
+# ── Swap ───────────────────────────────────────────────────────────────────────
+# Hetzner Cloud images ship without swap. A small swap file turns a short memory spike
+# (PDF rendering, a deploy starting new containers) into slowness instead of an OOM kill.
+if swapon --show --noheadings | grep -q .; then
+  step "Swap already enabled"
+else
+  step "Creating 2 GB swap file"
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+# Use swap only under real memory pressure.
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-ree-swappiness.conf
+sysctl -q -p /etc/sysctl.d/99-ree-swappiness.conf
+
+# ── System journal ─────────────────────────────────────────────────────────────
+step "Capping the system journal at 200 MB"
+mkdir -p /etc/systemd/journald.conf.d
+printf '[Journal]\nSystemMaxUse=200M\n' > /etc/systemd/journald.conf.d/ree-size.conf
+systemctl restart systemd-journald
+journalctl --vacuum-size=200M >/dev/null
+
+# ── fail2ban ───────────────────────────────────────────────────────────────────
+# Bans IPs that keep failing SSH logins; the distro default enables the sshd jail.
+step "Installing fail2ban"
+apt-get install -y fail2ban >/dev/null
+systemctl enable --now fail2ban
+
 # ── Deploy directory ───────────────────────────────────────────────────────────
 step "Creating $APP_DIR"
-mkdir -p "$APP_DIR/infra"
+mkdir -p "$APP_DIR/postgres"
 
 # ── TLS certificate ────────────────────────────────────────────────────────────
 CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
@@ -149,8 +180,6 @@ POSTGRES_PASSWORD=$(openssl rand -base64 36 | tr -d '\n/+=')
 RABBITMQ_USER=ree-service
 RABBITMQ_PASSWORD=$(openssl rand -base64 36 | tr -d '\n/+=')
 JWT_SIGNING_KEY=$(openssl rand -base64 72 | tr -d '\n')
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=')
 TLS_CERTIFICATE_PATH=$CERT_DIR/fullchain.pem
 TLS_PRIVATE_KEY_PATH=$CERT_DIR/privkey.pem
 PUBLIC_APP_URL=https://$DOMAIN
@@ -173,8 +202,6 @@ https://github.com/BuadDigital/case_study/settings/secrets/actions
   TLS_CERTIFICATE_PATH  $CERT_DIR/fullchain.pem
   TLS_PRIVATE_KEY_PATH  $CERT_DIR/privkey.pem
   PUBLIC_APP_URL        https://$DOMAIN
-  GHCR_PAT              <token with read:packages>
-  GHCR_USER             <GitHub username owning that token>
 
 Create the deploy keypair on your own machine, not here:
 

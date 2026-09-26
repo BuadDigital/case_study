@@ -120,7 +120,7 @@ The shell remains the **host**. Separate deploy URLs come in phase F5.
 | Location | Purpose |
 |----------|---------|
 | `backend/` | Nine ASP.NET APIs + YARP gateway (`docs/ARCHITECTURE.md`) |
-| `infra/` | Docker Compose — nine Postgres databases, messaging, cache, observability |
+| `infra/` | Docker Compose — nine Postgres databases, messaging, cache, PDF rendering |
 | `requirements/` | Reference HTML — not runnable apps |
 | `docs/` | Architecture, local infra, demo credentials, ADRs |
 
@@ -132,7 +132,7 @@ The **shell and MFE packages** talk to the YARP gateway; the **platform services
 
 ```bash
 # From repository root
-docker compose -f infra/docker-compose.yml up -d
+npm run dev:infra        # postgres, rabbitmq, redis, gotenberg
 ```
 
 ### At a glance
@@ -140,14 +140,10 @@ docker compose -f infra/docker-compose.yml up -d
 | Technology | Role in this project | In local Docker? | Wired in app code yet? |
 |------------|----------------------|------------------|-------------------------|
 | **PostgreSQL 17** | System of record — nine owner databases on `127.0.0.1:5433` | Yes (`ree-postgres`) | Yes — every domain API |
-| **RabbitMQ** | Async events between microservices | Yes (`5672`, UI `15672`) | No — planned Phase B+ |
-| **Redis** | Cache, locks, rate limits, hot dashboard reads | Yes (`6379`) | No — planned Phase A–B |
-| **Prometheus** | Metrics (latency, errors, queue depth) | Yes (`9090`) | No — scrape targets TBD |
-| **Grafana** | Dashboards on Prometheus | Yes (`3001`) | Provisioned; empty until apps export metrics |
-| **Elasticsearch** | Log and search index store | Yes (`9200`) | No — via Fluent Bit |
-| **Kibana** | Explore logs in Elasticsearch | Yes (`5601`) | Index pattern `fluentbit-*` |
-| **Fluent Bit** | Log collector (Fluentd family) | Yes (`ree-fluent-bit`) | Sample → ES |
-| **Fluentd** | Heavier log router (same family) | Not in compose | Use Fluent Bit locally |
+| **RabbitMQ** | Integration events from the transactional outbox (ADR 0004) | Yes (`5672`, UI `15672`) | Yes — outbox dispatcher + consumers |
+| **Redis** | Cache | Yes (`6379`) | Yes |
+| **Gotenberg** | HTML → PDF for valuation report links | Yes (`3010`) | Yes — valuation service |
+| **Prometheus / Grafana / Elasticsearch / Kibana / Fluent Bit** | Metrics and log stack | **Removed (2026-09)** to save RAM | Services still export OTLP, nothing receives it |
 | **Cassandra** | Massive append-only store | **No** | **Deferred** — Postgres for MVP |
 
 ### How they fit together
@@ -158,12 +154,10 @@ Browser (shell / MFE packages, one Next.js deploy)
         → Nine .NET APIs
             → PostgreSQL (one database per owner + messaging)
             → Local blob store (Attachments)
-            → SQL outbox / inbox (ADR 0004; not RabbitMQ on the product path)
+            → SQL outbox → RabbitMQ → consumers with a SQL inbox (ADR 0004)
+            → Redis (cache), Gotenberg (report PDFs)
 
-Observability (planned):
-    Services → OpenTelemetry → OTLP collector → Prometheus
-    Services → logs → Fluent Bit → Elasticsearch → Kibana
-    Grafana ← Prometheus
+Logs: Docker json-file (`docker compose logs`); no metrics or log store runs.
 ```
 
 Details: [MFE + services roadmap](../../docs/MICROFRONTENDS_AND_MICROSERVICES.md) section 6.1.

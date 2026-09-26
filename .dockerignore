@@ -22,11 +22,8 @@ e2e/screenshots
 .env.local
 **/.env.local
 
-# Dev-only infra (not needed in images)
+# Dev-only compose file (not needed in images)
 infra/docker-compose.yml
-infra/prometheus
-infra/grafana
-infra/fluent-bit
 
 # Docs / plans
 docs

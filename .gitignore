@@ -75,3 +75,6 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 packages/ui-kit/.ds-sync-cache/
+
+# Local probe drivers (e2e/.probe-*.mjs) — not tracked
+e2e/.probe-*.mjs

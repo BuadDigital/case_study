@@ -1,6 +1,6 @@
-# Production verify: DB ownership + logging (ES / Fluent Bit)
+# Production verify: DB ownership + logging
 
-Infra is already coded (`init-prod.sql`, per-service connection strings, Fluent Bit → Elasticsearch in `infra/docker-compose.prod.yml`). These checks run **on the prod host** after deploy — they are not a greenfield setup.
+These checks run **on the prod host** after deploy — they are not a greenfield setup.
 
 ## 1. Separate DB ownership
 
@@ -19,27 +19,17 @@ docker exec -i ree-prod-postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1
 
 Sources of truth: `infra/postgres/init-prod.sql`, `infra/docker-compose.prod.yml` (`REAL_ESTATE_EVAL_PG_CONNECTION_STRING_*`), `docs/DATABASE_OVERVIEW.md`.
 
-## 2. Logging → Elasticsearch (Fluent Bit)
+## 2. Logging
 
-On the prod host (compose project directory):
-
-```bash
-bash scripts/ops/verify-prod-logging.sh
-```
-
-If Elasticsearch is only on the Docker network:
+There is no log store in production: Elasticsearch, Kibana and Fluent Bit were removed (2026-09) to save RAM. Every container logs to Docker's `json-file` driver, rotated at 10 MB × 3 files (`x-logging` in `infra/docker-compose.prod.yml`).
 
 ```bash
-docker exec ree-prod-elasticsearch curl -fsS http://127.0.0.1:9200/_cluster/health?pretty
-docker exec ree-prod-elasticsearch curl -fsS 'http://127.0.0.1:9200/_cat/indices/fluentbit*?v'
+cd /app
+docker compose -f docker-compose.prod.yml logs --tail=200 case-study valuation
+docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}}' $(docker ps -q)
 ```
 
 **Pass when:**
 
-- `ree-prod-elasticsearch` and `ree-prod-fluent-bit` are Up
-- Cluster health is `green` or `yellow`
-- At least one `fluentbit-*` index exists with recent documents after app traffic
-
-**Kibana:** present in local `infra/docker-compose.yml` only. Prod verify = ES indices via Fluent Bit; add Kibana or an SSH tunnel if you need a UI.
-
-Config: `infra/fluent-bit/fluent-bit.conf` (`Logstash_Prefix fluentbit` → `fluentbit-*` indices).
+- Recent requests show up in `docker compose logs` for the service that handled them
+- Every container reports `map[max-file:3 max-size:10m]`

@@ -35,11 +35,20 @@ x-redis-env: &redis-env
   # lookup until its circuit breaker opens and the endpoint starts returning 500.
   Redis__ConnectionString: redis:6379
 
+x-logging: &default-logging
+  # Docker keeps container stdout forever by default: case-study alone wrote 260 MB in four
+  # days (2026-09). Rotate at 10 MB x 3 files so each container is capped at ~30 MB on disk.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:17.5-alpine
     container_name: ree-prod-postgres
     restart: always
+    logging: *default-logging
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
@@ -57,10 +66,10 @@ services:
     image: rabbitmq:3.13.7-management-alpine
     container_name: ree-prod-rabbitmq
     restart: always
+    logging: *default-logging
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
-    entrypoint: ["/bin/sh", "-c", "rabbitmq-plugins enable --offline rabbitmq_prometheus; exec docker-entrypoint.sh rabbitmq-server"]
     volumes:
       - ree_prod_rabbitmqdata:/var/lib/rabbitmq
     healthcheck:
@@ -73,6 +82,7 @@ services:
     image: redis:7.4.2-alpine
     container_name: ree-prod-redis
     restart: always
+    logging: *default-logging
     volumes:
       - ree_prod_redisdata:/data
     healthcheck:
@@ -92,6 +102,7 @@ services:
     image: gotenberg/gotenberg:8.36.0
     container_name: ree-prod-gotenberg
     restart: always
+    logging: *default-logging
     command:
       - "gotenberg"
       - '--chromium-deny-list=^(?:file:(?!//\/tmp/)|https?://).*'
@@ -108,9 +119,12 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/db-migrate:${TAG:-latest}
     container_name: ree-prod-migrate
     restart: "no"
+    logging: *default-logging
     environment:
-      # Demo users for the passwordless login UI (idempotent DataSeeder).
-      Database__SeedDemoData: "true"
+      # Deploys no longer re-seed the demo users (off since 2026-09-26). Users already in the
+      # database stay. To run the DataSeeder once on purpose (demo users + its backfills):
+      #   docker compose -f docker-compose.prod.yml run --rm migrate seed
+      Database__SeedDemoData: "false"
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_PLATFORM: Host=postgres;Port=5432;Database=realestate_eval_prod_platform;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
@@ -128,6 +142,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/identity:${TAG:-latest}
     container_name: ree-prod-identity
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -156,6 +171,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/case-study:${TAG:-latest}
     container_name: ree-prod-case-study
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -203,6 +219,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/operations:${TAG:-latest}
     container_name: ree-prod-operations
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -240,6 +257,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/reporting:${TAG:-latest}
     container_name: ree-prod-reporting
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -265,6 +283,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/financial:${TAG:-latest}
     container_name: ree-prod-financial
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -297,6 +316,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/valuation:${TAG:-latest}
     container_name: ree-prod-valuation
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -333,6 +353,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/failures:${TAG:-latest}
     container_name: ree-prod-failures
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -367,6 +388,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/platform:${TAG:-latest}
     container_name: ree-prod-platform
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -400,6 +422,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/attachments:${TAG:-latest}
     container_name: ree-prod-attachments
     restart: always
+    logging: *default-logging
     environment:
       <<: [*otel-env, *rabbit-env, *redis-env]
       ASPNETCORE_ENVIRONMENT: Production
@@ -429,6 +452,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/gateway:${TAG:-latest}
     container_name: ree-prod-gateway
     restart: always
+    logging: *default-logging
     environment:
       <<: *otel-env
       ASPNETCORE_ENVIRONMENT: Production
@@ -462,6 +486,7 @@ services:
     image: ghcr.io/${IMAGE_OWNER}/case_study/frontend:${TAG:-latest}
     container_name: ree-prod-frontend
     restart: always
+    logging: *default-logging
     environment:
       NODE_ENV: production
       API_UPSTREAM_URL: http://gateway:5160
@@ -479,6 +504,7 @@ services:
     image: nginx:1.27.4-alpine
     container_name: ree-prod-nginx
     restart: always
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"

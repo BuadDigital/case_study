@@ -233,7 +233,7 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
           script: |
-            mkdir -p /app/infra
+            mkdir -p /app/postgres
 
       - name: Transfer Compose & Config Files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -242,7 +242,7 @@ jobs:
           username: ${{ secrets.HETZNER_SSH_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
-          source: "infra/docker-compose.prod.yml,infra/nginx.conf,infra/otel-collector,infra/prometheus,infra/grafana,infra/fluent-bit"
+          source: "infra/docker-compose.prod.yml,infra/nginx.conf,infra/postgres/init-prod.sql"
           target: "/app"
           strip_components: 1
 
@@ -265,14 +265,12 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
-          GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         with:
           host: ${{ secrets.HETZNER_SSH_HOST }}
           username: ${{ secrets.HETZNER_SSH_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
-          envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,JWT_PREVIOUS_SIGNING_KEY,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD,GRAFANA_ADMIN_USER,GRAFANA_ADMIN_PASSWORD
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,JWT_PREVIOUS_SIGNING_KEY,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
           script: |
             set -eu
             cd /app
@@ -316,8 +314,6 @@ jobs:
             apply_secret POSTGRES_PASSWORD "${POSTGRES_PASSWORD:-}"
             apply_secret RABBITMQ_USER "${RABBITMQ_USER:-}"
             apply_secret RABBITMQ_PASSWORD "${RABBITMQ_PASSWORD:-}"
-            apply_secret GRAFANA_ADMIN_USER "${GRAFANA_ADMIN_USER:-}"
-            apply_secret GRAFANA_ADMIN_PASSWORD "${GRAFANA_ADMIN_PASSWORD:-}"
 
             # TLS is mandatory in Production. Fail before touching the running stack
             # when the host certificate has not been provisioned or renewed correctly.
@@ -349,8 +345,6 @@ jobs:
             required_secret "POSTGRES_PASSWORD" "${POSTGRES_PASSWORD:-}"
             required_secret "RABBITMQ_USER" "${RABBITMQ_USER:-}"
             required_secret "RABBITMQ_PASSWORD" "${RABBITMQ_PASSWORD:-}"
-            required_secret "GRAFANA_ADMIN_USER" "${GRAFANA_ADMIN_USER:-}"
-            required_secret "GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ADMIN_PASSWORD:-}"
 
             if [ "${#JWT_SIGNING_KEY}" -lt 64 ]; then
               echo "::error::JWT_SIGNING_KEY must be at least 64 characters"
@@ -450,5 +444,12 @@ jobs:
 
             echo "$TAG" > .deploy-tag
 
-            # Preserve SHA-tagged releases for rollback; remove dangling images only.
+            # Every deploy pulls a fresh SHA-tagged image per service and nothing removed the
+            # old ones (600 images / 42 GB had piled up by 2026-09). Keep only the release now
+            # running and the one before it (for a fast local rollback); older releases can
+            # still be re-pulled from GHCR. `docker rmi` refuses images a container uses.
+            docker images --format '{{.Repository}}:{{.Tag}}' \
+              | grep "^ghcr.io/${IMAGE_OWNER}/case_study/" \
+              | grep -v -e ":${TAG}\$" -e ":${PREVIOUS_TAG:-$TAG}\$" \
+              | xargs -r docker rmi || true
             docker image prune -f
