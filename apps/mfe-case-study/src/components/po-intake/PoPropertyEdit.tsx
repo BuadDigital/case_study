@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   clientFieldPolicyFor,
+  formatPropertyDeedDisplay,
   hasBourseDetailFields,
   isBourseInquiryIdentifier,
   type PoIntakeRecord,
@@ -405,7 +406,11 @@ export function PoPropertyEdit({
       <FormDensityProvider value="compact">
         <Card>
           <SectionHeader
-            title={SECTION_TITLES.enfath}
+            title={
+              formatPropertyDeedDisplay(property)
+                ? `${SECTION_TITLES.enfath} — ${formatPropertyDeedDisplay(property)}`
+                : SECTION_TITLES.enfath
+            }
             dirtyCount={
               savedProperty ? sectionDirtyCount("enfath", property, savedProperty) : 0
             }

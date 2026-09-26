@@ -179,16 +179,20 @@ export function identifierTypeLabel(type: PropertyIdentifierType): string {
   return "صك ملكية";
 }
 
-/** Display label — deed number, else registration; under-study for empty bourse path. */
+/**
+ * Display label — the real-estate registry number outranks the deed number when a
+ * property carries both (the registry is the stronger title); else deed; under-study
+ * for the empty bourse path.
+ */
 export function formatPropertyDeedDisplay(property: {
   identifierType: PropertyIdentifierType;
   deedNumber: string;
   realEstateRegNumber: string;
 }): string {
-  const deed = property.deedNumber.trim();
-  if (deed && !deed.startsWith("INQ-")) return deed;
   const reg = property.realEstateRegNumber?.trim() ?? "";
   if (reg) return reg;
+  const deed = property.deedNumber.trim();
+  if (deed && !deed.startsWith("INQ-")) return deed;
   if (
     isBourseInquiryIdentifier(property.identifierType) ||
     deed.startsWith("INQ-")

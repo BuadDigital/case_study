@@ -12,6 +12,7 @@ import { ltrValueClass } from "./PropertyDetailFields";
 import {
   assignmentCompositeTag,
   formatDateAr,
+  formatPropertyDeedDisplay,
   formatPropertyLocation,
   formatPropertyTypeLine,
   identifierTypeLabel,
@@ -29,8 +30,11 @@ import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-st
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 
-function deedTitle(property: { deedNumber: string }): string {
-  return property.deedNumber.trim() || "—";
+/** Deed number, or the real-estate registry number when the property is identified by one. */
+function deedTitle(
+  property: Pick<PoPropertyIntake, "identifierType" | "deedNumber" | "realEstateRegNumber">,
+): string {
+  return formatPropertyDeedDisplay(property) || "—";
 }
 
 function BuildingIcon() {
