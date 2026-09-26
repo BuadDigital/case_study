@@ -15,6 +15,7 @@ using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.DbMigrate;
 
 // Deploy-time EF migrator. Production apps must not run MigrateAsync at startup.
 //
@@ -32,6 +33,10 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 // RealEstateEval.DbMigrate rollback <name> <stream> roll back one context stream
 // RealEstateEval.DbMigrate rollback 0 <stream> remove all migrations (empty DB schema target)
 // RealEstateEval.DbMigrate attachment-blobs move legacy inline attachment bytes to blob storage (run before the migration that drops the column)
+// RealEstateEval.DbMigrate retire-demo-data deactivate the demo comparables, disable admin@local.dev, report leftovers (audit A-005)
+//
+// In Production (DOTNET_ENVIRONMENT / ASPNETCORE_ENVIRONMENT = Production) the demo seeder never
+// runs from Database:SeedDemoData; `seed` must be confirmed with --confirm-production.
 
 var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
 
@@ -95,9 +100,30 @@ var streams = streamTypes.Select(type =>
         Connection: streamConnections[type])).ToList();
 
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "update";
-var seedDemoData = configuration.GetValue("Database:SeedDemoData", false)
-    || string.Equals(command, "seed", StringComparison.OrdinalIgnoreCase)
+var seedFromConfig = configuration.GetValue("Database:SeedDemoData", false);
+var seedRequested = string.Equals(command, "seed", StringComparison.OrdinalIgnoreCase)
     || args.Any(a => string.Equals(a, "--seed", StringComparison.OrdinalIgnoreCase));
+var seedDemoData = seedFromConfig || seedRequested;
+
+// Audit A-005: every production deploy used to re-seed demo users, CDO roles and fake
+// comparable sales into live data. In Production the config flag is ignored outright, and an
+// explicit seed must be confirmed — a stray env var or a copied command cannot do it again.
+var environmentName = configuration["DOTNET_ENVIRONMENT"] ?? configuration["ASPNETCORE_ENVIRONMENT"];
+if (string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase))
+{
+    if (seedFromConfig && !seedRequested)
+    {
+        Console.WriteLine("[migrate] Production: ignoring Database:SeedDemoData — the demo seeder never runs on deploy.");
+        seedDemoData = false;
+    }
+    if (seedRequested && !args.Any(a => string.Equals(a, "--confirm-production", StringComparison.OrdinalIgnoreCase)))
+    {
+        Console.Error.WriteLine(
+            "[migrate] Refusing to seed demo data in Production. It resets seeded users, roles and phones "
+            + "and re-activates fake comparable sales. Re-run with --confirm-production if that is really intended.");
+        return 1;
+    }
+}
 
 switch (command)
 {
@@ -152,8 +178,15 @@ switch (command)
     case "attachment-blobs":
         await MoveInlineAttachmentBlobsAsync();
         break;
+
+    case "retire-demo-data":
+        await DemoDataRetirement.RunAsync(
+            scope.ServiceProvider.GetRequiredService<ValuationDbContext>(),
+            scope.ServiceProvider.GetRequiredService<IdentityDbContext>());
+        break;
+
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | seed | rollback | attachment-blobs.");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use update | list | seed | rollback | attachment-blobs | retire-demo-data.");
         return 1;
 }
 

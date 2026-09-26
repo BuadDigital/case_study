@@ -395,6 +395,9 @@ jobs:
             # Pull images, apply EF migrations (one-shot), then bring the stack up.
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml run --rm migrate
+            # Audit A-005: undo what earlier demo seeding left in live data (idempotent) and
+            # print what still needs a person — see the [retire-demo] lines in this log.
+            docker compose -f docker-compose.prod.yml run --rm migrate retire-demo-data
             if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
               echo "::error::compose up failed — dumping unhealthy service logs"
               docker compose -f docker-compose.prod.yml ps -a || true

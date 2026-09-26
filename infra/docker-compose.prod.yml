@@ -122,8 +122,10 @@ services:
     logging: *default-logging
     environment:
       # Deploys no longer re-seed the demo users (off since 2026-09-26). Users already in the
-      # database stay. To run the DataSeeder once on purpose (demo users + its backfills):
-      #   docker compose -f docker-compose.prod.yml run --rm migrate seed
+      # database stay. DbMigrate ignores this flag in Production anyway; to run the DataSeeder
+      # once on purpose (demo users + its backfills):
+      #   docker compose -f docker-compose.prod.yml run --rm migrate seed --confirm-production
+      DOTNET_ENVIRONMENT: Production
       Database__SeedDemoData: "false"
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
