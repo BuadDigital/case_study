@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { revokeAuthSession } from "@platform/api-client";
 import { clearAuthSession, getValidAuthSession } from "@platform/auth-client";
+import { getUsableAuthSession } from "../auth/offline-session";
 import { useAppAccess } from "../contexts/AppAccessContext";
 
 export function useAuth() {
@@ -16,7 +17,8 @@ export function useAuth() {
     rolePages,
   } = useAppAccess();
   // Session ref is stable (raw-string cache in auth-client) so it works as a dependency.
-  const session = getValidAuthSession();
+  // Offline field users stay authenticated past access-token expiry (offline lease).
+  const session = getUsableAuthSession();
 
   const logout = useCallback(() => {
     void (async () => {

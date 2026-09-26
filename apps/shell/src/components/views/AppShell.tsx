@@ -3,6 +3,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
+import { isOfflineCapableRole } from "@platform/app-shared/offline/offline-write";
+import { offlineFormPages } from "@platform/app-shared/offline/offline-routes";
 import { prefetchPrototypePage } from "@/lib/query/app-data-queries";
 import type { PageId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
@@ -49,7 +52,17 @@ import { PAGE_CHUNK_PRELOAD } from "./AppPageView";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const { role, rolePages, viewerDisplayName, viewerJobTitle } = useAppAccess();
+  const { role, rolePages: accessPages, viewerDisplayName, viewerJobTitle } =
+    useAppAccess();
+  // Offline, field roles see only their input-form screens in the sidebar (spec §3.1).
+  const online = useOnlineStatus();
+  const rolePages = useMemo(
+    () =>
+      !online && isOfflineCapableRole(role)
+        ? offlineFormPages(accessPages)
+        : accessPages,
+    [online, role, accessPages],
+  );
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const contentRef = useRef<HTMLDivElement>(null);

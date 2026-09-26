@@ -364,6 +364,9 @@ export async function uploadInspectorPhotoFromFile(
       fileName: uploadFile.name,
       contentType: attachment.mimeType,
       bytes,
+      // Queued offline, the photo still reaches the server with its EXIF location and
+      // capture time, so the server flags it (مطابق / خارج النطاق / غير متاح) as online.
+      uploadExtras: { photoMetadata },
       onlineUpload: async () => {
         const data = await uploadInspectorPhotoOnline(
           taskId,

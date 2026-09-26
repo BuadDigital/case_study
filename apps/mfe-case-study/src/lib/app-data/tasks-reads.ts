@@ -9,6 +9,8 @@ import { getAuthSession } from "@platform/auth-client";
 import { apiErrorMessage, workOrdersApiConfig } from "../work-orders-api-config";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { readPrefetchedWorkflowTasks } from "@platform/app-shared/offline/prefetch-read";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
+import { offlineListPage } from "@platform/app-shared/offline/offline-list";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import {
   getRoleAssigneeId,
@@ -49,9 +51,14 @@ export async function loadWorkflowTasksForQuery(
     return filterCachedWorkflowTasks(cached, filters);
   };
 
+  // Field roles offline: nothing downloaded yet reads as an empty queue, never as a
+  // connection error (spec §4.2).
+  const offlineFallback = async () =>
+    (await cachedRows()) ?? (isOfflineFieldSession() ? [] : null);
+
   const config = workOrdersApiConfig();
   if (!config || isBrowserOffline()) {
-    const cached = await cachedRows();
+    const cached = await offlineFallback();
     if (cached) return cached;
     if (!config) throw new Error(apiErrorMessage("auth"));
     throw new Error("تعذّر تحميل مهام سير العمل");
@@ -59,7 +66,8 @@ export async function loadWorkflowTasksForQuery(
   try {
     const result = await listWorkflowTasks(config, filters);
     if (!result.ok) {
-      const cached = await cachedRows();
+      const cached =
+        result.kind === "network" ? await offlineFallback() : await cachedRows();
       if (cached) return cached;
       throw new Error(
         apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"),
@@ -67,7 +75,7 @@ export async function loadWorkflowTasksForQuery(
     }
     return result.data.map(dtoToTask);
   } catch (err) {
-    const cached = await cachedRows();
+    const cached = await offlineFallback();
     if (cached) return cached;
     if (err instanceof Error) throw err;
     throw new Error("تعذّر تحميل مهام سير العمل");
@@ -82,14 +90,36 @@ export type WorkflowTasksPage = {
   totalPages: number;
 };
 
+/**
+ * The downloaded queue paged on the device (filters applied client-side, server
+ * order kept). Field roles get an empty page when nothing was downloaded yet.
+ */
+async function offlineWorkflowTasksPage(
+  query: WorkflowTaskListQuery,
+): Promise<WorkflowTasksPage | null> {
+  const cached = await readPrefetchedWorkflowTasks<WorkflowTask>();
+  if (!cached && !isOfflineFieldSession()) return null;
+  const { page: _page, pageSize: _pageSize, ...filters } = query;
+  return offlineListPage(filterCachedWorkflowTasks(cached ?? [], filters), query);
+}
+
 /** One server page of workflow tasks — pagination-contract §2. */
 export async function loadWorkflowTasksPage(
   query: WorkflowTaskListQuery,
 ): Promise<WorkflowTasksPage> {
   const config = workOrdersApiConfig();
-  if (!config) throw new Error(apiErrorMessage("auth"));
+  const offline = isBrowserOffline();
+  if (!config || offline) {
+    const page = await offlineWorkflowTasksPage(query);
+    if (page) return page;
+    if (!config) throw new Error(apiErrorMessage("auth"));
+    throw new Error("تعذّر تحميل مهام سير العمل");
+  }
   const result = await listWorkflowTasksPage(config, query);
   if (!result.ok) {
+    const page =
+      result.kind === "network" ? await offlineWorkflowTasksPage(query) : null;
+    if (page) return page;
     throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل مهام سير العمل"));
   }
   return {

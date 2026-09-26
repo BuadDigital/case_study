@@ -7,7 +7,7 @@ import {
 import {
   enqueueOutbox,
   persistDraftLocally,
-  purgeOfflineData,
+  randomUuid,
   type OfflineDraftRecord,
 } from "@platform/offline-client";
 
@@ -227,7 +227,7 @@ async function enqueueClassified(
     return;
   }
   if (classified.type === "key-envelope-create") {
-    const clientId = `local-pending:${crypto.randomUUID()}`;
+    const clientId = `local-pending:${randomUuid()}`;
     const body =
       classified.body && typeof classified.body === "object"
         ? { ...(classified.body as object), clientEnvelopeId: clientId }
@@ -262,7 +262,7 @@ async function enqueueClassified(
     const targetId = String(
       classified.body.propertyId ??
         classified.body.deedNumber ??
-        crypto.randomUUID(),
+        randomUuid(),
     );
     await enqueueOutbox({
       userId,
@@ -308,11 +308,9 @@ export function installOfflineWriteInterceptor(): () => void {
       }
     }
 
-    const response = await next();
-    if ((response.status === 401 || response.status === 403) && userId) {
-      await purgeOfflineData(userId, "auth-rejected");
-    }
-    return response;
+    // A 401/403 on one write must not wipe the device's unsynced work — only a
+    // disabled account does that, via the refresh check (spec §3.4 / §4.3).
+    return next();
   };
 
   return installApiWriteInterceptor(interceptor);

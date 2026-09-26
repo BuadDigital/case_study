@@ -26,7 +26,9 @@ import {
 } from "@platform/api-client";
 import { getPoRecord } from "@case-study/mfe/lib/app-data/po-intake-reads";
 import { loadOperationsTasks } from "@case-study/mfe/lib/app-data/operations-tasks-reads";
+import { prefetchKeyEnvelopesForOffline } from "@keys/mfe/lib/keys-envelope-api";
 import { useWorkflowTasksQuery } from "@/lib/query/app-data-queries";
+import { offlinePagePlan, warmOfflinePages } from "@/lib/offline-page-cache";
 
 function scopeKeyForProperty(poNumber: string, propertyId: string): string {
   return `${poNumber.trim()}:${propertyId}`;
@@ -88,11 +90,12 @@ async function prefetchBasicDocBinaries(input: {
 }
 
 /**
- * Pre-fetches active tasks, PO records, party submissions, ops tasks, and basic
- * document binaries for field roles while online so offline forms remain usable.
+ * Pre-fetches active tasks, PO records, party submissions, ops tasks, key envelopes and basic
+ * document binaries for field roles while online so offline forms remain usable,
+ * then has the service worker keep the role's pages so they also open offline.
  */
 export function FieldOfflinePrefetch() {
-  const { role, user, isAuthenticated } = useAuth();
+  const { role, user, isAuthenticated, rolePages } = useAuth();
   const online = useOnlineStatus();
   const queryClient = useQueryClient();
   const capable = isOfflineCapableRole(role);
@@ -130,6 +133,10 @@ export function FieldOfflinePrefetch() {
         ).values(),
       ];
 
+      // Page copies run alongside the data download (and do not depend on IndexedDB),
+      // so slow document downloads never delay them and a failed prefetch never skips them.
+      void warmOfflinePages(userId, offlinePagePlan(rolePages, tasks)).catch(() => {});
+
       void (async () => {
         try {
           await requestPersistentStorage();
@@ -144,6 +151,10 @@ export function FieldOfflinePrefetch() {
                 updatedAtUtc: new Date().toISOString(),
               }),
             ]);
+          }
+
+          if (rolePages.includes("keys")) {
+            await prefetchKeyEnvelopesForOffline();
           }
 
           const opsTasks = await loadOperationsTasks({ assigneeId: userId });
@@ -220,6 +231,7 @@ export function FieldOfflinePrefetch() {
     isAuthenticated,
     online,
     queryClient,
+    rolePages,
     tasksQuery.data,
     user?.id,
   ]);

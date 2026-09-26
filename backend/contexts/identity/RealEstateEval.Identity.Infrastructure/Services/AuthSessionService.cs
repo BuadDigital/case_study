@@ -127,6 +127,30 @@ public sealed class AuthSessionService(
             stored.ExpiresAtUtc);
     }
 
+    public async Task<bool> IsDisabledAccountTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return false;
+
+        var hash = HashToken(refreshToken);
+        var userId = await db.RefreshTokens
+            .AsNoTracking()
+            .Where(t => t.TokenHash == hash)
+            .Select(t => t.UserId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (userId is null)
+            return false;
+
+        // Locked (failed passwords) is not disabled: that user may still sync after unlock.
+        return await db.UserProfiles
+            .AsNoTracking()
+            .AnyAsync(
+                profile => profile.UserId == userId && profile.Status == UserStatus.Disabled,
+                cancellationToken);
+    }
+
     public async Task RevokeAsync(
         string refreshToken,
         string reason,

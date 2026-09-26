@@ -45,6 +45,10 @@ async function reverseGeocode(
   return reverseGeocodeLocation(lat, lng);
 }
 
+/** Google Maps needs the network — the offline stand-in when no hint is given. */
+const MAP_OFFLINE_MESSAGE =
+  "الخريطة تحتاج اتصالاً بالشبكة — تظهر تلقائياً عند عودة الاتصال.";
+
 export function GoogleMapPin({
   lat,
   lng,
@@ -61,6 +65,7 @@ export function GoogleMapPin({
   resolvePlace = false,
   onCoordsChange,
   onLocationDetail,
+  offlineHint,
 }: {
   lat?: number | null;
   lng?: number | null;
@@ -84,6 +89,12 @@ export function GoogleMapPin({
   resolvePlace?: boolean;
   onCoordsChange?: (lat: number, lng: number) => void;
   onLocationDetail?: (detail: GoogleMapLocationDetail) => void;
+  /**
+   * Shown instead of the map while the device is offline (Google Maps needs the
+   * network) — e.g. point the user to a GPS capture that works without it. The map
+   * loads by itself once the connection returns.
+   */
+  offlineHint?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -106,6 +117,9 @@ export function GoogleMapPin({
   const initialCenterRef = useRef(initialCenter);
   initialCenterRef.current = initialCenter;
   const [mapReady, setMapReady] = useState(false);
+  /** Bumped when the network returns after an offline failure — reloads the map. */
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [waitingForNetwork, setWaitingForNetwork] = useState(false);
   const [error, setError] = useState<string | null>(() =>
     googleMapsApiKey()
       ? null
@@ -225,11 +239,16 @@ export function GoogleMapPin({
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setError(
-            "تعذر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.",
-          );
+        if (cancelled) return;
+        // Offline is not a setup problem: say what works now and retry on reconnect.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          setWaitingForNetwork(true);
+          setError(offlineHint ?? MAP_OFFLINE_MESSAGE);
+          return;
         }
+        setError(
+          "تعذر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.",
+        );
       });
 
     return () => {
@@ -245,7 +264,18 @@ export function GoogleMapPin({
     };
     // mapTypeControl / title are setup-time options
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAttempt]);
+
+  useEffect(() => {
+    if (!waitingForNetwork) return;
+    const onOnline = () => {
+      setWaitingForNetwork(false);
+      setError(null);
+      setLoadAttempt((n) => n + 1);
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [waitingForNetwork]);
 
   useEffect(() => {
     markerRef.current?.setDraggable(picking);

@@ -68,6 +68,11 @@ export type OfflineBlobRecord = {
   createdAtUtc: string;
   /** Server attachment id after successful upload. */
   serverAttachmentId?: string;
+  /**
+   * Extra upload-request fields captured on the device (photo EXIF location and
+   * capture time, document type) — replayed with the upload so they are not lost.
+   */
+  uploadExtras?: Record<string, unknown>;
 };
 
 export type OfflinePrefetchRecord = {
@@ -101,11 +106,26 @@ export const OFFLINE_DB_VERSION = 1;
 export const OFFLINE_LEASE_MS = 3 * 60 * 60 * 1000;
 export const OFFLINE_WARN_1H_MS = 60 * 60 * 1000;
 export const OFFLINE_WARN_2H_MS = 2 * 60 * 60 * 1000;
+/** Last permissions of an offline-capable user, so an offline cold start keeps their role. */
+export const OFFLINE_ACCESS_STORAGE_KEY = "ejada_offline_access";
 /** Service Worker Background Sync tag (must match apps/shell/public/sw.js). */
 export const OFFLINE_BACKGROUND_SYNC_TAG = "ejada-offline-sync";
 
 const LOCAL_ATTACHMENT_PREFIX = "local:";
 
+/**
+ * RFC 4122 v4 id. `crypto.randomUUID` only exists on secure origins, and the offline
+ * queue must also work on http://LAN-IP field devices — getRandomValues works on both.
+ */
+export function randomUuid(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export function makeLocalAttachmentId(): string {
-  return `${LOCAL_ATTACHMENT_PREFIX}${crypto.randomUUID()}`;
+  return `${LOCAL_ATTACHMENT_PREFIX}${randomUuid()}`;
 }

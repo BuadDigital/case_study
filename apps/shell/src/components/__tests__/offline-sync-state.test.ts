@@ -16,6 +16,8 @@ import {
   syncStatusIcon,
   syncStatusLabel,
   unauthenticatedReplayFailure,
+  uploadExtrasForReplay,
+  rejectedOutboxItems,
 } from "../offline-sync-state";
 
 const item = (
@@ -127,11 +129,12 @@ describe("staleness and labels", () => {
 });
 
 describe("replay failure classification", () => {
-  it("treats auth and forbidden as terminal, others as retryable", () => {
+  it("treats forbidden as terminal; an expired session (auth) retries after renewal", () => {
     expect(isAuthRejected("auth")).toBe(true);
     expect(isAuthRejected("forbidden")).toBe(true);
     expect(isAuthRejected("server")).toBe(false);
-    expect(replayFailure("auth", "x")).toEqual({ ok: false, error: "x", terminal: true });
+    expect(replayFailure("auth", "x")).toEqual({ ok: false, error: "x", terminal: false });
+    expect(replayFailure("forbidden", "x")).toEqual({ ok: false, error: "x", terminal: true });
     expect(replayFailure("server", "x")).toEqual({ ok: false, error: "x", terminal: false });
     expect(replayFailure("validation", "x")).toEqual({ ok: false, error: "x", terminal: false });
   });
@@ -156,17 +159,43 @@ describe("payload helpers", () => {
     expect(parseReplayPayload("{oops")).toBeNull();
   });
 
-  it("matches an existing attachment by name and size, else the first row", () => {
+  it("matches an existing attachment only by name and size — a new photo still uploads", () => {
     const rows = [
       { id: "1", fileName: "a.jpg", sizeBytes: 10 },
       { id: "2", fileName: "b.jpg", sizeBytes: 20 },
     ];
     expect(matchExistingAttachment(rows, { fileName: "b.jpg", byteLength: 20 })?.id).toBe("2");
-    expect(matchExistingAttachment(rows, { fileName: "c.jpg", byteLength: 5 })?.id).toBe("1");
+    expect(matchExistingAttachment(rows, { fileName: "c.jpg", byteLength: 5 })).toBeUndefined();
     expect(matchExistingAttachment([], { fileName: "c.jpg", byteLength: 5 })).toBeUndefined();
   });
 
   it("base64-encodes raw bytes", () => {
     expect(arrayBufferToBase64(new TextEncoder().encode("hi").buffer)).toBe("aGk=");
+  });
+});
+
+describe("uploadExtrasForReplay", () => {
+  it("replays the device's photo metadata and document type, nothing else", () => {
+    const photoMetadata = { latitude: 21.8, longitude: 39.09, capturedAtUtc: "2026-09-24T07:30:00Z" };
+    expect(
+      uploadExtrasForReplay({ photoMetadata, documentTypeKey: "deed", scope: "evil", contentBase64: "x" }),
+    ).toEqual({ photoMetadata, documentTypeKey: "deed" });
+    expect(uploadExtrasForReplay(undefined)).toEqual({});
+  });
+});
+
+describe("rejected outbox items", () => {
+  it("keeps items the server refused visible instead of reading as synced", () => {
+    const items = [
+      { status: "pending" as const },
+      { status: "terminal" as const },
+      { status: "done" as const },
+    ];
+    expect(rejectedOutboxItems(items)).toEqual([{ status: "terminal" }]);
+    expect(
+      syncStatusLabel({ locked: false, syncState: "synced", pending: 0, rejected: 1 }),
+    ).toBe("1 عنصر رفضه الخادم — راجع القائمة");
+    expect(syncStatusIcon("synced", 0, 1)).toBe("⚠️");
+    expect(syncStatusIcon("synced", 0, 0)).toBe("✅");
   });
 });

@@ -27,6 +27,8 @@ const CopyFromPriorTransactionModal = dynamic(
   { ssr: false },
 );
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
+import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import type { WorkflowTask } from "../lib/app-data/tasks";
@@ -64,6 +66,9 @@ type PanelRenderProps = {
  * is the actor's total for the filters and the search; the range reports the
  * rows that survived the client-side rules the contract keeps.
  */
+const OFFLINE_EMPTY_LINE = "لا توجد مهام محفوظة على الجهاز بعد.";
+const OFFLINE_EMPTY_HINT = "تُحمَّل مهامك إلى الجهاز تلقائياً عند توفر الشبكة.";
+
 function QueuePager({
   pagination,
   onPageChange,
@@ -192,6 +197,10 @@ export function ActiveTransactionQueueView({
     setCopyTargetKey,
     handleCopiedFromPrior,
   } = useActiveTransactionQueueWorkflow({ config, queueApiRef });
+  // Field roles offline before anything was downloaded: say so plainly — never a
+  // connection error, and never "no tasks" as if the queue were really empty (§4.2).
+  const online = useOnlineStatus();
+  const offlineFieldEmpty = !online && isOfflineFieldSession();
 
   const renderStatusOrRemaining = useCallback(
     (
@@ -279,7 +288,11 @@ export function ActiveTransactionQueueView({
                reachable when active work is empty but completed rows exist. */
             <>
               {isPartyQueueToggleTable ? queueToolbar : null}
-              <EmptyState line={config.emptyLine} hint={config.emptyHint} />
+              {offlineFieldEmpty ? (
+                <EmptyState line={OFFLINE_EMPTY_LINE} hint={OFFLINE_EMPTY_HINT} />
+              ) : (
+                <EmptyState line={config.emptyLine} hint={config.emptyHint} />
+              )}
             </>
           ) : (
             <>
@@ -312,7 +325,9 @@ export function ActiveTransactionQueueView({
                         ? "لا توجد أوامر رفع مطابقة."
                         : isAllTransactionsTable
                           ? "لا توجد معاملات مطابقة."
-                          : (config.emptyLine ?? "لا توجد معاملات مطابقة.")
+                          : offlineFieldEmpty
+                            ? OFFLINE_EMPTY_LINE
+                            : (config.emptyLine ?? "لا توجد معاملات مطابقة.")
                     }
                   />
                   {paged && pagination ? (

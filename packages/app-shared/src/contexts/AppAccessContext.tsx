@@ -9,7 +9,7 @@ import {
 } from "@platform/app-shared/app-data/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/app-data/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
-import { useValidAuthSession } from "../auth/use-auth-session";
+import { useUsableAuthSession } from "../auth/use-auth-session";
 
 type Ctx = {
   role: RoleId;
@@ -50,7 +50,8 @@ const EMPTY_CAPABILITIES: string[] = [];
 export function AppAccessProvider({ children }: { children: React.ReactNode }) {
   // useSyncExternalStore keeps hasSession in sync after silent refresh / logout,
   // including the first client paint after a hard navigation into a deep link.
-  const session = useValidAuthSession();
+  // A field user offline keeps their session past access-token expiry.
+  const session = useUsableAuthSession();
   const hasSession = Boolean(session?.token);
 
   const {

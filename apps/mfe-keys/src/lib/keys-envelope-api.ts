@@ -22,7 +22,12 @@ import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platfor
 import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import { currentOfflineUserId, isBrowserOffline, uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
-import { beginOfflineLease, enqueueOutbox, type OutboxKind } from "@platform/offline-client";
+import { beginOfflineLease, enqueueOutbox, listOutboxItems, randomUuid, type OutboxKind } from "@platform/offline-client";
+import {
+  KEY_ENVELOPES_PREFETCH_ID,
+  readPrefetchedJson,
+  savePrefetchedJson,
+} from "@platform/app-shared/offline/prefetch-read";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import type {
   KeyAssignmentMatchStatus,
@@ -147,22 +152,111 @@ async function enqueueKeyEnvelopeWrite(
   return true;
 }
 
+/* ─── Offline reads (government reviewer, spec §3.2 / §6) ─── */
+
+type KeysOfflineSnapshot = {
+  envelopes: KeyEnvelopeDto[];
+  /** Court-access rows keyed by request number. */
+  courtAccess: Record<string, PropertyCourtAccessDto[]>;
+};
+
+/** Court-access lookups per prefetch — one per distinct request number. */
+const MAX_PREFETCH_COURT_ACCESS = 40;
+
+/**
+ * Keeps the reviewer's envelopes (assignments, handoffs and timeline come with each
+ * row) and the court access of their requests on the device while online, so the
+ * keys screens open offline.
+ */
+export async function prefetchKeyEnvelopesForOffline(): Promise<void> {
+  const config = prototypeModulesApiConfig();
+  const userId = currentOfflineUserId();
+  if (!config || !userId) return;
+  const list = await listKeyEnvelopes(config);
+  if (!list.ok) return;
+  const requestNumbers = [
+    ...new Set(list.data.map((e) => e.requestNumber?.trim()).filter(Boolean)),
+  ].slice(0, MAX_PREFETCH_COURT_ACCESS) as string[];
+  const courtAccess: KeysOfflineSnapshot["courtAccess"] = {};
+  for (const requestNumber of requestNumbers) {
+    const access = await listPropertyCourtAccess(config, requestNumber);
+    if (access.ok) courtAccess[requestNumber] = access.data;
+  }
+  const snapshot: KeysOfflineSnapshot = { envelopes: list.data, courtAccess };
+  await savePrefetchedJson(KEY_ENVELOPES_PREFETCH_ID(userId), "key-envelopes", snapshot);
+}
+
+async function readKeysSnapshot(): Promise<KeysOfflineSnapshot | null> {
+  const userId = currentOfflineUserId();
+  if (!userId) return null;
+  return readPrefetchedJson<KeysOfflineSnapshot>(KEY_ENVELOPES_PREFETCH_ID(userId));
+}
+
+/** Envelopes registered offline and not yet synced — shown as pending rows. */
+async function pendingEnvelopeRows(): Promise<KeyEnvelopeRow[]> {
+  const userId = currentOfflineUserId();
+  if (!userId) return [];
+  try {
+    const items = await listOutboxItems(userId);
+    return items
+      .filter(
+        (item) =>
+          item.kind === "key-envelope-create" &&
+          item.status !== "done" &&
+          item.status !== "terminal",
+      )
+      .flatMap((item) => {
+        try {
+          const body = JSON.parse(item.payloadJson) as CreateKeyEnvelopeRequest & {
+            clientEnvelopeId?: string;
+          };
+          return [pendingEnvelopeStub(body, body.clientEnvelopeId ?? item.targetId)];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+function isLocalPendingEnvelopeId(id: string): boolean {
+  return id.startsWith("local-pending:");
+}
+
 export async function loadKeyEnvelopes(): Promise<KeyEnvelopeRow[]> {
   const config = prototypeModulesApiConfig();
-  if (!config) return [];
-  const result = await listKeyEnvelopes(config);
-  if (!result.ok) return [];
-  return result.data.map(mapEnvelope);
+  const pending = await pendingEnvelopeRows();
+  if (config && !isBrowserOffline()) {
+    const result = await listKeyEnvelopes(config);
+    if (result.ok) return [...pending, ...result.data.map(mapEnvelope)];
+    if (result.kind !== "network") return pending;
+  }
+  const snapshot = await readKeysSnapshot();
+  return [...pending, ...(snapshot?.envelopes.map(mapEnvelope) ?? [])];
 }
 
 export async function loadKeyEnvelope(
   id: string,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
+  if (isLocalPendingEnvelopeId(id)) {
+    const pending = (await pendingEnvelopeRows()).find((row) => row.id === id);
+    return pending
+      ? { ok: true, data: pending }
+      : { ok: false, error: "تمت مزامنة الظرف — افتحه من القائمة" };
+  }
   const config = prototypeModulesApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await getKeyEnvelope(config, id);
-  if (!result.ok) return fail(result, "تعذّر تحميل الظرف");
-  return { ok: true, data: mapEnvelope(result.data) };
+  if (config && !isBrowserOffline()) {
+    const result = await getKeyEnvelope(config, id);
+    if (result.ok) return { ok: true, data: mapEnvelope(result.data) };
+    if (result.kind !== "network") return fail(result, "تعذّر تحميل الظرف");
+  } else if (!config && !isBrowserOffline()) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
+  const cached = (await readKeysSnapshot())?.envelopes.find((e) => e.id === id);
+  return cached
+    ? { ok: true, data: mapEnvelope(cached) }
+    : { ok: false, error: "الظرف غير محفوظ على الجهاز" };
 }
 
 export async function removeKeyEnvelope(
@@ -187,10 +281,15 @@ export async function loadPropertyCourtAccess(
   requestNumber?: string,
 ): Promise<PropertyCourtAccessRow[]> {
   const config = prototypeModulesApiConfig();
-  if (!config) return [];
-  const result = await listPropertyCourtAccess(config, requestNumber);
-  if (!result.ok) return [];
-  return result.data.map(mapAccess);
+  if (config && !isBrowserOffline()) {
+    const result = await listPropertyCourtAccess(config, requestNumber);
+    if (result.ok) return result.data.map(mapAccess);
+    if (result.kind !== "network") return [];
+  }
+  const key = requestNumber?.trim();
+  if (!key) return [];
+  const cached = (await readKeysSnapshot())?.courtAccess[key] ?? [];
+  return cached.map(mapAccess);
 }
 
 export async function fetchLinkedPropertiesByRequestNumber(
@@ -280,6 +379,7 @@ export async function uploadEnvelopeAttachment(
     fileName: uploadFile.name,
     contentType: uploadFile.type || "application/octet-stream",
     bytes,
+    uploadExtras: photoMetadata ? { photoMetadata } : undefined,
     onlineUpload: async () => {
       if (!config) throw new Error(apiErrorMessage("auth"));
       const upload = await uploadAttachment(config, {
@@ -350,7 +450,7 @@ export async function registerKeyEnvelope(
 
   const userId = currentOfflineUserId();
   if ((!config || isBrowserOffline()) && userId) {
-    const clientId = `local-pending:${crypto.randomUUID()}`;
+    const clientId = `local-pending:${randomUuid()}`;
     await enqueueOutbox({
       userId,
       kind: "key-envelope-create",
@@ -368,7 +468,7 @@ export async function registerKeyEnvelope(
     const result = await createKeyEnvelope(config, body, idempotencyKey);
     if (!result.ok) {
       if (result.kind === "network" && userId) {
-        const clientId = `local-pending:${crypto.randomUUID()}`;
+        const clientId = `local-pending:${randomUuid()}`;
         await enqueueOutbox({
           userId,
           kind: "key-envelope-create",
@@ -384,7 +484,7 @@ export async function registerKeyEnvelope(
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
     if (userId) {
-      const clientId = `local-pending:${crypto.randomUUID()}`;
+      const clientId = `local-pending:${randomUuid()}`;
       await enqueueOutbox({
         userId,
         kind: "key-envelope-create",
@@ -592,7 +692,7 @@ export async function savePropertyCourtAccess(
     await enqueueOutbox({
       userId,
       kind: "property-court-access",
-      targetId: targetId || crypto.randomUUID(),
+      targetId: targetId || randomUuid(),
       payloadJson: JSON.stringify(body),
     });
     await beginOfflineLease(userId);
@@ -608,7 +708,7 @@ export async function savePropertyCourtAccess(
         await enqueueOutbox({
           userId,
           kind: "property-court-access",
-          targetId: targetId || crypto.randomUUID(),
+          targetId: targetId || randomUuid(),
           payloadJson: JSON.stringify(body),
         });
         await beginOfflineLease(userId);
@@ -622,7 +722,7 @@ export async function savePropertyCourtAccess(
       await enqueueOutbox({
         userId,
         kind: "property-court-access",
-        targetId: targetId || crypto.randomUUID(),
+        targetId: targetId || randomUuid(),
         payloadJson: JSON.stringify(body),
       });
       await beginOfflineLease(userId);

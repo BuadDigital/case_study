@@ -274,6 +274,14 @@ export function payloadToDraft(
       readString(payload.propertyDisplayId) || draft.propertyDisplayId,
     inspectionDate: readString(payload.inspectionDate),
     inspectionTime: readString(payload.inspectionTime),
+    completedOnSiteAtUtc: readString(payload.completedOnSiteAtUtc),
+    // The server's current value — a device that saved on older data gets it back here.
+    // Re-read from a locally queued payload (offline), the echoed value is all there is.
+    sourceFingerprint:
+      dto.sourceFingerprint?.trim() ||
+      readString(payload.sourceFingerprintSeen) ||
+      fallback?.sourceFingerprint ||
+      "",
     ...mapCoords,
     inspectorMapLatitude: readString(payload.inspectorMapLatitude),
     inspectorMapLongitude: readString(payload.inspectorMapLongitude),
@@ -380,6 +388,13 @@ export function draftToPayload(
     propertyDisplayId: clean.propertyDisplayId,
     inspectionDate: draft.inspectionDate,
     inspectionTime: draft.inspectionTime,
+    ...(draft.completedOnSiteAtUtc
+      ? { completedOnSiteAtUtc: draft.completedOnSiteAtUtc }
+      : {}),
+    // Client-only marker: the server compares and strips it (spec §4.4).
+    ...(draft.sourceFingerprint
+      ? { sourceFingerprintSeen: draft.sourceFingerprint }
+      : {}),
     mapLatitude: draft.mapLatitude,
     mapLongitude: draft.mapLongitude,
     inspectorMapLatitude: draft.inspectorMapLatitude,

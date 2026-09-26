@@ -50,6 +50,18 @@ function detectSubmissionKind(
   return "field-inspection";
 }
 
+/**
+ * Status of a package read back from the device's queued copy: a returned package
+ * stays «معادة للتصحيح» offline instead of reading as a fresh draft.
+ */
+export function queuedSubmissionStatus(payload: unknown): "draft" | "reopened" {
+  const status =
+    payload && typeof payload === "object"
+      ? (payload as { status?: unknown }).status
+      : undefined;
+  return status === "reopened" ? "reopened" : "draft";
+}
+
 export async function fetchPartySubmission(
   taskId: string,
 ): Promise<PartyTaskSubmissionDto | null> {
@@ -63,7 +75,7 @@ export async function fetchPartySubmission(
       const local: PartyTaskSubmissionDto = {
         taskId,
         kind: detectSubmissionKind(queued),
-        status: "draft",
+        status: queuedSubmissionStatus(queued),
         payload: queued,
         updatedAtUtc: new Date().toISOString(),
       };
@@ -95,7 +107,7 @@ export async function fetchPartySubmission(
       const local: PartyTaskSubmissionDto = {
         taskId,
         kind: detectSubmissionKind(queued),
-        status: "draft",
+        status: queuedSubmissionStatus(queued),
         payload: queued,
         updatedAtUtc: new Date().toISOString(),
       };
@@ -137,7 +149,7 @@ export async function persistPartySubmissionPayload(
       const local: PartyTaskSubmissionDto = {
         taskId,
         kind,
-        status: "draft",
+        status: queuedSubmissionStatus(payload),
         payload,
         updatedAtUtc: now,
       };
@@ -171,7 +183,7 @@ export async function persistPartySubmissionPayload(
       const local: PartyTaskSubmissionDto = {
         taskId,
         kind,
-        status: "draft",
+        status: queuedSubmissionStatus(payload),
         payload,
         updatedAtUtc: now,
       };

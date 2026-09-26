@@ -13,6 +13,8 @@ import {
   readPrefetchedOperationsTasks,
   savePrefetchedOperationsTasks,
 } from "@platform/app-shared/offline/prefetch-read";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
+import { offlineListPage } from "@platform/app-shared/offline/offline-list";
 import {
   resolveApiError,
   workOrdersApiConfig,
@@ -67,8 +69,21 @@ export async function loadOperationsTasks(
   } catch {
     const cached = await readPrefetchedOperationsTasks<OperationsTask>();
     if (cached) return filterPrefetchedOpsTasks(cached, query);
+    if (isOfflineFieldSession()) return [];
     throw new Error("تعذّر تحميل المهام");
   }
+}
+
+/**
+ * The downloaded tasks paged on the device. Field roles get an empty page when
+ * nothing was downloaded yet — never a connection error (spec §4.2).
+ */
+async function offlineOperationsTasksPage(
+  query: OperationsTaskListQuery,
+): Promise<OperationsTasksPage | null> {
+  const cached = await readPrefetchedOperationsTasks<OperationsTask>();
+  if (!cached && !isOfflineFieldSession()) return null;
+  return offlineListPage(filterPrefetchedOpsTasks(cached ?? [], query), query);
 }
 
 export async function loadCourtVisitFees(query?: {
@@ -99,9 +114,16 @@ export async function loadOperationsTasksPage(
   query: OperationsTaskListQuery,
 ): Promise<OperationsTasksPage> {
   const config = workOrdersApiConfig();
-  if (!config) throw new Error(resolveApiError("auth", undefined, "تعذّر تحميل المهام"));
-  const result = await listOperationsTasksPage(config, query);
+  if (!config || isBrowserOffline()) {
+    const page = await offlineOperationsTasksPage(query);
+    if (page) return page;
+    if (!config) throw new Error(resolveApiError("auth", undefined, "تعذّر تحميل المهام"));
+  }
+  const result = await listOperationsTasksPage(config!, query);
   if (!result.ok) {
+    const page =
+      result.kind === "network" ? await offlineOperationsTasksPage(query) : null;
+    if (page) return page;
     throw new Error(
       result.message ??
         resolveApiError(result.kind, undefined, "تعذّر تحميل المهام"),

@@ -15,7 +15,14 @@ test.describe("PWA assets", () => {
     const sw = fs.readFileSync(file, "utf8");
     expect(sw).toContain('addEventListener("push"');
     expect(sw).toContain('addEventListener("notificationclick"');
-    expect(sw).toContain("ejada-shell-v3");
+    expect(sw).toContain('const CACHE_PREFIX = "ejada-shell-"');
     expect(sw).toContain("One missing asset must not block SW installation");
+  });
+
+  test("service worker keeps the field inspector's working pages", () => {
+    const sw = fs.readFileSync(path.resolve("apps/shell/public/sw.js"), "utf8");
+    expect(sw).toContain('"/active-inspection"');
+    expect(sw).toContain('"/operations-tasks"');
+    expect(sw).toContain('data.type === "WARM_OFFLINE_PAGES"');
   });
 });

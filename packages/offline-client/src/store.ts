@@ -1,13 +1,17 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import {
-  createUserCryptoKey,
+  createUserOfflineKey,
   decryptBytes,
   decryptJson,
   encryptBytes,
   encryptJson,
-  isWebCryptoAvailable,
+  fromStoredKey,
+  toStoredKey,
+  type OfflineKey,
+  type StoredOfflineKey,
 } from "./crypto";
 import {
+  OFFLINE_ACCESS_STORAGE_KEY,
   OFFLINE_CHANNEL,
   OFFLINE_DB_NAME,
   OFFLINE_DB_VERSION,
@@ -18,21 +22,15 @@ import {
   type OfflineOutboxItem,
   type OfflinePrefetchRecord,
 } from "./types";
+import { clearOfflinePageCaches } from "./page-cache";
 
 /**
- * On insecure contexts (http://LAN-IP, not localhost) Web Crypto subtle is
- * unavailable. We still persist outbox/drafts as **plaintext** JSON so field
- * devices can work over local network; data is still browser-scoped only.
+ * Every row is AES-256-GCM encrypted with the user's key (see `crypto.ts`). Rows
+ * written as plaintext by older builds on insecure origins (`meta.encoding = plain`)
+ * are still readable and are re-encrypted the first time they are read.
  */
-function usesPlainOfflineStorage(): boolean {
-  return !isWebCryptoAvailable();
-}
-
 const PLAIN_ENCODING = "plain";
-const te = new TextEncoder();
 const td = new TextDecoder();
-/** Zero-length IV used with meta.encoding = plain. */
-const PLAIN_IV = new ArrayBuffer(0);
 
 type EncryptedRow = {
   id: string;
@@ -46,7 +44,7 @@ type EncryptedRow = {
 interface OfflineDb extends DBSchema {
   keys: {
     key: string;
-    value: { userId: string; key: CryptoKey };
+    value: { userId: string } & StoredOfflineKey;
   };
   drafts: {
     key: string;
@@ -76,7 +74,7 @@ interface OfflineDb extends DBSchema {
 
 let dbPromise: Promise<IDBPDatabase<OfflineDb>> | null = null;
 let openGeneration = 0;
-const keyCache = new Map<string, CryptoKey>();
+const keyCache = new Map<string, OfflineKey>();
 
 function channel(): BroadcastChannel | null {
   if (typeof BroadcastChannel === "undefined") return null;
@@ -206,40 +204,24 @@ function isPlainRow(row: EncryptedRow): boolean {
   return row.meta?.encoding === PLAIN_ENCODING;
 }
 
-function encodePlainJson(value: unknown): {
-  iv: ArrayBuffer;
-  ciphertext: ArrayBuffer;
-} {
-  const bytes = te.encode(JSON.stringify(value));
-  return {
-    iv: PLAIN_IV,
-    ciphertext: bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength,
-    ) as ArrayBuffer,
-  };
-}
-
 function decodePlainJson<T>(row: EncryptedRow): T {
   return JSON.parse(td.decode(new Uint8Array(row.ciphertext))) as T;
 }
 
-async function ensureOfflineKey(userId: string): Promise<CryptoKey> {
-  if (!isWebCryptoAvailable()) {
-    throw new Error(
-      "Offline crypto key is unavailable on this origin (use localhost/HTTPS or plaintext storage).",
-    );
-  }
+async function ensureOfflineKey(userId: string): Promise<OfflineKey> {
   const cached = keyCache.get(userId);
   if (cached) return cached;
   return withDb(async (db) => {
     const existing = await db.get("keys", userId);
-    if (existing?.key) {
-      keyCache.set(userId, existing.key);
-      return existing.key;
+    if (existing) {
+      const key = fromStoredKey(existing);
+      // A key this origin cannot use must never be replaced — that would orphan the rows.
+      if (!key) throw new Error("مفتاح التشفير المحلي غير صالح على هذا الجهاز.");
+      keyCache.set(userId, key);
+      return key;
     }
-    const key = await createUserCryptoKey();
-    await db.put("keys", { userId, key });
+    const key = await createUserOfflineKey();
+    await db.put("keys", { userId, ...toStoredKey(key) });
     keyCache.set(userId, key);
     return key;
   });
@@ -252,21 +234,6 @@ async function putEncrypted<T>(
   value: T,
   meta?: EncryptedRow["meta"],
 ): Promise<void> {
-  if (usesPlainOfflineStorage()) {
-    const enc = encodePlainJson(value);
-    await withDb((db) =>
-      db.put(store, {
-        id,
-        userId,
-        iv: enc.iv,
-        ciphertext: enc.ciphertext,
-        updatedAtUtc: new Date().toISOString(),
-        meta: { ...meta, encoding: PLAIN_ENCODING },
-      }),
-    );
-    return;
-  }
-
   const key = await ensureOfflineKey(userId);
   const enc = await encryptJson(key, value);
   await withDb((db) =>
@@ -281,24 +248,28 @@ async function putEncrypted<T>(
   );
 }
 
+/** Legacy plaintext row: decode, then write it back encrypted (same meta minus the flag). */
+async function upgradePlainRow<T>(
+  store: "drafts" | "outbox" | "prefetch",
+  row: EncryptedRow,
+): Promise<T> {
+  const value = decodePlainJson<T>(row);
+  const meta = { ...row.meta };
+  delete meta.encoding;
+  void putEncrypted(store, row.userId, row.id, value, meta).catch(() => {});
+  return value;
+}
+
 async function getEncrypted<T>(
-  store: "drafts" | "blobs" | "outbox" | "prefetch",
+  store: "drafts" | "outbox" | "prefetch",
   userId: string,
   id: string,
 ): Promise<T | null> {
   const row = await withDb((db) => db.get(store, id));
   if (!row || row.userId !== userId) return null;
 
-  if (isPlainRow(row)) {
-    try {
-      return decodePlainJson<T>(row);
-    } catch {
-      return null;
-    }
-  }
-
-  if (!isWebCryptoAvailable()) return null;
   try {
+    if (isPlainRow(row)) return await upgradePlainRow<T>(store, row);
     const key = await ensureOfflineKey(userId);
     return await decryptJson<T>(key, {
       iv: row.iv,
@@ -310,22 +281,21 @@ async function getEncrypted<T>(
 }
 
 async function listEncrypted<T>(
-  store: "drafts" | "blobs" | "outbox" | "prefetch",
+  store: "drafts" | "outbox" | "prefetch",
   userId: string,
 ): Promise<T[]> {
   const rows = await withDb((db) =>
     db.getAllFromIndex(store, "by-user", userId),
   );
   const out: T[] = [];
-  let cryptoKey: CryptoKey | null = null;
+  let cryptoKey: OfflineKey | null = null;
 
   for (const row of rows) {
     try {
       if (isPlainRow(row)) {
-        out.push(decodePlainJson<T>(row));
+        out.push(await upgradePlainRow<T>(store, row));
         continue;
       }
-      if (!isWebCryptoAvailable()) continue;
       if (!cryptoKey) cryptoKey = await ensureOfflineKey(userId);
       out.push(
         await decryptJson<T>(cryptoKey, {
@@ -356,40 +326,25 @@ export async function getOfflineDraft(
   return getEncrypted<OfflineDraftRecord>("drafts", userId, id);
 }
 
+/** The server confirmed the save — the local copy of the draft goes (spec §3.4). */
+export async function deleteOfflineDraft(
+  userId: string,
+  id: string,
+): Promise<void> {
+  await withDb(async (db) => {
+    const row = await db.get("drafts", id);
+    if (row && row.userId === userId) await db.delete("drafts", id);
+  });
+}
+
+type BlobMeta = Omit<OfflineBlobRecord, "bytes">;
+
 export async function saveOfflineBlob(
   blob: OfflineBlobRecord,
 ): Promise<void> {
-  if (usesPlainOfflineStorage()) {
-    const metaPayload = {
-      ...blob,
-      bytes: undefined as unknown as ArrayBuffer,
-    };
-    const enc = encodePlainJson(metaPayload);
-    await withDb((db) =>
-      db.put("blobs", {
-        id: blob.id,
-        userId: blob.userId,
-        iv: enc.iv,
-        ciphertext: enc.ciphertext,
-        updatedAtUtc: new Date().toISOString(),
-        meta: {
-          scope: blob.scope,
-          scopeKey: blob.scopeKey,
-          fileName: blob.fileName,
-          sizeBytes: blob.sizeBytes,
-          encoding: PLAIN_ENCODING,
-          bytesPlain: arrayBufferToBase64(blob.bytes),
-        },
-      }),
-    );
-    return;
-  }
-
   const key = await ensureOfflineKey(blob.userId);
-  const metaPayload = {
-    ...blob,
-    bytes: undefined as unknown as ArrayBuffer,
-  };
+  const metaPayload: BlobMeta = { ...blob, bytes: undefined } as BlobMeta;
+  delete (metaPayload as { bytes?: unknown }).bytes;
   const [enc, metaEnc] = await Promise.all([
     encryptBytes(key, blob.bytes),
     encryptJson(key, metaPayload),
@@ -432,19 +387,19 @@ function base64ToArrayBuffer(b64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-/** Decode an already-fetched blob row; `key` is null on plain-only / no-crypto paths. */
+/** Decode an already-fetched blob row; legacy plaintext rows are re-encrypted on the way. */
 async function decodeBlobRow(
   row: EncryptedRow,
-  key: CryptoKey | null,
+  key: OfflineKey | null,
 ): Promise<OfflineBlobRecord | null> {
-  if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
+  if (isPlainRow(row)) {
     try {
-      const meta = decodePlainJson<
-        Omit<OfflineBlobRecord, "bytes"> & { bytes?: undefined }
-      >(row);
+      const meta = decodePlainJson<BlobMeta>(row);
       const bytesPlain = String(row.meta?.bytesPlain ?? "");
       if (!bytesPlain) return null;
-      return { ...meta, bytes: base64ToArrayBuffer(bytesPlain) };
+      const record = { ...meta, bytes: base64ToArrayBuffer(bytesPlain) };
+      void saveOfflineBlob(record).catch(() => {});
+      return record;
     } catch {
       return null;
     }
@@ -452,11 +407,13 @@ async function decodeBlobRow(
 
   if (!key) return null;
   try {
-    const meta = await decryptJson<
-      Omit<OfflineBlobRecord, "bytes"> & { bytes?: undefined }
-    >(key, { iv: row.iv, ciphertext: row.ciphertext });
+    const meta = await decryptJson<BlobMeta>(key, {
+      iv: row.iv,
+      ciphertext: row.ciphertext,
+    });
     const bytesIv = String(row.meta?.bytesIv ?? "");
     const bytesCipher = String(row.meta?.bytesCipher ?? "");
+    // Uploaded and released: the bytes are gone, only the id mapping remains.
     if (!bytesIv || !bytesCipher) return null;
     const bytes = await decryptBytes(key, {
       iv: base64ToArrayBuffer(bytesIv),
@@ -468,15 +425,12 @@ async function decodeBlobRow(
   }
 }
 
-/** Resolve the user's crypto key when any row needs decryption; never throws. */
+/** Resolve the user's key when any row needs decryption; never throws. */
 async function resolveBlobKey(
   userId: string,
   rows: EncryptedRow[],
-): Promise<CryptoKey | null> {
-  const needsKey = rows.some(
-    (row) => !isPlainRow(row) && row.meta?.encoding !== PLAIN_ENCODING,
-  );
-  if (!needsKey || !isWebCryptoAvailable()) return null;
+): Promise<OfflineKey | null> {
+  if (!rows.some((row) => !isPlainRow(row))) return null;
   try {
     return await ensureOfflineKey(userId);
   } catch {
@@ -500,7 +454,7 @@ export async function getOfflineBlob(
  */
 export async function listOfflineBlobMeta(
   userId: string,
-): Promise<Omit<OfflineBlobRecord, "bytes">[]> {
+): Promise<BlobMeta[]> {
   const rows = await withDb((db) =>
     db.getAllFromIndex("blobs", "by-user", userId),
   );
@@ -508,11 +462,9 @@ export async function listOfflineBlobMeta(
   const decoded = await Promise.all(
     rows.map(async (row) => {
       try {
-        if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
-          return decodePlainJson<Omit<OfflineBlobRecord, "bytes">>(row);
-        }
+        if (isPlainRow(row)) return decodePlainJson<BlobMeta>(row);
         if (!key) return null;
-        return await decryptJson<Omit<OfflineBlobRecord, "bytes">>(key, {
+        return await decryptJson<BlobMeta>(key, {
           iv: row.iv,
           ciphertext: row.ciphertext,
         });
@@ -522,73 +474,89 @@ export async function listOfflineBlobMeta(
       }
     }),
   );
-  return decoded.filter(
-    (meta): meta is Omit<OfflineBlobRecord, "bytes"> => meta !== null,
-  );
+  return decoded.filter((meta): meta is BlobMeta => meta !== null);
 }
 
+/**
+ * The server confirmed the upload: record its id and drop the local bytes
+ * (spec §3.4 — the local copy goes once each item is confirmed). The small
+ * encrypted meta row stays only as the local→server id mapping until nothing
+ * queued refers to it (`releaseSyncedLocalCopies`).
+ */
 export async function markBlobUploaded(
   userId: string,
   id: string,
   serverAttachmentId: string,
 ): Promise<void> {
-  // Only the meta JSON changes; bytesIv/bytesCipher (or bytesPlain) stay as stored.
   const row = await withDb((db) => db.get("blobs", id));
   if (!row || row.userId !== userId) return;
-
-  if (isPlainRow(row) || row.meta?.encoding === PLAIN_ENCODING) {
-    let meta: Omit<OfflineBlobRecord, "bytes">;
-    try {
-      meta = decodePlainJson<Omit<OfflineBlobRecord, "bytes">>(row);
-    } catch {
-      return;
-    }
-    if (!String(row.meta?.bytesPlain ?? "")) return;
-    const enc = encodePlainJson({
-      ...meta,
-      serverAttachmentId,
-      bytes: undefined as unknown as ArrayBuffer,
-    });
-    await withDb((db) =>
-      db.put("blobs", {
-        ...row,
-        iv: enc.iv,
-        ciphertext: enc.ciphertext,
-        updatedAtUtc: new Date().toISOString(),
-      }),
-    );
-    return;
-  }
-
-  if (!isWebCryptoAvailable()) return;
   try {
     const key = await ensureOfflineKey(userId);
-    const meta = await decryptJson<Omit<OfflineBlobRecord, "bytes">>(key, {
-      iv: row.iv,
-      ciphertext: row.ciphertext,
-    });
-    if (
-      !String(row.meta?.bytesIv ?? "") ||
-      !String(row.meta?.bytesCipher ?? "")
-    ) {
-      return;
-    }
-    const enc = await encryptJson(key, {
-      ...meta,
-      serverAttachmentId,
-      bytes: undefined as unknown as ArrayBuffer,
-    });
+    const meta = isPlainRow(row)
+      ? decodePlainJson<BlobMeta>(row)
+      : await decryptJson<BlobMeta>(key, {
+          iv: row.iv,
+          ciphertext: row.ciphertext,
+        });
+    const enc = await encryptJson(key, { ...meta, serverAttachmentId });
     await withDb((db) =>
       db.put("blobs", {
-        ...row,
+        id: row.id,
+        userId: row.userId,
         iv: enc.iv,
         ciphertext: enc.ciphertext,
         updatedAtUtc: new Date().toISOString(),
+        meta: {
+          scope: meta.scope,
+          scopeKey: meta.scopeKey,
+          fileName: meta.fileName,
+          sizeBytes: meta.sizeBytes,
+          released: true,
+        },
       }),
     );
   } catch {
     /* wrong key / tampered — leave the row untouched */
   }
+}
+
+/** Row-level view of the user's blobs for cleanup: no bytes are decrypted. */
+export async function listOfflineBlobRows(userId: string): Promise<
+  Array<{
+    id: string;
+    released: boolean;
+    serverAttachmentId?: string;
+    updatedAtUtc: string;
+  }>
+> {
+  const rows = await withDb((db) =>
+    db.getAllFromIndex("blobs", "by-user", userId),
+  );
+  const metaById = new Map(
+    (await listOfflineBlobMeta(userId)).map((meta) => [meta.id, meta]),
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    released: row.meta?.released === true,
+    serverAttachmentId: metaById.get(row.id)?.serverAttachmentId,
+    updatedAtUtc: row.updatedAtUtc,
+  }));
+}
+
+/** Remove blob rows by id (released uploads nothing refers to any more). */
+export async function deleteOfflineBlobs(
+  userId: string,
+  ids: readonly string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  await withDb(async (db) => {
+    const tx = db.transaction("blobs", "readwrite");
+    for (const id of ids) {
+      const row = await tx.store.get(id);
+      if (row && row.userId === userId) await tx.store.delete(id);
+    }
+    await tx.done;
+  });
 }
 
 export async function saveOutboxItem(item: OfflineOutboxItem): Promise<void> {
@@ -598,6 +566,13 @@ export async function saveOutboxItem(item: OfflineOutboxItem): Promise<void> {
     targetId: item.targetId,
   });
   await publishPendingCount(item.userId);
+}
+
+export async function getOutboxItem(
+  userId: string,
+  id: string,
+): Promise<OfflineOutboxItem | null> {
+  return getEncrypted<OfflineOutboxItem>("outbox", userId, id);
 }
 
 export async function listOutboxItems(
@@ -738,7 +713,13 @@ export async function purgeOfflineData(
   });
   keyCache.delete(userId);
   try {
+    await clearOfflinePageCaches();
+  } catch {
+    /* Cache Storage unavailable — IndexedDB is already wiped. */
+  }
+  try {
     sessionStorage.setItem("ejada_offline_pending_count", "0");
+    localStorage.removeItem(OFFLINE_ACCESS_STORAGE_KEY);
   } catch {
     /* ignore */
   }

@@ -261,6 +261,7 @@ export function MobileInspectMap({
           lat={lat}
           lng={lng}
           title="خريطة المعاينة"
+          offlineHint="الخريطة تحتاج اتصالاً بالشبكة. سجّل موقع العقار الآن بزر «تحديد موقعي الحالي» — يعمل دون اتصال، وتظهر الخريطة تلقائياً عند عودة الشبكة."
           interactive={picking}
           onCoordsChange={onCoordsChange}
         />

@@ -10,6 +10,9 @@ export const OPS_TASKS_PREFETCH_ID = (userId: string) => `ops-tasks:${userId}`;
 export const PARTY_SUBMISSIONS_PREFETCH_ID = (userId: string) =>
   `party-submissions:${userId}`;
 export const BASIC_DOCS_PREFETCH_ID = (userId: string) => `docs:${userId}`;
+/** Government reviewer's envelopes (with assignments/handoffs) + court access per request. */
+export const KEY_ENVELOPES_PREFETCH_ID = (userId: string) =>
+  `key-envelopes:${userId}`;
 const PO_RECORD_PREFETCH_ID = (userId: string, poNumber: string) =>
   `po:${userId}:${poNumber.trim()}`;
 
@@ -44,6 +47,23 @@ export async function readPrefetchedJson<T>(
   } catch {
     return null;
   }
+}
+
+/** Store one JSON snapshot for the signed-in user (encrypted like every prefetch row). */
+export async function savePrefetchedJson(
+  prefetchId: string,
+  kind: string,
+  value: unknown,
+): Promise<void> {
+  const userId = currentOfflineUserId();
+  if (!userId) return;
+  await savePrefetch({
+    id: prefetchId,
+    userId,
+    kind,
+    payloadJson: JSON.stringify(value),
+    updatedAtUtc: new Date().toISOString(),
+  });
 }
 
 export async function readPrefetchedWorkflowTasks<

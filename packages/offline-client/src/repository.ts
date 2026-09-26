@@ -1,8 +1,10 @@
 import { enqueueOutbox } from "./sync";
 import {
   getOfflineDraft,
+  listOutboxItems,
   saveOfflineBlob,
   saveOfflineDraft,
+  saveOutboxItem,
 } from "./store";
 import {
   makeLocalAttachmentId,
@@ -25,6 +27,23 @@ export async function persistDraftLocally(input: {
     updatedAtUtc: new Date().toISOString(),
   };
   await saveOfflineDraft(record);
+  // Each save is a full snapshot: fold it into the save already waiting for this task
+  // instead of queueing one encrypted copy per autosave while offline.
+  const waiting = (await listOutboxItems(input.userId)).find(
+    (item) =>
+      item.kind === "party-submission-save" &&
+      item.targetId === input.taskId &&
+      (item.status === "pending" || item.status === "failed"),
+  );
+  if (waiting) {
+    await saveOutboxItem({
+      ...waiting,
+      payloadJson: record.payloadJson,
+      status: "pending",
+      updatedAtUtc: record.updatedAtUtc,
+    });
+    return record;
+  }
   await enqueueOutbox({
     userId: input.userId,
     kind: "party-submission-save",
@@ -79,6 +98,7 @@ export async function persistAttachmentLocally(input: {
   contentType: string;
   bytes: ArrayBuffer;
   localId?: string;
+  uploadExtras?: Record<string, unknown>;
 }): Promise<{ localAttachmentId: string }> {
   const localAttachmentId = input.localId ?? makeLocalAttachmentId();
   await saveOfflineBlob({
@@ -91,6 +111,7 @@ export async function persistAttachmentLocally(input: {
     sizeBytes: input.bytes.byteLength,
     bytes: input.bytes,
     createdAtUtc: new Date().toISOString(),
+    uploadExtras: input.uploadExtras,
   });
   await enqueueOutbox({
     userId: input.userId,

@@ -110,6 +110,18 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
     }
 
     [Fact]
+    public async Task Refresh_of_a_disabled_account_carries_the_wipe_code()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshTokenRequest { RefreshToken = StubAuthSessionService.DisabledToken });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"code\":\"account-disabled\"", body);
+    }
+
+    [Fact]
     public async Task Refresh_rejects_a_missing_refresh_token()
     {
         var response = await _client.PostAsJsonAsync(
@@ -222,6 +234,13 @@ internal sealed class StubAuthSessionService : IAuthSessionService
             },
         });
     }
+
+    public const string DisabledToken = "disabled-account-refresh-token";
+
+    public Task<bool> IsDisabledAccountTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(refreshToken == DisabledToken);
 
     public Task<LoginResponseDto?> RefreshAsync(
         string refreshToken,
