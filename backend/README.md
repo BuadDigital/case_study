@@ -209,7 +209,6 @@ render or start until these variables are explicitly provided:
 | `RABBITMQ_USER` | Dedicated service account; cannot be `dev` |
 | `RABBITMQ_PASSWORD` | At least 16 characters; cannot be `dev` |
 | `JWT_SIGNING_KEY` | At least 64 characters; cannot contain `CHANGE_ME` or `DEV_ONLY` |
-| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password (UI is internal-only) |
 | `IMAGE_OWNER` | GHCR organization or username |
 | `TAG` | Immutable image tag; the deployment workflow uses a commit SHA |
 
@@ -616,15 +615,12 @@ Because RabbitMQ queue arguments are immutable, queues created before dead-lette
 keep working but log a warning at startup; delete the queue once to pick up the new topology.
 
 All services export **traces and metrics** via OTLP (default `http://localhost:4317`).
-In Compose, that endpoint is the **OpenTelemetry Collector**, which discards
-traces (no trace UI in the stack) and exposes Prometheus metrics on `:8889` (scraped by Prometheus).
 Services do **not** expose a Prometheus `/metrics` HTTP endpoint.
 
 Meters on that path: ASP.NET HTTP duration (p95 / 5xx), runtime GC/thread-pool,
 Npgsql `db.client.connections.usage`, and `RealEstateEval.Outbox` (dispatch counters,
-pending/dead-letter gauges, oldest pending age). Grafana dashboard **Real Estate Eval —
-Service Overview** charts them. Outbox gauges are sampled only on Case Study and Valuation
-(the hosts that drain an outbox).
+pending/dead-letter gauges, oldest pending age). Outbox gauges are sampled only on Case Study
+and Valuation (the hosts that drain an outbox).
 
 | Endpoint                  | Purpose                                |
 |---------------------------|----------------------------------------|
@@ -632,12 +628,12 @@ Service Overview** charts them. Outbox gauges are sampled only on Case Study and
 | `GET /ready`              | Database reachable and migrated (domain services); upstream cluster probe (gateway) |
 | `X-Correlation-Id` header | Returned on every response             |
 
-Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`.
-Local UIs: Prometheus
-[http://localhost:9090](http://localhost:9090), Grafana
-[http://localhost:3001](http://localhost:3001) (provisioned dashboard
-**Real Estate Eval — Service Overview**). Fluent Bit tails Docker json-file
-logs into Elasticsearch (`fluentbit-*` in Kibana).
+Override: `OpenTelemetry:OtlpEndpoint` or env `OTEL_EXPORTER_OTLP_ENDPOINT`. The OTEL
+collector, Prometheus, Grafana, Elasticsearch, Kibana and Fluent Bit were removed from both
+compose files (2026-09) to save RAM, so nothing listens on the default endpoint and the
+export fails silently until you point it at a collector of your own. Logs go to Docker's
+json-file driver; read them with `docker compose logs <service>` (production rotates them at
+10 MB × 3 files).
 
 ### Correlation ids and log format
 

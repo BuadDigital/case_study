@@ -23,7 +23,7 @@
 تشغيل البيئة التجريبية محلياً:
 
 ```sh
-npm run dev:infra      # postgres + rabbitmq + redis
+npm run dev:infra      # postgres + rabbitmq + redis + gotenberg
 npm run dev:api:run    # الخدمات + البوابة على 5160
 npm run dev            # الواجهة على 3000
 ```
@@ -36,7 +36,10 @@ npm run dev            # الواجهة على 3000
 ## 0. المتطلبات
 
 - سيرفر Hetzner Cloud بـ Ubuntu، ومعه دخول SSH يعمل.
-- **الحد الأدنى للموارد: 8 GB RAM و 4 vCPU** (مثل `CPX41` أو `CCX23`). الـ stack يشغّل 9 خدمات .NET + Gateway + Next.js + Postgres + RabbitMQ + Redis + Elasticsearch + Prometheus + Grafana. سيرفر بـ 4 GB سيُقتل بـ OOM.
+- **الحجم الموصى به: 8 GB RAM و 4 vCPU مشتركة** (خطط Hetzner المشتركة مثل `CX33`؛ أو `CX43` بـ 16 GB لهامش أكبر). الـ stack يشغّل 9 خدمات .NET + Gateway + Next.js + Postgres + RabbitMQ + Redis + Gotenberg + nginx.
+  القياس الفعلي على الإنتاج (2026-09-26): نحو **2.7 GB RAM** للسيرفر كله، ونحو 1% CPU لكل حاوية، و **8.7 GB** قرص (منها ~220 MB بيانات فعلية).
+  لا حاجة لخطط الـ vCPU المخصصة (`CCX*`) — تكلف أضعاف الخطط المشتركة والمعالج شبه خامل.
+  تنبيه: Hetzner لا يصغّر القرص عند تغيير الخطة (Rescale)، فالخطة الجديدة لازم قرصها ≥ قرص الحالية؛ غير ذلك يعني سيرفراً جديداً ونقل البيانات.
 - دومين تقدر تعدّل سجلات DNS الخاصة به.
 - الريبو على GitHub: `BuadDigital/case_study`.
 
@@ -56,7 +59,8 @@ chmod +x setup.sh
 > الريبو خاص، فرابط `raw` يحتاج توكن. الأسهل: انسخ الملف من جهازك بـ
 > `scp infra/setup-hetzner-server.sh root@SERVER_IP:~/`.
 
-السكربت يثبّت Docker، يقفل الجدار الناري، ينشئ `/app`، يصدر شهادة Let's Encrypt،
+السكربت يثبّت Docker، يقفل الجدار الناري، يضيف swap بـ 2 GB، يحدّ سجل النظام بـ 200 MB،
+يثبّت fail2ban، ينشئ `/app`، يصدر شهادة Let's Encrypt،
 يركّب خطافات التجديد، يولّد `/app/.env` بأسرار عشوائية، ثم يطبع قيم أسرار GitHub.
 آمن لإعادة التشغيل: لا يستبدل شهادة موجودة ولا ملف `.env` موجوداً.
 
@@ -94,7 +98,7 @@ docker compose version   # تأكيد
 
 ### 1.2 الجدار الناري
 
-فقط SSH و HTTP و HTTPS مفتوحة للعالم. كل الخدمات الأخرى (Postgres، Grafana، RabbitMQ…) تبقى داخل شبكة Compose الخاصة ولا تُنشر على المنافذ العامة.
+فقط SSH و HTTP و HTTPS مفتوحة للعالم. كل الخدمات الأخرى (Postgres، RabbitMQ، Redis، Gotenberg…) تبقى داخل شبكة Compose الخاصة ولا تُنشر على المنافذ العامة.
 
 ```sh
 ufw default deny incoming
@@ -108,10 +112,27 @@ ufw status
 
 ### 1.3 مجلد النشر
 
-الـ workflow ينسخ ملفات التشغيل إلى `/app`:
+الـ workflow ينسخ إلى `/app` ملف `docker-compose.prod.yml` و `nginx.conf` و `postgres/init-prod.sql`:
 
 ```sh
-mkdir -p /app/infra
+mkdir -p /app/postgres
+```
+
+### 1.4 swap وسجل النظام و fail2ban
+
+```sh
+# swap بـ 2 GB — يحوّل ذروة ذاكرة قصيرة إلى بطء بدل قتل حاوية
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+echo 'vm.swappiness=10' > /etc/sysctl.d/99-ree-swappiness.conf && sysctl -p /etc/sysctl.d/99-ree-swappiness.conf
+
+# سجل النظام بحد أقصى 200 MB
+mkdir -p /etc/systemd/journald.conf.d
+printf '[Journal]\nSystemMaxUse=200M\n' > /etc/systemd/journald.conf.d/ree-size.conf
+systemctl restart systemd-journald
+
+# fail2ban يحظر عناوين تكرر محاولات دخول SSH فاشلة
+apt install -y fail2ban && systemctl enable --now fail2ban
 ```
 
 ---
@@ -191,8 +212,6 @@ RABBITMQ_PASSWORD=<كلمة سر عشوائية>
 JWT_SIGNING_KEY=<64 حرف على الأقل>
 # أثناء تدوير المفتاح فقط — انظر docs/ops/jwt-signing-key-rotation.md
 # JWT_PREVIOUS_SIGNING_KEY=
-GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=<كلمة سر عشوائية>
 TLS_CERTIFICATE_PATH=/etc/letsencrypt/live/app.example.com/fullchain.pem
 TLS_PRIVATE_KEY_PATH=/etc/letsencrypt/live/app.example.com/privkey.pem
 PUBLIC_APP_URL=https://app.example.com
@@ -296,7 +315,7 @@ git push origin main
    اختبارات الحاويات (Testcontainers) والتغطية **لا** تعمل عند كل نشر لأنها تسيطر على زمن التشغيل.
    تعمل ليلياً (2:00 UTC)، أو عند تشغيل يدوي مع تفعيل خيار `full_suite`.
 2. **build-and-push** — بناء 12 صورة (الواجهة + Gateway + 9 خدمات + أداة الهجرة) ورفعها إلى GHCR بوسمين: `latest` و `<sha>`.
-3. **deploy** — نسخ ملفات Compose إلى `/app`، تسجيل الدخول لـ GHCR، `docker compose pull`، تشغيل `migrate` مرة واحدة، ثم `up -d`، ثم فحص صحة Gateway و Identity و Case Study، وأخيراً فحص HTTPS من الخارج.
+3. **deploy** — نسخ ملفات Compose إلى `/app`، تسجيل الدخول لـ GHCR، `docker compose pull`، تشغيل `migrate` مرة واحدة، ثم `up -d`، ثم فحص صحة Gateway و Identity و Case Study، ثم فحص HTTPS من الخارج، وأخيراً حذف صور الإصدارات الأقدم من السابق.
 
 الـ Pull Requests تشغّل **الاختبارات فقط** — لا بناء ولا نشر.
 
@@ -336,31 +355,56 @@ docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
 ## 9. التراجع (Rollback)
 
-كل إصدار موسوم بـ commit SHA والصور القديمة محفوظة:
+كل إصدار موسوم بـ commit SHA. بعد كل نشر ناجح يبقى على السيرفر صور الإصدار الحالي والسابق فقط
+(التراجع التلقائي عند فشل النشر يستخدم السابق مباشرة)، وأي إصدار أقدم يُسحب من GHCR من جديد:
 
 ```sh
 cd /app
 export IMAGE_OWNER=buaddigital
-export TAG=<sha-الإصدار-السابق>
+export TAG=<sha-الإصدار-المطلوب>
+docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
 ---
 
-## 10. الوصول للمراقبة (Grafana / RabbitMQ)
+## 10. السجلات والمراقبة والصيانة
 
-هذه الخدمات غير منشورة على الإنترنت عن قصد. ادخلها عبر نفق SSH:
+لا توجد حزمة مراقبة في الإنتاج (أُزيلت Elasticsearch و Prometheus و Grafana و OTEL collector لتوفير الذاكرة).
+
+**السجلات:** كل حاوية تكتب سجلها بصيغة `json-file` مع تدوير عند 10 MB × 3 ملفات (`x-logging` في
+`docker-compose.prod.yml`)، أي ~30 MB كحد أقصى لكل حاوية:
 
 ```sh
-ssh -L 3001:localhost:3000 root@SERVER_IP   # ثم افتح http://localhost:3001 لـ Grafana
+cd /app
+docker compose -f docker-compose.prod.yml logs --tail=200 -f case-study valuation
 ```
 
-لأن Grafana غير منشور على منفذ المضيف، استخدم بدلاً من ذلك:
+**الموارد:**
 
 ```sh
-docker compose -f /app/docker-compose.prod.yml port grafana 3000   # لو أضفت ports
-# أو مؤقتاً:
-ssh -L 3001:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ree-prod-grafana):3000 root@SERVER_IP
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"
+docker system df
+df -h /
+```
+
+**واجهة RabbitMQ** غير منشورة عن قصد. ادخلها عبر نفق SSH ثم افتح `http://localhost:15672`:
+
+```sh
+ssh -L 15672:$(ssh root@SERVER_IP "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ree-prod-rabbitmq"):15672 root@SERVER_IP
+```
+
+**القرص:** بعد كل نشر ناجح يحذف الـ workflow صور `case_study` الأقدم من الإصدار السابق. لا تشغّل
+`docker volume prune` أبداً — البيانات الحقيقية في `ree_prod_pgdata` و `ree_prod_attachments_data`.
+
+**إعادة التشغيل:** التحديثات الأمنية تُثبّت تلقائياً، لكن تحديثات النواة تحتاج إعادة تشغيل. لو ظهر
+`/var/run/reboot-required` أعد التشغيل في وقت هادئ (`reboot`) — كل الحاويات `restart: always` فترجع وحدها.
+
+**بذر الحسابات التجريبية:** النشر لا يبذرها (`Database__SeedDemoData=false`). لتشغيل الـ DataSeeder مرة
+عن قصد (الحسابات التجريبية + إصلاحات البيانات فيه):
+
+```sh
+cd /app && docker compose -f docker-compose.prod.yml run --rm migrate seed
 ```
 
 ---
@@ -371,6 +415,7 @@ ssh -L 3001:$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress
 | --- | --- |
 | `deploy` يفشل عند `test -r "$TLS_CERTIFICATE_PATH"` | الشهادة غير موجودة أو المسار في الأسرار غلط. راجع الخطوة 2. |
 | `denied` عند `docker compose pull` | مرحلة النشر تفتقد `packages: read` في صلاحياتها، أو تسجّل الدخول بتوكن منتهٍ. |
-| حاويات تُقتل / `Exited (137)` | ذاكرة غير كافية. كبّر السيرفر أو أوقف حزمة المراقبة (`elasticsearch`، `prometheus`، `grafana`). |
+| حاويات تُقتل / `Exited (137)` | ذاكرة غير كافية. راجع `docker stats`، تأكد أن الـ swap مفعّل (`swapon --show`)، أو كبّر السيرفر. |
+| القرص يمتلئ | `docker system df` — صور قديمة: `docker image prune -a` (يحذف فقط غير المستخدمة). لا تحذف الـ volumes. |
 | `Set POSTGRES_PASSWORD` عند التشغيل | ملف `/app/.env` غير موجود أو ناقص. |
 | الموقع يفتح لكن `/api` يرجّع 502 | Gateway لم يمر بفحص الصحة. `docker compose logs gateway identity`. |
