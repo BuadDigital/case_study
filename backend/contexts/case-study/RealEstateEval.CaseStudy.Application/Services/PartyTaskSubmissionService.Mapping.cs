@@ -25,6 +25,16 @@ public partial class PartyTaskSubmissionService
         CancellationToken cancellationToken)
     {
         var dto = PartyTaskSubmissionRules.ToDto(entity);
+        if (entity.Kind == WorkflowTaskKindValues.FieldInspection)
+        {
+            if (entity.PropertyId is Guid inspectedPropertyId
+                && await LoadSourcePropertyAsync(inspectedPropertyId, cancellationToken)
+                    is { } property)
+            {
+                dto.SourceFingerprint = InspectionSourceDataRules.Fingerprint(property);
+            }
+            return dto;
+        }
         if (!NeedsInspectionFlag(entity.Kind))
             return dto;
 

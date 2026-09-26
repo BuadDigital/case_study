@@ -76,10 +76,22 @@ public class AuthController : ControllerBase
             return ValidationProblem(ModelState);
 
         var session = await _sessions.RefreshAsync(request.RefreshToken, cancellationToken);
-        return session is null
-            ? this.UnauthorizedProblem("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى")
-            : Ok(session);
+        if (session is not null)
+            return Ok(session);
+
+        // A disabled account gets a distinct code so the device wipes its offline store
+        // on first contact (spec §3.4); a plain expiry must keep unsynced field work.
+        if (await _sessions.IsDisabledAccountTokenAsync(request.RefreshToken, cancellationToken))
+        {
+            return this.UnauthorizedProblem("تم تعطيل الحساب")
+                .WithProblemExtension("code", AccountDisabledCode);
+        }
+
+        return this.UnauthorizedProblem("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
     }
+
+    /// <summary>Problem <c>code</c> for a refresh refused because the account is disabled.</summary>
+    public const string AccountDisabledCode = "account-disabled";
 
     /// <summary>Revokes the whole session family behind the supplied refresh token.</summary>
     [HttpPost("logout")]

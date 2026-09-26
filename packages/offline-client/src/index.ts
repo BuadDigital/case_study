@@ -5,10 +5,17 @@ export type {
   OfflineSyncState,
   OutboxKind,
 } from "./types";
-export { OFFLINE_PENDING_EVENT, OFFLINE_SYNC_EVENT } from "./types";
+export {
+  randomUuid,
+  OFFLINE_ACCESS_STORAGE_KEY,
+  OFFLINE_PENDING_EVENT,
+  OFFLINE_SYNC_EVENT,
+} from "./types";
 export {
   closeOfflineDb,
   countPendingOutbox,
+  deleteOutboxItem,
+  deleteOfflineDraft,
   getOfflineDraft,
   getOfflineBlob,
   getPrefetch,
@@ -28,6 +35,7 @@ export {
   runOfflineSync,
   type OfflineSyncDeps,
 } from "./sync";
+export { clearOfflinePageCaches } from "./page-cache";
 export {
   beginOfflineLease,
   clearOfflineLease,

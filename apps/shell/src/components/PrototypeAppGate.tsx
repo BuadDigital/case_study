@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   clearAuthSession,
+  getAuthSession,
   setAuthSession,
   subscribeAuthExpired,
   type AuthSession,
 } from "@platform/auth-client";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
+import { isOfflineUsableSession } from "@platform/app-shared/auth/offline-session";
 import { PanelSkeleton } from "@platform/ui-kit";
 
 /**
@@ -32,6 +34,15 @@ export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
       if (resolved) {
         setAuthSession(resolved);
         setSession(resolved);
+        setChecked(true);
+        return;
+      }
+      // Offline field user with a lapsed access token: keep the login (the offline
+      // lease in AuthSessionWatcher bounds it) instead of wiping it and bouncing to
+      // a login screen that cannot work without a network.
+      const stored = getAuthSession();
+      if (isOfflineUsableSession(stored)) {
+        setSession(stored);
         setChecked(true);
         return;
       }

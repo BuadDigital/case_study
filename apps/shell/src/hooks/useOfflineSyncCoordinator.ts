@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   evaluateOfflineLease,
   isOfflineCapableRole,
@@ -11,6 +11,7 @@ import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visi
 import {
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
+  deleteOutboxItem,
   listOutboxItems,
   requestBackgroundSync,
   type OfflineOutboxItem,
@@ -19,6 +20,7 @@ import {
 } from "@platform/offline-client";
 import { upsertFieldSyncStatus } from "@platform/api-client";
 import { getValidAuthSession } from "@platform/auth-client";
+import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { replayOfflineQueue } from "@/lib/offline-sync-replay";
 import {
   FIELD_SYNC_HEARTBEAT_INTERVAL_MS,
@@ -26,6 +28,7 @@ import {
   OFFLINE_SYNC_INTERVAL_MS,
   activeOutboxItems,
   buildFieldSyncHeartbeat,
+  rejectedOutboxItems,
   offlineLeaseToasts,
   pendingUnloadWarning,
   syncStatusLabel,
@@ -49,6 +52,9 @@ export type OfflineSyncCoordinatorState = {
   syncState: OfflineSyncState;
   pending: number;
   pendingItems: OfflineOutboxItem[];
+  /** Refused by the server for good — shown until the field user dismisses them. */
+  rejectedItems: OfflineOutboxItem[];
+  dismissRejected: (id: string) => void;
   locked: boolean;
   label: string;
 };
@@ -64,11 +70,14 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
   const visible = useDocumentVisible();
   const capable = isOfflineCapableRole(role);
   const wasVisibleRef = useRef(visible);
+  /** Starts true: opening the app is a first connection too (device may have been offline). */
+  const wasOfflineRef = useRef(true);
   const heartbeatMetaRef = useRef({ displayName, role, user });
   heartbeatMetaRef.current = { displayName, role, user };
   const [syncState, setSyncState] = useState<OfflineSyncState>("synced");
   const [pending, setPending] = useState(0);
   const [pendingItems, setPendingItems] = useState<OfflineOutboxItem[]>([]);
+  const [rejectedItems, setRejectedItems] = useState<OfflineOutboxItem[]>([]);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
@@ -80,6 +89,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
           const active = activeOutboxItems(items);
           setPending(active.length);
           setPendingItems(active);
+          setRejectedItems(rejectedOutboxItems(items));
           try {
             sessionStorage.setItem(
               OFFLINE_PENDING_COUNT_SESSION_KEY,
@@ -112,6 +122,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
   useEffect(() => {
     if (!capable || !isAuthenticated) return;
     if (!online) {
+      wasOfflineRef.current = true;
       // Microtask keeps the effect body free of synchronous setState.
       queueMicrotask(() => setSyncState("offline"));
       void evaluateOfflineLease().then((lease) => {
@@ -128,7 +139,14 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
 
     const userId = user?.id;
     if (!userId) return;
-    void replayOfflineQueue(userId);
+    // Back online: confirm the account first — a user disabled while offline has their
+    // device wiped by the refresh instead of uploading (spec §3.4) — then replay.
+    const cameBackOnline = wasOfflineRef.current;
+    wasOfflineRef.current = false;
+    void (async () => {
+      if (cameBackOnline) await ensureFreshAuthSession({ force: true });
+      await replayOfflineQueue(userId);
+    })();
     const timer = window.setInterval(
       () => void replayOfflineQueue(userId),
       OFFLINE_SYNC_INTERVAL_MS,
@@ -196,8 +214,18 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
   }, [capable, pending]);
 
   const label = useMemo(
-    () => syncStatusLabel({ locked, syncState, pending }),
-    [locked, pending, syncState],
+    () =>
+      syncStatusLabel({ locked, syncState, pending, rejected: rejectedItems.length }),
+    [locked, pending, rejectedItems.length, syncState],
+  );
+
+  const dismissRejected = useCallback(
+    (id: string) => {
+      const userId = user?.id;
+      if (!userId) return;
+      void deleteOutboxItem(userId, id).catch(() => {});
+    },
+    [user?.id],
   );
 
   return {
@@ -205,6 +233,8 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
     syncState,
     pending,
     pendingItems,
+    rejectedItems,
+    dismissRejected,
     locked,
     label,
   };

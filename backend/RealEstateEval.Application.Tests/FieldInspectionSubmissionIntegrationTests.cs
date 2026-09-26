@@ -92,6 +92,37 @@ public class FieldInspectionSubmissionIntegrationTests
     }
 
     [Fact]
+    public async Task Submit_audits_the_on_site_completion_apart_from_the_upload()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var audit = new RecordingAuditLogAppend();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, audit: audit);
+        SeedInspectionTask(db);
+        SeedPhotoAttachments(db);
+
+        // ق-10: the device stamped completion on site; the submit arrives hours later.
+        var completedOnSite = "2026-09-24T07:30:00.000Z";
+        var payload = System.Text.Json.Nodes.JsonNode.Parse(MinimalValidPayload())!.AsObject();
+        payload["completedOnSiteAtUtc"] = completedOnSite;
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = ParsePayload(payload.ToJsonString()) });
+
+        var (result, errors) = await service.SubmitAsync(TaskId);
+
+        Assert.Null(errors);
+        var entry = Assert.Single(
+            audit.Entries,
+            e => e.Action == "case-study.party-submission.submitted");
+        Assert.Contains(completedOnSite, entry.AfterJson);
+        Assert.Contains("uploadedAtUtc", entry.AfterJson);
+        // The payload keeps the device stamp; SubmittedAtUtc is the server's receipt.
+        Assert.Equal(completedOnSite, result!.Payload.GetProperty("completedOnSiteAtUtc").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(result.SubmittedAtUtc));
+    }
+
+    [Fact]
     public async Task Submit_rejects_when_attachment_rows_are_missing()
     {
         var bundle = CreateDb();
@@ -211,7 +242,8 @@ public class FieldInspectionSubmissionIntegrationTests
         CaseStudyDbContext db,
         FailuresDbContext failures,
         OperationsDbContext __,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        RecordingAuditLogAppend? audit = null)
     {
         var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
@@ -227,7 +259,7 @@ public class FieldInspectionSubmissionIntegrationTests
             notifications ?? TestInspectorFeeServiceFactory.CreateNotificationDeps(db).Notifications,
             recipients,
             new AuditLogWriter(),
-            new RecordingAuditLogAppend());
+            audit ?? new RecordingAuditLogAppend());
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor

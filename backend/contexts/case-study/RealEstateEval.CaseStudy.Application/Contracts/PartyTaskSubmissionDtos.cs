@@ -35,6 +35,13 @@ public class PartyTaskSubmissionDto
     public bool? FieldInspectionAccepted { get; set; }
 
  /// <summary>
+ /// Field-inspection: fingerprint of the property's specialist-owned source data as the
+ /// server holds it now. The inspector's device sends it back with each save so a change
+ /// made while the inspector worked offline alerts the specialist (spec §4.4).
+ /// </summary>
+    public string? SourceFingerprint { get; set; }
+
+ /// <summary>
  /// Who wrote / last edited each payload field. Keys are top-level payload keys, or
  /// <c>parent.child</c> for one level of nesting (e.g. <c>featureValues.assetSubject</c>).
  /// </summary>

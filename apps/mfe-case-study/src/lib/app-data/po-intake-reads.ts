@@ -12,6 +12,7 @@ import {
   workOrderExists,
 } from "@platform/api-client";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import {
   readPrefetchedPoRecord,
   readPrefetchedPoRecords,
@@ -47,7 +48,7 @@ export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
     return mapWorkOrderDtosToPoRecords(dtos);
   } catch {
     const cached = await readPrefetchedPoRecords<PoIntakeRecord>();
-    if (cached.length) return cached;
+    if (cached.length || isOfflineFieldSession()) return cached;
     throw new Error("تعذّر تحميل أوامر العمل");
   }
 }

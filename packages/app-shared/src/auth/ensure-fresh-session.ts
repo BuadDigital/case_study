@@ -1,5 +1,6 @@
 import { refreshAuthSession } from "@platform/api-client";
 import {
+  clearAuthSession,
   ensureAuthGateCookie,
   getAuthSession,
   isRefreshTokenExpired,
@@ -61,9 +62,28 @@ async function renew(force: boolean): Promise<AuthSession | null> {
     return session;
   }
 
-  if (result.kind === "auth") return null;
+  if (result.kind === "auth") {
+    if (result.accountDisabled) await wipeDisabledAccountDevice(stored.user.id);
+    return null;
+  }
   // Transient failure: keep the session while its access token is still valid.
   if (isSessionExpired(stored)) return null;
   ensureAuthGateCookie();
   return stored;
+}
+
+/**
+ * Spec §3.4: a disabled user is refused and the device wipes its local store on the first
+ * connection — drafts, queued work, photos, downloaded documents, the session itself.
+ * Only for a disabled account: an expired session keeps unsynced work for the next login.
+ */
+async function wipeDisabledAccountDevice(userId: string): Promise<void> {
+  try {
+    const { closeOfflineDb, purgeOfflineData } = await import("@platform/offline-client");
+    await purgeOfflineData(userId, "account-disabled");
+    await closeOfflineDb();
+  } catch {
+    /* IndexedDB unavailable — the session is still cleared below. */
+  }
+  clearAuthSession();
 }

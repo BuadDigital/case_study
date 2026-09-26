@@ -36,7 +36,19 @@ function getDevAllowedOrigins(): string[] {
 
 const allowedDevOrigins = getDevAllowedOrigins();
 
+/**
+ * Service-worker cache version (`/sw.js?v=`). New per build unless SW_VERSION pins it,
+ * so each deploy offers an update and drops the previous build's cached chunks.
+ */
+const swVersion =
+  process.env.SW_VERSION?.trim() || Date.now().toString(36);
+// Build workers that reload this config inherit the same version.
+process.env.SW_VERSION = swVersion;
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_SW_VERSION: swVersion,
+  },
   /** Produce a self-contained server.js for Docker / Hetzner deployment. */
   output: "standalone",
   /** Transform barrel imports to per-module paths (Vercel bundle-barrel-imports). */

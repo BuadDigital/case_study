@@ -1,6 +1,11 @@
 import {
+  deleteOfflineBlobs,
+  deleteOfflineDraft,
   deleteOutboxItem,
   getOfflineBlob,
+  getOfflineDraft,
+  getOutboxItem,
+  listOfflineBlobRows,
   listOutboxItems,
   markBlobUploaded,
   publishPendingCount,
@@ -9,6 +14,7 @@ import {
 import {
   OFFLINE_BACKGROUND_SYNC_TAG,
   OFFLINE_SYNC_EVENT,
+  randomUuid,
   type OfflineOutboxItem,
   type OfflineSyncState,
   type OutboxKind,
@@ -20,6 +26,8 @@ export type AttachmentUploadFn = (input: {
   fileName: string;
   contentType: string;
   bytes: ArrayBuffer;
+  /** Device-captured request fields (photo EXIF, document type) to send with the upload. */
+  extras?: Record<string, unknown>;
 }) => Promise<{ ok: true; attachmentId: string } | { ok: false; error: string; terminal?: boolean }>;
 
 export type SubmissionSaveFn = (input: {
@@ -98,7 +106,7 @@ export async function enqueueOutbox(
 ): Promise<OfflineOutboxItem> {
   const now = new Date().toISOString();
   const full: OfflineOutboxItem = {
-    id: item.id ?? crypto.randomUUID(),
+    id: item.id ?? randomUuid(),
     userId: item.userId,
     kind: item.kind,
     status: item.status ?? "pending",
@@ -283,14 +291,8 @@ async function processAttachment(
       blob.id,
       blob.serverAttachmentId,
     );
-    await saveOutboxItem({
-      ...item,
-      status: "done",
-      payloadJson: JSON.stringify({
-        serverAttachmentId: blob.serverAttachmentId,
-      }),
-      updatedAtUtc: new Date().toISOString(),
-    });
+    await markBlobUploaded(userId, blob.id, blob.serverAttachmentId);
+    await deleteOutboxItem(userId, item.id);
     return true;
   }
   const result = await deps.uploadAttachment({
@@ -299,6 +301,7 @@ async function processAttachment(
     fileName: blob.fileName,
     contentType: blob.contentType,
     bytes: blob.bytes,
+    extras: blob.uploadExtras,
   });
   if (!result.ok) {
     await saveOutboxItem({
@@ -310,16 +313,82 @@ async function processAttachment(
     });
     return false;
   }
+  // Confirmed: the local bytes go now (spec §3.4); the encrypted id mapping stays so
+  // queued saves that still name the local id can be rewritten.
   await markBlobUploaded(userId, blob.id, result.attachmentId);
   recordUploadedAttachment(attachmentMap, item, blob.id, result.attachmentId);
-  await saveOutboxItem({
-    ...item,
-    status: "done",
-    attempts: item.attempts + 1,
-    payloadJson: JSON.stringify({ serverAttachmentId: result.attachmentId }),
-    updatedAtUtc: new Date().toISOString(),
-  });
+  await deleteOutboxItem(userId, item.id);
   return true;
+}
+
+/** Draft kinds kept locally per task (`OfflineDraftRecord.kind`). */
+const DRAFT_KINDS = ["field-inspection"] as const;
+
+/**
+ * The server confirmed a queued save. A newer autosave may have been folded into
+ * the same row while it was in flight — then it stays queued; otherwise the row
+ * goes, and so does the local draft once no other save for the task is waiting.
+ */
+async function completeSave(
+  userId: string,
+  item: OfflineOutboxItem,
+): Promise<void> {
+  const current = await getOutboxItem(userId, item.id);
+  if (current && current.payloadJson !== item.payloadJson) {
+    await saveOutboxItem({
+      ...current,
+      status: "pending",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return;
+  }
+  await deleteOutboxItem(userId, item.id);
+  const stillQueued = (await listOutboxItems(userId)).some(
+    (other) =>
+      other.kind === "party-submission-save" && other.targetId === item.targetId,
+  );
+  if (stillQueued) return;
+  for (const kind of DRAFT_KINDS) {
+    const id = `${kind}:${item.targetId}`;
+    // Typing continued after this save was queued: that newer local copy is still unsent.
+    const draft = await getOfflineDraft(userId, id);
+    if (draft && Date.parse(draft.updatedAtUtc) > Date.parse(item.updatedAtUtc)) continue;
+    await deleteOfflineDraft(userId, id);
+  }
+}
+
+/** Upload id mappings are kept this long after sync for late local-id rewrites. */
+const RELEASED_MAPPING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * After a clean pass: drop what earlier builds left behind — "done" outbox rows and
+ * uploaded photos that still held their bytes — and expire old id mappings.
+ * Prefetched documents (ids that are not `local:`) are a read cache and stay.
+ */
+async function releaseSyncedLocalCopies(userId: string): Promise<void> {
+  const items = await listOutboxItems(userId);
+  for (const item of items) {
+    if (item.status === "done") await deleteOutboxItem(userId, item.id);
+  }
+  const active = items.some(
+    (item) =>
+      item.status === "pending" ||
+      item.status === "failed" ||
+      item.status === "uploading",
+  );
+  const rows = await listOfflineBlobRows(userId);
+  const expired: string[] = [];
+  const now = Date.now();
+  for (const row of rows) {
+    if (!row.id.startsWith("local:")) continue;
+    if (row.released) {
+      const age = now - Date.parse(row.updatedAtUtc);
+      if (!active && age > RELEASED_MAPPING_TTL_MS) expired.push(row.id);
+    } else if (row.serverAttachmentId) {
+      await markBlobUploaded(userId, row.id, row.serverAttachmentId);
+    }
+  }
+  await deleteOfflineBlobs(userId, expired);
 }
 
 async function processSave(
@@ -352,7 +421,7 @@ async function processSave(
     });
     return false;
   }
-  await deleteOutboxItem(userId, item.id);
+  await completeSave(userId, item);
   return true;
 }
 
@@ -660,7 +729,30 @@ async function processKeyEnvelopeMutation(
   return true;
 }
 
+/** Web Locks name shared by every tab of this origin. */
+const SYNC_LOCK_NAME = "ejada-offline-sync";
+
+/**
+ * One replay at a time across tabs: every open tab runs the coordinator over the same
+ * IndexedDB outbox, and two tabs replaying the same queued submit sent it twice — one
+ * hit a row-version conflict and the item was dropped. A tab that finds the lock held
+ * skips this pass; the holder is already syncing. (Web Locks needs a secure origin;
+ * without it each tab still has the in-tab guard below.)
+ */
 export async function runOfflineSync(
+  userId: string,
+  deps: OfflineSyncDeps,
+): Promise<{ pending: number; failed: number }> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks?.request) return runOfflineSyncPass(userId, deps);
+  return locks.request(SYNC_LOCK_NAME, { ifAvailable: true }, async (lock) =>
+    lock
+      ? runOfflineSyncPass(userId, deps)
+      : { pending: await publishPendingCount(userId), failed: 0 },
+  );
+}
+
+async function runOfflineSyncPass(
   userId: string,
   deps: OfflineSyncDeps,
 ): Promise<{ pending: number; failed: number }> {
@@ -771,6 +863,7 @@ export async function runOfflineSync(
       }
       if (!ok) failed += 1;
     }
+    await releaseSyncedLocalCopies(userId).catch(() => {});
   } finally {
     syncRunning = false;
   }

@@ -115,6 +115,7 @@ export function InspectorWizardLocationStep({
               lat={mapGeo?.lat}
               lng={mapGeo?.lng}
               title="خريطة المعاينة"
+              offlineHint="الخريطة تحتاج اتصالاً بالشبكة. سجّل موقع العقار الآن بزر «تحديد موقعي الحالي» — يعمل دون اتصال، وتظهر الخريطة تلقائياً عند عودة الشبكة."
               interactive={editable && !mapPinned}
               pinLabel={
                 mapPinned && mapActor === "specialist"

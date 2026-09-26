@@ -8,6 +8,7 @@ import {
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
+import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   loadPoListCounts,
@@ -55,6 +56,8 @@ export async function loadPoRecordsWithTaskSync() {
   // TASKS_CHANGED (that would re-invalidate workflow-tasks on every PO warm
   // and compete with page navigation). Mutating paths already notify.
   // Sync is independent of records — run in parallel, not sequentially (async-parallel).
+  // Offline there is nothing to sync against — the downloaded records are the answer.
+  if (isBrowserOffline()) return loadPoRecords();
   const [records, sync] = await Promise.all([
     loadPoRecords(),
     syncTasksFromPoRecords({ notify: false }),

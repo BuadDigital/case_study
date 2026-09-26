@@ -43,6 +43,11 @@ export type PartyTaskSubmissionDto = {
   /** Property-appraisal: sibling inspection package specialist-accepted (server). */
   fieldInspectionAccepted?: boolean | null;
   /**
+   * Field-inspection: the server's fingerprint of the specialist-owned source data.
+   * The inspector's device echoes it back with each save (spec §4.4).
+   */
+  sourceFingerprint?: string;
+  /**
    * Payload key → writer / latest editor. Keys are top-level payload keys, or `parent.child`
    * for one level of nesting (e.g. `featureValues.assetSubject`).
    */
@@ -158,6 +163,10 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
     fieldProvenance: normalizeProvenance(
       row.fieldProvenance ?? row.FieldProvenance,
     ),
+    sourceFingerprint:
+      (row.sourceFingerprint ?? row.SourceFingerprint ?? undefined) as
+        | string
+        | undefined,
   };
 }
 

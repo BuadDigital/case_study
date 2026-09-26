@@ -51,7 +51,9 @@ public class PartyTaskSubmission
 
  /// <summary>
  /// Save draft: “Sent” via draft path rejected (only sending point sends),
- /// The “returned” remains returned until it is sent again.
+ /// The “returned” remains returned until it is sent again — whatever status the
+ /// client echoes (an offline device re-reading its local copy sends "draft"), so the
+ /// return note and «معادة للتصحيح» survive every save.
  /// </summary>
     public string? SaveDraft(
         string payloadJson,
@@ -64,7 +66,8 @@ public class PartyTaskSubmission
             return "استخدم نقطة الإرسال لتقديم العمل";
 
         PayloadJson = payloadJson;
-        Status = requestedStatus is PartyTaskSubmissionStatus.Reopened
+        Status = Status is PartyTaskSubmissionStatus.Reopened
+                 || requestedStatus is PartyTaskSubmissionStatus.Reopened
             ? PartyTaskSubmissionStatus.Reopened
             : PartyTaskSubmissionStatus.Draft;
         PropertyId = propertyId;

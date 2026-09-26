@@ -31,9 +31,19 @@ export async function extractEvidenceExif(file: File): Promise<EvidencePhotoExif
   try {
     // exifr is heavy and only needed at upload — lazy-load like heic2any below.
     const exifr = (await import("exifr")).default;
+    // `pick` filters every block, GPS included: without the GPS tags here exifr never
+    // derives latitude/longitude, and every photo read as «موقع غير متاح» (spec §5.4).
     const tags = await exifr.parse(file, {
       gps: true,
-      pick: ["DateTimeOriginal", "CreateDate", "ModifyDate"],
+      pick: [
+        "DateTimeOriginal",
+        "CreateDate",
+        "ModifyDate",
+        "GPSLatitude",
+        "GPSLatitudeRef",
+        "GPSLongitude",
+        "GPSLongitudeRef",
+      ],
     });
     if (!tags) return {};
 

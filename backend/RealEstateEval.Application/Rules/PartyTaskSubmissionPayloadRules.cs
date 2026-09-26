@@ -136,6 +136,47 @@ public static class PartyTaskSubmissionPayloadRules
         }
     }
 
+    /// <summary>Top-level string value of the payload, or null.</summary>
+    public static string? ReadString(string payloadJson, string key)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                   && doc.RootElement.TryGetProperty(key, out var value)
+                   && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Removes a client-only string key from the payload and returns its value
+    /// (null when absent). The payload is returned unchanged when the key is missing.
+    /// </summary>
+    public static (string PayloadJson, string? Value) TakeString(string payloadJson, string key)
+    {
+        try
+        {
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts);
+            if (dict is null || !dict.TryGetValue(key, out var element))
+                return (payloadJson, null);
+            var value = element.ValueKind == JsonValueKind.String ? element.GetString() : null;
+            var mutable = dict
+                .Where(kv => !string.Equals(kv.Key, key, StringComparison.Ordinal))
+                .ToDictionary(kv => kv.Key, kv => (object?)DeserializeElement(kv.Value));
+            return (JsonSerializer.Serialize(mutable, JsonOpts), value);
+        }
+        catch
+        {
+            return (payloadJson, null);
+        }
+    }
+
     public static string SetPayloadReopened(string payloadJson, string returnNote, DateTime now)
     {
         try

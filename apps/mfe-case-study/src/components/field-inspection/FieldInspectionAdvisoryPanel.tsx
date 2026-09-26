@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
+import { dmy, hhmm } from "@platform/app-shared/format/date";
+import { inspectionLateUploadAtUtc } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   Button,
@@ -137,6 +139,8 @@ export function FieldInspectionAdvisoryPanel({
     );
   }
 
+  const lateUploadAt = inspectionLateUploadAtUtc(submission);
+
   async function handleReturnForCorrection() {
     if (!inspectionTask) return;
     const trimmed = returnNote.trim();
@@ -195,6 +199,14 @@ export function FieldInspectionAdvisoryPanel({
               .join(" ") || "—"}
           </span>
         </div>
+        {lateUploadAt ? (
+          <div className="flex justify-between gap-3 border-b border-border py-2">
+            <span className="text-text-3">وقت الرفع</span>
+            <span className="font-medium text-text">
+              {dmy(lateUploadAt)} {hhmm(lateUploadAt)}
+            </span>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-3 border-b border-border py-2">
           <span className="text-text-3">تغطية الصور</span>
           <span className="font-medium text-text">

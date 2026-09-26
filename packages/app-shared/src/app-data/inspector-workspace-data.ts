@@ -987,7 +987,19 @@ export type InspectorWorkspaceDraft = {
   inspectionConfirmed: boolean;
   status: InspectorWorkspaceStatus;
   returnNote?: string;
+  /** Server receipt of the submission (upload moment — audit only, ق-10). */
   submittedAtUtc: string | null;
+  /**
+   * Device clock at «إرسال المعاينة» on site — the approved inspection stamp (ق-10),
+   * recorded even offline and kept apart from the later upload moment.
+   */
+  completedOnSiteAtUtc: string;
+  /**
+   * Server fingerprint of the specialist's source data (deed, owner, court, request,
+   * commissioning) as last downloaded. Sent back with every save, so a save queued
+   * offline tells the server which version the answers were based on (spec §4.4).
+   */
+  sourceFingerprint: string;
   /** Specialist acceptance stamp — gates package into Infath. */
   acceptedAtUtc?: string | null;
   acceptedByName?: string | null;
@@ -1158,8 +1170,37 @@ export function createInspectorWorkspaceDraft(input: {
     inspectionConfirmed: false,
     status: "draft",
     submittedAtUtc: null,
+    completedOnSiteAtUtc: "",
+    sourceFingerprint: "",
     updatedAtUtc: new Date().toISOString(),
   };
+}
+
+/**
+ * ق-10: the inspection is stamped at the moment the inspector completes it on site.
+ * The date/time fields take that moment so the report prints it, not the upload time.
+ */
+export function inspectionCompletionStamp(now = new Date()): Pick<
+  InspectorWorkspaceDraft,
+  "completedOnSiteAtUtc" | "inspectionDate" | "inspectionTime"
+> {
+  return { completedOnSiteAtUtc: now.toISOString(), ...inspectionStampFromNow(now) };
+}
+
+/** A submit that reached the server this long after on-site completion was queued offline. */
+const LATE_UPLOAD_MS = 10 * 60 * 1000;
+
+/**
+ * The upload moment, when it differs from the on-site completion — shown to the
+ * specialist next to the inspection date (ق-10 keeps the two apart). Null otherwise.
+ */
+export function inspectionLateUploadAtUtc(
+  draft: Pick<InspectorWorkspaceDraft, "completedOnSiteAtUtc" | "submittedAtUtc">,
+): string | null {
+  const completed = Date.parse(draft.completedOnSiteAtUtc);
+  const uploaded = draft.submittedAtUtc ? Date.parse(draft.submittedAtUtc) : NaN;
+  if (Number.isNaN(completed) || Number.isNaN(uploaded)) return null;
+  return uploaded - completed > LATE_UPLOAD_MS ? draft.submittedAtUtc : null;
 }
 
 export function isInspectorWorkspaceLocked(

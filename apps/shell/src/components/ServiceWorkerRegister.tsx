@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const PENDING_OUTBOX_EVENT = "ejada-offline-pending-changed";
+/** Set per build in next.config — a new value installs a fresh worker with fresh caches. */
+const SW_URL = `/sw.js?v=${encodeURIComponent(
+  process.env.NEXT_PUBLIC_SW_VERSION ?? "dev",
+)}`;
 
 function readPendingCount(): number {
   try {
@@ -23,12 +26,15 @@ function shouldRegisterServiceWorker(): boolean {
 }
 
 /**
- * Registers `/sw.js` and coordinates updates.
- * Defers activation while offline outbox items are pending.
+ * Registers the service worker and offers each new build through a banner.
+ * The page reloads only after the user accepts, so a deploy never interrupts a form,
+ * and never while offline outbox items are still pending.
  */
 export function ServiceWorkerRegister() {
   const [updateReady, setUpdateReady] = useState(false);
   const waitingRef = useRef<ServiceWorker | null>(null);
+  /** First install also fires controllerchange (clients.claim) — only reload for an accepted update. */
+  const reloadOnControllerChangeRef = useRef(false);
 
   useEffect(() => {
     if (!shouldRegisterServiceWorker()) return;
@@ -37,7 +43,7 @@ export function ServiceWorkerRegister() {
     let registration: ServiceWorkerRegistration | null = null;
 
     const onControllerChange = () => {
-      if (cancelled) return;
+      if (cancelled || !reloadOnControllerChangeRef.current) return;
       window.location.reload();
     };
 
@@ -48,23 +54,19 @@ export function ServiceWorkerRegister() {
         if (installing.state !== "installed") return;
         if (!navigator.serviceWorker.controller) return;
         waitingRef.current = registration?.waiting ?? installing;
-        if (readPendingCount() > 0) {
-          setUpdateReady(true);
-          return;
-        }
-        waitingRef.current?.postMessage({ type: "SKIP_WAITING" });
+        setUpdateReady(true);
       });
     };
 
     const run = () => {
       if (cancelled) return;
       void navigator.serviceWorker
-        .register("/sw.js", { scope: "/", updateViaCache: "none" })
+        .register(SW_URL, { scope: "/", updateViaCache: "none" })
         .then((reg) => {
           if (cancelled) return;
           registration = reg;
           reg.addEventListener("updatefound", onUpdateFound);
-          if (reg.waiting) {
+          if (reg.waiting && navigator.serviceWorker.controller) {
             waitingRef.current = reg.waiting;
             setUpdateReady(true);
           }
@@ -101,16 +103,6 @@ export function ServiceWorkerRegister() {
     };
   }, []);
 
-  useEffect(() => {
-    const onPendingChanged = () => {
-      if (!updateReady) return;
-      if (readPendingCount() > 0) return;
-      waitingRef.current?.postMessage({ type: "SKIP_WAITING" });
-    };
-    window.addEventListener(PENDING_OUTBOX_EVENT, onPendingChanged);
-    return () => window.removeEventListener(PENDING_OUTBOX_EVENT, onPendingChanged);
-  }, [updateReady]);
-
   if (!updateReady) return null;
 
   return (
@@ -127,6 +119,7 @@ export function ServiceWorkerRegister() {
               );
               return;
             }
+            reloadOnControllerChangeRef.current = true;
             waitingRef.current?.postMessage({ type: "SKIP_WAITING" });
           }}
         >

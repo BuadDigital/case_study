@@ -17,7 +17,18 @@ export type AuthSessionPayload = {
 
 export type RefreshSessionResult =
   | { ok: true; session: AuthSessionPayload }
-  | { ok: false; kind: "network" | "server" | "auth" };
+  | {
+      ok: false;
+      kind: "network" | "server" | "auth";
+      /**
+       * The server refused because an admin disabled the account (problem code
+       * `account-disabled`) — the device must wipe its offline data (spec §3.4).
+       */
+      accountDisabled?: boolean;
+    };
+
+/** Problem `code` the identity service returns when a disabled account tries to refresh. */
+export const ACCOUNT_DISABLED_CODE = "account-disabled";
 
 export type FetchMyProfileResult =
   | { ok: true; user: UserListItem }
@@ -61,7 +72,15 @@ export async function refreshAuthSession(
       // Login/boot must not hang forever when the API is slow or unreachable.
       signal: AbortSignal.timeout(5_000),
     });
-    if (res.status === 401 || res.status === 400) return { ok: false, kind: "auth" };
+    if (res.status === 401) {
+      const problem = (await res.json().catch(() => null)) as { code?: string } | null;
+      return {
+        ok: false,
+        kind: "auth",
+        accountDisabled: problem?.code === ACCOUNT_DISABLED_CODE,
+      };
+    }
+    if (res.status === 400) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const session = normalizeAuthSessionPayload(
       (await res.json()) as Record<string, unknown>,

@@ -5,6 +5,7 @@
  * `useOfflineSyncCoordinator` and `offline-sync-replay` call these and the
  * component only renders their output.
  */
+import type { UploadAttachmentRequest } from "@platform/api-client";
 import type {
   OfflineOutboxItem,
   OfflineSyncState,
@@ -25,6 +26,30 @@ export function arrayBufferToBase64(buf: ArrayBuffer): string {
     binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
+}
+
+/** Upload-request fields a queued attachment may carry from the device. */
+const REPLAYABLE_UPLOAD_FIELDS = [
+  "photoMetadata",
+  "documentTypeKey",
+  "customDocumentLabel",
+  "customDocumentReason",
+] as const;
+
+type ReplayableUploadFields = Partial<
+  Pick<UploadAttachmentRequest, (typeof REPLAYABLE_UPLOAD_FIELDS)[number]>
+>;
+
+/** Only known request fields go back to the API — a stored payload never adds others. */
+export function uploadExtrasForReplay(
+  extras: Record<string, unknown> | undefined,
+): ReplayableUploadFields {
+  if (!extras) return {};
+  const out: Record<string, unknown> = {};
+  for (const field of REPLAYABLE_UPLOAD_FIELDS) {
+    if (extras[field] !== undefined) out[field] = extras[field];
+  }
+  return out as ReplayableUploadFields;
 }
 
 export function outboxKindLabel(kind: string): string {
@@ -81,6 +106,17 @@ export function activeOutboxItems<T extends Pick<OfflineOutboxItem, "status">>(
   );
 }
 
+/**
+ * Items the server refused for good (validation, forbidden). They are never retried,
+ * so they must not vanish from the indicator: the field user sees them, with the
+ * server's reason, until they act on it (spec §4.3 — nothing unsent is dropped quietly).
+ */
+export function rejectedOutboxItems<T extends Pick<OfflineOutboxItem, "status">>(
+  items: T[],
+): T[] {
+  return items.filter((item) => item.status === "terminal");
+}
+
 export type FieldSyncHeartbeatMeta = {
   displayName?: string | null;
   roleId?: string | null;
@@ -133,14 +169,20 @@ export type SyncStatusInput = {
   locked: boolean;
   syncState: OfflineSyncState;
   pending: number;
+  /** Items the server refused — see `rejectedOutboxItems`. */
+  rejected?: number;
 };
 
 export function syncStatusLabel({
   locked,
   syncState,
   pending,
+  rejected = 0,
 }: SyncStatusInput): string {
   if (locked) return "جلسة offline مقفلة";
+  if (rejected > 0 && syncState !== "syncing") {
+    return `${rejected} عنصر رفضه الخادم — راجع القائمة`;
+  }
   if (syncState === "syncing") return "جاري المزامنة";
   if (syncState === "offline") {
     return pending > 0
@@ -155,9 +197,10 @@ export function syncStatusLabel({
 export function syncStatusIcon(
   syncState: OfflineSyncState,
   pending: number,
+  rejected = 0,
 ): "🕓" | "⚠️" | "✅" {
   if (syncState === "syncing") return "🕓";
-  if (syncState === "failed" || pending > 0) return "⚠️";
+  if (syncState === "failed" || pending > 0 || rejected > 0) return "⚠️";
   return "✅";
 }
 
@@ -184,9 +227,11 @@ export function isAuthRejected(kind: string | undefined): boolean {
 export type ReplayFailure = { ok: false; error: string; terminal: boolean };
 
 /**
- * Classifies an API failure for the outbox: auth/forbidden is always terminal;
+ * Classifies an API failure for the outbox: forbidden is terminal for that item;
  * validation is terminal only for handlers whose payload cannot be fixed by a
- * retry (`validationTerminal`). Everything else stays retryable.
+ * retry (`validationTerminal`). Everything else — including 401, which the next
+ * token renewal fixes — stays retryable, so no confirmed-unsent work is dropped
+ * (spec §4.3). Wiping is reserved for a disabled account (spec §3.4).
  */
 export function replayFailure(
   kind: string | undefined,
@@ -197,7 +242,7 @@ export function replayFailure(
     ok: false,
     error,
     terminal:
-      isAuthRejected(kind) ||
+      kind === "forbidden" ||
       (options.validationTerminal === true && kind === "validation"),
   };
 }
@@ -219,15 +264,17 @@ export function parseReplayPayload<T>(json: string): T | null {
   }
 }
 
-/** Picks the server attachment that matches a queued upload, else the first row. */
+/**
+ * The server attachment that already holds this queued upload (same name and size —
+ * the upload landed but its reply was lost), so the replay does not duplicate it.
+ * Anything else is a different file: a photo replaced offline in a slot that already
+ * had one must upload, never be swapped for the slot's old photo.
+ */
 export function matchExistingAttachment<
   T extends { id?: string; fileName: string; sizeBytes: number },
 >(existing: T[], upload: { fileName: string; byteLength: number }): T | undefined {
-  if (existing.length === 0) return undefined;
-  return (
-    existing.find(
-      (row) =>
-        row.fileName === upload.fileName && row.sizeBytes === upload.byteLength,
-    ) ?? existing[0]
+  return existing.find(
+    (row) =>
+      row.fileName === upload.fileName && row.sizeBytes === upload.byteLength,
   );
 }

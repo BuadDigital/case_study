@@ -100,6 +100,17 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .Include(p => p.WorkOrder)
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, WorkOrderProperty>> ListPropertiesAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        if (propertyIds.Count == 0) return new Dictionary<Guid, WorkOrderProperty>();
+        return await db.WorkOrderProperties
+            .AsNoTracking()
+            .Where(p => propertyIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, cancellationToken);
+    }
+
     public async Task SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,

@@ -161,6 +161,8 @@ export function loadGoogleMapsApi(): Promise<typeof google> {
 
       script.onerror = () => {
         delete (window as unknown as Record<string, unknown>)[callbackName];
+        // Drop the failed tag so a retry (e.g. after reconnecting) starts clean.
+        script.remove();
         loadPromise = null;
         reject(new Error("Google Maps script error"));
       };

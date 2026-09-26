@@ -4,10 +4,7 @@
  * terminal vs. retryable) lives in `offline-sync-state`.
  */
 import { syncOfflineQueue } from "@platform/app-shared/offline/offline-write";
-import {
-  purgeOfflineData,
-  type OfflineSyncDeps,
-} from "@platform/offline-client";
+import type { OfflineSyncDeps } from "@platform/offline-client";
 import {
   listAttachments,
   savePartyTaskSubmission,
@@ -27,24 +24,25 @@ import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-a
 import {
   arrayBufferToBase64,
   invalidPayloadFailure,
-  isAuthRejected,
   matchExistingAttachment,
   parseReplayPayload,
   replayFailure,
   unauthenticatedReplayFailure,
+  uploadExtrasForReplay,
   type ReplayFailure,
 } from "@/components/offline-sync-state";
 
-/** Purges the local store when the API rejected the session, then classifies. */
+/**
+ * Classifies a failed replay. A 401/403 never wipes the queue: an expired token is
+ * renewed and retried, and only a disabled account (refresh code `account-disabled`)
+ * wipes the device (spec §3.4 / §4.3).
+ */
 async function fail(
-  userId: string,
+  _userId: string,
   kind: string | undefined,
   error: string,
   validationTerminal = false,
 ): Promise<ReplayFailure> {
-  if (isAuthRejected(kind)) {
-    await purgeOfflineData(userId, "auth-rejected");
-  }
   return replayFailure(kind, error, { validationTerminal });
 }
 
@@ -71,6 +69,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         /* continue to upload */
       }
       const upload = await uploadAttachment(modulesConfig, {
+        ...uploadExtrasForReplay(input.extras),
         scope: input.scope,
         scopeKey: input.scopeKey,
         fileName: input.fileName,

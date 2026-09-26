@@ -1,3 +1,5 @@
+import { gcm } from "@noble/ciphers/aes.js";
+
 const te = new TextEncoder();
 const td = new TextDecoder();
 
@@ -18,23 +20,50 @@ export function isWebCryptoAvailable(): boolean {
   );
 }
 
-class OfflineCryptoUnavailableError extends Error {
-  constructor(
-    message = "التشفير غير متاح في هذا السياق — استخدم localhost أو HTTPS للعمل دون اتصال.",
-  ) {
-    super(message);
-    this.name = "OfflineCryptoUnavailableError";
-  }
+/**
+ * The per-user AES-256-GCM key. Web Crypto keeps it non-extractable; on an insecure
+ * origin (http://LAN-IP) `crypto.subtle` does not exist, so the same cipher runs in
+ * audited JS (@noble/ciphers) with the raw key kept in IndexedDB. Either way nothing
+ * is ever stored in plaintext — encryption is mandatory for offline data.
+ */
+export type OfflineKey =
+  | { kind: "webcrypto"; key: CryptoKey }
+  | { kind: "software"; raw: Uint8Array };
+
+/** What the `keys` store holds for a user — exactly one of the two. */
+export type StoredOfflineKey = { key?: CryptoKey; raw?: ArrayBuffer };
+
+function randomBytes(length: number): Uint8Array {
+  // getRandomValues is available on insecure origins too (only `subtle` is not).
+  return globalThis.crypto.getRandomValues(new Uint8Array(length));
 }
 
-export async function createUserCryptoKey(): Promise<CryptoKey> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+export async function createUserOfflineKey(): Promise<OfflineKey> {
+  if (isWebCryptoAvailable()) {
+    const key = await crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+    return { kind: "webcrypto", key };
   }
-  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  return { kind: "software", raw: randomBytes(32) };
+}
+
+export function toStoredKey(key: OfflineKey): StoredOfflineKey {
+  return key.kind === "webcrypto"
+    ? { key: key.key }
+    : { raw: toArrayBuffer(key.raw) };
+}
+
+export function fromStoredKey(stored: StoredOfflineKey): OfflineKey | null {
+  if (stored.key && isWebCryptoAvailable()) {
+    return { kind: "webcrypto", key: stored.key };
+  }
+  if (stored.raw && stored.raw.byteLength === 32) {
+    return { kind: "software", raw: new Uint8Array(stored.raw) };
+  }
+  return null;
 }
 
 export type EncryptedPayload = {
@@ -42,64 +71,52 @@ export type EncryptedPayload = {
   ciphertext: ArrayBuffer;
 };
 
-export async function encryptJson(
-  key: CryptoKey,
-  value: unknown,
-): Promise<EncryptedPayload> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
-  }
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const plaintext = te.encode(JSON.stringify(value));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    plaintext,
-  );
-  return { iv: toArrayBuffer(iv), ciphertext };
-}
-
-export async function decryptJson<T>(
-  key: CryptoKey,
-  payload: EncryptedPayload,
-): Promise<T> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
-  }
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(payload.iv) },
-    key,
-    payload.ciphertext,
-  );
-  return JSON.parse(td.decode(plain)) as T;
-}
-
 export async function encryptBytes(
-  key: CryptoKey,
+  key: OfflineKey,
   bytes: ArrayBuffer,
 ): Promise<EncryptedPayload> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+  const iv = randomBytes(12);
+  if (key.kind === "webcrypto") {
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv as Uint8Array<ArrayBuffer> },
+      key.key,
+      bytes,
+    );
+    return { iv: toArrayBuffer(iv), ciphertext };
   }
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    bytes,
-  );
-  return { iv: toArrayBuffer(iv), ciphertext };
+  const ciphertext = gcm(key.raw, iv).encrypt(new Uint8Array(bytes));
+  return { iv: toArrayBuffer(iv), ciphertext: toArrayBuffer(ciphertext) };
 }
 
 export async function decryptBytes(
-  key: CryptoKey,
+  key: OfflineKey,
   payload: EncryptedPayload,
 ): Promise<ArrayBuffer> {
-  if (!isWebCryptoAvailable()) {
-    throw new OfflineCryptoUnavailableError();
+  if (key.kind === "webcrypto") {
+    return crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(payload.iv) },
+      key.key,
+      payload.ciphertext,
+    );
   }
-  return crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: new Uint8Array(payload.iv) },
-    key,
-    payload.ciphertext,
+  const plain = gcm(key.raw, new Uint8Array(payload.iv)).decrypt(
+    new Uint8Array(payload.ciphertext),
   );
+  return toArrayBuffer(plain);
+}
+
+export async function encryptJson(
+  key: OfflineKey,
+  value: unknown,
+): Promise<EncryptedPayload> {
+  const plaintext = te.encode(JSON.stringify(value));
+  return encryptBytes(key, toArrayBuffer(plaintext));
+}
+
+export async function decryptJson<T>(
+  key: OfflineKey,
+  payload: EncryptedPayload,
+): Promise<T> {
+  const plain = await decryptBytes(key, payload);
+  return JSON.parse(td.decode(plain)) as T;
 }

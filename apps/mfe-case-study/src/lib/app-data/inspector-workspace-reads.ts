@@ -3,7 +3,11 @@ import {
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
 import { loadQueuedDraftPayload } from "@platform/app-shared/offline/offline-write";
-import { fetchPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
+import {
+  fetchPartySubmission,
+  queuedSubmissionStatus,
+} from "@platform/app-shared/app-data/party-submission-api";
+import { readLocalWorkingCopy } from "@platform/app-shared/offline/offline-write";
 import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
 import {
   loadInspectorWorkspace,
@@ -65,7 +69,7 @@ async function fetchInspectorWorkspaceUncached(
       const local: PartyTaskSubmissionDto = {
         taskId,
         kind: "field-inspection",
-        status: "draft",
+        status: queuedSubmissionStatus(queued),
         payload: queued,
         updatedAtUtc: new Date().toISOString(),
       };
@@ -77,6 +81,20 @@ async function fetchInspectorWorkspaceUncached(
   }
 
   let draft = payloadToDraft(submission);
+  // The app was closed before the debounced save ran: the device's working copy is
+  // newer than the server — open that, and send it.
+  const local =
+    submission.status === "submitted"
+      ? null
+      : await readLocalWorkingCopy<Record<string, unknown>>("field-inspection", taskId);
+  if (local && Date.parse(local.updatedAtUtc) > Date.parse(submission.updatedAtUtc)) {
+    draft = payloadToDraft({ ...submission, payload: local.payload }, draft);
+    setCache(draft);
+    void import("./inspector-workspace-commands").then((m) =>
+      m.saveInspectorWorkspaceDraft(draft).catch(() => {}),
+    );
+    return draft;
+  }
   const payload = submission.payload ?? {};
   draft = await migrateInspectorDefaultCoords(draft, {
     latitude: readString(payload.mapLatitude),

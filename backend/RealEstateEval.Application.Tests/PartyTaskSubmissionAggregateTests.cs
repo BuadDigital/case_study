@@ -23,6 +23,20 @@ public class PartyTaskSubmissionAggregateTests
     }
 
     [Fact]
+    public void A_draft_save_cannot_clear_the_returned_state()
+    {
+        var entity = PartyTaskSubmission.CreateDraft(Guid.NewGuid(), "field-inspection", null, null, Now);
+        entity.Submit(Now, "u1", "معاين", "معاين");
+        Assert.Null(entity.ReturnForCorrection("أعد التصوير", Now, "s1", "أخصائي"));
+
+        // An offline device re-reading its local copy echoes "draft".
+        Assert.Null(entity.SaveDraft("{}", PartyTaskSubmissionStatus.Draft, null, null, Now));
+
+        Assert.Equal(PartyTaskSubmissionStatus.Reopened, entity.Status);
+        Assert.Equal("أعد التصوير", entity.ReturnNote);
+    }
+
+    [Fact]
     public void Reopened_stays_reopened_on_draft_saves_until_resubmitted()
     {
         var entity = Draft();

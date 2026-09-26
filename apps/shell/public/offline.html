@@ -2,18 +2,37 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#102b4e" />
     <title>إجادة — دون اتصال</title>
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem("ejada_theme") === "dark") {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <style>
+      /* Mirrors packages/ui-kit/src/styles/tokens.css — this page is served from the SW cache, without the app CSS. */
       :root {
         color-scheme: light;
-        --bg: #f8fafc;
-        --card: #ffffff;
-        --text: #0f172a;
-        --muted: #64748b;
-        --accent: #0f766e;
-        --border: #e2e8f0;
+        --bg: #f5f3ee;
+        --surface: #ffffff;
+        --ink: #102b4e;
+        --heading: #102b4e;
+        --text-2: #73767f;
+        --border: #ece8df;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #161d2a;
+        --surface: #1e2636;
+        --ink: #122844;
+        --heading: #dde2ec;
+        --text-2: #949cad;
+        --border: #2f3a4e;
       }
       * {
         box-sizing: border-box;
@@ -23,53 +42,106 @@
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 24px;
+        padding: 24px 16px;
         background: var(--bg);
-        color: var(--text);
-        font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+        color: var(--heading);
+        /* The app's Tajawal webfont is not available offline — use the device's Arabic UI font. */
+        font-family: system-ui, "Segoe UI", Tahoma, "Geeza Pro", "Noto Sans Arabic", sans-serif;
       }
       .card {
         width: min(420px, 100%);
-        background: var(--card);
+        background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 16px;
+        border-radius: 14px;
         padding: 28px 24px;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 12px 40px -12px rgba(16, 43, 78, 0.35);
       }
       h1 {
         margin: 0 0 8px;
-        font-size: 1.25rem;
+        font-size: 1.2rem;
+        font-weight: 800;
       }
       p {
         margin: 0 0 20px;
-        color: var(--muted);
-        line-height: 1.7;
+        color: var(--text-2);
+        line-height: 1.8;
         font-size: 0.95rem;
       }
-      button {
-        appearance: none;
-        border: 0;
-        border-radius: 12px;
-        background: var(--accent);
-        color: #fff;
-        font: inherit;
-        font-weight: 600;
-        padding: 12px 18px;
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      button,
+      a {
+        flex: 1 1 140px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 9px;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-decoration: none;
         cursor: pointer;
+      }
+      .primary {
+        border: 0;
+        background: var(--ink);
+        color: #fff;
+      }
+      .secondary {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--heading);
+      }
+      [hidden] {
+        display: none !important;
       }
     </style>
   </head>
   <body>
     <main class="card">
       <h1>أنت دون اتصال حالياً</h1>
-      <p>
-        لا يمكن فتح هذه الصفحة الآن. إذا كنت معايناً أو مراجعاً حكومياً وكانت
-        مهامك محمّلة مسبقاً، أعد المحاولة من الشاشة الرئيسية بعد عودة الاتصال
-        أو من المسار المحفوظ في التطبيق.
+      <p id="message">
+        لا يمكن فتح هذه الصفحة دون اتصال. ستُفتح تلقائياً عند عودة الاتصال.
       </p>
-      <button type="button" onclick="location.reload()">إعادة المحاولة</button>
+      <div class="actions">
+        <a id="saved" class="primary" href="/" hidden>فتح المهام المحفوظة</a>
+        <button type="button" class="secondary" onclick="location.reload()">
+          إعادة المحاولة
+        </button>
+      </div>
     </main>
+    <script>
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+      // A field user's pages are kept by the service worker — offer them instead of a dead end.
+      (async function () {
+        try {
+          if (!("caches" in window)) return;
+          var keys = await caches.keys();
+          for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (key.indexOf("ejada-shell-") !== 0 || !/-pages$/.test(key)) continue;
+            var cache = await caches.open(key);
+            var profile = await cache.match("/__ejada/offline-profile");
+            if (!profile) continue;
+            var data = await profile.json();
+            if (!data || !data.landing || !(await cache.match(data.landing))) continue;
+            var link = document.getElementById("saved");
+            link.setAttribute("href", data.landing);
+            link.hidden = false;
+            document.getElementById("message").textContent =
+              "هذه الصفحة غير محفوظة على الجهاز. يمكنك متابعة مهامك المحفوظة، وتُرفع التعديلات تلقائياً عند عودة الاتصال.";
+            return;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </body>
 </html>

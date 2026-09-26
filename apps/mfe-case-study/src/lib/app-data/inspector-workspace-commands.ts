@@ -7,7 +7,9 @@ import {
   submitPartyTaskSubmission,
 } from "@platform/api-client";
 import {
+  clearLocalWorkingCopy,
   saveDraftWithOfflineFallback,
+  saveLocalWorkingCopy,
   submitWithOfflineFallback,
 } from "@platform/app-shared/offline/offline-write";
 import {
@@ -22,6 +24,7 @@ import {
 } from "./inspector-deed-prefill";
 import {
   createInspectorWorkspaceDraft,
+  inspectionCompletionStamp,
   inspectionStampFromNow,
   sanitizeInspectorDraftForLand,
   type InspectorWorkspaceDraft,
@@ -104,6 +107,7 @@ export async function saveInspectorWorkspaceDraft(
   draft: InspectorWorkspaceDraft,
 ): Promise<InspectorWorkspaceDraft> {
   const config = workOrdersApiConfig();
+  const saveStartedAtUtc = new Date().toISOString();
   const nextDraft = sanitizeInspectorDraftForLand({
     ...draft,
     status:
@@ -159,6 +163,7 @@ export async function saveInspectorWorkspaceDraft(
         throw err;
       }
       const next = payloadToDraft(result.data, draft);
+      void clearLocalWorkingCopy("field-inspection", draft.taskId, saveStartedAtUtc);
       const cached = loadInspectorWorkspace(draft.taskId);
       // A newer local edit may have landed while this request was in flight.
       if (cached && isDraftNewerThan(cached, draft)) {
@@ -271,6 +276,14 @@ export async function updateInspectorWorkspace(
   // window used to drop `mapPinned` and block «خطاب صحة الموقع».
   const next = mergeInspectorWorkspacePatch(current, patch);
   setCache(next);
+  // Spec §3.4: the edit is on the device now — the network save below is debounced.
+  if (next.status !== "submitted") {
+    void saveLocalWorkingCopy({
+      taskId,
+      kind: "field-inspection",
+      payload: draftToPayload(next),
+    });
+  }
   if (options?.immediate || Object.prototype.hasOwnProperty.call(patch, "mapPinned")) {
     return flushInspectorWorkspaceSave(taskId);
   }
@@ -298,6 +311,9 @@ export async function submitInspectorWorkspace(
     return { ok: true, draft: current };
   }
 
+  // ق-10: stamp the on-site completion now, on the device — a submit queued offline
+  // keeps this moment; the server's SubmittedAtUtc records the later upload separately.
+  setCache(mergeInspectorWorkspacePatch(current, inspectionCompletionStamp()));
   const saved = await flushInspectorWorkspaceSave(taskId) ?? current;
   const payload = draftToPayload(saved);
 

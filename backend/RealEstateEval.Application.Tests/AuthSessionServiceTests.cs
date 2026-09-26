@@ -183,6 +183,32 @@ public class AuthSessionServiceTests
         Assert.Null(await sessions.RefreshAsync(login.RefreshToken));
     }
 
+    /// <summary>
+    /// security_offline_spec §3.4: a disabled field user's device wipes its offline store on
+    /// first contact — but only for disabled accounts, never for a plain expiry or a lockout,
+    /// where unsynced field work must survive to the next login.
+    /// </summary>
+    [Fact]
+    public async Task Refresh_token_of_a_disabled_account_is_recognised_for_the_device_wipe()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        var sessions = provider.GetRequiredService<IAuthSessionService>();
+        var db = provider.GetRequiredService<IdentityDbContext>();
+        var login = await LoginAsync(provider);
+
+        Assert.False(await sessions.IsDisabledAccountTokenAsync(login.RefreshToken));
+        Assert.False(await sessions.IsDisabledAccountTokenAsync("unknown-token"));
+
+        var profile = await db.UserProfiles.FirstAsync();
+        profile.Status = UserStatus.Locked;
+        await db.SaveChangesAsync();
+        Assert.False(await sessions.IsDisabledAccountTokenAsync(login.RefreshToken));
+
+        profile.Status = UserStatus.Disabled;
+        await db.SaveChangesAsync();
+        Assert.True(await sessions.IsDisabledAccountTokenAsync(login.RefreshToken));
+    }
+
     [Fact]
     public async Task Revoking_all_sessions_stops_further_refreshes()
     {

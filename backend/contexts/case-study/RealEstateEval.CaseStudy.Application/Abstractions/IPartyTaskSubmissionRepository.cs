@@ -58,6 +58,11 @@ public interface IPartyTaskSubmissionRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>Properties by id (no navigations) — batch reads for list DTOs.</summary>
+    Task<IReadOnlyDictionary<Guid, WorkOrderProperty>> ListPropertiesAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
     /// <summary>
     /// Stages the inspector-confirmed property type. Vacant land also clears
     /// active building inventory so stale intake data cannot drive valuation.
