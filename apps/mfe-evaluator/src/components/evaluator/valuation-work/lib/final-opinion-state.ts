@@ -33,16 +33,20 @@ export function finalOpinionComputed({
   buildingOnly,
   hasAdoptedMarket,
 }: FinalOpinionInputs) {
-    const weightSumLocal = reconMethods.reduce((s, m) => s + (m.weightPct || 0), 0);
+    const included = reconMethods.filter((m) => m.isIncluded);
+    const weightSumLocal = included.reduce((s, m) => s + (m.weightPct || 0), 0);
     const reconWeightsBad =
-      reconMethods.length >= 2 && Math.round(weightSumLocal) !== 100;
+      reconMethods.length >= 2
+      && included.length > 0
+      && Math.round(weightSumLocal) !== 100;
     // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
+    // A sole method is always the full indicator (server forces weight 100 / included).
     const weightedLocal =
       reconMethods.length === 0
         ? 0
         : reconMethods.length === 1
           ? reconMethods[0].approachValue
-          : reconMethods.reduce(
+          : included.reduce(
               (s, m) => s + m.approachValue * ((m.weightPct || 0) / 100),
               0,
             );
@@ -237,6 +241,19 @@ export function looksLikeAutoFinalOpinion(text: string): boolean {
   );
 }
 
+/** Sole method → 100% included; otherwise inclusion follows a positive weight. */
+export function normalizeReconMethodsForSave(
+  methods: ValuationReconciliationMethodDto[],
+): ValuationReconciliationMethodDto[] {
+  if (methods.length === 1) {
+    return [{ ...methods[0]!, weightPct: 100, isIncluded: true }];
+  }
+  return methods.map((m) => ({
+    ...m,
+    isIncluded: m.isIncluded && (m.weightPct || 0) > 0,
+  }));
+}
+
 /** Draft state to the save request body. */
 export function reconciliationSaveRequest(draft: ReconciliationDraft) {
   return {
@@ -246,8 +263,13 @@ export function reconciliationSaveRequest(draft: ReconciliationDraft) {
     basisOfValueKey: draft.basisOfValueKey,
     valuePremiseKey: draft.valuePremiseKey || null,
     liquidationDiscountPct:
-      Number(draft.liquidationDiscountPct.replace(",", ".")) || 0,
-    liquidationDiscountRationale: draft.liquidationDiscountRationale || null,
+      draft.basisOfValueKey === "liquidation"
+        ? Number(draft.liquidationDiscountPct.replace(",", ".")) || 0
+        : 0,
+    liquidationDiscountRationale:
+      draft.basisOfValueKey === "liquidation"
+        ? draft.liquidationDiscountRationale || null
+        : null,
     methodologyAlertOverrides: Object.entries(draft.alertOverrides).map(
       ([code, v]) => ({
         code,
@@ -255,7 +277,7 @@ export function reconciliationSaveRequest(draft: ReconciliationDraft) {
         acknowledged: v.acknowledged,
       }),
     ),
-    methods: draft.reconMethods.map((m, i) => ({
+    methods: normalizeReconMethodsForSave(draft.reconMethods).map((m, i) => ({
       id: m.id,
       approachKind: m.approachKind,
       weightPct: m.weightPct,

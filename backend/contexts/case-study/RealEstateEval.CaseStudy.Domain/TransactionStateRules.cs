@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
@@ -193,6 +195,10 @@ public static class TransactionStateRules
         && input.ValuationReportClosed
         && Evaluate(input).Stages
             .First(s => s.Key == Stages.PartyWork).Status == Statuses.Completed;
+
+    /// <summary>R3 post-Enfaz decision is the general manager's prototype role, not the JWT identity role.</summary>
+    public static bool AllowsPostEnfazDecision(string? prototypeRole) =>
+        string.Equals(prototypeRole, StaffRoleIds.GeneralManager, StringComparison.Ordinal);
 
     /// <summary>
     /// 0–100 workflow progress for list bars: foundational stages + party completion

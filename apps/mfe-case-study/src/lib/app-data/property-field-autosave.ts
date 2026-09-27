@@ -1,8 +1,9 @@
 /**
  * Debounced soft autosave for «البيانات الأولية» / «استعلام بورصة» fields.
  * Keyed by `poNumber|propertyId` so each صك keeps its own draft and timers
- * never write across properties. Closing the panel flushes to the server and
- * invalidates that PO cache so reopen shows the last typed values.
+ * never write across properties. Closing the panel flushes to the server.
+ * Drafts are dropped after a successful persist, and reopen ignores a draft
+ * that is older than the fetched property's updatedAt.
  */
 import type { PoPropertyIntake } from "./po-intake-data";
 import { updatePropertyInPo } from "./po-intake-commands";
@@ -15,6 +16,11 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const inFlight = new Map<string, Promise<boolean>>();
 /** False while the key has no real server property id yet — draft only, no network write. */
 const persistable = new Map<string, boolean>();
+/** Server updatedAt the draft was based on — reopen yields if the fetch is newer. */
+const basedOnUpdatedAt = new Map<string, string>();
+const queuedAtMs = new Map<string, number>();
+/** Last successful persist for this key — the next draft is based on that write. */
+const lastPersistedUpdatedAt = new Map<string, string>();
 let pagehideBound = false;
 
 export function propertyFieldAutosaveKey(
@@ -77,12 +83,40 @@ function clearTimer(key: string): void {
   timers.delete(key);
 }
 
+function dropKey(key: string, options?: { keepPersistedStamp?: boolean }): void {
+  clearTimer(key);
+  drafts.delete(key);
+  persistable.delete(key);
+  basedOnUpdatedAt.delete(key);
+  queuedAtMs.delete(key);
+  if (!options?.keepPersistedStamp) lastPersistedUpdatedAt.delete(key);
+}
+
+function parseUtcMs(value: string | null | undefined): number | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** True when the fetched row was written after this draft was taken. */
+function shouldYieldToServer(
+  key: string,
+  serverUpdatedAtUtc?: string | null,
+): boolean {
+  const serverMs = parseUtcMs(serverUpdatedAtUtc);
+  if (serverMs == null) return false;
+  const basedMs = parseUtcMs(basedOnUpdatedAt.get(key));
+  if (basedMs != null) return serverMs > basedMs;
+  const queued = queuedAtMs.get(key);
+  return typeof queued === "number" && serverMs > queued;
+}
+
 async function persistKey(key: string): Promise<boolean> {
   const draft = drafts.get(key);
   if (!draft) return true;
   if (!isMeaningfulPropertyDraft(draft)) {
-    drafts.delete(key);
-    persistable.delete(key);
+    dropKey(key);
     return true;
   }
   // No real server id yet (property not created — first حفظ still pending):
@@ -100,23 +134,39 @@ async function persistKey(key: string): Promise<boolean> {
       // Soft autosave failures stay quiet — explicit حفظ still validates loudly.
       return false;
     }
+    const savedAt = result.data?.updatedAtUtc?.trim() ?? "";
+    if (savedAt) lastPersistedUpdatedAt.set(key, savedAt);
+    notifyWorkOrderPropertyChanged(poNumber);
+    if (drafts.get(key) === draft) {
+      dropKey(key, { keepPersistedStamp: true });
+    } else if (savedAt) {
+      const current = drafts.get(key);
+      if (current) drafts.set(key, { ...current, updatedAtUtc: savedAt });
+      basedOnUpdatedAt.set(key, savedAt);
+    }
+    return true;
   } catch {
     return false;
   }
-  notifyWorkOrderPropertyChanged(poNumber);
-  return true;
 }
 
-/** Latest unsaved-or-saving draft for this صك, if the panel was closed mid-edit. */
+/** Latest unsaved draft for this صك. Yields to a newer server copy on reopen. */
 export function peekPropertyFieldAutosave(
   poNumber: string,
   propertyId: string | null | undefined,
+  serverUpdatedAtUtc?: string | null,
 ): PoPropertyIntake | null {
   const id = (propertyId ?? "").trim();
   const po = poNumber.trim();
   if (!po || !id) return null;
-  const draft = drafts.get(propertyFieldAutosaveKey(po, id));
-  return isMeaningfulPropertyDraft(draft) ? draft : null;
+  const key = propertyFieldAutosaveKey(po, id);
+  const draft = drafts.get(key);
+  if (!isMeaningfulPropertyDraft(draft)) return null;
+  if (shouldYieldToServer(key, serverUpdatedAtUtc)) {
+    dropKey(key);
+    return null;
+  }
+  return draft;
 }
 
 /** Queue a soft save for this صك only. No-op without a real property id. */
@@ -136,6 +186,13 @@ export function queuePropertyFieldAutosave(
 
   bindPagehideFlush();
   const key = propertyFieldAutosaveKey(po, id);
+  if (!basedOnUpdatedAt.has(key)) {
+    basedOnUpdatedAt.set(
+      key,
+      lastPersistedUpdatedAt.get(key) || property.updatedAtUtc?.trim() || "",
+    );
+  }
+  queuedAtMs.set(key, Date.now());
   drafts.set(key, { ...property, id });
   persistable.set(key, options?.persistable ?? true);
   clearTimer(key);
@@ -165,8 +222,6 @@ export async function flushPropertyFieldAutosave(
   if (pending) await pending;
   if (!drafts.has(key)) return;
   await persistKey(key);
-  // Keep the in-memory draft so close → reopen can hydrate immediately,
-  // even while React Query still holds a stale PO record.
 }
 
 export async function flushAllPropertyFieldAutosaves(): Promise<void> {
@@ -179,7 +234,7 @@ export async function flushAllPropertyFieldAutosaves(): Promise<void> {
   );
 }
 
-/** Drop a pending timer without writing (e.g. discarded panel). */
+/** Drop a pending timer without writing (e.g. discarded panel, successful explicit save). */
 export function cancelPropertyFieldAutosave(
   poNumber: string,
   propertyId: string | null | undefined,
@@ -187,8 +242,5 @@ export function cancelPropertyFieldAutosave(
   const id = (propertyId ?? "").trim();
   const po = poNumber.trim();
   if (!po || !id) return;
-  const key = propertyFieldAutosaveKey(po, id);
-  clearTimer(key);
-  drafts.delete(key);
-  persistable.delete(key);
+  dropKey(propertyFieldAutosaveKey(po, id));
 }

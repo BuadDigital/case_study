@@ -129,6 +129,7 @@ public static class WorkOrderMapper
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),
+            UpdatedAtUtc = p.UpdatedAtUtc == default ? null : p.UpdatedAtUtc.ToString("o"),
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new PropertyContactDto

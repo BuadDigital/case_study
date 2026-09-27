@@ -1,4 +1,5 @@
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Domain;
 using static RealEstateEval.CaseStudy.Domain.TransactionStateRules;
 
 namespace RealEstateEval.Application.Tests;
@@ -74,6 +75,15 @@ public class TransactionStateRulesTests
 
         Assert.Contains("المعاين", result.WaitingSummaryAr);
         Assert.Equal(Statuses.WaitingOnParty, result.OverallStatus);
+    }
+
+    [Fact]
+    public void Post_enfaz_decision_accepts_the_prototype_role_not_the_jwt_editor_role()
+    {
+        Assert.True(AllowsPostEnfazDecision(StaffRoleIds.GeneralManager));
+        Assert.False(AllowsPostEnfazDecision("Editor"));
+        Assert.False(AllowsPostEnfazDecision("case-specialist"));
+        Assert.False(AllowsPostEnfazDecision(null));
     }
 
     [Fact]

@@ -12,11 +12,11 @@ public sealed class CreateCourtRequestValidator : AbstractValidator<CreateCourtR
 {
     public CreateCourtRequestValidator()
     {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(256)
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(150)
             .OverridePropertyName("name");
-        RuleFor(x => x.Region).NotEmpty().MaximumLength(128)
+        RuleFor(x => x.Region).NotEmpty().MaximumLength(80)
             .OverridePropertyName("region");
-        RuleFor(x => x.City).NotEmpty().MaximumLength(128)
+        RuleFor(x => x.City).NotEmpty().MaximumLength(80)
             .OverridePropertyName("city");
     }
 }
@@ -25,13 +25,13 @@ public sealed class UpdateCourtRequestValidator : AbstractValidator<UpdateCourtR
 {
     public UpdateCourtRequestValidator()
     {
-        RuleFor(x => x.Name!).NotEmpty().MaximumLength(256)
+        RuleFor(x => x.Name!).NotEmpty().MaximumLength(150)
             .When(x => x.Name is not null)
             .OverridePropertyName("name");
-        RuleFor(x => x.Region!).NotEmpty().MaximumLength(128)
+        RuleFor(x => x.Region!).NotEmpty().MaximumLength(80)
             .When(x => x.Region is not null)
             .OverridePropertyName("region");
-        RuleFor(x => x.City!).NotEmpty().MaximumLength(128)
+        RuleFor(x => x.City!).NotEmpty().MaximumLength(80)
             .When(x => x.City is not null)
             .OverridePropertyName("city");
     }
@@ -41,9 +41,9 @@ public sealed class CreateCourtCircuitRequestValidator : AbstractValidator<Creat
 {
     public CreateCourtCircuitRequestValidator()
     {
-        RuleFor(x => x.CircuitNo).NotEmpty().MaximumLength(64)
+        RuleFor(x => x.CircuitNo).NotEmpty().MaximumLength(50)
             .OverridePropertyName("circuitNo");
-        RuleFor(x => x.CircuitName!).MaximumLength(256)
+        RuleFor(x => x.CircuitName!).MaximumLength(150)
             .When(x => x.CircuitName is not null)
             .OverridePropertyName("circuitName");
     }
@@ -53,10 +53,10 @@ public sealed class UpdateCourtCircuitRequestValidator : AbstractValidator<Updat
 {
     public UpdateCourtCircuitRequestValidator()
     {
-        RuleFor(x => x.CircuitNo!).NotEmpty().MaximumLength(64)
+        RuleFor(x => x.CircuitNo!).NotEmpty().MaximumLength(50)
             .When(x => x.CircuitNo is not null)
             .OverridePropertyName("circuitNo");
-        RuleFor(x => x.CircuitName!).MaximumLength(256)
+        RuleFor(x => x.CircuitName!).MaximumLength(150)
             .When(x => x.CircuitName is not null)
             .OverridePropertyName("circuitName");
     }
@@ -72,13 +72,13 @@ public sealed class CourtCatalogEntryDtoValidator : AbstractValidator<CourtCatal
 {
     public CourtCatalogEntryDtoValidator()
     {
-        RuleFor(x => x.City).NotEmpty().MaximumLength(128)
+        RuleFor(x => x.City).NotEmpty().MaximumLength(80)
             .OverridePropertyName("city");
-        RuleFor(x => x.Court).NotEmpty().MaximumLength(256)
+        RuleFor(x => x.Court).NotEmpty().MaximumLength(150)
             .OverridePropertyName("court");
         RuleForEach(x => x.Circuits)
             .NotEmpty()
-            .MaximumLength(64)
+            .MaximumLength(50)
             .OverridePropertyName("circuits");
     }
 }

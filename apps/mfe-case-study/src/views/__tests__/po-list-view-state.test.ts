@@ -3,6 +3,8 @@ import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   buildPoListPageRows,
   INITIAL_PO_LIST_QUERY,
+  isDueSoon,
+  isDueUrgent,
   isPoListBillingBucket,
   poListBillingWindow,
   poListEmptyMessage,
@@ -17,6 +19,7 @@ import {
   toWorkOrderListQuery,
   type PoListQueryState,
 } from "../po-list-view-state";
+import { isPastDue } from "../../lib/app-data/po-intake-due-dates";
 
 function poRow(id: string, over: Partial<PoRow> = {}): PoRow {
   return {
@@ -329,5 +332,42 @@ describe("toWorkOrderListCountsQuery", () => {
     expect(toWorkOrderListCountsQuery(state, { search: "PO-1" })).toEqual({
       q: "PO-1",
     });
+  });
+});
+
+function localYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+describe("due date urgency", () => {
+  it("treats today as due soon, not past due", () => {
+    const today = localYmd(new Date());
+    expect(isPastDue(today)).toBe(false);
+    expect(isDueSoon(today)).toBe(true);
+    expect(isDueUrgent(today, "under_study")).toBe(true);
+  });
+
+  it("keeps the next seven local days urgent and drops the eighth", () => {
+    const inSeven = new Date();
+    inSeven.setHours(12, 0, 0, 0);
+    inSeven.setDate(inSeven.getDate() + 7);
+    expect(isDueSoon(localYmd(inSeven))).toBe(true);
+
+    const inEight = new Date();
+    inEight.setHours(12, 0, 0, 0);
+    inEight.setDate(inEight.getDate() + 8);
+    expect(isDueSoon(localYmd(inEight))).toBe(false);
+  });
+
+  it("marks yesterday past due", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const iso = localYmd(yesterday);
+    expect(isPastDue(iso)).toBe(true);
+    expect(isDueSoon(iso)).toBe(false);
+    expect(isDueUrgent(iso, "under_study")).toBe(true);
   });
 });

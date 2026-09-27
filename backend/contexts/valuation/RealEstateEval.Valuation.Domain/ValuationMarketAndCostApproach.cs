@@ -267,6 +267,17 @@ public static class RepeatedFloorRules
         Math.Round(
             Math.Max(0m, firstFloorAreaSqm) * Math.Max(0, repeatedCount),
             2, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// Repeated-floors area is always derived. Missing count or first-floor area
+    /// yields 0 so a stale stored quantity cannot overstate the direct cost.
+    /// </summary>
+    public static decimal QuantityForLine(decimal firstFloorAreaSqm, int? repeatedCount)
+    {
+        if (repeatedCount is not { } count || count <= 0 || firstFloorAreaSqm <= 0m)
+            return 0m;
+        return DeriveQuantity(firstFloorAreaSqm, count);
+    }
 }
 
 public static class MarketOpinionRules
@@ -376,6 +387,23 @@ public static class CostApproachRules
     {
         var pct = Math.Clamp(discountPct, 0m, 100m);
         return Math.Round(Math.Max(0m, unitRateSar) * (1m - pct / 100m), 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Land comps expose WeightedPricePerSqm as a unit rate, except on whole_property
+    /// where it is the total deal value. Always store a per-m² rate so LandValue
+    /// does not multiply a total by area again.
+    /// </summary>
+    public static decimal LandUnitRateFromComparableWeighted(
+        decimal weightedPricePerSqm,
+        decimal landAreaSqm,
+        string? adjustmentBasis)
+    {
+        var weighted = Math.Max(0m, weightedPricePerSqm);
+        if (MarketAdjustmentBasisKeys.Normalize(adjustmentBasis) != MarketAdjustmentBasisKeys.WholeProperty)
+            return weighted;
+        if (landAreaSqm <= 0m) return 0m;
+        return Math.Round(weighted / landAreaSqm, 2, MidpointRounding.AwayFromZero);
     }
 
  /// <summary>Land value from the discounted rate; apartment share overrides land area when set.</summary>

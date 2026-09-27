@@ -151,7 +151,7 @@ public sealed class ValuationReconciliationService(
 
         // "Blocking happens at adoption only — partial input is kept as draft":
         // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
-        var methods = request.Methods ?? [];
+        var methods = NormalizeSoleMethod((request.Methods ?? []).ToList());
         var errors = new Dictionary<string, string>();
 
         if (request.FinalRoundDecimals is < 0 or > 6)
@@ -314,6 +314,31 @@ public sealed class ValuationReconciliationService(
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
+    private static List<SaveValuationReconciliationMethodRequest> NormalizeSoleMethod(
+        List<SaveValuationReconciliationMethodRequest> methods)
+    {
+        if (methods.Count != 1)
+            return methods;
+
+        var sole = methods[0];
+        var (weight, included) = ReconciliationRules.EffectiveParticipation(
+            enabledKindCount: 1,
+            savedWeightPct: sole.WeightPct,
+            savedIsIncluded: sole.IsIncluded,
+            liveValue: 1m,
+            suggestedWeightPct: 0m);
+        methods[0] = new SaveValuationReconciliationMethodRequest
+        {
+            Id = sole.Id,
+            ApproachKind = sole.ApproachKind,
+            WeightPct = weight,
+            Rationale = sole.Rationale,
+            IsIncluded = included,
+            SortOrder = sole.SortOrder,
+        };
+        return methods;
+    }
+
     private static ValuationReconciliationDto ToDto(
         ValuationRequest vr,
         decimal marketValue,
@@ -348,9 +373,13 @@ public sealed class ValuationReconciliationService(
             var kind = kinds[i];
             var liveValue = kind == ValuationApproachKinds.Cost ? costValue : marketValue;
             saved.TryGetValue(kind, out var row);
-            var weight = row?.WeightPct
-                ?? suggestedMap.GetValueOrDefault(kind, 0m);
-            var isIncluded = row?.IsIncluded ?? (liveValue > 0m && weight > 0m);
+            var suggestedWeight = suggestedMap.GetValueOrDefault(kind, 0m);
+            var (weight, isIncluded) = ReconciliationRules.EffectiveParticipation(
+                kinds.Count,
+                row?.WeightPct,
+                row is null ? null : row.IsIncluded,
+                liveValue,
+                suggestedWeight);
 
             methodDtos.Add(new ValuationReconciliationMethodDto
             {

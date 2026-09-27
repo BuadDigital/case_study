@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { PanelSkeleton } from "@platform/ui-kit";
+import { Button, PanelSkeleton } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { isOfflineCapableRole } from "@platform/app-shared/offline/offline-write";
@@ -24,12 +24,13 @@ import {
 export function PageAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { role, rolePages, authReady } = useAppAccess();
+  const { role, rolePages, authReady, permissionsFailed, retryPermissions } =
+    useAppAccess();
   const online = useOnlineStatus();
   const offlineField = !online && isOfflineCapableRole(role);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || permissionsFailed) return;
 
     const pageId = pageIdFromPathname(pathname);
     if (pageId === null) return;
@@ -41,10 +42,27 @@ export function PageAccessGate({ children }: { children: React.ReactNode }) {
       const landing = offlineLandingPath(rolePages);
       if (landing) router.replace(landing);
     }
-  }, [authReady, offlineField, pathname, rolePages, router]);
+  }, [authReady, permissionsFailed, offlineField, pathname, rolePages, router]);
 
   if (!authReady) {
     return <PanelSkeleton className="min-h-svh" />;
+  }
+
+  if (permissionsFailed) {
+    return (
+      <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-[15px] font-bold text-heading">
+          تعذّر تحميل صلاحيات الحساب
+        </p>
+        <p className="max-w-sm text-[13px] leading-relaxed text-text-3">
+          لا يمكن فتح النظام قبل معرفة الدور. أعد المحاولة أو سجّل الدخول
+          مرة أخرى.
+        </p>
+        <Button type="button" onClick={retryPermissions}>
+          إعادة المحاولة
+        </Button>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -151,6 +151,7 @@ export function dtoToProperty(
     isRemoved: Boolean(dto.isRemoved),
     removalReason: dto.removalReason ?? "",
     removedAtUtc: dto.removedAtUtc ?? "",
+    updatedAtUtc: dto.updatedAtUtc ?? "",
     contacts: (dto.contacts ?? []).map((c) => ({
       name: c.name ?? "",
       role: c.role ?? "",
@@ -505,6 +506,7 @@ export function buildPropertyFromPriorDeed(
     isRemoved: existing.isRemoved,
     removalReason: existing.removalReason,
     removedAtUtc: existing.removedAtUtc,
+    updatedAtUtc: existing.updatedAtUtc,
   };
 }
 

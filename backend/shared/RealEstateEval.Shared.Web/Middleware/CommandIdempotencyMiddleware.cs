@@ -99,7 +99,7 @@ public sealed class CommandIdempotencyMiddleware(
                         context.Response.ContentType,
                         bytes),
                     DefaultTtl,
-                    context.RequestAborted);
+                    CancellationToken.None);
             }
 
             buffer.Position = 0;

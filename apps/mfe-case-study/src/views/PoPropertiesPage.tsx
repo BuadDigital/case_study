@@ -54,6 +54,7 @@ import {
   formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
+  isDueSoon,
   PROPERTY_TYPE_USAGE_LABEL,
 } from "../lib/app-data/po-intake-data";
 import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
@@ -86,14 +87,6 @@ function deedLabel(property: PoPropertyIntake): string {
     property.realEstateRegNumber.trim() ||
     "—"
   );
-}
-
-function isDueSoon(iso: string): boolean {
-  if (!iso) return false;
-  const due = new Date(iso.slice(0, 10));
-  const now = new Date();
-  const diff = due.getTime() - now.getTime();
-  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
 }
 
 /** DD/MM/YYYY plus HH:mm when present in ISO or a separate time field. */

@@ -246,6 +246,25 @@ public static class ReconciliationRules
         return [(ValuationApproachKinds.Market, 0m), (ValuationApproachKinds.Cost, 0m)];
     }
 
+    /// <summary>
+    /// A single enabled method always participates at 100%. Otherwise keep the
+    /// saved weight/inclusion, defaulting inclusion to a live value with a weight.
+    /// </summary>
+    public static (decimal WeightPct, bool IsIncluded) EffectiveParticipation(
+        int enabledKindCount,
+        decimal? savedWeightPct,
+        bool? savedIsIncluded,
+        decimal liveValue,
+        decimal suggestedWeightPct)
+    {
+        if (enabledKindCount == 1)
+            return (100m, true);
+
+        var weight = savedWeightPct ?? suggestedWeightPct;
+        var included = savedIsIncluded ?? (liveValue > 0m && weight > 0m);
+        return (weight, included);
+    }
+
  /// <summary>n≥2 when two (or more) approaches are selected/enabled for reconciliation.</summary>
     public static bool MeetsMultiMethodGate(int enabledApproachCount) =>
         enabledApproachCount >= 2;

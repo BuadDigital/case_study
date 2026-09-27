@@ -91,10 +91,37 @@ export function dueDateToDeadline(dueIso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function isPastDue(dueIso: string): boolean {
+/** Parse a Y-M-D (optionally with time) as local midnight — ISO date-only is UTC. */
+export function parseLocalCalendarDate(iso: string): Date | null {
+  const match = iso.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const day = Number(match[3]);
+  const d = new Date(y, m - 1, day);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function isPastDue(dueIso: string, now: Date = new Date()): boolean {
   if (!dueIso) return false;
-  const today = new Date();
+  const due = parseLocalCalendarDate(dueIso);
+  if (!due) return false;
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const due = new Date(`${dueIso}T12:00:00`);
-  return due < today;
+  due.setHours(0, 0, 0, 0);
+  return due.getTime() < today.getTime();
+}
+
+/** Due today through 7 calendar days ahead, inclusive. */
+export function isDueSoon(iso: string, now: Date = new Date()): boolean {
+  if (!iso) return false;
+  const due = parseLocalCalendarDate(iso);
+  if (!due) return false;
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.round(
+    (due.getTime() - start.getTime()) / 86_400_000,
+  );
+  return diffDays >= 0 && diffDays <= 7;
 }

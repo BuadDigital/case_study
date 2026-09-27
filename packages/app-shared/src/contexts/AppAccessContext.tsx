@@ -10,10 +10,17 @@ import {
 import { setRuntimeCapabilities } from "@platform/app-shared/app-data/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 import { useUsableAuthSession } from "../auth/use-auth-session";
+import { roleFromPermissions } from "./app-access-role";
+
+/** Least-privilege placeholder while access is unresolved or refused — never GM. */
+const PLACEHOLDER_ROLE: RoleId = "field-inspector";
 
 type Ctx = {
   role: RoleId;
   authReady: boolean;
+  /** Permissions request failed or the role is unknown — no GM fallback. */
+  permissionsFailed: boolean;
+  retryPermissions: () => void;
   viewerUserId: string | null;
   viewerDisplayName: string | null;
   /** Staff job title — preferred chip subtitle; catalog dept is only a fallback. */
@@ -26,24 +33,6 @@ type Ctx = {
 };
 
 const AppAccessContext = createContext<Ctx | null>(null);
-
-function roleFromPermissions(
-  prototypeRole: string | null | undefined,
-  identityRoles: readonly string[] | undefined,
-): RoleId {
-  if (
-    identityRoles?.some(
-      (role) =>
-        role.toLowerCase() === "cdo" || role.toLowerCase() === "admin",
-    )
-  ) {
-    return "cdo";
-  }
-
-  const apiRole = prototypeRole?.trim().toLowerCase();
-  if (apiRole && apiRole in ROLES) return apiRole as RoleId;
-  return "general-manager";
-}
 
 const EMPTY_CAPABILITIES: string[] = [];
 
@@ -58,13 +47,28 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     data: permissions,
     isSuccess,
     isError,
+    refetch,
   } = usePermissionsQuery(hasSession);
 
   const permissionsResolved = isSuccess || isError;
 
+  const resolvedRole = useMemo(
+    () =>
+      roleFromPermissions(
+        permissions?.prototypeRole,
+        permissions?.identityRoles,
+      ),
+    [permissions?.prototypeRole, permissions?.identityRoles],
+  );
+
+  const permissionsFailed =
+    (hasSession && isError) || (isSuccess && resolvedRole == null);
+
+  const role = resolvedRole ?? PLACEHOLDER_ROLE;
+
   // Keep helpers in sync during the same render as permissions — do not wait for
   // useEffect or queryFn may run with a stale empty capability list.
-  if (!hasSession) {
+  if (!hasSession || permissionsFailed || resolvedRole == null) {
     setRuntimeCapabilities([]);
   } else if (permissions) {
     setRuntimeCapabilities(permissions.capabilities);
@@ -77,27 +81,20 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     );
   }, [hasSession]);
 
-  const role = useMemo(() => {
-    if (!permissionsResolved) return "general-manager";
-    return roleFromPermissions(
-      permissions?.prototypeRole,
-      permissions?.identityRoles,
-    );
-  }, [
-    permissionsResolved,
-    permissions?.prototypeRole,
-    permissions?.identityRoles,
-  ]);
-
   // Stable ref — a fresh [] each render used to break the pre-auth context useMemo
   // so value identity changed for every useAppAccess consumer (rerender-dependencies).
-  const capabilities = permissions?.capabilities ?? EMPTY_CAPABILITIES;
+  const capabilities =
+    permissionsFailed || resolvedRole == null
+      ? EMPTY_CAPABILITIES
+      : (permissions?.capabilities ?? EMPTY_CAPABILITIES);
 
   const rolePages = useMemo(() => {
-    if (!permissionsResolved) return [];
-    const baseline = ROLES[role].pages.filter((page) => {
+    if (!permissionsResolved || permissionsFailed || resolvedRole == null) {
+      return [];
+    }
+    const baseline = ROLES[resolvedRole].pages.filter((page) => {
       // "All transactions" — CDO and case specialist (mirrors pagesFromPermissions)
-      if (page === "all-transactions" && !roleSeesAllTransactionsPage(role)) {
+      if (page === "all-transactions" && !roleSeesAllTransactionsPage(resolvedRole)) {
         return false;
       }
       return true;
@@ -109,7 +106,7 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       return [...new Set<PageId>([...fromApi, ...baseline])];
     }
     return baseline;
-  }, [permissionsResolved, permissions, role]);
+  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole]);
 
   const authReady = hasSession && permissionsResolved;
 
@@ -117,6 +114,10 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     () => ({
       role,
       authReady,
+      permissionsFailed,
+      retryPermissions: () => {
+        void refetch();
+      },
       viewerUserId: session?.user.id ?? null,
       viewerDisplayName:
         permissions?.displayName?.trim() ||
@@ -135,6 +136,8 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     [
       role,
       authReady,
+      permissionsFailed,
+      refetch,
       session?.user.id,
       session?.user.displayName,
       session?.user.jobTitle,

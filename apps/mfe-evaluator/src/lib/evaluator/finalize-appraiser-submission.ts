@@ -12,7 +12,6 @@ import {
   snapshotIssuedValuationReport,
 } from "./issue-valuation-report";
 import {
-  allocateValuationReportNumber,
   formatValuationReportIssueDateIso,
 } from "./valuation-report-number";
 import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
@@ -47,7 +46,10 @@ export async function finalizeAppraiserSubmission(
         });
         reportNo = reservedNumberFromValuationRequest(open);
       } catch {
-        reportNo = allocateValuationReportNumber(issuedAt);
+        return {
+          ok: false,
+          message: "تعذّر حجز رقم التقرير من الخادم. أعد المحاولة.",
+        };
       }
     }
     const reportIssueDate =

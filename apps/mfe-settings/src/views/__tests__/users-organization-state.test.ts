@@ -20,6 +20,10 @@ import {
   staffValuerSyncMode,
   statusLabel,
   statusTone,
+  STAFF_ROLE_CHANGE_LAST_ADMIN,
+  STAFF_ROLE_CHANGE_SELF,
+  staffRoleChangeBlocked,
+  staffRoleSelectLocked,
   SUPERVISOR_DEPARTMENT_SELECT_OPTIONS,
   unlockErrorMessage,
   userToggleLabel,
@@ -166,6 +170,38 @@ describe("row presentation", () => {
     expect(canDeleteUser(user(), "other")).toBe(true);
     expect(canDeleteUser(user({ userName: "sliman" }), null)).toBe(false);
     expect(canDeleteUser(user({ userName: "Admin" }), null)).toBe(false);
+  });
+
+  it("blocks self and last-admin role changes", () => {
+    const admin = user({ id: "a1", roleId: "cdo", status: "Active" });
+    const specialist = user({ id: "s1", roleId: "case-specialist", status: "Active" });
+    const otherAdmin = user({ id: "a2", roleId: "admin", status: "Active" });
+
+    expect(staffRoleSelectLocked("a1", admin, [admin, specialist])).toBe(
+      STAFF_ROLE_CHANGE_SELF,
+    );
+    expect(staffRoleSelectLocked("a2", admin, [admin, specialist])).toBe(
+      STAFF_ROLE_CHANGE_LAST_ADMIN,
+    );
+    expect(
+      staffRoleChangeBlocked("a2", admin, "case-specialist", [admin, specialist]),
+    ).toBe(STAFF_ROLE_CHANGE_LAST_ADMIN);
+    expect(
+      staffRoleChangeBlocked("a2", admin, "case-specialist", [
+        admin,
+        otherAdmin,
+        specialist,
+      ]),
+    ).toBeNull();
+    expect(
+      staffRoleChangeBlocked("a1", specialist, "section-supervisor", [
+        admin,
+        specialist,
+      ]),
+    ).toBeNull();
+    expect(
+      staffRoleChangeBlocked("a1", admin, "cdo", [admin, specialist]),
+    ).toBeNull();
   });
 
   it("formatLastLogin / deptLabel", () => {

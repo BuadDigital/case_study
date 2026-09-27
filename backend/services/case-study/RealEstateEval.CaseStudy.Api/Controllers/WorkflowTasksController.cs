@@ -182,7 +182,7 @@ public class WorkflowTasksController : ControllerBase
             request ?? new DeleteCaseStudySlotRequest(),
             cancellationToken);
         if (!ok && errors is null) return NotFound();
-        if (errors is not null) return UnprocessableEntity(errors);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
         return NoContent();
     }
 

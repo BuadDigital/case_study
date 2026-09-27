@@ -1210,9 +1210,9 @@ export function buildValuationReportLiveFill(input: {
           : "—"),
     finalWords:
       reconFinal != null && reconFinal > 0
-        ? `فقط ${amountToArabicWords(reconFinal)} ريال سعودي لا غير`
+        ? `فقط ${amountToArabicWords(reconFinal)} لا غير`
         : priceN != null && priceN > 0
-          ? `فقط ${amountToArabicWords(priceN)} ريال سعودي لا غير`
+          ? `فقط ${amountToArabicWords(priceN)} لا غير`
           : "—",
     isLiquidation,
     liquidationDiscountOn: liqOn,

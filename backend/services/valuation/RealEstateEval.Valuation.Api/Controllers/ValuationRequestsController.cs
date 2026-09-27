@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
@@ -17,15 +18,18 @@ public class ValuationRequestsController : ControllerBase
     private readonly IValuationRequestService _service;
     private readonly IValuationIssuanceGateService _issuanceGates;
     private readonly IPriorValuationBankFeeder _bankFeeder;
+    private readonly ILogger<ValuationRequestsController> _logger;
 
     public ValuationRequestsController(
         IValuationRequestService service,
         IValuationIssuanceGateService issuanceGates,
-        IPriorValuationBankFeeder bankFeeder)
+        IPriorValuationBankFeeder bankFeeder,
+        ILogger<ValuationRequestsController> logger)
     {
         _service = service;
         _issuanceGates = issuanceGates;
         _bankFeeder = bankFeeder;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -71,6 +75,7 @@ public class ValuationRequestsController : ControllerBase
         var (dto, error) = await _service.EnsureOpenByPropertyAsync(request, ct);
         return error switch
         {
+            "property_id_required" => this.BadRequestProblem("معرّف العقار مطلوب"),
             "valuation_already_open" => this.ConflictProblem(
                 "an open valuation request already exists for this property"),
             "duplicate_display_id" => this.ConflictProblem("display id already in use"),
@@ -87,10 +92,13 @@ public class ValuationRequestsController : ControllerBase
         var (dto, error) = await _service.CreateAsync(request, ct);
         return error switch
         {
+            "property_id_required" => this.BadRequestProblem("معرّف العقار مطلوب"),
             "valuation_already_open" => this.ConflictProblem(
                 "an open valuation request already exists for this property"),
             "duplicate_display_id" => this.ConflictProblem("display id already in use"),
-            _ => CreatedAtAction(nameof(Get), new { id = dto!.Id }, dto),
+            _ => dto is null
+                ? this.BadRequestProblem("تعذّر إنشاء طلب التقييم")
+                : CreatedAtAction(nameof(Get), new { id = dto.Id }, dto),
         };
     }
 
@@ -116,10 +124,14 @@ public class ValuationRequestsController : ControllerBase
             {
                 await _bankFeeder.FeedAsync(id, ct);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
- // Missing bank inputs (coords/value/area) skip quietly inside the
- // feeder; anything else is non-fatal to report submission.
+                // Missing bank inputs skip inside the feeder; harvest failure
+                // must never fail the submit itself.
+                _logger.LogWarning(
+                    ex,
+                    "Prior-valuation bank feed failed after report submit for {ValuationRequestId}",
+                    id);
             }
         }
 

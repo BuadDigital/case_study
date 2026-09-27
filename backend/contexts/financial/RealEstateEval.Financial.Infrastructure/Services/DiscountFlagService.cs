@@ -200,12 +200,16 @@ public sealed class DiscountFlagService : IDiscountFlagService
         var reason = string.IsNullOrWhiteSpace(request.DiscountReason)
             ? flag.Reason
             : request.DiscountReason.Trim();
-        if (!InspectorFeeBillingRules.ValidateDiscount(discount, reason, out var discountError))
-            return (null, discountError);
 
         var ledger = await ResolveTargetLedgerAsync(flag, cancellationToken);
         if (ledger is null)
             return (null, "لا يوجد بند أتعاب قابل للخصم لهذا الوسم.");
+        if (!InspectorFeeBillingRules.ValidateDiscount(
+                discount,
+                reason,
+                ledger.AgreedFeeSar,
+                out var discountError))
+            return (null, discountError);
         if (!InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus))
             return (null, "حالة البند لا تسمح بتطبيق خصم.");
 

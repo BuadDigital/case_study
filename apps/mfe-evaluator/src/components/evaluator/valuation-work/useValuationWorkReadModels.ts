@@ -1,14 +1,13 @@
 "use client";
 
 /**
- * Memoised projections `ValuationWorkShell` renders from: the adopted sets
- * filtered to the subject's radius, their factor rows and auto narrative, the
- * two bank display tables, and the bank text search. Also the guard that
- * un-adopts comparables that sit too far from the subject.
+ * Memoised projections `ValuationWorkShell` renders from: the adopted sets,
+ * their factor rows and auto narrative, the two bank display tables, and the
+ * bank text search. Distant comparables are left adopted — they may be flagged
+ * in the bank table by distance, never written back as un-adopted.
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
-  setValuationComparableAdopted,
   type ComparablePropertyDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
@@ -18,7 +17,6 @@ import {
   BANK_SEARCH_DISPLAY_LIMIT,
   buildBankDisplayRows,
   fetchBankCandidates,
-  filterSelectionNearSubject,
   isVacantLandComparable,
   parseSubjectAreaSqm,
   resolveSubjectCoordsForBank,
@@ -26,25 +24,19 @@ import {
 import { buildFactorRows } from "./lib/market-save-mappers";
 import { apiConfig } from "./lib/shell-utils";
 import {
-  LAND_WITHIN_COST,
-  MARKET_CONTEXT,
   buildAutoNarrative,
-  farUnadoptSignature,
   isSeedMarketAnalysisNotes,
   parseDecimal,
 } from "./lib/shell-state";
 import {
-  farAdoptedItems,
-  subjectIdentity,
   type BankFetchOptions,
   type SubjectCoords,
   type SubjectHints,
+  subjectIdentity,
 } from "./lib/valuation-data-state";
 
 export function useValuationWorkReadModels({
   hints,
-  loading,
-  valuationRequestId,
   selection,
   landSelection,
   candidates,
@@ -52,7 +44,6 @@ export function useValuationWorkReadModels({
   subjectArea,
   analysisNotes,
   cost,
-  reload,
   resolveBankFetchOpts,
   applyBankResult,
   bankSearch,
@@ -115,28 +106,12 @@ export function useValuationWorkReadModels({
     ],
   );
 
-  const visibleAdoptedMarket = useMemo(
-    () =>
-      filterSelectionNearSubject(
-        adoptedMarket,
-        subjectCity || undefined,
-        subjectCoordsForBank,
-      ),
-    [adoptedMarket, subjectCity, subjectCoordsForBank],
-  );
+  const visibleAdoptedMarket = adoptedMarket;
   const visibleFactorRows = useMemo(
     () => buildFactorRows(visibleAdoptedMarket),
     [visibleAdoptedMarket],
   );
-  const visibleAdoptedLand = useMemo(
-    () =>
-      filterSelectionNearSubject(
-        adoptedLand,
-        subjectCity || undefined,
-        subjectCoordsForBank,
-      ),
-    [adoptedLand, subjectCity, subjectCoordsForBank],
-  );
+  const visibleAdoptedLand = adoptedLand;
   const visibleLandFactorRows = useMemo(
     () => buildFactorRows(visibleAdoptedLand),
     [visibleAdoptedLand],
@@ -156,62 +131,6 @@ export function useValuationWorkReadModels({
     analysisNotes.trim().length > 0 &&
     !isSeedMarketAnalysisNotes(analysisNotes) &&
     analysisNotes.trim() !== autoNarrative.trim();
-
-  /** Drop adopted comps that are too far from the subject (e.g. demo Riyadh seed on a Jeddah case). */
-  const autoUnadoptFarRef = useRef<string | null>(null);
-  useEffect(() => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId || loading) return;
-    if (!subjectCoordsForBank && !subjectCity) return;
-
-    const farMarket = selection
-      ? farAdoptedItems(adoptedMarket, subjectCity, subjectCoordsForBank)
-      : [];
-    const farLand = landSelection
-      ? farAdoptedItems(adoptedLand, subjectCity, subjectCoordsForBank)
-      : [];
-    if (farMarket.length === 0 && farLand.length === 0) return;
-
-    const signature = farUnadoptSignature(
-      valuationRequestId,
-      farMarket,
-      farLand,
-    );
-    if (autoUnadoptFarRef.current === signature) return;
-    autoUnadoptFarRef.current = signature;
-
-    void (async () => {
-      for (const item of farMarket) {
-        await setValuationComparableAdopted(
-          config,
-          valuationRequestId,
-          item.comparablePropertyId,
-          false,
-          MARKET_CONTEXT,
-        );
-      }
-      for (const item of farLand) {
-        await setValuationComparableAdopted(
-          config,
-          valuationRequestId,
-          item.comparablePropertyId,
-          false,
-          LAND_WITHIN_COST,
-        );
-      }
-      await reload({ silent: true, scope: "full" });
-    })();
-  }, [
-    loading,
-    valuationRequestId,
-    selection,
-    landSelection,
-    adoptedMarket,
-    adoptedLand,
-    subjectCity,
-    subjectCoordsForBank,
-    reload,
-  ]);
 
   const searching = bankSearch.length > 0;
   const { rows: bankRows, distances: bankDistanceKm } = useMemo(

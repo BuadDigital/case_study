@@ -285,6 +285,7 @@ export function useUsersOrganizationWorkflow() {
 
   return {
     canManage,
+    currentUserId,
     users,
     loadError,
     isPending,

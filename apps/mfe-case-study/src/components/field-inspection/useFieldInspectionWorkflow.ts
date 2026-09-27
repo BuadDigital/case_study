@@ -320,50 +320,46 @@ export function useFieldInspectionWorkflow({
       const toSave = ensureInspectorOriginalMapOnSubmit(draft);
       const saved = await saveInspectorWorkspaceDraft(toSave);
       setDraft(saved);
+      const patched = await updateInspectorWorkspace(task.id, {
+        vacantLand: draft.vacantLand,
+        keyAvailable: keyAvailability.keyAvailable,
+        clientDeclarationSigned: draft.clientDeclarationSigned,
+        declarationPhoneSatisfied:
+          draft.declarationPhoneSatisfied ||
+          (draft.clientDeclarationSigned && hasPhone),
+      });
+      if (patched) setDraft(patched);
+      const outcome = await executeInspectorSubmit();
+
+      if (outcome.status === "skipped") return false;
+
+      const result = outcome.value;
+      if (result.ok) {
+        setDraft(result.draft);
+        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
+        if (!result.queued) hostRef.current?.onSubmitted?.();
+        return true;
+      }
+
+      if (result.errors) {
+        const nextErrors = result.errors as InspectorWorkspaceFieldErrors;
+        setFieldErrors(nextErrors);
+        const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
+        if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+        scheduleInspectorErrorScroll(nextErrors);
+      }
+      setFormError(result.message);
+      showToast(result.message, "error");
+      return false;
     } catch (err: unknown) {
-      hostRef.current?.onSavingChange?.(false);
       const message =
         err instanceof Error ? err.message : "تعذّر حفظ المعاينة قبل الإرسال";
       setFormError(message);
       showToast(message, "error");
       return false;
+    } finally {
+      hostRef.current?.onSavingChange?.(false);
     }
-    const patched = await updateInspectorWorkspace(task.id, {
-      vacantLand: draft.vacantLand,
-      keyAvailable: keyAvailability.keyAvailable,
-      clientDeclarationSigned: draft.clientDeclarationSigned,
-      declarationPhoneSatisfied:
-        draft.declarationPhoneSatisfied ||
-        (draft.clientDeclarationSigned && hasPhone),
-    });
-    if (patched) setDraft(patched);
-    const outcome = await executeInspectorSubmit();
-    hostRef.current?.onSavingChange?.(false);
-
-    if (outcome.status === "skipped") return false;
-
-    const result = outcome.value;
-    if (result.ok) {
-      setDraft(result.draft);
-      if (result.queued) {
-        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
-      } else {
-        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
-        hostRef.current?.onSubmitted?.();
-      }
-      return true;
-    }
-
-    if (result.errors) {
-      const nextErrors = result.errors as InspectorWorkspaceFieldErrors;
-      setFieldErrors(nextErrors);
-      const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
-      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
-      scheduleInspectorErrorScroll(nextErrors);
-    }
-    setFormError(result.message);
-    showToast(result.message, "error");
-    return false;
   }, [
     draft,
     locked,

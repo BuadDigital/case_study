@@ -18,6 +18,7 @@ import {
   updatePropertyInPo,
 } from "../../lib/app-data/po-intake-commands";
 import {
+  cancelPropertyFieldAutosave,
   flushPropertyFieldAutosave,
   peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
@@ -201,29 +202,43 @@ export function PoPropertyEdit({
     if (local) {
       setProperty(local);
     }
-    void findPropertyInRecord(poNumber, propertyId).then((found) => {
-      if (cancelled) return;
-      const stillLocal = peekPropertyFieldAutosave(poNumber, propertyId);
-      if (found) {
-        setInitialRecord(found.record);
-        setProperty(stillLocal ?? found.property);
-        setSavedProperty(found.property);
-      } else if (stillLocal) {
-        setInitialRecord(null);
-        setProperty(stillLocal);
-        setSavedProperty(stillLocal);
-      } else {
-        setInitialRecord(null);
-        setProperty(null);
-        setSavedProperty(null);
-      }
-      setLoading(false);
-    });
+    void findPropertyInRecord(poNumber, propertyId)
+      .then((found) => {
+        if (cancelled) return;
+        const stillLocal = peekPropertyFieldAutosave(
+          poNumber,
+          propertyId,
+          found?.property.updatedAtUtc,
+        );
+        if (found) {
+          setInitialRecord(found.record);
+          setProperty(stillLocal ?? found.property);
+          setSavedProperty(found.property);
+        } else if (stillLocal) {
+          setInitialRecord(null);
+          setProperty(stillLocal);
+          setSavedProperty(stillLocal);
+        } else {
+          setInitialRecord(null);
+          setProperty(null);
+          setSavedProperty(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error ? err.message : "تعذّر تحميل بيانات العقار";
+        setFormError(message);
+        showToast(message, "error");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
       void flushPropertyFieldAutosave(poNumber, propertyId);
     };
-  }, [poNumber, propertyId]);
+  }, [poNumber, propertyId, showToast]);
 
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
@@ -347,7 +362,14 @@ export function PoPropertyEdit({
       return;
     }
 
-    setSavedProperty(committed);
+    cancelPropertyFieldAutosave(poNumber, propertyId);
+    const saved = result.data ?? committed;
+    setProperty((current) =>
+      current
+        ? { ...current, updatedAtUtc: saved.updatedAtUtc || current.updatedAtUtc }
+        : current,
+    );
+    setSavedProperty(saved);
     setFieldErrors({});
     showToast(`تم حفظ ${SECTION_TITLES[section]}.`, "success");
     onSectionSavedAction?.();

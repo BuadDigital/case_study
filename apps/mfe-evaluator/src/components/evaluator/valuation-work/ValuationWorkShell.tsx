@@ -107,6 +107,7 @@ export function ValuationWorkShell({
 
   const data = useValuationWorkData({
     propertyId,
+    inspectionTaskId,
     assignmentType,
     districtHint,
     property,

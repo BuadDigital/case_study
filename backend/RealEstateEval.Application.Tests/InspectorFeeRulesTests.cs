@@ -225,4 +225,20 @@ public class InspectorFeeRulesTests
         Assert.Equal("خلاف تسعير", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.Disputed));
         Assert.Equal("جاهز للفوترة", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.AtFinance));
     }
+
+    [Fact]
+    public void Discount_cannot_exceed_agreed_fee()
+    {
+        Assert.True(InspectorFeeBillingRules.ValidateDiscount(50m, "سبب", 400m, out var okError));
+        Assert.Null(okError);
+
+        Assert.False(InspectorFeeBillingRules.ValidateDiscount(401m, "سبب", 400m, out var overError));
+        Assert.Equal("الخصم لا يتجاوز الأتعاب المتفق عليها.", overError);
+
+        Assert.False(InspectorFeeBillingRules.ValidateDiscount(-1m, "سبب", 400m, out var negativeError));
+        Assert.Equal("الخصم لا يكون سالباً.", negativeError);
+
+        Assert.False(InspectorFeeBillingRules.ValidateDiscount(10m, "  ", 400m, out var reasonError));
+        Assert.Equal("يجب إدخال سبب الحسم عند تطبيق خصم.", reasonError);
+    }
 }

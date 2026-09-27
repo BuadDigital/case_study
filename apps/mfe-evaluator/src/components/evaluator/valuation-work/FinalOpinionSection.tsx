@@ -202,13 +202,19 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                               ),
                             );
                             const next = [...reconMethods];
-                            next[idx] = { ...m, weightPct: raw, isIncluded: true };
+                            next[idx] = {
+                              ...m,
+                              weightPct: raw,
+                              isIncluded: raw > 0,
+                            };
                             // Exactly two methods — the other's share auto-fills so they always sum to 100.
                             if (reconMethods.length === 2) {
                               const otherIdx = idx === 0 ? 1 : 0;
+                              const otherWeight = 100 - raw;
                               next[otherIdx] = {
                                 ...next[otherIdx],
-                                weightPct: 100 - raw,
+                                weightPct: otherWeight,
+                                isIncluded: otherWeight > 0,
                               };
                             }
                             setReconMethods(next);
@@ -226,7 +232,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           <span className="text-text-3">—</span>
                         ) : (
                           <span dir="ltr">
-                            {fmt((m.approachValue * m.weightPct) / 100)}
+                            {fmt(
+                              m.isIncluded
+                                ? (m.approachValue * m.weightPct) / 100
+                                : 0,
+                            )}
                           </span>
                         )}
                       </Td>

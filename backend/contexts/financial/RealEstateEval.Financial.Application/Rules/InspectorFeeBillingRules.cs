@@ -15,8 +15,27 @@ public static class InspectorFeeBillingRules
             or InspectorFeeBillingStatus.Returned
             or InspectorFeeBillingStatus.Inquiry;
 
-    public static bool ValidateDiscount(decimal discount, string? reason, out string? error)
+    public static bool ValidateDiscount(decimal discount, string? reason, out string? error) =>
+        ValidateDiscount(discount, reason, agreedFeeSar: null, out error);
+
+    public static bool ValidateDiscount(
+        decimal discount,
+        string? reason,
+        decimal? agreedFeeSar,
+        out string? error)
     {
+        if (discount < 0m)
+        {
+            error = "الخصم لا يكون سالباً.";
+            return false;
+        }
+
+        if (agreedFeeSar is { } fee && discount > fee)
+        {
+            error = "الخصم لا يتجاوز الأتعاب المتفق عليها.";
+            return false;
+        }
+
         if (discount > 0 && string.IsNullOrWhiteSpace(reason))
         {
             error = "يجب إدخال سبب الحسم عند تطبيق خصم.";
