@@ -8,6 +8,7 @@ using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.CaseStudy.Infrastructure.Services;
@@ -123,6 +124,38 @@ public class PartyTaskSubmissionAcceptTests
     }
 
     [Fact]
+    public async Task Accept_field_inspection_requires_the_specialist_components_first()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedAcceptedableFieldInspection(db, payloadJson: "{}");
+        db.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = PropertyId,
+            WorkOrderId = Guid.NewGuid(),
+            DeedNumber = "DEED-502",
+            HasStructuresToValue = HasStructuresToValueValues.Yes,
+        });
+        db.SaveChanges();
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var actor = new PartySubmissionActor
+        {
+            UserId = "specialist-1",
+            DisplayName = "أخصائي",
+            PrototypeRole = "case-specialist",
+        };
+
+        var (_, noText) = await service.AcceptAsync(TaskId, actor);
+        Assert.Equal(SpecialistComponentsRules.TextRequired, noText!["componentsText"]);
+
+        var property = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
+        property.SpecialistComponentsText = "فيلا من دورين";
+        db.SaveChanges();
+        var (_, noLines) = await service.AcceptAsync(TaskId, actor);
+        Assert.Equal(SpecialistComponentsRules.LinesRequired, noLines!["componentsText"]);
+    }
+
+    [Fact]
     public async Task Accept_field_inspection_mirrors_inspector_deed_boundaries_onto_the_property()
     {
         var bundle = CreateDb();
@@ -151,6 +184,17 @@ public class PartyTaskSubmissionAcceptTests
             EastBoundaryLengthM = "25.00",
             WestBoundary = "ممر",
             WestBoundaryLengthM = "25.00",
+            SpecialistComponentsText = "فيلا من دورين",
+            HasStructuresToValue = HasStructuresToValueValues.Yes,
+        });
+        db.BuildingInventoryLines.Add(new BuildingInventoryLine
+        {
+            Id = Guid.NewGuid(),
+            PropertyId = PropertyId,
+            StructureKind = "floor",
+            Label = "الدور الأرضي",
+            ItemKey = "ground_floor",
+            AreaSqm = "200",
         });
         db.SaveChanges();
         var service = CreateService(db, bundle.Failures, bundle.Ops);

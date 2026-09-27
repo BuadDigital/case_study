@@ -95,14 +95,31 @@ export function useCostApproachWorkflow({
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
+    // An empty cost table starts from the case specialist's «جدول المكونات» (draft only —
+    // nothing is saved until the appraiser saves; later edits are never overwritten).
+    const seedFromComponents = () => {
+      const config = apiConfig();
+      if (!config || !poNumber || !propertyId) return () => {};
+      let stop = false;
+      void getBuildingInventory(config, poNumber, propertyId).then((inv) => {
+        if (stop || !inv.ok || inv.data.lines.length === 0) return;
+        const seeded = costLinesFromInventory(inv.data.lines);
+        setCostDraft((prev) => (prev.length > 0 ? prev : seeded));
+        showToast(`نزلت ${seeded.length} بنود من جدول المكونات — أدخل سعر المتر`, "info");
+      });
+      return () => {
+        stop = true;
+      };
+    };
     if (!cost) {
       setCostDraft([]);
-      return;
+      return seedFromComponents();
     }
     setCostDraft(cost.lines);
+    const stopSeed = cost.lines.length === 0 ? seedFromComponents() : () => {};
     setFields(costFieldsFromDto(cost));
     const taskId = inspectionTaskId?.trim();
-    if (cost.actualAgeYears != null || !taskId) return;
+    if (cost.actualAgeYears != null || !taskId) return stopSeed;
     let cancelled = false;
     void fetchInspectorWorkspace(taskId).then((workspace) => {
       if (cancelled) return;
@@ -112,8 +129,9 @@ export function useCostApproachWorkflow({
     });
     return () => {
       cancelled = true;
+      stopSeed();
     };
-  }, [hydrateKey, cost, inspectionTaskId]);
+  }, [hydrateKey, cost, inspectionTaskId, poNumber, propertyId, showToast]);
 
   const seedCostFromInventory = useCallback(async () => {
     const config = apiConfig();

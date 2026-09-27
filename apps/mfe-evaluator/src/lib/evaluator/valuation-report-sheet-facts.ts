@@ -12,6 +12,7 @@ import {
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
+import { costUnitLabel } from "@platform/app-shared/domain/cost-items";
 
 export type SheetTableRow = {
   key: string;
@@ -153,6 +154,15 @@ export function areasFromInventory(
   inspector?: InspectorWorkspaceDraft | null,
 ): SheetAreaFacts {
   const rows = [...(lines ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+  // «الأدوار المتكررة» carry a floor count, not an area — they repeat the first floor
+  // (same rule as the appraiser's cost table).
+  const firstFloorArea = rows.find((l) => l.itemKey === "first_floor")?.areaSqm ?? "";
+  const areaOf = (line: BuildingInventoryLineDto): string => {
+    if (line.itemKey !== "repeated_floors") return lineArea(line);
+    const each = Number.parseFloat(String(firstFloorArea).replace(/,/g, ""));
+    const count = Math.max(0, line.repeatedFloorCount ?? 0);
+    return Number.isFinite(each) && each > 0 && count > 0 ? String(each * count) : "";
+  };
   const pick = (
     kind: string,
     needles: string[],
@@ -194,27 +204,32 @@ export function areasFromInventory(
   for (const line of rows) {
     const kind = lineKind(line);
     if (kind !== "floor" && kind !== "annex" && kind !== "basement") continue;
-    const n = Number.parseFloat(lineArea(line).replace(/,/g, ""));
+    const n = Number.parseFloat(areaOf(line).replace(/,/g, ""));
     if (!Number.isFinite(n) || n <= 0) continue;
     builtSum += n;
     builtAny = true;
   }
 
-  const descriptions: SheetTableRow[] = rows
-    .filter((l) => lineKind(l) === "floor" || lineKind(l) === "annex" || lineKind(l) === "basement")
-    .map((l) => ({
+  // §10 lists every component the specialist recorded (fence, elevator… too); the built-up
+  // total below still sums floor areas only. Non-m² items show their quantity and unit.
+  const descriptions: SheetTableRow[] = rows.map((l) => {
+    const unit = (l.unit || "sqm").trim();
+    const qty = areaOf(l);
+    return {
       key: lineLabel(l) || lineKind(l),
       values: [
         [lineLabel(l), (l.notes ?? "").trim()].filter(Boolean).join(" — ") || "—",
+        unit === "sqm" || !qty ? qty : `${qty} ${costUnitLabel(unit)}`,
       ],
-    }));
+    };
+  });
 
   if (!descriptions.length) {
     descriptions.push(
-      { key: "الدور الأرضي", values: [ground.desc] },
-      { key: "الدور الأول", values: [first.desc] },
-      { key: "الملحق العلوي", values: [annex.desc] },
-      { key: "الملحق الأرضي", values: [annexGround.desc] },
+      { key: "الدور الأرضي", values: [ground.desc, ground.area] },
+      { key: "الدور الأول", values: [first.desc, first.area] },
+      { key: "الملحق العلوي", values: [annex.desc, annex.area] },
+      { key: "الملحق الأرضي", values: [annexGround.desc, annexGround.area] },
     );
   }
 

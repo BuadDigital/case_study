@@ -22,21 +22,57 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Cost_approach_is_disabled_for_land_even_with_stale_structures()
+    public void Land_with_listed_components_can_value_its_buildings_by_cost()
     {
         Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", false));
-        Assert.False(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
+        Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("أرض", true));
         Assert.True(ValuationApproachSettingsRules.CanEnableCostApproach("فيلا", false));
 
         var walledLand = ValuationApproachSettingsRules.Defaults(
             Guid.NewGuid(), "أرض سكنية", hasStructuresToValue: true);
-        Assert.False(walledLand.CostApproachEnabled);
+        Assert.True(walledLand.CostApproachEnabled);
+        Assert.Equal(CostScopeKeys.LandAndBuilding, walledLand.CostScopeKey);
 
-        var errors = ValuationApproachSettingsRules.Validate(
+        var bareLand = ValuationApproachSettingsRules.Defaults(Guid.NewGuid(), "أرض", false);
+        Assert.False(bareLand.CostApproachEnabled);
+        Assert.Equal(CostScopeKeys.LandOnly, bareLand.CostScopeKey);
+
+        var noComponents = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "أرض",
-            hasStructuresToValue: true,
+            hasStructuresToValue: false,
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
-        Assert.Contains("costApproachEnabled", errors.Keys);
+        Assert.Contains("costApproachEnabled", noComponents.Keys);
+    }
+
+    [Fact]
+    public void Valuation_scope_decides_whether_components_are_valued()
+    {
+        // A derelict villa: components listed, appraiser values land only.
+        Assert.False(ValuationApproachSettingsRules.BuildingsValued(true, CostScopeKeys.LandOnly));
+        Assert.True(ValuationApproachSettingsRules.BuildingsValued(true, CostScopeKeys.BuildingOnly));
+        Assert.False(ValuationApproachSettingsRules.BuildingsValued(false, CostScopeKeys.LandAndBuilding));
+        Assert.False(ValuationApproachSettingsRules.CostApproachApplies("فيلا", true, CostScopeKeys.LandOnly));
+
+        var landOnlyWithCost = ValuationApproachSettingsRules.Validate(
+            true, true, false, null, null, "فيلا",
+            hasStructuresToValue: true,
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            costScopeKey: CostScopeKeys.LandOnly);
+        Assert.Contains("costApproachEnabled", landOnlyWithCost.Keys);
+
+        var buildingsWithoutComponents = ValuationApproachSettingsRules.Validate(
+            true, false, false, null, null, "أرض",
+            hasStructuresToValue: false,
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            costScopeKey: CostScopeKeys.LandAndBuilding);
+        Assert.Contains("costScopeKey", buildingsWithoutComponents.Keys);
+
+        var buildingOnlyWithoutCost = ValuationApproachSettingsRules.Validate(
+            true, false, false, null, null, "فيلا",
+            hasStructuresToValue: true,
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            costScopeKey: CostScopeKeys.BuildingOnly);
+        Assert.Contains("costApproachEnabled", buildingOnlyWithoutCost.Keys);
     }
 
     [Fact]

@@ -64,13 +64,12 @@ public interface IPartyTaskSubmissionRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Stages the inspector-confirmed property type. Vacant land also clears
-    /// active building inventory so stale intake data cannot drive valuation.
+    /// Stages the inspector-confirmed property type. The components table is the specialist's
+    /// and stays on land too; the appraiser's valuation scope decides whether it is valued.
     /// </summary>
     Task SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,
-        bool isLand,
         CancellationToken cancellationToken);
 
     /// <summary>
@@ -80,6 +79,11 @@ public interface IPartyTaskSubmissionRepository
     Task SyncInspectorDeedBoundariesAsync(
         Guid propertyId,
         IReadOnlyDictionary<string, InspectorDeedBoundary> sides,
+        CancellationToken cancellationToken);
+
+    /// <summary>Property with its components table — read-only, for the acceptance gate.</summary>
+    Task<WorkOrderProperty?> GetPropertyWithInventoryAsync(
+        Guid propertyId,
         CancellationToken cancellationToken);
 
     void Add(PartyTaskSubmission submission);

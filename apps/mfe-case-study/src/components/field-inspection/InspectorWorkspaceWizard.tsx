@@ -7,7 +7,7 @@
  * sibling components; pure rules live in `inspector-wizard-state.ts`.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
@@ -24,6 +24,7 @@ import {
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsCard, InsEditTextarea } from "../po-intake/PropertyDetailInspectionParts";
+import { InspectorDescriptionPhoto } from "./InspectorDescriptionPhoto";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
 import { InspectorWizardLocationStep } from "./InspectorWizardLocationStep";
 import { InspectorWizardComponentsCards } from "./InspectorWizardComponentsCards";
@@ -70,6 +71,8 @@ export function InspectorWorkspaceWizard({
   flat = false,
   /** Hide inline submit footer — parent renders it after extra sections. */
   hideSubmitFooter = false,
+  /** Case specialist: «مكونات العقار» (report text + table) replaces the editable description. */
+  specialistComponents,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -98,6 +101,7 @@ export function InspectorWorkspaceWizard({
   engineeringMapPin?: { lat: number; lng: number } | null;
   flat?: boolean;
   hideSubmitFooter?: boolean;
+  specialistComponents?: ReactNode;
 }) {
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const editable = !locked;
@@ -195,14 +199,29 @@ export function InspectorWorkspaceWizard({
 
       {showStep(2) ? (
         <>
+          {specialistComponents ? (
+            <InsCard title="وصف العقار ومكوناته">{specialistComponents}</InsCard>
+          ) : (
           <InsCard title="وصف العقار">
             <InsEditTextarea
+              id="ins-desc"
               label="وصف العقار"
+              hint="نص يصف العقار، أو صورة لتفاصيل المكونات — أحدهما على الأقل"
               value={draft.propertyDescription}
               onChange={(v) => onPatch({ propertyDescription: v })}
               disabled={!editable}
+              invalid={Boolean(fieldErrors.propertyDescription)}
+              errorMessage={fieldErrors.propertyDescription}
+            />
+            <InspectorDescriptionPhoto
+              deedNumber={property.deedNumber}
+              draft={draft}
+              editable={editable}
+              invalid={Boolean(fieldErrors.propertyDescription)}
+              onPatch={onPatch}
             />
           </InsCard>
+          )}
 
           <InspectorWizardComponentsCards
             deedNumber={property.deedNumber}

@@ -355,7 +355,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["جامع"]).toBe("يوجد");
     expect(fill.cells["مرفق تعليمي"]).toBe("يوجد");
     expect(fill.cells["وصف العيوب الإنشائية"]).toContain("تشقق");
-    expect(fill.areaRows[0]?.values[0]).toBe("180");
+    expect(fill.buildDescRows.at(-1)).toEqual({ key: "مجموع مسطحات البناء", values: ["", "180"] });
     expect(fill.cells["مجموع مسطحات البناء"]).toBe("180");
     expect(fill.serviceRows[0]?.values[0]).toBe("متوفر");
     expect(fill.serviceRows[0]?.values[1]).toBe("2");
@@ -685,16 +685,16 @@ describe("valuation report live fill from intake", () => {
     expect(fill.boundaries[0]?.bound).toBe("شارع 20م");
     expect(fill.boundaries[0]?.len).toBe("26");
     expect(fill.cells["مجموع مسطحات البناء"]).toBe("180");
-    expect(fill.areaRows.some((r) => r.key === "الدور الثاني")).toBe(true);
-    expect(fill.buildDescRows.some((r) => r.key === "الدور الثاني")).toBe(true);
+    expect(fill.buildDescRows.find((r) => r.key === "الدور الثاني")?.values[1]).toBe("80");
 
     const dom = new DOMParser().parseFromString(
       `<section data-sec="9">
         <table><tr><td class="k">مساحة الأرض (حسب الصك)</td><td class="v num">1</td></tr></table>
-        <table class="mx">
-          <tr><th>البيان</th><th>م</th></tr>
-          <tr><td class="v">الدور الأرضي</td><td class="num">1</td></tr>
-          <tr class="total"><td class="v">مجموع مسطحات البناء</td><td class="num">400.00</td></tr>
+      </section>
+      <section data-sec="10">
+        <table>
+          <tr><th>الدور</th><th>الوصف والاستخدام</th></tr>
+          <tr><td class="v">الدور الأرضي</td><td class="v">old</td></tr>
         </table>
       </section>
       <section data-sec="2">
@@ -703,9 +703,12 @@ describe("valuation report live fill from intake", () => {
       "text/html",
     );
     applyValuationReportLiveFill(dom, fill);
-    expect(dom.querySelector('[data-sec="9"]')?.textContent).toContain("الدور الثاني");
-    expect(dom.querySelector('[data-sec="9"]')?.textContent).toContain("180");
-    expect(dom.querySelector('[data-sec="9"]')?.textContent).not.toContain("400.00");
+    // §09 is gone; §10 gains the area column and the built-up total.
+    expect(dom.querySelector('[data-sec="9"]')).toBeNull();
+    const components = dom.querySelector('[data-sec="10"]');
+    expect(components?.querySelectorAll("th")[2]?.textContent).toBe("المساحة (م²)");
+    expect(components?.textContent).toContain("الدور الثاني");
+    expect(components?.querySelector("tr.total")?.textContent).toContain("180");
     expect(dom.querySelector('[data-sec="2"] li:last-child')?.textContent).toContain("—");
   });
 
@@ -1497,5 +1500,57 @@ describe("report org texts and frozen template artifacts", () => {
     draft.reportIssueDate = "";
     const undated = buildValuationReportLiveFill({ draft, termsText });
     expect(undated.termsBullets[0]).toBe("صالحة لمدة (90) يومًا من تاريخ التقرير، وأي تغير.");
+  });
+});
+
+describe("«وصف العقار» and «مكونات العقار» from the case specialist", () => {
+  it("prints the specialist's text verbatim and repeats the first floor for repeated floors", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { id: "p1", deedNumber: "1", city: "جدة", district: "الشاطئ" } as never,
+      specialistComponentsText: "  فيلا من دورين وملحق علوي  ",
+      inventoryLines: [
+        { sortOrder: 0, structureKind: "floor", label: "الدور الأول", areaSqm: "180", itemKey: "first_floor" },
+        {
+          sortOrder: 1,
+          structureKind: "floor",
+          label: "الأدوار المتكررة",
+          areaSqm: "",
+          itemKey: "repeated_floors",
+          repeatedFloorCount: 2,
+        },
+      ],
+    });
+    expect(fill.cells["وصف العقار"]).toBe("فيلا من دورين وملحق علوي");
+    expect(fill.propertyDescription).toBe("فيلا من دورين وملحق علوي");
+    expect(fill.buildDescRows.find((r) => r.key === "الأدوار المتكررة")?.values[1]).toBe("360");
+    expect(fill.buildDescRows.at(-1)?.values[1]).toBe("540");
+  });
+});
+
+describe("§10 «مكونات العقار» on land", () => {
+  it("keeps the section when the specialist listed components and shows non-m² quantities", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { propertyType: "أرض", classification: "أرض", deedNumber: "1", city: "جدة" } as never,
+      inspector: { vacantLand: true, featureValues: { assetSubject: "أرض" } } as never,
+      inventoryLines: [
+        { sortOrder: 0, structureKind: "fence", label: "السور", areaSqm: "120", itemKey: "fence", unit: "lm" },
+      ],
+    });
+    expect(fill.isLand).toBe(true);
+    expect(fill.componentsListed).toBe(true);
+    expect(fill.buildDescRows.find((r) => r.key === "السور")?.values[1]).toBe("120 م.ط");
+
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="10"><table><tr><th>الدور</th><th>الوصف</th></tr></table></section>
+       <section data-sec="11">11</section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="10"]')?.textContent).toContain("السور");
+    expect(dom.querySelector('[data-sec="11"]')).toBeNull();
   });
 });

@@ -24,6 +24,8 @@ import {
   INFAZ_UPLOAD_UNRESOLVED_POINTS,
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import type { BuildingInventoryLineDto } from "@platform/api-client";
+import { infathBuildingAreasFromComponents } from "./specialist-components";
 import { fmt } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 
@@ -290,6 +292,8 @@ export function buildInfathUploadModel(input: {
   documentSections: PropertyDetailDocumentSection[];
   /** Court visits + key gate (ops/keys product — not legacy GR package). */
   opsContext?: InfathOpsContext | null;
+  /** The specialist's «جدول المكونات» — source of the building areas. */
+  componentLines?: BuildingInventoryLineDto[] | null;
 }): InfathUploadModel {
   const { record, property, parties, documentSections } = input;
   const ops = input.opsContext ?? null;
@@ -298,6 +302,10 @@ export function buildInfathUploadModel(input: {
   const survey = partyPackageFeedsInfath(parties?.survey ?? null);
   const appraisal = partyPackageFeedsInfath(parties?.appraisal ?? null);
   const specialist = parties?.specialist ?? null;
+  // Building areas: the specialist's components table; the inspector's old fields only as fallback.
+  const componentAreas = infathBuildingAreasFromComponents(input.componentLines ?? []);
+  const areaField = (fromTable: string, label: string) =>
+    fromTable || partyField(inspection, label);
 
   const reportNumber =
     partyField(appraisal, "رقم التقرير") ||
@@ -437,7 +445,7 @@ export function buildInfathUploadModel(input: {
         ),
         sel("facade", L.facade, partyField(inspection, L.facade), "MA", partyField(inspection, L.facade) ? "" : "un"),
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
-        txt("built-area", L.builtArea, partyField(inspection, L.builtArea), "MA", "text", partyField(inspection, L.builtArea) ? "" : "ms"),
+        txt("built-area", L.builtArea, areaField(componentAreas.builtArea, L.builtArea), "MA", "text", areaField(componentAreas.builtArea, L.builtArea) ? "" : "ms"),
         txt("build-license", L.buildLicenseNumber, partyField(inspection, L.buildLicenseNumber), "MA"),
         txt("build-license-date", L.buildLicenseDate, partyField(inspection, L.buildLicenseDate), "MA"),
         sel(
@@ -623,10 +631,10 @@ export function buildInfathUploadModel(input: {
           surveyOrPropertyField(survey, property.westBoundaryLengthM, L.westLength),
           "EN",
         ),
-        txt("floors", L.buildingFloors, partyField(inspection, L.buildingFloors), "MA", "text", partyField(inspection, L.buildingFloors) ? "" : "un"),
-        txt("basement-total", L.basementTotal, partyField(inspection, L.basementTotal), "MA", "text", partyField(inspection, L.basementTotal) ? "" : "un"),
-        txt("annex-total", L.annexTotal, partyField(inspection, L.annexTotal), "MA", "text", partyField(inspection, L.annexTotal) ? "" : "un"),
-        txt("buildings-total", L.buildingsTotal, partyField(inspection, L.buildingsTotal), "MA", "text", partyField(inspection, L.buildingsTotal) ? "" : "un"),
+        txt("floors", L.buildingFloors, areaField(componentAreas.buildingFloors, L.buildingFloors), "MA", "text", areaField(componentAreas.buildingFloors, L.buildingFloors) ? "" : "un"),
+        txt("basement-total", L.basementTotal, areaField(componentAreas.basementTotal, L.basementTotal), "MA", "text", areaField(componentAreas.basementTotal, L.basementTotal) ? "" : "un"),
+        txt("annex-total", L.annexTotal, areaField(componentAreas.annexTotal, L.annexTotal), "MA", "text", areaField(componentAreas.annexTotal, L.annexTotal) ? "" : "un"),
+        txt("buildings-total", L.buildingsTotal, areaField(componentAreas.buildingsTotal, L.buildingsTotal), "MA", "text", areaField(componentAreas.buildingsTotal, L.buildingsTotal) ? "" : "un"),
       ],
       areas: [],
     },

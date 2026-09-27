@@ -43,7 +43,7 @@ import {
   rebuildDirectCostSheet,
   rebuildIndirectCostSheet,
   rebuildReconSheet,
-  rebuildTwoColSheet,
+  rebuildComponentsSheet,
   scrubFrozenDates,
   syncNumberedRows,
 } from "./valuation-report-live-fill-dom";
@@ -174,26 +174,6 @@ function removeEmptyOptionalPairs(dom: Document, fill: ValuationReportLiveFill) 
   if (labels.size) removeLabeledPairs(dom, labels);
 }
 
-function keepLandAreaOnly(dom: Document) {
-  const areaSection = dom.querySelector('[data-sec="9"]');
-  if (!areaSection) return;
-  areaSection.querySelectorAll("table").forEach((table) => {
-    const landRows = [...table.querySelectorAll("tr")].filter((row) =>
-      [...row.querySelectorAll("td.k")].some((cell) =>
-        normLabel(cell.textContent ?? "").startsWith("مساحة الأرض"),
-      ),
-    );
-    if (landRows.length === 0) {
-      table.remove();
-      return;
-    }
-    const keep = new Set(landRows);
-    table.querySelectorAll("tr").forEach((row) => {
-      if (!keep.has(row)) row.remove();
-    });
-  });
-}
-
 function removeFacadeColumn(dom: Document) {
   const bounds = dom.querySelector('[data-sec="8"]');
   if (!bounds) return;
@@ -212,6 +192,9 @@ function removeFacadeColumn(dom: Document) {
 }
 
 function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill) {
+  // §09 «تفاصيل المساحات» is no longer printed; its areas and the built-up total moved
+  // into §10 «مكونات العقار». Dropped here too so older stored templates follow suit.
+  removeSections(dom, ["9"]);
   if (!fill.costApproachEnabled) {
     removeSections(dom, ["20", "21", "22", "23"]);
   } else if (fill.costBuildingOnly) {
@@ -220,7 +203,8 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
 
   if (!fill.isLand) return;
   // Building-only sections — vacant land has no on-site meters/utilities table either.
-  removeSections(dom, ["10", "11", "12", "13", "14"]);
+  // §10 «مكونات العقار» stays when the specialist listed components (a fence, a room…).
+  removeSections(dom, fill.componentsListed ? ["11", "12", "13", "14"] : ["10", "11", "12", "13", "14"]);
   removeLabeledPairs(
     dom,
     new Set([
@@ -245,7 +229,6 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
       "تشطيب الواجهة الغربية",
     ]),
   );
-  keepLandAreaOnly(dom);
   removeFacadeColumn(dom);
 }
 
@@ -315,11 +298,9 @@ export function applyValuationReportLiveFill(
   const bounds = dom.querySelector('[data-sec="8"]');
   if (bounds) fillBoundaries(bounds, fill.boundaries);
 
-  const areas = dom.querySelector('[data-sec="9"]');
-  if (areas && !fill.isLand) rebuildTwoColSheet(areas, fill.areaRows, "num");
 
   const build = dom.querySelector('[data-sec="10"]');
-  if (build) rebuildTwoColSheet(build, fill.buildDescRows, "v");
+  if (build) rebuildComponentsSheet(build, fill.buildDescRows);
 
   const defectsSec = dom.querySelector('[data-sec="13"]');
   if (defectsSec) {

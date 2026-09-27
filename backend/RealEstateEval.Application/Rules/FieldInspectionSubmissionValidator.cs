@@ -13,6 +13,9 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class FieldInspectionSubmissionValidator
 {
+    /// <summary>`featurePhotoAttachments` slot of the «وصف العقار» alternative photo.</summary>
+    public const string PropertyDescriptionPhotoKey = "propertyDescription";
+
     private const double SaudiLatMin = 16;
     private const double SaudiLatMax = 33;
     private const double SaudiLngMin = 34;
@@ -76,6 +79,11 @@ public static class FieldInspectionSubmissionValidator
 
         if (RequiresOccupancyDescription(root))
             errors["occupancyDescription"] = "سبب الإشغال مطلوب عند اختيار «مشغول»";
+
+        // «وصف العقار»: a written description or a photo of the components' details — at least one.
+        if (string.IsNullOrWhiteSpace(ReadString(root, "propertyDescription"))
+            && !HasBoundAttachment(GetObject(root, "featurePhotoAttachments"), PropertyDescriptionPhotoKey))
+            errors["propertyDescription"] = "أدخل وصف العقار أو أرفق صورة لتفاصيل المكونات";
 
         var photoIssues = ListPhotoValidationIssues(root);
         foreach (var issue in photoIssues)

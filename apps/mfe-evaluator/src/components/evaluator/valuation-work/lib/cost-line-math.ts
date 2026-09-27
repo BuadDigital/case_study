@@ -1,4 +1,5 @@
 import type { ValuationCostLineDto } from "@platform/api-client";
+import { COST_GROUP1_KEYS } from "@platform/app-shared/domain/cost-items";
 
 export const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "design_supervision", label: "التصميم والإشراف الهندسي" },
@@ -9,44 +10,12 @@ export const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "developer_profit", label: "أرباح المطور والمخاطرة" },
 ];
 
-export const COST_ITEM_OPTIONS: { key: string; label: string; unit: string }[] = [
-  { key: "basement", label: "القبو", unit: "sqm" },
-  { key: "ground_floor", label: "الدور الأرضي", unit: "sqm" },
-  { key: "first_floor", label: "الدور الأول", unit: "sqm" },
-  { key: "repeated_floors", label: "الأدوار المتكررة", unit: "sqm" },
-  { key: "upper_annex", label: "الملحق العلوي", unit: "sqm" },
-  { key: "lower_annex", label: "الملحق الأرضي", unit: "sqm" },
-  { key: "apartment_area", label: "مساحة الشقة", unit: "sqm" },
-  { key: "shared_portion", label: "حصة المشترك من المبنى", unit: "sqm" },
-  { key: "parking", label: "المواقف", unit: "count" },
-  { key: "fence", label: "السور", unit: "lm" },
-  { key: "pool", label: "المسبح", unit: "lump" },
-  { key: "central_ac", label: "التكييف المركزي", unit: "lump" },
-  { key: "elevator", label: "المصعد", unit: "count" },
-  { key: "landscaping", label: "تشجير وتنسيق الموقع", unit: "lump" },
-  { key: "tanks_pumps", label: "خزانات ومضخات", unit: "lump" },
-  { key: "electromechanical", label: "أعمال كهروميكانيكية", unit: "lump" },
-  { key: "custom", label: "بند مخصص", unit: "sqm" },
-];
-
-export const COST_UNIT_OPTIONS = [
-  { key: "sqm", label: "م²" },
-  { key: "lm", label: "م.ط" },
-  { key: "count", label: "عدد" },
-  { key: "lump", label: "مقطوع" },
-];
-
-/** Group 1 — building floor areas (accepts built-up ratio; included in building areas). */
-export const COST_GROUP1_KEYS = new Set([
-  "basement",
-  "ground_floor",
-  "first_floor",
-  "repeated_floors",
-  "upper_annex",
-  "lower_annex",
-  "apartment_area",
-  "shared_portion",
-]);
+// The item catalog is shared with the case specialist's «جدول المكونات».
+export {
+  COST_GROUP1_KEYS,
+  COST_ITEM_OPTIONS,
+  COST_UNIT_OPTIONS,
+} from "@platform/app-shared/domain/cost-items";
 
 export function costGroupOf(line: ValuationCostLineDto): "area" | "extra" {
   // Custom line inherits its group from structureKind (floor = areas) — as in the interactive form.

@@ -17,20 +17,39 @@ import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
+import { InspectorDescriptionPhoto } from "./InspectorDescriptionPhoto";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorDescriptionCard({
   activeStep,
+  deedNumber,
   draft,
+  fieldErrors,
   layout,
   locked,
   mobile,
   persist,
-}: Pick<FieldInspectionWorkflow, "activeStep" | "locked" | "persist"> & {
+}: Pick<FieldInspectionWorkflow, "activeStep" | "fieldErrors" | "locked" | "persist"> & {
+  deedNumber: string;
   draft: InspectorWorkspaceDraft;
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
+  const descError = fieldErrors.propertyDescription;
+  const descPhoto = (
+    <>
+      <InspectorDescriptionPhoto
+        deedNumber={deedNumber}
+        draft={draft}
+        editable={!locked}
+        invalid={Boolean(descError)}
+        onPatch={persist}
+      />
+      {descError ? (
+        <p className="mt-1 text-[11px] text-danger-text">{descError}</p>
+      ) : null}
+    </>
+  );
   return (
     <InspectorCard
       title="الوصف والملاحظات"
@@ -55,6 +74,7 @@ export function InspectorDescriptionCard({
               }
               className={cn(mobileControlClassName, "min-h-[88px] resize-y")}
             />
+            {descPhoto}
           </div>
         </div>
       ) : (
@@ -66,6 +86,7 @@ export function InspectorDescriptionCard({
             value={draft.propertyDescription}
             onChange={(v) => persist({ propertyDescription: v })}
           />
+          {descPhoto}
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label

@@ -25,6 +25,8 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
+import { getBuildingInventory, type BuildingInventoryLineDto } from "@platform/api-client";
+import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
@@ -110,6 +112,20 @@ export function usePropertyDetailEnfathUploadWorkflow({
     };
   }, [primaryCourtVisit, keyGate, depositDraft, parties]);
 
+  // Building areas come from the specialist's «جدول المكونات» (the inspector no longer enters them).
+  const [componentLines, setComponentLines] = useState<BuildingInventoryLineDto[] | null>(null);
+  useEffect(() => {
+    const config = workOrdersApiConfig();
+    if (!config || !poNumber || !property.id) return;
+    let cancelled = false;
+    void getBuildingInventory(config, poNumber, property.id).then((res) => {
+      if (!cancelled && res.ok) setComponentLines(res.data.lines);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [poNumber, property.id]);
+
   const model = useMemo(
     () =>
       buildInfathUploadModel({
@@ -118,8 +134,9 @@ export function usePropertyDetailEnfathUploadWorkflow({
         parties: parties ?? null,
         documentSections,
         opsContext,
+        componentLines,
       }),
-    [record, property, parties, documentSections, opsContext],
+    [record, property, parties, documentSections, opsContext, componentLines],
   );
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(

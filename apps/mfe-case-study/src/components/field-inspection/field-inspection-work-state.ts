@@ -34,13 +34,6 @@ export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection
   freePhotos: "photos",
 };
 
-export const INSPECTOR_BUILDING_AREA_INPUTS = [
-  ["builtArea", "مساحة البناء (م²)"],
-  ["buildingFloors", "عدد أدوار المباني"],
-  ["basementTotal", "إجمالي مساحة القبو (م²)"],
-  ["annexTotal", "إجمالي مساحة الملاحق (م²)"],
-] as const;
-
 export type InspectorErrorLink = {
   key: string;
   message: string;

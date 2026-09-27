@@ -215,6 +215,7 @@ export function FieldInspectionWorkBody({
 
         <InspectorDescriptionCard
           {...workflow}
+          deedNumber={property?.deedNumber ?? ""}
           draft={draft}
           layout={layout}
           mobile={mobile}

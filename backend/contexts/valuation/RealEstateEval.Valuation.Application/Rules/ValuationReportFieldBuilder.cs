@@ -191,14 +191,19 @@ public static class ValuationReportFieldBuilder
                     "لا" => "لا يوجد منقولات بالعقار",
                     _ => null,
                 };
-                d["inventorySummary"] = hasStructures && prop?.BuildingInventoryLines is { Count: > 0 } inv
+                // Listed components print whether or not the appraiser values them.
+                d["inventorySummary"] = prop?.BuildingInventoryLines is { Count: > 0 } inv
                     ? string.Join(
                         " · ",
                         inv.OrderBy(l => l.SortOrder)
                             .Where(l => CostApproachRules.TryParseArea(l.AreaSqm, out var a) && a > 0m)
                             .Select(l => $"{l.Label}: {l.AreaSqm} م²"))
                     : null;
-                d["propertyDescription"] = inspector.PropertyDescription;
+                // «وصف العقار» = the specialist's «مكونات العقار»; the inspector's own text only
+                // for transactions finished before the specialist wrote one.
+                d["propertyDescription"] = string.IsNullOrWhiteSpace(prop?.SpecialistComponentsText)
+                    ? inspector.PropertyDescription
+                    : prop.SpecialistComponentsText.Trim();
                 d["roomCount"] = inspector.RoomCount;
                 d["hallCount"] = inspector.HallCount;
                 d["bathroomCount"] = inspector.BathroomCount;

@@ -20,11 +20,27 @@ import {
   specialistFinishingLevelMissingMessage,
 } from "../../lib/app-data/valuation-report-specialist-finishing";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import { getBuildingInventory } from "@platform/api-client";
+import { specialistComponentsMissing } from "../../lib/app-data/specialist-components";
+import { isLandInspectionContext } from "../../lib/app-data/inspector-workspace-data";
+import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import type { IdempotentActionResult } from "@platform/app-shared";
 
 type InspectionSubmitResult =
   | { ok: true; draft: InspectorWorkspaceDraft; queued?: boolean }
   | { ok: false; message: string; errors?: Record<string, string> };
+
+/** Null when «مكونات العقار» is complete (or cannot be read — the server gate still applies). */
+async function specialistComponentsMissingFor(
+  poNumber: string,
+  propertyId: string,
+  isLand: boolean,
+): Promise<string | null> {
+  const config = workOrdersApiConfig();
+  if (!config || !poNumber || !propertyId) return null;
+  const res = await getBuildingInventory(config, poNumber, propertyId);
+  return res.ok ? specialistComponentsMissing(res.data, isLand) : null;
+}
 
 export async function submitPropertyDetailInspection(input: {
   inspectionTask: WorkflowTask;
@@ -80,6 +96,26 @@ export async function submitPropertyDetailInspection(input: {
         notifySpecialistFinishingRequired(property.id);
         setFormError(finishingError);
         showToast(finishingError, "error");
+        return;
+      }
+      // «مكونات العقار» (report text + components table) before accepting — the server
+      // enforces the same rule (SpecialistComponentsRules).
+      const componentsError = await specialistComponentsMissingFor(
+        inspectionTask.poNumber,
+        property.id,
+        isLandInspectionContext({
+          vacantLand: draft.vacantLand,
+          assetSubject: draft.featureValues.assetSubject,
+          classification: property.classification,
+          propertyType: property.propertyType,
+        }),
+      );
+      if (componentsError) {
+        setFormError(componentsError);
+        showToast(componentsError, "error");
+        document
+          .getElementById("specialist-components")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
     }

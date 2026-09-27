@@ -13,6 +13,21 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_requires_property_description_text_or_components_photo()
+    {
+        var noText = MinimalValidPayload()
+            .Replace("\"propertyDescription\": \"فيلا سكنية من دورين\"", "\"propertyDescription\": \"  \"");
+        using (var doc = JsonDocument.Parse(noText))
+            Assert.Contains("propertyDescription", FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
+
+        var photoOnly = noText.Replace(
+            "\"featurePhotoAttachments\": {}",
+            "\"featurePhotoAttachments\": { \"propertyDescription\": { \"fileName\": \"desc.jpg\", \"mimeType\": \"image/jpeg\", \"attachmentId\": \"11111111-1111-1111-1111-111111111111\" } }");
+        using (var doc = JsonDocument.Parse(photoOnly))
+            Assert.DoesNotContain("propertyDescription", FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
+    }
+
+    [Fact]
     public void Validate_rejects_missing_core_fields()
     {
         using var doc = JsonDocument.Parse("{}");
@@ -345,6 +360,7 @@ public class FieldInspectionSubmissionValidatorTests
     private static string MinimalValidPayload() =>
         $$"""
         {
+          "propertyDescription": "فيلا سكنية من دورين",
           "inspectionDate": "2026-06-21",
           "inspectionTime": "10:30",
           "mapLatitude": "21.481000",

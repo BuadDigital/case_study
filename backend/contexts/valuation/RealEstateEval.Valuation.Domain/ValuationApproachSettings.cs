@@ -83,24 +83,40 @@ public static class CostBasisKeys
 }
 
 /// <summary>
-/// Cost valuation scope (interactive model spec): "land and building" requires land via comparables;
-/// "building only" hides the land section; approach indicator = replacement cost less depreciation.
+/// Valuation scope, chosen by the appraiser: land only, buildings only, or land with buildings.
+/// The specialist always lists the components (they print either way); the scope decides whether
+/// they are valued. "Land only" = no cost approach (e.g. a derelict villa valued as land);
+/// "buildings only" hides the cost land section; "land and building" values both.
 /// </summary>
 public static class CostScopeKeys
 {
     public const string LandAndBuilding = "land_and_building";
     public const string BuildingOnly = "building_only";
+    public const string LandOnly = "land_only";
 
     public static bool IsKnown(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() is LandAndBuilding or BuildingOnly;
+        (value ?? "").Trim().ToLowerInvariant() is LandAndBuilding or BuildingOnly or LandOnly;
 
-    public static string Normalize(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() == BuildingOnly ? BuildingOnly : LandAndBuilding;
+    public static string Normalize(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
+    {
+        BuildingOnly => BuildingOnly,
+        LandOnly => LandOnly,
+        _ => LandAndBuilding,
+    };
 
-    public static string LabelAr(string? value) =>
-        Normalize(value) == BuildingOnly ? "مبنى فقط" : "أرض ومبنى";
+    public static string LabelAr(string? value) => Normalize(value) switch
+    {
+        BuildingOnly => "مباني فقط",
+        LandOnly => "أرض فقط",
+        _ => "أرض مع المباني",
+    };
 
     public static bool IsBuildingOnly(string? value) => Normalize(value) == BuildingOnly;
+
+    public static bool IsLandOnly(string? value) => Normalize(value) == LandOnly;
+
+    /// <summary>The listed components take part in the valuation (not «أرض فقط»).</summary>
+    public static bool IncludesBuildings(string? value) => Normalize(value) != LandOnly;
 }
 
 /// <summary>Cost measurement unit (B-2 §10 field).</summary>
@@ -214,11 +230,33 @@ public static class ValuationApproachSettingsRules
     }
 
  /// <summary>
- /// The inspector-confirmed land type disables the building cost approach.
- /// Residual structure rows may remain stored but never participate in valuation.
+ /// Buildings can be valued by cost when the property is not land, or when land carries listed
+ /// components (a fence, a room). <paramref name="hasStructuresToValue"/> = the specialist listed
+ /// at least one component.
  /// </summary>
     public static bool CanEnableCostApproach(string? propertyType, bool hasStructuresToValue) =>
-        !IsLandPropertyType(propertyType);
+        hasStructuresToValue || !IsLandPropertyType(propertyType);
+
+ /// <summary>Cost applies = buildings can be valued AND the appraiser's scope includes them.</summary>
+    public static bool CostApproachApplies(
+        string? propertyType,
+        bool hasStructuresToValue,
+        string? costScopeKey) =>
+        CostScopeKeys.IncludesBuildings(costScopeKey)
+        && CanEnableCostApproach(propertyType, hasStructuresToValue);
+
+ /// <summary>
+ /// Buildings take part in the valuation: components were listed and the scope is not «أرض فقط».
+ /// Drives the building facts, narrative, photo budget and alerts in place of the raw flag.
+ /// </summary>
+    public static bool BuildingsValued(bool hasStructuresToValue, string? costScopeKey) =>
+        hasStructuresToValue && CostScopeKeys.IncludesBuildings(costScopeKey);
+
+ /// <summary>Default scope: land only for land without listed components, else land with buildings.</summary>
+    public static string DefaultScope(string? propertyType, bool hasStructuresToValue) =>
+        CanEnableCostApproach(propertyType, hasStructuresToValue)
+            ? CostScopeKeys.LandAndBuilding
+            : CostScopeKeys.LandOnly;
 
  /// <summary>Defaults when no row was saved yet: both current approaches on, except cost for land.</summary>
     public static ValuationApproachSettings Defaults(
@@ -232,7 +270,7 @@ public static class ValuationApproachSettingsRules
         CostApproachEnabled = CanEnableCostApproach(propertyType, hasStructuresToValue),
         IncomeApproachEnabled = false,
         CostBasisKey = CostBasisKeys.Replacement,
-        CostScopeKey = CostScopeKeys.LandAndBuilding,
+        CostScopeKey = DefaultScope(propertyType, hasStructuresToValue),
         CostMeasurementUnitKey = CostMeasurementUnitKeys.ComparisonUnit,
         AdjustmentsEditUnlocked = true,
     };
@@ -293,14 +331,22 @@ public static class ValuationApproachSettingsRules
         if (incomeEnabled)
             errors["incomeApproachEnabled"] = "أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً";
 
-        if (costEnabled && !CanEnableCostApproach(propertyType, hasStructuresToValue))
+        if (costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
+            errors["costScopeKey"] = "نطاق التقييم غير معروف (أرض فقط / مباني فقط / أرض مع المباني)";
+        else if (CostScopeKeys.IncludesBuildings(costScopeKey)
+                 && costScopeKey is not null
+                 && !CanEnableCostApproach(propertyType, hasStructuresToValue))
+            errors["costScopeKey"] = "لا توجد مكونات محصورة لتقييم المباني — اختر «أرض فقط» أو اطلب من الأخصائي حصرها";
+        else if (CostScopeKeys.IsBuildingOnly(costScopeKey) && !costEnabled)
+            errors["costApproachEnabled"] = "«مباني فقط» تُقيَّم بأسلوب التكلفة — فعّله";
+
+        if (costEnabled && CostScopeKeys.IsLandOnly(costScopeKey))
+            errors["costApproachEnabled"] = "نطاق «أرض فقط» لا يُقيَّم بالتكلفة — ألغِ أسلوب التكلفة أو غيّر النطاق";
+        else if (costEnabled && !CanEnableCostApproach(propertyType, hasStructuresToValue))
             errors["costApproachEnabled"] = "ق-3: أرض بلا إنشاءات لا تُقيَّم بالتكلفة — أسلوب التكلفة لا ينطبق";
 
         if (costEnabled && costBasisKey is not null && !CostBasisKeys.IsKnown(costBasisKey))
             errors["costBasisKey"] = "أساس التكلفة غير معروف";
-
-        if (costEnabled && costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
-            errors["costScopeKey"] = "نطاق التقييم بالتكلفة غير معروف (أرض ومبنى / مبنى فقط)";
 
         if (costEnabled
             && costMeasurementUnitKey is not null

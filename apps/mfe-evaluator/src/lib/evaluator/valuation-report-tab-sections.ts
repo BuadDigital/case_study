@@ -247,58 +247,19 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
     ],
   },
   {
-    n: "09",
-    title: "تفاصيل المساحات",
-    fields: [
-      { id: "land-area", label: "مساحة الأرض (حسب الصك)", span: 2 },
-    ],
-    tables: [
-      {
-        columns: ["البيان — الحصر الميداني", "المساحة (م²)"],
-        rows: [
-          {
-            cells: [
-              { text: "الدور الأرضي" },
-              { keys: ["cost_line.7090"] },
-            ],
-          },
-          {
-            cells: [{ text: "الدور الأول" }, { keys: ["cost_line.7150"] }],
-          },
-          {
-            cells: [{ text: "الملحق العلوي" }, { keys: ["cost_line.7240"] }],
-          },
-          {
-            cells: [{ text: "الملحق الأرضي" }, { keys: ["cost_line.7210"] }],
-          },
-          {
-            cells: [
-              { text: "القبو" },
-              { keys: ["cost_line.7060"] },
-            ],
-          },
-          {
-            cells: [
-              { text: "إجمالي الملاحق" },
-              { keys: ["inventory.7270"] },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
     n: "10",
     title: "مكونات العقار",
     hint: "وصف الأدوار من الحصر الميداني — يظهر للمقيم ولا يُعاد إدخاله.",
     tables: [
       {
-        columns: ["الدور", "الوصف والاستخدام"],
+        columns: ["الدور", "الوصف والاستخدام", "المساحة (م²)"],
         rows: [
-          { cells: [{ text: "الدور الأرضي" }, { text: "" }] },
-          { cells: [{ text: "الدور الأول" }, { text: "" }] },
-          { cells: [{ text: "الملحق العلوي" }, { text: "" }] },
-          { cells: [{ text: "الملحق الأرضي" }, { text: "" }] },
+          { cells: [{ text: "الدور الأرضي" }, { text: "" }, { keys: ["cost_line.7090"] }] },
+          { cells: [{ text: "الدور الأول" }, { text: "" }, { keys: ["cost_line.7150"] }] },
+          { cells: [{ text: "الملحق العلوي" }, { text: "" }, { keys: ["cost_line.7240"] }] },
+          { cells: [{ text: "الملحق الأرضي" }, { text: "" }, { keys: ["cost_line.7210"] }] },
+          { cells: [{ text: "القبو" }, { text: "" }, { keys: ["cost_line.7060"] }] },
+          { cells: [{ text: "مجموع مسطحات البناء" }, { text: "" }, { text: "" }] },
         ],
       },
     ],

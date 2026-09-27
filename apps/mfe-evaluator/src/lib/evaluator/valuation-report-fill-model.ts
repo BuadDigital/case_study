@@ -158,23 +158,6 @@ export function ownershipTypeDisplay(value: string | null | undefined): string {
   return OWNERSHIP_LABELS[t] ?? t;
 }
 
-function extraInventoryAreaRows(
-  lines: { structureKind?: string; label?: string; areaSqm?: string | null }[] | null | undefined,
-  base: Array<{ key: string; values: string[] }>,
-): Array<{ key: string; values: string[] }> {
-  const known = new Set(base.map((r) => normLabel(r.key)));
-  const extra: Array<{ key: string; values: string[] }> = [];
-  for (const line of lines ?? []) {
-    const kind = (line.structureKind ?? "").trim().toLowerCase();
-    if (kind !== "floor" && kind !== "annex" && kind !== "basement") continue;
-    const lab = (line.label ?? "").trim();
-    if (!lab || known.has(normLabel(lab))) continue;
-    extra.push({ key: lab, values: [dashSheet(line.areaSqm)] });
-    known.add(normLabel(lab));
-  }
-  return [...base, ...extra];
-}
-
 function pickLength(
   survey: string | null | undefined,
   property: string | null | undefined,
@@ -182,6 +165,17 @@ function pickLength(
   const s = (survey ?? "").trim();
   if (s) return s;
   return (property ?? "").trim();
+}
+
+/**
+ * «وصف العقار»: the case specialist's «مكونات العقار» as written; the inspector's accepted text
+ * only for transactions finished before the specialist wrote one.
+ */
+function reportPropertyDescription(
+  specialistText: string | null | undefined,
+  inspector: InspectorWorkspaceDraft | null | undefined,
+): string {
+  return (specialistText ?? "").trim() || reportInspectorPropertyDescription(inspector);
 }
 
 function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean {
@@ -356,8 +350,9 @@ export type ValuationReportLiveFill = {
   }>;
   /** §8 — the engineering survey supplies boundaries when a survey task exists, else intake. */
   boundariesSource?: "survey" | "intake";
-  areaRows: Array<{ key: string; values: string[] }>;
   buildDescRows: Array<{ key: string; values: string[] }>;
+  /** The specialist listed at least one component — §10 prints even on land. */
+  componentsListed: boolean;
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
   /** Appendix (A) — land_within_cost comps only. */
@@ -450,6 +445,8 @@ export function buildValuationReportLiveFill(input: {
   property?: PoPropertyIntake | null;
   inspector?: InspectorWorkspaceDraft | null;
   inventoryLines?: BuildingInventoryLineDto[] | null;
+  /** «مكونات العقار» by the case specialist — printed verbatim as «وصف العقار». */
+  specialistComponentsText?: string | null;
   market?: ValuationComparableSelectionListDto | null;
   /** Independent vacant-land comps for cost approach (appendix). */
   landMarket?: ValuationComparableSelectionListDto | null;
@@ -644,7 +641,7 @@ export function buildValuationReportLiveFill(input: {
     "قيمة العقار": dash(price ? formatAmountNumberDisplay(price) : ""),
     "نسبة خصم التصفية المنظمة": "—",
     "مبرر معامل التصفية": "—",
-    "وصف العقار": dash(reportInspectorPropertyDescription(inspector)),
+    "وصف العقار": dash(reportPropertyDescription(input.specialistComponentsText, inspector)),
   };
 
   const areas = areasFromInventory(input.inventoryLines, inspector);
@@ -1118,20 +1115,16 @@ export function buildValuationReportLiveFill(input: {
         face: sideFacadeType(inspector, property, "west"),
       },
     ],
-    areaRows: extraInventoryAreaRows(input.inventoryLines, [
-      { key: "الدور الأرضي", values: [dashSheet(areas.ground)] },
-      { key: "الدور الأول", values: [dashSheet(areas.first)] },
-      { key: "الملحق العلوي", values: [dashSheet(areas.annex)] },
-      { key: "الملحق الأرضي", values: [dashSheet(areas.annexGround)] },
-      { key: "ملحق أرضي", values: [dashSheet(areas.annexGround)] },
-      { key: "القبو", values: [dashSheet(areas.basement)] },
-      { key: "إجمالي الملاحق", values: [dashSheet(areas.annexTotal)] },
-      { key: "مجموع مسطحات البناء", values: [dashSheet(areas.builtUpTotal)] },
-    ]),
-    buildDescRows: areas.descriptions.map((r) => ({
-      key: r.key,
-      values: r.values.map((v) => dashSheet(v)),
-    })),
+    componentsListed: (input.inventoryLines ?? []).length > 0,
+    // §10 «مكونات العقار»: description + area per listed component, then the built-up total.
+    // (§09 «تفاصيل المساحات» was dropped from the report.)
+    buildDescRows: [
+      ...areas.descriptions.map((r) => ({
+        key: r.key,
+        values: r.values.map((v) => dashSheet(v)),
+      })),
+      { key: "مجموع مسطحات البناء", values: ["", dashSheet(areas.builtUpTotal)] },
+    ],
     serviceRows: [
       {
         key: "كهرباء",
@@ -1224,7 +1217,7 @@ export function buildValuationReportLiveFill(input: {
     isLiquidation,
     liquidationDiscountOn: liqOn,
     isLand,
-    propertyDescription: reportInspectorPropertyDescription(inspector),
+    propertyDescription: reportPropertyDescription(input.specialistComponentsText, inspector),
     reportWorkers: draft.reportWorkers ?? [],
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
     assignedAppraiserId: (input.assignedAppraiserId ?? "").trim(),

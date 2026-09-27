@@ -38,6 +38,18 @@ public partial class PartyTaskSubmissionService
         var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
+        // The specialist turns the inspector's description into «مكونات العقار» (report text
+        // + components table) before accepting the inspection.
+        if (!alreadyAccepted
+            && task.Kind == WorkflowTaskKind.FieldInspection
+            && task.PropertyId is Guid gatePropertyId)
+        {
+            var gateProperty = await _repo.GetPropertyWithInventoryAsync(gatePropertyId, cancellationToken);
+            var missing = gateProperty is null ? null : SpecialistComponentsRules.MissingForAcceptance(gateProperty);
+            if (missing is not null)
+                return (null, new Dictionary<string, string> { ["componentsText"] = missing });
+        }
+
         InspectorFeeRowDto? accruedFee = null;
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
         {

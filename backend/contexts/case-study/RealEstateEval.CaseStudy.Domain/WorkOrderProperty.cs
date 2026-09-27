@@ -149,6 +149,12 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>Are there buildings/structures to value? yes | no | ""</summary>
     public string HasStructuresToValue { get; set; } = "";
 
+ /// <summary>
+ /// «مكونات العقار» as the case specialist wrote it for the report, from the inspector's
+ /// description text or photo. The inspector's own text stays untouched in the payload.
+ /// </summary>
+    public string? SpecialistComponentsText { get; set; }
+
  // Inspection Limitations (Decision 24 + Q-7) — Construction Question Pattern: Columns on property.
  /// <summary>Inspection Scope: full | external | desktop | “(Not captured).</summary>
     public string InspectionScopeKey { get; set; } = "";

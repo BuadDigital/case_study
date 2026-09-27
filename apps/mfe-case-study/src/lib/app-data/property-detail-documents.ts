@@ -25,6 +25,7 @@ import {
   listServiceAmenityPhotoSlots,
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
+  PROPERTY_DESCRIPTION_PHOTO_KEY,
 } from "./inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
 
@@ -49,6 +50,7 @@ const COMPONENT_PHOTO_LABEL_BY_KEY: Record<string, string> = {
 
 /** Arabic label for inspector feature photo keys (never show camelCase keys in UI). */
 export function inspectorFeaturePhotoLabel(key: string): string {
+  if (key === PROPERTY_DESCRIPTION_PHOTO_KEY) return "وصف العقار — تفاصيل المكونات";
   const known = FEATURE_FIELD_LABEL_BY_KEY[key]?.trim();
   if (known) return known;
   return key.trim() || "حقل";

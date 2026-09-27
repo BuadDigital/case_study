@@ -17,7 +17,6 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
-import { INFATH_FIELD_LABELS } from "../../lib/app-data/infath-field-labels";
 import { inspectorBoolPillClass } from "./inspector-wizard-state";
 import { InspectorComponentBoolPills } from "./InspectorComponentBoolPills";
 
@@ -189,39 +188,9 @@ export function InspectorWizardComponentsCards({
       ) : null}
 
       {!isLand ? (
-        <InsCard title="مساحات المباني">
+        // Building areas are the case specialist's («مكونات العقار») — only the licence stays here.
+        <InsCard title="رخصة البناء">
           <InsFieldsGrid min={140} centered>
-            <InsEditField
-              label="مساحة البناء (م²)"
-              value={draft.builtArea}
-              ltr
-              onChange={(v) => editable && onPatch({ builtArea: v })}
-            disabled={!editable} />
-            <InsEditField
-              label="عدد أدوار المباني"
-              value={draft.buildingFloors}
-              ltr
-              onChange={(v) => editable && onPatch({ buildingFloors: v })}
-            disabled={!editable} />
-            <InsEditField
-              label="إجمالي مساحة القبو (م²)"
-              value={draft.basementTotal}
-              ltr
-              onChange={(v) => editable && onPatch({ basementTotal: v })}
-            disabled={!editable} />
-            <InsEditField
-              label="إجمالي مساحة الملاحق (م²)"
-              value={draft.annexTotal}
-              ltr
-              onChange={(v) => editable && onPatch({ annexTotal: v })}
-            disabled={!editable} />
-            <InsEditField
-              label={INFATH_FIELD_LABELS.buildingsTotal}
-              value={draft.buildingsTotal}
-              ltr
-              disabled
-              onChange={() => {}}
-            />
             <InsEditField
               label="رقم رخصة البناء"
               value={draft.buildLicenseNumber}

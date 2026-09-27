@@ -205,10 +205,9 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             WestFacadeFinishing = property.WestFacadeFinishing,
             FinishingType = property.FinishingType,
             FinishingStructure = property.FinishingStructure,
-            HasStructuresToValue =
-                InspectedPropertyTypeRules.IsLand(property.InspectedPropertyType)
-                    ? HasStructuresToValueValues.No
-                    : property.HasStructuresToValue,
+            // «يوجد مكونات محصورة» — land may have some (fence, room); the appraiser's scope decides.
+            HasStructuresToValue = property.HasStructuresToValue,
+            SpecialistComponentsText = property.SpecialistComponentsText,
             InspectionScopeKey = property.InspectionScopeKey,
             InspectionRestrictionReason = property.InspectionRestrictionReason,
             UninspectedUnitsJson = property.UninspectedUnitsJson,
@@ -221,6 +220,11 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                     StructureKind = line.StructureKind,
                     Label = line.Label,
                     AreaSqm = line.AreaSqm,
+                    Notes = line.Notes,
+                    ItemKey = line.ItemKey,
+                    Unit = line.Unit,
+                    BuildRatioPct = line.BuildRatioPct,
+                    RepeatedFloorCount = line.RepeatedFloorCount,
                 })
                 .ToList(),
             LatestWorkspace = workspace is null

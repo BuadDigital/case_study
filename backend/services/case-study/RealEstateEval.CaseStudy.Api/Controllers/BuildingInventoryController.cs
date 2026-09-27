@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Contracts;
@@ -43,12 +44,18 @@ public class BuildingInventoryController : ControllerBase
         [FromBody] SaveBuildingInventoryRequest request,
         CancellationToken cancellationToken)
     {
+        // «مكونات العقار» (text + table) belongs to the case specialist and staff above —
+        // the field inspector only sends a description text or photo.
+        var actor = await ResolveActorAsync(cancellationToken);
+        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return Forbid();
+
         var (result, errors) = await _inventory.SaveAsync(
             poNumber,
             propertyId,
             request,
             cancellationToken,
-            await ResolveActorAsync(cancellationToken));
+            actor);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
         return Ok(result);

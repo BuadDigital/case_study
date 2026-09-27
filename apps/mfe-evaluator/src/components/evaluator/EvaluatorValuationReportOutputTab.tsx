@@ -118,6 +118,7 @@ export function EvaluatorValuationReportOutputTab({
   // (rerender-derived-state-no-effect).
   const inspector = outputBundle?.inspector ?? null;
   const inventoryLines = outputBundle?.inventoryLines ?? EMPTY_INVENTORY_LINES;
+  const specialistComponentsText = outputBundle?.componentsText ?? "";
   const market = outputBundle?.approaches?.market ?? null;
   const landMarket = outputBundle?.approaches?.landMarket ?? null;
   const cost = outputBundle?.approaches?.cost ?? null;
@@ -199,6 +200,7 @@ export function EvaluatorValuationReportOutputTab({
           property,
           inspector,
           inventoryLines,
+          specialistComponentsText,
           market,
           landMarket,
           cost,
@@ -281,6 +283,7 @@ export function EvaluatorValuationReportOutputTab({
       inventoryLines,
       landMarket,
       listLabels,
+      specialistComponentsText,
       market,
       photoSlots,
       property,

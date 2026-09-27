@@ -480,14 +480,15 @@ export function fillKeyedInSection(
   });
 }
 
-export function rebuildTwoColSheet(
+/**
+ * §10 «مكونات العقار»: «الدور | الوصف والاستخدام | المساحة (م²)», closed by the
+ * «مجموع مسطحات البناء» total row. Adds the area column when an older template lacks it.
+ */
+export function rebuildComponentsSheet(
   sec: Element,
   rows: Array<{ key: string; values: string[] }>,
-  secondClass: "num" | "v",
 ) {
-  const table = [...sec.querySelectorAll("table")].find((t) =>
-    t.querySelector("th"),
-  );
+  const table = [...sec.querySelectorAll("table")].find((t) => t.querySelector("th"));
   if (!table) {
     fillKeyedRows(sec, rows);
     return;
@@ -498,25 +499,36 @@ export function rebuildTwoColSheet(
     fillKeyedRows(sec, rows);
     return;
   }
+  if (header.querySelectorAll("th").length < 3) {
+    const th = doc.createElement("th");
+    th.setAttribute("style", "width:18%");
+    th.textContent = "المساحة (م²)";
+    header.appendChild(th);
+  }
   const seen = new Set<string>();
-  const ordered: Array<{ key: string; values: string[] }> = [];
+  while (table.rows.length > 1) table.deleteRow(-1);
   for (const row of rows) {
     const k = normLabel(row.key);
     if (!k || seen.has(k)) continue;
     seen.add(k);
-    ordered.push(row);
-  }
-  while (table.rows.length > 1) table.deleteRow(-1);
-  for (const row of ordered) {
     const tr = doc.createElement("tr");
-    if (normLabel(row.key) === "مجموع مسطحات البناء") tr.className = "total";
-    const a = doc.createElement("td");
-    a.className = "v";
-    a.textContent = row.key;
-    const b = doc.createElement("td");
-    b.className = secondClass;
-    b.textContent = row.values[0] ?? "—";
-    tr.append(a, b);
+    const isTotal = k === "مجموع مسطحات البناء";
+    if (isTotal) tr.className = "total";
+    const label = doc.createElement("td");
+    label.className = "v";
+    label.textContent = row.key;
+    const area = doc.createElement("td");
+    area.className = "num";
+    area.textContent = row.values[1] ?? "—";
+    if (isTotal) {
+      label.colSpan = 2;
+      tr.append(label, area);
+    } else {
+      const desc = doc.createElement("td");
+      desc.className = "v";
+      desc.textContent = row.values[0] ?? "—";
+      tr.append(label, desc, area);
+    }
     table.appendChild(tr);
   }
 }

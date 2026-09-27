@@ -114,20 +114,13 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
     public async Task SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,
-        bool isLand,
         CancellationToken cancellationToken)
     {
         var property = await db.WorkOrderProperties
-            .Include(p => p.BuildingInventoryLines)
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
         if (property is null) return;
 
         property.InspectedPropertyType = inspectedPropertyType.Trim();
-        if (!isLand) return;
-
-        property.HasStructuresToValue = HasStructuresToValueValues.No;
-        if (property.BuildingInventoryLines.Count > 0)
-            db.BuildingInventoryLines.RemoveRange(property.BuildingInventoryLines);
     }
 
     public async Task SyncInspectorDeedBoundariesAsync(
@@ -141,6 +134,14 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         if (property is null) return;
         InspectorBoundarySyncRules.Apply(property, sides);
     }
+
+    public Task<WorkOrderProperty?> GetPropertyWithInventoryAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken) =>
+        db.WorkOrderProperties
+            .AsNoTracking()
+            .Include(p => p.BuildingInventoryLines)
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
     public void Add(PartyTaskSubmission submission) => db.PartyTaskSubmissions.Add(submission);
 

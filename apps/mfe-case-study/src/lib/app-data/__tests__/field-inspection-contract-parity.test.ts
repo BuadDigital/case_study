@@ -495,3 +495,22 @@ describe("Field inspection frontend/backend rule parity", () => {
     vi.useRealTimers();
   });
 });
+
+describe("«وصف العقار» — text or components photo", () => {
+  it("requires one of them and accepts either", () => {
+    const draft = completeDraft();
+    draft.propertyDescription = "  ";
+    expect(validateInspectorWorkspace(draft).propertyDescription).toBeTruthy();
+    expect(firstInspectorWorkspaceErrorTarget({ propertyDescription: "x" })).toBe("ins-desc");
+    expect(inspectorWizardStepForErrorTarget("ins-desc")).toBe(2);
+
+    draft.propertyDescription = "فيلا من دورين";
+    expect(validateInspectorWorkspace(draft).propertyDescription).toBeUndefined();
+
+    draft.propertyDescription = "";
+    draft.featurePhotoAttachments = {
+      propertyDescription: { fileName: "desc.jpg", mimeType: "image/jpeg", attachmentId: "att-desc" },
+    };
+    expect(validateInspectorWorkspace(draft).propertyDescription).toBeUndefined();
+  });
+});
