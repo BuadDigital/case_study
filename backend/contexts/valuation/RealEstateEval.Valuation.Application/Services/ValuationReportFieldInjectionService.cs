@@ -220,28 +220,19 @@ public sealed class ValuationReportFieldInjectionService(
             Put("partition_minutes_date", prop!.PartitionMinutesDate);
         Put("north_boundary", prop?.NorthBoundary);
         Put("north_boundary_length_m", prop?.NorthBoundaryLengthM);
-        Put("boundary_north_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType));
         Put("finishing_facade_north", prop?.NorthFacadeFinishing);
         Put("south_boundary", prop?.SouthBoundary);
         Put("south_boundary_length_m", prop?.SouthBoundaryLengthM);
-        Put("boundary_south_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType));
         Put("finishing_facade_south", prop?.SouthFacadeFinishing);
         Put("east_boundary", prop?.EastBoundary);
         Put("east_boundary_length_m", prop?.EastBoundaryLengthM);
-        Put("boundary_east_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType));
         Put("finishing_facade_east", prop?.EastFacadeFinishing);
         Put("west_boundary", prop?.WestBoundary);
         Put("west_boundary_length_m", prop?.WestBoundaryLengthM);
-        Put("boundary_west_type", ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType));
         Put("finishing_facade_west", prop?.WestFacadeFinishing);
 
-        var streetCount = PropertyBoundaryTypes.CountStreets(
-            prop?.NorthBoundaryType,
-            prop?.SouthBoundaryType,
-            prop?.EastBoundaryType,
-            prop?.WestBoundaryType);
-        if (streetCount > 0)
-            Put("adj.65441", $"عدد الشوارع المحسوب: {streetCount}");
+        // The street count used to be derived from the boundary type (شارع), which is no
+        // longer entered; «عدد الشوارع» comes from the appraiser's adjustment grid only.
 
         Put("finishing_type", PropertyFinishingTypes.LabelAr(prop?.FinishingType));
         Put("finishing_structure", PropertyFinishingStructures.LabelAr(prop?.FinishingStructure));

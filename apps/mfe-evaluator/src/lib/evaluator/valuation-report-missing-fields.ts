@@ -277,7 +277,7 @@ function markBoundaries(sec: Element, origin: FieldOrigin, mark: MarkCell) {
       for (const i of [1, 2]) {
         mark(cells[i], `${headers[i] || "الحد"} (الجهة ${side})`, origin);
       }
-      // Column «الواجهات» — inspector facade type (dropdown), not intake free text.
+      // Column «الواجهات» — facade type from «أنواع الواجهات»; the inspector's pick wins.
       if (cells[3]) {
         mark(cells[3], `${headers[3] || "الواجهات"} (الجهة ${side})`, INSPECTOR);
       }

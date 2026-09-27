@@ -154,6 +154,20 @@ export function reportPropertyAgeYearsFromLicense(
   return years < 0 ? 0 : years;
 }
 
+/**
+ * Arabic count agreement: 0 → «أقل من سنة», 1 → «سنة واحدة», 2 → «سنتين»,
+ * 3–10 → «N سنوات», 11 and up → «N سنة» (103 → «103 سنوات» follows the last two digits).
+ */
 export function formatReportPropertyAgeYears(years: number): string {
-  return `${years} سنوات`;
+  if (years <= 0) return "أقل من سنة";
+  if (years === 1) return "سنة واحدة";
+  if (years === 2) return "سنتين";
+  const lastTwo = years % 100;
+  return lastTwo >= 3 && lastTwo <= 10 ? `${years} سنوات` : `${years} سنة`;
+}
+
+/** Same wording for a free-text age: whole numbers are reworded, anything else is kept. */
+export function formatReportAgeText(raw: string): string {
+  const text = raw.trim();
+  return /^\d+$/.test(text) ? formatReportPropertyAgeYears(Number(text)) : text;
 }

@@ -138,6 +138,34 @@ public class AuthSessionServiceTests
         Assert.NotEqual(first.RefreshToken, second.RefreshToken);
     }
 
+    /// <summary>Audit A-115: a captured predecessor must not outlive logout via the grace window.</summary>
+    [Fact]
+    public async Task A_rotated_token_cannot_revive_a_logged_out_session_inside_the_grace_window()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        var sessions = provider.GetRequiredService<IAuthSessionService>();
+        var login = await LoginAsync(provider);
+
+        var refreshed = await sessions.RefreshAsync(login.RefreshToken);
+        Assert.NotNull(refreshed);
+        await sessions.RevokeAsync(refreshed.RefreshToken, "logout");
+
+        Assert.Null(await sessions.RefreshAsync(login.RefreshToken));
+    }
+
+    /// <summary>Audit A-115: the grace window allows one sibling per token, not unlimited.</summary>
+    [Fact]
+    public async Task A_rotated_token_gets_only_one_grace_sibling()
+    {
+        await using var provider = await CreateProviderAsync(UserStatus.Active);
+        var sessions = provider.GetRequiredService<IAuthSessionService>();
+        var login = await LoginAsync(provider);
+
+        Assert.NotNull(await sessions.RefreshAsync(login.RefreshToken));
+        Assert.NotNull(await sessions.RefreshAsync(login.RefreshToken));
+        Assert.Null(await sessions.RefreshAsync(login.RefreshToken));
+    }
+
     [Fact]
     public async Task Refresh_kills_the_session_when_a_rotated_token_is_replayed_later()
     {

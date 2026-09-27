@@ -29,6 +29,8 @@ public sealed class AuthSessionService(
     private const int MaxRefreshTokenHours = 24 * 30;
     private const int TokenBytes = 32;
     private const string RotatedReason = "rotated";
+ /// <summary>A rotated token that already produced its one grace-window sibling.</summary>
+    private const string RotatedReplayedReason = "rotated-replayed";
 
  /// <summary>Rotated and expired rows are kept this long for audit, then pruned.</summary>
     private static readonly TimeSpan RetainAfterExpiry = TimeSpan.FromDays(7);
@@ -110,6 +112,19 @@ public sealed class AuthSessionService(
         {
             await RevokeSessionAsync(stored.SessionId, "reuse-detected", cancellationToken);
             return null;
+        }
+        else
+        {
+            // Grace replay (two tabs rotating at once). Only while the family is still alive —
+            // after logout or reuse detection no token in it is live, and a captured predecessor
+            // must not revive the session. One sibling per token: the reason changes, so a second
+            // replay of the same token falls into the "not rotated" branch above and is refused.
+            var familyAlive = await db.RefreshTokens.AnyAsync(
+                t => t.SessionId == stored.SessionId && t.RevokedAtUtc == null,
+                cancellationToken);
+            if (!familyAlive)
+                return null;
+            stored.RevokedReason = RotatedReplayedReason;
         }
 
         var user = await userManager.FindByIdAsync(stored.UserId);
