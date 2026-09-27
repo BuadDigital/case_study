@@ -18,17 +18,19 @@ public sealed class HttpKeyEntitlementLookup(
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken = default)
     {
-        if (propertyIds.Count == 0)
-            return [];
+        var all = new List<KeyEnvelopeEntitlementDto>();
+        foreach (var chunk in QueryIdBatch.OfGuids(propertyIds))
+        {
+            var list = await UpstreamJson.GetAsync<List<KeyEnvelopeEntitlementDto>>(
+                http,
+                httpContext,
+                options.Value.OperationsBaseUrl,
+                $"/api/key-envelope-dispatch/entitlements?propertyIds={QueryIdBatch.JoinEscaped(chunk)}",
+                Setting,
+                cancellationToken);
+            all.AddRange(list);
+        }
 
-        var query = string.Join(",", propertyIds.Distinct().Take(200).Select(id => id.ToString("D")));
-        var list = await UpstreamJson.GetAsync<List<KeyEnvelopeEntitlementDto>>(
-            http,
-            httpContext,
-            options.Value.OperationsBaseUrl,
-            $"/api/key-envelope-dispatch/entitlements?propertyIds={Uri.EscapeDataString(query)}",
-            Setting,
-            cancellationToken);
-        return list;
+        return all;
     }
 }

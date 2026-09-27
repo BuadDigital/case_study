@@ -2,20 +2,22 @@ import {
   isPersistedPartyTaskSubmission,
   type PartyTaskSubmissionDto,
 } from "@platform/api-client";
-import { loadQueuedDraftPayload } from "@platform/app-shared/offline/offline-write";
+import {
+  loadQueuedDraftPayload,
+  isBrowserOffline,
+  readLocalWorkingCopy,
+} from "@platform/app-shared/offline/offline-write";
 import {
   fetchPartySubmission,
   queuedSubmissionStatus,
 } from "@platform/app-shared/app-data/party-submission-api";
-import { readLocalWorkingCopy } from "@platform/app-shared/offline/offline-write";
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
 import {
-  loadInspectorWorkspace,
   payloadToDraft,
   readString,
   setCache,
   type InspectorWorkspaceSnapshot,
 } from "./inspector-workspace-model";
+import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
 export { loadInspectorWorkspace } from "./inspector-workspace-model";
 
 /**
@@ -53,12 +55,7 @@ export function fetchInspectorWorkspace(
 async function fetchInspectorWorkspaceUncached(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
-  let submission: PartyTaskSubmissionDto | null = null;
-  try {
-    submission = await fetchPartySubmission(taskId);
-  } catch {
-    submission = null;
-  }
+  const submission = await fetchPartySubmission(taskId);
 
   if (!submission || !isPersistedPartyTaskSubmission(submission)) {
     const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
@@ -77,7 +74,26 @@ async function fetchInspectorWorkspaceUncached(
       setCache(draft);
       return draft;
     }
-    return submission ? payloadToDraft(submission) : loadInspectorWorkspace(taskId);
+    const working = await readLocalWorkingCopy<Record<string, unknown>>(
+      "field-inspection",
+      taskId,
+    );
+    if (working) {
+      const local: PartyTaskSubmissionDto = {
+        taskId,
+        kind: "field-inspection",
+        status: queuedSubmissionStatus(working.payload),
+        payload: working.payload,
+        updatedAtUtc: working.updatedAtUtc,
+      };
+      const draft = payloadToDraft(local);
+      setCache(draft);
+      return draft;
+    }
+    if (isBrowserOffline()) {
+      throw new Error("المسودة غير محمّلة على الجهاز");
+    }
+    return submission ? payloadToDraft(submission) : null;
   }
 
   let draft = payloadToDraft(submission);

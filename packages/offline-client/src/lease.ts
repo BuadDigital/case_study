@@ -19,7 +19,8 @@ export type OfflineLeaseTickResult = {
 
 export async function beginOfflineLease(userId: string): Promise<OfflineLease> {
   const existing = await getOfflineLease(userId);
-  if (existing?.offlineSinceUtc && !existing.locked) {
+  // A locked lease must stay locked — replacing it would undo the 3-hour cap.
+  if (existing?.offlineSinceUtc) {
     return existing;
   }
   const now = Date.now();

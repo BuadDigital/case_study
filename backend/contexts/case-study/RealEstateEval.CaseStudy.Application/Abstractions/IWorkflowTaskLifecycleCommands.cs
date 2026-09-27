@@ -37,9 +37,11 @@ public interface IWorkflowTaskLifecycleCommands
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
-    Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default);
+    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPoAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default);
 
-    Task DeleteForPropertyAsync(
+    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPropertyAsync(
         string poNumber,
         Guid propertyId,
         int expectedPropertyCount = 1,

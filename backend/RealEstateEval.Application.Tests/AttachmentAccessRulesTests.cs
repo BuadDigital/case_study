@@ -36,11 +36,39 @@ public class AttachmentAccessRulesTests
             UserId = "staff",
             PrototypeRole = "case-specialist",
         }));
-        Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
+        Assert.False(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
         {
             UserId = "lib",
             PrototypeRole = "document-controller",
             Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+    }
+
+    [Fact]
+    public void Delete_is_uploader_or_case_staff_not_manage_attachments()
+    {
+        Assert.True(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "owner-1",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+        Assert.False(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "other",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+        Assert.False(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "finance-staff",
+            PrototypeRole = "financial-officer",
+            Capabilities = [PlatformCapabilities.ManageFinancial],
+        }));
+        Assert.True(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "staff",
+            PrototypeRole = "case-specialist",
         }));
     }
 

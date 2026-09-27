@@ -10,7 +10,32 @@ import {
   type AuthSession,
 } from "@platform/auth-client";
 
-let inFlight: Promise<AuthSession | null> | null = null;
+let inFlight: Promise<FreshAuthSessionResult> | null = null;
+
+export type FreshAuthSessionResult =
+  | { status: "ok"; session: AuthSession }
+  | { status: "none" }
+  | { status: "auth" }
+  | { status: "transient"; session: AuthSession };
+
+/**
+ * Typed session renewal: auth failures are distinct from timeouts / 5xx, so the
+ * app gate can keep a field user whose refresh token is still valid.
+ */
+export function resolveFreshAuthSession(
+  options: { force?: boolean } = {},
+): Promise<FreshAuthSessionResult> {
+  const force = options.force ?? false;
+  if (!force) {
+    inFlight ??= renew(false).finally(() => {
+      inFlight = null;
+    });
+    return inFlight;
+  }
+  return (inFlight ?? Promise.resolve({ status: "none" as const })).then(() =>
+    renew(true),
+  );
+}
 
 /**
  * Returns a session whose access token is safely in date, renewing it through the
@@ -24,29 +49,28 @@ let inFlight: Promise<AuthSession | null> | null = null;
 export function ensureFreshAuthSession(
   options: { force?: boolean } = {},
 ): Promise<AuthSession | null> {
-  const force = options.force ?? false;
-  // Non-force callers share one in-flight renew (refresh tokens rotate).
-  // Force (post-401) waits for that to finish, then renews with force.
-  if (!force) {
-    inFlight ??= renew(false).finally(() => {
-      inFlight = null;
-    });
-    return inFlight;
-  }
-  return (inFlight ?? Promise.resolve(null)).then(() => renew(true));
+  return resolveFreshAuthSession(options).then((result) => {
+    if (result.status === "ok") return result.session;
+    if (result.status === "transient" && !isSessionExpired(result.session)) {
+      ensureAuthGateCookie();
+      return result.session;
+    }
+    return null;
+  });
 }
 
-async function renew(force: boolean): Promise<AuthSession | null> {
+async function renew(force: boolean): Promise<FreshAuthSessionResult> {
   const stored = getAuthSession();
-  if (!stored) return null;
+  if (!stored) return { status: "none" };
   if (!force && !shouldRefreshSession(stored)) {
-    if (isSessionExpired(stored)) return null;
-    // Keep the proxy gate cookie alive without emitting a storage change.
+    if (isSessionExpired(stored)) return { status: "none" };
     ensureAuthGateCookie();
-    return stored;
+    return { status: "ok", session: stored };
   }
   if (isRefreshTokenExpired(stored)) {
-    return isSessionExpired(stored) ? null : stored;
+    if (isSessionExpired(stored)) return { status: "none" };
+    ensureAuthGateCookie();
+    return { status: "ok", session: stored };
   }
 
   const result = await refreshAuthSession(stored.refreshToken!);
@@ -59,17 +83,20 @@ async function renew(force: boolean): Promise<AuthSession | null> {
       user: result.session.user,
     };
     setAuthSession(session);
-    return session;
+    try {
+      const { clearOfflineLease } = await import("@platform/offline-client");
+      await clearOfflineLease(session.user.id);
+    } catch {
+      /* IndexedDB unavailable — the session is still usable. */
+    }
+    return { status: "ok", session };
   }
 
   if (result.kind === "auth") {
     if (result.accountDisabled) await wipeDisabledAccountDevice(stored.user.id);
-    return null;
+    return { status: "auth" };
   }
-  // Transient failure: keep the session while its access token is still valid.
-  if (isSessionExpired(stored)) return null;
-  ensureAuthGateCookie();
-  return stored;
+  return { status: "transient", session: stored };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/** Mirrors the server cap in PartyTaskSubmissionService.ListForTasksAsync. */
-const SERVER_LIST_CAP = 500;
+/** Mirrors PARTY_SUBMISSION_LIST_CHUNK — 150 GUIDs stay under the 8 KB GET cap. */
+const LIST_CHUNK = 150;
 
 const listPartyTaskSubmissions = vi.fn();
 const getPartyTaskSubmission = vi.fn();
@@ -48,35 +48,35 @@ function submissionFor(id: string) {
 describe("prefetchPartySubmissionsForTasks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // The server silently truncates anything past its cap.
     listPartyTaskSubmissions.mockImplementation(
       (_config: unknown, ids: string[]) => ({
         ok: true,
-        data: ids.slice(0, SERVER_LIST_CAP).map(submissionFor),
+        data: ids.map(submissionFor),
       }),
     );
   });
 
-  it("splits a request larger than the server cap into batches", async () => {
-    const ids = Array.from({ length: 600 }, (_, i) => taskId(i));
+  it("splits a request larger than the GET url cap into batches", async () => {
+    const ids = Array.from({ length: 500 }, (_, i) => taskId(i));
 
     await prefetchPartySubmissionsForTasks(ids);
 
-    expect(listPartyTaskSubmissions).toHaveBeenCalledTimes(2);
-    const [, firstBatch] = listPartyTaskSubmissions.mock.calls[0]!;
-    const [, secondBatch] = listPartyTaskSubmissions.mock.calls[1]!;
-    expect(firstBatch).toHaveLength(SERVER_LIST_CAP);
-    expect(secondBatch).toHaveLength(100);
+    expect(listPartyTaskSubmissions).toHaveBeenCalledTimes(4);
+    const batches = listPartyTaskSubmissions.mock.calls.map((call) => call[1] as string[]);
+    expect(batches.map((batch) => batch.length)).toEqual([150, 150, 150, 50]);
+    for (const batch of batches) {
+      expect(batch.length).toBeLessThanOrEqual(LIST_CHUNK);
+    }
   });
 
-  it("caches submissions beyond the cap instead of evicting them", async () => {
-    const ids = Array.from({ length: 600 }, (_, i) => taskId(i));
+  it("caches submissions beyond the first chunk instead of evicting them", async () => {
+    const ids = Array.from({ length: 500 }, (_, i) => taskId(i));
 
     await prefetchPartySubmissionsForTasks(ids);
 
     expect(getCachedPartySubmission(taskId(0))).not.toBeNull();
-    expect(getCachedPartySubmission(taskId(550))).not.toBeNull();
-    expect(getCachedPartySubmission(taskId(599))).not.toBeNull();
+    expect(getCachedPartySubmission(taskId(350))).not.toBeNull();
+    expect(getCachedPartySubmission(taskId(499))).not.toBeNull();
   });
 
   it("still clears ids the server reported nothing for", async () => {

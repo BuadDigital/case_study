@@ -5,12 +5,16 @@ import { useEffect, useState } from "react";
 import {
   clearAuthSession,
   getAuthSession,
+  isSessionExpired,
   setAuthSession,
   subscribeAuthExpired,
   type AuthSession,
 } from "@platform/auth-client";
-import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
-import { isOfflineUsableSession } from "@platform/app-shared/auth/offline-session";
+import { resolveFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
+import {
+  canKeepFieldSessionAfterRefreshFailure,
+  isOfflineUsableSession,
+} from "@platform/app-shared/auth/offline-session";
 import { PanelSkeleton } from "@platform/ui-kit";
 
 /**
@@ -29,11 +33,25 @@ export function PrototypeAppGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    void ensureFreshAuthSession().then((resolved) => {
+    void resolveFreshAuthSession().then((result) => {
       if (cancelled) return;
-      if (resolved) {
-        setAuthSession(resolved);
-        setSession(resolved);
+      if (result.status === "ok") {
+        setAuthSession(result.session);
+        setSession(result.session);
+        setChecked(true);
+        return;
+      }
+      if (
+        result.status === "transient" &&
+        canKeepFieldSessionAfterRefreshFailure(result.session)
+      ) {
+        setSession(result.session);
+        setChecked(true);
+        return;
+      }
+      if (result.status === "transient" && !isSessionExpired(result.session)) {
+        setAuthSession(result.session);
+        setSession(result.session);
         setChecked(true);
         return;
       }

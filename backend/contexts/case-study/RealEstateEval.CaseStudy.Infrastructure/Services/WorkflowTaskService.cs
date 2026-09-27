@@ -107,10 +107,12 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default) =>
         _lifecycle.PatchAsync(id, request, cancellationToken);
 
-    public Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default) =>
+    public Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPoAsync(
+        string poNumber,
+        CancellationToken cancellationToken = default) =>
         _lifecycle.DeleteForPoAsync(poNumber, cancellationToken);
 
-    public Task DeleteForPropertyAsync(
+    public Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPropertyAsync(
         string poNumber,
         Guid propertyId,
         int expectedPropertyCount = 1,

@@ -22,6 +22,7 @@ import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platfor
 import { processEvidencePhoto } from "@platform/app-shared/media/process-evidence-photo";
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import { currentOfflineUserId, isBrowserOffline, uploadAttachmentWithOfflineFallback } from "@platform/app-shared/offline/offline-write";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import { beginOfflineLease, enqueueOutbox, listOutboxItems, randomUuid, type OutboxKind } from "@platform/offline-client";
 import {
   KEY_ENVELOPES_PREFETCH_ID,
@@ -140,7 +141,7 @@ async function enqueueKeyEnvelopeWrite(
   idempotencyKey?: string,
 ): Promise<boolean> {
   const userId = currentOfflineUserId();
-  if (!userId) return false;
+  if (!userId || !isOfflineFieldSession()) return false;
   await enqueueOutbox({
     userId,
     kind,
@@ -449,7 +450,7 @@ export async function registerKeyEnvelope(
   };
 
   const userId = currentOfflineUserId();
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     const clientId = `local-pending:${randomUuid()}`;
     await enqueueOutbox({
       userId,
@@ -459,7 +460,7 @@ export async function registerKeyEnvelope(
       idempotencyKey,
     });
     await beginOfflineLease(userId);
-    return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+    return { ok: true, data: pendingEnvelopeStub(body, clientId), queued: true };
   }
 
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
@@ -467,7 +468,7 @@ export async function registerKeyEnvelope(
   try {
     const result = await createKeyEnvelope(config, body, idempotencyKey);
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         const clientId = `local-pending:${randomUuid()}`;
         await enqueueOutbox({
           userId,
@@ -477,13 +478,13 @@ export async function registerKeyEnvelope(
           idempotencyKey,
         });
         await beginOfflineLease(userId);
-        return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+        return { ok: true, data: pendingEnvelopeStub(body, clientId), queued: true };
       }
       return fail(result, "تعذّر تسجيل الظرف");
     }
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
-    if (userId) {
+    if (userId && isOfflineFieldSession()) {
       const clientId = `local-pending:${randomUuid()}`;
       await enqueueOutbox({
         userId,
@@ -493,7 +494,7 @@ export async function registerKeyEnvelope(
         idempotencyKey,
       });
       await beginOfflineLease(userId);
-      return { ok: true, data: pendingEnvelopeStub(body, clientId) };
+      return { ok: true, data: pendingEnvelopeStub(body, clientId), queued: true };
     }
     return {
       ok: false,
@@ -512,14 +513,14 @@ export async function confirmEnvelopeAssignment(
   const config = prototypeModulesApiConfig();
   const body = { assignmentId, status, notes: notes ?? null };
   const userId = currentOfflineUserId();
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     await enqueueKeyEnvelopeWrite(
       "key-envelope-assignment-confirm",
       envelopeId,
       body,
       idempotencyKey,
     );
-    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
   }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   try {
@@ -531,27 +532,27 @@ export async function confirmEnvelopeAssignment(
       idempotencyKey,
     );
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         await enqueueKeyEnvelopeWrite(
           "key-envelope-assignment-confirm",
           envelopeId,
           body,
           idempotencyKey,
         );
-        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
       }
       return fail(result, "تعذّر تحديث الإسناد");
     }
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
-    if (userId) {
+    if (userId && isOfflineFieldSession()) {
       await enqueueKeyEnvelopeWrite(
         "key-envelope-assignment-confirm",
         envelopeId,
         body,
         idempotencyKey,
       );
-      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
     }
     return {
       ok: false,
@@ -567,14 +568,14 @@ export async function createEnvelopeHandoff(
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const userId = currentOfflineUserId();
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     await enqueueKeyEnvelopeWrite(
       "key-envelope-handoff-create",
       envelopeId,
       { ...body },
       idempotencyKey,
     );
-    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
   }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   try {
@@ -585,27 +586,27 @@ export async function createEnvelopeHandoff(
       idempotencyKey,
     );
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         await enqueueKeyEnvelopeWrite(
           "key-envelope-handoff-create",
           envelopeId,
           { ...body },
           idempotencyKey,
         );
-        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
       }
       return fail(result, "تعذّر تسجيل المناولة");
     }
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
-    if (userId) {
+    if (userId && isOfflineFieldSession()) {
       await enqueueKeyEnvelopeWrite(
         "key-envelope-handoff-create",
         envelopeId,
         { ...body },
         idempotencyKey,
       );
-      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
     }
     return {
       ok: false,
@@ -621,14 +622,14 @@ export async function confirmEnvelopeHandoff(
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
   const userId = currentOfflineUserId();
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     await enqueueKeyEnvelopeWrite(
       "key-envelope-handoff-confirm",
       envelopeId,
       { handoffId },
       idempotencyKey,
     );
-    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+    return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
   }
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   try {
@@ -639,27 +640,27 @@ export async function confirmEnvelopeHandoff(
       idempotencyKey,
     );
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         await enqueueKeyEnvelopeWrite(
           "key-envelope-handoff-confirm",
           envelopeId,
           { handoffId },
           idempotencyKey,
         );
-        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+        return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
       }
       return fail(result, "تعذّر تأكيد المناولة");
     }
     return { ok: true, data: mapEnvelope(result.data) };
   } catch (err) {
-    if (userId) {
+    if (userId && isOfflineFieldSession()) {
       await enqueueKeyEnvelopeWrite(
         "key-envelope-handoff-confirm",
         envelopeId,
         { handoffId },
         idempotencyKey,
       );
-      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow };
+      return { ok: true, data: { id: envelopeId } as KeyEnvelopeRow, queued: true };
     }
     return {
       ok: false,
@@ -688,7 +689,7 @@ export async function savePropertyCourtAccess(
   const userId = currentOfflineUserId();
   const targetId = String(body.propertyId ?? "").trim();
 
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     await enqueueOutbox({
       userId,
       kind: "property-court-access",
@@ -704,7 +705,7 @@ export async function savePropertyCourtAccess(
   try {
     const result = await upsertPropertyCourtAccess(config, body);
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         await enqueueOutbox({
           userId,
           kind: "property-court-access",
@@ -718,7 +719,7 @@ export async function savePropertyCourtAccess(
     }
     return { ok: true, data: mapAccess(result.data) };
   } catch (err) {
-    if (userId) {
+    if (userId && isOfflineFieldSession()) {
       await enqueueOutbox({
         userId,
         kind: "property-court-access",

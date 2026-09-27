@@ -102,7 +102,7 @@ export function unwrapApiResult<T>(result: ApiResult<T>, fallback: string): T {
 }
 
 export type MutationResult<T> =
-  | { ok: true; data: T }
+  | { ok: true; data: T; queued?: boolean }
   | { ok: false; error: string };
 
 export function mutationFromApiResult<T>(

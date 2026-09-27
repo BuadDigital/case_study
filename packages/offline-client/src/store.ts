@@ -326,6 +326,12 @@ export async function getOfflineDraft(
   return getEncrypted<OfflineDraftRecord>("drafts", userId, id);
 }
 
+export async function listOfflineDrafts(
+  userId: string,
+): Promise<OfflineDraftRecord[]> {
+  return listEncrypted<OfflineDraftRecord>("drafts", userId);
+}
+
 /** The server confirmed the save — the local copy of the draft goes (spec §3.4). */
 export async function deleteOfflineDraft(
   userId: string,
@@ -579,6 +585,19 @@ export async function listOutboxItems(
   userId: string,
 ): Promise<OfflineOutboxItem[]> {
   return listEncrypted<OfflineOutboxItem>("outbox", userId);
+}
+
+export async function deleteOutboxItemsByKind(
+  userId: string,
+  kind: OfflineOutboxItem["kind"],
+  targetId: string,
+): Promise<void> {
+  const items = await listOutboxItems(userId);
+  for (const item of items) {
+    if (item.kind === kind && item.targetId === targetId) {
+      await deleteOutboxItem(userId, item.id);
+    }
+  }
 }
 
 export async function deleteOutboxItem(

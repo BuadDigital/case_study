@@ -86,6 +86,24 @@ describe("offline-client store", () => {
     expect(blob?.serverAttachmentId).toBe("att-1");
     expect(blob?.bytes.byteLength).toBeGreaterThan(0);
   });
+
+  it("does not replace a locked offline lease", async () => {
+    const { setOfflineLease } = await import("./store");
+    const { beginOfflineLease } = await import("./lease");
+    const started = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+    await setOfflineLease({
+      userId: "user-a",
+      offlineSinceUtc: started,
+      leaseExpiresAtUtc: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      warned1h: true,
+      warned2h: true,
+      locked: true,
+    });
+
+    const next = await beginOfflineLease("user-a");
+    expect(next.locked).toBe(true);
+    expect(next.offlineSinceUtc).toBe(started);
+  });
 });
 
 describe("offline write interceptor classification", () => {

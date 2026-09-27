@@ -33,18 +33,20 @@ public sealed class HttpAttachmentLookup(
         CancellationToken cancellationToken = default)
     {
         _ = actor;
-        if (ids.Count == 0)
-            return [];
+        var all = new List<AttachmentRefDto>();
+        foreach (var chunk in QueryIdBatch.OfGuids(ids))
+        {
+            var list = await UpstreamJson.GetAsync<List<AttachmentRefDto>>(
+                http,
+                httpContext,
+                options.Value.AttachmentsBaseUrl,
+                $"/api/attachments/lookup?ids={QueryIdBatch.JoinEscaped(chunk)}",
+                "UpstreamServices:AttachmentsBaseUrl",
+                cancellationToken);
+            all.AddRange(list);
+        }
 
-        var query = string.Join(",", ids.Distinct().Take(200).Select(id => id.ToString("D")));
-        var list = await UpstreamJson.GetAsync<List<AttachmentRefDto>>(
-            http,
-            httpContext,
-            options.Value.AttachmentsBaseUrl,
-            $"/api/attachments/lookup?ids={Uri.EscapeDataString(query)}",
-            "UpstreamServices:AttachmentsBaseUrl",
-            cancellationToken);
-        return list;
+        return all;
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListForPropertyAsync(

@@ -21,18 +21,17 @@ public sealed class HttpCaseStudyLookup(
         IReadOnlyList<Guid> taskIds,
         CancellationToken cancellationToken = default)
     {
-        if (taskIds.Count == 0)
-            return new Dictionary<Guid, WorkflowTaskKind>();
-
-        var ids = string.Join(",", taskIds.Select(id => id.ToString("D")));
-        var items = await GetListAsync<CaseStudyWorkflowTaskKindDto>(
-            $"/api/case-study-dispatch/workflow-task-kinds?ids={Uri.EscapeDataString(ids)}",
-            cancellationToken);
         var map = new Dictionary<Guid, WorkflowTaskKind>();
-        foreach (var item in items)
+        foreach (var chunk in QueryIdBatch.OfGuids(taskIds))
         {
-            if (Enum.TryParse<WorkflowTaskKind>(item.Kind, ignoreCase: true, out var kind))
-                map[item.Id] = kind;
+            var items = await GetListAsync<CaseStudyWorkflowTaskKindDto>(
+                $"/api/case-study-dispatch/workflow-task-kinds?ids={QueryIdBatch.JoinEscaped(chunk)}",
+                cancellationToken);
+            foreach (var item in items)
+            {
+                if (Enum.TryParse<WorkflowTaskKind>(item.Kind, ignoreCase: true, out var kind))
+                    map.TryAdd(item.Id, kind);
+            }
         }
 
         return map;
@@ -53,16 +52,11 @@ public sealed class HttpCaseStudyLookup(
 
     public Task<IReadOnlyList<string>> ListPoNumbersByAssigneesAsync(
         IReadOnlyList<string> assigneeIds,
-        CancellationToken cancellationToken = default)
-    {
-        var joined = string.Join(",", assigneeIds.Select(id => id.Trim()).Where(id => id.Length > 0));
-        if (joined.Length == 0)
-            return Task.FromResult<IReadOnlyList<string>>([]);
-
-        return GetListAsync<string>(
-            $"/api/case-study-dispatch/po-numbers-by-assignee?ids={Uri.EscapeDataString(joined)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByStringQueryAsync<string>(
+            "/api/case-study-dispatch/po-numbers-by-assignee?ids=",
+            assigneeIds,
             cancellationToken);
-    }
 
     public Task<CaseStudyValuationPropertyContextDto?> GetValuationPropertyContextAsync(
         Guid propertyId,
@@ -90,35 +84,19 @@ public sealed class HttpCaseStudyLookup(
 
     public Task<IReadOnlyList<CaseStudyPropertySnapshotDto>> ListPropertiesByPoNumbersAsync(
         IReadOnlyList<string> poNumbers,
-        CancellationToken cancellationToken = default)
-    {
-        if (poNumbers.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPropertySnapshotDto>>([]);
-
-        var joined = string.Join(",", poNumbers.Select(p => p.Trim()).Where(p => p.Length > 0));
-        if (joined.Length == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPropertySnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyPropertySnapshotDto>(
-            $"/api/case-study-dispatch/properties-by-po?poNumbers={Uri.EscapeDataString(joined)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByStringQueryAsync<CaseStudyPropertySnapshotDto>(
+            "/api/case-study-dispatch/properties-by-po?poNumbers=",
+            poNumbers,
             cancellationToken);
-    }
 
     public Task<IReadOnlyList<CaseStudyPropertySnapshotDto>> ListPropertiesByRequestNumbersAsync(
         IReadOnlyList<string> requestNumbers,
-        CancellationToken cancellationToken = default)
-    {
-        if (requestNumbers.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPropertySnapshotDto>>([]);
-
-        var joined = string.Join(",", requestNumbers.Select(r => r.Trim()).Where(r => r.Length > 0));
-        if (joined.Length == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPropertySnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyPropertySnapshotDto>(
-            $"/api/case-study-dispatch/properties-by-request?requestNumbers={Uri.EscapeDataString(joined)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByStringQueryAsync<CaseStudyPropertySnapshotDto>(
+            "/api/case-study-dispatch/properties-by-request?requestNumbers=",
+            requestNumbers,
             cancellationToken);
-    }
 
     public async Task<string?> GetCaseSpecialistAssigneeAsync(
         Guid propertyId,
@@ -138,15 +116,11 @@ public sealed class HttpCaseStudyLookup(
 
     public Task<IReadOnlyList<CaseStudyPropertySnapshotDto>> ListPropertiesByIdsAsync(
         IReadOnlyList<Guid> propertyIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (propertyIds.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPropertySnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyPropertySnapshotDto>(
-            $"/api/case-study-dispatch/properties-by-id?ids={JoinGuids(propertyIds)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByGuidQueryAsync<CaseStudyPropertySnapshotDto>(
+            "/api/case-study-dispatch/properties-by-id?ids=",
+            propertyIds,
             cancellationToken);
-    }
 
     public Task<CaseStudyWorkflowTaskSnapshotDto?> GetWorkflowTaskAsync(
         Guid taskId,
@@ -157,15 +131,11 @@ public sealed class HttpCaseStudyLookup(
 
     public Task<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>> ListWorkflowTasksByIdsAsync(
         IReadOnlyList<Guid> taskIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (taskIds.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyWorkflowTaskSnapshotDto>(
-            $"/api/case-study-dispatch/workflow-tasks?ids={JoinGuids(taskIds)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByGuidQueryAsync<CaseStudyWorkflowTaskSnapshotDto>(
+            "/api/case-study-dispatch/workflow-tasks?ids=",
+            taskIds,
             cancellationToken);
-    }
 
     public Task<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>> ListWorkflowTasksByPropertyAsync(
         Guid propertyId,
@@ -192,43 +162,27 @@ public sealed class HttpCaseStudyLookup(
 
     public Task<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>> ListWorkflowTasksByPoNumbersAsync(
         IReadOnlyList<string> poNumbers,
-        CancellationToken cancellationToken = default)
-    {
-        if (poNumbers.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>>([]);
-
-        var joined = string.Join(",", poNumbers.Select(p => p.Trim()).Where(p => p.Length > 0));
-        if (joined.Length == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyWorkflowTaskSnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyWorkflowTaskSnapshotDto>(
-            $"/api/case-study-dispatch/workflow-tasks-by-po?poNumbers={Uri.EscapeDataString(joined)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByStringQueryAsync<CaseStudyWorkflowTaskSnapshotDto>(
+            "/api/case-study-dispatch/workflow-tasks-by-po?poNumbers=",
+            poNumbers,
             cancellationToken);
-    }
 
     public Task<IReadOnlyList<CaseStudyPartyTaskSubmissionSnapshotDto>> ListPartyTaskSubmissionsByTaskIdsAsync(
         IReadOnlyList<Guid> workflowTaskIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (workflowTaskIds.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyPartyTaskSubmissionSnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyPartyTaskSubmissionSnapshotDto>(
-            $"/api/case-study-dispatch/party-task-submissions?ids={JoinGuids(workflowTaskIds)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByGuidQueryAsync<CaseStudyPartyTaskSubmissionSnapshotDto>(
+            "/api/case-study-dispatch/party-task-submissions?ids=",
+            workflowTaskIds,
             cancellationToken);
-    }
 
     public Task<IReadOnlyList<CaseStudyFieldInspectionWorkspaceSnapshotDto>> ListFieldInspectionWorkspacesByTaskIdsAsync(
         IReadOnlyList<Guid> workflowTaskIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (workflowTaskIds.Count == 0)
-            return Task.FromResult<IReadOnlyList<CaseStudyFieldInspectionWorkspaceSnapshotDto>>([]);
-
-        return GetListAsync<CaseStudyFieldInspectionWorkspaceSnapshotDto>(
-            $"/api/case-study-dispatch/field-inspection-workspaces?ids={JoinGuids(workflowTaskIds)}",
+        CancellationToken cancellationToken = default) =>
+        GetListByGuidQueryAsync<CaseStudyFieldInspectionWorkspaceSnapshotDto>(
+            "/api/case-study-dispatch/field-inspection-workspaces?ids=",
+            workflowTaskIds,
             cancellationToken);
-    }
 
     public async Task<Guid?> GetWorkOrderIdByPoNumberAsync(
         string poNumber,
@@ -248,20 +202,14 @@ public sealed class HttpCaseStudyLookup(
         IReadOnlyList<string> poNumbers,
         CancellationToken cancellationToken = default)
     {
-        if (poNumbers.Count == 0)
-            return new Dictionary<string, DateTime?>(StringComparer.Ordinal);
-
-        var joined = string.Join(",", poNumbers.Select(p => p.Trim()).Where(p => p.Length > 0));
-        if (joined.Length == 0)
-            return new Dictionary<string, DateTime?>(StringComparer.Ordinal);
-
-        var rows = await GetListAsync<CaseStudyWorkOrderReceivedAtDto>(
-            $"/api/case-study-dispatch/work-order-received-at?poNumbers={Uri.EscapeDataString(joined)}",
+        var map = new Dictionary<string, DateTime?>(StringComparer.Ordinal);
+        var rows = await GetListByStringQueryAsync<CaseStudyWorkOrderReceivedAtDto>(
+            "/api/case-study-dispatch/work-order-received-at?poNumbers=",
+            poNumbers,
             cancellationToken);
-        return rows.ToDictionary(
-            r => r.PoNumber.Trim(),
-            r => r.ReceivedFromEnfathAtUtc,
-            StringComparer.Ordinal);
+        foreach (var row in rows)
+            map.TryAdd(row.PoNumber.Trim(), row.ReceivedFromEnfathAtUtc);
+        return map;
     }
 
     public Task<IReadOnlyList<CaseStudyWorkOrderBillingSnapshotDto>> ListWorkOrdersForBillingAsync(
@@ -284,11 +232,56 @@ public sealed class HttpCaseStudyLookup(
             cancellationToken);
     }
 
-    private static string JoinGuids(IReadOnlyList<Guid> ids) =>
-        Uri.EscapeDataString(string.Join(",", ids.Select(id => id.ToString("D"))));
-
     private static string JoinKinds(IReadOnlyList<WorkflowTaskKind> kinds) =>
         string.Join(",", kinds.Select(k => k.ToDbValue()));
+
+    private async Task<IReadOnlyList<T>> GetListByGuidQueryAsync<T>(
+        string pathBeforeIds,
+        IReadOnlyList<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        var chunks = QueryIdBatch.OfGuids(ids);
+        if (chunks.Count == 0)
+            return [];
+        if (chunks.Count == 1)
+            return await GetListAsync<T>(
+                pathBeforeIds + QueryIdBatch.JoinEscaped(chunks[0]),
+                cancellationToken);
+
+        var all = new List<T>();
+        foreach (var chunk in chunks)
+        {
+            all.AddRange(await GetListAsync<T>(
+                pathBeforeIds + QueryIdBatch.JoinEscaped(chunk),
+                cancellationToken));
+        }
+
+        return all;
+    }
+
+    private async Task<IReadOnlyList<T>> GetListByStringQueryAsync<T>(
+        string pathBeforeIds,
+        IEnumerable<string?> values,
+        CancellationToken cancellationToken)
+    {
+        var chunks = QueryIdBatch.OfStrings(values);
+        if (chunks.Count == 0)
+            return [];
+        if (chunks.Count == 1)
+            return await GetListAsync<T>(
+                pathBeforeIds + QueryIdBatch.JoinEscaped(chunks[0]),
+                cancellationToken);
+
+        var all = new List<T>();
+        foreach (var chunk in chunks)
+        {
+            all.AddRange(await GetListAsync<T>(
+                pathBeforeIds + QueryIdBatch.JoinEscaped(chunk),
+                cancellationToken));
+        }
+
+        return all;
+    }
 
     private async Task<IReadOnlyList<T>> GetListAsync<T>(string path, CancellationToken cancellationToken)
     {

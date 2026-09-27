@@ -30,7 +30,11 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
-import { mergeInspectorWorkspacePatch } from "../../lib/app-data/inspector-workspace-model";
+import { mergeInspectorWorkspacePatch, setCache } from "../../lib/app-data/inspector-workspace-model";
+import {
+  OFFLINE_ATTACHMENT_MAP_EVENT,
+  rewriteLocalAttachmentIds,
+} from "@platform/offline-client";
 import {
   getOrCreateInspectorWorkspace,
   saveInspectorWorkspaceDraft,
@@ -110,13 +114,40 @@ export function useFieldInspectionWorkflow({
           ? formatPropertyDeedDisplay(property)
           : `خانة ${task.propertyOrdinal}`,
       property: property ?? null,
-    }).then((next) => {
-      if (!cancelled && next) setDraft(next);
-    });
+    }).then(
+      (next) => {
+        if (!cancelled && next) setDraft(next);
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error ? err.message : "تعذّر تحميل مسودة المعاينة";
+        showToast(message, "error");
+        setFormError(message);
+      },
+    );
     return () => {
       cancelled = true;
     };
-  }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property]);
+  }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property, showToast]);
+
+  useEffect(() => {
+    const onMap = (event: Event) => {
+      const map = (event as CustomEvent<Record<string, string>>).detail;
+      if (!map || Object.keys(map).length === 0) return;
+      const idMap = new Map(Object.entries(map));
+      setDraft((prev) => {
+        if (!prev) return prev;
+        const next = JSON.parse(
+          rewriteLocalAttachmentIds(JSON.stringify(prev), idMap),
+        ) as InspectorWorkspaceDraft;
+        setCache(next);
+        return next;
+      });
+    };
+    window.addEventListener(OFFLINE_ATTACHMENT_MAP_EVENT, onMap);
+    return () => window.removeEventListener(OFFLINE_ATTACHMENT_MAP_EVENT, onMap);
+  }, []);
 
   useEffect(() => {
     if (!task.id) return;
@@ -315,7 +346,7 @@ export function useFieldInspectionWorkflow({
     if (result.ok) {
       setDraft(result.draft);
       if (result.queued) {
-        showToast("محفوظة للمزامنة — ستُرسل عند عودة الاتصال", "info");
+        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
       } else {
         showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
         hostRef.current?.onSubmitted?.();

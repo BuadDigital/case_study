@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RealEstateEval.Application\RealEstateEval.Application.csproj" />
     <ProjectReference Include="..\RealEstateEval.Infrastructure\RealEstateEval.Infrastructure.csproj" />
+    <ProjectReference Include="..\shared\RealEstateEval.Shared.RemoteClients\RealEstateEval.Shared.RemoteClients.csproj" />
     <ProjectReference Include="..\contexts\attachments\RealEstateEval.Attachments.Infrastructure\RealEstateEval.Attachments.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\case-study\RealEstateEval.CaseStudy.Infrastructure\RealEstateEval.CaseStudy.Infrastructure.csproj" />
     <ProjectReference Include="..\contexts\failures\RealEstateEval.Failures.Infrastructure\RealEstateEval.Failures.Infrastructure.csproj" />

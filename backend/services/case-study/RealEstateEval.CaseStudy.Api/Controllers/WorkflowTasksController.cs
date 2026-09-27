@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Abstractions;
@@ -191,7 +192,11 @@ public class WorkflowTasksController : ControllerBase
         string poNumber,
         CancellationToken cancellationToken)
     {
-        await _tasks.DeleteForPoAsync(poNumber, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDeletePo, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
+        var (_, errors) = await _tasks.DeleteForPoAsync(poNumber, cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
         return NoContent();
     }
 
@@ -203,11 +208,15 @@ public class WorkflowTasksController : ControllerBase
         [FromQuery] int expectedPropertyCount = 1,
         CancellationToken cancellationToken = default)
     {
-        await _tasks.DeleteForPropertyAsync(
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDeleteProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
+        var (_, errors) = await _tasks.DeleteForPropertyAsync(
             poNumber,
             propertyId,
             expectedPropertyCount,
             cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
         return NoContent();
     }
 
@@ -269,4 +278,16 @@ public class WorkflowTasksController : ControllerBase
  /// NameClaimType is <c>sub</c>, so Identity.Name is the user id GUID.
  /// </summary>
     private string ActorName() => ActorClaims.DisplayName(User);
+
+    private async Task<ActionResult?> ForbidUnlessAsync(
+        Func<string?, bool> allow,
+        CancellationToken cancellationToken)
+    {
+        var userId = ActorId();
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        if (!allow(perms?.PrototypeRole))
+            return this.ForbiddenProblem("ليس لديك صلاحية لهذا الإجراء");
+        return null;
+    }
 }

@@ -4,7 +4,7 @@ export { useAuth } from "./hooks/useAuth";
 export { useIdempotentAction } from "./hooks/use-idempotent-action";
 export type { IdempotentActionResult } from "./hooks/use-idempotent-action";
 export { useCommandMutation } from "./hooks/use-command-mutation";
-export { ensureFreshAuthSession } from "./auth/ensure-fresh-session";
+export { ensureFreshAuthSession, resolveFreshAuthSession } from "./auth/ensure-fresh-session";
 export {
   currentOfflineUserId,
   evaluateOfflineLease,

@@ -15,6 +15,7 @@ import {
   isBrowserOffline,
   uploadAttachmentWithOfflineFallback,
 } from "../offline/offline-write";
+import { isOfflineFieldSession } from "../offline/offline-access-cache";
 import { getOfflineBlob } from "@platform/offline-client";
 
 export type TaskAttachmentPreview = {
@@ -36,6 +37,7 @@ function cacheKey(scope: string, taskId: string): string {
 async function replaceScopeAttachments(
   scope: string,
   scopeKey: string,
+  keepId?: string,
 ): Promise<void> {
   const config = prototypeModulesApiConfig();
   if (!config) return;
@@ -44,7 +46,9 @@ async function replaceScopeAttachments(
   if (!existing.ok) return;
 
   await Promise.all(
-    existing.data.map((meta) => deleteAttachment(config, meta.id)),
+    existing.data
+      .filter((meta) => !keepId || meta.id !== keepId)
+      .map((meta) => deleteAttachment(config, meta.id)),
   );
 }
 
@@ -179,9 +183,6 @@ export async function uploadTaskScopedAttachment(
 
   const bytes = await file.arrayBuffer();
   const config = prototypeModulesApiConfig();
-  if (config && !isBrowserOffline()) {
-    await replaceScopeAttachments(scope, taskId);
-  }
 
   try {
     const uploaded = await uploadAttachmentWithOfflineFallback({
@@ -202,12 +203,28 @@ export async function uploadTaskScopedAttachment(
           contentBase64: await fileToBase64(file),
         });
         if (!upload.ok) {
-          throw new TypeError("Failed to fetch");
+          if (upload.kind === "network" || upload.kind === "server") {
+            throw new TypeError("Failed to fetch");
+          }
+          const err = new Error(
+            upload.message ?? "تعذّر رفع المرفق",
+          ) as Error & { offlineQueueable?: boolean };
+          err.offlineQueueable = false;
+          throw err;
         }
         return upload.data.id;
       },
     });
+    if (
+      uploaded.attachmentId.startsWith("local:") &&
+      !isOfflineFieldSession()
+    ) {
+      return null;
+    }
     preview.attachmentId = uploaded.attachmentId;
+    if (!uploaded.queued && config && !isBrowserOffline()) {
+      await replaceScopeAttachments(scope, taskId, uploaded.attachmentId);
+    }
   } catch {
     return null;
   }

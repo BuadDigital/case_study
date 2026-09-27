@@ -188,7 +188,7 @@ public sealed partial class AttachmentService : IAttachmentService
         CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null || !CanAccess(row, actor)) return false;
+        if (row is null || !CanDelete(row, actor)) return false;
 
         if (!string.IsNullOrWhiteSpace(row.StorageKey))
             await _blobs.DeleteAsync(row.StorageKey, cancellationToken);
@@ -201,6 +201,9 @@ public sealed partial class AttachmentService : IAttachmentService
 
     private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
         AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
+
+    private static bool CanDelete(FileAttachment row, PermissionsDto? actor) =>
+        AttachmentAccessRules.AllowsDelete(row.UploadedByUserId, actor);
 
     private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct) =>
         string.IsNullOrWhiteSpace(row.StorageKey)

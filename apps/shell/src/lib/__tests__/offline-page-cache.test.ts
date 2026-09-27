@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROLES } from "@platform/app-shared/app-data/constants";
-import { offlinePagePlan } from "../offline-page-cache";
+import { offlinePagePlan, shouldDeletePreviousServiceWorkerCaches } from "../offline-page-cache";
 
 describe("offlinePagePlan", () => {
   it("keeps the inspector's queue and each inspection task", () => {
@@ -37,6 +37,11 @@ describe("offlinePagePlan", () => {
 
     expect(plan.urls).toEqual(["/active-inspection", "/active-inspection/t-1"]);
     expect(plan.landing).toBe("/active-inspection");
+  });
+
+  it("deletes previous caches only after the new worker has a profile", () => {
+    expect(shouldDeletePreviousServiceWorkerCaches(false)).toBe(false);
+    expect(shouldDeletePreviousServiceWorkerCaches(true)).toBe(true);
   });
 
   it("has nothing to keep for a role without form screens", () => {

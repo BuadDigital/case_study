@@ -90,12 +90,16 @@ public sealed partial class WorkflowTaskLifecycleCommands
         return (true, null);
     }
 
-    public async Task DeleteForPoAsync(
+    public async Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPoAsync(
         string poNumber,
         CancellationToken cancellationToken = default)
     {
         var n = poNumber.Trim();
         var tasks = await _db.ListTasksForPoForUpdateAsync(n, cancellationToken);
+        var blocked = WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(tasks);
+        if (blocked is not null)
+            return (false, Error(blocked));
+
         var taskIds = tasks.Select(t => t.Id).ToList();
         if (taskIds.Count > 0)
         {
@@ -117,9 +121,10 @@ public sealed partial class WorkflowTaskLifecycleCommands
         }
         _db.RemoveTasks(tasks);
         await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
     }
 
-    public async Task DeleteForPropertyAsync(
+    public async Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPropertyAsync(
         string poNumber,
         Guid propertyId,
         int expectedPropertyCount = 1,
@@ -130,6 +135,11 @@ public sealed partial class WorkflowTaskLifecycleCommands
 
         var linked = WorkflowTaskLifecycleRules.LinkedSlot(list, propertyId);
         var toRemove = WorkflowTaskLifecycleRules.PropertyCascadeTasks(list, propertyId, linked);
+        var blocked = WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(
+            linked is null ? toRemove : toRemove.Append(linked));
+        if (blocked is not null)
+            return (false, Error(blocked));
+
         await _cascade.RemovePartySubmissionsForTasksAsync(
             toRemove.Select(t => t.Id).ToList(),
             cancellationToken);
@@ -147,5 +157,6 @@ public sealed partial class WorkflowTaskLifecycleCommands
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
     }
 }

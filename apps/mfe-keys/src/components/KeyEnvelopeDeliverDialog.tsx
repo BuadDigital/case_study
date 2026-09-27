@@ -246,6 +246,10 @@ export function DeliverEnvelopeModal({
                   deliverSuccessMessage(kind, env.requestNumber),
                   "success",
                 );
+                if (result.queued) {
+                  await onDone({ ...env });
+                  return;
+                }
                 await onDone(result.data);
               } finally {
                 onBusy(false);

@@ -11,7 +11,9 @@ export {
 
 export {
   createIdempotencyKey,
+  headersToRecord,
   IDEMPOTENCY_HEADER,
+  mergeHeaderRecords,
   withIdempotencyKey,
 } from "./idempotency-key";
 

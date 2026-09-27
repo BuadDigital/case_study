@@ -3,7 +3,8 @@
  * Auth/API traffic is never cached. Compatible with Next Turbopack (no build plugin).
  *
  * The cache version comes from the registration URL (`/sw.js?v=<build>`), so every
- * deploy installs a fresh worker and drops the previous build's caches.
+ * deploy installs a fresh worker. Previous caches are deleted only after the new
+ * worker has a warmed offline profile.
  */
 const SW_VERSION =
   new URL(self.location.href).searchParams.get("v") || "dev";
@@ -55,10 +56,11 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
+    (async () => {
+      const profile = await readOfflineProfile();
+      if (profile) {
+        const keys = await caches.keys();
+        await Promise.all(
           keys
             .filter(
               (key) =>
@@ -67,9 +69,10 @@ self.addEventListener("activate", (event) => {
                 key !== PAGES_CACHE,
             )
             .map((key) => caches.delete(key)),
-        ),
-      )
-      .then(() => self.clients.claim()),
+        );
+      }
+      await self.clients.claim();
+    })(),
   );
 });
 
@@ -292,7 +295,19 @@ self.addEventListener("message", (event) => {
     return;
   }
   if (data.type === "WARM_OFFLINE_PAGES") {
-    event.waitUntil(warmOfflinePages(data).catch(() => {}));
+    event.waitUntil(
+      warmOfflinePages(data)
+        .catch(() => {})
+        .then(async () => {
+          const clients = await self.clients.matchAll({
+            type: "window",
+            includeUncontrolled: true,
+          });
+          for (const client of clients) {
+            client.postMessage({ type: "WARM_OFFLINE_PAGES_DONE" });
+          }
+        }),
+    );
   }
 });
 

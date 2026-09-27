@@ -42,7 +42,7 @@ Severity: **critical** = data loss, security breach or outage likely now; **high
 ## Suggested order of work
 
 1. **Now (production exposure):** A-001 (open login — needs a decision: switching `Auth__EnableDevLogin` off without a real OTP locks everyone out), the demo seeder running on every deploy, and production backups.
-2. **Next:** the offline data-loss issues, attachment access, the task-cascade deletes, the missing Arabic font in server PDFs, and the cost-approach land value.
+2. **Next:** the offline data-loss issues, the missing Arabic font in server PDFs, and the cost-approach land value.
 3. **Then:** the remaining high issues, then medium and low theme by theme.
 
 ## Critical and high — quick list
@@ -50,27 +50,27 @@ Severity: **critical** = data loss, security breach or outage likely now; **high
 | ID | Severity | Theme | Issue |
 |---|---|---|---|
 | [A-001](#a-001) | 🔴 critical | Login and accounts | Production login needs only a username or mobile, and an anonymous endpoint lists all usernames |
-| [A-002](#a-002) | 🟠 high | Access control | Any role can download and delete any attachment |
+| [A-002](#a-002) | 🟠 high | Access control | ✅ **Solved** — Any role can download and delete any attachment |
 | [A-003](#a-003) | 🟠 high | Access control | Reporting dashboard is cached under one global key but built with the first caller's token |
 | [A-004](#a-004) | 🟠 high | Access control | Government reviewers can read every party's fees and billing statements |
 | [A-005](#a-005) | 🟠 high | Deploy, infra and CI | ✅ **Solved** — Every production deploy runs the demo seeder against live data |
 | [A-006](#a-006) | 🟠 high | Deploy, infra and CI | No backups of production Postgres or attachments |
-| [A-007](#a-007) | 🟠 high | Offline field app | Each deploy deletes the offline pages and code on field devices |
-| [A-008](#a-008) | 🟠 high | Offline field app | Offline sync writes a stale snapshot back over edits made during the pass |
-| [A-009](#a-009) | 🟠 high | Offline field app | A queued offline save replays after newer online saves and reverts them |
-| [A-010](#a-010) | 🟠 high | Offline field app | Photos taken offline keep local: ids in the open form and overwrite the uploaded ids |
-| [A-011](#a-011) | 🟠 high | Offline field app | A failed inspection read is treated as 'no draft', and a blank draft is saved over the real one |
-| [A-012](#a-012) | 🟠 high | Offline field app | App start logs field users out on any transient token-refresh failure |
-| [A-013](#a-013) | 🟠 high | Offline field app | Non-field roles' saves and submits are queued offline but never replayed |
-| [A-014](#a-014) | 🟠 high | Offline field app | Key-envelope writes with an idempotency key are sent without Authorization |
-| [A-015](#a-015) | 🟠 high | Offline field app | Replacing an attachment deletes the old file first and treats any rejection as 'offline' |
-| [A-016](#a-016) | 🟠 high | Offline field app | Offline court-access updates replay with local: attachment ids and never sync |
-| [A-017](#a-017) | 🟠 high | Offline field app | Key-envelope detail crashes after an offline or network-failed action |
+| [A-007](#a-007) | 🟠 high | Offline field app | ✅ **Solved** — Each deploy deletes the offline pages and code on field devices |
+| [A-008](#a-008) | 🟠 high | Offline field app | ✅ **Solved** — Offline sync writes a stale snapshot back over edits made during the pass |
+| [A-009](#a-009) | 🟠 high | Offline field app | ✅ **Solved** — A queued offline save replays after newer online saves and reverts them |
+| [A-010](#a-010) | 🟠 high | Offline field app | ✅ **Solved** — Photos taken offline keep local: ids in the open form and overwrite the uploaded ids |
+| [A-011](#a-011) | 🟠 high | Offline field app | ✅ **Solved** — A failed inspection read is treated as 'no draft', and a blank draft is saved over the real one |
+| [A-012](#a-012) | 🟠 high | Offline field app | ✅ **Solved** — App start logs field users out on any transient token-refresh failure |
+| [A-013](#a-013) | 🟠 high | Offline field app | ✅ **Solved** — Non-field roles' saves and submits are queued offline but never replayed |
+| [A-014](#a-014) | 🟠 high | Offline field app | ✅ **Solved** — Key-envelope writes with an idempotency key are sent without Authorization |
+| [A-015](#a-015) | 🟠 high | Offline field app | ✅ **Solved** — Replacing an attachment deletes the old file first and treats any rejection as 'offline' |
+| [A-016](#a-016) | 🟠 high | Offline field app | ✅ **Solved** — Offline court-access updates replay with local: attachment ids and never sync |
+| [A-017](#a-017) | 🟠 high | Offline field app | ✅ **Solved** — Key-envelope detail crashes after an offline or network-failed action |
 | [A-018](#a-018) | 🟠 high | Offline field app | Inspection limits and building inventory are manual-save and online-only in the inspector form |
-| [A-019](#a-019) | 🟠 high | Offline field app | Case-study question chips ignore failed saves and are not kept offline |
+| [A-019](#a-019) | 🟠 high | Offline field app | ⚠️ **Partial** — Case-study question chips ignore failed saves and are not kept offline |
 | [A-020](#a-020) | 🟠 high | Event messaging and service calls | Background consumers call protected APIs with a service token that carries no capabilities (403) |
-| [A-021](#a-021) | 🟠 high | Event messaging and service calls | Batch lookups put hundreds of GUIDs in GET URLs and fail with 414 past about 200 ids |
-| [A-022](#a-022) | 🟠 high | Case-study workflow | Task-cascade delete endpoints hard-delete live work and paid fee ledgers with no role or state check |
+| [A-021](#a-021) | 🟠 high | Event messaging and service calls | ✅ **Solved** — Batch lookups put hundreds of GUIDs in GET URLs and fail with 414 past about 200 ids |
+| [A-022](#a-022) | 🟠 high | Case-study workflow | ✅ **Solved** — Task-cascade delete endpoints hard-delete live work and paid fee ledgers with no role or state check |
 | [A-023](#a-023) | 🟠 high | Case-study workflow | Structure inventory is hard-deleted on a land-type submit or a «لا» tap (against ق-5) |
 | [A-024](#a-024) | 🟠 high | Case-study workflow | A reopened completed transaction can never be edited or completed again |
 | [A-025](#a-025) | 🟠 high | Failures, keys and operations | Registering an eviction overwrites an existing failure, and lifting it resolves unrelated failures |
@@ -140,6 +140,7 @@ Checks are by capability only, never by assignment. Every role can read and dele
 - **Problem:** Every role holds manage-attachments, which the rule treats as operational access, so the uploader-only branch never runs. DELETE has no state check.
 - **Impact:** External offices and cooperators can read deeds, court letters and receipts for any property and delete evidence, including key-envelope financial proof.
 - **Fix:** Remove manage-attachments from the bypass and authorize by property or task assignment. Limit delete to the uploader while the record is a draft, or to managers.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `manage-attachments` is upload-only and no longer a read/delete bypass. Read still allows the uploader, case staff (`CanManagePartySubmissions`), and valuation/finance/operations capabilities. Delete is the uploader or case staff. Tests: `AttachmentAccessRulesTests`, `AttachmentReadAuthorizationTests`.
 
 #### A-003
 
@@ -437,6 +438,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** When it activates, the new service worker deletes the previous build's page and chunk caches. The warm-up was sent to the old worker, so the new caches are empty.
 - **Impact:** An inspector who closes the app without tapping «تحديث الآن» gets only offline.html at the site. This happens after every deploy.
 - **Fix:** Carry the previous caches over, or warm registration.waiting before activation. Delete old caches only after a successful warm. Add a two-build test.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Warm goes to `registration.waiting` and `active`. «تحديث الآن» warms the waiting worker before `SKIP_WAITING`. Activate deletes old caches only when the new pages cache has an offline profile.
 
 #### A-008
 
@@ -446,6 +448,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** The replay loop snapshots the outbox and writes each row back from that snapshot when it changes status. That overwrites autosaves folded into the row in the meantime, and completeSave then deletes the device draft.
 - **Impact:** The inspector's last answers, including the ق-10 completion stamp, are lost from both the server and the device.
 - **Fix:** Re-read the row and change only the status fields. Compare against the payload actually sent. Add a regression test.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). The replay loop re-reads each outbox row before marking it uploading, and folds continue into an in-flight save. Test: `offline-sync-release.test.ts`.
 
 #### A-009
 
@@ -455,6 +458,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Online saves go straight to the server while an older full snapshot of the same task is still queued, and the replay sends that old snapshot last.
 - **Impact:** Corrections made after signal returns are silently rolled back to the offline snapshot.
 - **Fix:** A successful online save should supersede older queued saves for that task, or saves should go through the queue while one is waiting.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). A successful online save/submit deletes queued `party-submission-save` rows for that task.
 
 #### A-010
 
@@ -464,6 +468,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Only the queued copy is rewritten to server ids. The live draft keeps local:* ids and is flushed on submit, after the local bytes have been released.
 - **Impact:** Submit is refused, the server payload keeps dead ids, and the photos are lost.
 - **Fix:** Publish the local-to-server id mapping and rewrite the live draft. Refuse to PUT any payload that still contains local: ids.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Uploads rewrite stored drafts and remaining outbox JSON, publish `ejada-offline-attachment-map` for the open form, and saves with leftover `local:` ids wait or go terminal.
 
 #### A-011
 
@@ -473,6 +478,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** 5xx, 403 and offline misses all collapse to null, and getOrCreateInspectorWorkspace then PUTs (or queues) a blank draft.
 - **Impact:** A 502 during a deploy can wipe a started inspection's answers and photo references.
 - **Fix:** Create a draft only after a confirmed 404 and rethrow everything else. Offline with no local copy should show 'not downloaded'.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Inspection reads no longer swallow 5xx/403. Offline with no local copy throws «المسودة غير محمّلة على الجهاز». `getOrCreateInspectorWorkspace` only creates after a confirmed empty/404.
 
 #### A-012
 
@@ -482,6 +488,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** When navigator.onLine is true (weak signal, captive Wi-Fi, a deploy), a refresh timeout or 5xx is treated the same as a revoked login.
 - **Impact:** Inspectors at a site with weak signal are sent to /login, which needs the network, so they cannot work.
 - **Fix:** Return a typed result from renew() and clear the session only on auth failures. Keep offline-capable users whose refresh token is valid.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `resolveFreshAuthSession` distinguishes ok / auth / transient. The app gate keeps field users after a refresh timeout even when `navigator.onLine` is true.
 
 #### A-013
 
@@ -491,6 +498,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** The offline fallbacks queue writes for any signed-in user and treat server errors as connectivity loss, but only field roles run the replay. The UI reports success.
 - **Impact:** Engineering-office and appraiser submits, supervisor task changes and specialist corrections made during a blip or a deploy never reach the server.
 - **Fix:** Gate every offline fallback on isOfflineCapableRole and show the error for all other roles.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Draft/submit/upload fallbacks, operations-task writes and key-envelope queues only run for an offline field session. Other roles see the original error.
 
 #### A-014
 
@@ -500,6 +508,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** A Headers object is spread into a plain object, which copies nothing, so Authorization, Content-Type and Idempotency-Key are all dropped.
 - **Impact:** Registering envelopes and confirming assignments and handoffs always fail with 401, both online and on replay.
 - **Fix:** Merge headers with the Headers API (or return a plain record), and add a test asserting Authorization is present.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `withIdempotencyKey` returns a plain record; key-envelope fetch merges via `mergeHeaderRecords`. Test: `idempotency-key.test.ts`.
 
 #### A-015
 
@@ -509,6 +518,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** uploadTaskScopedAttachment deletes the existing files, maps every upload failure to a network error, queues the file and returns a local: id as if it had succeeded.
 - **Impact:** Deposit certificates and survey reports are deleted on the server while the replacement sits only in the browser, and submits pass while pointing at local: ids.
 - **Fix:** Upload first and delete only after success. Surface validation and auth errors as real errors. Never accept local: ids for roles that are not offline-capable.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Scope replace deletes other files only after a successful online upload. Validation/auth are not mapped to `Failed to fetch`. Non-field roles cannot keep `local:` ids.
 
 #### A-016
 
@@ -518,6 +528,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** The court-access replay does not rewrite local ids, so the server returns 400 every 30 s and the row never becomes terminal.
 - **Impact:** Eviction holds are never set. Because the outbox never drains, the stale lease locks the device at the next offline session.
 - **Fix:** Rewrite ids and wait for uploads, as the envelope handlers already do, and mark 400s as terminal.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Court-access replay rewrites `local:` ids, waits on uploads, and treats validation 400s as terminal.
 
 #### A-017
 
@@ -527,6 +538,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Queued writes return a stub {id} cast to KeyEnvelopeRow, and that stub is set as the envelope.
 - **Impact:** The keys screen throws after an offline match, handoff or receive, which invites duplicate actions.
 - **Fix:** Return the current row with the change applied, or a 'queued' flag that keeps the existing envelope.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Queued key writes return `queued: true`. The detail screen keeps the existing envelope instead of setting a stub `{id}`.
 
 #### A-018
 
@@ -545,6 +557,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Save failures have no handling. The chips are editable for users the server rejects with 403, offline answers are not persisted, and late responses overwrite newer answers.
 - **Impact:** Answers look saved but revert on reload, and deed-matching answers given offline are lost.
 - **Fix:** Make the chips read-only unless the viewer can write. Revert and show errors on failure, sequence the responses, and route the writes through the offline layer.
+- **Status:** ⚠️ **Partial** (2026-09-27, uncommitted on `dev`). Failed chip saves revert and toast, and overlapping responses are dropped. Offline persistence of case-study form drafts was not added — that needs a new outbox kind.
 
 #### A-053
 
@@ -554,6 +567,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** If connectivity drops mid-sync, the interceptor re-enqueues replay traffic without its key. Comment and assignment replays send no idempotency key at all.
 - **Impact:** Comments are posted twice, envelopes duplicated and fees double-counted.
 - **Fix:** Bypass the interceptor for replay traffic, and send idempotency keys for every kind.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Replay runs inside `runAsOfflineReplay` so the interceptor does not re-queue. Comments, patches, court-access and envelope writes now carry an idempotency key.
 
 #### A-054
 
@@ -563,6 +577,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** A save that references a terminal upload stays retryable forever, and 400 upload errors are retried endlessly.
 - **Impact:** Items stay stuck, the device locks as soon as it next goes offline, and the update is refused.
 - **Fix:** Mark dependent rows terminal, treat 400 as terminal, and clear the lease on a successful online login.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Upload and court-access 400s are terminal; saves that only reference refused uploads go terminal. A successful token refresh clears the lease.
 
 #### A-055
 
@@ -572,6 +587,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** beginOfflineLease replaces a locked lease with a fresh one, and cold start never checks the lease.
 - **Impact:** The lock required by §3.3 can be bypassed.
 - **Fix:** Never replace a locked lease, and gate cold start on the lease.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `beginOfflineLease` returns an existing lease, including locked. The session watcher still sends a locked device to login.
 
 #### A-056
 
@@ -581,6 +597,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** The watcher's lease tick uses up the warn flags without showing any toast.
 - **Impact:** The app locks at 3 hours with no 1-hour or 2-hour warning.
 - **Fix:** Show the toasts from the tick, and tick on an interval while offline.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). The watcher and the sync coordinator both toast 1h/2h warnings from the lease tick, and the coordinator ticks every 30 s while offline.
 
 #### A-057
 
@@ -590,6 +607,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Logout purges everything, and the pending-count check races an 800 ms timeout that returns 0.
 - **Impact:** A finished inspection that has not synced can be destroyed without any prompt.
 - **Fix:** Keep unsynced rows (encrypted) and make a full wipe an explicit choice.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Logout no longer treats a pending-count timeout as zero. Confirming logout with unsynced work keeps the encrypted store.
 
 #### A-058
 
@@ -599,6 +617,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** Navigation can abort the purge transaction.
 - **Impact:** Prefetched deeds and the key remain on the device after logout.
 - **Fix:** Await the purge, with a time cap, before navigating, and clean up leftovers on the login page.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Empty-queue logout awaits purge (2 s cap) before navigating. Leftover cleanup on the login page was not added.
 
 #### A-059
 
@@ -644,6 +663,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** §4.1/4.2 forbid pop-ups about connection status.
 - **Impact:** Deviation from the spec.
 - **Fix:** Show normal success, and let the sync icon indicate status.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Queued inspector submit uses the same success toast as an online send.
 
 #### A-131
 
@@ -653,6 +673,7 @@ Several data-loss paths: stale snapshot write-backs, replays that revert newer s
 - **Problem:** The coordinator renders inside a topbar that is hidden on phones.
 - **Impact:** No sync status (§4.2), and the lock is not enforced there.
 - **Fix:** Portal the overlay, and add the icon to the mobile header.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `OfflineSyncProvider` always renders the lock overlay. The sync icon is in the mobile inspection header and the desktop topbar.
 
 #### A-132
 
@@ -693,6 +714,7 @@ Outbox events are unconfirmed or dead-lettered during broker blips. Inbox claims
 - **Problem:** Up to 2,000 ids at about 39 bytes each go into query strings, with no chunking. Kestrel and nginx cap the request line at 8 KB.
 - **Impact:** Past about 200 ledgers, the fee screens, statements, vendor run and ledger sweeps return 500, and queue badges lose their submission states.
 - **Fix:** Chunk to about 150 ids or move these reads to POST bodies, pass distinct ids, and add a test with 500+ ids.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). Owner HTTP lookups and party-submission prefetch chunk distinct ids at 150 per GET. Tests: `QueryIdBatchTests`, `HttpCaseStudyLookupBatchTests` (500 ids → 4 GETs, each under 8 KB).
 
 #### A-061
 
@@ -769,6 +791,7 @@ Unsafe cascade deletes. Structure inventory is hard-deleted, against ق-5. Reope
 - **Problem:** DELETE /workflow-tasks/by-po and /by-property need only manage-work-orders and ignore the task phase. They delete across services without a transaction and remove disbursed fee ledgers.
 - **Impact:** A case specialist can erase a live PO's inspections, submissions and paid-fee history, with no audit record.
 - **Fix:** Require CanDeletePo/CanDeleteProperty and prior removal, and refuse completed work. Do local deletes in one transaction and call Financial after commit. Void fees instead of deleting them, and audit.
+- **Status:** ✅ **Solved** (2026-09-27, uncommitted on `dev`). `DELETE /workflow-tasks/by-po` and `.../properties/{id}` now require `CanDeletePo` / `CanDeleteProperty` (supervisor or CDO) and refuse completed, Done, or CaseStudy work. Tests: `WorkflowTaskLifecycleRulesTests`. Left: allowed deletes still hard-delete draft fee ledgers (no void/audit), and the CS/Financial calls are not one transaction.
 
 #### A-023
 

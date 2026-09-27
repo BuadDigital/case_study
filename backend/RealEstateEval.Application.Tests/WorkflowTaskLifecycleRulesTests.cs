@@ -215,4 +215,18 @@ public class WorkflowTaskLifecycleRulesTests
 
         Assert.Equal([inspectionTask], ids);
     }
+
+    [Fact]
+    public void Cascade_delete_refuses_completed_or_case_study_work()
+    {
+        Assert.Null(WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason([MakeTask()]));
+        Assert.NotNull(WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(
+            [MakeTask(status: WorkflowTaskStatus.Completed)]));
+        Assert.NotNull(WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(
+            [MakeTask(phase: WorkflowTaskPhase.CaseStudy)]));
+        Assert.NotNull(WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(
+            [MakeTask(phase: WorkflowTaskPhase.Done)]));
+        Assert.Null(WorkflowTaskLifecycleRules.CascadeDeleteBlockedReason(
+            [MakeTask(kind: WorkflowTaskKind.FieldInspection, phase: WorkflowTaskPhase.Distribution)]));
+    }
 }

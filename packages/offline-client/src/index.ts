@@ -8,6 +8,7 @@ export type {
 export {
   randomUuid,
   OFFLINE_ACCESS_STORAGE_KEY,
+  OFFLINE_ATTACHMENT_MAP_EVENT,
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
 } from "./types";
@@ -16,9 +17,11 @@ export {
   countPendingOutbox,
   deleteOutboxItem,
   deleteOfflineDraft,
+  deleteOutboxItemsByKind,
   getOfflineDraft,
   getOfflineBlob,
   getPrefetch,
+  listOfflineDrafts,
   listOutboxItems,
   listPrefetchByKind,
   listPrefetchByUser,

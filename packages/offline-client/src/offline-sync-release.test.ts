@@ -168,6 +168,63 @@ describe("offline sync releases local copies", () => {
     expect(await getOfflineDraft(USER, `field-inspection:${TASK}`)).not.toBeNull();
     expect(await listOutboxItems(USER)).toHaveLength(1);
   });
+
+  it("does not write a stale snapshot over a fold during the pass", async () => {
+    await persistDraftLocally({
+      userId: USER,
+      taskId: TASK,
+      kind: "field-inspection",
+      payload: { note: "أولى" },
+    });
+    const { deps } = recordingDeps();
+    let sent = "";
+    deps.saveSubmission = async (input) => {
+      sent = input.payloadJson;
+      await persistDraftLocally({
+        userId: USER,
+        taskId: TASK,
+        kind: "field-inspection",
+        payload: { note: "أخيرة" },
+      });
+      return { ok: true };
+    };
+
+    await runOfflineSync(USER, deps);
+
+    expect(sent).toContain("أولى");
+    const queued = (await listOutboxItems(USER)).find(
+      (item) => item.kind === "party-submission-save",
+    );
+    expect(queued?.payloadJson).toContain("أخيرة");
+    expect(await getOfflineDraft(USER, `field-inspection:${TASK}`)).toMatchObject({
+      payloadJson: expect.stringContaining("أخيرة"),
+    });
+  });
+
+  it("rewrites stored drafts from uploaded attachment ids", async () => {
+    const { localAttachmentId } = await persistAttachmentLocally({
+      userId: USER,
+      scope: "field-inspection-photo",
+      scopeKey: `${TASK}:feature:facade`,
+      fileName: "facade.jpg",
+      contentType: "image/jpeg",
+      bytes: new TextEncoder().encode("jpeg-bytes").buffer,
+    });
+    await persistDraftLocally({
+      userId: USER,
+      taskId: TASK,
+      kind: "field-inspection",
+      payload: { facade: localAttachmentId },
+    });
+    const { deps } = recordingDeps();
+    deps.saveSubmission = async () => ({ ok: false, error: "later" });
+
+    await runOfflineSync(USER, deps);
+
+    const draft = await getOfflineDraft(USER, `field-inspection:${TASK}`);
+    expect(draft?.payloadJson).toContain("server-att-1");
+    expect(draft?.payloadJson).not.toContain("local:");
+  });
 });
 
 describe("one sync at a time across tabs", () => {

@@ -5,8 +5,8 @@
  * Shows every question assigned to the inspector in «علاقة المستخدم بالمعلومة».
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { cn, InlineLoadingSkeleton, Note } from "@platform/ui-kit";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { cn, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import {
   emptyCaseStudyInfoRolesConfig,
   isPartyQuestionVisible,
@@ -81,8 +81,10 @@ export function InspectorCaseStudyChips({
     useCaseStudyQuestionCatalogQuery();
   const matrix = (infoRolesData ?? DEFAULT_INFO_ROLES).matrix;
 
+  const { showToast } = useToast();
   const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
   const [loading, setLoading] = useState(true);
+  const saveGen = useRef(0);
 
   const parentId = useMemo(
     () => resolveParentId(childTask, tasks ?? []),
@@ -161,6 +163,7 @@ export function InspectorCaseStudyChips({
 
   async function pick(key: string, value: CaseStudyFormAnswer) {
     if (forceReadOnly) return;
+    const previous = draft;
     const base: CaseStudyFormDraft =
       draft ??
       ({
@@ -183,9 +186,16 @@ export function InspectorCaseStudyChips({
       answers: { ...base.answers, [key]: value },
       status: base.status === "new" ? "draft" : base.status,
     };
+    const gen = ++saveGen.current;
     setDraft(next);
     const saved = await savePartyCaseStudyFormDraft(next);
-    if (saved.ok) setDraft(saved.draft);
+    if (gen !== saveGen.current) return;
+    if (saved.ok) {
+      setDraft(saved.draft);
+      return;
+    }
+    setDraft(previous);
+    showToast(saved.error || "تعذّر حفظ الإجابة", "error");
   }
 
   return (
