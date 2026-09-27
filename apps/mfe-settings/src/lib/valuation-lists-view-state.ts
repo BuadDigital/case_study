@@ -28,7 +28,6 @@ export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos"
   { id: "methods", label: "أساليب وطرق التقييم", kind: "table" },
   { id: "comparables", label: "العقارات المقارنة", kind: "table" },
   { id: "facades", label: "أنواع الواجهات", kind: "table" },
-  { id: "boundaryTypes", label: "أنواع الحد", kind: "table" },
   { id: "glossary", label: "المصطلحات المهنية", kind: "table" },
   { id: "ivsStandards", label: "معايير التقييم الدولية", kind: "table" },
   { id: "attachments", label: "مرفقات التقرير", kind: "table" },
@@ -76,7 +75,7 @@ export const TABLE_META: Record<
     addLabel: "إضافة نوع واجهة",
     addTitle: "إضافة نوع واجهة",
     cols: ["نوع الواجهة", "الاستخدام"],
-    note: "أنواع الواجهات — تُعرض قائمةَ اختيار في حقل «نوع الواجهة» لدى المعاين في شاشة المعاينة الميدانية، ويُنقل المختار إلى وصف العقار في التقرير.",
+    note: "أنواع الواجهات — قائمة اختيار «نوع الواجهة» لكل جهة في تعديل العقار ولدى المعاين الميداني؛ اختيار المعاين يتقدّم في التقرير.",
   },
   boundaryTypes: {
     addLabel: "إضافة نوع حد",

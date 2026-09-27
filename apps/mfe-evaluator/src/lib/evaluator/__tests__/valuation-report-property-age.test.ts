@@ -36,6 +36,14 @@ describe("reportPropertyAgeYearsFromLicense", () => {
   });
 
   it("formats the report label", () => {
+    expect(formatReportPropertyAgeYears(0)).toBe("أقل من سنة");
+    expect(formatReportPropertyAgeYears(1)).toBe("سنة واحدة");
+    expect(formatReportPropertyAgeYears(2)).toBe("سنتين");
     expect(formatReportPropertyAgeYears(4)).toBe("4 سنوات");
+    expect(formatReportPropertyAgeYears(10)).toBe("10 سنوات");
+    expect(formatReportPropertyAgeYears(11)).toBe("11 سنة");
+    expect(formatReportPropertyAgeYears(14)).toBe("14 سنة");
+    expect(formatReportPropertyAgeYears(100)).toBe("100 سنة");
+    expect(formatReportPropertyAgeYears(103)).toBe("103 سنوات");
   });
 });

@@ -142,15 +142,14 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
       ]);
     case 8:
       return kvTable([
-        ["شمال", field(doc, 8, "north"), "نوع الحد", field(doc, 8, "northType")],
+        ["شمال", field(doc, 8, "north")],
         ["نوع الواجهة شمالاً", field(doc, 8, "northFacade")],
-        ["جنوب", field(doc, 8, "south"), "نوع الحد", field(doc, 8, "southType")],
+        ["جنوب", field(doc, 8, "south")],
         ["نوع الواجهة جنوباً", field(doc, 8, "southFacade")],
-        ["شرق", field(doc, 8, "east"), "نوع الحد", field(doc, 8, "eastType")],
+        ["شرق", field(doc, 8, "east")],
         ["نوع الواجهة شرقاً", field(doc, 8, "eastFacade")],
-        ["غرب", field(doc, 8, "west"), "نوع الحد", field(doc, 8, "westType")],
+        ["غرب", field(doc, 8, "west")],
         ["نوع الواجهة غرباً", field(doc, 8, "westFacade")],
-        ["عدد الشوارع", field(doc, 8, "streetCount")],
       ]);
     case 9:
       return kvTable([

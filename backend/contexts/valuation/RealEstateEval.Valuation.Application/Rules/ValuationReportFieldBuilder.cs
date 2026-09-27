@@ -228,24 +228,16 @@ public static class ValuationReportFieldBuilder
                 break;
 
             case ValuationReportSectionKeys.Boundaries:
-                // «الواجهات» prints the intake boundary type (شارع/قطعة…) whenever no facade finishing was recorded.
+                // «نوع الواجهة» is the facade type from «أنواع الواجهات»; the old boundary type
+                // (شارع/قطعة…) and the street count derived from it are no longer printed.
                 d["north"] = JoinBoundary(prop?.NorthBoundary, prop?.NorthBoundaryLengthM);
-                d["northType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.NorthBoundaryType);
-                d["northFacade"] = FacadeOrType(prop?.NorthFacadeFinishing, d["northType"]);
+                d["northFacade"] = Facade(prop?.NorthFacadeFinishing);
                 d["south"] = JoinBoundary(prop?.SouthBoundary, prop?.SouthBoundaryLengthM);
-                d["southType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.SouthBoundaryType);
-                d["southFacade"] = FacadeOrType(prop?.SouthFacadeFinishing, d["southType"]);
+                d["southFacade"] = Facade(prop?.SouthFacadeFinishing);
                 d["east"] = JoinBoundary(prop?.EastBoundary, prop?.EastBoundaryLengthM);
-                d["eastType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.EastBoundaryType);
-                d["eastFacade"] = FacadeOrType(prop?.EastFacadeFinishing, d["eastType"]);
+                d["eastFacade"] = Facade(prop?.EastFacadeFinishing);
                 d["west"] = JoinBoundary(prop?.WestBoundary, prop?.WestBoundaryLengthM);
-                d["westType"] = ValuationBoundaryTypeLabels.Resolve(valuationCatalog, prop?.WestBoundaryType);
-                d["westFacade"] = FacadeOrType(prop?.WestFacadeFinishing, d["westType"]);
-                d["streetCount"] = PropertyBoundaryTypes.CountStreets(
-                    prop?.NorthBoundaryType,
-                    prop?.SouthBoundaryType,
-                    prop?.EastBoundaryType,
-                    prop?.WestBoundaryType).ToString();
+                d["westFacade"] = Facade(prop?.WestFacadeFinishing);
                 break;
 
             case ValuationReportSectionKeys.Participants:
@@ -517,10 +509,8 @@ public static class ValuationReportFieldBuilder
         return string.Join(" — ", new[] { type, other }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
 
-    public static string? FacadeOrType(string? facadeFinishing, string? typeLabel) =>
-        string.IsNullOrWhiteSpace(facadeFinishing)
-            ? (string.IsNullOrWhiteSpace(typeLabel) ? null : typeLabel.Trim())
-            : facadeFinishing.Trim();
+    public static string? Facade(string? facadeFinishing) =>
+        string.IsNullOrWhiteSpace(facadeFinishing) ? null : facadeFinishing.Trim();
 
     public static string? JoinBoundary(string? text, string? lengthM)
     {

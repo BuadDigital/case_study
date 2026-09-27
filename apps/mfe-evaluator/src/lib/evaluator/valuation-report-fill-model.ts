@@ -15,7 +15,6 @@ import {
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
-import { PROPERTY_BOUNDARY_TYPE_OPTIONS } from "@platform/app-shared/app-data/po-intake-boundaries";
 import { OTHER_ATTACHMENTS_KEY } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { approximatePropertyGeo } from "@platform/app-shared/domain/property-geo";
 import {
@@ -28,6 +27,7 @@ import {
   isLandInspectionContext,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
+  formatReportAgeText,
   formatReportPropertyAgeYears,
   reportPropertyAgeYearsFromLicense,
 } from "./valuation-report-property-age";
@@ -188,33 +188,20 @@ function surveyUsesNature(survey?: ValuationReportSurveyBounds | null): boolean 
   return survey?.deedMatchesNature === "no";
 }
 
-const BUILTIN_BOUNDARY_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  PROPERTY_BOUNDARY_TYPE_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]),
-);
-
 /**
- * Unified facade type: inspector dropdown first, then the intake «الواجهات» boundary type
- * (شارع/قطعة… from تعديل العقار), and the legacy free-text property field last.
+ * Unified facade type («أنواع الواجهات»): the inspector's pick first, then the specialist's
+ * pick in تعديل العقار. The old boundary type (شارع/قطعة…) is no longer used anywhere.
  */
 function sideFacadeType(
   inspector: InspectorWorkspaceDraft | null | undefined,
   property: PoPropertyIntake | null | undefined,
   side: "north" | "south" | "east" | "west",
-  boundaryTypeLabels?: Record<string, string> | null,
 ): string {
   const fromMatch = (inspector?.boundaryMatches?.[side]?.facade ?? "").trim();
   if (fromMatch) return fromMatch;
   const legacyKey = `boundaryFacade:${side}`;
   const fromFeature = (inspector?.featureValues?.[legacyKey] ?? "").trim();
   if (fromFeature) return fromFeature;
-  const typeKey = (property?.[`${side}BoundaryType`] ?? "").trim();
-  if (typeKey) {
-    return (
-      boundaryTypeLabels?.[typeKey] ??
-      BUILTIN_BOUNDARY_TYPE_LABELS[typeKey] ??
-      typeKey
-    );
-  }
   return (property?.[`${side}FacadeFinishing`] ?? "").trim();
 }
 
@@ -470,8 +457,6 @@ export function buildValuationReportLiveFill(input: {
   recon?: ValuationReconciliationDto | null;
   clients?: Pick<ClientDto, "id" | "nameAr">[];
   purposeLabel?: string | null;
-  /** Catalog «أنواع الحد» (key → Arabic name) — prints in §08 «الواجهات» when the inspector left the facade empty. */
-  boundaryTypeLabels?: Record<string, string> | null;
   basisLabel?: string | null;
   premiseLabel?: string | null;
   basisDefinition?: string | null;
@@ -806,16 +791,16 @@ export function buildValuationReportLiveFill(input: {
       .join(" · "),
   );
   cells["نوع الواجهة الشمالية"] = dash(
-    sideFacadeType(inspector, property, "north", input.boundaryTypeLabels),
+    sideFacadeType(inspector, property, "north"),
   );
   cells["نوع الواجهة الشرقية"] = dash(
-    sideFacadeType(inspector, property, "east", input.boundaryTypeLabels),
+    sideFacadeType(inspector, property, "east"),
   );
   cells["نوع الواجهة الجنوبية"] = dash(
-    sideFacadeType(inspector, property, "south", input.boundaryTypeLabels),
+    sideFacadeType(inspector, property, "south"),
   );
   cells["نوع الواجهة الغربية"] = dash(
-    sideFacadeType(inspector, property, "west", input.boundaryTypeLabels),
+    sideFacadeType(inspector, property, "west"),
   );
   // Legacy labels still present in older templates / tab sheets.
   cells["تشطيب الواجهة الشمالية"] = cells["نوع الواجهة الشمالية"];
@@ -860,9 +845,9 @@ export function buildValuationReportLiveFill(input: {
   if (!isLand) {
     cells["العمر الفعلي"] = dash(
       inspector?.propertyAgeYears
-        ? `${inspector.propertyAgeYears.trim()} سنوات`
+        ? formatReportAgeText(inspector.propertyAgeYears)
         : input.cost?.actualAgeYears != null
-          ? `${input.cost.actualAgeYears} سنوات`
+          ? formatReportPropertyAgeYears(input.cost.actualAgeYears)
           : "",
     );
   }
@@ -1082,7 +1067,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.northBoundaryLengthM,
           property?.northBoundaryLengthM,
         ),
-        face: sideFacadeType(inspector, property, "north", input.boundaryTypeLabels),
+        face: sideFacadeType(inspector, property, "north"),
       },
       {
         name: "الجنوبية",
@@ -1098,7 +1083,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.southBoundaryLengthM,
           property?.southBoundaryLengthM,
         ),
-        face: sideFacadeType(inspector, property, "south", input.boundaryTypeLabels),
+        face: sideFacadeType(inspector, property, "south"),
       },
       {
         name: "الشرقية",
@@ -1114,7 +1099,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.eastBoundaryLengthM,
           property?.eastBoundaryLengthM,
         ),
-        face: sideFacadeType(inspector, property, "east", input.boundaryTypeLabels),
+        face: sideFacadeType(inspector, property, "east"),
       },
       {
         name: "الغربية",
@@ -1130,7 +1115,7 @@ export function buildValuationReportLiveFill(input: {
             : input.survey?.westBoundaryLengthM,
           property?.westBoundaryLengthM,
         ),
-        face: sideFacadeType(inspector, property, "west", input.boundaryTypeLabels),
+        face: sideFacadeType(inspector, property, "west"),
       },
     ],
     areaRows: extraInventoryAreaRows(input.inventoryLines, [

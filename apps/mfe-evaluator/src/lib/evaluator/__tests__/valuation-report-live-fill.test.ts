@@ -190,8 +190,8 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["رقم رخصة البناء"]).toBe("1441/2345");
     expect(fill.cells["تاريخ رخصة البناء"]).toBe("هـ1441/03/15");
     // Report age is derived from the license date (−2), not the inspector age field.
-    expect(fill.cells["عمر العقار"]).not.toBe("99 سنوات");
-    expect(fill.cells["عمر العقار"]).toMatch(/^\d+ سنوات$/);
+    expect(fill.cells["عمر العقار"]).not.toBe("99 سنة");
+    expect(fill.cells["عمر العقار"]).toMatch(/^(\d+ (سنوات|سنة)|سنة واحدة|سنتين|أقل من سنة)$/);
     expect(fill.cells["عمر البناء"]).toBe(fill.cells["عمر العقار"]);
   });
 
@@ -614,7 +614,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع الواجهة الجنوبية"]).toBe("—");
   });
 
-  it("falls back to the intake boundary type for «الواجهات» when the inspector left the facade empty", () => {
+  it("prints the facade type: inspector first, then the specialist's pick, never the old boundary type", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -629,11 +629,11 @@ describe("valuation report live fill from intake", () => {
         district: "الشاطئ",
         northBoundaryType: "street",
         southBoundaryType: "pedestrian",
-        eastBoundaryType: "",
+        southFacadeFinishing: "رخام",
         eastFacadeFinishing: "دهان قديم",
         westBoundaryType: "plot",
+        westFacadeFinishing: "طوب",
       } as never,
-      boundaryTypeLabels: { pedestrian: "مشاه" },
       inspector: {
         boundaryMatches: {
           north: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
@@ -643,9 +643,9 @@ describe("valuation report live fill from intake", () => {
         },
       } as never,
     });
-    // Built-in label, catalog label, legacy free text when no type, inspector facade wins.
-    expect(fill.boundaries.map((b) => b.face)).toEqual(["شارع", "مشاه", "دهان قديم", "حجر"]);
-    expect(fill.cells["نوع الواجهة الشمالية"]).toBe("شارع");
+    // Old boundary type ignored, specialist facade, specialist facade, inspector facade wins.
+    expect(fill.boundaries.map((b) => b.face)).toEqual(["", "رخام", "دهان قديم", "حجر"]);
+    expect(fill.cells["نوع الواجهة الشمالية"]).toBe("—");
   });
 
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {
