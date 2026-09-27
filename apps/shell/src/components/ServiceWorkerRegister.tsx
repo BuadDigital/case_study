@@ -111,7 +111,7 @@ export function ServiceWorkerRegister() {
         <p className="m-0 text-sm text-text-1">يتوفر تحديث للتطبيق</p>
         <button
           type="button"
-          className="min-h-11 rounded-xl bg-brand px-4 text-sm font-semibold text-white"
+          className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white"
           onClick={() => {
             if (readPendingCount() > 0) {
               window.alert(

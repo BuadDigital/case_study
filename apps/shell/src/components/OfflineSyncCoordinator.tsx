@@ -40,7 +40,7 @@ export function OfflineSyncCoordinator() {
             </p>
             <button
               type="button"
-              className="mt-4 min-h-11 rounded-xl bg-brand px-4 text-sm font-semibold text-white"
+              className="mt-4 min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white"
               onClick={() => {
                 window.location.href = "/login";
               }}
