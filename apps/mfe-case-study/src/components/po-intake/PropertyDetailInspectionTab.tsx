@@ -10,6 +10,8 @@ import {
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
+import { SpecialistComponentsSection } from "./SpecialistComponentsSection";
+import { InspectorDescriptionReference } from "../field-inspection/InspectorDescriptionReference";
 import {
   approximatePropertyGeo,
   formatDateAr,
@@ -603,6 +605,18 @@ export function PropertyDetailInspectionTab({
           canAdoptEngineeringMap={canAdoptEngineeringMap}
           onAdoptEngineeringMap={adoptEngineeringMap}
           engineeringMapPin={engineeringMapPin}
+          specialistComponents={
+            mapActor === "specialist" && inspectionTask.poNumber && property.id ? (
+              <SpecialistComponentsSection
+                poNumber={inspectionTask.poNumber}
+                propertyId={property.id}
+                disabled={locked}
+                inspectorReference={
+                  <InspectorDescriptionReference draft={draft} deedNumber={property.deedNumber} />
+                }
+              />
+            ) : undefined
+          }
           onPin={() => {
             if (!draft) return;
             const nextLat =

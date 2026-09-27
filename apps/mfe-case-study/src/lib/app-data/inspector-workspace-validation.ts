@@ -18,6 +18,7 @@ import {
   isLandInspectionContext,
   isMovablesPresent,
   isOccupied,
+  inspectorDescriptionMissing,
   listInspectorPhotoValidationIssues,
   sanitizeInspectorDraftForLand,
   isInspectorPresenceToggleField,
@@ -29,6 +30,10 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
+
+/** Mirrors FieldInspectionSubmissionValidator — text or components photo, at least one. */
+export const PROPERTY_DESCRIPTION_REQUIRED =
+  "أدخل وصف العقار أو أرفق صورة لتفاصيل المكونات";
 
 export type InspectorWorkspaceFieldErrors = Partial<
   Record<
@@ -50,6 +55,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "features"
     | "movablesDescription"
     | "occupancyDescription"
+    | "propertyDescription"
     | "boundaries"
     | "_"
     ,
@@ -122,6 +128,8 @@ export function inspectorFieldTargetId(
       return `ins-${MOVABLES_DESCRIPTION_KEY}`;
     case "occupancyDescription":
       return `ins-${OCCUPANCY_DESCRIPTION_KEY}`;
+    case "propertyDescription":
+      return "ins-desc";
     case "featurePhotos":
       return "ins-features-section";
     case "componentPhotos":
@@ -183,6 +191,7 @@ export function firstInspectorWorkspaceErrorTarget(
     return inspectorFieldTargetId("accessRouteDescription");
   }
   if (errors.freePhotos) return inspectorFieldTargetId("freePhotos");
+  if (errors.propertyDescription) return inspectorFieldTargetId("propertyDescription");
   if (errors.missingComponentPhotoKey) {
     return inspectorFieldTargetId(
       `component-photo:${errors.missingComponentPhotoKey}`,
@@ -314,6 +323,10 @@ export function validateInspectorWorkspace(
     errors.occupancyDescription = "سبب الإشغال مطلوب عند اختيار «مشغول»";
   }
 
+  if (inspectorDescriptionMissing(submission)) {
+    errors.propertyDescription = PROPERTY_DESCRIPTION_REQUIRED;
+  }
+
   if (!options?.boundariesUnavailable) {
     const missingMismatchNotes = INSPECTOR_BOUNDARY_KEYS.filter((key) => {
       const row = submission.boundaryMatches[key];
@@ -393,6 +406,7 @@ const INSPECTOR_ERROR_KEYS = [
   "features",
   "movablesDescription",
   "occupancyDescription",
+  "propertyDescription",
   "featurePhotos",
   "componentPhotos",
   "boundaries",
@@ -436,6 +450,7 @@ const WIZARD_STEP_ERROR_KEYS: Record<
     "freePhotos",
   ],
   2: [
+    "propertyDescription",
     "componentPhotos",
     "boundaries",
     "definedPhotos",

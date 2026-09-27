@@ -132,7 +132,7 @@ describe("valuation report v3 header meta and page numbers", () => {
     for (const id of ["21", "22", "23"]) {
       expect(html).toContain(`data-sec="${id}"`);
     }
-    expect(html).toContain("مساحة الأرض (حسب الصك)");
+    expect(html).not.toContain("مساحة الأرض (حسب الصك)");
     expect(html).not.toContain("مجموع مسطحات البناء");
     expect(html).not.toContain("رقم رخصة البناء");
     expect(html).not.toContain("تاريخ رخصة البناء");

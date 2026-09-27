@@ -23,7 +23,6 @@ import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFiel
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
-import { BuildingInventorySection } from "./BuildingInventorySection";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";

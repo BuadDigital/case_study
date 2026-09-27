@@ -112,13 +112,14 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
         ["المالك", field(doc, 6, "ownerName")],
         ["نوع الملكية", field(doc, 6, "ownershipType")],
         ["المدينة / الحي", `${field(doc, 6, "city")} / ${field(doc, 6, "district")}`],
-        ["هل توجد مبانٍ/إنشاءات؟", field(doc, 6, "hasStructures") === "yes" ? "نعم" : "لا"],
-        // Building-only rows (decision 6 / 8b) — deleted for land, no dash.
+        ["هل تُقيَّم المباني؟", field(doc, 6, "hasStructures") === "yes" ? "نعم" : "لا"],
+        // Building condition only when buildings are valued (decision 6 / 8b); the listed
+        // components describe the property and print whenever the specialist listed any.
         ...(doc.hasStructuresToValue
-          ? ([
-              ["حالة العقار", field(doc, 6, "propertyCondition")],
-              ["حصر المباني والإنشاءات", field(doc, 6, "inventorySummary")],
-            ] as Array<[string, string]>)
+          ? ([["حالة العقار", field(doc, 6, "propertyCondition")]] as Array<[string, string]>)
+          : []),
+        ...(field(doc, 6, "inventorySummary") !== "-"
+          ? ([["حصر المباني والإنشاءات", field(doc, 6, "inventorySummary")]] as Array<[string, string]>)
           : []),
         ["المنقولات", field(doc, 6, "movables")],
       ]);

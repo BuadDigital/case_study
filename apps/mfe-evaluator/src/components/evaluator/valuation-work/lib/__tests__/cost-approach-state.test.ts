@@ -4,6 +4,7 @@ import {
   buildCostNarrative,
   costApproachDerived,
   costFieldsFromDto,
+  costLinesFromInventory,
   EMPTY_COST_FIELDS,
   inspectorAgeYearsForCostField,
 } from "../cost-approach-state";
@@ -193,5 +194,27 @@ describe("buildCostNarrative", () => {
     expect(text).not.toContain("لم يتم تبريره");
     expect(text).not.toContain("أرباح المطور");
     expect(text).not.toContain("العمر الاقتصادي");
+  });
+});
+
+describe("costLinesFromInventory", () => {
+  it("carries the specialist's item, unit, ratio and repeated floors", () => {
+    const [ground, repeated, fence] = costLinesFromInventory([
+      { id: "a", structureKind: "floor", label: "الدور الأرضي", areaSqm: "200", itemKey: "ground_floor", unit: "sqm", buildRatioPct: 60 },
+      { id: "b", structureKind: "floor", label: "الأدوار المتكررة", areaSqm: "", itemKey: "repeated_floors", unit: "sqm", repeatedFloorCount: 3 },
+      { id: "c", structureKind: "fence", label: "السور", areaSqm: "80", itemKey: "fence", unit: "lm" },
+    ]);
+    expect(ground).toMatchObject({ itemKey: "ground_floor", areaSqm: 200, buildRatioPct: 60, sourceInventoryLineId: "a" });
+    expect(repeated).toMatchObject({ itemKey: "repeated_floors", repeatedFloorCount: 3 });
+    expect(fence).toMatchObject({ itemKey: "fence", unit: "lm", unitLabelAr: "م.ط", areaSqm: 80 });
+  });
+
+  it("guesses the item for legacy rows without one", () => {
+    const [annex, other] = costLinesFromInventory([
+      { structureKind: "annex", label: "ملحق علوي", areaSqm: "40" },
+      { structureKind: "floor", label: "دور", areaSqm: "10" },
+    ]);
+    expect(annex.itemKey).toBe("upper_annex");
+    expect(other.itemKey).toBe("custom");
   });
 });

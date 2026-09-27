@@ -80,6 +80,9 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? FinishingStructure { get; set; }
     public string HasStructuresToValue { get; set; } = "";
 
+ /// <summary>«مكونات العقار» written by the case specialist — the report's «وصف العقار».</summary>
+    public string? SpecialistComponentsText { get; set; }
+
     public string InspectionScopeKey { get; set; } = "";
     public string? InspectionRestrictionReason { get; set; }
     public string? UninspectedUnitsJson { get; set; }
@@ -164,6 +167,7 @@ public sealed class CaseStudyValuationPropertyContextDto
         FinishingType = FinishingType,
         FinishingStructure = FinishingStructure,
         HasStructuresToValue = HasStructuresToValue,
+        SpecialistComponentsText = SpecialistComponentsText,
         InspectionScopeKey = InspectionScopeKey,
         InspectionRestrictionReason = InspectionRestrictionReason,
         UninspectedUnitsJson = UninspectedUnitsJson,
@@ -180,6 +184,11 @@ public sealed class CaseStudyBuildingInventoryLineDto
     public string StructureKind { get; set; } = "";
     public string Label { get; set; } = "";
     public string? AreaSqm { get; set; }
+    public string? Notes { get; set; }
+    public string? ItemKey { get; set; }
+    public string? Unit { get; set; }
+    public decimal? BuildRatioPct { get; set; }
+    public int? RepeatedFloorCount { get; set; }
 
     public BuildingInventoryLine ToLine(Guid propertyId) => new()
     {
@@ -188,6 +197,11 @@ public sealed class CaseStudyBuildingInventoryLineDto
         StructureKind = StructureKind,
         Label = Label,
         AreaSqm = AreaSqm,
+        Notes = Notes,
+        ItemKey = ItemKey,
+        Unit = Unit,
+        BuildRatioPct = BuildRatioPct,
+        RepeatedFloorCount = RepeatedFloorCount,
     };
 }
 

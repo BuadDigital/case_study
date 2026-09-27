@@ -218,7 +218,10 @@ public sealed class ValuationApproachSettingsService(
             HasStructuresToValue = hasStructures,
             CostApproachAllowed = costAllowed,
             MarketApproachEnabled = effective.MarketApproachEnabled,
-            CostApproachEnabled = costAllowed && effective.CostApproachEnabled,
+            // «أرض فقط» keeps the cost approach off whatever the stored toggle says.
+            CostApproachEnabled = costAllowed
+                && effective.CostApproachEnabled
+                && CostScopeKeys.IncludesBuildings(effective.CostScopeKey),
             IncomeApproachEnabled = effective.IncomeApproachEnabled,
             CostBasisKey = effective.CostBasisKey,
             CostBasisLabelAr = CostBasisKeys.LabelAr(effective.CostBasisKey),

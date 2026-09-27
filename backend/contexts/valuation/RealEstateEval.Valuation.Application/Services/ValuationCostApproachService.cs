@@ -73,20 +73,25 @@ public sealed class ValuationCostApproachService(
             effectivePropertyType = context?.EffectivePropertyType() ?? vr.PropertyType;
         }
 
-        var costAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
+        var scopeKey = approachSettings?.CostScopeKey
+            ?? ValuationApproachSettingsRules.DefaultScope(effectivePropertyType, hasStructures);
+        var costAllowed = ValuationApproachSettingsRules.CostApproachApplies(
             effectivePropertyType,
-            hasStructures);
+            hasStructures,
+            scopeKey);
         var costEnabled = costAllowed
             && (approachSettings?.CostApproachEnabled ?? true);
         if (!costEnabled)
         {
             return (null, new Dictionary<string, string>
             {
-                ["_"] = !ValuationApproachSettingsRules.CanEnableCostApproach(
-                    effectivePropertyType,
-                    hasStructures)
-                    ? "ق-3: أرض بلا إنشاءات لا تُقيَّم بالتكلفة — أسلوب التكلفة لا ينطبق"
-                    : "أسلوب التكلفة غير مفعَّل في إعدادات التقييم (شاشة 1)",
+                ["_"] = CostScopeKeys.IsLandOnly(scopeKey)
+                    ? "نطاق التقييم «أرض فقط» — أسلوب التكلفة لا ينطبق"
+                    : !ValuationApproachSettingsRules.CanEnableCostApproach(
+                        effectivePropertyType,
+                        hasStructures)
+                        ? "ق-3: أرض بلا إنشاءات لا تُقيَّم بالتكلفة — أسلوب التكلفة لا ينطبق"
+                        : "أسلوب التكلفة غير مفعَّل في إعدادات التقييم (شاشة 1)",
             });
         }
 

@@ -139,11 +139,15 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   useEffect(() => {
     onDraftApproachesChange?.({
       market: asMarketEnabled,
-      cost: asCostEnabled && (settings?.costApproachAllowed ?? true),
+      cost:
+        asCostEnabled &&
+        (settings?.costApproachAllowed ?? true) &&
+        asCostScope !== "land_only",
     });
   }, [
     asMarketEnabled,
     asCostEnabled,
+    asCostScope,
     settings?.costApproachAllowed,
     onDraftApproachesChange,
   ]);
@@ -212,7 +216,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     }
     const res = await saveValuationApproachSettings(config, valuationRequestId, {
       marketApproachEnabled: asMarketEnabled,
-      costApproachEnabled: asCostEnabled && (settings?.costApproachAllowed ?? true),
+      costApproachEnabled:
+        asCostEnabled &&
+        (settings?.costApproachAllowed ?? true) &&
+        asCostScope !== "land_only",
       incomeApproachEnabled: false,
       costBasisKey: asCostBasis,
       costScopeKey: asCostScope,
@@ -252,8 +259,17 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
 
   const settingsSaved = settings?.isSaved ?? false;
   const isLandKind = settings?.isLandPropertyType ?? false;
-  const costAllowed = settings?.costApproachAllowed ?? true;
+  // Buildings can be valued (property is not land, or the specialist listed components).
+  const buildingsAllowed = settings?.costApproachAllowed ?? true;
+  const costAllowed = buildingsAllowed && asCostScope !== "land_only";
   const nextCostEnabled = asCostEnabled && costAllowed;
+
+  function chooseScope(next: "land_only" | "building_only" | "land_and_building") {
+    setAsCostScope(next);
+    // «أرض فقط» values no buildings; «مباني فقط» is valued by cost.
+    if (next === "land_only") setAsCostEnabled(false);
+    if (next === "building_only") setAsCostEnabled(true);
+  }
   const droppingWithWork = settingsSaved
     ? approachesDisabledWithWork({
         savedMarketEnabled: settings?.marketApproachEnabled ?? false,
@@ -283,11 +299,39 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
       <Card>
         <CardPad>
           <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>
-          {!settings?.costApproachAllowed ? (
-            <p className="mb-3 text-[11.5px] text-gold-d">
-              ق-3: أرض بلا إنشاءات — أسلوب التكلفة لا ينطبق.
-            </p>
-          ) : null}
+          <FieldLabel>نطاق التقييم</FieldLabel>
+          <div className="my-2 mb-1.5 flex flex-wrap gap-2">
+            <ToggleChip
+              active={asCostScope === "land_only"}
+              disabled={saving}
+              onClick={() => chooseScope("land_only")}
+            >
+              أرض فقط
+            </ToggleChip>
+            <ToggleChip
+              active={asCostScope === "building_only"}
+              disabled={saving || !buildingsAllowed}
+              onClick={() => chooseScope("building_only")}
+            >
+              مباني فقط
+            </ToggleChip>
+            <ToggleChip
+              active={asCostScope === "land_and_building"}
+              disabled={saving || !buildingsAllowed}
+              onClick={() => chooseScope("land_and_building")}
+            >
+              أرض مع المباني
+            </ToggleChip>
+          </div>
+          <p className="mb-4 mt-0 text-[10.5px] text-text-3">
+            {!buildingsAllowed
+              ? "لا توجد مكونات محصورة لدى الأخصائي — التقييم أرض فقط."
+              : asCostScope === "land_only"
+                ? "مكونات العقار تُطبع في التقرير ولا تدخل في القيمة (مثل مبانٍ هالكة)."
+                : asCostScope === "building_only"
+                  ? "تُقيَّم المكونات المحصورة وحدها بأسلوب التكلفة، دون تقدير الأرض."
+                  : "تُقيَّم الأرض مع المكونات المحصورة."}
+          </p>
           <div className="mb-4 grid grid-cols-3 gap-3">
             <label
               className={cn(
@@ -316,18 +360,18 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             <label
               className={cn(
                 "flex items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
-                asCostEnabled && settings?.costApproachAllowed
+                asCostEnabled && costAllowed
                   ? "border-gold bg-gold-soft"
                   : "border-border-md bg-surface",
-                settings?.costApproachAllowed
+                costAllowed
                   ? "cursor-pointer"
                   : "cursor-not-allowed opacity-55",
               )}
             >
               <input
                 type="checkbox"
-                checked={asCostEnabled && !!settings?.costApproachAllowed}
-                disabled={saving || !settings?.costApproachAllowed}
+                checked={asCostEnabled && costAllowed}
+                disabled={saving || !costAllowed}
                 onChange={(e) => setAsCostEnabled(e.target.checked)}
                 className="mt-0.5 size-[17px] accent-[var(--ink)]"
               />
@@ -336,8 +380,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                   أسلوب التكلفة
                 </div>
                 <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  {isLandKind && !settings?.costApproachAllowed
-                    ? "لا ينطبق: الأرض لا تُقيَّم بالتكلفة"
+                  {!costAllowed
+                    ? isLandKind && !buildingsAllowed
+                      ? "لا ينطبق: أرض بلا مكونات محصورة"
+                      : "لا ينطبق: نطاق التقييم «أرض فقط»"
                     : asCostScope === "building_only"
                       ? "تكلفة الإحلال ناقصاً الإهلاك — دون تقدير الأرض بالمقارنات"
                       : "أسلوب مركّب: قيمة الأرض بالمقارنات + تكلفة الإحلال ناقصاً الإهلاك"}
@@ -365,35 +411,18 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </label>
           </div>
 
-          {asCostEnabled && settings?.costApproachAllowed && asCostScope !== "building_only" ? (
+          {asCostEnabled && costAllowed && asCostScope !== "building_only" ? (
             <p className="mb-3 text-[11.5px] text-gold-d">
               طريقة المقاول تستلزم تقييم أرض المبنى بطريقة المقارنة.
             </p>
           ) : null}
 
-          {asCostEnabled && settings?.costApproachAllowed ? (
+          {asCostEnabled && costAllowed ? (
             <div className="mb-4 border-t border-border pt-4">
-              <FieldLabel>نطاق التقييم بالتكلفة</FieldLabel>
-              <div className="my-2 mb-1.5 flex flex-wrap gap-2">
-                <ToggleChip
-                  active={asCostScope !== "building_only"}
-                  disabled={saving}
-                  onClick={() => setAsCostScope("land_and_building")}
-                >
-                  أرض ومبنى
-                </ToggleChip>
-                <ToggleChip
-                  active={asCostScope === "building_only"}
-                  disabled={saving}
-                  onClick={() => setAsCostScope("building_only")}
-                >
-                  مبنى فقط
-                </ToggleChip>
-              </div>
               <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
                 {asCostScope === "building_only"
-                  ? "«مبنى فقط» لا يستلزم مقارنات أرض. إن بقي أسلوب السوق مفعّلاً فستلزم مقارناته للعقار ككل — عطّله إن كان التقييم بالتكلفة وحدها."
-                  : "«أرض ومبنى» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
+                  ? "«مباني فقط» لا يستلزم مقارنات أرض. إن بقي أسلوب السوق مفعّلاً فستلزم مقارناته للعقار ككل — عطّله إن كان التقييم بالتكلفة وحدها."
+                  : "«أرض مع المباني» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
               </p>
               <FieldLabel>طريقة تقدير التكلفة</FieldLabel>
               <div className="my-2 mb-1.5 flex flex-wrap gap-2">

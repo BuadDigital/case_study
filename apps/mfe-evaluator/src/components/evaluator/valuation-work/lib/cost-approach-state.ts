@@ -12,6 +12,7 @@ import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
 import {
   COST_ITEM_OPTIONS,
+  COST_UNIT_OPTIONS,
   INDIRECT_COST_ITEMS,
   costGroupOf,
   costLineComputed,
@@ -170,31 +171,43 @@ export type CostSeedInventoryLine = {
   structureKind?: string | null;
   label: string;
   areaSqm?: number | string | null;
+  /** Set by the case specialist's «جدول المكونات» (same catalog as the cost table). */
+  itemKey?: string | null;
+  unit?: string | null;
+  buildRatioPct?: number | null;
+  repeatedFloorCount?: number | null;
 };
 
-/** Building inventory to cost lines — unit rates are left for the evaluator. */
+/** Legacy inventory rows (no item key) — guess the catalog item from kind and label. */
+function legacyCostItemKey(l: CostSeedInventoryLine): string {
+  if (l.structureKind === "basement") return "basement";
+  if (l.structureKind === "fence") return "fence";
+  if (l.structureKind === "annex") {
+    return /علوي|upper/i.test(l.label ?? "") ? "upper_annex" : "lower_annex";
+  }
+  return "custom";
+}
+
+/**
+ * The specialist's components table to cost lines — item, quantity, unit, built-up ratio and
+ * repeated floors carry over; unit rates are left for the evaluator.
+ */
 export function costLinesFromInventory(
   lines: CostSeedInventoryLine[],
 ): ValuationCostLineDto[] {
-  return lines.map((l, i) => ({
+  return lines.map((l, i) => {
+    const itemKey = l.itemKey?.trim() || legacyCostItemKey(l);
+    const unit = l.unit?.trim() || COST_ITEM_OPTIONS.find((o) => o.key === itemKey)?.unit || "sqm";
+    return {
     id: createClientId("cost"),
     sourceInventoryLineId: l.id ?? null,
     structureKind: l.structureKind || "other",
-    itemKey:
-      l.structureKind === "basement"
-        ? "basement"
-        : l.structureKind === "fence"
-          ? "fence"
-          : l.structureKind === "annex"
-            ? /علوي|upper/i.test(l.label ?? "")
-              ? "upper_annex"
-              : "lower_annex"
-            : "custom",
+    itemKey,
     itemLabelAr: "",
-    unit: "sqm",
-    unitLabelAr: "م²",
-    buildRatioPct: null,
-    repeatedFloorCount: null,
+    unit,
+    unitLabelAr: COST_UNIT_OPTIONS.find((u) => u.key === unit)?.label ?? "م²",
+    buildRatioPct: l.buildRatioPct ?? null,
+    repeatedFloorCount: l.repeatedFloorCount ?? null,
     label: l.label,
     areaSqm: Number(String(l.areaSqm ?? "0").replace(",", ".")) || 0,
     unitCostSar: 0,
@@ -202,7 +215,8 @@ export function costLinesFromInventory(
     rationale: "",
     isIncluded: true,
     sortOrder: i,
-  }));
+    };
+  });
 }
 
 export function blankCostLine(

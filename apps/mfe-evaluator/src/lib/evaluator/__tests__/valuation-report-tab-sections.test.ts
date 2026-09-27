@@ -17,7 +17,6 @@ describe("valuation report tab sections", () => {
       "06",
       "07",
       "08",
-      "09",
       "10",
       "11",
       "12",

@@ -442,6 +442,7 @@ public class FieldInspectionSubmissionIntegrationTests
         $$"""
         {
           "status": "draft",
+          "propertyDescription": "فيلا سكنية من دورين",
           "inspectionDate": "2026-06-21",
           "inspectionTime": "10:30",
           "mapLatitude": "21.481000",

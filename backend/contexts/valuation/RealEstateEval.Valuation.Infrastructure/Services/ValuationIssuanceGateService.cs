@@ -103,9 +103,13 @@ public sealed class ValuationIssuanceGateService(
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
-        var costApproachAllowed = ValuationApproachSettingsRules.CanEnableCostApproach(
+        var costApproachAllowed = ValuationApproachSettingsRules.CostApproachApplies(
             string.IsNullOrWhiteSpace(propertyType) ? vr.PropertyType : propertyType,
-            hasStructures);
+            hasStructures,
+            approachSettings?.CostScopeKey);
+        hasStructures = ValuationApproachSettingsRules.BuildingsValued(
+            hasStructures,
+            approachSettings?.CostScopeKey);
         var costApproachEnabled = costApproachAllowed
             && (approachSettings?.CostApproachEnabled ?? true);
         // "Building only" scope: land section hidden — its gates do not apply.

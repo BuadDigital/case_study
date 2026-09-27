@@ -18,8 +18,20 @@ public class BuildingInventoryLine
  /// <summary>Free label — e.g. ground floor, fence, annex.</summary>
     public string Label { get; set; } = "";
 
- /// <summary>Area m² — string for flexible field entry.</summary>
+ /// <summary>Area m² (or count / linear metres per <see cref="Unit"/>) — string for flexible entry.</summary>
     public string? AreaSqm { get; set; }
+
+ /// <summary>Cost item key from the appraiser's direct-cost catalog (ground_floor, fence…); null on legacy rows.</summary>
+    public string? ItemKey { get; set; }
+
+ /// <summary>sqm | lm | count | lump — null on legacy rows (treated as sqm).</summary>
+    public string? Unit { get; set; }
+
+ /// <summary>Built-up ratio % for floor-area items.</summary>
+    public decimal? BuildRatioPct { get; set; }
+
+ /// <summary>Count of repeated floors (item «الأدوار المتكررة»).</summary>
+    public int? RepeatedFloorCount { get; set; }
 
     public string? Notes { get; set; }
 

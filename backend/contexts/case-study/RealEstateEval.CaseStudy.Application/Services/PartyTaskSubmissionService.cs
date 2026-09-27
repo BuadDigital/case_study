@@ -303,7 +303,6 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     await _repo.SetInspectedPropertyTypeAsync(
                         inspectedPropertyId,
                         inspectedPropertyType,
-                        InspectedPropertyTypeRules.IsLand(inspectedPropertyType),
                         ct);
                 }
                 await _repo.SaveChangesAsync(ct);

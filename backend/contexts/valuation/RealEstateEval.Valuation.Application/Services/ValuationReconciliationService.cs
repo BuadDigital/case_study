@@ -78,9 +78,10 @@ public sealed class ValuationReconciliationService(
             effectivePropertyType,
             hasStructures);
         var costEnabled = settings.CostApproachEnabled
-            && ValuationApproachSettingsRules.CanEnableCostApproach(
+            && ValuationApproachSettingsRules.CostApproachApplies(
                 effectivePropertyType,
-                hasStructures);
+                hasStructures,
+                settings.CostScopeKey);
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
             costEnabled);

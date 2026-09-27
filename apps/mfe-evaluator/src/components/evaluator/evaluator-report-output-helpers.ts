@@ -226,6 +226,7 @@ export async function loadReportOutputBundle(input: {
     return {
       inspector: await inspectorP,
       inventoryLines: [] as BuildingInventoryLineDto[],
+      componentsText: "",
       lists: null,
       clients: [] as ClientDto[],
       approaches: null,
@@ -285,6 +286,9 @@ export async function loadReportOutputBundle(input: {
       input.poNumber && propertyId && invRes?.ok
         ? invRes.data.lines ?? []
         : ([] as BuildingInventoryLineDto[]),
+    // «مكونات العقار» written by the case specialist — the report's «وصف العقار».
+    componentsText:
+      input.poNumber && propertyId && invRes?.ok ? invRes.data.componentsText ?? "" : "",
     lists: listsRes.ok ? listsRes.data.lists : null,
     clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
     approaches,

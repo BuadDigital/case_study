@@ -92,9 +92,14 @@ public sealed class ValuationReportDocumentService(
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
         var costUsed = approachSettings?.CostApproachEnabled == true
-            && ValuationApproachSettingsRules.CanEnableCostApproach(
+            && ValuationApproachSettingsRules.CostApproachApplies(
                 prop?.PropertyType ?? vr.PropertyType,
-                hasStructures);
+                hasStructures,
+                approachSettings.CostScopeKey);
+        // Components are always listed; building facts, narrative and photos follow the scope.
+        hasStructures = ValuationApproachSettingsRules.BuildingsValued(
+            hasStructures,
+            approachSettings?.CostScopeKey);
         const bool incomeUsed = false;
 
         var visible = ValuationReportSectionCatalog.ResolveVisible(

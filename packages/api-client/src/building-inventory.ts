@@ -18,6 +18,12 @@ export type BuildingInventoryLineDto = {
   label: string;
   areaSqm?: string | null;
   notes?: string | null;
+  /** Direct-cost catalog key (`@platform/app-shared/domain/cost-items`); null on legacy rows. */
+  itemKey?: string | null;
+  /** sqm | lm | count | lump */
+  unit?: string | null;
+  buildRatioPct?: number | null;
+  repeatedFloorCount?: number | null;
   /** Read-only: who wrote / last edited this line (server-stamped). Ignored on save. */
   provenance?: PartyFieldProvenanceEntry | null;
 };
@@ -25,11 +31,16 @@ export type BuildingInventoryLineDto = {
 export type BuildingInventoryDto = {
   propertyId: string;
   hasStructuresToValue: "" | "yes" | "no" | string;
+  /** «مكونات العقار» written by the case specialist — printed as the report's «وصف العقار». */
+  componentsText?: string;
   lines: BuildingInventoryLineDto[];
 };
 
 export type SaveBuildingInventoryRequest = {
-  hasStructuresToValue: "" | "yes" | "no" | string;
+  /** Ignored by the server — derived from whether any line is listed. */
+  hasStructuresToValue?: "" | "yes" | "no" | string;
+  /** Omit to keep the saved text. */
+  componentsText?: string;
   lines: BuildingInventoryLineDto[];
 };
 
@@ -77,6 +88,7 @@ export async function saveBuildingInventory(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden" };
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "server", errors };

@@ -80,6 +80,7 @@ public static class CaseStudyModel
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.InspectedPropertyType).HasMaxLength(128);
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
+            e.Property(x => x.SpecialistComponentsText).HasMaxLength(8000);
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.HasStructuresToValue), TriStateAnswers);
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
@@ -175,6 +176,9 @@ public static class CaseStudyModel
             e.Property(x => x.Label).HasMaxLength(256).IsRequired();
             e.Property(x => x.AreaSqm).HasMaxLength(32);
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.ItemKey).HasMaxLength(32);
+            e.Property(x => x.Unit).HasMaxLength(16);
+            e.Property(x => x.BuildRatioPct).HasPrecision(5, 2);
             e.Property(x => x.ProvenanceJson).HasColumnType("jsonb").HasDefaultValue("{}");
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => new { x.PropertyId, x.SortOrder });

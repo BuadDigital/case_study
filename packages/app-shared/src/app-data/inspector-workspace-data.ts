@@ -109,6 +109,18 @@ export const MOVABLES_DESCRIPTION_LABEL = "وصف المنقولات";
 
 export const OCCUPANCY_STATE_KEY = "occupancyState";
 export const OCCUPANCY_DESCRIPTION_KEY = "occupancyDescription";
+
+/** `featurePhotoAttachments` slot for the «وصف العقار» alternative photo (components' details). */
+export const PROPERTY_DESCRIPTION_PHOTO_KEY = "propertyDescription";
+
+/** «وصف العقار» needs a written description or the components photo — at least one. */
+export function inspectorDescriptionMissing(draft: {
+  propertyDescription: string;
+  featurePhotoAttachments: Record<string, { attachmentId?: string } | null>;
+}): boolean {
+  if ((draft.propertyDescription ?? "").trim()) return false;
+  return !draft.featurePhotoAttachments?.[PROPERTY_DESCRIPTION_PHOTO_KEY]?.attachmentId;
+}
 export const OCCUPANCY_DESCRIPTION_LABEL = "سبب الإشغال";
 
 /** Who facilitated site access — contact fields (same as بيانات الاتصال). */

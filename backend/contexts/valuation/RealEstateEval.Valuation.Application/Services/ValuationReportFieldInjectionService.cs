@@ -75,6 +75,8 @@ public sealed class ValuationReportFieldInjectionService(
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
+        // Components are always listed; building facts / cost lines follow the appraiser's scope.
+        hasStructures = ValuationApproachSettingsRules.BuildingsValued(hasStructures, cost?.CostScopeKey);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var org = await organizationSettings.GetAsync(cancellationToken);
         var valuationCatalog = await valuationLists.GetAsync(cancellationToken);
@@ -113,7 +115,11 @@ public sealed class ValuationReportFieldInjectionService(
                 asset++;
 
             bag.TryGetValue(map.FieldKey, out var value);
-            if (map.SourceKind == ValuationReportFieldSourceKind.ConditionalEmpty && !hasStructures)
+            // Buildings not valued ⇒ building facts and cost lines stay empty; the listed
+            // components («inventory.*») describe the property and are sent either way.
+            if (map.SourceKind == ValuationReportFieldSourceKind.ConditionalEmpty
+                && !hasStructures
+                && !map.FieldKey.StartsWith("inventory.", StringComparison.Ordinal))
                 value = "";
 
             var isFilled = ValuationReportFieldRules.CountsAsFilled(value);

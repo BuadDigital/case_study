@@ -61,7 +61,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { canDeleteProperty, canEditProperty } from "../../lib/app-data/po-roles";
 import { PoPropertyPartyDataCards } from "./PoPropertyPartyDataCards";
 import { PoPropertySpecialistExtrasCard } from "./PoPropertySpecialistExtrasCard";
-import { BuildingInventorySection } from "../field-inspection/BuildingInventorySection";
+import { SpecialistComponentsSection } from "./SpecialistComponentsSection";
 
 type EditSection = "enfath" | "bourse";
 
@@ -477,16 +477,15 @@ export function PoPropertyEdit({
             <div className="min-w-0">
               <h2 className="m-0 text-sm font-bold">مكونات العقار</h2>
               <p className="m-0 mt-0.5 text-xs text-text-3">
-                حصر الأدوار والأسوار والملاحق — مع اسم من كتب كل بند ومن عدّله
+                نص المكونات للتقرير وجدول البنود الذي ينتقل لبنود التكلفة عند المقيّم
               </p>
             </div>
           </CardHeader>
           <CardBody>
-            <BuildingInventorySection
+            <SpecialistComponentsSection
               poNumber={poNumber}
               propertyId={propertyId}
               disabled={!canEditProperty(role)}
-              wide
             />
           </CardBody>
         </Card>

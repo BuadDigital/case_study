@@ -105,7 +105,6 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
     "حالة البناء": INSPECTOR,
     "حالة الإشغال": INSPECTOR,
   },
-  "9": { "مساحة الأرض (حسب الصك)": INTAKE },
   "11": {
     سور: INSPECTOR,
     مواقف: INSPECTOR,
@@ -401,7 +400,7 @@ export function markReportMissingFields(
   const mark = createMarker();
   const sec = (id: string) => dom.querySelector(`[data-sec="${id}"]`);
 
-  for (const id of ["1", "2", "6", "7", "8", "9", "11", "13", "14", "17", "19", "20", "21", "22", "23", "24", "25", "26", "30", "33"]) {
+  for (const id of ["1", "2", "6", "7", "8", "10", "11", "13", "14", "17", "19", "20", "21", "22", "23", "24", "25", "26", "30", "33"]) {
     const scope = sec(id);
     if (!scope) continue;
     const keyed = KEYED_FIELDS[id];
@@ -410,7 +409,7 @@ export function markReportMissingFields(
       case "8":
         markBoundaries(scope, fill.boundariesSource === "survey" ? SURVEY : INTAKE, mark);
         break;
-      case "9":
+      case "10":
         mark(
           rowByFirstCell(scope, (l) => l === "مجموع مسطحات البناء")?.[1],
           "مجموع مسطحات البناء",
