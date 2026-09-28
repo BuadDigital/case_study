@@ -278,13 +278,13 @@ export function ClientsView() {
                         </div>
                       ) : null}
                       {row.id === INFATH_SEED_CLIENT_ID ? (
-                        <Badge className="mt-1" tone="info">
+                        <Badge className="mt-1" tone="default">
                           إنفاذ (بذرة)
                         </Badge>
                       ) : row.id === NABR_SEED_CLIENT_ID ? (
                         <div className="mt-1 flex flex-wrap gap-1">
-                          <Badge tone="info">نبر (بذرة)</Badge>
-                          <Badge tone="info">فرعي لإنفاذ</Badge>
+                          <Badge tone="default">نبر (بذرة)</Badge>
+                          <Badge tone="default">فرعي لإنفاذ</Badge>
                         </div>
                       ) : null}
                     </Td>

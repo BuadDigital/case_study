@@ -57,13 +57,6 @@ const ROLE_TYPE_BY_ID = new Map(
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
 
-const ROLE_BTN_SELECTED: Record<string, string> = {
-  primary: "border-ink bg-ink text-white",
-  secondary: "border-gold-2 bg-gold-soft text-gold-d",
-  verify: "border-border-md bg-surface-2 text-heading",
-  none: "border-border bg-surface text-text-3",
-};
-
 function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
     <svg
@@ -429,37 +422,77 @@ export function CaseStudyInfoRolesView() {
                         حدّد دور كل طرف في هذه المعلومة
                       </p>
                       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {CASE_STUDY_INFO_PARTIES.map((party) => (
+                        {CASE_STUDY_INFO_PARTIES.map((party) => {
+                          const storedRoleId =
+                            config.matrix[q.key]?.[party.id];
+                          // Unassigned parties default visually to «لا دور»
+                          const currentRoleId: CaseStudyInfoRoleType =
+                            storedRoleId ?? "none";
+                          const currentRole = ROLE_TYPE_BY_ID.get(currentRoleId);
+                          return (
                           <div
                             key={party.id}
                             className="rounded-[10px] border border-border-md bg-surface p-2.5"
                           >
-                            <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-heading">
-                              <span
-                                className="flex size-7 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                                style={{ background: party.color }}
-                              >
-                                {party.abbr}
+                            <div className="mb-2 flex items-center justify-between gap-1.5 text-[12px] font-semibold text-heading">
+                              <span className="inline-flex min-w-0 items-center gap-1.5">
+                                <span
+                                  className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                                  style={{ background: party.color }}
+                                >
+                                  {party.abbr}
+                                </span>
+                                <span className="truncate">{party.name}</span>
                               </span>
-                              <span>{party.name}</span>
+                              {currentRole ? (
+                                <span
+                                  className="shrink-0 rounded-[7px] px-1.5 py-0.5 text-[10px] font-bold"
+                                  style={{
+                                    background: currentRole.bg,
+                                    color: currentRole.color,
+                                  }}
+                                >
+                                  {currentRole.label}
+                                </span>
+                              ) : null}
                             </div>
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-1" role="radiogroup" aria-label={party.name}>
                               {CASE_STUDY_INFO_ROLE_TYPES.map((rt) => {
-                                const sel =
-                                  config.matrix[q.key]?.[party.id] === rt.id;
+                                const sel = currentRoleId === rt.id;
                                 return (
                                   <button
                                     key={rt.id}
                                     type="button"
+                                    role="radio"
+                                    aria-checked={sel}
                                     className={cn(
-                                      "flex w-full cursor-pointer items-center gap-1.5 rounded-[8px] border border-border-md bg-surface-2 px-2 py-1.5 text-right font-[inherit] text-[11.5px] font-semibold text-text-2 transition-colors",
-                                      "hover:border-gold hover:bg-gold-soft/40",
-                                      sel && ROLE_BTN_SELECTED[rt.id],
+                                      "flex w-full cursor-pointer items-center gap-1.5 rounded-[8px] border px-2 py-1.5 text-right font-[inherit] text-[11.5px] font-semibold transition-colors",
+                                      sel
+                                        ? "border-current shadow-[inset_0_0_0_1px_currentColor]"
+                                        : "border-border-md bg-surface-2 text-text-2 hover:border-gold hover:bg-gold-soft/40",
                                     )}
+                                    style={
+                                      sel
+                                        ? {
+                                            background: rt.bg,
+                                            color: rt.color,
+                                            borderColor: rt.color,
+                                          }
+                                        : undefined
+                                    }
                                     onClick={() => {
                                       applyConfig((prev) => {
                                         const cur =
                                           prev.matrix[q.key]?.[party.id];
+                                        // Keep explicit «لا دور» when choosing it from empty
+                                        if (rt.id === "none") {
+                                          return setMatrixRole(
+                                            prev,
+                                            q.key,
+                                            party.id,
+                                            cur === "none" ? null : "none",
+                                          );
+                                        }
                                         const nextRole =
                                           cur === rt.id ? null : rt.id;
                                         return setMatrixRole(
@@ -471,14 +504,34 @@ export function CaseStudyInfoRolesView() {
                                       });
                                     }}
                                   >
-                                    <span>{rt.icon}</span>
+                                    <span
+                                      className={cn(
+                                        "flex size-4 shrink-0 items-center justify-center rounded-full border text-[9px] font-bold",
+                                        sel
+                                          ? "border-current bg-current text-white"
+                                          : "border-border-md bg-surface text-text-3",
+                                      )}
+                                      style={
+                                        sel
+                                          ? {
+                                              background: rt.color,
+                                              borderColor: rt.color,
+                                              color: "#fff",
+                                            }
+                                          : undefined
+                                      }
+                                      aria-hidden
+                                    >
+                                      {sel ? "✓" : rt.icon}
+                                    </span>
                                     {rt.label}
                                   </button>
                                 );
                               })}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       <label className="mt-3 block">
                         <span className={opsTfLbl}>ملاحظة (اختياري)</span>

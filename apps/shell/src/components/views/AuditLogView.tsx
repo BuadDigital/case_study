@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   listAuditLog,
   type AuditLogDto,
@@ -9,6 +9,7 @@ import { exportRowsToCsv } from "@platform/app-shared/export/export-csv";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { Can } from "@platform/app-shared/components/Can";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   cn,
   EmptyState,
@@ -29,6 +30,13 @@ import {
   opsTfNote,
   opsToolbar,
 } from "@platform/ui-kit";
+import {
+  auditActionLabel,
+  auditActorLabel,
+  auditDetailSummary,
+  auditDetailTooltip,
+  auditEntityLabel,
+} from "@/lib/audit-log-labels";
 
 // Hoisted: constructing Intl.DateTimeFormat per row is expensive.
 const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA", {
@@ -44,16 +52,18 @@ function formatAt(iso: string): string {
   }
 }
 
-function formatDetail(entry: AuditLogDto): string {
-  try {
-    return JSON.stringify({ before: entry.before, after: entry.after });
-  } catch {
-    return "—";
-  }
-}
-
 export function AuditLogView() {
   const { token } = useAuth();
+  const { data: staffResult } = useStaffUsersQuery();
+  const actorNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of staffResult?.users ?? []) {
+      const id = u.id?.trim();
+      const name = u.name?.trim();
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [staffResult?.users]);
   const [entries, setEntries] = useState<AuditLogDto[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -132,14 +142,31 @@ export function AuditLogView() {
               type="button"
               className={opsBtnGhost}
               onClick={() =>
-                exportRowsToCsv("audit-log", [
-                  { header: "الوقت", value: (r) => formatAt(r.createdAtUtc) },
-                  { header: "المستخدم", value: (r) => r.actorId },
-                  { header: "الإجراء", value: (r) => r.action },
-                  { header: "نوع الكيان", value: (r) => r.entityType },
-                  { header: "معرّف الكيان", value: (r) => r.entityId },
-                  { header: "التفاصيل", value: formatDetail },
-                ], entries)
+                exportRowsToCsv(
+                  "audit-log",
+                  [
+                    { header: "الوقت", value: (r) => formatAt(r.createdAtUtc) },
+                    {
+                      header: "المستخدم",
+                      value: (r) => auditActorLabel(r.actorId, actorNames),
+                    },
+                    {
+                      header: "الإجراء",
+                      value: (r) => auditActionLabel(r.action),
+                    },
+                    {
+                      header: "الكيان",
+                      value: (r) =>
+                        auditEntityLabel(r.entityType, r.entityId),
+                    },
+                    {
+                      header: "التفاصيل",
+                      value: (r) =>
+                        auditDetailSummary(r.before, r.after),
+                    },
+                  ],
+                  entries,
+                )
               }
               disabled={entries.length === 0}
             >
@@ -176,20 +203,31 @@ export function AuditLogView() {
             </THead>
             <TBody>
               {entries.map((entry) => {
-                const detail = formatDetail(entry);
+                const detail = auditDetailSummary(entry.before, entry.after);
+                const tip = auditDetailTooltip(entry.before, entry.after);
                 return (
                   <Tr key={entry.id} hoverable={false}>
                     <TdLtr className="whitespace-nowrap text-text-2">
                       {formatAt(entry.createdAtUtc)}
                     </TdLtr>
-                    <Td className="font-semibold text-text-2">{entry.actorId}</Td>
-                    <Td className="font-bold text-heading">{entry.action}</Td>
+                    <Td
+                      className="font-semibold text-text-2"
+                      title={entry.actorId}
+                    >
+                      {auditActorLabel(entry.actorId, actorNames)}
+                    </Td>
+                    <Td className="font-bold text-heading">
+                      {auditActionLabel(entry.action)}
+                    </Td>
                     <Td>
-                      <span className="min-w-0 truncate">
-                        {entry.entityType} · {entry.entityId}
+                      <span
+                        className="min-w-0 truncate"
+                        title={`${entry.entityType} · ${entry.entityId}`}
+                      >
+                        {auditEntityLabel(entry.entityType, entry.entityId)}
                       </span>
                     </Td>
-                    <Td className="text-text-3" title={detail}>
+                    <Td className="text-text-3" title={tip}>
                       <span className="min-w-0 truncate">{detail}</span>
                     </Td>
                   </Tr>

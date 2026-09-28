@@ -330,7 +330,7 @@ export function ParticipantsPanel({
                       dir="ltr"
                       value={p.membershipNumber ?? ""}
                       onChange={(e) => patch(p.id, { membershipNumber: e.target.value })}
-                      className="w-full border-0 bg-transparent font-mono text-[13px] outline-none"
+                      className="w-full border-0 bg-transparent text-right font-mono text-[13px] tabular-nums outline-none"
                     />
                   </Td>
                   <Td>
@@ -376,7 +376,10 @@ export function Field({
   return (
     <div className="flex flex-col">
       <span className="text-[12px] font-semibold text-text-2">{label}</span>
-      <span className="text-[13px] font-medium" dir={ltr ? "ltr" : undefined}>
+      <span
+        className={`text-[13px] font-medium${ltr ? " text-right tabular-nums" : ""}`}
+        dir={ltr ? "ltr" : undefined}
+      >
         {value || "—"}
       </span>
     </div>
