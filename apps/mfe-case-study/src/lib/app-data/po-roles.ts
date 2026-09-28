@@ -65,6 +65,27 @@ export function canUploadPropertyDocuments(role: RoleId): boolean {
   );
 }
 
+/**
+ * Upload a «مستند ذو قيمة» — mirrors backend `PoRoleMatrixRules.CanUploadValuedDocuments`:
+ * the specialist, the appraiser, management, the field inspector and the engineering office.
+ */
+export function canUploadValuedDocuments(role: RoleId): boolean {
+  return (
+    isSuperAdmin(role) ||
+    role === "case-specialist" ||
+    role === "real-estate-appraiser" ||
+    role === "section-supervisor" ||
+    role === "general-manager" ||
+    role === "field-inspector" ||
+    role === "engineering-office"
+  );
+}
+
+/** Approve / reject a «مستند ذو قيمة» — mirrors `PoRoleMatrixRules.CanReviewValuedDocuments`. */
+export function canReviewValuedDocuments(role: RoleId): boolean {
+  return isSuperAdmin(role) || role === "case-specialist";
+}
+
 /** Reassign case-study parties — section-supervisor+ and the case specialist on the file. */
 export function canRedistributeParties(role: RoleId): boolean {
   return (

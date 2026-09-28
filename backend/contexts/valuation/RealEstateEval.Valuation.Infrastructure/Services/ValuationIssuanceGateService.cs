@@ -25,6 +25,7 @@ public sealed class ValuationIssuanceGateService(
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
+    IValuationValueDocumentService valueDocuments,
     TimeProvider clock) : IValuationIssuanceGateService
 {
     public async Task<ValuationIssuanceGatesDto?> EvaluateAsync(
@@ -170,6 +171,7 @@ public sealed class ValuationIssuanceGateService(
                     propertyType,
                     propertyRequiresSurvey,
                     cancellationToken)),
+            await ValueDocumentsCheckAsync(valuationRequestId, cancellationToken),
         };
 
         var resolutions = (recon?.MethodologyAlertOverrides ?? [])
@@ -289,6 +291,28 @@ public sealed class ValuationIssuanceGateService(
             MethodologyAlertsNoteAr =
                 "تنبيهات منهجية (21): 7 حاجبة · 8 بمبرر نصي إلزامي · 6 بإقرار.",
         };
+    }
+
+    /// <summary>
+    /// Every «مستند ذو قيمة» with an effect must be approved by the case specialist; an indicator
+    /// must not duplicate an approach the system now values internally.
+    /// </summary>
+    private async Task<ValuationIssuanceGateCheck> ValueDocumentsCheckAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken)
+    {
+        var docs = await valueDocuments.GetAsync(valuationRequestId, cancellationToken);
+        var used = (docs?.Documents ?? []).Where(d => d.Effect is not null).ToList();
+        var notApproved = used
+            .Where(d => d.Missing || !string.Equals(d.Status, ValueDocumentStatuses.Approved, StringComparison.Ordinal))
+            .Select(d => d.LabelAr)
+            .ToList();
+        var conflicting = used
+            .Where(d => d.Effect == ValueDocumentEffects.Indicator
+                && (docs?.InternalApproachKinds ?? []).Contains(d.ApproachKey ?? "", StringComparer.OrdinalIgnoreCase))
+            .Select(d => d.LabelAr)
+            .ToList();
+        return ValuationIssuanceGateRules.ValueDocuments(notApproved, conflicting);
     }
 
  /// <summary>

@@ -7,6 +7,8 @@ import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/
 import {
   PROPERTY_DOCUMENT_GOVERNED_SCOPE,
   UNLISTED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_SCOPE,
   resolvePropertyDocumentType,
 } from "@platform/app-shared/domain/property-documents/property-document-types";
 
@@ -32,15 +34,21 @@ export function governedEntryFromMeta(
 ): PropertyDetailDocumentEntry {
   const type = resolvePropertyDocumentType(meta.documentTypeKey, meta.scope, meta.scopeKey);
   const isUnlisted = type?.key === UNLISTED_DOCUMENT_KEY;
+  const isValued = type?.key === VALUED_DOCUMENT_KEY;
   const customLabel = meta.customDocumentLabel?.trim() ?? "";
   return {
     id: `governed-${meta.id}`,
-    name: isUnlisted ? customLabel || type.labelAr : (type?.labelAr ?? "مستند"),
+    name:
+      isUnlisted || isValued
+        ? customLabel || type.labelAr
+        : (type?.labelAr ?? "مستند"),
     fileName: meta.fileName,
     source:
       meta.scope === PROPERTY_DOCUMENT_GOVERNED_SCOPE
         ? GOVERNED_DOCUMENTS_SOURCE
-        : "البيانات الأولية",
+        : meta.scope === VALUED_DOCUMENT_SCOPE
+          ? "مرفوع من أطراف الدراسة"
+          : "البيانات الأولية",
     kind: kindOf(meta),
     attachmentId: meta.id,
     documentTypeKey: type?.key,
@@ -49,6 +57,13 @@ export function governedEntryFromMeta(
       ? {
           customLabel,
           customReason: meta.customDocumentReason?.trim() ?? "",
+        }
+      : undefined,
+    valued: isValued
+      ? {
+          customLabel,
+          status: meta.valueDocStatus ?? "pending",
+          reviewNote: meta.valueDocReviewNote?.trim() ?? "",
         }
       : undefined,
   };
@@ -74,7 +89,8 @@ export async function fetchGovernedPropertyDocuments(
       (meta) =>
         meta.scopeKey === scopeKey &&
         (meta.scope === PROPERTY_DOCUMENT_GOVERNED_SCOPE ||
-          meta.scope === OTHER_DOCUMENTS_SCOPE),
+          meta.scope === OTHER_DOCUMENTS_SCOPE ||
+          meta.scope === VALUED_DOCUMENT_SCOPE),
     )
     .map(governedEntryFromMeta);
 }

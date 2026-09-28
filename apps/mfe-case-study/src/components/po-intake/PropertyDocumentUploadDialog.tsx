@@ -7,7 +7,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AppModal, Button, Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
-import { UNLISTED_DOCUMENT_KEY } from "@platform/app-shared/domain/property-documents/property-document-types";
+import {
+  UNLISTED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_KEY,
+} from "@platform/app-shared/domain/property-documents/property-document-types";
 import type { GovernedDocumentTypeInput } from "../../lib/app-data/governed-property-documents-commands";
 import type { PropertyDocumentTypeOption } from "../../lib/app-data/property-document-checklist";
 import {
@@ -16,6 +19,7 @@ import {
   propertyDocumentFileAccept,
   validatePropertyDocumentFile,
   validateUnlistedDocumentFields,
+  validateValuedDocumentName,
 } from "../../lib/app-data/property-document-upload-rules";
 
 export type PropertyDocumentDialogState =
@@ -62,9 +66,13 @@ export function PropertyDocumentUploadDialog({
 
   if (!state) return null;
 
-  const option = options.find((o) => o.key === typeKey);
+  // A valued document is never re-typed — it is only offered for new uploads.
+  const offered =
+    state.mode === "upload" ? options : options.filter((o) => o.key !== VALUED_DOCUMENT_KEY);
+  const option = offered.find((o) => o.key === typeKey);
   const isUnlisted = typeKey === UNLISTED_DOCUMENT_KEY;
-  const groupTitles = [...new Set(options.map((o) => o.groupTitle))];
+  const isValued = typeKey === VALUED_DOCUMENT_KEY;
+  const groupTitles = [...new Set(offered.map((o) => o.groupTitle))];
 
   async function submit() {
     if (!state) return;
@@ -74,6 +82,13 @@ export function PropertyDocumentUploadDialog({
     }
     if (isUnlisted) {
       const problem = validateUnlistedDocumentFields(label, reason);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
+    if (isValued) {
+      const problem = validateValuedDocumentName(label);
       if (problem) {
         setError(problem);
         return;
@@ -142,7 +157,7 @@ export function PropertyDocumentUploadDialog({
             <option value="">— اختر من القائمة المعرّفة —</option>
             {groupTitles.map((title) => (
               <optgroup key={title} label={title}>
-                {options
+                {offered
                   .filter((o) => o.groupTitle === title)
                   .map((o) => (
                     <option key={o.key} value={o.key}>
@@ -182,6 +197,27 @@ export function PropertyDocumentUploadDialog({
                 maxLength={UNLISTED_REASON_MAX_LENGTH}
                 placeholder="لماذا لا يندرج تحت نوع معرّف؟"
                 onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+          </>
+        ) : null}
+
+        {isValued ? (
+          <>
+            <p className="m-0 rounded-md border border-[#e8d3a3] bg-[#fbf5e6] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5a14]">
+              المستند ذو القيمة يُحفظ بانتظار اعتماد أخصائي دراسة الحالة، ويطّلع عليه الأخصائي والمقيّم
+              فقط، والمقيّم يحدد أثره على التقييم.
+            </p>
+            <div>
+              <Label className="mb-1 text-[11px]" htmlFor="property-document-valued-label">
+                اسم المستند *
+              </Label>
+              <Input
+                id="property-document-valued-label"
+                value={label}
+                maxLength={UNLISTED_LABEL_MAX_LENGTH}
+                placeholder="مثال: تقرير تقييم الآلات"
+                onChange={(e) => setLabel(e.target.value)}
               />
             </div>
           </>

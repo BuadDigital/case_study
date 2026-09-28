@@ -134,7 +134,7 @@ public class PropertyDocumentUploadRulesTests
     [InlineData("property-other")]
     public void Tab_and_other_documents_can_be_reclassified(string scope)
     {
-        var result = PropertyDocumentUploadRules.Reclassify(scope, "owner-identity", null, null);
+        var result = PropertyDocumentUploadRules.Reclassify(scope, null, "owner-identity", null, null);
 
         Assert.Null(result.Error);
         Assert.Equal("owner-identity", result.TypeKey);
@@ -143,8 +143,47 @@ public class PropertyDocumentUploadRulesTests
     [Fact]
     public void Field_bound_documents_keep_their_type()
     {
-        var result = PropertyDocumentUploadRules.Reclassify("property-deed-ownership", "lease-contract", null, null);
+        var result = PropertyDocumentUploadRules.Reclassify("property-deed-ownership", null, "lease-contract", null, null);
 
         Assert.NotNull(result.Error);
+    }
+    [Fact]
+    public void Valued_document_needs_a_name_from_any_upload_point()
+    {
+        Assert.NotNull(PropertyDocumentUploadRules.Resolve(
+            PropertyDocumentTypes.ValuedScope, "prop-1", null, " ", null).Error);
+        Assert.NotNull(PropertyDocumentUploadRules.Resolve(
+            Governed, ScopeKey, PropertyDocumentTypes.ValuedKey, null, null).Error);
+
+        var field = PropertyDocumentUploadRules.Resolve(
+            PropertyDocumentTypes.ValuedScope, "prop-1", null, " تقرير تقييم الآلات ", "ignored");
+        Assert.Null(field.Error);
+        Assert.Equal(PropertyDocumentTypes.ValuedKey, field.TypeKey);
+        Assert.Equal("تقرير تقييم الآلات", field.CustomLabel);
+        Assert.Null(field.CustomReason);
+
+        var tab = PropertyDocumentUploadRules.Resolve(
+            Governed, ScopeKey, PropertyDocumentTypes.ValuedKey, "دراسة الدخل", null);
+        Assert.Null(tab.Error);
+        Assert.Equal(PropertyDocumentTypes.ValuedKey, tab.TypeKey);
+    }
+
+    [Fact]
+    public void Valued_document_is_never_retyped()
+    {
+        Assert.NotNull(PropertyDocumentUploadRules.Reclassify(
+            Governed, PropertyDocumentTypes.ValuedKey, "deed", null, null).Error);
+        Assert.NotNull(PropertyDocumentUploadRules.Reclassify(
+            Governed, "deed", PropertyDocumentTypes.ValuedKey, "دراسة", null).Error);
+    }
+
+    [Fact]
+    public void Value_document_review_needs_a_decision_and_a_reason_to_reject()
+    {
+        Assert.NotNull(PropertyDocumentUploadRules.ValidateValueDocReview("deed", "approved", null));
+        Assert.Null(PropertyDocumentUploadRules.ValidateValueDocReview(PropertyDocumentTypes.ValuedKey, "approved", null));
+        Assert.NotNull(PropertyDocumentUploadRules.ValidateValueDocReview(PropertyDocumentTypes.ValuedKey, "pending", null));
+        Assert.NotNull(PropertyDocumentUploadRules.ValidateValueDocReview(PropertyDocumentTypes.ValuedKey, "rejected", " "));
+        Assert.Null(PropertyDocumentUploadRules.ValidateValueDocReview(PropertyDocumentTypes.ValuedKey, "rejected", "القيمة غير موثقة"));
     }
 }

@@ -21,6 +21,15 @@ type Loaded =
   | { status: "error" }
   | { status: "ready"; url: string };
 
+/** Hide the built-in PDF thumbnail sidebar without dropping an existing fragment. */
+function pdfPreviewFrameSrc(url: string): string {
+  if (/(?:^|[#&])navpanes=/.test(url)) return url;
+  const hash = url.indexOf("#");
+  if (hash === -1) return `${url}#navpanes=0`;
+  const fragment = url.slice(hash + 1);
+  return `${url.slice(0, hash)}#${fragment}${fragment ? "&" : ""}navpanes=0`;
+}
+
 function useResolvedUrl(request: DocumentPreviewRequest | null): Loaded {
   const [state, setState] = useState<{
     forRequest: DocumentPreviewRequest | null;
@@ -135,7 +144,9 @@ export function DocumentPreviewHost() {
         ) : request.kind === "pdf" ? (
           <iframe
             title={request.fileName}
-            src={loaded.url}
+            // Chromium/Edge open the thumbnail sidebar by default. navpanes=0
+            // keeps that gray pane closed so only the page is shown.
+            src={pdfPreviewFrameSrc(loaded.url)}
             className="h-full w-full border-0 bg-surface"
           />
         ) : (

@@ -19,6 +19,7 @@ import {
   ChecklistRowsList,
 } from "./PropertyDocumentChecklistParts";
 import { UnlistedDocumentsSection } from "./PropertyDocumentUnlistedSection";
+import { ValuedDocumentsSection } from "./PropertyDocumentValuedSection";
 import {
   PropertyDocumentUploadDialog,
   type PropertyDocumentDialogState,
@@ -95,6 +96,14 @@ export function DocumentsTab({
             customReason: entry.unlisted?.customReason,
           })
         }
+        onDelete={(attachmentId) => void workflow.remove(attachmentId)}
+      />
+
+      <ValuedDocumentsSection
+        entries={checklist.valued}
+        canReview={workflow.canReviewValued}
+        busy={workflow.busy}
+        onReview={workflow.reviewValued}
         onDelete={(attachmentId) => void workflow.remove(attachmentId)}
       />
 

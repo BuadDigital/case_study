@@ -25,6 +25,7 @@ import {
 import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 import { deedNatureMatchBlocksValuation } from "./lib/deed-nature-match-gate";
+import { ValueDocumentsPanel } from "./ValueDocumentsPanel";
 
 /** Invoice line from the interactive-form spec — label | value | note. */
 function OpinionInvoiceRow({
@@ -130,16 +131,25 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     weightedLocal,
     isLiquidation,
     forcedCut,
+    propertyAfterDiscount,
     finalLocal,
     roundNote,
     soleCost,
     methodComplete,
     saveReconciliation,
   } = workflow;
+  const additions = recon?.additions ?? [];
   const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
 
   return (
     <>
+      <ValueDocumentsPanel
+        valuationRequestId={valuationRequestId}
+        poNumber={poNumber}
+        propertyId={recon?.propertyId}
+        disabled={saving}
+        onReconSaved={onReconSaved}
+      />
       {!sole ? (
         <>
           <div className="mb-3 flex justify-between">
@@ -169,11 +179,13 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       <Td>
                         <div className="font-bold text-heading">{m.labelAr}</div>
                         <div className="mt-0.5 text-[10.5px] text-text-3">
-                          {m.approachKind === "cost"
-                            ? buildingOnly
-                              ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
-                              : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
-                            : "مؤشر قيمة من طريقة المقارنة"}
+                          {m.valueDocumentAttachmentId
+                            ? "قيمة واردة في مستند ذي قيمة — أثره من «مرفقات التقرير»"
+                            : m.approachKind === "cost"
+                              ? buildingOnly
+                                ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
+                                : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
+                              : "مؤشر قيمة من طريقة المقارنة"}
                         </div>
                       </Td>
                       <Td className="text-center font-extrabold">
@@ -427,6 +439,24 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     </td>
                   </tr>
                 ) : null}
+                {additions.length > 0 ? (
+                  <>
+                    <OpinionInvoiceRow
+                      label="قيمة العقار بعد خصم التصفية"
+                      note="قبل التقريب"
+                      value={fmt(propertyAfterDiscount)}
+                      strong
+                    />
+                    {additions.map((a) => (
+                      <OpinionInvoiceRow
+                        key={a.attachmentId}
+                        label={`+ ${a.labelAr}`}
+                        note="مستند ذو قيمة — دون ترجيح أو خصم"
+                        value={fmt(a.value)}
+                      />
+                    ))}
+                  </>
+                ) : null}
                 <tr className="border-b border-dashed border-border">
                   <td className="w-px whitespace-nowrap py-1.5 text-start">
                     <span className="text-[12.5px] font-medium text-text">
@@ -450,7 +480,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 </tr>
                 <tr className="border-t-2 border-gold">
                   <td className="w-px whitespace-nowrap pb-0.5 pt-3 text-start text-[13.5px] font-extrabold text-heading">
-                    = القيمة النهائية
+                    {additions.length > 0 ? "= القيمة الإجمالية" : "= القيمة النهائية"}
                   </td>
                   <td
                     dir="ltr"

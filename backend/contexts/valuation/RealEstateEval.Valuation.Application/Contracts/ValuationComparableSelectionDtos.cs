@@ -367,6 +367,19 @@ public class ValuationReconciliationMethodDto
     public string Rationale { get; init; } = "";
     public bool IsIncluded { get; init; } = true;
     public int SortOrder { get; init; }
+    /// <summary>Set on a document indicator row (<c>doc:{id}</c>): the «مستند ذو قيمة» it comes from.</summary>
+    public Guid? ValueDocumentAttachmentId { get; init; }
+    /// <summary>market / cost / income — the approach a document indicator belongs to.</summary>
+    public string? DocumentApproachKey { get; init; }
+    public string? DocumentMethodName { get; init; }
+}
+
+/// <summary>An amount from a «مستند ذو قيمة» added to the property value after the discount.</summary>
+public class ValuationValueDocumentAdditionDto
+{
+    public Guid AttachmentId { get; init; }
+    public required string LabelAr { get; init; }
+    public decimal Value { get; init; }
 }
 
 public class ValuationReconciliationDto
@@ -382,8 +395,15 @@ public class ValuationReconciliationDto
     public bool MeetsMultiMethodGate { get; init; }
     public decimal WeightedValue { get; init; }
     public int FinalRoundDecimals { get; init; }
- /// <summary>Round once on weighted value. Includes discount when basis allows.</summary>
+ /// <summary>
+ /// The final value: weighted → liquidation discount → + document additions → rounded once.
+ /// Without additions it is the rounded property value, as before.
+ /// </summary>
     public decimal FinalOpinionValue { get; init; }
+    /// <summary>Property value after the liquidation discount, unrounded (§25 first line).</summary>
+    public decimal PropertyValueAfterLiquidation { get; init; }
+    public IReadOnlyList<ValuationValueDocumentAdditionDto> Additions { get; init; } = [];
+    public decimal AdditionsTotal { get; init; }
  /// <summary>Final opinion before liquidation discount (same as final when not applied).</summary>
     public decimal FinalOpinionBeforeLiquidation { get; init; }
     public string MethodsRationale { get; init; } = "";
@@ -409,7 +429,8 @@ public class SaveValuationReconciliationMethodRequest
 {
     public Guid? Id { get; init; }
 
-    [Required, MaxLength(32)]
+    /// <summary>market / cost, or <c>doc:{attachmentId:N}</c> for a document indicator.</summary>
+    [Required, MaxLength(64)]
     public string ApproachKind { get; init; } = "market";
 
     public decimal WeightPct { get; init; }

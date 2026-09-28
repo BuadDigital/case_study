@@ -778,6 +778,10 @@ export type FileAttachmentMetaDto = {
   documentTypeKey?: string | null;
   customDocumentLabel?: string | null;
   customDocumentReason?: string | null;
+  /** «مستند ذو قيمة» only — the case specialist's decision. */
+  valueDocStatus?: "pending" | "approved" | "rejected" | null;
+  valueDocReviewNote?: string | null;
+  valueDocReviewedAtUtc?: string | null;
 };
 
 type PhotoMetadataDto = {
@@ -859,6 +863,25 @@ export function setAttachmentDocumentType(
     config,
     `/api/attachments/${encodeURIComponent(id)}/document-type`,
     "PUT",
+    body,
+  );
+}
+
+export type ReviewValueDocumentRequest = {
+  decision: "approved" | "rejected";
+  note?: string | null;
+};
+
+/** The case specialist approves or rejects a «مستند ذو قيمة». */
+export function reviewValueDocument(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: ReviewValueDocumentRequest,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
+  return sendAttachmentDocumentChange(
+    config,
+    `/api/attachments/${encodeURIComponent(id)}/value-document-review`,
+    "POST",
     body,
   );
 }

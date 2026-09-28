@@ -895,8 +895,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.Property<string>("ApproachKind")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<decimal>("ApproachValue")
                         .HasPrecision(18, 2)
@@ -1121,6 +1121,61 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationValueDocumentUse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApproachKey")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("AttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentLabel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Effect")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("MethodName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValuationRequestId", "AttachmentId")
+                        .IsUnique();
+
+                    b.ToTable("ValuationValueDocumentUses", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationValueDocumentUses_ApproachKey", "\"ApproachKey\" IS NULL OR \"ApproachKey\" IN ('market', 'cost', 'income')");
+
+                            t.HasCheckConstraint("CK_ValuationValueDocumentUses_Effect", "\"Effect\" IS NULL OR \"Effect\" IN ('indicator', 'addition')");
+
+                            t.HasCheckConstraint("CK_ValuationValueDocumentUses_Value_Positive", "\"Value\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.PropertyComparableLink", b =>
                 {
                     b.HasOne("RealEstateEval.Valuation.Domain.ComparableProperty", "ComparableProperty")
@@ -1264,6 +1319,17 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasForeignKey("ValuationRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationValueDocumentUse", b =>
+                {
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ValuationRequest");
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationComparableSelection", b =>

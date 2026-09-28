@@ -30,6 +30,12 @@ export type PropertyDetailDocumentEntry = {
     customLabel: string;
     customReason: string;
   };
+  /** «مستند ذو قيمة»: the uploader's name and the case specialist's decision. */
+  valued?: {
+    customLabel: string;
+    status: "pending" | "approved" | "rejected";
+    reviewNote: string;
+  };
 };
 
 export type PropertyDetailDocumentSection = {

@@ -261,6 +261,18 @@ export type ValuationReconciliationMethodDto = {
   rationale: string;
   isIncluded: boolean;
   sortOrder: number;
+  /** Set on a «مستند ذو قيمة» indicator row (`doc:{id}`). */
+  valueDocumentAttachmentId?: string | null;
+  /** market / cost / income — approach of a document indicator. */
+  documentApproachKey?: string | null;
+  documentMethodName?: string | null;
+};
+
+/** An amount from a «مستند ذو قيمة» added to the property value after the discount. */
+export type ValuationValueDocumentAdditionDto = {
+  attachmentId: string;
+  labelAr: string;
+  value: number;
 };
 
 export type ValuationMethodologyAlertOverrideDto = {
@@ -280,8 +292,13 @@ export type ValuationReconciliationDto = {
   meetsMultiMethodGate: boolean;
   weightedValue: number;
   finalRoundDecimals: number;
+  /** weighted → liquidation discount → + document additions → rounded once. */
   finalOpinionValue: number;
   finalOpinionBeforeLiquidation?: number;
+  /** Property value after the liquidation discount, unrounded (§25 first line). */
+  propertyValueAfterLiquidation?: number;
+  additions?: ValuationValueDocumentAdditionDto[];
+  additionsTotal?: number;
   methodsRationale: string;
   basisOfValueKey?: string;
   basisOfValueLabelAr?: string | null;
@@ -1046,6 +1063,9 @@ export type ValuationReportDocumentDto = {
   comparables: ValuationReportComparableRowDto[];
   adjustments: ValuationReportAdjustmentRowDto[];
   reconciliationMethods: ValuationReportReconMethodRowDto[];
+  /** Set only with «مستند ذو قيمة» additions: the property value after the discount, unrounded. */
+  propertyValueAfterLiquidationDisplay?: string | null;
+  valueAdditions?: { labelAr: string; valueDisplay: string }[];
   siteMapAttachments?: ValuationReportPrintedAttachmentDto[];
   photoAttachments?: ValuationReportPrintedAttachmentDto[];
   surveyAttachments?: ValuationReportPrintedAttachmentDto[];

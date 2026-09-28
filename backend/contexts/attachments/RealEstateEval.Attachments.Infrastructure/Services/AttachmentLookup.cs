@@ -23,7 +23,7 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
         if (row is null)
             return false;
-        return actor is null || AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
+        return actor is null || AttachmentAccessRules.Allows(row.UploadedByUserId, row.DocumentTypeKey, actor);
     }
 
     public async Task<IReadOnlyList<AttachmentRefDto>> GetRefsAsync(
@@ -40,7 +40,7 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
             .ToListAsync(cancellationToken);
 
         return rows
-            .Where(x => actor is null || AttachmentAccessRules.Allows(x.UploadedByUserId, actor))
+            .Where(x => actor is null || AttachmentAccessRules.Allows(x.UploadedByUserId, x.DocumentTypeKey, actor))
             .Select(x => new AttachmentRefDto
             {
                 Id = x.Id,
@@ -70,7 +70,7 @@ public sealed class AttachmentLookup(AttachmentsDbContext db) : IAttachmentLooku
             .ToListAsync(cancellationToken);
 
         rows = rows
-            .Where(a => actor is null || AttachmentAccessRules.Allows(a.UploadedByUserId, actor))
+            .Where(a => actor is null || AttachmentAccessRules.Allows(a.UploadedByUserId, a.DocumentTypeKey, actor))
             .Take(MaxPropertyRows)
             .ToList();
 

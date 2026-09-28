@@ -230,3 +230,34 @@ describe("syncDiscountLineInOpinion", () => {
     expect(next).not.toContain("20٪");
   });
 });
+
+describe("finalOpinionComputed — «مستند ذو قيمة»", () => {
+  it("adds document amounts after the discount and rounds the total once", () => {
+    const result = finalOpinionComputed({
+      reconMethods: [method({ approachValue: 1_234_567 })],
+      basisOfValueKey: "liquidation",
+      basisOptions: [{ value: "liquidation", label: "قيمة التصفية" }],
+      liquidationDiscountPct: "20",
+      finalRoundDecimals: "3",
+      cost: null,
+      buildingOnly: false,
+      hasAdoptedMarket: true,
+      additions: [{ attachmentId: "a", labelAr: "تقرير تقييم الآلات", value: 12_345.4 }],
+    });
+
+    expect(result.propertyAfterDiscount).toBeCloseTo(987_653.6, 1);
+    expect(result.additionsTotal).toBe(12_345.4);
+    expect(result.finalLocal).toBe(1_000_000);
+    expect(result.opinionAuto).toContain("«تقرير تقييم الآلات»");
+    expect(result.opinionAuto).toContain("القيمة النهائية الإجمالية:");
+    expect(looksLikeAutoFinalOpinion(result.opinionAuto)).toBe(true);
+  });
+
+  it("treats a document indicator as complete", () => {
+    const result = computed([
+      method({ approachKind: "cost", weightPct: 60 }),
+      method({ approachKind: "doc:abc", labelAr: "أسلوب الدخل — الطريقة المتبقية (مستند)", weightPct: 40 }),
+    ]);
+    expect(result.methodComplete("doc:abc")).toBe(true);
+  });
+});

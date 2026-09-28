@@ -75,11 +75,29 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("ValueDocReviewNote")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime?>("ValueDocReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValueDocReviewedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ValueDocStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Scope", "ScopeKey");
 
-                    b.ToTable("FileAttachments", "attachments");
+                    b.ToTable("FileAttachments", "attachments", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileAttachments_ValueDocStatus", "\"ValueDocStatus\" IS NULL OR \"ValueDocStatus\" IN ('pending', 'approved', 'rejected')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>

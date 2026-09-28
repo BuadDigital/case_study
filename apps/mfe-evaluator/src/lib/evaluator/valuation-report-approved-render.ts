@@ -263,7 +263,8 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
           : "";
       const costBlock = doc.costApproachUsed
         ? kvTable([
-            ["قيمة الأرض من السوق", dash(doc.landValueFromMarketDisplay)],
+            // Comparison method inside the cost approach — an input (land), not the market approach.
+            ["قيمة الأرض فضاءً (بطريقة المقارنة)", dash(doc.landValueFromMarketDisplay)],
             ["رأي التكلفة مع الأرض", dash(doc.costOpinionWithLandDisplay)],
             ["رأي المباني فقط", dash(doc.costOpinionBuildingsOnlyDisplay)],
           ])
@@ -273,10 +274,25 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
         costBlock +
         kvTable([
           ["أساس القيمة", field(doc, 16, "basis"), "فرضية القيمة", field(doc, 16, "premise")],
-          ["القيمة المرجّحة", dash(doc.weightedValueDisplay)],
+          // A weighted value exists only when two approaches are reconciled.
+          ...(isMultiMethod(doc)
+            ? ([["القيمة المرجّحة", dash(doc.weightedValueDisplay)]] as Array<[string, string]>)
+            : []),
           ["قبل خصم التصفية", field(doc, 16, "beforeLiquidation")],
           ["خصم التصفية %", field(doc, 16, "discountPct")],
-          ["الرأي النهائي للقيمة", doc.finalOpinionDisplay ? `${doc.finalOpinionDisplay} ر.س` : "-"],
+          // «مستند ذو قيمة»: property value after the discount, each addition, then the total.
+          ...((doc.valueAdditions ?? []).length > 0
+            ? ([
+                ["قيمة العقار بعد خصم التصفية", dash(doc.propertyValueAfterLiquidationDisplay)],
+                ...(doc.valueAdditions ?? []).map(
+                  (a) => [`+ ${a.labelAr}`, dash(a.valueDisplay)] as [string, string],
+                ),
+              ] as Array<[string, string]>)
+            : []),
+          [
+            (doc.valueAdditions ?? []).length > 0 ? "القيمة النهائية الإجمالية" : "الرأي النهائي للقيمة",
+            doc.finalOpinionDisplay ? `${doc.finalOpinionDisplay} ر.س` : "-",
+          ],
           ["التفقيط", dash(doc.finalOpinionTafqit)],
           ["بوابات الإصدار", doc.allowsIssuance ? "جاهز" : "غير مكتملة"],
         ])

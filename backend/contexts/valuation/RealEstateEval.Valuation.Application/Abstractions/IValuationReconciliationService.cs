@@ -15,4 +15,9 @@ public interface IValuationReconciliationService
         SaveValuationReconciliationRequest request,
         string? actorId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Approaches the system values itself on this request (Q-2 settings) — market / cost.</summary>
+    Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default);
 }

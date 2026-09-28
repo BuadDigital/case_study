@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import { type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
@@ -270,6 +271,19 @@ export function InspectorWorkspaceWizard({
               disabled={!editable}
             />
           </InsCard>
+
+          {editable ? (
+            <InsCard title="مستندات ذات قيمة">
+              <p className="m-0 mb-2 text-[11.5px] leading-relaxed text-text-3">
+                مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
+                دراسة الحالة ويقرر المقيّم أثره.
+              </p>
+              <ValuedDocumentUploadButton
+                poNumber={inspectionTask.poNumber}
+                propertyId={property.id}
+              />
+            </InsCard>
+          ) : null}
 
           {serviceProofFromTransactionPhotos ? (
             <InsCard

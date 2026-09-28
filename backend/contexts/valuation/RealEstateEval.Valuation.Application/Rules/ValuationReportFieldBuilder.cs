@@ -253,9 +253,9 @@ public static class ValuationReportFieldBuilder
                 break;
 
             case ValuationReportSectionKeys.ApproachesUsed:
-                d["market"] = marketUsed ? "طريقة البيوع المقارنة" : "غير مستخدم";
-                d["cost"] = costUsed ? "طريقة المقاول" : "غير مستخدم";
-                d["income"] = "غير مستخدم";
+                d["market"] = ValueDocumentReportRules.MethodLabel("market", marketUsed ? "طريقة البيوع المقارنة" : null, recon);
+                d["cost"] = ValueDocumentReportRules.MethodLabel("cost", costUsed ? "طريقة المقاول" : null, recon);
+                d["income"] = ValueDocumentReportRules.MethodLabel("income", null, recon);
                 break;
 
             case ValuationReportSectionKeys.Comparables:

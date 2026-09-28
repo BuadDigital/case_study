@@ -55,6 +55,8 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
         services.AddScoped<IValuationReconciliationRepository, ValuationReconciliationRepository>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
+        services.AddScoped<IValuationValueDocumentService, ValuationValueDocumentService>();
+        services.AddScoped<IValuationValuedDocumentLookup, ValuationValuedDocumentLookup>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // Q-6: two-phase issuance + deposit certificate.

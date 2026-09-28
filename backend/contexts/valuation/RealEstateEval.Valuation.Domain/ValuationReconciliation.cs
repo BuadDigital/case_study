@@ -142,8 +142,9 @@ public class ValuationReconciliationMethodLine
 {
     public Guid Id { get; set; }
     public Guid ReconciliationId { get; set; }
+    /// <summary>market / cost, or <c>doc:{attachmentId:N}</c> for a document indicator.</summary>
     public string ApproachKind { get; set; } = ValuationApproachKinds.Market;
- /// <summary>Approach opinion snapshotted at save (market / cost with land).</summary>
+ /// <summary>Approach opinion snapshotted at save (market / cost with land / the document's value).</summary>
     public decimal ApproachValue { get; set; }
     public decimal WeightPct { get; set; }
     public string Rationale { get; set; } = "";
@@ -227,6 +228,54 @@ public static class ReconciliationRules
             RoundFinal(weightedValue, decimals),
             RoundFinal(after, decimals),
             apply);
+    }
+
+    /// <summary>
+    /// «مستند ذو قيمة»: the property value after the liquidation discount stays unrounded, the
+    /// document additions are added to it as they are (no weighting, no discount), and the
+    /// total is rounded once. With no additions this equals
+    /// <see cref="FinalOpinionWithOptionalDiscount"/>.
+    /// </summary>
+    public static (decimal BeforeRounded, decimal PropertyValueAfterLiquidation, decimal Final, bool Applied) FinalTotal(
+        decimal weightedValue,
+        int decimals,
+        string? basisOfValueKey,
+        string? valuePremiseKey,
+        decimal discountPct,
+        decimal additionsTotal)
+    {
+        var apply = ShouldApplyLiquidationDiscount(basisOfValueKey, valuePremiseKey, discountPct);
+        var after = apply
+            ? ApplyLiquidationDiscount(weightedValue, discountPct)
+            : weightedValue;
+        return (
+            RoundFinal(weightedValue, decimals),
+            after,
+            RoundFinal(after + Math.Max(0m, additionsTotal), decimals),
+            apply);
+    }
+
+    /// <summary>
+    /// Suggested weights for the reconciliation rows. Without document indicators this is the
+    /// market-first split; with them every indicator starts equal (the appraiser adjusts).
+    /// </summary>
+    public static IReadOnlyDictionary<string, decimal> SuggestWeights(
+        IReadOnlyList<string> kinds,
+        decimal marketValue,
+        decimal costValue)
+    {
+        var result = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        if (!kinds.Any(ValueDocumentUseRules.IsDocumentKind))
+        {
+            foreach (var (kind, weight) in SuggestWeights(marketValue, costValue))
+                result[kind] = weight;
+            return result;
+        }
+
+        var share = Math.Round(100m / kinds.Count, 2, MidpointRounding.AwayFromZero);
+        for (var i = 0; i < kinds.Count; i++)
+            result[kinds[i]] = i == kinds.Count - 1 ? 100m - share * (kinds.Count - 1) : share;
+        return result;
     }
 
  /// <summary>

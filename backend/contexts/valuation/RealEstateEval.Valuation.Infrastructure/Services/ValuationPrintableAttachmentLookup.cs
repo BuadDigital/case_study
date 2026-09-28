@@ -1,5 +1,6 @@
 using RealEstateEval.Attachments.Application.Abstractions;
 using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
@@ -30,8 +31,10 @@ public sealed class ValuationPrintableAttachmentLookup(IAttachmentLookup attachm
             .ToList();
         if (routed.Count > 0) return routed;
 
+        // A «مستند ذو قيمة» prints only when the appraiser picks it, never as a fallback image.
         return all
-            .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            .Where(a => a.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                && !PropertyDocumentTypes.IsValued(a.DocumentTypeKey))
             .OrderBy(a => a.CreatedAtUtc)
             .Take(MaxPrintable)
             .Select(a => new ReportAttachmentRef(a.Id, a.ContentType))

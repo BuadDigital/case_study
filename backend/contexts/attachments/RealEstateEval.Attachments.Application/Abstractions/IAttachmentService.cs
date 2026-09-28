@@ -5,9 +5,11 @@ namespace RealEstateEval.Attachments.Application.Abstractions;
 
 public interface IAttachmentService
 {
+    /// <param name="actor">Hides «مستند ذو قيمة» rows from roles outside the specialist / appraiser.</param>
     Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
         string scope,
         string scopeKey,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
     Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
@@ -34,6 +36,13 @@ public interface IAttachmentService
     Task<(FileAttachmentMetaDto? Meta, string? Error)> SetDocumentTypeAsync(
         Guid id,
         SetAttachmentDocumentTypeRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Specialist approval of a «مستند ذو قيمة». (null, null) = not found / not visible.</summary>
+    Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewValueDocumentAsync(
+        Guid id,
+        ReviewValueDocumentRequest request,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 }

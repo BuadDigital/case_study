@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Rules;
 
@@ -9,9 +10,29 @@ namespace RealEstateEval.Application.Rules;
 /// <see cref="PlatformCapabilities.ManageAttachments"/> only authorizes upload — every
 /// field role holds it, so it must not bypass the uploader check (audit A-002).
 /// Delete is narrower: the uploader, or case staff who manage party submissions.
+/// A «مستند ذو قيمة» is stricter on both: only the case specialist, the appraiser and the CDO
+/// see it — the uploader from any other role loses sight of it once uploaded.
 /// </summary>
 public static class AttachmentAccessRules
 {
+    /// <summary>Read rule that knows the row's document type (valued documents are restricted).</summary>
+    public static bool Allows(string uploadedByUserId, string? documentTypeKey, PermissionsDto? actor) =>
+        PropertyDocumentTypes.IsValued(documentTypeKey)
+            ? AllowsValuedDocument(actor)
+            : Allows(uploadedByUserId, actor);
+
+    public static bool AllowsDelete(string uploadedByUserId, string? documentTypeKey, PermissionsDto? actor)
+    {
+        if (!PropertyDocumentTypes.IsValued(documentTypeKey))
+            return AllowsDelete(uploadedByUserId, actor);
+        if (actor is null) return false;
+        return PoRoleMatrixRules.CanReviewValuedDocuments(actor.PrototypeRole)
+            || (AllowsValuedDocument(actor) && IsUploader(uploadedByUserId, actor));
+    }
+
+    public static bool AllowsValuedDocument(PermissionsDto? actor) =>
+        actor is not null && PoRoleMatrixRules.CanSeeValuedDocuments(actor.PrototypeRole);
+
     public static bool Allows(string uploadedByUserId, PermissionsDto? actor)
     {
         if (actor is null)

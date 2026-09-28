@@ -220,6 +220,15 @@ public sealed class ValuationRequestService : IValuationRequestService
             .Where(x => ids.Contains(x.ValuationRequestId))
             .ToDictionaryAsync(x => x.ValuationRequestId, cancellationToken);
 
+        // «مستند ذو قيمة» additions join the final value after the discount, before rounding.
+        var additionRows = await _db.ValuationValueDocumentUses.AsNoTracking()
+            .Where(x => ids.Contains(x.ValuationRequestId) && x.Effect == ValueDocumentEffects.Addition)
+            .Select(x => new { x.ValuationRequestId, x.Value })
+            .ToListAsync(cancellationToken);
+        var additionsByRequest = additionRows
+            .GroupBy(x => x.ValuationRequestId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Value));
+
         var issueRows = await _db.ValuationReportIssuances.AsNoTracking()
             .Where(x => ids.Contains(x.ValuationRequestId) && x.SupersededAtUtc == null)
             .Select(x => new
@@ -235,7 +244,9 @@ public sealed class ValuationRequestService : IValuationRequestService
         {
             reconByRequest.TryGetValue(id, out var recon);
             DateTime? issueAt = issueByRequest.TryGetValue(id, out var at) ? at : null;
-            overlays[id] = new RequestMapOverlay(FinalOpinionFrom(recon), issueAt);
+            overlays[id] = new RequestMapOverlay(
+                FinalOpinionFrom(recon, additionsByRequest.GetValueOrDefault(id)),
+                issueAt);
         }
 
         return overlays;
@@ -246,7 +257,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         Guid id) =>
         overlays.TryGetValue(id, out var overlay) ? overlay : default;
 
-    private static decimal? FinalOpinionFrom(ValuationReconciliation? recon)
+    private static decimal? FinalOpinionFrom(ValuationReconciliation? recon, decimal additionsTotal)
     {
         if (recon is null) return null;
         var included = recon.Methods
@@ -255,12 +266,13 @@ public sealed class ValuationRequestService : IValuationRequestService
             .ToList();
         if (included.Count == 0) return null;
         var weighted = ReconciliationRules.WeightedValue(included);
-        var (_, final, _) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
+        var (_, _, final, _) = ReconciliationRules.FinalTotal(
             weighted,
             recon.FinalRoundDecimals,
             recon.BasisOfValueKey,
             recon.ValuePremiseKey,
-            recon.LiquidationDiscountPct);
+            recon.LiquidationDiscountPct,
+            additionsTotal);
         return final > 0m ? final : null;
     }
 
