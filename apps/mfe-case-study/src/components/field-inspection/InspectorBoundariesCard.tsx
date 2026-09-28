@@ -79,6 +79,10 @@ export function InspectorBoundariesCard({
           match?.deedLength,
           property[row.lenKey],
         );
+        const facade = resolvedBoundaryDeedField(
+          match?.facade,
+          property[row.facadeKey],
+        );
         const deed = boundaryDeedDisplay(deedDesc, deedLength);
         const mismatchInvalid = fieldErrors.missingBoundaryKey === key;
         if (mobile) {
@@ -130,7 +134,7 @@ export function InspectorBoundariesCard({
               <MobileFieldLabel>نوع الواجهة</MobileFieldLabel>
               <Select
                 aria-label={`نوع الواجهة — ${row.label}`}
-                value={match.facade}
+                value={facade}
                 disabled={locked}
                 className={cn(mobileControlClassName, "mb-2.5")}
                 onChange={(e) =>
@@ -138,6 +142,9 @@ export function InspectorBoundariesCard({
                 }
               >
                 <option value="">— اختر —</option>
+                {facade && !facadeTypeOptions.includes(facade) ? (
+                  <option value={facade}>{facade}</option>
+                ) : null}
                 {facadeTypeOptions.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
@@ -184,7 +191,7 @@ export function InspectorBoundariesCard({
             </span>
             <Select
               aria-label={`نوع الواجهة — ${row.label}`}
-              value={match.facade}
+              value={facade}
               disabled={locked}
               className="text-[11.5px]"
               onChange={(e) =>
@@ -192,6 +199,9 @@ export function InspectorBoundariesCard({
               }
             >
               <option value="">— اختر —</option>
+              {facade && !facadeTypeOptions.includes(facade) ? (
+                <option value={facade}>{facade}</option>
+              ) : null}
               {facadeTypeOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}

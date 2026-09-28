@@ -109,6 +109,8 @@ export function useActiveTransactionQueueWorkflow({
     copyTargetKey,
     setCopyTargetKey,
     handleCopiedFromPrior,
+    confirmDialog,
+    failureRaiseModal,
   } = useActiveTransactionQueueCommands({ config, queueApiRef, data });
 
   // Rows in these two branches open the transaction work screen that starts with the Infath form.
@@ -249,5 +251,7 @@ export function useActiveTransactionQueueWorkflow({
     copyTargetKey,
     setCopyTargetKey,
     handleCopiedFromPrior,
+    confirmDialog,
+    failureRaiseModal,
   };
 }

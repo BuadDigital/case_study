@@ -6,15 +6,9 @@ import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
-import {
-  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
-  engineeringSurveyStatusLabel,
-} from "../lib/engineering-survey-submission-model";
+import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT, engineeringSurveyStatusLabel } from "../lib/engineering-survey-submission-model";
 import { loadEngineeringSurveySubmissionAsync } from "../lib/engineering-survey-submission-reads";
-import {
-  acceptEngineeringSurveySubmission,
-  reopenEngineeringSurveySubmission,
-} from "../lib/engineering-survey-submission-commands";
+import { acceptEngineeringSurveySubmission, reopenEngineeringSurveySubmission } from "../lib/engineering-survey-submission-commands";
 import { PartyRecallAdvisorySection } from "@case-study/mfe/components/party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 
@@ -27,7 +21,6 @@ function formatCoordsDisplay(lat: string, lng: string): string {
 }
 
 const noteWarnClass = "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";
-
 const infoRowClass = "flex items-baseline justify-between gap-3 border-b border-border py-2 text-xs last:border-b-0";
 
 export function EngineeringSurveyAdvisoryPanel({

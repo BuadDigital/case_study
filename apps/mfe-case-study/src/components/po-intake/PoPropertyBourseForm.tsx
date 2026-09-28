@@ -21,7 +21,11 @@ import {
   cacheBourseDeedImageDoc,
   clearCachedPropertyDoc,
 } from "../../lib/app-data/assignment-doc-attachments";
-import { PROPERTY_USAGE_OPTIONS } from "../../lib/app-data/inspector-workspace-data";
+import {
+  PROPERTY_CLASSIFICATIONS,
+  classificationForPropertyType,
+  propertyTypesForClassification,
+} from "../../lib/app-data/inspector-workspace-data";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
@@ -30,6 +34,7 @@ import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import { cn, FormRow, InfathSection, Label, Note, useToast } from "@platform/ui-kit";
+import { useEffect, useMemo } from "react";
 
 type Props = {
   property: PoPropertyIntake;
@@ -72,6 +77,23 @@ export function PoPropertyBourseForm({
   const compactRegisteredTitle = propertyHasRegisteredTitle(property);
   const vitalityFlow = showDeedVitalityFlow && !compactRegisteredTitle;
   const obstructionPath = vitalityFlow && deedVitality === "inactive";
+
+  // Prefer stored classification; for legacy rows infer from the type list.
+  const classificationValue =
+    property.classification.trim() ||
+    classificationForPropertyType(property.propertyType) ||
+    "";
+  const typeOptions = useMemo(
+    () => propertyTypesForClassification(classificationValue),
+    [classificationValue],
+  );
+
+  // Legacy rows often have a type but blank classification — persist the inferred one.
+  useEffect(() => {
+    if (property.classification.trim()) return;
+    const inferred = classificationForPropertyType(property.propertyType);
+    if (inferred) onPatch("classification", inferred);
+  }, [onPatch, property.classification, property.propertyType]);
 
   return (
     <>
@@ -166,20 +188,38 @@ export function PoPropertyBourseForm({
             onChange={(v) => onPatch("area", v)}
             placeholder="مثال: 900"
           />
-          <RegField
+          <RegSelect
             id="classification"
             label="التصنيف"
-            value={property.classification}
+            options={[...PROPERTY_CLASSIFICATIONS]}
+            value={classificationValue}
             error={fieldErrors.classification}
-            onChange={(v) => onPatch("classification", v)}
-            placeholder="أرض · مبنى · وحدة داخل مبنى…"
+            placeholder="اختر التصنيف"
+            onChange={(v) => {
+              onPatch("classification", v);
+              const allowed = propertyTypesForClassification(v);
+              if (
+                property.propertyType.trim() &&
+                !allowed.includes(property.propertyType.trim())
+              ) {
+                onPatch("propertyType", "");
+              }
+            }}
           />
           <RegSelect
             id="property_type"
-            label="النوع / الاستخدام"
-            options={[...PROPERTY_USAGE_OPTIONS]}
-            value={property.propertyType}
+            label="النوع"
+            options={[...typeOptions]}
+            value={
+              typeOptions.includes(property.propertyType.trim())
+                ? property.propertyType.trim()
+                : ""
+            }
             error={fieldErrors.propertyType}
+            disabled={!classificationValue}
+            placeholder={
+              classificationValue ? "اختر النوع" : "اختر التصنيف أولاً"
+            }
             onChange={(v) => onPatch("propertyType", v)}
           />
           {vitalityFlow || compactRegisteredTitle ? null : (

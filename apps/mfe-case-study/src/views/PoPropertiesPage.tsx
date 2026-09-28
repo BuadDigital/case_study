@@ -63,6 +63,7 @@ import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
 } from "../lib/app-data/po-properties-row-menu";
+import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
 import { DeliveryCountdown } from "../components/po-intake/DeliveryCountdown";
 import {
   usePoRecordQuery,
@@ -124,6 +125,9 @@ export function PoPropertiesPage({
   const [copyInitialTargetKey, setCopyInitialTargetKey] = useState<
     string | null
   >(null);
+  const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
+    onSubmitted: bumpMenu,
+  });
 
   const { data: record, isPending } = usePoRecordQuery(poNumber);
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
@@ -178,6 +182,7 @@ export function PoPropertiesPage({
           showEdit && !property.isRemoved
             ? () => openCopyModal(`property:${property.id}`)
             : undefined,
+        onRegisterFailure: openFailureRaise,
       };
       const base = buildPoPropertiesRowMoreItems(ctx);
       const extra = buildPropertyRowMoreItems?.(ctx) ?? [];
@@ -197,6 +202,7 @@ export function PoPropertiesPage({
       buildPropertyRowMoreItems,
       menuRevision,
       openCopyModal,
+      openFailureRaise,
     ],
   );
 
@@ -442,6 +448,7 @@ export function PoPropertiesPage({
           onCopied={handleCopiedFromPrior}
         />
       ) : null}
+      {failureRaiseModal}
     </div>
   );
 }

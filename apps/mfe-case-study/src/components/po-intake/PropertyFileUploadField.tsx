@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { Button, Label, cn, useFormDensity } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   clearCachedPropertyDoc,
   type PropertyDocKind,
@@ -71,9 +72,11 @@ export function PropertyFileUploadField({
       : [];
   const hasFiles = names.length > 0;
   const showPreview = Boolean(docKind && attachPo && propertyId);
-  const atMax =
-    typeof maxFiles === "number" && names.length >= maxFiles && multiple;
-  const showPicker = !atMax;
+  // Hide the dashed upload box once a document is on file; clear first to upload again.
+  const atCapacity = multiple
+    ? typeof maxFiles === "number" && names.length >= maxFiles
+    : hasFiles;
+  const showPicker = !atCapacity;
 
   // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars.
   const tile = useFormDensity() === "compact";
@@ -118,10 +121,16 @@ export function PropertyFileUploadField({
       ? "إضافة ملفات"
       : "ارفع المستند";
 
+  // Scroll/focus targets this visible root — not the sr-only file input (that hid the pulse).
+  const fileInputId = `${id}-input`;
+
   if (tile) {
     return (
-      <div className="w-40 max-w-full">
-        <Label className="mb-1 line-clamp-2 min-h-[2rem] text-[11px]" htmlFor={id}>
+      <div
+        id={id}
+        className={cn("w-40 max-w-full", error && invalidControlClass)}
+      >
+        <Label className="mb-1 line-clamp-2 min-h-[2rem] text-[11px]" htmlFor={fileInputId}>
           {label}
         </Label>
 
@@ -163,12 +172,14 @@ export function PropertyFileUploadField({
                 ) : null}
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="dangerOutline"
                   size="sm"
-                  className="h-auto px-1.5 text-[11px] text-danger-text"
+                  className="h-8 w-8 shrink-0 px-0"
+                  aria-label={multiple ? "إزالة الملف" : "مسح الملف"}
+                  title={multiple ? "إزالة الملف" : "مسح الملف"}
                   onClick={() => (multiple && onRemove ? onRemove(name) : handleClearAll())}
                 >
-                  إزالة
+                  <i className="ti ti-trash text-[16px]" aria-hidden />
                 </Button>
               </div>
             </div>
@@ -240,7 +251,7 @@ export function PropertyFileUploadField({
 
         <input
           ref={inputRef}
-          id={id}
+          id={fileInputId}
           type="file"
           accept={ACCEPT}
           multiple={multiple}
@@ -262,8 +273,11 @@ export function PropertyFileUploadField({
   }
 
   return (
-    <div className="mt-2 w-full">
-      <Label className="mb-1.5 text-[11px]" htmlFor={id}>
+    <div
+      id={id}
+      className={cn("mt-2 w-full", error && invalidControlClass)}
+    >
+      <Label className="mb-1.5 text-[11px]" htmlFor={fileInputId}>
         {label}
       </Label>
 
@@ -290,17 +304,19 @@ export function PropertyFileUploadField({
                   </p>
                 )}
               </div>
-              {multiple && onRemove ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto shrink-0 px-1.5 text-[11px] text-danger-text"
-                  onClick={() => onRemove(name)}
-                >
-                  إزالة
-                </Button>
-              ) : null}
+              <Button
+                type="button"
+                variant="dangerOutline"
+                size="sm"
+                className="h-8 w-8 shrink-0 self-center px-0"
+                aria-label="مسح الملف"
+                title="مسح الملف"
+                onClick={() =>
+                  multiple && onRemove ? onRemove(name) : handleClearAll()
+                }
+              >
+                <i className="ti ti-trash text-[18px]" aria-hidden />
+              </Button>
             </li>
           ))}
         </ul>
@@ -383,33 +399,22 @@ export function PropertyFileUploadField({
           <span className="inline-flex items-center justify-center rounded-lg bg-[var(--ink,#102B4E)] px-4 py-1.5 text-[11.5px] font-semibold text-white">
             اختيار ملف
           </span>
-          <input
-            ref={inputRef}
-            id={id}
-            type="file"
-            accept={ACCEPT}
-            multiple={multiple}
-            className="sr-only"
-            onChange={(e) => {
-              applyFiles(e.target.files);
-              e.target.value = "";
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
         </div>
       ) : null}
 
-      {hasFiles ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-1.5 h-auto px-0 text-[11px] text-primary"
-          onClick={handleClearAll}
-        >
-          {multiple ? "مسح كل الملفات" : "مسح الملف"}
-        </Button>
-      ) : null}
+      <input
+        ref={inputRef}
+        id={fileInputId}
+        type="file"
+        accept={ACCEPT}
+        multiple={multiple}
+        className="sr-only"
+        onChange={(e) => {
+          applyFiles(e.target.files);
+          e.target.value = "";
+        }}
+        onClick={(e) => e.stopPropagation()}
+      />
 
       {error ? (
         <p className="mt-1.5 text-[10px] text-danger-text" role="alert">

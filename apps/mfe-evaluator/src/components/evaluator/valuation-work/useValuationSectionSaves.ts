@@ -18,6 +18,7 @@ import {
   hasPositiveFinalOpinion,
   type FinalOpinionChangeHandler,
 } from "./lib/valuation-data-state";
+import { invalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 
 type SilentReload = (opts?: {
   silent?: boolean;
@@ -44,15 +45,16 @@ export function useValuationSectionSaves({
   };
 }) {
   const queryClient = useQueryClient();
-  /** After cost save: update the batch and silent-reload — no loading-skeleton flash. */
+  /** After cost save: update the batch, refresh the printed report, and silent-reload. */
   const onCostSaved = useCallback(
     (dto: ValuationCostApproachDto) => {
       setCost(dto);
+      invalidateEvaluatorReportOutput(queryClient);
       void reloadRef.current({ silent: true, scope: "derived" });
     },
-    [setCost, reloadRef],
+    [setCost, reloadRef, queryClient],
   );
-  /** After reconciliation save: update the batch, notify value opinion, and silent-reload. */
+  /** After reconciliation save: update the batch, notify value opinion, refresh the report. */
   const onReconSaved = useCallback(
     (dto: ValuationReconciliationDto) => {
       setRecon(dto);
@@ -62,9 +64,12 @@ export function useValuationSectionSaves({
           finalOpinionSyncExtrasFromRecon(dto),
         );
       }
+      // Same as ESG / settings — drop the cached report bundle so القيمة النهائية
+      // and مبرر الرأي appear on «تقرير التقييم» without a full page refresh.
+      invalidateEvaluatorReportOutput(queryClient);
       void reloadRef.current({ silent: true, scope: "derived" });
     },
-    [setRecon, reloadRef, onFinalOpinionChangeRef],
+    [setRecon, reloadRef, onFinalOpinionChangeRef, queryClient],
   );
   /** After settings save: update the batch, reseed settings drafts, and silent-reload derived data. */
   const onSettingsSaved = useCallback(
@@ -73,7 +78,7 @@ export function useValuationSectionSaves({
       setSettingsHydrateKey((k) => k + 1);
       // The printed report reads these settings (special assumptions, retrospective line, approaches)
       // from its own cached bundle — drop it so the next open shows what was just saved.
-      void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
+      invalidateEvaluatorReportOutput(queryClient);
       void reloadRef.current({ silent: true, scope: "derived" });
     },
     [setApproachSettings, setSettingsHydrateKey, reloadRef, queryClient],

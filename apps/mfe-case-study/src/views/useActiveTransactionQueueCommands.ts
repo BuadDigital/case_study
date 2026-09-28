@@ -43,6 +43,8 @@ import {
   type ActiveTransactionQueueConfig,
 } from "./active-transaction-queue-state";
 import type { ActiveTransactionQueueData } from "./useActiveTransactionQueueData";
+import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
+import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
 
 export function useActiveTransactionQueueCommands({
   config,
@@ -74,6 +76,7 @@ export function useActiveTransactionQueueCommands({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { confirm, dialog: confirmDialog } = useConfirmActionDialog();
   const [isOpeningTask, startOpenTask] = useTransition();
   const [openingTaskId, setOpeningTaskId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
@@ -110,6 +113,10 @@ export function useActiveTransactionQueueCommands({
     refreshPartySubmissions,
     config.allowPhaseRevert,
   ]);
+
+  const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
+    onSubmitted: refreshWork,
+  });
 
   const syncQueue = useCallback(async () => {
     // Independent keys in parallel; invalidating workflowTasks refetches on its own —
@@ -328,6 +335,8 @@ export function useActiveTransactionQueueCommands({
           : undefined,
         allowDeleteTransaction: Boolean(config.allowDeleteTransaction),
         viewerRole: role,
+        confirmAction: confirm,
+        onRegisterFailure: openFailureRaise,
       });
     },
     [
@@ -338,6 +347,8 @@ export function useActiveTransactionQueueCommands({
       showToast,
       poByNumber,
       role,
+      confirm,
+      openFailureRaise,
     ],
   );
 
@@ -472,5 +483,7 @@ export function useActiveTransactionQueueCommands({
     copyTargetKey,
     setCopyTargetKey,
     handleCopiedFromPrior,
+    confirmDialog,
+    failureRaiseModal,
   };
 }

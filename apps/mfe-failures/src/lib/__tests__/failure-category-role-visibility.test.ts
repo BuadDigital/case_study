@@ -33,19 +33,10 @@ describe("failure category role visibility — full matrix", () => {
     }
   });
 
-  it("case specialist: deed, ownership, contents — not location/access/parties", () => {
-    expect(canRoleSeeFailureCategory("case-specialist", "deed-documents")).toBe(
-      true,
-    );
-    expect(canRoleSeeFailureCategory("case-specialist", "ownership")).toBe(
-      true,
-    );
-    expect(canRoleSeeFailureCategory("case-specialist", "contents")).toBe(true);
-    expect(canRoleSeeFailureCategory("case-specialist", "location")).toBe(
-      false,
-    );
-    expect(canRoleSeeFailureCategory("case-specialist", "access")).toBe(false);
-    expect(canRoleSeeFailureCategory("case-specialist", "parties")).toBe(false);
+  it("case specialist sees every category", () => {
+    for (const id of ALL_CATEGORY_IDS) {
+      expect(canRoleSeeFailureCategory("case-specialist", id)).toBe(true);
+    }
   });
 
   it("engineering office: location + parties among restricted; not access/contents", () => {

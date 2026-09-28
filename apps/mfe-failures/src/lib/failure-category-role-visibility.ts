@@ -3,7 +3,7 @@ import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 
 /**
  * Visibility of failure-type categories when raising a failure.
- * Supervisor / super-admin see every category.
+ * Supervisor / super-admin / case-specialist see every category.
  *
  * 1. deed-documents — all roles
  * 2. location — field-inspector + engineering-office
@@ -26,7 +26,11 @@ const CATEGORY_AUDIENCE: Record<string, CategoryAudience> = {
 };
 
 function roleSeesAllFailureCategories(role: RoleId): boolean {
-  return isSuperAdmin(role) || role === "section-supervisor";
+  return (
+    isSuperAdmin(role) ||
+    role === "section-supervisor" ||
+    role === "case-specialist"
+  );
 }
 
 export function canRoleSeeFailureCategory(

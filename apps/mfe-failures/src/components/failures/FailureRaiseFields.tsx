@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { Select } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { filterFailureCategoriesForRole, filterFailureProblemTypesForRole } from "../../lib/failure-category-role-visibility";
 import {
@@ -10,6 +9,7 @@ import {
   type FailureProblemType,
 } from "../../lib/failure-types-data";
 import { useFailureTypesQuery } from "../../query/failure-types-queries";
+import { FailureTypeMenuSelect } from "./FailureTypeMenuSelect";
 
 const labelClassName =
   "mb-[7px] block text-[12px] font-semibold text-text-2";
@@ -56,6 +56,17 @@ export function FailureRaiseFields({
     [catalogTypes, role],
   );
 
+  const groups = useMemo(
+    () =>
+      categories
+        .map((category) => ({
+          category,
+          types: problemTypes.filter((t) => t.categoryId === category.id),
+        }))
+        .filter((g) => g.types.length > 0),
+    [categories, problemTypes],
+  );
+
   const waiting = isPending && !isError && !catalog;
 
   const selected = problemTypes.find((t) => t.id === problemTypeId);
@@ -68,31 +79,16 @@ export function FailureRaiseFields({
           *
         </span>
       </label>
-      <Select
+      <FailureTypeMenuSelect
         id={`${idPrefix}_problem_type`}
         value={problemTypeId}
+        onChange={onProblemTypeChange}
+        groups={groups}
+        placeholder={waiting ? "جاري تحميل الأنواع…" : "اختر نوع التعذر…"}
         disabled={disabled || waiting || problemTypes.length === 0}
         hasError={invalid}
         autoFocus={autoFocus}
-        onChange={(e) => onProblemTypeChange(e.target.value)}
-      >
-        <option value="">
-          {waiting ? "جاري تحميل الأنواع…" : "اختر نوع التعذر…"}
-        </option>
-        {categories.map((category) => {
-          const types = problemTypes.filter((t) => t.categoryId === category.id);
-          if (types.length === 0) return null;
-          return (
-            <optgroup key={category.id} label={category.label}>
-              {types.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.label}
-                </option>
-              ))}
-            </optgroup>
-          );
-        })}
-      </Select>
+      />
       {selected?.description ? (
         <p className="mt-1.5 m-0 text-[11.5px] leading-relaxed text-text-3">
           {selected.description}

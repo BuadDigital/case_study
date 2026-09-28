@@ -260,61 +260,114 @@ export function patchInspectorFeatureValues(
  * - Closed-list rows with `photoOnYes`: proof whenever a value is chosen
  *   — matches desktop HTML table column for origin / facade / usage / build state.
  */
-/** أرض / مبنى مفرد / مجمع / وحدة داخل مبنى / مرفق عام — 47 قيمة، مشتركة مع نموذج استعلام البورصة. */
-export const PROPERTY_USAGE_OPTIONS: readonly string[] = [
-  // أرض
-  "أرض سكنية",
-  "أرض تجارية",
-  "أرض صناعية",
-  "أرض زراعية",
-  "أرض مختلطة",
-  // مبنى مفرد
-  "فيلا",
-  "عمارة",
-  "منزل",
-  "بيت شعبي",
-  "قصر",
-  "برج",
-  "مستودع",
-  "مصنع",
-  "ورشة",
-  "فندق",
-  "محطة بنزين",
-  "مزرعة",
-  "شاليه",
-  "منتجع",
-  "عيادة",
-  "مواقف سيارات",
-  // مجمع
-  "مجمع سكني",
-  "مجمع تجاري",
-  "مجمع فلل",
-  "مجمع تعليمي",
-  "مجمع حكومي",
-  "مجمع عيادات",
-  "مجمع ترفيهي",
-  "مدينة رياضية",
-  "مجمع متعدد الاستخدامات",
-  // وحدة داخل مبنى
-  "شقة سكنية",
-  "محل تجاري",
-  "معرض",
-  "مكتب",
-  "دور",
-  // مرفق عام
-  "مستشفى",
-  "مركز صحي",
-  "مركز شرطة",
-  "استراحة",
-  "قاعة أفراح",
-  "سوق تجاري",
-  "مسجد",
-  "مقبرة",
-  "محطة تحلية مياه",
-  "محطة كهرباء",
-  "برج اتصالات",
-  "مطار",
-];
+/** Five top-level property classifications (PO bourse + shared usage lists). */
+export const PROPERTY_CLASSIFICATIONS = [
+  "أرض",
+  "مبنى مفرد",
+  "مجمع",
+  "وحدة داخل مبنى",
+  "مرفق عام",
+] as const;
+
+export type PropertyClassification = (typeof PROPERTY_CLASSIFICATIONS)[number];
+
+/** Types under each classification — 47 unique values total. */
+export const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
+  PropertyClassification,
+  readonly string[]
+> = {
+  أرض: [
+    "أرض سكنية",
+    "أرض تجارية",
+    "أرض صناعية",
+    "أرض زراعية",
+    "أرض مختلطة",
+  ],
+  "مبنى مفرد": [
+    "فيلا",
+    "عمارة",
+    "منزل",
+    "بيت شعبي",
+    "قصر",
+    "برج",
+    "مستودع",
+    "مصنع",
+    "ورشة",
+    "فندق",
+    "محطة بنزين",
+    "مزرعة",
+    "شاليه",
+    "منتجع",
+    "عيادة",
+    "مواقف سيارات",
+  ],
+  مجمع: [
+    "مجمع سكني",
+    "مجمع تجاري",
+    "مجمع فلل",
+    "مجمع تعليمي",
+    "مجمع حكومي",
+    "مجمع عيادات",
+    "مجمع ترفيهي",
+    "مدينة رياضية",
+    "مجمع متعدد الاستخدامات",
+  ],
+  "وحدة داخل مبنى": [
+    "شقة سكنية",
+    "محل تجاري",
+    "معرض",
+    "مكتب",
+    "دور",
+  ],
+  "مرفق عام": [
+    "مستشفى",
+    "مركز صحي",
+    "مركز شرطة",
+    "استراحة",
+    "قاعة أفراح",
+    "سوق تجاري",
+    "مسجد",
+    "مقبرة",
+    "محطة تحلية مياه",
+    "محطة كهرباء",
+    "برج اتصالات",
+    "مطار",
+  ],
+};
+
+/** Flat 47-type list (inspector «استخدام العقار», legacy single selects). */
+export const PROPERTY_USAGE_OPTIONS: readonly string[] =
+  PROPERTY_CLASSIFICATIONS.flatMap(
+    (c) => PROPERTY_TYPES_BY_CLASSIFICATION[c],
+  );
+
+export function isPropertyClassification(
+  value: string,
+): value is PropertyClassification {
+  return (PROPERTY_CLASSIFICATIONS as readonly string[]).includes(value.trim());
+}
+
+export function propertyTypesForClassification(
+  classification: string,
+): readonly string[] {
+  const key = classification.trim();
+  if (!isPropertyClassification(key)) return [];
+  return PROPERTY_TYPES_BY_CLASSIFICATION[key];
+}
+
+/** Infer classification from a type label (legacy rows with empty classification). */
+export function classificationForPropertyType(
+  propertyType: string,
+): PropertyClassification | null {
+  const type = propertyType.trim();
+  if (!type) return null;
+  for (const classification of PROPERTY_CLASSIFICATIONS) {
+    if (PROPERTY_TYPES_BY_CLASSIFICATION[classification].includes(type)) {
+      return classification;
+    }
+  }
+  return null;
+}
 
 export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {

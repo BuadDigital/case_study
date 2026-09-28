@@ -9,6 +9,7 @@
  * This hook owns the state all of them mutate.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
@@ -29,6 +30,7 @@ import {
 import { useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
+import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 import { fetchBankCandidates } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {
@@ -76,6 +78,7 @@ export function useValuationWorkData({
   onFinalOpinionChange,
 }: ValuationWorkDataParams) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
   onFinalOpinionChangeRef.current = onFinalOpinionChange;
 
@@ -354,6 +357,8 @@ export function useValuationWorkData({
       setRecon(null);
       setReconHydrateKey((k) => k + 1);
     }
+    // Market / cost / recon just refreshed — drop the printed-report cache (debounced).
+    scheduleInvalidateEvaluatorReportOutput(queryClient);
     },
     [
     propertyId,
@@ -369,6 +374,7 @@ export function useValuationWorkData({
     intakeProperty?.deedNumber,
     intakeProperty?.locationMapUrl,
     resolveBankFetchOpts,
+    queryClient,
     ],
   );
 

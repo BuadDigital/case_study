@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { invalidateEvaluatorReportOutput } from "../../lib/evaluator/evaluator-report-output-cache";
 import {
   ensureOpenValuationRequestByProperty,
   getValuationApproachSettings,
@@ -401,7 +402,7 @@ export function EvaluatorFinalReviewTab({
     setSettings(res.data);
     lastSavedSettingsRef.current = res.data;
     onSettingsSaved?.(res.data);
-    void queryClient.invalidateQueries({ queryKey: ["evaluator-report-output"] });
+    invalidateEvaluatorReportOutput(queryClient);
     // Skip applying server state if the user edited again while this request was in flight.
     if (editVersionRef.current !== versionAtSave) return;
     setAssumptions(selected);

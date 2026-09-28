@@ -14,6 +14,7 @@ import { getAuthSession } from "@platform/auth-client";
 import { useIdempotentAction } from "@platform/app-shared";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -71,6 +72,15 @@ import {
   EvaluatorValuationReportOutputTabLazy as EvaluatorValuationReportOutputTab,
   preloadValuationReportOutputTab,
 } from "./EvaluatorWindowOutputTab";
+import {
+  invalidateEvaluatorReportOutput,
+  scheduleInvalidateEvaluatorReportOutput,
+} from "../../lib/evaluator/evaluator-report-output-cache";
+import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data/work-orders-api-config";
+
+/** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
+const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
+  "field-inspection-submission-changed";
 
 export type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
@@ -134,6 +144,7 @@ export function EvaluatorWindow({
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
+  const queryClient = useQueryClient();
   const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
     market: false,
     cost: false,
@@ -453,8 +464,29 @@ export function EvaluatorWindow({
   }, [hostRef, submit]);
 
   const onTabChange = useCallback((id: string) => {
-    setActiveTab(id as EvaluatorWindowTab);
-  }, []);
+    const next = id as EvaluatorWindowTab;
+    setActiveTab(next);
+    // Pull a fresh report bundle when opening «تقرير التقييم» (same idea as ESG:
+    // never leave the appraiser staring at a cached fill after they just saved).
+    if (next === "output") {
+      invalidateEvaluatorReportOutput(queryClient);
+    }
+  }, [queryClient]);
+
+  // Property / inspection edits outside this window should refresh the report fill.
+  useEffect(() => {
+    const refresh = () =>
+      scheduleInvalidateEvaluatorReportOutput(queryClient);
+    window.addEventListener(WORK_ORDER_PROPERTY_CHANGED_EVENT, refresh);
+    window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, refresh);
+    return () => {
+      window.removeEventListener(WORK_ORDER_PROPERTY_CHANGED_EVENT, refresh);
+      window.removeEventListener(
+        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+        refresh,
+      );
+    };
+  }, [queryClient]);
 
   const onDraftPatch = useCallback(
     (values: Parameters<typeof persistDraft>[0]) => {

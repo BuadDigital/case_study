@@ -6,10 +6,12 @@
  * command saves the same market-approach body layered with its own field and
  * replaces the selection with the server answer.
  */
+import { useQueryClient } from "@tanstack/react-query";
 import {
   saveValuationMarketApproach,
   type SaveValuationMarketApproachRequest,
 } from "@platform/api-client";
+import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 import {
   marketApproachBody,
   nextSubjectSpecs,
@@ -22,6 +24,7 @@ export function useMarketApproachCommands(
   data: ValuationWorkData,
   saver: ComparableMarketSaver,
 ) {
+  const queryClient = useQueryClient();
   const {
     showToast,
     setSelection,
@@ -56,6 +59,7 @@ export function useMarketApproachCommands(
       return false;
     }
     setSelection(res.data);
+    scheduleInvalidateEvaluatorReportOutput(queryClient);
     return true;
   }
 
@@ -74,7 +78,10 @@ export function useMarketApproachCommands(
       ctx.valuationRequestId,
       marketApproachBody(draft, { analysisNotes: null }),
     ).then((res) => {
-      if (res.ok) setSelection(res.data);
+      if (res.ok) {
+        setSelection(res.data);
+        scheduleInvalidateEvaluatorReportOutput(queryClient);
+      }
     });
   }
 

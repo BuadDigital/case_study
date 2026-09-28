@@ -196,6 +196,8 @@ export function ActiveTransactionQueueView({
     copyTargetKey,
     setCopyTargetKey,
     handleCopiedFromPrior,
+    confirmDialog,
+    failureRaiseModal,
   } = useActiveTransactionQueueWorkflow({ config, queueApiRef });
   // Field roles offline before anything was downloaded: say so plainly — never a
   // connection error, and never "no tasks" as if the queue were really empty (§4.2).
@@ -475,6 +477,8 @@ export function ActiveTransactionQueueView({
           onCopied={handleCopiedFromPrior}
         />
       ) : null}
+      {confirmDialog}
+      {failureRaiseModal}
     </>
   );
 }

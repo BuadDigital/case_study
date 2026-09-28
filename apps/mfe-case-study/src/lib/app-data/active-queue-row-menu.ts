@@ -40,15 +40,43 @@ export type ActiveQueueRowMoreOptions = {
   allowDeleteTransaction?: boolean;
   /** Viewer role — delete is supervisor / admin only. */
   viewerRole?: RoleId;
+  /**
+   * In-app confirm (beige AppModal). Required for phase-revert actions —
+   * falls back to `window.confirm` only when omitted.
+   */
+  confirmAction?: (request: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    danger?: boolean;
+  }) => Promise<boolean>;
+  /**
+   * Open «تسجيل تعذر» as a modal. When omitted, falls back to the legacy
+   * `/po/.../failure` route (should not happen once hosts are wired).
+   */
+  onRegisterFailure?: (info: {
+    poNumber: string;
+    propertyId: string;
+    deedNumber?: string;
+    taskKind: WorkflowTask["kind"];
+  }) => void;
 };
 
 async function runPhaseRevert(
   options: ActiveQueueRowMoreOptions,
   targetPhase: "enfath" | "bourse",
+  title: string,
   confirmMessage: string,
   successMessage: string,
 ): Promise<void> {
-  if (!window.confirm(confirmMessage)) return;
+  const ok = options.confirmAction
+    ? await options.confirmAction({
+        title,
+        message: confirmMessage,
+        confirmLabel: "تأكيد الإرجاع",
+      })
+    : window.confirm(confirmMessage);
+  if (!ok) return;
   const result = await revertTaskToPhase(options.task.id, targetPhase);
   if (!result.ok) {
     options.showToast?.(result.error, "error");
@@ -74,6 +102,7 @@ function appendPhaseRevertItems(
           void runPhaseRevert(
             options,
             "bourse",
+            "إرجاع لاستعلام البورصة",
             "إرجاع المعاملة لاستعلام البورصة؟ يمكن تعديل بيانات البورصة ثم المتابعة مجددًا.",
             "تم إرجاع المعاملة لاستعلام البورصة",
           );
@@ -90,6 +119,7 @@ function appendPhaseRevertItems(
         void runPhaseRevert(
           options,
           "enfath",
+          "إرجاع للبيانات الأولية",
           "إرجاع المعاملة للبيانات الأولية؟ يمكن تعديل بيانات إنفاذ ثم المتابعة مجددًا.",
           "تم إرجاع المعاملة للبيانات الأولية",
         );
@@ -193,12 +223,23 @@ export function buildActiveQueueRowMoreItems(
       options.task.kind === "property-appraisal") &&
     propertyId
   ) {
+    const record = options.poByNumber?.get(po);
+    const property = findPropertyForTask(record, options.task);
     items.push({
       id: "register-failure",
       label: "تسجيل تعذر",
       danger: true,
       disabled: failureExists,
       onClick: () => {
+        if (options.onRegisterFailure) {
+          options.onRegisterFailure({
+            poNumber: po,
+            propertyId,
+            deedNumber: property?.deedNumber?.trim() || "",
+            taskKind: options.task.kind,
+          });
+          return;
+        }
         options.router.push(poPropertyFailurePath(po, propertyId));
       },
     });

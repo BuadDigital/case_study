@@ -15,6 +15,12 @@ export type PoPropertyRowMoreContext = {
   router: { push: (href: string) => void };
   /** Open "copy from prior transaction" with this property pre-selected. */
   onCopyFromPrior?: () => void;
+  /** Open «تسجيل تعذر» as a modal instead of navigating to `/failure`. */
+  onRegisterFailure?: (info: {
+    poNumber: string;
+    propertyId: string;
+    deedNumber?: string;
+  }) => void;
 };
 
 export function buildPoPropertiesRowMoreItems(
@@ -50,7 +56,19 @@ export function buildPoPropertiesRowMoreItems(
       id: "property-failure",
       label: "تسجيل تعذر",
       danger: true,
-      onClick: () => ctx.router.push(poPropertyFailurePath(po, propertyId)),
+      onClick: () => {
+        if (ctx.onRegisterFailure) {
+          ctx.onRegisterFailure({
+            poNumber: po,
+            propertyId,
+            deedNumber:
+              ctx.property.deedNumber?.trim() ||
+              "",
+          });
+          return;
+        }
+        ctx.router.push(poPropertyFailurePath(po, propertyId));
+      },
     });
   }
 

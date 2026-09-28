@@ -100,6 +100,10 @@ export function InspectorBoundaryMatchTable({
                     match?.deedLength,
                     property[row.lenKey],
                   );
+                  const facade = resolvedBoundaryDeedField(
+                    match?.facade,
+                    property[row.facadeKey],
+                  );
                   return (
                     <tr key={row.descKey} id={`ins-boundary-${matchKey}`}>
                       <td className={cn(INS_TD_CLASS, "font-bold text-heading")}>
@@ -109,7 +113,7 @@ export function InspectorBoundaryMatchTable({
                         <Select
                           className="text-[11.5px]"
                           disabled={!editable}
-                          value={match?.facade ?? ""}
+                          value={facade}
                           onChange={(e) =>
                             editable &&
                             onPatch(
@@ -120,6 +124,9 @@ export function InspectorBoundaryMatchTable({
                           }
                         >
                           <option value="">— اختر —</option>
+                          {facade && !facadeTypeOptions.includes(facade) ? (
+                            <option value={facade}>{facade}</option>
+                          ) : null}
                           {facadeTypeOptions.map((o) => (
                             <option key={o} value={o}>
                               {o}

@@ -81,6 +81,7 @@ import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import { DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
+import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -89,6 +90,7 @@ export function BourseInquiryView() {
   const { role } = useAppAccess();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { confirm, dialog: confirmDialog } = useConfirmActionDialog();
   const {
     data: rawItems = [],
     isFetched,
@@ -374,6 +376,7 @@ export function BourseInquiryView() {
             showToast,
             allowDeleteTransaction: true,
             viewerRole: role,
+            confirmAction: confirm,
           })
         : [
             {
@@ -415,6 +418,7 @@ export function BourseInquiryView() {
     showToast,
     role,
     isItemOpening,
+    confirm,
   ]);
 
   const queuePanel = (
@@ -478,6 +482,7 @@ export function BourseInquiryView() {
                             showToast,
                             allowDeleteTransaction: true,
                             viewerRole: role,
+                            confirmAction: confirm,
                           })
                         : [
                             {
@@ -670,13 +675,16 @@ export function BourseInquiryView() {
       ) : null;
 
   return (
-    <ActiveTransactionPageLayout
-      pageId="bourse-inquiry"
-      hasRail={hasRail}
-      panelOpen={panelOpen}
-      reserveRail={hasRail}
-      queuePanel={queuePanel}
-      sidePanel={sidePanel}
-    />
+    <>
+      <ActiveTransactionPageLayout
+        pageId="bourse-inquiry"
+        hasRail={hasRail}
+        panelOpen={panelOpen}
+        reserveRail={hasRail}
+        queuePanel={queuePanel}
+        sidePanel={sidePanel}
+      />
+      {confirmDialog}
+    </>
   );
 }
