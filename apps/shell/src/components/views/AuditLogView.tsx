@@ -36,6 +36,7 @@ import {
   auditDetailSummary,
   auditDetailTooltip,
   auditEntityLabel,
+  buildActorNameMap,
 } from "@/lib/audit-log-labels";
 
 // Hoisted: constructing Intl.DateTimeFormat per row is expensive.
@@ -53,17 +54,19 @@ function formatAt(iso: string): string {
 }
 
 export function AuditLogView() {
-  const { token } = useAuth();
+  const { token, user, displayName } = useAuth();
   const { data: staffResult } = useStaffUsersQuery();
   const actorNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const u of staffResult?.users ?? []) {
-      const id = u.id?.trim();
-      const name = u.name?.trim();
-      if (id && name) map.set(id, name);
+    const map = buildActorNameMap(staffResult?.users ?? []);
+    // Prefer the live session name when the actor is the signed-in user.
+    const selfId = user?.id?.trim();
+    const selfName = displayName?.trim() || user?.displayName?.trim();
+    if (selfId && selfName) {
+      map.set(selfId, selfName);
+      map.set(selfId.toLowerCase(), selfName);
     }
     return map;
-  }, [staffResult?.users]);
+  }, [displayName, staffResult?.users, user?.displayName, user?.id]);
   const [entries, setEntries] = useState<AuditLogDto[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -148,7 +151,12 @@ export function AuditLogView() {
                     { header: "الوقت", value: (r) => formatAt(r.createdAtUtc) },
                     {
                       header: "المستخدم",
-                      value: (r) => auditActorLabel(r.actorId, actorNames),
+                      value: (r) =>
+                        auditActorLabel(
+                          r.actorId,
+                          actorNames,
+                          r.actorDisplayName,
+                        ),
                     },
                     {
                       header: "الإجراء",
@@ -162,7 +170,7 @@ export function AuditLogView() {
                     {
                       header: "التفاصيل",
                       value: (r) =>
-                        auditDetailSummary(r.before, r.after),
+                        auditDetailSummary(r.action, r.before, r.after),
                     },
                   ],
                   entries,
@@ -203,7 +211,11 @@ export function AuditLogView() {
             </THead>
             <TBody>
               {entries.map((entry) => {
-                const detail = auditDetailSummary(entry.before, entry.after);
+                const detail = auditDetailSummary(
+                  entry.action,
+                  entry.before,
+                  entry.after,
+                );
                 const tip = auditDetailTooltip(entry.before, entry.after);
                 return (
                   <Tr key={entry.id} hoverable={false}>
@@ -214,7 +226,11 @@ export function AuditLogView() {
                       className="font-semibold text-text-2"
                       title={entry.actorId}
                     >
-                      {auditActorLabel(entry.actorId, actorNames)}
+                      {auditActorLabel(
+                        entry.actorId,
+                        actorNames,
+                        entry.actorDisplayName,
+                      )}
                     </Td>
                     <Td className="font-bold text-heading">
                       {auditActionLabel(entry.action)}
@@ -227,8 +243,10 @@ export function AuditLogView() {
                         {auditEntityLabel(entry.entityType, entry.entityId)}
                       </span>
                     </Td>
-                    <Td className="text-text-3" title={tip}>
-                      <span className="min-w-0 truncate">{detail}</span>
+                    <Td className="max-w-[22rem] text-text-2" title={tip}>
+                      <span className="line-clamp-2 text-[12.5px] leading-snug">
+                        {detail}
+                      </span>
                     </Td>
                   </Tr>
                 );

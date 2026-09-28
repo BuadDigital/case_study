@@ -9,6 +9,8 @@ export type AuditLogApiConfig = {
 export type AuditLogDto = {
   id: string;
   actorId: string;
+  /** Resolved from identity when the actor is a known system user. */
+  actorDisplayName?: string | null;
   action: string;
   entityType: string;
   entityId: string;

@@ -2,13 +2,14 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Platform.Application.Abstractions;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Platform.Infrastructure.Services;
 
-public sealed class AuditLogQueryService(PlatformDbContext db) : IAuditLogQueryService
+public sealed class AuditLogQueryService(
+    PlatformDbContext db,
+    IIdentityDirectory? identity = null) : IAuditLogQueryService
 {
     public async Task<AuditLogPageDto> ListAsync(
         string? entityType,
@@ -40,12 +41,40 @@ public sealed class AuditLogQueryService(PlatformDbContext db) : IAuditLogQueryS
             .Take(limit)
             .ToListAsync(cancellationToken);
 
+        IReadOnlyDictionary<string, string> names =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (identity is not null && rows.Count > 0)
+        {
+            var actorIds = rows
+                .Select(row => row.ActorId)
+                .Where(id => !string.IsNullOrWhiteSpace(id)
+                    && !string.Equals(id, "system", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(id, "unknown", StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (actorIds.Count > 0)
+            {
+                try
+                {
+                    names = await identity.ResolveDisplayNamesByUserIdsAsync(
+                        actorIds,
+                        cancellationToken);
+                }
+                catch
+                {
+                    // Directory outage must not blank the audit page — fall back to ids.
+                    names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+            }
+        }
+
         return new AuditLogPageDto
         {
             Items = rows.Select(row => new AuditLogDto
             {
                 Id = row.Id,
                 ActorId = row.ActorId,
+                ActorDisplayName = ResolveName(row.ActorId, names),
                 Action = row.Action,
                 EntityType = row.EntityType,
                 EntityId = row.EntityId,
@@ -57,6 +86,19 @@ public sealed class AuditLogQueryService(PlatformDbContext db) : IAuditLogQueryS
             Limit = limit,
             Total = total,
         };
+    }
+
+    private static string? ResolveName(
+        string actorId,
+        IReadOnlyDictionary<string, string> names)
+    {
+        if (string.Equals(actorId, "system", StringComparison.OrdinalIgnoreCase))
+            return "النظام";
+        if (string.Equals(actorId, "unknown", StringComparison.OrdinalIgnoreCase))
+            return "غير معروف";
+        return names.TryGetValue(actorId, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name.Trim()
+            : null;
     }
 
     private static JsonElement Parse(string json)

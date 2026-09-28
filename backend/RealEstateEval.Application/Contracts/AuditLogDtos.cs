@@ -6,6 +6,8 @@ public sealed class AuditLogDto
 {
     public Guid Id { get; init; }
     public required string ActorId { get; init; }
+    /// <summary>Resolved display name when the actor is a known system user; otherwise null.</summary>
+    public string? ActorDisplayName { get; init; }
     public required string Action { get; init; }
     public required string EntityType { get; init; }
     public required string EntityId { get; init; }

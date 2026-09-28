@@ -107,4 +107,73 @@ public class GeneralAuditLogTests
         Assert.Equal("court", result.Items[0].EntityType);
         Assert.Equal("1", result.Items[0].EntityId);
     }
+
+    [Fact]
+    public async Task Query_resolves_actor_display_names_for_every_user_id()
+    {
+        await using var db = TestDatabases.Platform("audit-query-names");
+        var writer = new AuditLogWriter();
+        db.AuditLogs.Add(
+            writer.Create("user-aaa", "CREATED", "court", "1", null, new { name = "one" }));
+        await db.SaveChangesAsync();
+
+        var directory = new StubIdentityDirectory(new Dictionary<string, string>
+        {
+            ["user-aaa"] = "أحمد سعيد",
+        });
+        var service = new AuditLogQueryService(db, directory);
+
+        var result = await service.ListAsync(null, null, null, null, 1, 10);
+
+        Assert.Equal("أحمد سعيد", Assert.Single(result.Items).ActorDisplayName);
+    }
+
+    private sealed class StubIdentityDirectory(IReadOnlyDictionary<string, string> names)
+        : RealEstateEval.Application.Abstractions.IIdentityDirectory
+    {
+        public Task<string> ResolveAsync(string? raw, CancellationToken cancellationToken = default) =>
+            Task.FromResult(names.TryGetValue(raw ?? "", out var n) ? n : raw ?? "");
+
+        public Task<IReadOnlyDictionary<string, string>> ResolveManyAsync(
+            IEnumerable<string?> raws,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(names);
+
+        public Task<RealEstateEval.Application.Contracts.IdentityCompensationProfileDto?> GetCompensationByAssigneeAsync(
+            string assigneeId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<RealEstateEval.Application.Contracts.IdentityCompensationProfileDto?>(null);
+
+        public Task<string?> ResolveUserIdForDistributionAssigneeAsync(
+            string distributionAssigneeId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<string?> ResolveUserIdForEmailAsync(
+            string email,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyDictionary<string, string>> ResolveUserIdsForDistributionAssigneesAsync(
+            IReadOnlyCollection<string> distributionAssigneeIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(
+                new Dictionary<string, string>());
+
+        public Task<IReadOnlyList<string>> ResolveUserIdsWithPrototypeRoleAsync(
+            string prototypeRole,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<IReadOnlyDictionary<string, string>> ResolveDisplayNamesByUserIdsAsync(
+            IReadOnlyCollection<string> userIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(names);
+
+        public Task<IReadOnlyDictionary<string, string>> ResolveDisplayNamesByAssigneeIdsAsync(
+            IReadOnlyCollection<string> assigneeIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(
+                new Dictionary<string, string>());
+    }
 }
