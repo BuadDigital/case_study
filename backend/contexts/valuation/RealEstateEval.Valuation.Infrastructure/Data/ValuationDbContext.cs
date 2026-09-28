@@ -38,6 +38,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<ValuationReconciliation> ValuationReconciliations => Set<ValuationReconciliation>();
     public DbSet<ValuationReconciliationMethodLine> ValuationReconciliationMethodLines =>
         Set<ValuationReconciliationMethodLine>();
+    public DbSet<ValuationValueDocumentUse> ValuationValueDocumentUses => Set<ValuationValueDocumentUse>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

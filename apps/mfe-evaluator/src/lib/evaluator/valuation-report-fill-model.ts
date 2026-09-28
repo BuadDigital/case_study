@@ -298,18 +298,77 @@ function subjectCoordsForReport(
   });
 }
 
-function methodsUsed(choices: EvaluatorReportChoices): string {
+/** §16 — أسلوب التكلفة is valued by طريقة المقاول; the land component only when land is in scope. */
+function contractorMethodLabel(
+  costScopeKey: string | null | undefined,
+  costBasisKey: string | null | undefined,
+): string {
+  const building =
+    costBasisKey === "reproduction"
+      ? "تكلفة إعادة الإنتاج ناقص الإهلاك"
+      : "تكلفة الإحلال ناقص الإهلاك";
+  return costScopeKey === "building_only"
+    ? `طريقة المقاول: ${building}`
+    : `طريقة المقاول: قيمة الأرض فضاءً بطريقة المقارنة + ${building}`;
+}
+
+/** Market / cost used: the saved approach settings when known, else the report's method choices. */
+function approachesUsed(
+  choices: EvaluatorReportChoices,
+  input: { marketApproachEnabled?: boolean; costApproachEnabled?: boolean },
+): { market: boolean; cost: boolean } {
+  const chosen = (key: string | undefined) => Boolean(key && key !== "__unused__");
+  return {
+    market: input.marketApproachEnabled ?? chosen(choices.marketMethodKey),
+    cost: input.costApproachEnabled ?? chosen(choices.costMethodKey),
+  };
+}
+
+function methodsUsed(
+  choices: EvaluatorReportChoices,
+  used: { market: boolean; cost: boolean },
+  documents: DocumentIndicator[] = [],
+): string {
   const bits: string[] = [];
-  if (choices.marketMethodKey && choices.marketMethodKey !== "__unused__") {
+  const fromDocument = (key: string) => documents.some((d) => d.approachKey === key);
+  if (used.market || fromDocument("market")) {
     bits.push("أسلوب السوق");
   }
-  if (choices.costMethodKey && choices.costMethodKey !== "__unused__") {
+  if (used.cost || fromDocument("cost")) {
     bits.push("أسلوب التكلفة");
   }
-  if (choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__") {
+  if (
+    (choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__") ||
+    fromDocument("income")
+  ) {
     bits.push("أسلوب الدخل");
   }
   return bits.join(" و ");
+}
+
+/** «مستند ذو قيمة» indicators in the reconciliation: approach + the method the appraiser named. */
+type DocumentIndicator = { approachKey: string; methodName: string };
+
+function documentIndicators(
+  recon: ValuationReconciliationDto | null | undefined,
+): DocumentIndicator[] {
+  return (recon?.methods ?? [])
+    .filter((m) => m.valueDocumentAttachmentId && m.isIncluded !== false)
+    .map((m) => ({
+      approachKey: (m.documentApproachKey ?? "").toLowerCase(),
+      methodName: (m.documentMethodName ?? "").trim(),
+    }));
+}
+
+/** §16 cell of one approach: its internal method, else the methods named by documents. */
+function approachMethodCell(
+  internal: string | null,
+  documents: DocumentIndicator[],
+  approachKey: string,
+): string {
+  const named = documents.filter((d) => d.approachKey === approachKey).map((d) => d.methodName);
+  const all = [...(internal ? [internal] : []), ...named];
+  return all.length > 0 ? all.join(" · ") : "غير مستخدم";
 }
 
 export type ValuationReportSurveyBounds = {
@@ -338,6 +397,13 @@ export type ValuationReportLiveFill = {
   costApproachEnabled: boolean;
   /** Cost scope from approach settings; hides §20 while retaining building-cost sheets. */
   costBuildingOnly: boolean;
+  /** Saved market-approach decision — off removes §17–19 (comparables, map, adjustments). */
+  marketApproachEnabled: boolean;
+  /**
+   * Approaches in use (market, cost). One approach ⇒ no reconciliation between indicators:
+   * §24 keeps only the justification, the final value is that approach's indicator.
+   */
+  approachCount: number;
   scopeBasis: string;
   scopeClient: string;
   basisDefinition: string;
@@ -358,6 +424,12 @@ export type ValuationReportLiveFill = {
   /** Appendix (A) — land_within_cost comps only. */
   landComparableRows: Array<{ key: string; values: string[] }>;
   landAppendixNote: string;
+  /** §20 — land comparables inside the cost approach get their own adjustments table and map. */
+  landAdjustmentRows: Array<{ key: string; values: string[] }>;
+  landAdjustmentComparisonLabel: string;
+  landAdjustmentNotes: string;
+  landComparableMapSlot: ValuationReportSlotAttachment | null;
+  landComparablesMapPins: ComparablesMapPin[];
   adjustmentRows: Array<{ key: string; values: string[] }>;
   adjustmentComparisonLabel: string;
   adjustmentNotes: string;
@@ -370,6 +442,12 @@ export type ValuationReportLiveFill = {
   reconRows: Array<{ key: string; values: string[] }>;
   finalDisplay: string;
   finalWords: string;
+  /**
+   * §25 «مستند ذو قيمة» additions: the property value after the liquidation discount
+   * (unrounded), one line per added document, then the rounded total (= finalDisplay).
+   */
+  valueAdditions: Array<{ label: string; value: string }>;
+  propertyValueAfterLiquidation: string;
   isLiquidation: boolean;
   /** §25 liquidation discount printed (liquidation basis or discount applied in reconciliation). */
   liquidationDiscountOn?: boolean;
@@ -438,6 +516,8 @@ export function buildValuationReportLiveFill(input: {
   draft: EvaluatorSubmission;
   /** Source of truth is the saved approach settings, not the presence of cost rows. */
   costApproachEnabled?: boolean;
+  /** Saved market-approach decision; undefined = legacy (follow the report's method choices). */
+  marketApproachEnabled?: boolean;
   costScopeKey?: string | null;
   /** "replacement" (default/إحلال) | "reproduction" (إعادة الإنتاج) — the appraiser's choice on البيانات الأساسية. */
   costBasisKey?: string | null;
@@ -584,7 +664,9 @@ export function buildValuationReportLiveFill(input: {
         property?.classification ||
         inspector?.featureValues?.propertyUsage,
     ),
-    "أساليب التقييم المستخدمة": dash(methodsUsed(choices)),
+    "أساليب التقييم المستخدمة": dash(
+      methodsUsed(choices, approachesUsed(choices, input), documentIndicators(input.recon)),
+    ),
     "حالة العقار": dash(inspector?.featureValues?.buildState),
     "حالة الصك": dash(property?.deedStatus),
     "نوع الملكية": dash(
@@ -888,7 +970,8 @@ export function buildValuationReportLiveFill(input: {
       ? "قُدّرت قيمة الأرض بطريقة المقارنات (أراضٍ فضاء)، وتفصيلها في الملحق (أ)."
       : "قيمة الأرض غير مكتملة — بانتظار مقارنات أراضٍ فضاء.";
 
-  const comps = adoptedComparables(input.market);
+  // Market off ⇒ no property comparables anywhere (stale adopted rows must not print).
+  const comps = input.marketApproachEnabled === false ? [] : adoptedComparables(input.market);
   comps.forEach((item, i) => {
     const n = i + 1;
     const c = item.comparable;
@@ -983,6 +1066,8 @@ export function buildValuationReportLiveFill(input: {
   cells["تشجير"] = dash(hasLandscape);
 
   const adj = buildAdjustmentSheetRows(comps, input.market);
+  const landComps = adoptedComparables(input.landMarket);
+  const landAdj = buildAdjustmentSheetRows(landComps, input.landMarket);
   const indirect = buildIndirectCostSheetRows(input.cost);
 
   const approx = property
@@ -1004,6 +1089,32 @@ export function buildValuationReportLiveFill(input: {
     })),
   });
   const generatedMap = resolveComparablesMapImage(mapPins);
+  const landMapPins = collectComparablesMapPins({
+    subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
+    subjectLng: subjectCoords?.lng ?? inspector?.mapLongitude,
+    city: property?.city,
+    fallbackLat: approx?.lat ?? null,
+    fallbackLng: approx?.lng ?? null,
+    comps: landComps.map((item, i) => ({
+      latitude: item.comparable.latitude,
+      longitude: item.comparable.longitude,
+      label: String(i + 1),
+    })),
+  });
+  const generatedLandMap = landComps.length > 0 ? resolveComparablesMapImage(landMapPins) : null;
+  const landComparableMapSlot: ValuationReportSlotAttachment | null = generatedLandMap
+    ? {
+        attachmentId: "generated-land-comps-map",
+        url: generatedLandMap.url,
+        contentType: generatedLandMap.contentType,
+        fileName: generatedLandMap.fileName,
+        labelAr: "خريطة مواقع مقارنات الأراضي",
+        isImage: true,
+      }
+    : null;
+  const used = approachesUsed(choices, input);
+  const docIndicators = documentIndicators(input.recon);
+  const additions = input.recon?.additions ?? [];
   const comparableMapSlot: ValuationReportSlotAttachment | null =
     input.siteMapSlot ??
     (generatedMap
@@ -1028,6 +1139,12 @@ export function buildValuationReportLiveFill(input: {
     cells,
     costApproachEnabled: input.costApproachEnabled === true,
     costBuildingOnly: input.costScopeKey === "building_only",
+    marketApproachEnabled: input.marketApproachEnabled !== false,
+    approachCount:
+      input.marketApproachEnabled === undefined && input.costApproachEnabled === undefined
+        ? // No saved settings passed (legacy callers): count the reconciled approaches.
+          (input.recon?.methods ?? []).filter((m) => m.isIncluded).length || 2
+        : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + docIndicators.length,
     scopeBasis: basis,
     scopeClient: client,
     basisDefinition: resolveBasisDefinition(
@@ -1035,18 +1152,22 @@ export function buildValuationReportLiveFill(input: {
       isLiquidation,
       input.basisDefinition,
     ),
+    // Each approach names its internal method, or the method a «مستند ذو قيمة» indicator
+    // carries (e.g. أسلوب الدخل — الطريقة المتبقية).
     methodRow: [
-      choices.marketMethodKey && choices.marketMethodKey !== "__unused__"
-        ? "طريقة المقارنة"
-        : "غير مستخدم",
-      choices.costMethodKey && choices.costMethodKey !== "__unused__"
-        ? input.costBasisKey === "reproduction"
-          ? "طريقة التكلفة (إعادة الإنتاج)"
-          : "طريقة التكلفة (الإحلال)"
-        : "غير مستخدم",
-      choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__"
-        ? "رسملة الدخل"
-        : "غير مستخدم",
+      approachMethodCell(used.market ? "طريقة المقارنة" : null, docIndicators, "market"),
+      // أسلوب التكلفة — طريقة المقاول. Inside it the comparison method only estimates the
+      // land (an input, not the market approach), so the market cell stays «غير مستخدم».
+      approachMethodCell(
+        used.cost ? contractorMethodLabel(input.costScopeKey, input.costBasisKey) : null,
+        docIndicators,
+        "cost",
+      ),
+      approachMethodCell(
+        choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__" ? "رسملة الدخل" : null,
+        docIndicators,
+        "income",
+      ),
     ],
     boundariesSource: input.survey ? "survey" : "intake",
     boundaries: [
@@ -1193,6 +1314,15 @@ export function buildValuationReportLiveFill(input: {
       };
     }),
     landAppendixNote: cells["إشارة الملحق"] || "",
+    landAdjustmentRows: landAdj.rows,
+    // The land table's output is an input to the cost formula — «قيمة الأرض», not an indicator.
+    landAdjustmentComparisonLabel: landAdj.comparisonLabel.replace(
+      "القيمة بطريقة المقارنة",
+      "قيمة الأرض",
+    ),
+    landAdjustmentNotes: buildAdjustmentRationaleText(landComps),
+    landComparableMapSlot,
+    landComparablesMapPins: landComps.length > 0 ? landMapPins : [],
     adjustmentRows: adj.rows,
     adjustmentComparisonLabel: adj.comparisonLabel,
     adjustmentNotes: buildAdjustmentRationaleText(comps),
@@ -1210,10 +1340,18 @@ export function buildValuationReportLiveFill(input: {
           : "—"),
     finalWords:
       reconFinal != null && reconFinal > 0
-        ? `فقط ${amountToArabicWords(reconFinal)} ريال سعودي لا غير`
+        ? `فقط ${amountToArabicWords(reconFinal)} لا غير`
         : priceN != null && priceN > 0
-          ? `فقط ${amountToArabicWords(priceN)} ريال سعودي لا غير`
+          ? `فقط ${amountToArabicWords(priceN)} لا غير`
           : "—",
+    valueAdditions: additions.map((a) => ({
+      label: a.labelAr,
+      value: formatMoneyCell(a.value),
+    })),
+    propertyValueAfterLiquidation:
+      additions.length > 0 && input.recon?.propertyValueAfterLiquidation != null
+        ? formatMoneyCell(input.recon.propertyValueAfterLiquidation)
+        : "",
     isLiquidation,
     liquidationDiscountOn: liqOn,
     isLand,

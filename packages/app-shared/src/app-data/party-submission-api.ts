@@ -352,8 +352,8 @@ async function loadSubmissionFromPrefetch(
 let prefetchInflight: Promise<void> | null = null;
 let prefetchInflightKey = "";
 
-/** The list endpoint caps one request at 500 task ids and drops the rest. */
-const PARTY_SUBMISSION_LIST_CHUNK = 500;
+/** GET query strings stay under the 8 KB request-line cap (~150 GUIDs). */
+const PARTY_SUBMISSION_LIST_CHUNK = 150;
 
 function chunkTaskIds(ids: string[], size: number): string[][] {
   const batches: string[][] = [];

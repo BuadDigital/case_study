@@ -8,6 +8,7 @@ import {
   opsWorkspaceCard,
 } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
@@ -228,6 +229,18 @@ export function EngineeringSurveyWorkPanel({
                       : "لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها."}
                   </p>
                 )}
+                {notesEditable && propertyId ? (
+                  <>
+                    <EngSection>مستندات ذات قيمة</EngSection>
+                    <EngInfo>
+                      مستند يحمل قيمة (مثل تقييم للآلات أو دراسة دخل) — يراجعه أخصائي دراسة الحالة
+                      ويقرر المقيّم أثره.
+                    </EngInfo>
+                    <div className="mt-2">
+                      <ValuedDocumentUploadButton poNumber={task.poNumber} propertyId={propertyId} />
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : null}
 

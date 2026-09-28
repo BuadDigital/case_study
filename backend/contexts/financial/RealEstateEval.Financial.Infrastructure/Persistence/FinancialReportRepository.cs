@@ -55,7 +55,7 @@ public sealed class FinancialReportRepository : IFinancialReportRepository
         var externalCosts = await ledgers
             .Where(l => l.InspectorType != InspectorFeeRules.TypeEmployee)
             .SumAsync(
-                l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
+                l => (decimal?)Math.Max(0m, l.AgreedFeeSar - l.SupervisorDiscountSar),
                 cancellationToken) ?? 0m;
         var pendingPayables = await ledgers
             .Where(l => l.BillingStatus == InspectorFeeBillingStatus.AtFinance
@@ -63,7 +63,7 @@ public sealed class FinancialReportRepository : IFinancialReportRepository
                 || l.BillingStatus == InspectorFeeBillingStatus.InStatement
                 || l.BillingStatus == InspectorFeeBillingStatus.DisbReq)
             .SumAsync(
-                l => (decimal?)(l.AgreedFeeSar - l.SupervisorDiscountSar),
+                l => (decimal?)Math.Max(0m, l.AgreedFeeSar - l.SupervisorDiscountSar),
                 cancellationToken) ?? 0m;
 
         return (externalCosts, pendingPayables);
@@ -80,7 +80,7 @@ public sealed class FinancialReportRepository : IFinancialReportRepository
                     : ledger.AssigneeId.Trim(),
                 ledger.InspectorType,
                 ledger.WorkflowTaskId,
-                ledger.AgreedFeeSar - ledger.SupervisorDiscountSar))
+                Math.Max(0m, ledger.AgreedFeeSar - ledger.SupervisorDiscountSar)))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyDictionary<string, PoLedgerCounts>> CountCompletedLedgersByPoAsync(

@@ -149,11 +149,13 @@ export function useMyTaskWorkWorkflow({
 
     setAssignmentType(poRecord?.assignmentType ?? task.assignmentType ?? "تنفيذ");
     if (task.propertyId) {
-      const local = peekPropertyFieldAutosave(task.poNumber, task.propertyId);
-      const prop =
-        local ??
-        poRecord?.properties.find((p) => p.id === task.propertyId) ??
-        emptyProperty();
+      const fromServer = poRecord?.properties.find((p) => p.id === task.propertyId);
+      const local = peekPropertyFieldAutosave(
+        task.poNumber,
+        task.propertyId,
+        fromServer?.updatedAtUtc,
+      );
+      const prop = local ?? fromServer ?? emptyProperty();
       setProperty(prop);
       if (prop.deedNumber.trim()) {
         void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber, prop.id)

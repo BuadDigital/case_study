@@ -133,6 +133,10 @@ export function useKeyEnvelopeDetailWorkflow({
 
   async function refresh(next?: KeyEnvelopeRow) {
     if (next) {
+      if (!Array.isArray(next.assignments)) {
+        onChanged();
+        return;
+      }
       setEnv(next);
       onChanged();
       return;
@@ -165,6 +169,10 @@ export function useKeyEnvelopeDetailWorkflow({
       `سُجّلت نتيجة الصك ${deed} — ${assignmentStatusLabel(status)}.`,
       "success",
     );
+    if (result.queued) {
+      onChanged();
+      return;
+    }
     await refresh(result.data);
   }
 
@@ -179,6 +187,10 @@ export function useKeyEnvelopeDetailWorkflow({
       return;
     }
     showToast("تم تأكيد استلام المناولة.", "success");
+    if (result.queued) {
+      onChanged();
+      return;
+    }
     await refresh(result.data);
   }
 

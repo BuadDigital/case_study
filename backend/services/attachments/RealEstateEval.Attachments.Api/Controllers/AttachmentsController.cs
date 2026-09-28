@@ -41,7 +41,8 @@ public class AttachmentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(scopeKey))
             return this.BadRequestProblem("scope and scopeKey are required");
 
-        return Ok(await _attachments.ListAsync(scope, scopeKey, ct));
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _attachments.ListAsync(scope, scopeKey, actor, ct));
     }
 
     [HttpGet("{id:guid}")]
@@ -72,7 +73,15 @@ public class AttachmentsController : ControllerBase
         var userId = ActorClaims.Id(User);
         if (userId is "unknown") userId = "";
 
-        if (string.Equals(request.Scope?.Trim(), PropertyDocumentTypes.GovernedScope, StringComparison.Ordinal))
+        var valued = string.Equals(request.Scope?.Trim(), PropertyDocumentTypes.ValuedScope, StringComparison.Ordinal)
+            || PropertyDocumentTypes.IsValued(request.DocumentTypeKey);
+        if (valued)
+        {
+            var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+            if (!PoRoleMatrixRules.CanUploadValuedDocuments(actor?.PrototypeRole))
+                return this.ForbiddenProblem("لا تملك صلاحية رفع مستند ذي قيمة");
+        }
+        else if (string.Equals(request.Scope?.Trim(), PropertyDocumentTypes.GovernedScope, StringComparison.Ordinal))
         {
             var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
             if (!PoRoleMatrixRules.CanUploadPropertyDocuments(actor?.PrototypeRole))
@@ -105,6 +114,23 @@ public class AttachmentsController : ControllerBase
             return this.ForbiddenProblem("تصنيف مستندات العقار متاح للأخصائي ومشرف القسم");
 
         var (meta, error) = await _attachments.SetDocumentTypeAsync(id, request, actor, ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return meta is null ? NotFound() : Ok(meta);
+    }
+
+    /// <summary>The case specialist approves or rejects a «مستند ذو قيمة».</summary>
+    [HttpPost("{id:guid}/value-document-review")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
+    public async Task<ActionResult<FileAttachmentMetaDto>> ReviewValueDocument(
+        Guid id,
+        [FromBody] ReviewValueDocumentRequest request,
+        CancellationToken ct)
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (!PoRoleMatrixRules.CanReviewValuedDocuments(actor?.PrototypeRole))
+            return this.ForbiddenProblem("اعتماد المستندات ذات القيمة متاح لأخصائي دراسة الحالة");
+
+        var (meta, error) = await _attachments.ReviewValueDocumentAsync(id, request, actor, ct);
         if (error is not null) return this.BadRequestProblem(error);
         return meta is null ? NotFound() : Ok(meta);
     }

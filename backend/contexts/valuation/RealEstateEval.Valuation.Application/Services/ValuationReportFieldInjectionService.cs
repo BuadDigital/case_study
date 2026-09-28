@@ -362,7 +362,11 @@ public sealed class ValuationReportFieldInjectionService(
         {
             foreach (var m in recon.Methods.Where(x => x.IsIncluded))
             {
-                var kind = m.ApproachKind.Trim().ToLowerInvariant();
+                // A «مستند ذو قيمة» indicator fills the slot of the approach it belongs to.
+                var kind = (m.ValueDocumentAttachmentId is not null
+                        ? m.DocumentApproachKey ?? ""
+                        : m.ApproachKind)
+                    .Trim().ToLowerInvariant();
                 if (kind is "market" or "comparison")
                 {
                     PutMoney("recon.weight_market_pct", m.WeightPct);

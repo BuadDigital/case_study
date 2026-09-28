@@ -13,7 +13,7 @@ import {
   poPropertiesPath,
   poPropertyPath,
 } from "@platform/app-shared/domain/po-routes";
-import { isPastDue } from "../lib/app-data/po-intake-data";
+import { isPastDue, isDueSoon } from "../lib/app-data/po-intake-due-dates";
 import {
   buildPoListPageDisplay,
   poListServerSearchTerm,
@@ -47,13 +47,7 @@ export function teamInitial(name: string): string {
   return trimmed ? trimmed.charAt(0) : "?";
 }
 
-export function isDueSoon(iso: string): boolean {
-  if (!iso) return false;
-  const due = new Date(iso.slice(0, 10));
-  const now = new Date();
-  const diff = due.getTime() - now.getTime();
-  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
-}
+export { isDueSoon };
 
 export function isDueUrgent(dueIso: string, status: PoRow["status"]): boolean {
   if (!dueIso || isPoListStatusTerminal(status)) return false;

@@ -217,6 +217,7 @@ public static class InspectorFeeAccrualRules
         return InspectorFeeBillingRules.ValidateDiscount(
             ledger.SupervisorDiscountSar,
             ledger.DiscountReason,
+            ledger.AgreedFeeSar,
             out _);
     }
 

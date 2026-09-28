@@ -3,9 +3,11 @@ import {
   beginOfflineLease,
   clearOfflineLease,
   deleteOfflineDraft,
+  deleteOutboxItemsByKind,
   enqueueSubmitLocally,
   getOfflineDraft,
   listOutboxItems,
+  OFFLINE_ACCESS_STORAGE_KEY,
   persistAttachmentLocally,
   persistDraftLocally,
   readLocalDraftPayload,
@@ -16,6 +18,7 @@ import {
   type OfflineDraftRecord,
   type OfflineSyncDeps,
 } from "@platform/offline-client";
+import { runAsOfflineReplay } from "./offline-replay-flag";
 
 export function currentOfflineUserId(): string | null {
   return getAuthSession()?.user?.id?.trim() || null;
@@ -27,6 +30,18 @@ export function isBrowserOffline(): boolean {
 
 export function isOfflineCapableRole(role: string | null | undefined): boolean {
   return role === "field-inspector" || role === "government-reviewer";
+}
+
+/** Outbox replay only runs for field roles; other roles must see the real error. */
+function canQueueOfflineWrites(userId: string): boolean {
+  try {
+    const raw = localStorage.getItem(OFFLINE_ACCESS_STORAGE_KEY);
+    if (!raw) return false;
+    const stored = JSON.parse(raw) as { userId?: string };
+    return stored?.userId === userId;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -92,7 +107,11 @@ export async function saveDraftWithOfflineFallback(input: {
     return { queued: false };
   }
 
+  const queueable = canQueueOfflineWrites(userId);
   if (isBrowserOffline()) {
+    if (!queueable) {
+      throw new Error("تعذّر حفظ التغييرات دون اتصال");
+    }
     await persistDraftLocally({
       userId,
       taskId: input.taskId,
@@ -105,8 +124,16 @@ export async function saveDraftWithOfflineFallback(input: {
 
   try {
     await input.onlineSave();
+    if (queueable) {
+      await deleteOutboxItemsByKind(
+        userId,
+        "party-submission-save",
+        input.taskId,
+      );
+    }
     return { queued: false };
   } catch (err) {
+    if (!queueable) throw err;
     return queueDraftOrRethrow(err, async () => {
       await persistDraftLocally({
         userId,
@@ -132,7 +159,11 @@ export async function submitWithOfflineFallback(input: {
     return { queued: false };
   }
 
+  const queueable = canQueueOfflineWrites(userId);
   if (isBrowserOffline()) {
+    if (!queueable) {
+      throw new Error("تعذّر إرسال المهمة دون اتصال");
+    }
     await persistDraftLocally({
       userId,
       taskId: input.taskId,
@@ -150,8 +181,16 @@ export async function submitWithOfflineFallback(input: {
 
   try {
     await input.onlineSubmit();
+    if (queueable) {
+      await deleteOutboxItemsByKind(
+        userId,
+        "party-submission-save",
+        input.taskId,
+      );
+    }
     return { queued: false };
   } catch (err) {
+    if (!queueable) throw err;
     return queueDraftOrRethrow(err, async () => {
       await persistDraftLocally({
         userId,
@@ -188,7 +227,11 @@ export async function uploadAttachmentWithOfflineFallback(input: {
     return { attachmentId, queued: false };
   }
 
+  const queueable = canQueueOfflineWrites(userId);
   if (isBrowserOffline()) {
+    if (!queueable) {
+      throw new Error("تعذّر رفع المرفق دون اتصال");
+    }
     const { localAttachmentId } = await persistAttachmentLocally({
       userId,
       scope: input.scope,
@@ -206,7 +249,7 @@ export async function uploadAttachmentWithOfflineFallback(input: {
     const attachmentId = await input.onlineUpload();
     return { attachmentId, queued: false };
   } catch (err) {
-    if (!isTransientConnectivityFailure(err)) {
+    if (!isTransientConnectivityFailure(err) || !queueable) {
       throw err;
     }
     try {
@@ -252,7 +295,7 @@ export async function syncOfflineQueue(
   const userId = currentOfflineUserId();
   if (!userId) return { pending: 0, failed: 0 };
   await requestPersistentStorageOnce();
-  const result = await runOfflineSync(userId, deps);
+  const result = await runAsOfflineReplay(() => runOfflineSync(userId, deps));
   if (result.pending === 0 && result.failed === 0 && navigator.onLine) {
     await clearOfflineLease(userId);
   }

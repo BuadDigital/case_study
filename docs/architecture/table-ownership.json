@@ -1259,6 +1259,21 @@
       "note": "Per-approach weighting lines under a reconciliation."
     },
     {
+      "table": "ValuationValueDocumentUses",
+      "schema": "valuation",
+      "dbSet": "ValuationValueDocumentUses",
+      "entity": "ValuationValueDocumentUse",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "The appraiser's use of each «مستند ذو قيمة» (attachment id, cross-context, no FK): approach indicator entering reconciliation, or an amount added after the liquidation discount."
+    },
+    {
       "table": "FileAttachments",
       "schema": "attachments",
       "dbSet": "FileAttachments",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { lastWarmedOfflinePlan } from "@/lib/offline-page-cache";
 
 /** Set per build in next.config — a new value installs a fresh worker with fresh caches. */
 const SW_URL = `/sw.js?v=${encodeURIComponent(
@@ -119,8 +120,33 @@ export function ServiceWorkerRegister() {
               );
               return;
             }
+            const waiting = waitingRef.current;
+            const plan = lastWarmedOfflinePlan();
             reloadOnControllerChangeRef.current = true;
-            waitingRef.current?.postMessage({ type: "SKIP_WAITING" });
+            void (async () => {
+              if (waiting && plan && plan.urls.length > 0) {
+                await new Promise<void>((resolve) => {
+                  const done = () => {
+                    navigator.serviceWorker.removeEventListener(
+                      "message",
+                      onMsg,
+                    );
+                    resolve();
+                  };
+                  const onMsg = (event: MessageEvent) => {
+                    if (event.data?.type === "WARM_OFFLINE_PAGES_DONE") done();
+                  };
+                  navigator.serviceWorker.addEventListener("message", onMsg);
+                  waiting.postMessage({
+                    type: "WARM_OFFLINE_PAGES",
+                    urls: plan.urls,
+                    landing: plan.landing,
+                  });
+                  window.setTimeout(done, 15_000);
+                });
+              }
+              waiting?.postMessage({ type: "SKIP_WAITING" });
+            })();
           }}
         >
           تحديث الآن

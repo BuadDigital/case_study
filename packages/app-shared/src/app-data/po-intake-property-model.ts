@@ -251,6 +251,8 @@ export type PoPropertyIntake = {
   isRemoved: boolean;
   removalReason: string;
   removedAtUtc: string;
+  /** Server row time; empty until the property has been fetched. */
+  updatedAtUtc: string;
   contacts: PoContact[];
 };
 
@@ -353,6 +355,7 @@ export function emptyProperty(): PoPropertyIntake {
     isRemoved: false,
     removalReason: "",
     removedAtUtc: "",
+    updatedAtUtc: "",
     contacts: [emptyPoContact()],
   };
 }

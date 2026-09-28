@@ -1,5 +1,6 @@
 import {
   deleteAttachment,
+  reviewValueDocument,
   setAttachmentDocumentType,
   uploadAttachment,
   type PrototypeModulesResult,
@@ -9,6 +10,7 @@ import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 import {
   PROPERTY_DOCUMENT_GOVERNED_SCOPE,
   UNLISTED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_KEY,
   findPropertyDocumentType,
 } from "@platform/app-shared/domain/property-documents/property-document-types";
 import { governedDocumentsScopeKey } from "./governed-property-documents-reads";
@@ -16,6 +18,7 @@ import {
   contentTypeForUpload,
   validatePropertyDocumentFile,
   validateUnlistedDocumentFields,
+  validateValuedDocumentName,
 } from "./property-document-upload-rules";
 
 export type GovernedDocumentCommandResult = { ok: true } | { ok: false; error: string };
@@ -44,16 +47,38 @@ function checkTypeInput(input: GovernedDocumentTypeInput): string | null {
   if (type.key === UNLISTED_DOCUMENT_KEY) {
     return validateUnlistedDocumentFields(input.customLabel ?? "", input.customReason ?? "");
   }
+  if (type.key === VALUED_DOCUMENT_KEY) return validateValuedDocumentName(input.customLabel ?? "");
   return null;
 }
 
 function unlistedFields(input: GovernedDocumentTypeInput) {
+  if (input.documentTypeKey === VALUED_DOCUMENT_KEY) {
+    return { customDocumentLabel: input.customLabel?.trim() ?? "", customDocumentReason: null };
+  }
   return input.documentTypeKey === UNLISTED_DOCUMENT_KEY
     ? {
         customDocumentLabel: input.customLabel?.trim() ?? "",
         customDocumentReason: input.customReason?.trim() ?? "",
       }
     : { customDocumentLabel: null, customDocumentReason: null };
+}
+
+/** The case specialist approves or rejects a «مستند ذو قيمة» (rejecting needs a reason). */
+export async function reviewValuedPropertyDocument(
+  attachmentId: string,
+  decision: "approved" | "rejected",
+  note?: string,
+): Promise<GovernedDocumentCommandResult> {
+  if (decision === "rejected" && !note?.trim()) {
+    return { ok: false, error: "اكتب سبب رفض المستند" };
+  }
+  const config = await freshPrototypeModulesApiConfig();
+  if (!config) return { ok: false, error: "انتهت الجلسة — سجّل الدخول مجدداً" };
+  const result = await reviewValueDocument(config, attachmentId, {
+    decision,
+    note: note?.trim() || null,
+  });
+  return failure(result, "تعذّر حفظ قرار الاعتماد — حاول مجدداً");
 }
 
 export async function uploadGovernedPropertyDocument(

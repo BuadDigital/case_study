@@ -231,6 +231,43 @@ public class BoundaryRequestValidatorTests
     }
 
     [Fact]
+    public void Court_admin_lengths_match_column_limits()
+    {
+        var tooLongName = new string('م', 151);
+        var tooLongRegion = new string('ر', 81);
+        var tooLongCircuitNo = new string('1', 51);
+        var tooLongCircuitName = new string('د', 151);
+
+        var create = new CreateCourtRequestValidator().Validate(new CreateCourtRequest
+        {
+            Name = tooLongName,
+            Region = tooLongRegion,
+            City = tooLongRegion,
+        });
+        Assert.Contains(create.Errors, e => e.PropertyName == "name");
+        Assert.Contains(create.Errors, e => e.PropertyName == "region");
+        Assert.Contains(create.Errors, e => e.PropertyName == "city");
+
+        var circuit = new CreateCourtCircuitRequestValidator().Validate(new CreateCourtCircuitRequest
+        {
+            CircuitNo = tooLongCircuitNo,
+            CircuitName = tooLongCircuitName,
+        });
+        Assert.Contains(circuit.Errors, e => e.PropertyName == "circuitNo");
+        Assert.Contains(circuit.Errors, e => e.PropertyName == "circuitName");
+
+        var catalog = new CourtCatalogEntryDtoValidator().Validate(new CourtCatalogEntryDto
+        {
+            City = tooLongRegion,
+            Court = tooLongName,
+            Circuits = [tooLongCircuitNo],
+        });
+        Assert.Contains(catalog.Errors, e => e.PropertyName == "city");
+        Assert.Contains(catalog.Errors, e => e.PropertyName == "court");
+        Assert.Contains(catalog.Errors, e => e.PropertyName == "circuits[0]");
+    }
+
+    [Fact]
     public void Confirm_key_assignment_rejects_unknown_status()
     {
         var result = new ConfirmKeyAssignmentRequestValidator().Validate(

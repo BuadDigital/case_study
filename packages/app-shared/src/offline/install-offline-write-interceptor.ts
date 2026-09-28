@@ -1,5 +1,6 @@
 import { getAuthSession } from "@platform/auth-client";
 import {
+  createIdempotencyKey,
   installApiWriteInterceptor,
   type ApiWriteInterceptor,
   type ApiWriteRequest,
@@ -10,6 +11,7 @@ import {
   randomUuid,
   type OfflineDraftRecord,
 } from "@platform/offline-client";
+import { isOfflineReplayInFlight } from "./offline-replay-flag";
 
 type KeyEnvelopeOutboxWrite =
   | {
@@ -223,6 +225,7 @@ async function enqueueClassified(
       kind: "party-submission-submit",
       targetId: classified.taskId,
       payloadJson: JSON.stringify({ taskId: classified.taskId }),
+      idempotencyKey: createIdempotencyKey(),
     });
     return;
   }
@@ -237,6 +240,7 @@ async function enqueueClassified(
       kind: "key-envelope-create",
       targetId: clientId,
       payloadJson: JSON.stringify(body),
+      idempotencyKey: createIdempotencyKey(),
     });
     return;
   }
@@ -246,6 +250,7 @@ async function enqueueClassified(
       kind: "operations-task-patch",
       targetId: classified.taskId,
       payloadJson: JSON.stringify(classified.body),
+      idempotencyKey: createIdempotencyKey(),
     });
     return;
   }
@@ -255,6 +260,7 @@ async function enqueueClassified(
       kind: "operations-task-comment",
       targetId: classified.taskId,
       payloadJson: JSON.stringify(classified.payload),
+      idempotencyKey: createIdempotencyKey(),
     });
     return;
   }
@@ -269,6 +275,7 @@ async function enqueueClassified(
       kind: "property-court-access",
       targetId,
       payloadJson: JSON.stringify(classified.body),
+      idempotencyKey: createIdempotencyKey(),
     });
     return;
   }
@@ -280,6 +287,7 @@ async function enqueueClassified(
       envelopeId: classified.envelopeId,
       ...classified.payload,
     }),
+    idempotencyKey: createIdempotencyKey(),
   });
 }
 
@@ -293,6 +301,10 @@ export function installOfflineWriteInterceptor(): () => void {
     const session = getAuthSession();
     const userId = session?.user?.id?.trim() || null;
     if (!userId) {
+      return next();
+    }
+
+    if (isOfflineReplayInFlight()) {
       return next();
     }
 

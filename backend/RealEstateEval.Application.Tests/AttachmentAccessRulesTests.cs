@@ -36,11 +36,39 @@ public class AttachmentAccessRulesTests
             UserId = "staff",
             PrototypeRole = "case-specialist",
         }));
-        Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
+        Assert.False(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
         {
             UserId = "lib",
             PrototypeRole = "document-controller",
             Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+    }
+
+    [Fact]
+    public void Delete_is_uploader_or_case_staff_not_manage_attachments()
+    {
+        Assert.True(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "owner-1",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+        Assert.False(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "other",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.ManageAttachments],
+        }));
+        Assert.False(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "finance-staff",
+            PrototypeRole = "financial-officer",
+            Capabilities = [PlatformCapabilities.ManageFinancial],
+        }));
+        Assert.True(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
+        {
+            UserId = "staff",
+            PrototypeRole = "case-specialist",
         }));
     }
 
@@ -65,5 +93,48 @@ public class AttachmentAccessRulesTests
             PrototypeRole = "field-inspector",
             Capabilities = [PlatformCapabilities.SubmitPartyWork],
         }));
+    }
+    private const string Valued = "valued-document";
+
+    private static PermissionsDto Actor(string userId, string role, params string[] capabilities) =>
+        new() { UserId = userId, PrototypeRole = role, Capabilities = capabilities };
+
+    [Theory]
+    [InlineData("case-specialist", true)]
+    [InlineData("real-estate-appraiser", true)]
+    [InlineData("cdo", true)]
+    [InlineData("section-supervisor", false)]
+    [InlineData("general-manager", false)]
+    [InlineData("field-inspector", false)]
+    [InlineData("engineering-office", false)]
+    [InlineData("financial-manager", false)]
+    public void Valued_document_is_seen_by_the_specialist_and_the_appraiser_only(string role, bool expected)
+    {
+        Assert.Equal(expected, AttachmentAccessRules.Allows("someone", Valued, Actor("u", role)));
+    }
+
+    [Fact]
+    public void Valued_document_uploader_outside_the_pair_loses_sight_of_it()
+    {
+        Assert.False(AttachmentAccessRules.Allows("insp-1", Valued, Actor("insp-1", "field-inspector")));
+        Assert.False(AttachmentAccessRules.Allows(
+            "fin-1", Valued, Actor("fin-1", "financial-manager", PlatformCapabilities.ManageFinancial)));
+        Assert.False(AttachmentAccessRules.AllowsDelete("insp-1", Valued, Actor("insp-1", "field-inspector")));
+    }
+
+    [Fact]
+    public void Valued_document_delete_is_the_specialist_or_a_seeing_uploader()
+    {
+        Assert.True(AttachmentAccessRules.AllowsDelete("x", Valued, Actor("s", "case-specialist")));
+        Assert.True(AttachmentAccessRules.AllowsDelete("val-1", Valued, Actor("val-1", "real-estate-appraiser")));
+        Assert.False(AttachmentAccessRules.AllowsDelete("x", Valued, Actor("val-1", "real-estate-appraiser")));
+        Assert.False(AttachmentAccessRules.AllowsDelete("x", Valued, Actor("sup", "section-supervisor")));
+    }
+
+    [Fact]
+    public void Other_documents_keep_the_uploader_rule()
+    {
+        Assert.True(AttachmentAccessRules.Allows("insp-1", "deed", Actor("insp-1", "field-inspector")));
+        Assert.True(AttachmentAccessRules.Allows("insp-1", null, Actor("insp-1", "field-inspector")));
     }
 }

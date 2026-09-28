@@ -20,6 +20,17 @@ export function isOfflineUsableSession(
   return readOfflineAccess(session.user.id) !== null;
 }
 
+/**
+ * After a timeout / 5xx on refresh: keep the field login even when navigator.onLine
+ * is a false positive (weak signal, captive Wi-Fi). Auth failures still log out.
+ */
+export function canKeepFieldSessionAfterRefreshFailure(
+  session: AuthSession | null | undefined,
+): session is AuthSession {
+  if (!session || isRefreshTokenExpired(session)) return false;
+  return readOfflineAccess(session.user.id) !== null;
+}
+
 /** The in-date session, or the stored one while it is offline-usable. */
 export function getUsableAuthSession(): AuthSession | null {
   const valid = getValidAuthSession();

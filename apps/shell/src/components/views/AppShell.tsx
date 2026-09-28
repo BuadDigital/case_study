@@ -14,7 +14,7 @@ import { activeTransactionNavForRole } from "@platform/app-shared/app-data/activ
 import { settingsNavTreeForRole } from "@platform/app-shared/app-data/system-settings-nav";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { OfflineSyncCoordinator } from "@/components/OfflineSyncCoordinator";
+import { OfflineSyncCoordinator, OfflineSyncProvider } from "@/components/OfflineSyncCoordinator";
 import {
   EngineeringSurveyTopbarActions,
 } from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
@@ -179,6 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
+    <OfflineSyncProvider>
     <div id="app" className="flex h-full max-h-dvh min-h-0 overflow-hidden bg-bg">
       <AppShellSidebar
         mobileNavOpen={mobileNavOpen}
@@ -203,6 +204,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="truncate text-[13px] font-bold text-heading">
               {resolvedPageTitle || "مساحة العمل"}
             </span>
+            <div className="ms-auto shrink-0">
+              <OfflineSyncCoordinator />
+            </div>
           </div>
         ) : null}
         {/* Inspection work area: topbar (with breadcrumb) stays on large screens; hidden on mobile where the task card is the header. */}
@@ -303,5 +307,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </div>
+    </OfflineSyncProvider>
   );
 }

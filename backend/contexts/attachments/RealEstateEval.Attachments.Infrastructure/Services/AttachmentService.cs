@@ -40,6 +40,7 @@ public sealed partial class AttachmentService : IAttachmentService
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
         string scope,
         string scopeKey,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
         var rows = await _db.FileAttachments.AsNoTracking()
@@ -47,6 +48,11 @@ public sealed partial class AttachmentService : IAttachmentService
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(MaxAttachmentsPerScope)
             .ToListAsync(cancellationToken);
+        // Scope listings stay open to every attachment role, except valued documents.
+        rows = rows
+            .Where(r => !PropertyDocumentTypes.IsValued(r.DocumentTypeKey)
+                || AttachmentAccessRules.AllowsValuedDocument(actor))
+            .ToList();
         var ids = rows.Select(r => r.Id).ToList();
         var photos = ids.Count == 0
             ? new Dictionary<Guid, PhotoMetadata>()
@@ -188,7 +194,7 @@ public sealed partial class AttachmentService : IAttachmentService
         CancellationToken cancellationToken = default)
     {
         var row = await _db.FileAttachments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null || !CanAccess(row, actor)) return false;
+        if (row is null || !CanDelete(row, actor)) return false;
 
         if (!string.IsNullOrWhiteSpace(row.StorageKey))
             await _blobs.DeleteAsync(row.StorageKey, cancellationToken);
@@ -200,7 +206,10 @@ public sealed partial class AttachmentService : IAttachmentService
     }
 
     private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
-        AttachmentAccessRules.Allows(row.UploadedByUserId, actor);
+        AttachmentAccessRules.Allows(row.UploadedByUserId, row.DocumentTypeKey, actor);
+
+    private static bool CanDelete(FileAttachment row, PermissionsDto? actor) =>
+        AttachmentAccessRules.AllowsDelete(row.UploadedByUserId, row.DocumentTypeKey, actor);
 
     private async Task<byte[]?> ReadContentAsync(FileAttachment row, CancellationToken ct) =>
         string.IsNullOrWhiteSpace(row.StorageKey)

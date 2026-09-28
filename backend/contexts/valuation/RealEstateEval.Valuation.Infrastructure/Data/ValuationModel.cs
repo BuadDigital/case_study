@@ -336,12 +336,33 @@ public static class ValuationModel
         builder.Entity<ValuationReconciliationMethodLine>(e =>
         {
             e.ToTable("ValuationReconciliationMethodLines", DatabaseSchemas.Valuation);
-            e.Property(x => x.ApproachKind).HasMaxLength(32).IsRequired();
+            // 64: document indicators are keyed «doc:{attachmentId:N}» (36 characters).
+            e.Property(x => x.ApproachKind).HasMaxLength(64).IsRequired();
             e.Property(x => x.ApproachValue).HasPrecision(18, 2);
             e.Property(x => x.WeightPct).HasPrecision(9, 4);
             e.Property(x => x.Rationale).HasMaxLength(2000);
             e.HasNonNegative("ValuationReconciliationMethodLines", "ApproachValue");
             e.HasIndex(x => x.ReconciliationId);
+        });
+
+        builder.Entity<ValuationValueDocumentUse>(e =>
+        {
+            e.ToTable("ValuationValueDocumentUses", DatabaseSchemas.Valuation);
+            e.Property(x => x.DocumentLabel).HasMaxLength(ValueDocumentUseRules.DocumentLabelMaxLength).IsRequired();
+            e.Property(x => x.Effect).HasMaxLength(16).IsRequired();
+            e.Property(x => x.ApproachKey).HasMaxLength(16);
+            e.Property(x => x.MethodName).HasMaxLength(ValueDocumentUseRules.MethodNameMaxLength);
+            e.Property(x => x.Value).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.ValuationRequestId, x.AttachmentId }).IsUnique();
+            e.HasAllowedValues("ValuationValueDocumentUses", nameof(ValuationValueDocumentUse.Effect), ValueDocumentEffects.All);
+            e.HasAllowedValues("ValuationValueDocumentUses", nameof(ValuationValueDocumentUse.ApproachKey), ValueDocumentApproachKeys.All);
+            e.ToTable(t => t.HasCheckConstraint(
+                "CK_ValuationValueDocumentUses_Value_Positive",
+                "\"Value\" > 0"));
+            e.HasOne(x => x.ValuationRequest)
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.HasSequence<int>(

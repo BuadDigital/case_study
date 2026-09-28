@@ -58,6 +58,7 @@ import { useValuationWorkReadModels } from "./useValuationWorkReadModels";
 
 export type ValuationWorkDataParams = {
   propertyId: string;
+  inspectionTaskId?: string | null;
   assignmentType?: string;
   districtHint?: string;
   property?: ValuationWorkPropertyHint;
@@ -67,6 +68,7 @@ export type ValuationWorkDataParams = {
 
 export function useValuationWorkData({
   propertyId,
+  inspectionTaskId = null,
   assignmentType,
   districtHint,
   property,
@@ -155,8 +157,9 @@ export function useValuationWorkData({
 
   const resolveBankFetchOpts = useCallback(
     async (search?: string) => {
-      const inspector = propertyId.trim()
-        ? await fetchInspectorWorkspace(propertyId.trim())
+      const inspectorTaskId = inspectionTaskId?.trim() || "";
+      const inspector = inspectorTaskId
+        ? await fetchInspectorWorkspace(inspectorTaskId)
         : null;
       return buildBankFetchOptions({
         search,
@@ -169,6 +172,7 @@ export function useValuationWorkData({
       });
     },
     [
+      inspectionTaskId,
       propertyId,
       districtHint,
       property?.district,

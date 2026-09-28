@@ -54,12 +54,22 @@ export async function resolvePostLoginPath(token: string): Promise<string> {
 
 /** Same-origin relative path only — blocks open redirects via ?from=. */
 export function safeReturnPath(from: string | null | undefined): string | null {
-  if (!from || !from.startsWith("/") || from.startsWith("//")) return null;
-  if (from === "/login" || from.startsWith("/login?")) return null;
+  if (!from) return null;
+  const trimmed = from.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  if (trimmed.includes("\\") || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+  if (trimmed === "/login" || trimmed.startsWith("/login?")) return null;
   // `/` always bounced to login historically — treating it as a return path
   // loops login ↔ / forever on the session-check spinner.
-  if (from === "/") return null;
-  return from;
+  if (trimmed === "/") return null;
+  try {
+    const resolved = new URL(trimmed, "https://ejada.local");
+    if (resolved.origin !== "https://ejada.local") return null;
+    if (resolved.username || resolved.password) return null;
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return null;
+  }
 }
 
 export function formatPhoneDisplay(digits: string): string {

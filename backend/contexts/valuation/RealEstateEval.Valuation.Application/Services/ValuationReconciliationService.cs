@@ -16,7 +16,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 /// and the ق-6 freeze through <see cref="IValuationReportFreezeGate"/>, so this file holds
 /// rules only - no EF (solid-scorecard finding 1).
 /// </summary>
-public sealed class ValuationReconciliationService(
+public sealed partial class ValuationReconciliationService(
     IValuationReconciliationRepository repo,
     IValuationReportFreezeGate freeze,
     ICaseStudyLookup caseStudy,
@@ -40,15 +40,25 @@ public sealed class ValuationReconciliationService(
         var entity = await repo.GetWithMethodsAsync(valuationRequestId, cancellationToken);
 
         var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
+        var uses = await repo.ListValueDocumentUsesAsync(valuationRequestId, tracked: false, cancellationToken);
         return ToDto(
             vr,
             market?.MarketOpinionValue ?? 0m,
             cost?.CostOpinionWithLand ?? 0m,
             entity,
             await GetEnabledKindsAsync(vr, cancellationToken),
+            uses,
             workOrder.AssignmentType,
             workOrder.BasisOfValueKey,
             workOrder.ValuePremiseKey);
+    }
+
+    public async Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default)
+    {
+        var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
+        return vr is null ? [] : await GetEnabledKindsAsync(vr, cancellationToken);
     }
 
  /// <summary>Q-2: a disabled approach neither shows a row nor enters the weight.</summary>
@@ -151,7 +161,7 @@ public sealed class ValuationReconciliationService(
 
         // "Blocking happens at adoption only — partial input is kept as draft":
         // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
-        var methods = request.Methods ?? [];
+        var methods = NormalizeSoleMethod((request.Methods ?? []).ToList());
         var errors = new Dictionary<string, string>();
 
         if (request.FinalRoundDecimals is < 0 or > 6)
@@ -203,12 +213,26 @@ public sealed class ValuationReconciliationService(
         }
 
         var enabledKinds = await GetEnabledKindsAsync(vr, cancellationToken);
+        // Document indicators («مستند ذو قيمة») are reconciled like approaches, at their entered value.
+        var indicatorValues = (await repo.ListValueDocumentUsesAsync(valuationRequestId, tracked: false, cancellationToken))
+            .Where(ValueDocumentUseRules.IsIndicator)
+            .ToDictionary(
+                u => ValueDocumentUseRules.ReconciliationKind(u.AttachmentId),
+                u => u.Value,
+                StringComparer.OrdinalIgnoreCase);
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < methods.Count; i++)
         {
             var m = methods[i];
-            if (!ValuationApproachKinds.IsKnown(m.ApproachKind))
+            if (ValueDocumentUseRules.IsDocumentKind(m.ApproachKind))
+            {
+                if (!indicatorValues.ContainsKey(m.ApproachKind.Trim()))
+                    errors[$"methods[{i}].approachKind"] = "المستند لم يعد مؤشرًا لأسلوب — حدّث أثر المستندات ذات القيمة";
+                else if (!seen.Add(m.ApproachKind.Trim().ToLowerInvariant()))
+                    errors[$"methods[{i}].approachKind"] = "لا يُكرَّر الأسلوب";
+            }
+            else if (!ValuationApproachKinds.IsKnown(m.ApproachKind))
                 errors[$"methods[{i}].approachKind"] = "أسلوب غير معروف";
             else if (!enabledKinds.Contains(m.ApproachKind.Trim().ToLowerInvariant(), StringComparer.OrdinalIgnoreCase))
                 errors[$"methods[{i}].approachKind"] = "ق-2: الأسلوب غير مفعَّل في إعدادات التقييم فلا يدخل في الترجيح";
@@ -247,9 +271,11 @@ public sealed class ValuationReconciliationService(
         {
             var m = methods[i];
             var kind = m.ApproachKind.Trim().ToLowerInvariant();
-            var value = string.Equals(kind, ValuationApproachKinds.Cost, StringComparison.Ordinal)
-                ? costValue
-                : marketValue;
+            var value = indicatorValues.TryGetValue(kind, out var documentValue)
+                ? documentValue
+                : string.Equals(kind, ValuationApproachKinds.Cost, StringComparison.Ordinal)
+                    ? costValue
+                    : marketValue;
             var sortOrder = m.SortOrder != 0 ? m.SortOrder : i;
 
             if (methodsByKind.TryGetValue(kind, out var row))
@@ -314,163 +340,28 @@ public sealed class ValuationReconciliationService(
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
-    private static ValuationReconciliationDto ToDto(
-        ValuationRequest vr,
-        decimal marketValue,
-        decimal costValue,
-        ValuationReconciliation? entity,
-        IReadOnlyList<string> enabledKinds,
-        AssignmentType assignmentType,
-        string? workOrderBasisKey = null,
-        string? workOrderPremiseKey = null)
+    private static List<SaveValuationReconciliationMethodRequest> NormalizeSoleMethod(
+        List<SaveValuationReconciliationMethodRequest> methods)
     {
- // Q-2: a disabled approach neither shows a row nor skews the suggestion split.
-        var marketEnabled = enabledKinds.Contains(
-            ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
-        var costEnabled = enabledKinds.Contains(
-            ValuationApproachKinds.Cost, StringComparer.OrdinalIgnoreCase);
-        var suggested = ReconciliationRules.SuggestWeights(
-            marketEnabled ? marketValue : 0m,
-            costEnabled ? costValue : 0m);
-        var suggestedMap = suggested.ToDictionary(
-            x => x.kind,
-            x => x.weightPct,
-            StringComparer.OrdinalIgnoreCase);
+        if (methods.Count != 1)
+            return methods;
 
-        var saved = (entity?.Methods ?? [])
-            .ToDictionary(m => m.ApproachKind, StringComparer.OrdinalIgnoreCase);
-
-        var kinds = enabledKinds;
-        var methodDtos = new List<ValuationReconciliationMethodDto>();
-
-        for (var i = 0; i < kinds.Count; i++)
+        var sole = methods[0];
+        var (weight, included) = ReconciliationRules.EffectiveParticipation(
+            enabledKindCount: 1,
+            savedWeightPct: sole.WeightPct,
+            savedIsIncluded: sole.IsIncluded,
+            liveValue: 1m,
+            suggestedWeightPct: 0m);
+        methods[0] = new SaveValuationReconciliationMethodRequest
         {
-            var kind = kinds[i];
-            var liveValue = kind == ValuationApproachKinds.Cost ? costValue : marketValue;
-            saved.TryGetValue(kind, out var row);
-            var weight = row?.WeightPct
-                ?? suggestedMap.GetValueOrDefault(kind, 0m);
-            var isIncluded = row?.IsIncluded ?? (liveValue > 0m && weight > 0m);
-
-            methodDtos.Add(new ValuationReconciliationMethodDto
-            {
-                Id = row?.Id,
-                ApproachKind = kind,
-                LabelAr = ValuationApproachKinds.LabelAr(kind),
-                ApproachValue = liveValue,
-                WeightPct = weight,
-                SuggestedWeightPct = suggestedMap.GetValueOrDefault(kind, 0m),
-                ContributionValue = isIncluded
-                    ? ReconciliationRules.Contribution(liveValue, weight)
-                    : 0m,
-                Rationale = row?.Rationale ?? "",
-                IsIncluded = isIncluded,
-                SortOrder = row?.SortOrder ?? i,
-            });
-        }
-
-        var includedMethods = methodDtos
-            .Where(m => m.IsIncluded)
-            .Select(m => (m.ApproachValue, m.WeightPct, true))
-            .ToList();
-        var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
-        var weighted = ReconciliationRules.WeightedValue(includedMethods);
-        var decimals = entity?.FinalRoundDecimals ?? 0;
-        var basis = FirstValuationKey(
-            workOrderBasisKey,
-            entity?.BasisOfValueKey,
-            AssignmentValuationDefaults.BasisOfValueKey(assignmentType));
-        var premise = FirstValuationKey(
-            workOrderPremiseKey,
-            entity?.ValuePremiseKey,
-            AssignmentValuationDefaults.PremiseKey(assignmentType));
-        var discountPct = entity?.LiquidationDiscountPct ?? 0m;
-        var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(
-            weighted,
-            decimals,
-            basis,
-            premise,
-            discountPct);
-
-        return new ValuationReconciliationDto
-        {
-            ValuationRequestId = vr.Id,
-            PropertyId = vr.PropertyId.ToString("D"),
-            MarketOpinionValue = marketValue,
-            CostOpinionWithLand = costValue,
-            Methods = methodDtos,
-            WeightSumPct = weightSum,
-            WeightsSumTo100 = includedMethods.Count == 0
-                || ReconciliationRules.WeightsSumTo100(includedMethods.Select(m => m.WeightPct)),
-            MeetsMultiMethodGate = ReconciliationRules.MeetsMultiMethodGate(enabledKinds.Count),
-            WeightedValue = weighted,
-            FinalRoundDecimals = decimals,
-            FinalOpinionValue = final,
-            FinalOpinionBeforeLiquidation = before,
-            MethodsRationale = entity?.MethodsRationale ?? "",
-            BasisOfValueKey = basis,
-            BasisOfValueLabelAr = BasisOfValueKeys.LabelAr(basis),
-            ValuePremiseKey = premise,
-            ValuePremiseLabelAr = string.IsNullOrWhiteSpace(premise)
-                ? null
-                : ValuePremiseKeys.LabelAr(premise),
-            LiquidationDiscountPct = discountPct,
-            LiquidationDiscountRationale = entity?.LiquidationDiscountRationale,
-            LiquidationDiscountApplied = applied,
-            MethodologyAlertOverrides = ParseAlertOverrides(entity?.MethodologyAlertOverridesJson),
+            Id = sole.Id,
+            ApproachKind = sole.ApproachKind,
+            WeightPct = weight,
+            Rationale = sole.Rationale,
+            IsIncluded = included,
+            SortOrder = sole.SortOrder,
         };
-    }
-
-    private static readonly System.Text.Json.JsonSerializerOptions AlertOverridesJsonOptions = new()
-    {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
-
-    private static List<ValuationMethodologyAlertOverrideDto> NormalizeAlertOverrides(
-        IReadOnlyList<ValuationMethodologyAlertOverrideDto>? items)
-    {
-        if (items is null || items.Count == 0) return [];
-        return items
-            .Where(x => !string.IsNullOrWhiteSpace(x.Code))
-            .GroupBy(x => x.Code.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g =>
-            {
-                var last = g.Last();
-                return new ValuationMethodologyAlertOverrideDto
-                {
-                    Code = g.Key,
-                    OverrideRationale = string.IsNullOrWhiteSpace(last.OverrideRationale)
-                        ? null
-                        : last.OverrideRationale.Trim(),
-                    Acknowledged = last.Acknowledged,
-                };
-            })
-            .ToList();
-    }
-
-    private static string FirstValuationKey(params string?[] keys)
-    {
-        foreach (var key in keys)
-        {
-            var trimmed = key?.Trim();
-            if (!string.IsNullOrEmpty(trimmed)) return trimmed;
-        }
-        return "";
-    }
-
-    private static IReadOnlyList<ValuationMethodologyAlertOverrideDto> ParseAlertOverrides(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return [];
-        try
-        {
-            return System.Text.Json.JsonSerializer.Deserialize<List<ValuationMethodologyAlertOverrideDto>>(
-                       json, AlertOverridesJsonOptions)
-                   ?? [];
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return [];
-        }
+        return methods;
     }
 }

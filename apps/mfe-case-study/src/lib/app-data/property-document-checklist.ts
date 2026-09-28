@@ -8,6 +8,7 @@ import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/
 import {
   PROPERTY_DOCUMENT_TYPES,
   UNLISTED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_KEY,
   defaultPropertyTypeKeys,
   findPropertyDocumentType,
   normalizePropertyTypeKeys,
@@ -37,6 +38,8 @@ export type PropertyDocumentChecklist = {
   groups: PropertyDocumentChecklistGroup[];
   photos: PropertyDetailDocumentEntry[];
   unlisted: PropertyDetailDocumentEntry[];
+  /** «مستندات ذات قيمة» — only the specialist / appraiser / CDO receive them from the server. */
+  valued: PropertyDetailDocumentEntry[];
   missingRequired: string[];
 };
 
@@ -67,7 +70,7 @@ function typeLabel(type: PropertyDocumentType, settings: TypeSettings): string {
 }
 
 function hasGovernedInfo(entry: PropertyDetailDocumentEntry): boolean {
-  return Boolean(entry.governed || entry.unlisted);
+  return Boolean(entry.governed || entry.unlisted || entry.valued);
 }
 
 /**
@@ -112,11 +115,13 @@ export function buildPropertyDocumentChecklist(input: {
   const byType = new Map<string, PropertyDetailDocumentEntry[]>();
   const photos: PropertyDetailDocumentEntry[] = [];
   const unlisted: PropertyDetailDocumentEntry[] = [];
+  const valued: PropertyDetailDocumentEntry[] = [];
 
   for (const entry of dedupeDocumentEntries(input.entries)) {
     const type = findPropertyDocumentType(entry.documentTypeKey);
     if (!type) continue;
     if (type.key === UNLISTED_DOCUMENT_KEY) unlisted.push(entry);
+    else if (type.key === VALUED_DOCUMENT_KEY) valued.push(entry);
     else if (type.group === "photos") photos.push(entry);
     else byType.set(type.key, [...(byType.get(type.key) ?? []), entry]);
   }
@@ -173,21 +178,27 @@ export function buildPropertyDocumentChecklist(input: {
     groups,
     photos,
     unlisted,
+    valued,
     missingRequired: groups.flatMap((group) =>
       group.rows.filter((row) => row.missing).map((row) => row.label),
     ),
   };
 }
 
-/** Types a user may pick when uploading from the tab — enabled ones, unlisted last. */
+/**
+ * Types a user may pick when uploading from the tab — enabled ones, then «مستند ذو قيمة» for
+ * the roles that may upload it, unlisted last.
+ */
 export function propertyDocumentUploadOptions(
   attachmentsList?: readonly ValuationListItemDto[] | null,
+  options: { includeValued?: boolean } = {},
 ): PropertyDocumentTypeOption[] {
   const settings = settingsByKey(attachmentsList);
   const listed = PROPERTY_DOCUMENT_TYPES.filter(
     (type) =>
       type.uploadableFromTab &&
       type.key !== UNLISTED_DOCUMENT_KEY &&
+      type.key !== VALUED_DOCUMENT_KEY &&
       (settings.get(type.key)?.isEnabled ?? true),
   ).map((type) => ({
     key: type.key,
@@ -197,6 +208,16 @@ export function propertyDocumentUploadOptions(
   }));
   return [
     ...listed,
+    ...(options.includeValued
+      ? [
+          {
+            key: VALUED_DOCUMENT_KEY,
+            label: "مستند ذو قيمة",
+            groupTitle: propertyDocumentGroupTitle("valued"),
+            pdfOnly: false,
+          },
+        ]
+      : []),
     {
       key: UNLISTED_DOCUMENT_KEY,
       label: "مستند غير معرّف (للحالات النادرة)",

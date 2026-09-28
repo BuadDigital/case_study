@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Shared.Web;
@@ -17,8 +18,15 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class TransactionStateController : ControllerBase
 {
     private readonly ITransactionStateService _state;
+    private readonly IPermissionService _permissions;
 
-    public TransactionStateController(ITransactionStateService state) => _state = state;
+    public TransactionStateController(
+        ITransactionStateService state,
+        IPermissionService permissions)
+    {
+        _state = state;
+        _permissions = permissions;
+    }
 
     [HttpGet]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
@@ -65,10 +73,22 @@ public class TransactionStateController : ControllerBase
             propertyId,
             request,
             ActorClaims.Id(User),
-            ActorClaims.Role(User),
+            await ActorPrototypeRoleAsync(ct),
             ct);
         if (error is not null)
             return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
         return NoContent();
+    }
+
+    /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles.</summary>
+    private async Task<string> ActorPrototypeRoleAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return "";
+        var permissions = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        var resolved = permissions?.PrototypeRole;
+        if (!string.IsNullOrWhiteSpace(resolved))
+            return resolved;
+        return ActorClaims.Role(User) ?? "";
     }
 }

@@ -60,6 +60,30 @@ public sealed class ValuationReconciliationRepository(ValuationDbContext db)
         return Task.CompletedTask;
     }
 
+    public async Task<IReadOnlyList<ValuationValueDocumentUse>> ListValueDocumentUsesAsync(
+        Guid valuationRequestId,
+        bool tracked,
+        CancellationToken cancellationToken)
+    {
+        var query = db.ValuationValueDocumentUses.Where(x => x.ValuationRequestId == valuationRequestId);
+        if (!tracked) query = query.AsNoTracking();
+        return await query.OrderBy(x => x.SortOrder).ToListAsync(cancellationToken);
+    }
+
+    public Task AddValueDocumentUseAsync(ValuationValueDocumentUse use, CancellationToken cancellationToken)
+    {
+        db.ValuationValueDocumentUses.Add(use);
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveValueDocumentUsesAsync(
+        IReadOnlyCollection<ValuationValueDocumentUse> uses,
+        CancellationToken cancellationToken)
+    {
+        db.ValuationValueDocumentUses.RemoveRange(uses);
+        return Task.CompletedTask;
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         db.SaveChangesAsync(cancellationToken);
 }

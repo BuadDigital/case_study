@@ -215,7 +215,13 @@ export function BourseInquiryView() {
             setProperty({ ...local, id: item.propertyId });
           }
           const hit = await findPropertyInRecord(item.poNumber, item.propertyId);
-          if (peekPropertyFieldAutosave(item.poNumber, item.propertyId)) {
+          if (
+            peekPropertyFieldAutosave(
+              item.poNumber,
+              item.propertyId,
+              hit?.property.updatedAtUtc,
+            )
+          ) {
             return;
           }
           if (hit) {

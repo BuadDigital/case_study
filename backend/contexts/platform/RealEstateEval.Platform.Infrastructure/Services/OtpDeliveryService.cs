@@ -22,15 +22,26 @@ public sealed class OtpDeliveryService : IOtpDeliveryService
         _logger = logger;
     }
 
-    public async Task<OtpDeliveryResult> SendTestAsync(
+    public Task<OtpDeliveryResult> SendTestAsync(
         string channel,
         string destination,
         CancellationToken cancellationToken = default)
     {
-        var code = Random.Shared.Next(100000, 999999).ToString();
-        return await SendOtpAsync(
-            new OtpDeliveryRequest(channel, destination, code, "test"),
-            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = destination;
+        var ch = (channel ?? "").Trim().ToLowerInvariant();
+        if (ch == "email")
+        {
+            return Task.FromResult(new OtpDeliveryResult(
+                false,
+                "email",
+                "مزوّد البريد غير مُفعَّل بعد"));
+        }
+
+        return Task.FromResult(new OtpDeliveryResult(
+            false,
+            "sms",
+            "مزوّد SMS غير مُفعَّل بعد"));
     }
 
     public async Task<OtpDeliveryResult> SendOtpAsync(

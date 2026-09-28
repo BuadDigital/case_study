@@ -18,6 +18,10 @@ import {
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import {
+  staffRoleChangeBlocked,
+  staffRoleSelectLocked,
+} from "../views/users/users-organization-state";
+import {
   Button,
   ModalBody,
   ModalCard,
@@ -163,11 +167,15 @@ function buildPatch(
 
 export function EditStaffUserModal({
   user,
+  users,
+  viewerUserId,
   saving,
   onSubmit,
   onClose,
 }: {
   user: StaffUser;
+  users: StaffUser[];
+  viewerUserId: string | null;
   saving: boolean;
   onSubmit: (patch: UpdateStaffUserRequest) => Promise<FieldErrors | null>;
   onClose: () => void;
@@ -175,6 +183,7 @@ export function EditStaffUserModal({
   const original = useMemo(() => initialForm(user), [user]);
   const [form, setForm] = useState<FormState>(original);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const roleLockReason = staffRoleSelectLocked(viewerUserId, user, users);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -197,6 +206,17 @@ export function EditStaffUserModal({
     const patch = buildPatch(form, original);
     if (Object.keys(patch).length === 0) {
       setErrors({ _form: "لا توجد تغييرات لحفظها." });
+      return;
+    }
+
+    const roleBlocked = staffRoleChangeBlocked(
+      viewerUserId,
+      user,
+      form.roleId,
+      users,
+    );
+    if (roleBlocked) {
+      setErrors({ roleId: roleBlocked });
       return;
     }
 
@@ -252,6 +272,8 @@ export function EditStaffUserModal({
                 placeholder="اختر الدور"
                 options={ROLE_SELECT_OPTIONS}
                 value={form.roleId}
+                disabled={Boolean(roleLockReason)}
+                hint={roleLockReason ?? undefined}
                 onChange={(v) => {
                   const roleId = v as RoleId | "";
                   setForm((prev) => ({

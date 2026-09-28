@@ -27,6 +27,14 @@ export function validateUnlistedDocumentFields(
   return null;
 }
 
+/** «مستند ذو قيمة» needs the name its uploader gives it — no other data. */
+export function validateValuedDocumentName(label: string): string | null {
+  const name = label.trim();
+  if (name.length < UNLISTED_LABEL_MIN_LENGTH) return "اكتب اسم المستند ذي القيمة";
+  if (name.length > UNLISTED_LABEL_MAX_LENGTH) return "اسم المستند أطول من المسموح";
+  return null;
+}
+
 function isPdf(file: { name: string; type: string }): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }

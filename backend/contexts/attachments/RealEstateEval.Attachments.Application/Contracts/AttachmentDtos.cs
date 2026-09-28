@@ -16,6 +16,10 @@ public class FileAttachmentMetaDto
     public string? DocumentTypeKey { get; init; }
     public string? CustomDocumentLabel { get; init; }
     public string? CustomDocumentReason { get; init; }
+    /// <summary><c>ValueDocumentStatuses</c> — set only on a «مستند ذو قيمة».</summary>
+    public string? ValueDocStatus { get; init; }
+    public string? ValueDocReviewNote { get; init; }
+    public DateTime? ValueDocReviewedAtUtc { get; init; }
 }
 
 public sealed class AttachmentRefDto
@@ -66,6 +70,15 @@ public sealed class SetAttachmentDocumentTypeRequest
     public string? CustomDocumentLabel { get; init; }
     [MaxLength(512)]
     public string? CustomDocumentReason { get; init; }
+}
+
+/// <summary>The case specialist approves or rejects a «مستند ذو قيمة».</summary>
+public sealed class ReviewValueDocumentRequest
+{
+    [Required, MaxLength(16)]
+    public string Decision { get; init; } = "";
+    [MaxLength(512)]
+    public string? Note { get; init; }
 }
 
 public class PhotoMetadataInput

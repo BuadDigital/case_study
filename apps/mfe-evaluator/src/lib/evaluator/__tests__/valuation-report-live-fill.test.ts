@@ -1554,3 +1554,173 @@ describe("§10 «مكونات العقار» on land", () => {
     expect(dom.querySelector('[data-sec="11"]')).toBeNull();
   });
 });
+
+describe("report follows the chosen approaches (contractor method only)", () => {
+  const selection = (district: string) =>
+    ({
+      weightedPricePerSqm: 2000,
+      subjectAreaSqm: 400,
+      marketOpinionValue: 800_000,
+      items: [
+        {
+          isAdopted: true,
+          sortOrder: 1,
+          comparable: {
+            comparablePropertyType: "أرض سكنية",
+            transactionKind: "deal",
+            areaSqm: 450,
+            transactionDate: "2026-03-01",
+            price: 900_000,
+            pricePerSqm: 2000,
+            district,
+            latitude: 21.5,
+            longitude: 39.2,
+          },
+          market: {
+            sumDifferencePct: 1,
+            pricePerSqmAfterSequential: 2000,
+            pricePerSqmAfterDifference: 2020,
+            effectiveWeightPct: 100,
+            adjustmentLines: [
+              { factorKey: "market", labelAr: "تسوية ظروف السوق", percent: 1, rationale: "صفقة قديمة", isIncluded: true },
+            ],
+          },
+        },
+      ],
+    }) as never;
+
+  it("drops the market comparables, keeps land comps with their adjustments and map", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { id: "p1", deedNumber: "1", city: "جدة" } as never,
+      marketApproachEnabled: false,
+      costApproachEnabled: true,
+      costScopeKey: "land_and_building",
+      market: selection("قديم"),
+      landMarket: selection("الشاطئ"),
+    });
+    expect(fill.marketApproachEnabled).toBe(false);
+    expect(fill.comparableRows).toHaveLength(0);
+    expect(fill.methodRow[0]).toBe("غير مستخدم");
+    expect(fill.cells["أساليب التقييم المستخدمة"]).toBe("أسلوب التكلفة");
+    expect(fill.landAdjustmentRows.find((r) => r.key === "تسوية ظروف السوق")?.values[0]).toBe("1.00٪");
+    expect(fill.landAdjustmentNotes).toContain("صفقة قديمة");
+    expect(fill.landComparablesMapPins.length).toBeGreaterThan(1);
+
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="17">17</section><section data-sec="18">18</section><section data-sec="19">19</section>
+       <section data-sec="20"><div data-land-adj><table class="mx">
+         <tr><th>عناصر المقارنة</th><th>العقار المقارن (1)</th></tr>
+         <tr><td class="v">تسوية ظروف السوق</td><td class="num">—</td></tr>
+       </table><table><tr><td class="k">مبررات التسويات</td><td class="v">—</td></tr></table></div></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    for (const id of ["17", "18", "19"]) expect(dom.querySelector(`[data-sec="${id}"]`)).toBeNull();
+    const landAdj = dom.querySelector("[data-land-adj]");
+    expect(landAdj?.textContent).toContain("1.00٪");
+    expect(landAdj?.textContent).toContain("صفقة قديمة");
+  });
+
+  it("«مباني فقط» prints the cost result without a land value", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { id: "p1", deedNumber: "1", city: "جدة" } as never,
+      marketApproachEnabled: false,
+      costApproachEnabled: true,
+      costScopeKey: "building_only",
+    });
+    const dom = new DOMParser().parseFromString(
+      `<section data-sec="20">20</section>
+       <section data-sec="23"><table>
+         <tr><td class="k" colspan="3">قيمة الأرض</td><td class="v num">800,000.00</td></tr>
+         <tr class="total"><td class="k" colspan="3">ناتج أسلوب التكلفة (الأرض + المباني)</td><td class="v num">1</td></tr>
+       </table></section>`,
+      "text/html",
+    );
+    applyValuationReportLiveFill(dom, fill);
+    const sec23 = dom.querySelector('[data-sec="23"]')?.textContent ?? "";
+    expect(dom.querySelector('[data-sec="20"]')).toBeNull();
+    expect(sec23).not.toContain("قيمة الأرض");
+    expect(sec23).toContain("ناتج أسلوب التكلفة (المباني)");
+  });
+});
+
+describe("approaches vs methods — reconciliation only between approach indicators", () => {
+  const recon = (kinds: Array<"market" | "cost">) =>
+    ({
+      weightSumPct: 100,
+      weightedValue: 1_490_000,
+      methodsRationale: "اعتُمد أسلوب التكلفة لغياب مقارنات فلل حديثة",
+      methods: kinds.map((k) => ({
+        approachKind: k,
+        isIncluded: true,
+        approachValue: 1_490_000,
+        weightPct: 100 / kinds.length,
+        contributionValue: 1_490_000 / kinds.length,
+      })),
+    }) as never;
+  const sec24 = () =>
+    new DOMParser().parseFromString(
+      `<section data-sec="24"><h2><span class="n">24</span>ترجيح أساليب التقييم</h2>
+        <table class="mx"><tr><th>الأسلوب</th><th>ق</th><th>ن</th><th>ب</th></tr></table>
+        <table><tr><td class="k">مبرر استخدام طرق التقييم</td><td class="v">عينة</td></tr></table>
+      </section>`,
+      "text/html",
+    );
+
+  it("one approach (cost only): no weighting table, justification kept, contractor method described", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      marketApproachEnabled: false,
+      costApproachEnabled: true,
+      costScopeKey: "land_and_building",
+      recon: recon(["cost"]),
+    });
+    expect(fill.approachCount).toBe(1);
+    expect(fill.methodRow[0]).toBe("غير مستخدم");
+    expect(fill.methodRow[1]).toBe(
+      "طريقة المقاول: قيمة الأرض فضاءً بطريقة المقارنة + تكلفة الإحلال ناقص الإهلاك",
+    );
+    expect(fill.reconRows.some((r) => r.values.includes("غير مستخدم"))).toBe(false);
+
+    const dom = sec24();
+    applyValuationReportLiveFill(dom, fill);
+    const sec = dom.querySelector('[data-sec="24"]');
+    expect(sec?.querySelector("table.mx")).toBeNull();
+    expect(sec?.querySelector("h2")?.textContent).toContain("مبرر استخدام أسلوب وطريقة التقييم");
+    expect(sec?.textContent).toContain("لغياب مقارنات فلل حديثة");
+  });
+
+  it("two approaches: the weighting table lists both, with no «غير مستخدم» rows", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      marketApproachEnabled: true,
+      costApproachEnabled: true,
+      costScopeKey: "building_only",
+      costBasisKey: "reproduction",
+      recon: recon(["market", "cost"]),
+    });
+    expect(fill.approachCount).toBe(2);
+    expect(fill.methodRow[1]).toBe("طريقة المقاول: تكلفة إعادة الإنتاج ناقص الإهلاك");
+    expect(fill.reconRows.map((r) => r.key)).toContain("أسلوب التكلفة — طريقة المقاول");
+    const dom = sec24();
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="24"] table.mx')?.textContent).toContain("أسلوب السوق");
+  });
+
+  it("the land table inside the cost approach ends with «قيمة الأرض», not an indicator", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      costApproachEnabled: true,
+      marketApproachEnabled: false,
+      landMarket: { weightedPricePerSqm: 2000, subjectAreaSqm: 400, marketOpinionValue: 800_000, items: [] } as never,
+    });
+    expect(fill.landAdjustmentComparisonLabel).toBe("قيمة الأرض (2,000 × 400 م²)");
+  });
+});

@@ -20,13 +20,15 @@ public sealed record ResolvedDocumentType(
 /// <summary>
 /// Document governance for property uploads. The documents-tab scope must name a registry type;
 /// the older per-field scopes are classified by the field they were uploaded from; anything
-/// outside the defined list needs a name (reason optional).
+/// outside the defined list needs a name (reason optional). A «مستند ذو قيمة» needs a name and
+/// starts pending the case specialist's approval.
 /// </summary>
 public static class PropertyDocumentUploadRules
 {
     public const int CustomLabelMinLength = 2;
     public const int CustomLabelMaxLength = 128;
     public const int CustomReasonMaxLength = 512;
+    public const int ValueDocReviewNoteMaxLength = 512;
 
     public static ResolvedDocumentType Resolve(
         string? scope,
@@ -65,10 +67,16 @@ public static class PropertyDocumentUploadRules
     /// </summary>
     public static ResolvedDocumentType Reclassify(
         string? currentScope,
+        string? currentTypeKey,
         string? documentTypeKey,
         string? customLabel,
         string? customReason)
     {
+        // A valued document carries an approval and may be used in a valuation — it is never
+        // re-typed in either direction; the right file is uploaded as a new document instead.
+        if (PropertyDocumentTypes.IsValued(currentTypeKey) || PropertyDocumentTypes.IsValued(documentTypeKey))
+            return ResolvedDocumentType.Reject("المستند ذو القيمة لا يُعاد تصنيفه — ارفعه كمستند جديد");
+
         var scope = currentScope?.Trim() ?? "";
         var unlisted = PropertyDocumentTypes.Find(PropertyDocumentTypes.UnlistedKey)!;
         if (scope != PropertyDocumentTypes.GovernedScope && !unlisted.LegacyScopes.Contains(scope))
@@ -78,6 +86,25 @@ public static class PropertyDocumentUploadRules
         if (requested is null)
             return ResolvedDocumentType.Reject("اختر نوع المستند من قائمة المستندات المعرّفة");
         return ClassifyTabDocument(requested, customLabel, customReason);
+    }
+
+    /// <summary>Returns the rejection message, or null when the specialist's decision may be recorded.</summary>
+    public static string? ValidateValueDocReview(string? documentTypeKey, string? decision, string? note)
+    {
+        if (!PropertyDocumentTypes.IsValued(documentTypeKey))
+            return "الاعتماد للمستندات ذات القيمة فقط";
+
+        var normalizedDecision = NormalizeKey(decision);
+        if (normalizedDecision is not (ValueDocumentStatuses.Approved or ValueDocumentStatuses.Rejected))
+            return "القرار يجب أن يكون اعتمادًا أو رفضًا";
+
+        var trimmedNote = note?.Trim() ?? "";
+        if (normalizedDecision == ValueDocumentStatuses.Rejected && trimmedNote.Length == 0)
+            return "اكتب سبب رفض المستند";
+        if (trimmedNote.Length > ValueDocReviewNoteMaxLength)
+            return "ملاحظة الاعتماد أطول من المسموح";
+
+        return null;
     }
 
     public static string? NormalizeKey(string? value)
@@ -104,6 +131,16 @@ public static class PropertyDocumentUploadRules
         string? customLabel,
         string? customReason)
     {
+        if (type.Key == PropertyDocumentTypes.ValuedKey)
+        {
+            var name = customLabel?.Trim() ?? "";
+            if (name.Length < CustomLabelMinLength)
+                return ResolvedDocumentType.Reject("اكتب اسم المستند ذي القيمة");
+            if (name.Length > CustomLabelMaxLength)
+                return ResolvedDocumentType.Reject("اسم المستند أطول من المسموح");
+            return new ResolvedDocumentType(null, PropertyDocumentTypes.ValuedKey, name, null);
+        }
+
         if (type.Key != PropertyDocumentTypes.UnlistedKey)
             return new ResolvedDocumentType(null, type.Key, null, null);
 

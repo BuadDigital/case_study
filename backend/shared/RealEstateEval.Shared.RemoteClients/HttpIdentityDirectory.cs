@@ -27,7 +27,6 @@ public sealed class HttpIdentityDirectory(
             .Select(PersonLabelResolver.NormalizeSystemLabel)
             .Where(PersonLabelResolver.LooksLikeUserId)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(200)
             .ToList();
         if (ids.Count == 0)
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -72,7 +71,6 @@ public sealed class HttpIdentityDirectory(
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Select(id => id.Trim())
             .Distinct(StringComparer.Ordinal)
-            .Take(200)
             .ToList();
         if (ids.Count == 0)
             return new Dictionary<string, string>(StringComparer.Ordinal);
@@ -129,20 +127,23 @@ public sealed class HttpIdentityDirectory(
         IReadOnlyList<string> ids,
         CancellationToken cancellationToken)
     {
-        if (ids.Count == 0)
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var chunk in QueryIdBatch.OfStrings(ids, StringComparer.OrdinalIgnoreCase))
+        {
+            var list = await UpstreamJson.GetAsync<List<UserLabelDto>>(
+                http,
+                httpContext,
+                options.Value.IdentityBaseUrl,
+                $"{path}?ids={QueryIdBatch.JoinEscaped(chunk)}",
+                "UpstreamServices:IdentityBaseUrl",
+                cancellationToken);
+            foreach (var row in list)
+            {
+                if (!string.IsNullOrWhiteSpace(row.Id) && !string.IsNullOrWhiteSpace(row.DisplayName))
+                    map.TryAdd(row.Id, row.DisplayName);
+            }
+        }
 
-        var query = string.Join(",", ids.Take(200));
-        var list = await UpstreamJson.GetAsync<List<UserLabelDto>>(
-            http,
-            httpContext,
-            options.Value.IdentityBaseUrl,
-            $"{path}?ids={Uri.EscapeDataString(query)}",
-            "UpstreamServices:IdentityBaseUrl",
-            cancellationToken);
-        return list
-            .Where(row => !string.IsNullOrWhiteSpace(row.Id) && !string.IsNullOrWhiteSpace(row.DisplayName))
-            .GroupBy(row => row.Id, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().DisplayName, StringComparer.OrdinalIgnoreCase);
+        return map;
     }
 }

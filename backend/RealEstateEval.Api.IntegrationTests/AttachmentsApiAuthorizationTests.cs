@@ -234,6 +234,7 @@ internal sealed class StubAttachmentService : IAttachmentService
     public Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
         string scope,
         string scopeKey,
+        PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<FileAttachmentMetaDto>>([]);
 
@@ -295,6 +296,13 @@ internal sealed class StubAttachmentService : IAttachmentService
     public Task<(FileAttachmentMetaDto? Meta, string? Error)> SetDocumentTypeAsync(
         Guid id,
         SetAttachmentDocumentTypeRequest request,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));
+
+    public Task<(FileAttachmentMetaDto? Meta, string? Error)> ReviewValueDocumentAsync(
+        Guid id,
+        ReviewValueDocumentRequest request,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));

@@ -201,7 +201,7 @@ doc-page table.tight td{font-size:9px;padding:3px 6px;line-height:1.55}
     <h2><span class="n">16</span>أسلوب وطريقة التقييم المستخدمة</h2>
     <table class="mx">
       <tr><th style="width:33%">أسلوب السوق</th><th style="width:33%">أسلوب التكلفة</th><th>أسلوب الدخل</th></tr>
-      <tr><td class="v">طريقة المقارنة</td><td class="v">طريقة التكلفة (الإحلال)</td><td class="v">غير مستخدم</td></tr>
+      <tr><td class="v">طريقة المقارنة</td><td class="v">طريقة المقاول: قيمة الأرض فضاءً بطريقة المقارنة + تكلفة الإحلال ناقص الإهلاك</td><td class="v">غير مستخدم</td></tr>
     </table>
   </section>
   <section class="sec" data-sec="17" data-name="العقارات المقارنة">
@@ -265,15 +265,41 @@ doc-page table.tight td{font-size:9px;padding:3px 6px;line-height:1.55}
       <tr><td class="k">سعر المتر المستورد من طريقة المقارنة</td><td class="v num">2,000.00</td><td class="k">مساحة الأرض (م²)</td><td class="v num">400.00</td></tr>
       <tr class="total"><td class="k" style="background:inherit;color:inherit">قيمة الأرض</td><td class="v num" colspan="3">800,000.00</td></tr>
     </table>
-    <p>سعر متر الأرض مستورد من مقارنات أراضٍ شاغرة مجاورة في الحي (لا من مقارنات الفلل الواردة في القسم 17).</p>
+    <p>سعر متر الأرض مستورد من مقارنات أراضٍ شاغرة مجاورة في الحي (لا من مقارنات العقار ككل)، وتفصيل مقارناتها وتسوياتها وخريطة مواقعها أدناه.</p>
     <table style="margin-top:8px">
       <tr><td class="k" style="width:28%">إشارة الملحق</td><td class="v">—</td></tr>
     </table>
-    <p style="font-weight:700;margin:10px 0 6px">الملحق (أ) — مقارنات الأراضي الشاغرة المعتمدة</p>
+    <p style="font-weight:700;margin:10px 0 6px">الملحق (أ) — تقدير قيمة الأرض فضاءً: المقارنات المعتمدة</p>
     <table class="mx" data-land-comps>
       <tr><th style="width:5%">#</th><th>نوع العقار</th><th>نوع العملية</th><th>المساحة (م²)</th><th>تاريخ الصفقة/العرض</th><th>سعر العقار (ر.س.)</th><th>سعر المتر (ر.س.)</th><th>الوزن ٪</th></tr>
       <tr><td class="num">1</td><td class="v">—</td><td class="v">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
     </table>
+    <div data-land-adj>
+      <p style="font-weight:700;margin:10px 0 6px">تقدير قيمة الأرض فضاءً — التسويات</p>
+      <table class="mx">
+        <tr><th style="width:30%">عناصر المقارنة</th><th>العقار المقارن (1)</th></tr>
+        <tr><td class="v">وصف العقار المقارن</td><td class="num">—</td></tr>
+        <tr><td class="v">قيمة العقارات المقارنة</td><td class="num">—</td></tr>
+        <tr><td class="v">تسوية عامل الوقت</td><td class="num">—</td></tr>
+        <tr><td class="v">تسوية شروط التمويل</td><td class="num">—</td></tr>
+        <tr><td class="v">تسوية ظروف السوق</td><td class="num">—</td></tr>
+        <tr class="sub"><td class="v">إجمالي تسويات التمويل والسوق ٪</td><td class="num">—</td></tr>
+        <tr class="sub"><td class="v">سعر البيع بعد تسوية شروط التمويل وظروف السوق</td><td class="num">—</td></tr>
+        <tr><td class="v">تسوية المساحة</td><td class="num">—</td></tr>
+        <tr><td class="v">الموقع العام</td><td class="v" style="text-align:center">—</td></tr>
+        <tr><td class="v">عدد الشوارع</td><td class="v" style="text-align:center">—</td></tr>
+        <tr class="sub"><td class="v">مجموع نسب التسويات (٪)</td><td class="num">—</td></tr>
+        <tr class="sub"><td class="v">سعر البيع بعد التسويات</td><td class="num">—</td></tr>
+        <tr><td class="v">الأوزان النسبية للعقارات المقارنة</td><td class="num">—</td></tr>
+        <tr class="sub"><td class="v">المتوسط المرجح لسعر المتر</td><td class="num">—</td></tr>
+        <tr class="total"><td class="v">القيمة بطريقة المقارنة</td><td class="num">—</td></tr>
+      </table>
+      <table>
+        <tr><td class="k">مبررات التسويات</td><td class="v">—</td></tr>
+      </table>
+    </div>
+    <p style="font-weight:700;margin:10px 0 6px">خريطة مواقع مقارنات الأراضي</p>
+    <image-slot id="map-land-comparables" shape="rect" style="width:100%;height:200px" placeholder="خريطة مواقع مقارنات الأراضي"></image-slot>
   </section>
   <section class="sec" data-sec="21" data-name="بنود التكلفة المباشرة">
     <h2><span class="n">21</span>بنود التكلفة المباشرة</h2>
@@ -324,7 +350,7 @@ doc-page table.tight td{font-size:9px;padding:3px 6px;line-height:1.55}
     <table class="mx">
       <tr><th style="width:34%">الأسلوب</th><th>القيمة الناتجة عن الأسلوب</th><th>نسبة المشاركة</th><th>القيمة بعد المشاركة</th></tr>
       <tr><td class="v">أسلوب السوق — طريقة المقارنة</td><td class="num">1,530,000.00</td><td class="num">60.00٪</td><td class="num">918,000.00</td></tr>
-      <tr><td class="v">أسلوب التكلفة — طريقة التكلفة (الإحلال)</td><td class="num">1,490,000.00</td><td class="num">40.00٪</td><td class="num">596,000.00</td></tr>
+      <tr><td class="v">أسلوب التكلفة — طريقة المقاول</td><td class="num">1,490,000.00</td><td class="num">40.00٪</td><td class="num">596,000.00</td></tr>
       <tr class="sub"><td class="v">مجموع نسب المشاركة</td><td class="num"></td><td class="num">100.00٪</td><td class="num"></td></tr>
       <tr class="total"><td class="v">القيمة المرجّحة</td><td class="num" colspan="3">1,514,000.00</td></tr>
     </table>

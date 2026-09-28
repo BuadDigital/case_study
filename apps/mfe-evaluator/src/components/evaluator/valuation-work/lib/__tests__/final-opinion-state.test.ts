@@ -1,10 +1,153 @@
 import { describe, expect, it } from "vitest";
+import type { ValuationReconciliationMethodDto } from "@platform/api-client";
 import {
+  finalOpinionComputed,
   forcedSaleDiscountOpinionLine,
   looksLikeAutoFinalOpinion,
+  normalizeReconMethodsForSave,
+  reconciliationSaveRequest,
   syncDiscountLineInOpinion,
   workOrderPremiseKey,
 } from "../final-opinion-state";
+
+function method(
+  partial: Partial<ValuationReconciliationMethodDto>,
+): ValuationReconciliationMethodDto {
+  return {
+    approachKind: "market",
+    labelAr: "السوق",
+    approachValue: 1_000_000,
+    weightPct: 100,
+    suggestedWeightPct: 100,
+    contributionValue: 1_000_000,
+    rationale: "",
+    isIncluded: true,
+    sortOrder: 0,
+    ...partial,
+  };
+}
+
+function computed(
+  reconMethods: ValuationReconciliationMethodDto[],
+): ReturnType<typeof finalOpinionComputed> {
+  return finalOpinionComputed({
+    reconMethods,
+    basisOfValueKey: "market",
+    basisOptions: [{ value: "market", label: "السوق" }],
+    liquidationDiscountPct: "0",
+    finalRoundDecimals: "0",
+    cost: null,
+    buildingOnly: false,
+    hasAdoptedMarket: true,
+  });
+}
+
+describe("finalOpinionComputed", () => {
+  it("weights only included methods", () => {
+    const result = computed([
+      method({
+        approachKind: "market",
+        approachValue: 1_000_000,
+        weightPct: 70,
+        isIncluded: true,
+      }),
+      method({
+        approachKind: "cost",
+        labelAr: "التكلفة",
+        approachValue: 800_000,
+        weightPct: 30,
+        isIncluded: false,
+      }),
+    ]);
+    expect(result.weightSumLocal).toBe(70);
+    expect(result.reconWeightsBad).toBe(true);
+    expect(result.weightedLocal).toBe(700_000);
+  });
+
+  it("uses the full indicator for a sole method even when weight is 0", () => {
+    const result = computed([
+      method({ weightPct: 0, isIncluded: false, approachValue: 1_500_000 }),
+    ]);
+    expect(result.weightedLocal).toBe(1_500_000);
+    expect(result.finalLocal).toBe(1_500_000);
+  });
+});
+
+describe("normalizeReconMethodsForSave", () => {
+  it("forces weight 100 and included for a sole method", () => {
+    expect(
+      normalizeReconMethodsForSave([
+        method({ weightPct: 0, isIncluded: false }),
+      ]),
+    ).toEqual([
+      expect.objectContaining({ weightPct: 100, isIncluded: true }),
+    ]);
+  });
+
+  it("drops inclusion when a method's weight is 0", () => {
+    const [market, cost] = normalizeReconMethodsForSave([
+      method({ weightPct: 100, isIncluded: true }),
+      method({
+        approachKind: "cost",
+        weightPct: 0,
+        isIncluded: true,
+      }),
+    ]);
+    expect(market?.isIncluded).toBe(true);
+    expect(cost?.isIncluded).toBe(false);
+  });
+});
+
+describe("reconciliationSaveRequest", () => {
+  it("sends the sole method as 100% included", () => {
+    const body = reconciliationSaveRequest({
+      reconMethods: [method({ weightPct: 0, isIncluded: false })],
+      methodsRationale: "مبرر",
+      finalRoundDecimals: "0",
+      basisOfValueKey: "market",
+      valuePremiseKey: "",
+      liquidationDiscountPct: "0",
+      liquidationDiscountRationale: "",
+      alertOverrides: {},
+    });
+    expect(body.methods).toEqual([
+      expect.objectContaining({
+        weightPct: 100,
+        isIncluded: true,
+      }),
+    ]);
+  });
+
+  it("sends a 0 discount when the basis is not liquidation", () => {
+    const body = reconciliationSaveRequest({
+      reconMethods: [method({})],
+      methodsRationale: "مبرر",
+      finalRoundDecimals: "0",
+      basisOfValueKey: "market",
+      valuePremiseKey: "",
+      liquidationDiscountPct: "15",
+      liquidationDiscountRationale: "قديم",
+      alertOverrides: {},
+    });
+    expect(body.liquidationDiscountPct).toBe(0);
+    expect(body.liquidationDiscountRationale).toBeNull();
+  });
+
+  it("keeps the discount when the basis is liquidation", () => {
+    const body = reconciliationSaveRequest({
+      reconMethods: [method({})],
+      methodsRationale: "مبرر",
+      finalRoundDecimals: "0",
+      basisOfValueKey: "liquidation",
+      valuePremiseKey: "",
+      liquidationDiscountPct: "15",
+      liquidationDiscountRationale: "بيع قسري",
+      alertOverrides: {},
+    });
+    expect(body.liquidationDiscountPct).toBe(15);
+    expect(body.liquidationDiscountRationale).toBe("بيع قسري");
+  });
+});
 
 describe("workOrderPremiseKey", () => {
   it("reads the work-order selection ahead of a saved reconciliation", () => {
@@ -85,5 +228,36 @@ describe("syncDiscountLineInOpinion", () => {
     expect(next).toContain("بناءا على مزادات سابقة.");
     expect(next).toContain(forcedSaleDiscountOpinionLine(10));
     expect(next).not.toContain("20٪");
+  });
+});
+
+describe("finalOpinionComputed — «مستند ذو قيمة»", () => {
+  it("adds document amounts after the discount and rounds the total once", () => {
+    const result = finalOpinionComputed({
+      reconMethods: [method({ approachValue: 1_234_567 })],
+      basisOfValueKey: "liquidation",
+      basisOptions: [{ value: "liquidation", label: "قيمة التصفية" }],
+      liquidationDiscountPct: "20",
+      finalRoundDecimals: "3",
+      cost: null,
+      buildingOnly: false,
+      hasAdoptedMarket: true,
+      additions: [{ attachmentId: "a", labelAr: "تقرير تقييم الآلات", value: 12_345.4 }],
+    });
+
+    expect(result.propertyAfterDiscount).toBeCloseTo(987_653.6, 1);
+    expect(result.additionsTotal).toBe(12_345.4);
+    expect(result.finalLocal).toBe(1_000_000);
+    expect(result.opinionAuto).toContain("«تقرير تقييم الآلات»");
+    expect(result.opinionAuto).toContain("القيمة النهائية الإجمالية:");
+    expect(looksLikeAutoFinalOpinion(result.opinionAuto)).toBe(true);
+  });
+
+  it("treats a document indicator as complete", () => {
+    const result = computed([
+      method({ approachKind: "cost", weightPct: 60 }),
+      method({ approachKind: "doc:abc", labelAr: "أسلوب الدخل — الطريقة المتبقية (مستند)", weightPct: 40 }),
+    ]);
+    expect(result.methodComplete("doc:abc")).toBe(true);
   });
 });

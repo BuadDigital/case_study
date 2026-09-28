@@ -61,6 +61,26 @@ public class MarketOpinionAndCostApproachRulesTests
     }
 
     [Fact]
+    public void Whole_property_land_comps_are_converted_to_a_unit_rate_before_area()
+    {
+        Assert.Equal(
+            1000m,
+            CostApproachRules.LandUnitRateFromComparableWeighted(
+                400_000m, 400m, MarketAdjustmentBasisKeys.WholeProperty));
+        Assert.Equal(
+            400_000m,
+            CostApproachRules.LandValue(
+                CostApproachRules.LandUnitRateFromComparableWeighted(
+                    400_000m, 400m, MarketAdjustmentBasisKeys.WholeProperty),
+                400m,
+                null));
+        Assert.Equal(
+            1000m,
+            CostApproachRules.LandUnitRateFromComparableWeighted(
+                1000m, 400m, MarketAdjustmentBasisKeys.PricePerSqm));
+    }
+
+    [Fact]
     public void Land_value_apartment_share_overrides_land_area()
     {
         Assert.Equal(80_000m, CostApproachRules.LandValue(1000m, 400m, 80m));
@@ -148,5 +168,9 @@ public class MarketOpinionAndCostApproachRulesTests
         Assert.Equal(450m, RepeatedFloorRules.DeriveQuantity(150m, 3));
         Assert.Equal(0m, RepeatedFloorRules.DeriveQuantity(150m, 0));
         Assert.Equal(0m, RepeatedFloorRules.DeriveQuantity(-10m, 3));
+        Assert.Equal(450m, RepeatedFloorRules.QuantityForLine(150m, 3));
+        Assert.Equal(0m, RepeatedFloorRules.QuantityForLine(150m, 0));
+        Assert.Equal(0m, RepeatedFloorRules.QuantityForLine(150m, null));
+        Assert.Equal(0m, RepeatedFloorRules.QuantityForLine(0m, 3));
     }
 }

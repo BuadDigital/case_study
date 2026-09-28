@@ -54,6 +54,42 @@ public static class PoRoleMatrixRules
         return IsSuperAdmin(role) || role is "case-specialist" or "section-supervisor";
     }
 
+    /// <summary>
+    /// Upload a «مستند ذو قيمة» (matches frontend <c>canUploadValuedDocuments</c>): the case
+    /// specialist, the appraiser, management, the field inspector and the engineering office.
+    /// </summary>
+    public static bool CanUploadValuedDocuments(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role)
+            || role is "case-specialist" or "real-estate-appraiser" or "section-supervisor"
+                or "general-manager" or "field-inspector" or "engineering-office";
+    }
+
+    /// <summary>
+    /// See a «مستند ذو قيمة» and its value — between the case specialist and the appraiser
+    /// (and the CDO); finance and the other uploaders do not.
+    /// </summary>
+    public static bool CanSeeValuedDocuments(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role) || role is "case-specialist" or "real-estate-appraiser";
+    }
+
+    /// <summary>Decide what a «مستند ذو قيمة» does to the valuation — the appraiser (and the CDO).</summary>
+    public static bool CanDecideValueDocumentEffect(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role) || role is "real-estate-appraiser";
+    }
+
+    /// <summary>Approve / reject a «مستند ذو قيمة» — the case specialist (and the CDO).</summary>
+    public static bool CanReviewValuedDocuments(string? prototypeRole)
+    {
+        var role = Normalize(prototypeRole);
+        return IsSuperAdmin(role) || role is "case-specialist";
+    }
+
  /// <summary>Operations-task managers (matches frontend <c>canManageOperationsTasks</c>).</summary>
     public static bool CanManageOperationsTasks(string? prototypeRole)
     {

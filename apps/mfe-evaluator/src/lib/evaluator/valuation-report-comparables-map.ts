@@ -10,6 +10,7 @@ export type ComparablesMapPin = {
 };
 
 export const COMPARABLES_MAP_HOST_ID = "ejada-comps-map-host";
+export const LAND_COMPARABLES_MAP_HOST_ID = "ejada-land-comps-map-host";
 export const SATELLITE_MAP_HOST_ID = "ejada-satellite-map-host";
 export const CLOSEUP_MAP_HOST_ID = "ejada-closeup-map-host";
 

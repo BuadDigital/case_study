@@ -15,6 +15,8 @@ public static class ValuationIssuanceGateCodes
     public const string FinalOpinion = "final_opinion";
  /// <summary>dictionary types marked required must have a printable upload.</summary>
     public const string RequiredAttachments = "required_attachments";
+    /// <summary>Every «مستند ذو قيمة» the appraiser used is approved by the case specialist.</summary>
+    public const string ValueDocuments = "value_documents";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -240,6 +242,27 @@ public static class ValuationIssuanceGateRules
             DetailAr: missingLabelsAr.Count == 0
                 ? null
                 : "مرفقات إلزامية بلا رفع مصنّف للطباعة: " + string.Join("، ", missingLabelsAr));
+
+    /// <summary>
+    /// Documents used in the valuation must be approved by the case specialist, and a document
+    /// indicator cannot duplicate an approach the system now values internally.
+    /// </summary>
+    public static ValuationIssuanceGateCheck ValueDocuments(
+        IReadOnlyList<string> notApprovedLabelsAr,
+        IReadOnlyList<string> conflictingLabelsAr)
+    {
+        var parts = new List<string>();
+        if (notApprovedLabelsAr.Count > 0)
+            parts.Add("مستندات ذات قيمة غير معتمدة من الأخصائي: " + string.Join("، ", notApprovedLabelsAr));
+        if (conflictingLabelsAr.Count > 0)
+            parts.Add("مؤشر من مستند لأسلوب مستخدم داخليًا: " + string.Join("، ", conflictingLabelsAr));
+        return new(
+            ValuationIssuanceGateCodes.ValueDocuments,
+            "المستندات ذات القيمة",
+            parts.Count == 0,
+            IsHard: true,
+            DetailAr: parts.Count == 0 ? null : string.Join(" · ", parts));
+    }
 
     public static bool AllowsIssuance(IEnumerable<ValuationIssuanceGateCheck> checks) =>
         checks.Where(c => c.IsHard).All(c => c.Passed);

@@ -126,6 +126,8 @@ export {
   computeBusinessDueDate,
   dueDateToDeadline,
   isPastDue,
+  isDueSoon,
+  parseLocalCalendarDate,
 } from "./po-intake-due-dates";
 
 /** DD/MM/YYYY with Western digits (0-9) for Arabic UI — moved to the shared package. */

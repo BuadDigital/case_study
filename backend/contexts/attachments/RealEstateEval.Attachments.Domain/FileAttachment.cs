@@ -19,4 +19,10 @@ public class FileAttachment
     public string? CustomDocumentLabel { get; set; }
     /// <summary>Why a document outside the defined list was needed.</summary>
     public string? CustomDocumentReason { get; set; }
+
+    /// <summary><c>ValueDocumentStatuses</c>; set only on a «مستند ذو قيمة» (specialist approval).</summary>
+    public string? ValueDocStatus { get; set; }
+    public string? ValueDocReviewedBy { get; set; }
+    public DateTime? ValueDocReviewedAtUtc { get; set; }
+    public string? ValueDocReviewNote { get; set; }
 }

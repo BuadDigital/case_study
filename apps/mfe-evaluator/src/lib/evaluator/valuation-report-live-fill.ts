@@ -31,6 +31,7 @@ import {
   fillBoundaries,
   fillBulletListSection,
   fillFinalBanner,
+  fillValueAdditions,
   fillFinishingLevelSection,
   fillImageSlot,
   fillKeyedInSection,
@@ -195,6 +196,10 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
   // §09 «تفاصيل المساحات» is no longer printed; its areas and the built-up total moved
   // into §10 «مكونات العقار». Dropped here too so older stored templates follow suit.
   removeSections(dom, ["9"]);
+  // Market off (e.g. contractor method only) ⇒ no property comparables, map or adjustments.
+  if (!fill.marketApproachEnabled) {
+    removeSections(dom, ["17", "18", "19"]);
+  }
   if (!fill.costApproachEnabled) {
     removeSections(dom, ["20", "21", "22", "23"]);
   } else if (fill.costBuildingOnly) {
@@ -339,6 +344,15 @@ export function applyValuationReportLiveFill(
       syncNumberedRows(landTable as HTMLElement, fill.landComparableRows.length);
       fillKeyedRows(landTable as HTMLElement, fill.landComparableRows);
     }
+    // Land inside the cost approach gets the full comparison treatment: its own adjustments.
+    const landAdj = landAppendix.querySelector("[data-land-adj]");
+    if (landAdj) {
+      fillAdjustmentSection(landAdj, {
+        adjustmentRows: fill.landAdjustmentRows,
+        adjustmentComparisonLabel: fill.landAdjustmentComparisonLabel,
+        adjustmentNotes: fill.landAdjustmentNotes,
+      });
+    }
   }
 
   const adj = dom.querySelector('[data-sec="19"]');
@@ -359,6 +373,29 @@ export function applyValuationReportLiveFill(
   const reconSec = dom.querySelector('[data-sec="24"]');
   if (reconSec) rebuildReconSheet(reconSec, fill.reconRows);
 
+  // One approach ⇒ no reconciliation between indicators: drop the weighting table, keep the
+  // justification of the approach and method used («مبرر استخدام طرق التقييم»).
+  if (reconSec && fill.approachCount < 2) {
+    reconSec.querySelector("table.mx")?.remove();
+    const heading = reconSec.querySelector("h2");
+    const num = heading?.querySelector("span.n");
+    if (heading) {
+      heading.replaceChildren(...(num ? [num] : []), "مبرر استخدام أسلوب وطريقة التقييم");
+    }
+  }
+
+  // «مباني فقط»: no land value in the cost result — drop the land row and say what the total is.
+  const ageSec = dom.querySelector('[data-sec="23"]');
+  if (ageSec && fill.costBuildingOnly) {
+    for (const td of [...ageSec.querySelectorAll("td.k")]) {
+      const label = normLabel(td.textContent ?? "");
+      if (label === "قيمة الأرض") td.closest("tr")?.remove();
+      else if (label === normLabel("ناتج أسلوب التكلفة (الأرض + المباني)")) {
+        td.textContent = "ناتج أسلوب التكلفة (المباني)";
+      }
+    }
+  }
+
   const finalSec = dom.querySelector('[data-sec="25"]');
   if (finalSec) {
     const liqShown = (fill.cells["نسبة خصم التصفية المنظمة"] ?? "—") !== "—";
@@ -373,6 +410,7 @@ export function applyValuationReportLiveFill(
       )?.nextElementSibling;
       if (reason) reason.textContent = "—";
     }
+    fillValueAdditions(finalSec, fill);
     fillFinalBanner(finalSec, fill);
   }
 

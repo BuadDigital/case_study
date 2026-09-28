@@ -29,7 +29,11 @@ public static class AttachmentsModel
             e.Property(x => x.DocumentTypeKey).HasMaxLength(64);
             e.Property(x => x.CustomDocumentLabel).HasMaxLength(128);
             e.Property(x => x.CustomDocumentReason).HasMaxLength(512);
+            e.Property(x => x.ValueDocStatus).HasMaxLength(16);
+            e.Property(x => x.ValueDocReviewedBy).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ValueDocReviewNote).HasMaxLength(512);
             e.HasIndex(x => new { x.Scope, x.ScopeKey });
+            e.HasAllowedValues("FileAttachments", nameof(FileAttachment.ValueDocStatus), ValueDocumentStatuses.All);
         });
 
         builder.Entity<PhotoMetadata>(e =>

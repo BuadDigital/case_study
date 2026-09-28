@@ -14,6 +14,7 @@ export type PropertyDocumentGroup =
   | "movables"
   | "photos"
   | "outputs"
+  | "valued"
   | "unlisted";
 
 export type PropertyDocumentApplicability = "all" | "built" | "land";
@@ -38,6 +39,24 @@ export const PROPERTY_DOCUMENT_GOVERNED_SCOPE = "property-document";
 
 export const UNLISTED_DOCUMENT_KEY = "unlisted";
 
+/**
+ * «مستند ذو قيمة» — carries a value the appraiser may use (approach indicator or an amount added
+ * to the property value). Named by the uploader, approved by the case specialist, visible only
+ * to the specialist and the appraiser.
+ */
+export const VALUED_DOCUMENT_KEY = "valued-document";
+
+/** Upload scope used outside the documents tab (appraiser, inspector, engineering office). */
+export const VALUED_DOCUMENT_SCOPE = "property-valued-document";
+
+export type ValueDocumentStatus = "pending" | "approved" | "rejected";
+
+export const VALUE_DOCUMENT_STATUSES: readonly ValueDocumentStatus[] = [
+  "pending",
+  "approved",
+  "rejected",
+];
+
 export const PROPERTY_DOCUMENT_GROUPS: readonly {
   key: PropertyDocumentGroup;
   titleAr: string;
@@ -49,6 +68,7 @@ export const PROPERTY_DOCUMENT_GROUPS: readonly {
   { key: "movables", titleAr: "المنقولات" },
   { key: "photos", titleAr: "صور المعاينة" },
   { key: "outputs", titleAr: "مخرجات التقييم" },
+  { key: "valued", titleAr: "مستندات ذات قيمة" },
   { key: "unlisted", titleAr: "مستندات غير معرّفة" },
 ];
 
@@ -157,6 +177,10 @@ export const PROPERTY_DOCUMENT_TYPES: readonly PropertyDocumentType[] = [
     legacyScopes: ["evaluator-deposit-certificate"],
   }),
 
+  t(VALUED_DOCUMENT_KEY, "مستند ذو قيمة", "valued", {
+    legacyScopes: [VALUED_DOCUMENT_SCOPE],
+  }),
+
   t(UNLISTED_DOCUMENT_KEY, "مستند غير معرّف", "unlisted", {
     legacyScopes: ["property-other"],
   }),
@@ -212,9 +236,18 @@ export function propertyDocumentRequirementKey(type: PropertyDocumentType): stri
   return type.countsAs ?? type.key;
 }
 
-/** Appears in the admin attachments list — photos, outputs and unlisted do not. */
+/** Appears in the admin attachments list — photos, outputs, valued and unlisted do not. */
 export function isConfigurablePropertyDocumentType(type: PropertyDocumentType): boolean {
-  return type.group !== "photos" && type.group !== "outputs" && type.group !== "unlisted";
+  return (
+    type.group !== "photos" &&
+    type.group !== "outputs" &&
+    type.group !== "valued" &&
+    type.group !== "unlisted"
+  );
+}
+
+export function isValuedDocumentKey(key: string | null | undefined): boolean {
+  return key?.trim().toLowerCase() === VALUED_DOCUMENT_KEY;
 }
 
 export function defaultPropertyTypeKeys(type: PropertyDocumentType): readonly string[] {

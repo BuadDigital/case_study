@@ -6,6 +6,9 @@ import {
   PROPERTY_DOCUMENT_GROUPS,
   PROPERTY_DOCUMENT_TYPES,
   UNLISTED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_KEY,
+  VALUED_DOCUMENT_SCOPE,
+  VALUE_DOCUMENT_STATUSES,
   normalizePropertyTypeKeys,
   propertyDocumentRequirementKey,
   resolvePropertyDocumentType,
@@ -32,6 +35,9 @@ const contract = JSON.parse(
 ) as {
   governedScope: string;
   unlistedKey: string;
+  valuedKey: string;
+  valuedScope: string;
+  valueDocumentStatuses: string[];
   groups: string[];
   types: ContractType[];
 };
@@ -40,6 +46,9 @@ describe("property document registry", () => {
   it("matches the shared contract with the backend", () => {
     expect(PROPERTY_DOCUMENT_GOVERNED_SCOPE).toBe(contract.governedScope);
     expect(UNLISTED_DOCUMENT_KEY).toBe(contract.unlistedKey);
+    expect(VALUED_DOCUMENT_KEY).toBe(contract.valuedKey);
+    expect(VALUED_DOCUMENT_SCOPE).toBe(contract.valuedScope);
+    expect([...VALUE_DOCUMENT_STATUSES]).toEqual(contract.valueDocumentStatuses);
     expect(PROPERTY_DOCUMENT_GROUPS.map((g) => g.key)).toEqual(contract.groups);
     expect(
       PROPERTY_DOCUMENT_TYPES.map((type) => ({

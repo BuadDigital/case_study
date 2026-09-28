@@ -5,7 +5,11 @@ import {
   readOfflineAccess,
   rememberOfflineAccess,
 } from "../../offline/offline-access-cache";
-import { getUsableAuthSession, isOfflineUsableSession } from "../offline-session";
+import {
+  canKeepFieldSessionAfterRefreshFailure,
+  getUsableAuthSession,
+  isOfflineUsableSession,
+} from "../offline-session";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -81,6 +85,11 @@ describe("isOfflineUsableSession", () => {
   it("does not while online — the token must be renewed", () => {
     setOnline(true);
     expect(isOfflineUsableSession(lapsedSession())).toBe(false);
+  });
+
+  it("keeps a field session after a transient refresh even when onLine is true", () => {
+    setOnline(true);
+    expect(canKeepFieldSessionAfterRefreshFailure(lapsedSession())).toBe(true);
   });
 
   it("does not once the refresh token has expired", () => {

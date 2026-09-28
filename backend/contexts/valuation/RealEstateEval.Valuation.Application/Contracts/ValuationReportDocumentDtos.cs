@@ -34,6 +34,13 @@ public class ValuationReportAdjustmentRowDto
     public string AdjustedPricePerSqmDisplay { get; init; } = "";
 }
 
+/// <summary>§25: an amount from a «مستند ذو قيمة» added after the liquidation discount.</summary>
+public class ValuationReportValueAdditionRowDto
+{
+    public string LabelAr { get; init; } = "";
+    public string ValueDisplay { get; init; } = "";
+}
+
 public class ValuationReportReconMethodRowDto
 {
     public string LabelAr { get; init; } = "";
@@ -105,6 +112,9 @@ public class ValuationReportDocumentDto
     public IReadOnlyList<ValuationReportComparableRowDto> Comparables { get; init; } = [];
     public IReadOnlyList<ValuationReportAdjustmentRowDto> Adjustments { get; init; } = [];
     public IReadOnlyList<ValuationReportReconMethodRowDto> ReconciliationMethods { get; init; } = [];
+    /// <summary>Set only with additions: the property value after the discount, before rounding.</summary>
+    public string? PropertyValueAfterLiquidationDisplay { get; init; }
+    public IReadOnlyList<ValuationReportValueAdditionRowDto> ValueAdditions { get; init; } = [];
     public IReadOnlyList<ValuationReportPrintedAttachmentDto> SiteMapAttachments { get; init; } = [];
     public IReadOnlyList<ValuationReportPrintedAttachmentDto> PhotoAttachments { get; init; } = [];
     public IReadOnlyList<ValuationReportPrintedAttachmentDto> SurveyAttachments { get; init; } = [];

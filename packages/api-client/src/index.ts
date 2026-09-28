@@ -11,7 +11,9 @@ export {
 
 export {
   createIdempotencyKey,
+  headersToRecord,
   IDEMPOTENCY_HEADER,
+  mergeHeaderRecords,
   withIdempotencyKey,
 } from "./idempotency-key";
 
@@ -304,6 +306,8 @@ export {
   requestEvaluatorRecallApi,
   saveFailureTypesCatalog,
   setAttachmentDocumentType,
+  reviewValueDocument,
+  type ReviewValueDocumentRequest,
   uploadAttachment,
   upsertPropertyCourtAccess,
   type SetAttachmentDocumentTypeRequest,
@@ -695,6 +699,7 @@ export {
   type ValuationApproachSettingsDto,
   type SaveValuationApproachSettingsRequest,
   type ValuationReconciliationDto,
+  type ValuationValueDocumentAdditionDto,
   type ValuationReconciliationMethodDto,
   type SaveValuationReconciliationRequest,
   type ValuationIssuanceGatesDto,
@@ -707,6 +712,15 @@ export {
   type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
 } from "./valuation-comparable-selections";
+export {
+  getValuationValueDocuments,
+  saveValuationValueDocuments,
+  type SaveValuationValueDocumentUseRequest,
+  type ValuationValueDocumentDto,
+  type ValuationValueDocumentsDto,
+  type ValueDocumentApproachKey,
+  type ValueDocumentEffect,
+} from "./valuation-value-documents";
 export {
   createValuationReportPdf,
   getLatestValuationReportPdfLink,

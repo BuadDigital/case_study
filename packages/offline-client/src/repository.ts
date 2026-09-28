@@ -33,7 +33,9 @@ export async function persistDraftLocally(input: {
     (item) =>
       item.kind === "party-submission-save" &&
       item.targetId === input.taskId &&
-      (item.status === "pending" || item.status === "failed"),
+      (item.status === "pending" ||
+        item.status === "failed" ||
+        item.status === "uploading"),
   );
   if (waiting) {
     await saveOutboxItem({

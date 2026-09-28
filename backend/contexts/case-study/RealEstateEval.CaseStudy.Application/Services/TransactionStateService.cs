@@ -90,8 +90,7 @@ public sealed class TransactionStateService(
         string? actorRole,
         CancellationToken cancellationToken = default)
     {
-        // R3: General Manager exclusively - Decision is automatically out of system jurisdiction (Enfaz official channel).
-        if (!string.Equals(actorRole, StaffRoleIds.GeneralManager, StringComparison.Ordinal))
+        if (!TransactionStateRules.AllowsPostEnfazDecision(actorRole))
             return "تسجيل قرار ما بعد إنفاذ للمدير العام حصراً (ر3)";
 
         var decision = request.Decision.Trim();

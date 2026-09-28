@@ -74,7 +74,7 @@ public class AttachmentReadAuthorizationTests
     }
 
     [Fact]
-    public async Task GetMeta_allows_manage_attachments_capability()
+    public async Task GetMeta_refuses_manage_attachments_capability_alone()
     {
         await using var db = CreateDb();
         var id = await SeedAsync(db, uploadedBy: "owner-1");
@@ -87,7 +87,25 @@ public class AttachmentReadAuthorizationTests
             Capabilities = [PlatformCapabilities.ManageAttachments],
         });
 
-        Assert.NotNull(meta);
+        Assert.Null(meta);
+    }
+
+    [Fact]
+    public async Task Delete_refuses_foreign_upload_for_field_roles()
+    {
+        await using var db = CreateDb();
+        var id = await SeedAsync(db, uploadedBy: "owner-1");
+        var service = new AttachmentService(db, new MemoryBlobs());
+
+        var deleted = await service.DeleteAsync(id, new PermissionsDto
+        {
+            UserId = "other-inspector",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.ManageAttachments],
+        });
+
+        Assert.False(deleted);
+        Assert.NotNull(await db.FileAttachments.FindAsync(id));
     }
 
     private static async Task<Guid> SeedAsync(AttachmentsDbContext db, string uploadedBy)

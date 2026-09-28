@@ -29,7 +29,8 @@ public sealed record PropertyDocumentType(
 
     /// <summary>Appears in the admin attachments list (requiredness / applicability are editable).</summary>
     public bool IsConfigurable =>
-        Group is not (PropertyDocumentGroups.Photos or PropertyDocumentGroups.Outputs or PropertyDocumentGroups.Unlisted);
+        Group is not (PropertyDocumentGroups.Photos or PropertyDocumentGroups.Outputs
+            or PropertyDocumentGroups.Valued or PropertyDocumentGroups.Unlisted);
 }
 
 public static class PropertyDocumentGroups
@@ -41,10 +42,21 @@ public static class PropertyDocumentGroups
     public const string Movables = "movables";
     public const string Photos = "photos";
     public const string Outputs = "outputs";
+    public const string Valued = "valued";
     public const string Unlisted = "unlisted";
 
     public static readonly string[] All =
-        [Ownership, Assignment, Contracts, Engineering, Movables, Photos, Outputs, Unlisted];
+        [Ownership, Assignment, Contracts, Engineering, Movables, Photos, Outputs, Valued, Unlisted];
+}
+
+/// <summary>The case specialist's decision on a «مستند ذو قيمة».</summary>
+public static class ValueDocumentStatuses
+{
+    public const string Pending = "pending";
+    public const string Approved = "approved";
+    public const string Rejected = "rejected";
+
+    public static readonly string[] All = [Pending, Approved, Rejected];
 }
 
 /// <summary>
@@ -58,6 +70,16 @@ public static class PropertyDocumentTypes
     public const string GovernedScope = "property-document";
 
     public const string UnlistedKey = "unlisted";
+
+    /// <summary>
+    /// «مستند ذو قيمة» — a document carrying a value the appraiser may use (an approach
+    /// indicator or an amount added to the property value). Named by the uploader, approved by
+    /// the case specialist, and visible only to the specialist and the appraiser.
+    /// </summary>
+    public const string ValuedKey = "valued-document";
+
+    /// <summary>Upload scope used outside the documents tab (appraiser, inspector, engineering office).</summary>
+    public const string ValuedScope = "property-valued-document";
 
     private const string InspectionPhotoScope = "field-inspection-photo";
     private const string BuildingPermitPhotoRefSuffix = ":component:buildLicense";
@@ -119,6 +141,9 @@ public static class PropertyDocumentTypes
         T("deposit-certificate", "شهادة الإيداع", PropertyDocumentGroups.Outputs, fromTab: false,
             legacyScopes: ["evaluator-deposit-certificate"]),
 
+        T(ValuedKey, "مستند ذو قيمة", PropertyDocumentGroups.Valued,
+            legacyScopes: [ValuedScope]),
+
         T(UnlistedKey, "مستند غير معرّف", PropertyDocumentGroups.Unlisted,
             legacyScopes: ["property-other"]),
     ];
@@ -152,6 +177,9 @@ public static class PropertyDocumentTypes
 
         return ByLegacyScope.GetValueOrDefault(s);
     }
+
+    public static bool IsValued(string? documentTypeKey) =>
+        string.Equals(documentTypeKey?.Trim(), ValuedKey, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Stored type first, then the type the upload scope implies.</summary>
     public static PropertyDocumentType? Resolve(string? documentTypeKey, string? scope, string? scopeKey) =>

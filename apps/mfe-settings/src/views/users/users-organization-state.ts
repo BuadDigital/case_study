@@ -188,6 +188,44 @@ export function canDeleteUser(
   return true;
 }
 
+export const STAFF_ROLE_CHANGE_SELF = "لا يمكن تغيير دورك بنفسك.";
+export const STAFF_ROLE_CHANGE_LAST_ADMIN = "لا يمكن إزالة آخر مسؤول نظام.";
+
+export function isPrivilegedStaffRole(roleId: string | null | undefined): boolean {
+  const id = (roleId ?? "").trim().toLowerCase();
+  return id === "cdo" || id === "admin";
+}
+
+export function staffRoleChangeBlocked(
+  viewerUserId: string | null,
+  target: Pick<StaffUser, "id" | "roleId" | "status">,
+  nextRoleId: string,
+  users: Pick<StaffUser, "id" | "roleId" | "status">[],
+): string | null {
+  if ((nextRoleId || "") === (target.roleId ?? "")) return null;
+  if (viewerUserId && target.id === viewerUserId) return STAFF_ROLE_CHANGE_SELF;
+  if (!isPrivilegedStaffRole(target.roleId) || isPrivilegedStaffRole(nextRoleId)) {
+    return null;
+  }
+  const activeAdmins = users.filter(
+    (row) => row.status !== "Disabled" && isPrivilegedStaffRole(row.roleId),
+  );
+  return activeAdmins.length <= 1 ? STAFF_ROLE_CHANGE_LAST_ADMIN : null;
+}
+
+export function staffRoleSelectLocked(
+  viewerUserId: string | null,
+  target: Pick<StaffUser, "id" | "roleId" | "status">,
+  users: Pick<StaffUser, "id" | "roleId" | "status">[],
+): string | null {
+  if (viewerUserId && target.id === viewerUserId) return STAFF_ROLE_CHANGE_SELF;
+  if (!isPrivilegedStaffRole(target.roleId)) return null;
+  const activeAdmins = users.filter(
+    (row) => row.status !== "Disabled" && isPrivilegedStaffRole(row.roleId),
+  );
+  return activeAdmins.length <= 1 ? STAFF_ROLE_CHANGE_LAST_ADMIN : null;
+}
+
 export function formatLastLogin(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {

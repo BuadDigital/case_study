@@ -6,12 +6,15 @@ import {
   getOfflineDraft,
   getOutboxItem,
   listOfflineBlobRows,
+  listOfflineDrafts,
   listOutboxItems,
   markBlobUploaded,
   publishPendingCount,
+  saveOfflineDraft,
   saveOutboxItem,
 } from "./store";
 import {
+  OFFLINE_ATTACHMENT_MAP_EVENT,
   OFFLINE_BACKGROUND_SYNC_TAG,
   OFFLINE_SYNC_EVENT,
   randomUuid,
@@ -62,6 +65,7 @@ export type OperationsTaskPatchFn = (input: {
 export type OperationsTaskCommentFn = (input: {
   taskId: string;
   payloadJson: string;
+  idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
 export type PropertyCourtAccessFn = (input: {
@@ -221,6 +225,72 @@ export function rewriteLocalAttachmentIds(
   return next;
 }
 
+function localAttachmentIdsIn(payloadJson: string): string[] {
+  const found = payloadJson.match(/local:[A-Za-z0-9-]+/g);
+  return found ? [...new Set(found)] : [];
+}
+
+function publishAttachmentMap(map: Map<string, string>): void {
+  if (typeof window === "undefined" || map.size === 0) return;
+  window.dispatchEvent(
+    new CustomEvent(OFFLINE_ATTACHMENT_MAP_EVENT, {
+      detail: Object.fromEntries(map),
+    }),
+  );
+}
+
+/** Rewrite stored drafts and still-waiting outbox JSON after uploads land. */
+async function rewriteStoredPayloads(
+  userId: string,
+  map: Map<string, string>,
+): Promise<void> {
+  if (map.size === 0) return;
+  const drafts = await listOfflineDrafts(userId);
+  for (const draft of drafts) {
+    const payloadJson = rewriteLocalAttachmentIds(draft.payloadJson, map);
+    if (payloadJson === draft.payloadJson) continue;
+    await saveOfflineDraft({ ...draft, payloadJson });
+  }
+  const items = await listOutboxItems(userId);
+  for (const item of items) {
+    if (item.status === "done" || item.status === "terminal") continue;
+    const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, map);
+    if (payloadJson === item.payloadJson) continue;
+    await saveOutboxItem({ ...item, payloadJson });
+  }
+  publishAttachmentMap(map);
+}
+
+async function leftoverLocalsAreTerminal(
+  userId: string,
+  payloadJson: string,
+): Promise<boolean> {
+  const leftover = localAttachmentIdsIn(payloadJson);
+  if (leftover.length === 0) return false;
+  const items = await listOutboxItems(userId);
+  const { listOfflineBlobMeta } = await import("./store");
+  const blobs = await listOfflineBlobMeta(userId);
+  return leftover.every((id) => {
+    const upload = items.find(
+      (item) =>
+        item.kind === "attachment-upload" &&
+        (item.localAttachmentId === id || item.targetId === id),
+    );
+    if (
+      upload &&
+      (upload.status === "pending" ||
+        upload.status === "failed" ||
+        upload.status === "uploading")
+    ) {
+      return false;
+    }
+    if (upload?.status === "terminal") return true;
+    const blob = blobs.find((row) => row.id === id);
+    if (blob?.serverAttachmentId) return false;
+    return !blob && !upload;
+  });
+}
+
 /** Built once per sync run; processAttachment appends fresh server ids as uploads land. */
 async function buildLocalAttachmentMap(
   userId: string,
@@ -318,6 +388,7 @@ async function processAttachment(
   await markBlobUploaded(userId, blob.id, result.attachmentId);
   recordUploadedAttachment(attachmentMap, item, blob.id, result.attachmentId);
   await deleteOutboxItem(userId, item.id);
+  await rewriteStoredPayloads(userId, attachmentMap);
   return true;
 }
 
@@ -397,31 +468,38 @@ async function processSave(
   deps: OfflineSyncDeps,
   attachmentMap: Map<string, string>,
 ): Promise<boolean> {
-  const payloadJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  const current = (await getOutboxItem(userId, item.id)) ?? item;
+  const payloadJson = rewriteLocalAttachmentIds(
+    current.payloadJson,
+    attachmentMap,
+  );
   if (payloadJson.includes("local:")) {
+    const terminal = await leftoverLocalsAreTerminal(userId, payloadJson);
     await saveOutboxItem({
-      ...item,
-      status: "failed",
-      lastError: "بانتظار رفع المرفقات",
+      ...current,
+      status: terminal ? "terminal" : "failed",
+      lastError: terminal
+        ? "مرفق مرفوض — تعذّر حفظ المسودة"
+        : "بانتظار رفع المرفقات",
       updatedAtUtc: new Date().toISOString(),
     });
     return false;
   }
   const result = await deps.saveSubmission({
-    taskId: item.targetId,
+    taskId: current.targetId,
     payloadJson,
   });
   if (!result.ok) {
     await saveOutboxItem({
-      ...item,
+      ...current,
       status: result.terminal ? "terminal" : "failed",
-      attempts: item.attempts + 1,
+      attempts: current.attempts + 1,
       lastError: result.error,
       updatedAtUtc: new Date().toISOString(),
     });
     return false;
   }
-  await completeSave(userId, item);
+  await completeSave(userId, { ...current, payloadJson });
   return true;
 }
 
@@ -539,6 +617,7 @@ async function processOperationsTaskComment(
   const result = await deps.addOperationsTaskComment({
     taskId: item.targetId,
     payloadJson,
+    idempotencyKey: item.idempotencyKey,
   });
   if (!result.ok) {
     await saveOutboxItem({
@@ -558,6 +637,7 @@ async function processPropertyCourtAccess(
   userId: string,
   item: OfflineOutboxItem,
   deps: OfflineSyncDeps,
+  attachmentMap: Map<string, string>,
 ): Promise<boolean> {
   if (!deps.upsertPropertyCourtAccess) {
     await saveOutboxItem({
@@ -568,8 +648,21 @@ async function processPropertyCourtAccess(
     });
     return false;
   }
+  const bodyJson = rewriteLocalAttachmentIds(item.payloadJson, attachmentMap);
+  if (bodyJson.includes("local:")) {
+    const terminal = await leftoverLocalsAreTerminal(userId, bodyJson);
+    await saveOutboxItem({
+      ...item,
+      status: terminal ? "terminal" : "failed",
+      lastError: terminal
+        ? "مرفق مرفوض — تعذّر حفظ مسار الدخول"
+        : "بانتظار رفع المرفقات",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
   const result = await deps.upsertPropertyCourtAccess({
-    bodyJson: item.payloadJson,
+    bodyJson,
   });
   if (!result.ok) {
     await saveOutboxItem({
@@ -788,8 +881,17 @@ async function runOfflineSyncPass(
       items.length > 0
         ? await buildLocalAttachmentMap(userId)
         : new Map<string, string>();
+    await rewriteStoredPayloads(userId, attachmentMap);
 
-    for (const item of items) {
+    for (const snapshot of items) {
+      const item = await getOutboxItem(userId, snapshot.id);
+      if (
+        !item ||
+        item.status === "done" ||
+        item.status === "terminal"
+      ) {
+        continue;
+      }
       await saveOutboxItem({
         ...item,
         status: "uploading",
@@ -817,7 +919,12 @@ async function runOfflineSyncPass(
           attachmentMap,
         );
       } else if (item.kind === "property-court-access") {
-        ok = await processPropertyCourtAccess(userId, item, deps);
+        ok = await processPropertyCourtAccess(
+          userId,
+          item,
+          deps,
+          attachmentMap,
+        );
       } else if (item.kind === "key-envelope-create") {
         ok = await processKeyEnvelopeCreate(userId, item, deps, attachmentMap);
       } else if (item.kind === "key-envelope-assignment-add") {

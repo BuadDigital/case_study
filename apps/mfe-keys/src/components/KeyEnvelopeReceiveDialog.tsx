@@ -117,6 +117,10 @@ export function ReceiveEnvelopeModal({
                   return;
                 }
                 showToast(receiveSuccessMessage(env.requestNumber), "success");
+                if (result.queued) {
+                  await onDone({ ...env });
+                  return;
+                }
                 await onDone(result.data);
               } finally {
                 onBusy(false);

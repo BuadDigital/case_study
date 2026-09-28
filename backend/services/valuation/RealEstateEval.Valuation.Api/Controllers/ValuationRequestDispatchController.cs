@@ -33,10 +33,11 @@ public sealed class ValuationRequestDispatchController(IValuationRequestService 
         var (dto, error) = await service.CreateAsync(request, cancellationToken);
         return error switch
         {
+            "property_id_required" => this.BadRequestProblem("معرّف العقار مطلوب"),
             "valuation_already_open" => this.ConflictProblem(
                 "an open valuation request already exists for this property"),
             "duplicate_display_id" => this.ConflictProblem("display id already in use"),
-            _ => Ok(dto),
+            _ => dto is null ? this.BadRequestProblem("تعذّر إنشاء طلب التقييم") : Ok(dto),
         };
     }
 }

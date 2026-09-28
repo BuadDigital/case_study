@@ -15,7 +15,9 @@ import { propertyRequiresSurvey } from "@platform/app-shared/app-data/po-intake-
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
 import {
+  canReviewValuedDocuments,
   canUploadPropertyDocuments,
+  canUploadValuedDocuments,
 } from "../../lib/app-data/po-roles";
 import {
   buildPropertyDocumentChecklist,
@@ -24,6 +26,7 @@ import {
 import {
   deleteGovernedPropertyDocument,
   reclassifyGovernedPropertyDocument,
+  reviewValuedPropertyDocument,
   uploadGovernedPropertyDocument,
   type GovernedDocumentCommandResult,
   type GovernedDocumentTypeInput,
@@ -73,8 +76,11 @@ export function usePropertyDocumentsWorkflow({
     [sections, governed.data, attachmentsList, propertyType, property],
   );
   const uploadOptions = useMemo(
-    () => propertyDocumentUploadOptions(attachmentsList),
-    [attachmentsList],
+    () =>
+      propertyDocumentUploadOptions(attachmentsList, {
+        includeValued: canUploadValuedDocuments(role),
+      }),
+    [attachmentsList, role],
   );
 
   async function run(
@@ -103,6 +109,7 @@ export function usePropertyDocumentsWorkflow({
     uploadOptions,
     propertyType,
     canUpload: canUploadPropertyDocuments(role),
+    canReviewValued: canReviewValuedDocuments(role),
     busy,
     loadFailed: governed.isError,
     upload: (input: GovernedDocumentTypeInput & { file: File }) =>
@@ -122,5 +129,10 @@ export function usePropertyDocumentsWorkflow({
       ),
     remove: (attachmentId: string) =>
       run(() => deleteGovernedPropertyDocument(attachmentId), "تم حذف المستند"),
+    reviewValued: (attachmentId: string, decision: "approved" | "rejected", note?: string) =>
+      run(
+        () => reviewValuedPropertyDocument(attachmentId, decision, note),
+        decision === "approved" ? "تم اعتماد المستند" : "تم رفض المستند",
+      ),
   };
 }

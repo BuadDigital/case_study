@@ -9,6 +9,7 @@ import {
   patchOperationsTask,
   reassignOperationsTask,
   remindOperationsTask,
+  createIdempotencyKey,
 } from "@platform/api-client";
 import {
   beginOfflineLease,
@@ -18,6 +19,7 @@ import {
   currentOfflineUserId,
   isBrowserOffline,
 } from "@platform/app-shared/offline/offline-write";
+import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import {
   mergePrefetchedOperationsTaskPatch,
   readPrefetchedOperationsTasks,
@@ -38,7 +40,7 @@ async function enqueueOperationsTaskPatch(
   body: PatchOperationsTaskRequest,
 ): Promise<boolean> {
   const userId = currentOfflineUserId();
-  if (!userId) return false;
+  if (!userId || !isOfflineFieldSession()) return false;
   await enqueueOutbox({
     userId,
     kind: "operations-task-patch",
@@ -58,12 +60,13 @@ async function enqueueOperationsTaskComment(
   files?: OperationsTaskCommentFile[],
 ): Promise<boolean> {
   const userId = currentOfflineUserId();
-  if (!userId) return false;
+  if (!userId || !isOfflineFieldSession()) return false;
   await enqueueOutbox({
     userId,
     kind: "operations-task-comment",
     targetId: id,
     payloadJson: JSON.stringify({ text, kind, files }),
+    idempotencyKey: createIdempotencyKey(),
   });
   await beginOfflineLease(userId);
   notifyOperationsTasksChanged();
@@ -116,7 +119,7 @@ export async function patchOperationsTaskRecord(
   const userId = currentOfflineUserId();
   const config = workOrdersApiConfig();
 
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     const queued = await enqueueOperationsTaskPatch(id, body);
     if (!queued) return { ok: false, error: "تسجيل الدخول مطلوب" };
     return { ok: true, task: await mergedTaskOrStub(id, body), queued: true };
@@ -127,7 +130,7 @@ export async function patchOperationsTaskRecord(
   try {
     const result = await patchOperationsTask(config, id, body);
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         const queued = await enqueueOperationsTaskPatch(id, body);
         if (queued) {
           return {
@@ -206,7 +209,7 @@ export async function addOperationsTaskCommentRecord(
   const userId = currentOfflineUserId();
   const config = workOrdersApiConfig();
 
-  if ((!config || isBrowserOffline()) && userId) {
+  if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     const queued = await enqueueOperationsTaskComment(id, text, kind, files);
     if (!queued) return { ok: false, error: "تسجيل الدخول مطلوب" };
     return { ok: true, task: await cachedTaskOrStub(id), queued: true };
@@ -217,7 +220,7 @@ export async function addOperationsTaskCommentRecord(
   try {
     const result = await addOperationsTaskComment(config, id, text, kind, files);
     if (!result.ok) {
-      if (result.kind === "network" && userId) {
+      if (result.kind === "network" && userId && isOfflineFieldSession()) {
         const queued = await enqueueOperationsTaskComment(id, text, kind, files);
         if (queued) {
           return { ok: true, task: await cachedTaskOrStub(id), queued: true };

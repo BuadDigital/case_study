@@ -1,4 +1,5 @@
 import { getApiBase } from "./api-base";
+import { withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import {
@@ -144,11 +145,12 @@ export type RemindOperationsTaskRequest = {
   auto?: boolean;
 };
 
-function headers(token: string): HeadersInit {
-  return {
+function headers(token: string, idempotencyKey?: string): HeadersInit {
+  const base = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
 }
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -328,12 +330,13 @@ export async function addOperationsTaskComment(
   text: string,
   kind?: string,
   files?: OperationsTaskCommentFileDto[],
+  idempotencyKey?: string,
 ): Promise<ApiOk<OperationsTaskDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/operations-tasks/${encodeURIComponent(id)}/comments`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: headers(config.token, idempotencyKey),
       body: JSON.stringify({ text, kind, files }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

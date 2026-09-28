@@ -170,7 +170,10 @@ public sealed class ValuationCostApproachService(
                 valuationRequestId,
                 ComparableSelectionContexts.LandWithinCost,
                 cancellationToken);
-            entity.LandUnitRateFromMarket = landComps?.WeightedPricePerSqm ?? 0m;
+            entity.LandUnitRateFromMarket = CostApproachRules.LandUnitRateFromComparableWeighted(
+                landComps?.WeightedPricePerSqm ?? 0m,
+                landComps?.SubjectAreaSqm ?? 0m,
+                landComps?.AdjustmentBasis);
             entity.LandAreaSqm = landComps?.SubjectAreaSqm ?? 0m;
             entity.LandImportedAtUtc = landComps is { AdoptedCount: > 0 }
                 ? _time.UtcNow()
@@ -204,12 +207,8 @@ public sealed class ValuationCostApproachService(
             var line = lines[i];
             var itemKey = CostLineItemKeys.Normalize(line.ItemKey);
             var quantity = line.AreaSqm;
-            if (itemKey == CostLineItemKeys.RepeatedFloors
-                && line.RepeatedFloorCount is { } count && count > 0
-                && firstFloorArea > 0m)
-            {
-                quantity = RepeatedFloorRules.DeriveQuantity(firstFloorArea, count);
-            }
+            if (itemKey == CostLineItemKeys.RepeatedFloors)
+                quantity = RepeatedFloorRules.QuantityForLine(firstFloorArea, line.RepeatedFloorCount);
 
             var lineId = line.Id is { } id && id != Guid.Empty ? id : Guid.NewGuid();
             var structureKind = string.IsNullOrWhiteSpace(line.StructureKind)

@@ -125,17 +125,23 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
       wasOfflineRef.current = true;
       // Microtask keeps the effect body free of synchronous setState.
       queueMicrotask(() => setSyncState("offline"));
-      void evaluateOfflineLease().then((lease) => {
-        if (!lease) return;
-        for (const message of offlineLeaseToasts(lease)) {
-          window.dispatchEvent(
-            new CustomEvent("ejada-toast", { detail: { message } }),
-          );
-        }
-        if (lease.locked) setLocked(true);
-      });
-      return;
+      const tickLease = () => {
+        void evaluateOfflineLease().then((lease) => {
+          if (!lease) return;
+          for (const message of offlineLeaseToasts(lease)) {
+            window.dispatchEvent(
+              new CustomEvent("ejada-toast", { detail: { message } }),
+            );
+          }
+          if (lease.locked) setLocked(true);
+        });
+      };
+      tickLease();
+      const timer = window.setInterval(tickLease, 30_000);
+      return () => window.clearInterval(timer);
     }
+
+    queueMicrotask(() => setLocked(false));
 
     const userId = user?.id;
     if (!userId) return;

@@ -30,7 +30,9 @@ import {
   certifiedPracticeLicenseFromOrg,
 } from "../../lib/evaluator/valuation-report-live-fill";
 import {
+  materializeComparablesMapImage,
   materializePrintMapSlots,
+  PRINT_MAP_SIZES,
   printMapsNotice,
   type ComparablesMapPin,
 } from "../../lib/evaluator/valuation-report-comparables-map";
@@ -189,11 +191,15 @@ export function EvaluatorValuationReportOutputTab({
           draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
         live: buildValuationReportLiveFill({
           draft,
+          // Unsaved settings follow the server defaults (same DTO), so the report and the
+          // valuation screens agree on which approaches are in play.
           costApproachEnabled: Boolean(
-            approachSettings?.isSaved &&
-              approachSettings.costApproachEnabled &&
+            approachSettings?.costApproachEnabled &&
               (approachSettings.costApproachAllowed ?? true),
           ),
+          marketApproachEnabled: approachSettings
+            ? approachSettings.marketApproachEnabled
+            : undefined,
           costScopeKey: approachSettings?.costScopeKey,
           costBasisKey: approachSettings?.costBasisKey,
           record,
@@ -346,6 +352,26 @@ export function EvaluatorValuationReportOutputTab({
           closeupMapSlot: live.closeupMapSlot,
         });
         live = { ...live, ...mapSlots };
+        // §20 land comparables map (cost approach, land and building) — same Static Maps path.
+        if ((live.landComparablesMapPins ?? []).length > 0) {
+          const land = await materializeComparablesMapImage(live.landComparablesMapPins, {
+            maptype: "hybrid",
+            size: PRINT_MAP_SIZES.comps,
+          });
+          if (land) {
+            live = {
+              ...live,
+              landComparableMapSlot: {
+                attachmentId: "generated-land-comps-map",
+                url: land.url,
+                contentType: land.contentType,
+                fileName: land.fileName,
+                labelAr: "خريطة مواقع مقارنات الأراضي",
+                isImage: true,
+              },
+            };
+          }
+        }
         // Google's refusal text names the missing API — keep it in the console for ops.
         if (diagnostics.denialReason && !diagnostics.googleAvailable) {
           console.warn(

@@ -17,6 +17,7 @@ import {
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
 import { beginOfflineLease } from "@platform/offline-client";
+import { offlineLeaseToasts } from "@/components/offline-sync-state";
 
 const CHECK_INTERVAL_MS = 30_000;
 
@@ -56,6 +57,13 @@ export function AuthSessionWatcher() {
         ) {
           await beginOfflineLease(stored.user.id);
           const lease = await evaluateOfflineLease();
+          if (lease) {
+            for (const message of offlineLeaseToasts(lease)) {
+              window.dispatchEvent(
+                new CustomEvent("ejada-toast", { detail: { message } }),
+              );
+            }
+          }
           if (lease?.locked) {
             notifyAuthExpired();
           }

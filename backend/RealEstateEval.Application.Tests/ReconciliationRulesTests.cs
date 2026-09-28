@@ -63,6 +63,48 @@ public class ReconciliationRulesTests
     }
 
     [Fact]
+    public void Sole_method_is_always_100_and_included()
+    {
+        var (weight, included) = ReconciliationRules.EffectiveParticipation(
+            enabledKindCount: 1,
+            savedWeightPct: 0m,
+            savedIsIncluded: false,
+            liveValue: 900_000m,
+            suggestedWeightPct: 0m);
+
+        Assert.Equal(100m, weight);
+        Assert.True(included);
+    }
+
+    [Fact]
+    public void Multi_method_keeps_saved_exclusion()
+    {
+        var (weight, included) = ReconciliationRules.EffectiveParticipation(
+            enabledKindCount: 2,
+            savedWeightPct: 30m,
+            savedIsIncluded: false,
+            liveValue: 900_000m,
+            suggestedWeightPct: 0m);
+
+        Assert.Equal(30m, weight);
+        Assert.False(included);
+    }
+
+    [Fact]
+    public void Multi_method_defaults_inclusion_from_live_value_and_weight()
+    {
+        var included = ReconciliationRules.EffectiveParticipation(
+            2, null, null, liveValue: 1_000_000m, suggestedWeightPct: 100m);
+        Assert.Equal(100m, included.WeightPct);
+        Assert.True(included.IsIncluded);
+
+        var excluded = ReconciliationRules.EffectiveParticipation(
+            2, null, null, liveValue: 1_000_000m, suggestedWeightPct: 0m);
+        Assert.Equal(0m, excluded.WeightPct);
+        Assert.False(excluded.IsIncluded);
+    }
+
+    [Fact]
     public void Market_basis_keeps_full_opinion()
     {
         var (before, final, applied) = ReconciliationRules.FinalOpinionWithOptionalDiscount(

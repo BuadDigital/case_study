@@ -72,6 +72,8 @@ export function UsersOrganizationView() {
       {editingUser ? (
         <EditStaffUserModal
           user={editingUser}
+          users={workflow.users}
+          viewerUserId={workflow.currentUserId}
           saving={pendingActionId === editingUser.id}
           onSubmit={(patch) => onSaveEdit(editingUser.id, patch)}
           onClose={() => setEditingUser(null)}

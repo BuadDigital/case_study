@@ -15,6 +15,8 @@ describe("amountToArabicWords", () => {
     expect(amountToArabicWords(1)).toContain("واحد");
     expect(amountToArabicWords(1000)).toContain("ألف");
     expect(amountToArabicWords(1_250_000)).toContain("مليون");
+    expect(amountToArabicWords(1_250_000)).toContain("ريال سعودي");
+    expect(amountToArabicWords(1_250_000)).not.toMatch(/ريال سعودي.*ريال سعودي/);
   });
 });
 

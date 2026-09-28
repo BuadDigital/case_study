@@ -121,6 +121,8 @@ export type WorkOrderPropertyDto = {
   isRemoved?: boolean;
   removalReason?: string;
   removedAtUtc?: string;
+  /** Last server write — reopen drops in-memory autosave drafts older than this. */
+  updatedAtUtc?: string | null;
   contacts: PropertyContactDto[];
 };
 

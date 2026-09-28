@@ -88,9 +88,13 @@ public sealed class ValuationReportDocumentService(
             valuationCatalog = null;
         }
 
-        var marketUsed = (market?.AdoptedCount ?? 0) > 0 || (market?.MarketOpinionValue ?? 0m) > 0m;
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == vr.Id, cancellationToken);
+        // The appraiser's approach choice decides the comparables sections (not leftover data):
+        // contractor method only ⇒ no comparables / map / adjustments. Unsaved settings fall back
+        // to the data so older requests keep printing what they have.
+        var marketUsed = approachSettings?.MarketApproachEnabled
+            ?? ((market?.AdoptedCount ?? 0) > 0 || (market?.MarketOpinionValue ?? 0m) > 0m);
         var costUsed = approachSettings?.CostApproachEnabled == true
             && ValuationApproachSettingsRules.CostApproachApplies(
                 prop?.PropertyType ?? vr.PropertyType,
@@ -100,7 +104,8 @@ public sealed class ValuationReportDocumentService(
         hasStructures = ValuationApproachSettingsRules.BuildingsValued(
             hasStructures,
             approachSettings?.CostScopeKey);
-        const bool incomeUsed = false;
+        // Income is never valued internally; a «مستند ذو قيمة» indicator can still bring it in.
+        var incomeUsed = ValueDocumentReportRules.HasIndicator("income", recon);
 
         var visible = ValuationReportSectionCatalog.ResolveVisible(
             hasStructures,
@@ -274,9 +279,19 @@ public sealed class ValuationReportDocumentService(
             LetterheadPadStartMm = org?.Branding?.LetterheadPadStartMm,
             StampWidthCm = org?.Branding?.StampWidthCm,
             StampHeightCm = org?.Branding?.StampHeightCm,
-            MarketMethodLabelAr = marketUsed ? "طريقة البيوع المقارنة" : "غير مستخدم",
-            CostMethodLabelAr = costUsed ? "طريقة المقاول" : "غير مستخدم",
-            IncomeMethodLabelAr = "غير مستخدم",
+            MarketMethodLabelAr = ValueDocumentReportRules.MethodLabel("market", marketUsed ? "طريقة البيوع المقارنة" : null, recon),
+            CostMethodLabelAr = ValueDocumentReportRules.MethodLabel("cost", costUsed ? "طريقة المقاول" : null, recon),
+            IncomeMethodLabelAr = ValueDocumentReportRules.MethodLabel("income", null, recon),
+            PropertyValueAfterLiquidationDisplay = recon is null || recon.Additions.Count == 0
+                ? null
+                : ValuationReportDisplayRules.FormatMoney(recon.PropertyValueAfterLiquidation),
+            ValueAdditions = (recon?.Additions ?? [])
+                .Select(a => new ValuationReportValueAdditionRowDto
+                {
+                    LabelAr = a.LabelAr,
+                    ValueDisplay = ValuationReportDisplayRules.FormatMoney(a.Value),
+                })
+                .ToList(),
             WeightedPricePerSqmDisplay = market is null ? null : ValuationReportDisplayRules.FormatMoney(market.WeightedPricePerSqm),
             MarketOpinionDisplay = market is null ? null : ValuationReportDisplayRules.FormatMoney(market.MarketOpinionValue),
             SubjectAreaSqmDisplay = market?.SubjectAreaSqm is null ? null : ValuationReportDisplayRules.FormatMoney(market.SubjectAreaSqm.Value),

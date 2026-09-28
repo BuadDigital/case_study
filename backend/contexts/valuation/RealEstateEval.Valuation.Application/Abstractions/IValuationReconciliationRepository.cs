@@ -44,5 +44,18 @@ public interface IValuationReconciliationRepository
         IReadOnlyCollection<ValuationReconciliationMethodLine> lines,
         CancellationToken cancellationToken);
 
+    /// <summary>The appraiser's uses of «مستندات ذات قيمة» (tracked for the value-documents save).</summary>
+    Task<IReadOnlyList<ValuationValueDocumentUse>> ListValueDocumentUsesAsync(
+        Guid valuationRequestId,
+        bool tracked,
+        CancellationToken cancellationToken);
+
+    /// <summary>Added through the set, like weighting lines (see <see cref="AddMethodLineAsync"/>).</summary>
+    Task AddValueDocumentUseAsync(ValuationValueDocumentUse use, CancellationToken cancellationToken);
+
+    Task RemoveValueDocumentUsesAsync(
+        IReadOnlyCollection<ValuationValueDocumentUse> uses,
+        CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

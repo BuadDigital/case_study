@@ -12,6 +12,7 @@ import { finishingLevelLabel } from "./valuation-report-sheet-facts";
 import {
   CLOSEUP_MAP_HOST_ID,
   COMPARABLES_MAP_HOST_ID,
+  LAND_COMPARABLES_MAP_HOST_ID,
   SATELLITE_MAP_HOST_ID,
   subjectOnlyMapPins,
   type ComparablesMapPin,
@@ -103,6 +104,55 @@ export function fillMethodRow(sec: Element, methods: [string, string, string]) {
   cells.forEach((cell, i) => {
     if (methods[i] != null) cell.textContent = methods[i]!;
   });
+}
+
+/**
+ * §25 with «مستند ذو قيمة» additions: «قيمة العقار» becomes the value after the liquidation
+ * discount (unrounded), each added document follows on its own line, then «القيمة الإجمالية»;
+ * the banner shows that total, rounded once, and its words.
+ */
+export function fillValueAdditions(sec: Element, fill: ValuationReportLiveFill) {
+  if (fill.valueAdditions.length === 0) return;
+  const doc = sec.ownerDocument;
+  const propertyRow = [...sec.querySelectorAll("tr")].find(
+    (tr) => normalizeSpaces(tr.querySelector("td.k")?.textContent ?? "") === "قيمة العقار",
+  );
+  if (!propertyRow) return;
+  const propertyLabel = propertyRow.querySelector("td.k");
+  const propertyValue = propertyLabel?.nextElementSibling;
+  if (propertyLabel) propertyLabel.textContent = "قيمة العقار بعد خصم التصفية";
+  if (propertyValue) propertyValue.textContent = fill.propertyValueAfterLiquidation || "—";
+
+  const makeRow = (label: string, value: string, total = false) => {
+    const tr = doc.createElement("tr");
+    if (total) tr.className = "total";
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = label;
+    const v = doc.createElement("td");
+    v.className = "v num";
+    v.setAttribute("colspan", "3");
+    v.textContent = value;
+    tr.append(k, v);
+    return tr;
+  };
+  let anchor: Element = propertyRow;
+  for (const a of fill.valueAdditions) {
+    const row = makeRow(`+ ${a.label}`, a.value);
+    anchor.after(row);
+    anchor = row;
+  }
+  anchor.after(makeRow("القيمة الإجمالية", fill.finalDisplay.replace(/\s*ر\.س\.?$/, ""), true));
+
+  const banner = [...sec.querySelectorAll("div")].find((d) =>
+    (d.getAttribute("style") ?? "").includes("#102b4e"),
+  );
+  const title = banner?.children[0]?.children[0];
+  if (title) title.textContent = "القيمة النهائية الإجمالية";
+}
+
+function normalizeSpaces(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }
 
 export function fillFinalBanner(sec: Element, fill: ValuationReportLiveFill) {
@@ -421,7 +471,13 @@ export function syncNumberedRows(scope: Element, count: number) {
   });
 }
 
-export function fillAdjustmentSection(sec: Element, fill: ValuationReportLiveFill) {
+export function fillAdjustmentSection(
+  sec: Element,
+  fill: Pick<
+    ValuationReportLiveFill,
+    "adjustmentRows" | "adjustmentComparisonLabel" | "adjustmentNotes"
+  >,
+) {
   // One column per comparable: the per-comparable rows carry `count` values, the two total rows one.
   const colCount = fill.adjustmentRows.reduce(
     (m, r) => Math.max(m, r.values.length),
@@ -1193,6 +1249,18 @@ export function fillAttachmentAndGlossarySections(
     fill.comparablesMapPins ?? [],
     "خريطة مواقع المقارنات — اسحب الصورة هنا",
     options?.interactiveComparablesMap === true,
+  );
+  // §20 — land comparables of the cost approach on their own map.
+  fillGoogleMapHostSlot(
+    dom,
+    "map-land-comparables",
+    LAND_COMPARABLES_MAP_HOST_ID,
+    fill.landComparablesMapPins ?? [],
+    fill.landComparableMapSlot,
+    "خريطة مواقع مقارنات الأراضي — تظهر بعد اعتماد مقارنات الأرض",
+    "خريطة مواقع مقارنات الأراضي",
+    options?.interactiveComparablesMap === true,
+    { heightPx: 240, mapType: "hybrid" },
   );
 
   const photos = fill.photoSlots ?? [];

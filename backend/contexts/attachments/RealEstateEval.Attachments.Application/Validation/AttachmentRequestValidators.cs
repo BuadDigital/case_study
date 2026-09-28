@@ -27,6 +27,20 @@ public sealed class UploadAttachmentRequestValidator : AbstractValidator<UploadA
     }
 }
 
+
+public sealed class ReviewValueDocumentRequestValidator
+    : AbstractValidator<ReviewValueDocumentRequest>
+{
+    public ReviewValueDocumentRequestValidator()
+    {
+        RuleFor(x => x.Decision).NotEmpty().WithMessage("اختر القرار")
+            .MaximumLength(16)
+            .OverridePropertyName("decision");
+        RuleFor(x => x.Note).MaximumLength(512)
+            .OverridePropertyName("note");
+    }
+}
+
 public sealed class SetAttachmentDocumentTypeRequestValidator
     : AbstractValidator<SetAttachmentDocumentTypeRequest>
 {

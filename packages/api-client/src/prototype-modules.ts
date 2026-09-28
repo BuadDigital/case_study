@@ -1,5 +1,5 @@
 import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { mergeHeaderRecords, withIdempotencyKey } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";
@@ -454,10 +454,10 @@ async function keyEnvelopeMutation(
   try {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: {
-        ...headers(config.token, idempotencyKey),
-        ...init?.headers,
-      },
+      headers: mergeHeaderRecords(
+        headers(config.token, idempotencyKey),
+        init?.headers,
+      ),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -676,11 +676,13 @@ export async function addKeyEnvelopeAssignment(
   config: PrototypeModulesApiConfig,
   envelopeId: string,
   body: AddKeyEnvelopeAssignmentRequest,
+  idempotencyKey?: string,
 ): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/assignments`,
     { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
   );
 }
 
@@ -776,6 +778,10 @@ export type FileAttachmentMetaDto = {
   documentTypeKey?: string | null;
   customDocumentLabel?: string | null;
   customDocumentReason?: string | null;
+  /** «مستند ذو قيمة» only — the case specialist's decision. */
+  valueDocStatus?: "pending" | "approved" | "rejected" | null;
+  valueDocReviewNote?: string | null;
+  valueDocReviewedAtUtc?: string | null;
 };
 
 type PhotoMetadataDto = {
@@ -857,6 +863,25 @@ export function setAttachmentDocumentType(
     config,
     `/api/attachments/${encodeURIComponent(id)}/document-type`,
     "PUT",
+    body,
+  );
+}
+
+export type ReviewValueDocumentRequest = {
+  decision: "approved" | "rejected";
+  note?: string | null;
+};
+
+/** The case specialist approves or rejects a «مستند ذو قيمة». */
+export function reviewValueDocument(
+  config: PrototypeModulesApiConfig,
+  id: string,
+  body: ReviewValueDocumentRequest,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto>> {
+  return sendAttachmentDocumentChange(
+    config,
+    `/api/attachments/${encodeURIComponent(id)}/value-document-review`,
+    "POST",
     body,
   );
 }

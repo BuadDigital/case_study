@@ -766,21 +766,32 @@ export function buildReconSheetRows(
       kinds: ["market", "comparison"],
     },
     {
-      key: "أسلوب التكلفة — طريقة التكلفة (الإحلال)",
+      key: "أسلوب التكلفة — طريقة المقاول",
       kinds: ["cost", "replacement"],
     },
-    { key: "أسلوب الدخل", kinds: ["income"], optional: true },
+    { key: "أسلوب الدخل", kinds: ["income"] },
   ];
   const rows: SheetTableRow[] = [];
+  // Reconciliation is between the indicators of the approaches in use — an approach that was
+  // not chosen is not listed at all (no «غير مستخدم» rows).
   for (const slot of slots) {
     const line = reconWeight(recon, slot.kinds);
-    const unused = line.weight === "غير مستخدم";
-    if (slot.optional && unused) continue;
+    if (line.weight === "غير مستخدم") continue;
     rows.push({
       key: slot.key,
-      values: unused
-        ? ["غير مستخدم", "غير مستخدم", "—"]
-        : [dashSheet(line.value), dashSheet(line.weight), dashSheet(line.contrib)],
+      values: [dashSheet(line.value), dashSheet(line.weight), dashSheet(line.contrib)],
+    });
+  }
+  // «مستند ذو قيمة» indicators — one row per method the appraiser took from a document.
+  for (const m of recon?.methods ?? []) {
+    if (!m.valueDocumentAttachmentId || m.isIncluded === false) continue;
+    rows.push({
+      key: m.labelAr,
+      values: [
+        dashSheet(formatMoneyCell(m.approachValue)),
+        dashSheet(formatSheetPct(m.weightPct) || `${m.weightPct}٪`),
+        dashSheet(formatMoneyCell(m.contributionValue)),
+      ],
     });
   }
   rows.push({

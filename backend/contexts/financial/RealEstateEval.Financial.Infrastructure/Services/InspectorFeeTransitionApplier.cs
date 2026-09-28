@@ -127,6 +127,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             if (!InspectorFeeBillingRules.ValidateDiscount(
                     ledger.SupervisorDiscountSar,
                     ledger.DiscountReason,
+                    ledger.AgreedFeeSar,
                     out var discountError))
             {
                 return discountError;
@@ -159,6 +160,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             if (!InspectorFeeBillingRules.ValidateDiscount(
                     ledger.SupervisorDiscountSar,
                     ledger.DiscountReason,
+                    ledger.AgreedFeeSar,
                     out var discountError))
             {
                 return discountError;
@@ -195,6 +197,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             if (!InspectorFeeBillingRules.ValidateDiscount(
                     ledger.SupervisorDiscountSar,
                     ledger.DiscountReason,
+                    ledger.AgreedFeeSar,
                     out var resolveDiscountError))
             {
                 return resolveDiscountError;

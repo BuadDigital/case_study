@@ -76,7 +76,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         contentType: input.contentType,
         contentBase64: arrayBufferToBase64(input.bytes),
       });
-      if (!upload.ok) return fail(userId, upload.kind, "تعذّر رفع المرفق");
+      if (!upload.ok) return fail(userId, upload.kind, "تعذّر رفع المرفق", true);
       return { ok: true, attachmentId: upload.data.id };
     },
     saveSubmission: async (input) => {
@@ -137,6 +137,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         payload.text ?? "",
         payload.kind,
         payload.files,
+        input.idempotencyKey,
       );
       if (!result.ok) {
         return fail(userId, result.kind, "تعذّر إضافة التعليق", true);
@@ -150,7 +151,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
       >(input.bodyJson);
       if (!body) return invalidPayloadFailure("بيانات مسار الدخول غير صالحة");
       const result = await upsertPropertyCourtAccess(modulesConfig, body);
-      if (!result.ok) return fail(userId, result.kind, "تعذّر حفظ مسار الدخول");
+      if (!result.ok) return fail(userId, result.kind, "تعذّر حفظ مسار الدخول", true);
       return { ok: true };
     },
     createKeyEnvelope: async (input) => {
@@ -186,8 +187,9 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
           deedNumber: payload.deedNumber,
           propertyId: payload.propertyId ?? null,
         },
+        input.idempotencyKey,
       );
-      if (!result.ok) return fail(userId, result.kind, "تعذّر إضافة الإسناد");
+      if (!result.ok) return fail(userId, result.kind, "تعذّر إضافة الإسناد", true);
       return { ok: true };
     },
     confirmKeyEnvelopeAssignment: async (input) => {

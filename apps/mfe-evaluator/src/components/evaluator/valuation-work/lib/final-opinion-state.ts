@@ -6,6 +6,7 @@
 import type {
   ValuationCostApproachDto,
   ValuationReconciliationMethodDto,
+  ValuationValueDocumentAdditionDto,
 } from "@platform/api-client";
 import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
@@ -20,7 +21,14 @@ export type FinalOpinionInputs = {
   cost: ValuationCostApproachDto | null;
   buildingOnly: boolean;
   hasAdoptedMarket: boolean;
+  /** «مستند ذو قيمة» amounts added after the liquidation discount (no weight, no discount). */
+  additions?: ValuationValueDocumentAdditionDto[];
 };
+
+/** Reconciliation row of a «مستند ذو قيمة» indicator (`doc:{attachmentId}`). */
+export function isDocumentIndicatorKind(kind: string): boolean {
+  return kind.startsWith("doc:");
+}
 
 /** Live value-opinion calc (interactive-form spec) plus `buildOpinion` text. */
 export function finalOpinionComputed({
@@ -32,17 +40,22 @@ export function finalOpinionComputed({
   cost,
   buildingOnly,
   hasAdoptedMarket,
+  additions = [],
 }: FinalOpinionInputs) {
-    const weightSumLocal = reconMethods.reduce((s, m) => s + (m.weightPct || 0), 0);
+    const included = reconMethods.filter((m) => m.isIncluded);
+    const weightSumLocal = included.reduce((s, m) => s + (m.weightPct || 0), 0);
     const reconWeightsBad =
-      reconMethods.length >= 2 && Math.round(weightSumLocal) !== 100;
+      reconMethods.length >= 2
+      && included.length > 0
+      && Math.round(weightSumLocal) !== 100;
     // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
+    // A sole method is always the full indicator (server forces weight 100 / included).
     const weightedLocal =
       reconMethods.length === 0
         ? 0
         : reconMethods.length === 1
           ? reconMethods[0].approachValue
-          : reconMethods.reduce(
+          : included.reduce(
               (s, m) => s + m.approachValue * ((m.weightPct || 0) / 100),
               0,
             );
@@ -55,8 +68,13 @@ export function finalOpinionComputed({
     const costComplete = buildingOnly
       ? costBuildReady
       : costBuildReady && !!cost?.landEstimateComplete;
+    // A document indicator carries the value the appraiser entered — always complete.
     const methodComplete = (kind: string) =>
-      kind === "cost" ? costComplete : hasAdoptedMarket;
+      isDocumentIndicatorKind(kind)
+        ? true
+        : kind === "cost"
+          ? costComplete
+          : hasAdoptedMarket;
     const isLiquidation = basisOfValueKey === "liquidation";
     const discountPctNum = isLiquidation
       ? Number(liquidationDiscountPct.replace(",", ".")) || 0
@@ -67,14 +85,20 @@ export function finalOpinionComputed({
       6,
     );
     const roundPow = 10 ** decNum;
+    // Property value after the discount stays unrounded; document additions join it as they
+    // are, and the total is rounded once.
+    const propertyAfterDiscount = weightedLocal - forcedCut;
+    const additionsTotal = additions.reduce((s, a) => s + (a.value || 0), 0);
     const finalLocal =
-      Math.round((weightedLocal - forcedCut) / roundPow) * roundPow;
+      Math.round((propertyAfterDiscount + additionsTotal) / roundPow) * roundPow;
     const roundNote =
       decNum === 0
         ? "بلا تقريب — أقرب ريال"
         : `مقرَّبة لأقرب ${fmt(roundPow)} ريال`;
     const soleCost =
       reconMethods.length === 1 && reconMethods[0]?.approachKind === "cost";
+    const soleDocument =
+      reconMethods.length === 1 && isDocumentIndicatorKind(reconMethods[0]?.approachKind ?? "");
 
     // buildOpinion — auto-generated final-opinion text.
     const basisLabel =
@@ -84,7 +108,11 @@ export function finalOpinionComputed({
     if (!reconMethods.length) {
       linesOut.push("لم يُختَر أي أسلوب تقييم بعد.");
     } else if (reconMethods.length === 1) {
-      if (soleCost && !buildingOnly) {
+      if (soleDocument) {
+        linesOut.push(
+          `اعتُمد ${reconMethods[0].labelAr} وحده، بالقيمة الواردة في المستند. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.`,
+        );
+      } else if (soleCost && !buildingOnly) {
         linesOut.push(
           "اعتُمد أسلوب التكلفة. قُدّرت قيمة الأرض بطريقة المقارنات باعتبارها فضاء، وقُدّرت قيمة التحسينات بطريقة المقاول على أساس تكلفة الإحلال ناقصاً الإهلاك، والقيمة النهائية هي حاصل جمعهما. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
@@ -111,8 +139,15 @@ export function finalOpinionComputed({
     }
     if (discountPctNum > 0)
       linesOut.push(forcedSaleDiscountOpinionLine(discountPctNum));
+    for (const a of additions) {
+      linesOut.push(`أُضيفت قيمة «${a.labelAr}»: ${fmt(a.value)} ر.س، دون ترجيح أو خصم.`);
+    }
     linesOut.push(`أساس القيمة المستخدم: ${basisLabel}.`);
-    linesOut.push(`الرأي النهائي في قيمة العقار: ${fmt(finalLocal)} ر.س.`);
+    linesOut.push(
+      additions.length > 0
+        ? `${FINAL_TOTAL_OPINION_PREFIX} ${fmt(finalLocal)} ر.س.`
+        : `الرأي النهائي في قيمة العقار: ${fmt(finalLocal)} ر.س.`,
+    );
 
     return {
       weightSumLocal,
@@ -121,6 +156,8 @@ export function finalOpinionComputed({
       isLiquidation,
       discountPctNum,
       forcedCut,
+      propertyAfterDiscount,
+      additionsTotal,
       finalLocal,
       roundNote,
       soleCost,
@@ -128,6 +165,9 @@ export function finalOpinionComputed({
       opinionAuto: linesOut.join("\n"),
     };
 }
+
+/** Last line of the auto opinion when «مستند ذو قيمة» amounts are added. */
+export const FINAL_TOTAL_OPINION_PREFIX = "القيمة النهائية الإجمالية:";
 
 export type FinalOpinionComputed = ReturnType<typeof finalOpinionComputed>;
 
@@ -162,8 +202,10 @@ export function syncDiscountLineInOpinion(
     withoutDiscount.splice(basisIdx, 0, nextLine);
     return withoutDiscount.join("\n");
   }
-  const finalIdx = withoutDiscount.findIndex((line) =>
-    line.trim().startsWith("الرأي النهائي في قيمة العقار:"),
+  const finalIdx = withoutDiscount.findIndex(
+    (line) =>
+      line.trim().startsWith("الرأي النهائي في قيمة العقار:") ||
+      line.trim().startsWith(FINAL_TOTAL_OPINION_PREFIX),
   );
   if (finalIdx >= 0) {
     withoutDiscount.splice(finalIdx, 0, nextLine);
@@ -232,9 +274,22 @@ export function looksLikeAutoFinalOpinion(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
   return (
-    t.includes("الرأي النهائي في قيمة العقار:") &&
-    (t.includes("اعتُمد أسلوب") || t.includes("مؤشر "))
+    (t.includes("الرأي النهائي في قيمة العقار:") || t.includes(FINAL_TOTAL_OPINION_PREFIX)) &&
+    (t.includes("اعتُمد أسلوب") || t.includes("اعتُمد ") || t.includes("مؤشر "))
   );
+}
+
+/** Sole method → 100% included; otherwise inclusion follows a positive weight. */
+export function normalizeReconMethodsForSave(
+  methods: ValuationReconciliationMethodDto[],
+): ValuationReconciliationMethodDto[] {
+  if (methods.length === 1) {
+    return [{ ...methods[0]!, weightPct: 100, isIncluded: true }];
+  }
+  return methods.map((m) => ({
+    ...m,
+    isIncluded: m.isIncluded && (m.weightPct || 0) > 0,
+  }));
 }
 
 /** Draft state to the save request body. */
@@ -246,8 +301,13 @@ export function reconciliationSaveRequest(draft: ReconciliationDraft) {
     basisOfValueKey: draft.basisOfValueKey,
     valuePremiseKey: draft.valuePremiseKey || null,
     liquidationDiscountPct:
-      Number(draft.liquidationDiscountPct.replace(",", ".")) || 0,
-    liquidationDiscountRationale: draft.liquidationDiscountRationale || null,
+      draft.basisOfValueKey === "liquidation"
+        ? Number(draft.liquidationDiscountPct.replace(",", ".")) || 0
+        : 0,
+    liquidationDiscountRationale:
+      draft.basisOfValueKey === "liquidation"
+        ? draft.liquidationDiscountRationale || null
+        : null,
     methodologyAlertOverrides: Object.entries(draft.alertOverrides).map(
       ([code, v]) => ({
         code,
@@ -255,7 +315,7 @@ export function reconciliationSaveRequest(draft: ReconciliationDraft) {
         acknowledged: v.acknowledged,
       }),
     ),
-    methods: draft.reconMethods.map((m, i) => ({
+    methods: normalizeReconMethodsForSave(draft.reconMethods).map((m, i) => ({
       id: m.id,
       approachKind: m.approachKind,
       weightPct: m.weightPct,

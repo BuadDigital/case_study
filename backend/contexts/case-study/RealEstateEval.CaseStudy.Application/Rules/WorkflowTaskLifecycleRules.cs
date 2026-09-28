@@ -140,6 +140,24 @@ public static class WorkflowTaskLifecycleRules
     public static WorkflowTask? LinkedSlot(IEnumerable<WorkflowTask> tasksForPo, Guid propertyId) =>
         tasksForPo.FirstOrDefault(t => t.Kind == CaseStudyPropertyKind && t.PropertyId == propertyId);
 
+    /// <summary>
+    /// Bulk PO / property task deletes must not erase live or completed work.
+    /// Slot delete already refuses Done / CaseStudy phases; these endpoints used to skip that.
+    /// </summary>
+    public static string? CascadeDeleteBlockedReason(IEnumerable<WorkflowTask> tasks)
+    {
+        foreach (var task in tasks)
+        {
+            if (task.Status == WorkflowTaskStatus.Completed
+                || task.Phase is WorkflowTaskPhase.Done or WorkflowTaskPhase.CaseStudy)
+            {
+                return "لا يمكن حذف مهام عليها عمل مكتمل أو دراسة حالة قائمة — أزل العقار من أمر العمل أولاً";
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Field-inspection submissions own a workspace row that must go with them.</summary>
     public static List<Guid> FieldInspectionTaskIds(IEnumerable<PartyTaskSubmission> submissions) =>
         submissions

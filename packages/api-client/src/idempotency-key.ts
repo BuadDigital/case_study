@@ -8,13 +8,39 @@ export function createIdempotencyKey(): string {
   return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/** Flatten HeadersInit so spreading into a fetch init object keeps every header. */
+export function headersToRecord(headers: HeadersInit): Record<string, string> {
+  if (headers instanceof Headers) {
+    const out: Record<string, string> = {};
+    headers.forEach((value, name) => {
+      out[name] = value;
+    });
+    return out;
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return { ...headers };
+}
+
+export function mergeHeaderRecords(
+  ...parts: Array<HeadersInit | undefined>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of parts) {
+    if (!part) continue;
+    Object.assign(out, headersToRecord(part));
+  }
+  return out;
+}
+
 /** Attach a stable idempotency key to a mutating request. Generates one when omitted. */
 export function withIdempotencyKey(
   headers: HeadersInit,
   key: string = createIdempotencyKey(),
-): HeadersInit {
-  const next = new Headers(headers);
-  next.set(IDEMPOTENCY_HEADER, key);
+): Record<string, string> {
+  const next = headersToRecord(headers);
+  next[IDEMPOTENCY_HEADER] = key;
   return next;
 }
 
