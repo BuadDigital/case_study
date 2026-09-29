@@ -299,6 +299,10 @@ function subjectCoordsForReport(
   });
 }
 
+function googleMapOnly<T extends { contentType: string }>(img: T | null): T | null {
+  return img && !img.contentType.includes("svg") ? img : null;
+}
+
 /** §16 — أسلوب التكلفة is valued by طريقة المقاول; the land component only when land is in scope. */
 function contractorMethodLabel(
   costScopeKey: string | null | undefined,
@@ -1089,7 +1093,8 @@ export function buildValuationReportLiveFill(input: {
       label: String(i + 1),
     })),
   });
-  const generatedMap = resolveComparablesMapImage(mapPins);
+  // Only a real Google map prints — never the schematic SVG stand-in.
+  const generatedMap = googleMapOnly(resolveComparablesMapImage(mapPins));
   const landMapPins = collectComparablesMapPins({
     subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
     subjectLng: subjectCoords?.lng ?? inspector?.mapLongitude,
@@ -1102,7 +1107,8 @@ export function buildValuationReportLiveFill(input: {
       label: String(i + 1),
     })),
   });
-  const generatedLandMap = landComps.length > 0 ? resolveComparablesMapImage(landMapPins) : null;
+  const generatedLandMap =
+    landComps.length > 0 ? googleMapOnly(resolveComparablesMapImage(landMapPins)) : null;
   const landComparableMapSlot: ValuationReportSlotAttachment | null = generatedLandMap
     ? {
         attachmentId: "generated-land-comps-map",

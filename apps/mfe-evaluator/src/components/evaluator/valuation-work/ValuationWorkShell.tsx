@@ -22,7 +22,6 @@ import {
   Card,
   CardPad,
   CardTitle,
-  GhostBtn,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { ComparablesBankTable } from "./ComparablesBankTable";
@@ -125,7 +124,6 @@ export function ValuationWorkShell({
     landSelection,
     subjectArea,
     analysisNotes,
-    setAnalysisNotes,
     factorDefinitions,
     catalogFactorOptions,
     approachSettings,
@@ -160,8 +158,6 @@ export function ValuationWorkShell({
   } = data;
 
   const {
-    saveSubjectArea,
-    clearAnalysisNotes,
     onAdoptMarket,
     onAdoptLand,
     onSaveBankOverride,
@@ -267,41 +263,6 @@ export function ValuationWorkShell({
       );
     }
 
-    const analysisCard = (
-      <Card>
-        <CardPad>
-          <div className="mb-3 flex items-center justify-between gap-2.5">
-            <span className="text-[14.5px] font-extrabold text-heading">
-              تحليل التسويات
-            </span>
-            <div className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  "text-[11px] font-semibold",
-                  narrativeDirty ? "text-red-text" : "text-gold-d",
-                )}
-              >
-                {narrativeDirty
-                  ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
-                  : "يتحدث تلقائياً مع المبررات"}
-              </span>
-              {narrativeDirty ? (
-                <GhostBtn disabled={saving} onClick={clearAnalysisNotes}>
-                  ↺ استرجاع النص التلقائي
-                </GhostBtn>
-              ) : null}
-            </div>
-          </div>
-          <textarea
-            rows={9}
-            value={narrativeDirty ? analysisNotes : autoNarrative}
-            onChange={(e) => setAnalysisNotes(e.target.value)}
-            onBlur={() => void saveSubjectArea()}
-            className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-4 py-3.5 text-[13px] font-medium leading-[2] text-text"
-          />
-        </CardPad>
-      </Card>
-    );
 
     return (
       <>
@@ -335,13 +296,9 @@ export function ValuationWorkShell({
               subjectSpecs={subjectSpecs}
               canEditSubjectSpec
               dispatch={dispatchMarketMatrix}
-            >
-              {analysisCard}
-            </AdjustmentsMatrix>
+            />
           </Suspense>
-        ) : (
-          analysisCard
-        )}
+        ) : null}
         {gates && settingsSaved ? (
           <MethodologyAlertsPanel
             gates={gates}
@@ -693,6 +650,9 @@ export function ValuationWorkShell({
                   saving={saving}
                   onSavingChange={setSaving}
                   onReconSaved={onReconSaved}
+                  marketAnalysisText={marketTab ? (narrativeDirty ? analysisNotes : autoNarrative) : ""}
+                  costAnalysisEnabled={costTab}
+                  costBasisKey={approachSettings?.costBasisKey || "replacement"}
                 />
               </Suspense>
             ) : null}

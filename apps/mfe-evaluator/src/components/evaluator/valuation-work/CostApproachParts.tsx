@@ -7,7 +7,6 @@ import {
   Card,
   CardPad,
   FieldLabel,
-  GhostBtn,
 } from "./atoms";
 import { INDIRECT_COST_ITEMS } from "./lib/cost-line-math";
 import { costNum } from "./lib/cost-approach-state";
@@ -430,52 +429,6 @@ export function CostResultsCard({
           </div>
         </div>
       </div>
-    </Card>
-  );
-}
-
-/** Cost analysis notes — auto text until edited, then manual with a reset. */
-export function CostAnalysisCard({
-  notes,
-  autoNarrative,
-  dirty,
-  saving,
-  onChange,
-}: {
-  notes: string;
-  autoNarrative: string;
-  dirty: boolean;
-  saving: boolean;
-  onChange: (value: string) => void;
-}) {
-  const displayed = dirty ? notes : autoNarrative;
-  return (
-    <Card>
-      <CardPad>
-        <div className="mb-3 flex items-center justify-between gap-3.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[14.5px] font-extrabold text-heading">
-              تحليل التكلفة
-            </span>
-            <span className="text-[11.5px] font-normal text-text-3">
-              {dirty
-                ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
-                : "يتحدث تلقائياً مع المبررات"}
-            </span>
-          </div>
-          {dirty ? (
-            <GhostBtn disabled={saving} onClick={() => onChange("")}>
-              ↺ استرجاع النص التلقائي
-            </GhostBtn>
-          ) : null}
-        </div>
-        <textarea
-          rows={Math.max(3, Math.min(8, displayed.split("\n").length + 1))}
-          value={displayed}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3 py-2.5 text-[13px] font-medium leading-[1.65] text-text"
-        />
-      </CardPad>
     </Card>
   );
 }

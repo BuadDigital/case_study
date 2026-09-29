@@ -215,6 +215,26 @@ export function syncDiscountLineInOpinion(
   return withoutDiscount.join("\n");
 }
 
+/**
+ * «إدراج التحليلات»: the adjustments and cost analyses of the approaches in use, each under its
+ * heading, ready to add to «مبرر الرأي النهائي». Empty analyses are skipped.
+ */
+export function analysesForRationale(input: { market?: string; cost?: string }): string {
+  const parts: string[] = [];
+  const market = input.market?.trim();
+  const cost = input.cost?.trim();
+  if (market) parts.push(`تحليل التسويات:\n${market}`);
+  if (cost) parts.push(`تحليل التكلفة:\n${cost}`);
+  return parts.join("\n\n");
+}
+
+/** Appends the analyses to what the appraiser already wrote (never replaces it). */
+export function appendAnalysesToRationale(current: string, analyses: string): string {
+  const text = analyses.trim();
+  if (!text) return current;
+  return current.trim() ? `${current.trimEnd()}\n\n${text}` : text;
+}
+
 /** PO selection wins; saved recon is fallback; assignment type is last resort. */
 export function workOrderPremiseKey({
   poPremise,

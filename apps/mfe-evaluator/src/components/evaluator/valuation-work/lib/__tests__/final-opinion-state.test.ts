@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationReconciliationMethodDto } from "@platform/api-client";
 import {
+  analysesForRationale,
+  appendAnalysesToRationale,
   finalOpinionComputed,
   forcedSaleDiscountOpinionLine,
   looksLikeAutoFinalOpinion,
@@ -261,3 +263,20 @@ describe("finalOpinionComputed — «مستند ذو قيمة»", () => {
     expect(result.methodComplete("doc:abc")).toBe(true);
   });
 });
+
+describe("إدراج التحليلات", () => {
+  it("puts each analysis under its heading and skips empty ones", () => {
+    expect(analysesForRationale({ market: " سوق ", cost: "" })).toBe("تحليل التسويات:\nسوق");
+    expect(analysesForRationale({ market: "سوق", cost: "تكلفة" })).toBe(
+      "تحليل التسويات:\nسوق\n\nتحليل التكلفة:\nتكلفة",
+    );
+    expect(analysesForRationale({})).toBe("");
+  });
+
+  it("appends to what the appraiser wrote, never replacing it", () => {
+    expect(appendAnalysesToRationale("", "تحليل")).toBe("تحليل");
+    expect(appendAnalysesToRationale("رأيي  ", "تحليل")).toBe("رأيي\n\nتحليل");
+    expect(appendAnalysesToRationale("رأيي", "  ")).toBe("رأيي");
+  });
+});
+

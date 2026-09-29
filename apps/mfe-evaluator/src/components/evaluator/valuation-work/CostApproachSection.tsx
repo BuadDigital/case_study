@@ -8,7 +8,6 @@ import { CostApproachLinesTable } from "./CostApproachLinesTable";
 import {
   CostAgeCard,
   CostAlertsCard,
-  CostAnalysisCard,
   CostIndirectCard,
   CostLandValueCard,
   CostResultsCard,
@@ -70,8 +69,6 @@ export const CostApproachSection = memo(function CostApproachSection({
     totals,
     derived,
     costAlerts,
-    costNarrativeDirty,
-    costNarrativeAuto,
     seedCostFromInventory,
     saveCost,
   } = workflow;
@@ -128,14 +125,6 @@ export const CostApproachSection = memo(function CostApproachSection({
         derived={derived}
         buildAreaLocal={totals.buildAreaLocal}
         buildingOnly={buildingOnly}
-      />
-
-      <CostAnalysisCard
-        notes={fields.costAnalysisNotes}
-        autoNarrative={costNarrativeAuto}
-        dirty={costNarrativeDirty}
-        saving={saving}
-        onChange={(value) => setField("costAnalysisNotes", value)}
       />
 
       <CostAlertsCard alerts={costAlerts} />

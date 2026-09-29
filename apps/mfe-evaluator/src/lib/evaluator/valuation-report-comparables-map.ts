@@ -444,7 +444,7 @@ export function printMapsNotice(d: PrintMapsDiagnostics): string | null {
   if (d.googleAvailable || !d.denialReason) return null;
 
   const consequences: string[] = [];
-  if (d.compsSchematic) consequences.push("تُطبع خريطة تخطيطية بديلة في البند 18");
+  if (d.compsSchematic) consequences.push("لا تُطبع خريطة مواقع المقارنات");
   if (d.satelliteMissing && d.closeupMissing) consequences.push("يبقى البند 33 فارغًا");
   else if (d.satelliteMissing) consequences.push("تبقى خريطة الأقمار الصناعية في البند 33 فارغة");
   else if (d.closeupMissing) consequences.push("تبقى الصورة المقربة في البند 33 فارغة");
@@ -549,8 +549,11 @@ export async function materializePrintMapSlots(input: {
   note(satellite);
   note(closeup);
 
+  // No Google map ⇒ no comps map at all (the schematic SVG stand-in is not printed).
   let comparableMapSlot = input.comparableMapSlot;
-  if (comps) {
+  if (wantComps && (!comps || comps.source === "svg")) {
+    comparableMapSlot = null;
+  } else if (comps) {
     comparableMapSlot = {
       attachmentId: GENERATED_COMPS_MAP_ID,
       url: comps.url,

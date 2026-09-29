@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type {
   ValuationCostApproachDto,
   ValuationIssuanceGatesDto,
@@ -25,6 +25,8 @@ import {
 import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 import { ValueDocumentsPanel } from "./ValueDocumentsPanel";
+import { buildCostNarrative, costFieldsFromDto } from "./lib/cost-approach-state";
+import { analysesForRationale, appendAnalysesToRationale } from "./lib/final-opinion-state";
 
 /** Invoice line from the interactive-form spec — label | value | note. */
 function OpinionInvoiceRow({
@@ -85,6 +87,9 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   saving,
   onSavingChange,
   onReconSaved,
+  marketAnalysisText = "",
+  costAnalysisEnabled = false,
+  costBasisKey = "replacement",
 }: {
   valuationRequestId: string | null;
   recon: ValuationReconciliationDto | null;
@@ -100,6 +105,10 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   saving: boolean;
   onSavingChange: (saving: boolean) => void;
   onReconSaved: (dto: ValuationReconciliationDto) => void;
+  /** «تحليل التسويات» as shown on طريقة المقارنة (empty when the market approach is off). */
+  marketAnalysisText?: string;
+  costAnalysisEnabled?: boolean;
+  costBasisKey?: string;
 }) {
   const workflow = useFinalOpinionWorkflow({
     valuationRequestId,
@@ -138,6 +147,16 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     saveReconciliation,
   } = workflow;
   const additions = recon?.additions ?? [];
+  // «تحليل التكلفة»: the appraiser's text when edited, else the generated one — as on طريقة المقاول.
+  const analysesText = useMemo(() => {
+    let costText = "";
+    if (costAnalysisEnabled && cost) {
+      const fields = costFieldsFromDto(cost);
+      costText =
+        fields.costAnalysisNotes.trim() || buildCostNarrative(fields, cost.lines ?? [], costBasisKey);
+    }
+    return analysesForRationale({ market: marketAnalysisText, cost: costText });
+  }, [marketAnalysisText, costAnalysisEnabled, cost, costBasisKey]);
 
   return (
     <>
@@ -503,10 +522,21 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </p>
             ) : null}
 
-            <div className="mt-[13px] mb-2">
+            <div className="mt-[13px] mb-2 flex items-center justify-between gap-2">
               <span className="text-[11px] font-semibold text-text-3">
-                مبرر الرأي النهائي — يكتبه المقيم
+               توصيات المقييم و الرأي النهائي للقيمة
               </span>
+              <button
+                type="button"
+                disabled={saving || !analysesText}
+                title={analysesText ? undefined : "لا يوجد تحليل تسويات أو تكلفة بعد"}
+                onClick={() =>
+                  setMethodsRationale(appendAnalysesToRationale(methodsRationale, analysesText))
+                }
+                className="rounded-md border border-border-md bg-surface px-2.5 py-1 text-[11px] font-bold text-heading disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                إدراج التحليلات
+              </button>
             </div>
             <textarea
               rows={6}
