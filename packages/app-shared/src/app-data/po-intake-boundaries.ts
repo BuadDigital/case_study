@@ -9,18 +9,18 @@ export const PROPERTY_BOUNDARY_ROWS = [
     label: "الحد الشمالي",
   },
   {
-    descKey: "southBoundary",
-    lenKey: "southBoundaryLengthM",
-    typeKey: "southBoundaryType",
-    facadeKey: "southFacadeFinishing",
-    label: "الحد الجنوبي",
-  },
-  {
     descKey: "eastBoundary",
     lenKey: "eastBoundaryLengthM",
     typeKey: "eastBoundaryType",
     facadeKey: "eastFacadeFinishing",
     label: "الحد الشرقي",
+  },
+  {
+    descKey: "southBoundary",
+    lenKey: "southBoundaryLengthM",
+    typeKey: "southBoundaryType",
+    facadeKey: "southFacadeFinishing",
+    label: "الحد الجنوبي",
   },
   {
     descKey: "westBoundary",

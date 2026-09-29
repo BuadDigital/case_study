@@ -317,8 +317,8 @@ export function EngineeringSurveyAdvisoryPanel({
       {(
         [
           ["شمال", submission.northBoundary, submission.northBoundaryLengthM],
-          ["جنوب", submission.southBoundary, submission.southBoundaryLengthM],
           ["شرق", submission.eastBoundary, submission.eastBoundaryLengthM],
+          ["جنوب", submission.southBoundary, submission.southBoundaryLengthM],
           ["غرب", submission.westBoundary, submission.westBoundaryLengthM],
         ] as const
       ).map(([dir, bound, len]) =>
@@ -353,14 +353,14 @@ export function EngineeringSurveyAdvisoryPanel({
                 submission.natureNorthBoundaryLengthM ?? "",
               ],
               [
-                "جنوب",
-                submission.natureSouthBoundary ?? "",
-                submission.natureSouthBoundaryLengthM ?? "",
-              ],
-              [
                 "شرق",
                 submission.natureEastBoundary ?? "",
                 submission.natureEastBoundaryLengthM ?? "",
+              ],
+              [
+                "جنوب",
+                submission.natureSouthBoundary ?? "",
+                submission.natureSouthBoundaryLengthM ?? "",
               ],
               [
                 "غرب",

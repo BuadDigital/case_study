@@ -608,7 +608,8 @@ describe("valuation report live fill from intake", () => {
       } as never,
     });
     expect(fill.boundaries[0]?.face).toBe("حجر");
-    expect(fill.boundaries[2]?.face).toBe("دهان");
+    // Sides are ordered north, east, south, west.
+    expect(fill.boundaries[1]?.face).toBe("دهان");
     expect(fill.cells["نوع الواجهة الشمالية"]).toBe("حجر");
     expect(fill.cells["تشطيب الواجهة الشمالية"]).toBe("حجر");
     expect(fill.cells["نوع الواجهة الجنوبية"]).toBe("—");
@@ -643,8 +644,8 @@ describe("valuation report live fill from intake", () => {
         },
       } as never,
     });
-    // Old boundary type ignored, specialist facade, specialist facade, inspector facade wins.
-    expect(fill.boundaries.map((b) => b.face)).toEqual(["", "رخام", "دهان قديم", "حجر"]);
+    // North, east, south, west: old boundary type ignored, specialist facades, inspector facade wins.
+    expect(fill.boundaries.map((b) => b.face)).toEqual(["", "دهان قديم", "رخام", "حجر"]);
     expect(fill.cells["نوع الواجهة الشمالية"]).toBe("—");
   });
 
@@ -1386,15 +1387,18 @@ describe("valuation report live fill from intake", () => {
       "text/html",
     );
     applyValuationReportLiveFill(dom, fill);
-    expect(dom.querySelector('[data-sec="13"] td.v')?.textContent).toContain("تشقق");
+    // §13 «وصف العيوب الإنشائية» is no longer printed.
+    expect(dom.querySelector('[data-sec="13"]')).toBeNull();
     expect(dom.querySelector('[data-sec="11"] td.k + td.v')?.textContent).not.toContain(
       "ملاحظة أصل",
     );
     const other11 = [...dom.querySelectorAll('[data-sec="11"] td.k')].find(
       (td) => td.textContent === "أخرى",
     )?.nextElementSibling;
-    expect(other11?.textContent).toBe("—");
-    expect(dom.querySelector('[data-sec="15"]')?.textContent).toContain("يوجد");
+    // «أخرى» left blank is not printed; «يوجد» reads as a tick.
+    expect(other11).toBeUndefined();
+    expect(dom.querySelector('[data-sec="15"]')?.textContent).not.toContain("أخرى");
+    expect(dom.querySelector('[data-sec="15"]')?.textContent).toContain("✓");
     const deal = [
       ...dom.querySelectorAll('[data-sec="17"] tr')[1].querySelectorAll("td"),
     ];
@@ -1721,6 +1725,6 @@ describe("approaches vs methods — reconciliation only between approach indicat
       marketApproachEnabled: false,
       landMarket: { weightedPricePerSqm: 2000, subjectAreaSqm: 400, marketOpinionValue: 800_000, items: [] } as never,
     });
-    expect(fill.landAdjustmentComparisonLabel).toBe("قيمة الأرض (2,000 × 400 م²)");
+    expect(fill.landAdjustmentComparisonLabel).toBe("قيمة الأرض");
   });
 });

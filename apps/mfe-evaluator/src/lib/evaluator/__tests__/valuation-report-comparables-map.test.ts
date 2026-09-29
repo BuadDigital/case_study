@@ -458,9 +458,8 @@ describe("print map slots (§18 + §33)", () => {
     expect(
       dom.querySelector('[data-slot-id="map-closeup"] img')?.getAttribute("src"),
     ).toBe("data:image/png;base64,close");
-    expect(
-      dom.querySelector('[data-slot-id="map-closeup"] figcaption')?.textContent,
-    ).toBe("صورة مقربة للموقع");
+    // Maps print without the small grey caption — the section heading names them.
+    expect(dom.querySelector('[data-slot-id="map-closeup"] figcaption')).toBeNull();
   });
 });
 

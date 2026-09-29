@@ -201,7 +201,8 @@ describe("valuation report live fill attachments and glossary", () => {
     expect(photoFig?.getAttribute("style") ?? "").not.toMatch(/height\s*:\s*100px/i);
     const frame = photoFig?.querySelector(".attach-fig-frame");
     expect(frame?.getAttribute("style") ?? "").toMatch(/height\s*:\s*100px/i);
-    expect(photoFig?.querySelector("figcaption")?.textContent).toContain("صور العقار");
+    // Property photos print without the small grey caption.
+    expect(photoFig?.querySelector("figcaption")).toBeNull();
     expect(dom.querySelector("#photo-2")).toBeNull();
     expect(dom.querySelector("iframe.attach-pdf")).toBeNull();
     expect(dom.querySelector(".attach-pdf-note")?.textContent).toContain(

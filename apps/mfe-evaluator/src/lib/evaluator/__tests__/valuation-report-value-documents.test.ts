@@ -91,3 +91,39 @@ describe("«مستند ذو قيمة» in the report", () => {
     expect(sec.textContent).toContain("القيمة النهائية الإجمالية");
   });
 });
+
+describe("§19 adjustments sheet layout", () => {
+  it("splits factor rows into description | % under each comparable and rules the groups", async () => {
+    const { fillAdjustmentSection } = await import("../valuation-report-live-fill-dom");
+    document.body.innerHTML = `
+      <section data-sec="19"><table class="mx">
+        <tr><th>عناصر المقارنة</th><th>العقار المقارن (1)</th></tr>
+        <tr class="sub"><td class="v">سعر البيع بعد تسوية شروط التمويل وظروف السوق</td><td class="num">—</td></tr>
+        <tr class="total"><td class="v">القيمة بطريقة المقارنة</td><td class="num">—</td></tr>
+      </table><table><tr><td class="k">مبررات التسويات</td><td class="v">—</td></tr></table></section>`;
+    const sec = document.querySelector('[data-sec="19"]')!;
+    fillAdjustmentSection(sec, {
+      adjustmentRows: [
+        { key: "قيمة العقارات المقارنة", values: ["180,000.00", "199,800.00"] },
+        { key: "سعر البيع بعد تسوية شروط التمويل وظروف السوق", values: ["285.00", "333.00"] },
+        { key: "تسوية المساحة", values: ["", ""], pairs: [["600.00", "5.00٪"], ["600.00", "٪"]] },
+        { key: "الموقع العام", values: ["", ""], pairs: [["الفيحاء", "٪"], ["الفيحاء", "٪"]] },
+        { key: "مجموع نسب التسويات (٪)", values: ["5.00٪", "5.00٪"] },
+        { key: "القيمة بطريقة المقارنة", values: ["125,868.00"] },
+      ],
+      adjustmentComparisonLabel: "القيمة بطريقة المقارنة",
+      adjustmentNotes: "",
+    });
+    const rows = [...sec.querySelectorAll("table.mx tr")];
+    expect([...rows[0]!.querySelectorAll("th")].map((th) => th.getAttribute("colspan"))).toEqual([null, "2", "2"]);
+    expect(rows[1]!.querySelectorAll("td")[1]!.getAttribute("colspan")).toBe("2");
+    expect([...rows[3]!.querySelectorAll("td")].map((td) => td.textContent)).toEqual([
+      "تسوية المساحة", "600.00", "5.00٪", "600.00", "٪",
+    ]);
+    expect(rows[3]!.className).toContain("grp");
+    expect(rows[5]!.className).toContain("grp");
+    expect(rows[2]!.className).toBe("sub");
+    expect(rows[6]!.className).toBe("total");
+    expect(rows[6]!.querySelectorAll("td")[1]!.getAttribute("colspan")).toBe("4");
+  });
+});

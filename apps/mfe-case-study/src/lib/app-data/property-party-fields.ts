@@ -130,8 +130,8 @@ const MOVABLES_AND_OCCUPANCY_DEFS: PartyFieldDef[] = [
 
 const BOUNDARY_SIDES: readonly { key: string; label: string }[] = [
   { key: "north", label: "الشمالي" },
-  { key: "south", label: "الجنوبي" },
   { key: "east", label: "الشرقي" },
+  { key: "south", label: "الجنوبي" },
   { key: "west", label: "الغربي" },
 ];
 
@@ -231,19 +231,19 @@ export const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
     text("onSiteAreaSqm", L.onSiteArea, true),
     text("northBoundary", L.northBoundary),
     text("northBoundaryLengthM", L.northLength, true),
-    text("southBoundary", L.southBoundary),
-    text("southBoundaryLengthM", L.southLength, true),
     text("eastBoundary", L.eastBoundary),
     text("eastBoundaryLengthM", L.eastLength, true),
+    text("southBoundary", L.southBoundary),
+    text("southBoundaryLengthM", L.southLength, true),
     text("westBoundary", L.westBoundary),
     text("westBoundaryLengthM", L.westLength, true),
     text("natureOnSiteAreaSqm", "المساحة على الطبيعة (م²)", true),
     text("natureNorthBoundary", "الحد الشمالي — على الطبيعة"),
     text("natureNorthBoundaryLengthM", "طول الحد الشمالي — على الطبيعة (م)", true),
-    text("natureSouthBoundary", "الحد الجنوبي — على الطبيعة"),
-    text("natureSouthBoundaryLengthM", "طول الحد الجنوبي — على الطبيعة (م)", true),
     text("natureEastBoundary", "الحد الشرقي — على الطبيعة"),
     text("natureEastBoundaryLengthM", "طول الحد الشرقي — على الطبيعة (م)", true),
+    text("natureSouthBoundary", "الحد الجنوبي — على الطبيعة"),
+    text("natureSouthBoundaryLengthM", "طول الحد الجنوبي — على الطبيعة (م)", true),
     text("natureWestBoundary", "الحد الغربي — على الطبيعة"),
     text("natureWestBoundaryLengthM", "طول الحد الغربي — على الطبيعة (م)", true),
     area("surveyNotes", L.surveyNotes),

@@ -142,8 +142,12 @@ function removeSections(dom: Document, ids: readonly string[]) {
   ids.forEach((id) => dom.querySelector(`[data-sec="${id}"]`)?.remove());
 }
 
-function removeLabeledPairs(dom: Document, labels: ReadonlySet<string>) {
-  dom.querySelectorAll("td.k").forEach((labelCell) => {
+function removeLabeledPairs(
+  dom: Document,
+  labels: ReadonlySet<string>,
+  scope: ParentNode = dom,
+) {
+  scope.querySelectorAll("td.k").forEach((labelCell) => {
     if (!labels.has(normLabel(labelCell.textContent ?? ""))) return;
     const row = labelCell.closest("tr");
     const valueCell = labelCell.nextElementSibling;
@@ -172,7 +176,59 @@ function removeEmptyOptionalPairs(dom: Document, fill: ValuationReportLiveFill) 
   for (const label of HIDE_WHEN_EMPTY_LABELS) {
     if (isBlankReportCell(fill.cells[label])) labels.add(label);
   }
-  if (labels.size) removeLabeledPairs(dom, labels);
+  if (!labels.size) return;
+  removeLabeledPairs(dom, labels);
+  // §07 — close the gaps the hidden pairs leave: the remaining pairs flow three per row.
+  const site = dom.querySelector('[data-sec="7"] table');
+  if (site) reflowPairTable(site, 3);
+}
+
+/**
+ * A yes/no checklist table (ملحقات، المحيط): drops the «أخرى» pair when nothing was written,
+ * closes the gap it leaves, and shows «يوجد» as ✓.
+ */
+function tidyPresenceTable(sec: Element, other: string, perRow: number) {
+  const table = sec.querySelector("table");
+  if (!table) return;
+  if (isBlankReportCell(other)) {
+    removeLabeledPairs(sec.ownerDocument, new Set(["أخرى"]), sec);
+    reflowPairTable(table, perRow);
+  }
+  for (const label of [...table.querySelectorAll("td.k")]) {
+    const value = label.nextElementSibling;
+    if (!value || normLabel(value.textContent ?? "") !== "يوجد") continue;
+    value.textContent = "✓";
+    value.setAttribute("style", "text-align:center;font-weight:700;color:#2f7a4c");
+  }
+}
+
+/**
+ * Re-lays a label/value table so its pairs fill the rows in order, `perRow` per row; the last
+ * value of a short final row stretches to the table edge instead of leaving empty cells.
+ */
+function reflowPairTable(table: Element, perRow: number) {
+  const pairs: Array<[Element, Element]> = [];
+  for (const label of [...table.querySelectorAll("td.k")]) {
+    const value = label.nextElementSibling;
+    if (value && !value.classList.contains("k")) pairs.push([label, value]);
+  }
+  if (pairs.length === 0) return;
+  const doc = table.ownerDocument;
+  const rows: Element[] = [];
+  for (let i = 0; i < pairs.length; i += perRow) {
+    const tr = doc.createElement("tr");
+    const chunk = pairs.slice(i, i + perRow);
+    chunk.forEach(([label, value], j) => {
+      value.removeAttribute("colspan");
+      if (j === chunk.length - 1 && chunk.length < perRow) {
+        value.setAttribute("colspan", String((perRow - chunk.length) * 2 + 1));
+      }
+      tr.append(label, value);
+    });
+    rows.push(tr);
+  }
+  const body = table.querySelector("tbody") ?? table;
+  body.replaceChildren(...rows);
 }
 
 function removeFacadeColumn(dom: Document) {
@@ -195,7 +251,8 @@ function removeFacadeColumn(dom: Document) {
 function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill) {
   // §09 «تفاصيل المساحات» is no longer printed; its areas and the built-up total moved
   // into §10 «مكونات العقار». Dropped here too so older stored templates follow suit.
-  removeSections(dom, ["9"]);
+  // §13 «وصف العيوب الإنشائية» is not printed either (dropped from older stored templates).
+  removeSections(dom, ["9", "13"]);
   // Market off (e.g. contractor method only) ⇒ no property comparables, map or adjustments.
   if (!fill.marketApproachEnabled) {
     removeSections(dom, ["17", "18", "19"]);
@@ -317,6 +374,10 @@ export function applyValuationReportLiveFill(
 
   const feat = dom.querySelector('[data-sec="11"]');
   if (feat) fillKeyedInSection(feat, "أخرى", fill.attachmentsOther);
+
+  // §11 ملحقات / §15 المحيط: «أخرى» prints only when written; «يوجد» reads as a tick.
+  if (feat) tidyPresenceTable(feat, fill.attachmentsOther, 4);
+  if (surr) tidyPresenceTable(surr, fill.surroundingsOther, 4);
 
   const services = dom.querySelector('[data-sec="14"]');
   if (services) fillKeyedRows(services, fill.serviceRows);
