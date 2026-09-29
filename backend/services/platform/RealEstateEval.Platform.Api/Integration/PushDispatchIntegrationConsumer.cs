@@ -137,10 +137,13 @@ public sealed class PushDispatchIntegrationConsumer : BackgroundService
         {
             try
             {
+                // Not the stopping token: a delivery cancelled by shutdown (e.g. a rolling
+                // deploy) must still free its claim, or the redelivery is skipped as a duplicate.
+                using var releaseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 using var releaseScope = _scopeFactory.CreateScope();
                 await releaseScope.ServiceProvider
                     .GetRequiredService<IIntegrationEventInbox>()
-                    .ReleaseAsync(ConsumerName, eventId, stoppingToken);
+                    .ReleaseAsync(ConsumerName, eventId, releaseTimeout.Token);
             }
             catch (Exception releaseEx)
             {

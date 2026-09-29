@@ -1283,6 +1283,22 @@ export function fillComparablesMapSlot(
   );
 }
 
+/**
+ * A comparables map with no image (Google unavailable) leaves an empty heading behind — drop the
+ * §18 section and the land-map caption so the report shows no blank map block.
+ */
+function dropEmptyMapBlocks(dom: Document) {
+  const hasMap = (scope: Element | null | undefined) =>
+    Boolean(scope?.querySelector("figure, image-slot, [data-ejada-gmap], img"));
+  const comps = dom.querySelector('[data-sec="18"]');
+  if (comps && !hasMap(comps)) comps.remove();
+  for (const p of [...dom.querySelectorAll("p")]) {
+    if (normLabel(p.textContent ?? "") !== "خريطة مواقع مقارنات الأراضي") continue;
+    const next = p.nextElementSibling;
+    if (!next || !(next.matches("figure, image-slot, [data-ejada-gmap]") || hasMap(next))) p.remove();
+  }
+}
+
 export function fillLocationMapsSlots(
   dom: Document,
   fill: ValuationReportLiveFill,
@@ -1346,6 +1362,8 @@ export function fillAttachmentAndGlossarySections(
     options?.interactiveComparablesMap === true,
     { heightPx: 240, mapType: "hybrid" },
   );
+
+  dropEmptyMapBlocks(dom);
 
   const photos = fill.photoSlots ?? [];
   const frames = fill.slotFrames ?? {};

@@ -266,8 +266,8 @@ describe("print map slots (§18 + §33)", () => {
       satelliteMapSlot: null,
       closeupMapSlot: null,
     });
-    expect(generated.comparableMapSlot?.attachmentId).toBe("generated-comps-map");
-    expect(generated.comparableMapSlot?.contentType).toBe("image/svg+xml");
+    // Google refused ⇒ no comps map at all (the schematic SVG is never printed).
+    expect(generated.comparableMapSlot).toBeNull();
     expect(generated.satelliteMapSlot).toBeNull();
     expect(generated.closeupMapSlot).toBeNull();
     expect(generated.diagnostics.failureKind).toBe("denied");
@@ -278,7 +278,7 @@ describe("print map slots (§18 + §33)", () => {
     expect(notice).toContain("Maps Static API");
     expect(notice).toContain("Google Cloud Console");
     expect(notice).toContain("APIs & Services → Library → Maps Static API → Enable");
-    expect(notice).toContain("تُطبع خريطة تخطيطية بديلة في البند 18 ويبقى البند 33 فارغًا");
+    expect(notice).toContain("لا تُطبع خريطة مواقع المقارنات ويبقى البند 33 فارغًا");
 
     // With the upload in place the consequence sentence only names what is really missing.
     const uploadNotice = printMapsNotice(withUpload.diagnostics);
@@ -308,7 +308,7 @@ describe("print map slots (§18 + §33)", () => {
     expect(notice).toContain("تعذّر الوصول");
     expect(notice).toContain("maps.googleapis.com");
     expect(notice).not.toContain("Google Cloud Console");
-    expect(notice).toContain("البند 18");
+    expect(notice).toContain("خريطة مواقع المقارنات");
   });
 
   it("records direct-URL slots when fetch is blocked but <img> loads", async () => {
@@ -376,12 +376,13 @@ describe("print map slots (§18 + §33)", () => {
       closeupMapSlot: null,
     });
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(withPins.comparableMapSlot?.contentType).toBe("image/svg+xml");
+    expect(withPins.comparableMapSlot).toBeNull();
     expect(withPins.satelliteMapSlot).toBeNull();
     expect(printMapsNotice(withPins.diagnostics)).toContain("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
   });
 
   it("never falls back to the §18 comps map inside §33", () => {
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "test-maps-key");
     const fill = buildValuationReportLiveFill({
       draft: createEvaluatorDraft({
         taskId: "t1",
@@ -408,13 +409,26 @@ describe("print map slots (§18 + §33)", () => {
 
     expect(dom.querySelector('[data-sec="18"] img')).not.toBeNull();
     expect(dom.querySelector('[data-sec="33"] img')).toBeNull();
-    const placeholders = [...dom.querySelectorAll('[data-sec="33"] .image-ph')].map(
-      (el) => el.textContent?.trim(),
+    // Empty map slots are dropped from the filled report (no blank boxes).
+    expect(dom.querySelector("#map-satellite")).toBeNull();
+    expect(dom.querySelector("#map-closeup")).toBeNull();
+  });
+
+  it("prints no §18 section when there is no Google map (no schematic stand-in)", () => {
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "");
+    const fill = buildValuationReportLiveFill({
+      draft: createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" }),
+      inspector: { mapLatitude: "21.8", mapLongitude: "39.1" } as never,
+    });
+    expect(fill.comparableMapSlot).toBeNull();
+    const dom = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body>
+        <section data-sec="18"><h2>خريطة مواقع المقارنات</h2><div id="map-comparables" style="width:100%;height:200px"></div></section>
+      </body></html>`,
+      "text/html",
     );
-    expect(placeholders).toEqual([
-      "خريطة الأقمار الصناعية — تُرفق صورة الموقع",
-      "صورة مقربة للموقع — تُرفق صورة",
-    ]);
+    applyValuationReportLiveFill(dom, fill);
+    expect(dom.querySelector('[data-sec="18"]')).toBeNull();
   });
 
   it("print fill puts the satellite slot in §33 upper and the close-up in §33 lower", () => {
@@ -464,6 +478,10 @@ describe("print map slots (§18 + §33)", () => {
 });
 
 describe("search notes and comparable map live fill", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   const draft = () =>
     createEvaluatorDraft({
       taskId: "t1",
@@ -472,6 +490,7 @@ describe("search notes and comparable map live fill", () => {
     });
 
   it("fills §18 map and §28 notes + research bullets", () => {
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "test-maps-key");
     const d = draft();
     d.searchScopeNotes = "اعتمدنا على مكاتب الحي فقط";
     const fill = buildValuationReportLiveFill({
@@ -500,9 +519,7 @@ describe("search notes and comparable map live fill", () => {
       researchScopeText: "مصدر أ\nمصدر ب",
     });
 
-    expect(["image/svg+xml", "image/png"]).toContain(
-      fill.comparableMapSlot?.contentType,
-    );
+    expect(fill.comparableMapSlot?.contentType).toBe("image/png");
     expect(fill.searchScopeNotes).toBe("اعتمدنا على مكاتب الحي فقط");
     expect(fill.researchScopeBullets).toEqual(["مصدر أ", "مصدر ب"]);
 
@@ -521,10 +538,7 @@ describe("search notes and comparable map live fill", () => {
 
     expect(dom.querySelector("#map-comparables")).toBeNull();
     const imgSrc = dom.querySelector('[data-sec="18"] img')?.getAttribute("src") ?? "";
-    expect(
-      imgSrc.startsWith("data:image/svg+xml") ||
-        imgSrc.includes("maps.googleapis.com/maps/api/staticmap"),
-    ).toBe(true);
+    expect(imgSrc).toContain("maps.googleapis.com/maps/api/staticmap");
     const lis = [...dom.querySelectorAll('[data-sec="28"] li')].map(
       (li) => li.textContent,
     );

@@ -242,7 +242,7 @@ jobs:
           username: ${{ secrets.HETZNER_SSH_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
-          source: "infra/docker-compose.prod.yml,infra/nginx.conf,infra/postgres/init-prod.sql"
+          source: "infra/docker-compose.prod.yml,infra/nginx.conf,infra/postgres/init-prod.sql,infra/rollout.sh"
           target: "/app"
           strip_components: 1
 
@@ -271,6 +271,8 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
           envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,JWT_PREVIOUS_SIGNING_KEY,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
+          # Rolling update waits on each service's health; allow more than the 10m default.
+          command_timeout: 25m
           script: |
             set -eu
             cd /app
@@ -366,6 +368,31 @@ jobs:
               PREVIOUS_TAG="$(cat .deploy-tag)"
             fi
 
+            # Zero-downtime rolling update helpers (rollout_service / rollout_parallel).
+            COMPOSE="docker compose -f docker-compose.prod.yml"
+            . ./rollout.sh
+
+            # Application services roll one container at a time: the new container starts
+            # next to the old one and the old one stops only once the new one is healthy.
+            # Backend services are independent of each other and roll together; the gateway
+            # and the frontend follow, so users never hit a missing upstream.
+            BACKEND_SERVICES="identity platform attachments case-study operations reporting financial valuation failures"
+            rollout_app_services() {
+              # shellcheck disable=SC2086
+              rollout_parallel $BACKEND_SERVICES \
+                && rollout_service gateway \
+                && rollout_service frontend
+            }
+
+            # nginx is recreated only when its own Compose definition changes; nginx.conf is a
+            # bind mount, so a changed file is applied with a graceful reload (no dropped
+            # connections).
+            refresh_edge() {
+              $COMPOSE up -d --no-deps nginx \
+                && $COMPOSE exec -T nginx nginx -t \
+                && $COMPOSE exec -T nginx nginx -s reload
+            }
+
             rollback_to_previous() {
               if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$TAG" ]; then
                 echo "No previous deploy tag recorded; manual rollback required"
@@ -373,8 +400,8 @@ jobs:
               fi
               echo "Rolling back to tag $PREVIOUS_TAG"
               export TAG="$PREVIOUS_TAG"
-              docker compose -f docker-compose.prod.yml pull
-              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+              $COMPOSE pull
+              rollout_app_services
             }
 
             # Persist Web Push VAPID into /app/.env so host restarts keep the same keys.
@@ -398,10 +425,17 @@ jobs:
             # Audit A-005: undo what earlier demo seeding left in live data (idempotent) and
             # print what still needs a person — see the [retire-demo] lines in this log.
             docker compose -f docker-compose.prod.yml run --rm migrate retire-demo-data
-            if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
-              echo "::error::compose up failed — dumping unhealthy service logs"
-              docker compose -f docker-compose.prod.yml ps -a || true
-              docker compose -f docker-compose.prod.yml logs --tail=200 financial failures valuation operations case-study identity || true
+            # Stateful services keep running; they are recreated only when their own
+            # definition (image version, settings) changed.
+            if ! $COMPOSE up -d --no-deps --remove-orphans postgres rabbitmq redis gotenberg; then
+              echo "::error::stateful services failed to start"
+              $COMPOSE ps -a || true
+              exit 1
+            fi
+
+            if ! rollout_app_services || ! refresh_edge; then
+              echo "::error::rolling update failed — dumping service state"
+              $COMPOSE ps -a || true
               rollback_to_previous || true
               exit 1
             fi

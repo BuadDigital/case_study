@@ -150,7 +150,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
         }
         catch (Exception ex)
         {
-            await ReleaseClaimAsync(eventId, stoppingToken);
+            await ReleaseClaimAsync(eventId);
 
  // One retry, then the message dead-letters rather than cycling forever.
             var retry = !args.Redelivered;
@@ -168,14 +168,17 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
  /// Frees the inbox claim in its own scope, because the failed scope's context may still
  /// hold the changes that could not be saved.
  /// </summary>
-    private async Task ReleaseClaimAsync(Guid eventId, CancellationToken stoppingToken)
+    private async Task ReleaseClaimAsync(Guid eventId)
     {
+        // Not the stopping token: a handler cancelled by shutdown (e.g. a rolling deploy) must
+        // still free its claim, or the redelivered message is skipped as a duplicate.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try
         {
             using var scope = _scopeFactory.CreateScope();
             await scope.ServiceProvider
                 .GetRequiredService<IIntegrationEventInbox>()
-                .ReleaseAsync(ConsumerName, eventId, stoppingToken);
+                .ReleaseAsync(ConsumerName, eventId, timeout.Token);
         }
         catch (Exception ex)
         {

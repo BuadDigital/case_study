@@ -7,7 +7,6 @@ import {
   Card,
   CardPad,
   FieldLabel,
-  GhostBtn,
 } from "./atoms";
 import { INDIRECT_COST_ITEMS } from "./lib/cost-line-math";
 import { costNum } from "./lib/cost-approach-state";
@@ -369,7 +368,10 @@ export function CostAgeCard({
   );
 }
 
-/** Results and recommendations — the interactive-form two-panel summary. */
+/**
+ * Results and recommendations — laid out like the market approach's output strip: the unit
+ * rate on the right, the unrounded approach value on the left.
+ */
 export function CostResultsCard({
   derived,
   buildAreaLocal,
@@ -380,102 +382,52 @@ export function CostResultsCard({
   buildingOnly: boolean;
 }) {
   const { totalCostLocal, netValueLocal, costValueLocal, landComplete } = derived;
+  const perSqm = (value: number) => (buildAreaLocal > 0 ? fmt(value / buildAreaLocal) : "—");
   return (
     <Card className="mb-6">
       <div className="flex items-stretch">
         <div className="flex-1 border-e border-border px-[22px] py-[18px]">
-          <div className="mb-[9px] text-xs font-medium text-text-2">
-            سعر متر المباني للعقار
+          <div className="mb-[9px] text-[12px] font-medium text-text-2">
+            قيمة متر المباني بعد الإهلاك
           </div>
-          <div dir="ltr" className="text-2xl font-extrabold leading-none text-heading">
-            {buildAreaLocal > 0 ? fmt(totalCostLocal / buildAreaLocal) : "—"}
+          <div
+            dir="ltr"
+            className="text-start text-[24px] font-extrabold leading-none text-heading"
+          >
+            {perSqm(netValueLocal)}
           </div>
-          <div className="mt-[7px] text-[11.5px] text-text-3">
-            قبل الإهلاك · التكلفة الإجمالية ÷{" "}
-            <span dir="ltr">{fmt(buildAreaLocal, 1)}</span> م² مسطحات
-          </div>
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">ريال / م²</div>
           <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
-            بعد الإهلاك:{" "}
-            <span dir="ltr">
-              {buildAreaLocal > 0 ? fmt(netValueLocal / buildAreaLocal) : "—"}
-            </span>{" "}
-            ر.س. / م²
+            قبل الإهلاك: <span dir="ltr">{perSqm(totalCostLocal)}</span> ر.س/م²
           </div>
         </div>
         <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
           <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
-          <div className="mb-[9px] text-xs font-bold text-heading">
-            ناتج أسلوب التكلفة — المباني دون الأرض
+          <div className="mb-[9px] text-[12px] font-bold text-heading">
+            قيمة المباني قبل التقريب
           </div>
-          <div dir="ltr" className="text-[30px] font-extrabold leading-none text-heading">
+          <div
+            dir="ltr"
+            className="text-start text-[24px] font-extrabold leading-none text-heading"
+          >
             {fmt(netValueLocal)}
           </div>
-          <div className="mt-[7px] text-[11.5px] text-text-3">
-            التكلفة الإجمالية − الإهلاك · بلا تقريب
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
+            التكلفة الإجمالية − الإهلاك
+            {buildingOnly ? null : landComplete ? (
+              <>
+                {" "}
+                · مع قيمة الأرض: <span dir="ltr">{fmt(costValueLocal)}</span> ر.س
+              </>
+            ) : (
+              " · يلزم قيمة الأرض لاكتمال مؤشر الأسلوب"
+            )}
           </div>
-          <div className="mt-[5px] text-[11px] text-gold-d">
-            {buildingOnly
-              ? "النطاق «مبنى فقط» — هذا هو مؤشر الأسلوب"
-              : landComplete
-                ? (
-                    <>
-                      مع قيمة الأرض:{" "}
-                      <span dir="ltr" className="font-bold">
-                        {fmt(costValueLocal)}
-                      </span>{" "}
-                      ر.س. — للاسترشاد
-                    </>
-                  )
-                : "مؤشر الأسلوب غير مكتمل — يلزم قيمة الأرض"}
+          <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
+            بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
           </div>
         </div>
       </div>
-    </Card>
-  );
-}
-
-/** Cost analysis notes — auto text until edited, then manual with a reset. */
-export function CostAnalysisCard({
-  notes,
-  autoNarrative,
-  dirty,
-  saving,
-  onChange,
-}: {
-  notes: string;
-  autoNarrative: string;
-  dirty: boolean;
-  saving: boolean;
-  onChange: (value: string) => void;
-}) {
-  const displayed = dirty ? notes : autoNarrative;
-  return (
-    <Card>
-      <CardPad>
-        <div className="mb-3 flex items-center justify-between gap-3.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[14.5px] font-extrabold text-heading">
-              تحليل التكلفة
-            </span>
-            <span className="text-[11.5px] font-normal text-text-3">
-              {dirty
-                ? "نص محرَّر يدوياً — لا يتحدث تلقائياً"
-                : "يتحدث تلقائياً مع المبررات"}
-            </span>
-          </div>
-          {dirty ? (
-            <GhostBtn disabled={saving} onClick={() => onChange("")}>
-              ↺ استرجاع النص التلقائي
-            </GhostBtn>
-          ) : null}
-        </div>
-        <textarea
-          rows={Math.max(3, Math.min(8, displayed.split("\n").length + 1))}
-          value={displayed}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3 py-2.5 text-[13px] font-medium leading-[1.65] text-text"
-        />
-      </CardPad>
     </Card>
   );
 }
