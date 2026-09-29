@@ -315,7 +315,22 @@ git push origin main
    اختبارات الحاويات (Testcontainers) والتغطية **لا** تعمل عند كل نشر لأنها تسيطر على زمن التشغيل.
    تعمل ليلياً (2:00 UTC)، أو عند تشغيل يدوي مع تفعيل خيار `full_suite`.
 2. **build-and-push** — بناء 12 صورة (الواجهة + Gateway + 9 خدمات + أداة الهجرة) ورفعها إلى GHCR بوسمين: `latest` و `<sha>`.
-3. **deploy** — نسخ ملفات Compose إلى `/app`، تسجيل الدخول لـ GHCR، `docker compose pull`، تشغيل `migrate` مرة واحدة، ثم `up -d`، ثم فحص صحة Gateway و Identity و Case Study، ثم فحص HTTPS من الخارج، وأخيراً حذف صور الإصدارات الأقدم من السابق.
+3. **deploy** — نسخ ملفات Compose و`rollout.sh` إلى `/app`، تسجيل الدخول لـ GHCR، `docker compose pull`، تشغيل `migrate` مرة واحدة، ثم **تحديث متدرّج بلا توقف** (انظر أدناه)، ثم فحص صحة Gateway و Identity و Case Study، ثم فحص HTTPS من الخارج، وأخيراً حذف صور الإصدارات الأقدم من السابق.
+
+### النشر بلا توقف (Zero-downtime)
+
+خدمات التطبيق (الخدمات التسع + Gateway + الواجهة) تُحدَّث بـ `infra/rollout.sh` بدل `up -d`:
+
+1. تُشغَّل الحاوية الجديدة **بجانب** القديمة (`--scale <خدمة>=2 --no-recreate`).
+2. انتظار أن تصبح الجديدة `healthy` (فحص كل ثانيتين أثناء الإقلاع — `start_interval`).
+3. 8 ثوانٍ تعمل فيها الاثنتان معاً، حتى يرى nginx وعملاء HTTP الحاوية الجديدة في DNS (nginx يعيد الحل كل 5 ثوانٍ).
+4. إيقاف القديمة بلطف (`docker stop -t 30`) ثم حذفها.
+
+- الخدمات الخلفية تُحدَّث معاً، ثم Gateway، ثم الواجهة. nginx لا يُعاد إنشاؤه؛ تغيير `nginx.conf` يُطبَّق بـ `nginx -s reload`.
+- إذا لم تصبح الحاوية الجديدة سليمة تُحذف وتبقى القديمة تخدم، ويفشل النشر ويتراجع التطبيق للإصدار السابق بنفس الطريقة المتدرجة.
+- nginx يعيد المحاولة على الحاوية الأخرى عند رفض الاتصال أو 502/503 (`proxy_next_upstream`) — الطلبات غير المتكررة (POST) لا تُعاد إذا وصلت للخادم.
+- **لا تضع `container_name` لخدمات التطبيق** في `docker-compose.prod.yml` ولا تنشر لها منافذ: حاويتان لنفس الخدمة لازم تتعايشان. الخدمات ذات الحالة (postgres، rabbitmq، redis، gotenberg، nginx) تبقى بأسمائها الثابتة وتُعاد فقط إذا تغيّر تعريفها.
+- **المايجريشن:** تعمل قبل التحديث، والإصداران القديم والجديد يعملان لثوانٍ على نفس القاعدة. حذف عمود أو إعادة تسميته يُقسم على نشرين (أضف أولاً، واحذف في النشر التالي) حتى لا يتعطل الإصدار القديم خلال التداخل.
 
 الـ Pull Requests تشغّل **الاختبارات فقط** — لا بناء ولا نشر.
 
@@ -348,7 +363,12 @@ export TAG=latest
 docker login ghcr.io -u <username> --password <token>
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml run --rm migrate
-docker compose -f docker-compose.prod.yml up -d --remove-orphans
+docker compose -f docker-compose.prod.yml up -d --no-deps postgres rabbitmq redis gotenberg
+# تحديث بلا توقف لخدمات التطبيق (نفس ما يفعله الـ CI)
+. ./rollout.sh
+rollout_parallel identity platform attachments case-study operations reporting financial valuation failures   && rollout_service gateway && rollout_service frontend
+docker compose -f docker-compose.prod.yml up -d --no-deps nginx
+docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
 ```
 
 ---
@@ -363,7 +383,8 @@ cd /app
 export IMAGE_OWNER=buaddigital
 export TAG=<sha-الإصدار-المطلوب>
 docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+. ./rollout.sh
+rollout_parallel identity platform attachments case-study operations reporting financial valuation failures   && rollout_service gateway && rollout_service frontend
 ```
 
 ---

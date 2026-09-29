@@ -1,6 +1,12 @@
 # Production stack for Real Estate Evaluation on Hetzner Cloud.
 # Usage: IMAGE_OWNER=your-github-username TAG=<sha> docker compose -f docker-compose.prod.yml up -d
 # Always run the migrate one-shot before (or via) deploy — apps never migrate in Production.
+#
+# Zero-downtime deploys: the application services (identity … gateway, frontend) carry no
+# container_name and no published ports, so infra/rollout.sh can start the new container next
+# to the running one and stop the old one only once the new one is healthy. Keep it that way:
+# a fixed container_name on an app service makes the rolling update impossible. The stateful
+# and edge services (postgres, rabbitmq, redis, gotenberg, nginx) keep their fixed names.
 
 name: realestate-eval-prod
 
@@ -10,6 +16,9 @@ x-app-healthcheck: &app-healthcheck
   timeout: 5s
   retries: 5
   start_period: 40s
+  # During start_period probe every 2s, so a new container is marked healthy as soon as it is
+  # ready (the rolling update waits on this) instead of after the first 15s interval.
+  start_interval: 2s
 
 x-otel-env: &otel-env
   # Public TLS terminates at nginx. Trust the single private-network proxy hop so
@@ -142,7 +151,6 @@ services:
 
   identity:
     image: ghcr.io/${IMAGE_OWNER}/case_study/identity:${TAG:-latest}
-    container_name: ree-prod-identity
     restart: always
     logging: *default-logging
     environment:
@@ -171,7 +179,6 @@ services:
 
   case-study:
     image: ghcr.io/${IMAGE_OWNER}/case_study/case-study:${TAG:-latest}
-    container_name: ree-prod-case-study
     restart: always
     logging: *default-logging
     environment:
@@ -219,7 +226,6 @@ services:
 
   operations:
     image: ghcr.io/${IMAGE_OWNER}/case_study/operations:${TAG:-latest}
-    container_name: ree-prod-operations
     restart: always
     logging: *default-logging
     environment:
@@ -257,7 +263,6 @@ services:
 
   reporting:
     image: ghcr.io/${IMAGE_OWNER}/case_study/reporting:${TAG:-latest}
-    container_name: ree-prod-reporting
     restart: always
     logging: *default-logging
     environment:
@@ -283,7 +288,6 @@ services:
 
   financial:
     image: ghcr.io/${IMAGE_OWNER}/case_study/financial:${TAG:-latest}
-    container_name: ree-prod-financial
     restart: always
     logging: *default-logging
     environment:
@@ -316,7 +320,6 @@ services:
 
   valuation:
     image: ghcr.io/${IMAGE_OWNER}/case_study/valuation:${TAG:-latest}
-    container_name: ree-prod-valuation
     restart: always
     logging: *default-logging
     environment:
@@ -353,7 +356,6 @@ services:
 
   failures:
     image: ghcr.io/${IMAGE_OWNER}/case_study/failures:${TAG:-latest}
-    container_name: ree-prod-failures
     restart: always
     logging: *default-logging
     environment:
@@ -388,7 +390,6 @@ services:
 
   platform:
     image: ghcr.io/${IMAGE_OWNER}/case_study/platform:${TAG:-latest}
-    container_name: ree-prod-platform
     restart: always
     logging: *default-logging
     environment:
@@ -422,7 +423,6 @@ services:
 
   attachments:
     image: ghcr.io/${IMAGE_OWNER}/case_study/attachments:${TAG:-latest}
-    container_name: ree-prod-attachments
     restart: always
     logging: *default-logging
     environment:
@@ -452,7 +452,6 @@ services:
 
   gateway:
     image: ghcr.io/${IMAGE_OWNER}/case_study/gateway:${TAG:-latest}
-    container_name: ree-prod-gateway
     restart: always
     logging: *default-logging
     environment:
@@ -483,10 +482,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 2s
 
   frontend:
     image: ghcr.io/${IMAGE_OWNER}/case_study/frontend:${TAG:-latest}
-    container_name: ree-prod-frontend
     restart: always
     logging: *default-logging
     environment:
@@ -501,6 +500,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 2s
 
   nginx:
     image: nginx:1.27.4-alpine
