@@ -123,5 +123,4 @@ export const CASE_STUDY_FORM_STEPS = [
 ] as const;
 
 /** Default question bank per section. */
-export const CASE_STUDY_SECTION_QUESTIONS =
-  DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions;
+export const CASE_STUDY_SECTION_QUESTIONS = DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions;

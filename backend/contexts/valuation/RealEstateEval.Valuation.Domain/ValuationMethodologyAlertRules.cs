@@ -169,8 +169,10 @@ public static class ValuationMethodologyAlertRules
 
         return
         [
+            // Only when the cost approach is in use: buildings valued by the market approach alone
+            // (e.g. an apartment by comparable sales) need no cost table.
             Eval(1, ValuationMethodologyAlertCodes.NoCostLine, "لا يوجد بند تكلفة",
-                input.CostApproachRelevant || input.HasStructuresToValue,
+                input.CostApproachRelevant,
                 () => lines.Count == 0,
                 "جدول التكلفة فارغ",
                 resolutions),
