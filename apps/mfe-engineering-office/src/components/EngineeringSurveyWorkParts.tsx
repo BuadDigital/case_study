@@ -100,8 +100,8 @@ export function mergeRemoteSurveyDraft(
 
 export const BOUNDARY_ROWS = [
   ["northBoundary", "northBoundaryLengthM", "الحد الشمالي", "طول الحد الشمالي (م)"],
-  ["southBoundary", "southBoundaryLengthM", "الحد الجنوبي", "طول الحد الجنوبي (م)"],
   ["eastBoundary", "eastBoundaryLengthM", "الحد الشرقي", "طول الحد الشرقي (م)"],
+  ["southBoundary", "southBoundaryLengthM", "الحد الجنوبي", "طول الحد الجنوبي (م)"],
   ["westBoundary", "westBoundaryLengthM", "الحد الغربي", "طول الحد الغربي (م)"],
 ] as const;
 
@@ -113,16 +113,16 @@ export const NATURE_BOUNDARY_ROWS = [
     "طول الحد الشمالي (م)",
   ],
   [
-    "natureSouthBoundary",
-    "natureSouthBoundaryLengthM",
-    "الحد الجنوبي",
-    "طول الحد الجنوبي (م)",
-  ],
-  [
     "natureEastBoundary",
     "natureEastBoundaryLengthM",
     "الحد الشرقي",
     "طول الحد الشرقي (م)",
+  ],
+  [
+    "natureSouthBoundary",
+    "natureSouthBoundaryLengthM",
+    "الحد الجنوبي",
+    "طول الحد الجنوبي (م)",
   ],
   [
     "natureWestBoundary",

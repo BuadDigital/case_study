@@ -63,6 +63,17 @@ function applyMeta(dom: Document, meta: ValuationReportV3Meta) {
 }
 
 /** Page numbers from the live document — the template hardcodes "Page N of 20". */
+/**
+ * Sections the report drops (areas, defects, approaches not used, land-only cuts…) leave gaps in
+ * the printed numbering. Number the headings that remain 01, 02, … in reading order, as the
+ * approved copy does.
+ */
+export function renumberSections(dom: Document) {
+  dom.querySelectorAll("section[data-sec] h2 span.n").forEach((num, i) => {
+    num.textContent = String(i + 1).padStart(2, "0");
+  });
+}
+
 function renumberPages(dom: Document) {
   const pages = [...dom.querySelectorAll("section.page.pg")];
   const total = pages.length;
@@ -699,6 +710,7 @@ export function prepareValuationReportV3Html(
     removeEmptyPages(dom);
   }
   mergeGlossarySections(dom);
+  renumberSections(dom);
   if (mode === "print") paginatePropertyPhotoPages(dom);
   renumberPages(dom);
   const branding = meta.branding ?? BRAND_IDENTITY_DEFAULTS;

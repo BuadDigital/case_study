@@ -82,6 +82,7 @@ export function fillBoundaries(
   sec: Element,
   rows: ValuationReportLiveFill["boundaries"],
 ) {
+  const filled: Array<{ tr: Element; order: number }> = [];
   sec.querySelectorAll("tr").forEach((tr) => {
     const cells = [...tr.querySelectorAll("td")];
     if (cells.length < 2) return;
@@ -91,8 +92,15 @@ export function fillBoundaries(
     if (cells[1]) cells[1].textContent = dash(row.bound);
     if (cells[2]) cells[2].textContent = dash(row.len);
     if (cells[3]) cells[3].textContent = dash(row.face);
+    filled.push({ tr, order: BOUNDARY_SIDE_ORDER.indexOf(name) });
   });
+  // Sides always print north, east, south, west — also for templates stored in the old order.
+  filled
+    .sort((a, b) => a.order - b.order)
+    .forEach(({ tr }) => tr.parentElement?.appendChild(tr));
 }
+
+const BOUNDARY_SIDE_ORDER = ["الشمالية", "الشرقية", "الجنوبية", "الغربية"];
 
 export function fillMethodRow(sec: Element, methods: [string, string, string]) {
   const dataRow = [...sec.querySelectorAll("tr")].find((tr) =>
@@ -391,6 +399,71 @@ export function fillKeyedRows(
 }
 
 /**
+ * §19 laid out like the adjustments sheet: each comparable owns two columns — the factor rows
+ * (area, location, streets) print the comparable's description and the % side by side, every
+ * other row spans both. Dashed lines set the factor block apart from the financing/market
+ * rows above and the totals below. Row shading (sub / total) follows the template rows.
+ */
+function rebuildAdjustmentTable(
+  table: Element,
+  rows: Array<{ key: string; values: string[]; pairs?: Array<[string, string]> }>,
+  count: number,
+) {
+  const doc = table.ownerDocument;
+  const templateClass = new Map<string, string>();
+  for (const tr of [...table.querySelectorAll("tr")]) {
+    const label = normLabel(tr.querySelector("td")?.textContent ?? "");
+    if (label && tr.className) templateClass.set(label, tr.className);
+  }
+  const classFor = (key: string) =>
+    templateClass.get(normLabel(key)) ??
+    (normLabel(key).startsWith(normLabel("القيمة بطريقة المقارنة")) ? "total" : "");
+
+  const cell = (tag: "td" | "th", text: string, className: string, span = 1) => {
+    const el = doc.createElement(tag);
+    if (className) el.className = className;
+    if (span > 1) el.setAttribute("colspan", String(span));
+    el.textContent = text;
+    return el;
+  };
+
+  const header = doc.createElement("tr");
+  const first = cell("th", "عناصر المقارنة", "");
+  first.setAttribute("style", "width:24%");
+  header.appendChild(first);
+  for (let i = 0; i < count; i++) {
+    header.appendChild(cell("th", `العقار المقارن (${i + 1})`, "", 2));
+  }
+
+  const out: Element[] = [header];
+  let inFactors = false;
+  for (const row of rows) {
+    const tr = doc.createElement("tr");
+    const isFactor = Boolean(row.pairs);
+    const classes = [classFor(row.key)];
+    // Dashed rule where the factor block starts and where the totals resume.
+    if (isFactor !== inFactors) classes.push("grp");
+    inFactors = isFactor;
+    tr.className = classes.filter(Boolean).join(" ");
+    tr.appendChild(cell("td", row.key, "v"));
+    if (row.pairs) {
+      for (const [value, pct] of row.pairs) {
+        tr.appendChild(cell("td", value, "v fac"));
+        tr.appendChild(cell("td", pct, "num pct"));
+      }
+    } else if (row.values.length === 1) {
+      tr.appendChild(cell("td", row.values[0] ?? "", "num", count * 2));
+    } else {
+      for (let i = 0; i < count; i++) {
+        tr.appendChild(cell("td", row.values[i] ?? "—", "num", 2));
+      }
+    }
+    out.push(tr);
+  }
+  table.replaceChildren(...out);
+}
+
+/**
  * Interactive form spec: one column per approved comparable (up to 5) — expand/shrink
  * adjustment-table columns in the template (header "Comparable (n)", value cells, and total-row colspans).
  */
@@ -483,8 +556,13 @@ export function fillAdjustmentSection(
     (m, r) => Math.max(m, r.values.length),
     0,
   );
-  if (colCount > 0) syncAdjustmentColumns(sec, colCount);
-  fillKeyedRows(sec, fill.adjustmentRows, "adjustment");
+  const table = sec.querySelector("table.mx");
+  if (colCount > 0 && table && fill.adjustmentRows.some((r) => r.pairs)) {
+    rebuildAdjustmentTable(table, fill.adjustmentRows, colCount);
+  } else {
+    if (colCount > 0) syncAdjustmentColumns(sec, colCount);
+    fillKeyedRows(sec, fill.adjustmentRows, "adjustment");
+  }
   sec.querySelectorAll("tr").forEach((tr) => {
     const first = tr.querySelector("td");
     if (!first) return;
@@ -500,7 +578,8 @@ export function fillAdjustmentSection(
     const text = fill.adjustmentNotes.trim();
     notesCell.replaceChildren();
     if (!text) {
-      notesCell.textContent = "—";
+      // No rationale written ⇒ no «مبررات التسويات» row in the report.
+      notesCell.closest("table")?.remove();
       return;
     }
     const ul = sec.ownerDocument.createElement("ul");
@@ -734,6 +813,11 @@ function splitSlotBoxStyle(style: string): {
   return { wrapStyle, mediaHeight };
 }
 
+/** Maps and property photos print without the small grey caption under them. */
+function isUncaptionedSlot(slotId: string): boolean {
+  return slotId.startsWith("map-") || slotId.startsWith("photo-");
+}
+
 export function fillImageSlot(
   dom: Document,
   slotId: string,
@@ -829,7 +913,9 @@ export function fillImageSlot(
       "font-size:9px;margin-top:4px;color:#3a3f4d;line-height:1.35;flex:0 0 auto";
     cap.textContent = item.labelAr || item.fileName || emptyLabel;
     frameBox.append(img);
-    wrap.append(frameBox, cap);
+    // Maps and property photos print without the small grey caption.
+    if (isUncaptionedSlot(slotId)) wrap.append(frameBox);
+    else wrap.append(frameBox, cap);
     el.replaceWith(wrap);
     return;
   }
@@ -1167,11 +1253,9 @@ export function fillGoogleMapHostSlot(
       "width:100%;height:100%;min-height:220px",
     );
     host.appendChild(mount);
-    const cap = dom.createElement("figcaption");
-    cap.style.cssText =
-      "font-size:9px;margin-top:4px;color:#3a3f4d;line-height:1.35;flex:0 0 auto";
-    cap.textContent = item?.labelAr || caption;
-    wrap.append(host, cap);
+    // No caption under the map — the section heading already names it.
+    void caption;
+    wrap.append(host);
     el.replaceWith(wrap);
     return;
   }

@@ -71,6 +71,7 @@ import {
   existsFromCount,
   existsFromYesNo,
   existsIf,
+  type SheetTableRow,
 } from "./valuation-report-sheet-facts";
 import { escHtml } from "./html-escape";
 import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
@@ -425,12 +426,12 @@ export type ValuationReportLiveFill = {
   landComparableRows: Array<{ key: string; values: string[] }>;
   landAppendixNote: string;
   /** §20 — land comparables inside the cost approach get their own adjustments table and map. */
-  landAdjustmentRows: Array<{ key: string; values: string[] }>;
+  landAdjustmentRows: SheetTableRow[];
   landAdjustmentComparisonLabel: string;
   landAdjustmentNotes: string;
   landComparableMapSlot: ValuationReportSlotAttachment | null;
   landComparablesMapPins: ComparablesMapPin[];
-  adjustmentRows: Array<{ key: string; values: string[] }>;
+  adjustmentRows: SheetTableRow[];
   adjustmentComparisonLabel: string;
   adjustmentNotes: string;
   surroundingsOther: string;
@@ -1188,22 +1189,6 @@ export function buildValuationReportLiveFill(input: {
         face: sideFacadeType(inspector, property, "north"),
       },
       {
-        name: "الجنوبية",
-        bound: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureSouthBoundary
-            : input.survey?.southBoundary,
-          property?.southBoundary,
-        ),
-        len: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureSouthBoundaryLengthM
-            : input.survey?.southBoundaryLengthM,
-          property?.southBoundaryLengthM,
-        ),
-        face: sideFacadeType(inspector, property, "south"),
-      },
-      {
         name: "الشرقية",
         bound: pickLength(
           surveyUsesNature(input.survey)
@@ -1218,6 +1203,22 @@ export function buildValuationReportLiveFill(input: {
           property?.eastBoundaryLengthM,
         ),
         face: sideFacadeType(inspector, property, "east"),
+      },
+      {
+        name: "الجنوبية",
+        bound: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureSouthBoundary
+            : input.survey?.southBoundary,
+          property?.southBoundary,
+        ),
+        len: pickLength(
+          surveyUsesNature(input.survey)
+            ? input.survey?.natureSouthBoundaryLengthM
+            : input.survey?.southBoundaryLengthM,
+          property?.southBoundaryLengthM,
+        ),
+        face: sideFacadeType(inspector, property, "south"),
       },
       {
         name: "الغربية",

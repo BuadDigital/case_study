@@ -17,6 +17,11 @@ import { costUnitLabel } from "@platform/app-shared/domain/cost-items";
 export type SheetTableRow = {
   key: string;
   values: string[];
+  /**
+   * §19 factor rows (area, location, streets): per comparable the comparable's description and
+   * the adjustment % — printed as two cells under the comparable's column.
+   */
+  pairs?: Array<[string, string]>;
 };
 
 export type SheetAreaFacts = {
@@ -565,6 +570,25 @@ function includedPct(
   return line ? formatSheetPct(line.percent) : "";
 }
 
+/** The comparable's description for one adjustment factor (compSpec), e.g. «الفيحاء» or «1». */
+function factorDescription(item: ValuationComparableSelectionDto, factorKey: string): string {
+  return (
+    item.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.descriptionAr ?? ""
+  ).trim();
+}
+
+/** Factor row cells: [description, %] per comparable, same column count as `compCols`. */
+function compPairs(
+  comps: ValuationComparableSelectionDto[],
+  pick: (item: ValuationComparableSelectionDto) => [string, string],
+): Array<[string, string]> {
+  const count = Math.min(Math.max(comps.length, 1), MAX_REPORT_COMPARABLES);
+  return Array.from({ length: count }, (_, i) => {
+    const [value, pct] = comps[i] ? pick(comps[i]!) : ["", ""];
+    return [dashSheet(value), pct || "٪"];
+  });
+}
+
 /** One column per approved comparable (up to 5) — a single dash column when none. */
 function compCols(
   comps: ValuationComparableSelectionDto[],
@@ -611,12 +635,9 @@ export function buildAdjustmentSheetRows(
     return formatSheetPct(fin + mkt);
   };
   const ppsm = market?.weightedPricePerSqm;
-  const area = market?.subjectAreaSqm;
   const opinion = market?.marketOpinionValue;
-  const comparisonLabel =
-    ppsm != null && ppsm > 0 && area != null && area > 0
-      ? `القيمة بطريقة المقارنة (${formatMoneyCell(ppsm)} × ${formatMoneyCell(area)} م²)`
-      : "القيمة بطريقة المقارنة";
+  // The label stays plain — no «(سعر المتر × المساحة)» formula beside it.
+  const comparisonLabel = "القيمة بطريقة المقارنة";
   const rows: SheetTableRow[] = [
     {
       key: "وصف العقار المقارن",
@@ -655,6 +676,10 @@ export function buildAdjustmentSheetRows(
         const p = includedPct(x, "area");
         return [areaTxt, p].filter(Boolean).join(" · ");
       }),
+      pairs: compPairs(comps, (x) => {
+        const effArea = effectiveComparableValues(x).areaSqm;
+        return [effArea ? formatMoneyCell(effArea) : "", includedPct(x, "area")];
+      }),
     },
     {
       key: "الموقع العام",
@@ -663,10 +688,18 @@ export function buildAdjustmentSheetRows(
         const p = includedPct(x, "location");
         return [d, p].filter(Boolean).join(" ");
       }),
+      pairs: compPairs(comps, (x) => [
+        (x.comparable.district ?? "").trim() || factorDescription(x, "location"),
+        includedPct(x, "location"),
+      ]),
     },
     {
       key: "عدد الشوارع",
       values: compCols(comps, (x) => includedPct(x, "street_count")),
+      pairs: compPairs(comps, (x) => [
+        factorDescription(x, "street_count"),
+        includedPct(x, "street_count"),
+      ]),
     },
     {
       key: "مجموع نسب التسويات (٪)",
