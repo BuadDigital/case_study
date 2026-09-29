@@ -73,14 +73,16 @@ public sealed class ValuationCostApproachService(
             effectivePropertyType = context?.EffectivePropertyType() ?? vr.PropertyType;
         }
 
-        var scopeKey = approachSettings?.CostScopeKey
+        // Unsaved settings follow the defaults used everywhere else, not «cost on».
+        var settings = approachSettings
+            ?? ValuationApproachSettingsRules.Defaults(valuationRequestId, effectivePropertyType, hasStructures);
+        var scopeKey = settings.CostScopeKey
             ?? ValuationApproachSettingsRules.DefaultScope(effectivePropertyType, hasStructures);
         var costAllowed = ValuationApproachSettingsRules.CostApproachApplies(
             effectivePropertyType,
             hasStructures,
             scopeKey);
-        var costEnabled = costAllowed
-            && (approachSettings?.CostApproachEnabled ?? true);
+        var costEnabled = costAllowed && settings.CostApproachEnabled;
         if (!costEnabled)
         {
             return (null, new Dictionary<string, string>

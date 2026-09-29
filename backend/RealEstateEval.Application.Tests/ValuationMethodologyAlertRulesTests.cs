@@ -190,6 +190,39 @@ public class ValuationMethodologyAlertRulesTests
     }
 
     [Fact]
+    public void Stale_cost_data_is_ignored_once_the_cost_approach_is_off()
+    {
+        // Ages, obsolescence, a negative line and out-of-range rates left from a cost approach
+        // the appraiser later switched off.
+        var stale = EmptyInput() with
+        {
+            CostApproachEnabled = false,
+            CostLines = [new("building", "مبنى", -10m, 1000m, null, true)],
+            ActualAgeYears = 40m,
+            EconomicAgeYears = 0m,
+            ExtendedLifeYears = 0m,
+            TotalObsolescencePct = 130m,
+            LifeExtensionYears = 5m,
+            FunctionalObsolescencePct = 10m,
+            UseRestrictionDiscountPct = 10m,
+            DeveloperProfitPct = 40m,
+            IndirectRatesSumPct = 60m,
+        };
+        var checks = ValuationMethodologyAlertRules.Evaluate(stale);
+        foreach (var n in new[] { 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14 })
+        {
+            var check = checks.Single(c => c.Number == n);
+            Assert.False(check.Triggered, $"m{n} should be skipped");
+            Assert.False(check.BlocksIssuance, $"m{n} should not block");
+        }
+
+        // Same data with the cost approach on: the hard alerts come back.
+        var live = ValuationMethodologyAlertRules.Evaluate(stale with { CostApproachEnabled = true });
+        Assert.True(live.Single(c => c.Number == 4).BlocksIssuance);
+        Assert.True(live.Single(c => c.Number == 5).BlocksIssuance);
+    }
+
+    [Fact]
     public void Vacant_land_building_comp_m11_is_hard()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with

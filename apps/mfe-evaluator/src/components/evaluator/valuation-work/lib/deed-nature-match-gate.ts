@@ -2,7 +2,7 @@ import type { ValuationIssuanceGatesDto } from "@platform/api-client";
 
 export const DEED_NATURE_MATCH_GATE_CODE = "deed_nature_match";
 
-/** Traditional deed without مطابق — valuation calc stays closed. */
+/** Traditional deed without مطابق — shown as a notice; it only blocks issuance. */
 export function deedNatureMatchBlocksValuation(
   gates: ValuationIssuanceGatesDto | null | undefined,
 ): boolean {

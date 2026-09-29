@@ -103,19 +103,23 @@ public sealed class ValuationIssuanceGateService(
  // (bare land defaults it off; land with structures keeps it available).
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
-        var marketApproachEnabled = approachSettings?.MarketApproachEnabled ?? true;
+        // Unsaved settings follow the same defaults as the reconciliation and the report
+        // (e.g. an apartment starts without the cost approach), not «everything on».
+        var typeForRules = string.IsNullOrWhiteSpace(propertyType) ? vr.PropertyType : propertyType;
+        var settings = approachSettings
+            ?? ValuationApproachSettingsRules.Defaults(vr.Id, typeForRules, hasStructures);
+        var marketApproachEnabled = settings.MarketApproachEnabled;
         var costApproachAllowed = ValuationApproachSettingsRules.CostApproachApplies(
-            string.IsNullOrWhiteSpace(propertyType) ? vr.PropertyType : propertyType,
+            typeForRules,
             hasStructures,
-            approachSettings?.CostScopeKey);
+            settings.CostScopeKey);
         hasStructures = ValuationApproachSettingsRules.BuildingsValued(
             hasStructures,
-            approachSettings?.CostScopeKey);
-        var costApproachEnabled = costApproachAllowed
-            && (approachSettings?.CostApproachEnabled ?? true);
+            settings.CostScopeKey);
+        var costApproachEnabled = costApproachAllowed && settings.CostApproachEnabled;
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
-            && !CostScopeKeys.IsBuildingOnly(approachSettings?.CostScopeKey);
+            && !CostScopeKeys.IsBuildingOnly(settings.CostScopeKey);
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -239,7 +243,8 @@ public sealed class ValuationIssuanceGateService(
             InspectionScopeKey: inspectionScopeKey,
             UninspectedUnitCount: uninspectedUnitCount,
             RemoteInspectionApprovedByAccredited: remoteInspectionApproved,
-            MarketApproachRelevant: marketApproachEnabled);
+            MarketApproachRelevant: marketApproachEnabled,
+            CostApproachEnabled: costApproachEnabled);
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
         var overrideByCode = (recon?.MethodologyAlertOverrides ?? [])

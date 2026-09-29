@@ -66,6 +66,8 @@ export type ValuationWorkDataParams = {
   property?: ValuationWorkPropertyHint;
   intakeProperty?: PoPropertyIntake | null;
   onFinalOpinionChange?: FinalOpinionChangeHandler;
+  /** The appraiser's form is closed (submitted, or the inspection went back for correction). */
+  editLocked?: boolean;
 };
 
 export function useValuationWorkData({
@@ -76,6 +78,7 @@ export function useValuationWorkData({
   property,
   intakeProperty = null,
   onFinalOpinionChange,
+  editLocked = false,
 }: ValuationWorkDataParams) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -399,7 +402,10 @@ export function useValuationWorkData({
 
   const { settingsSaved, marketEnabled, costEnabled } =
     approachAvailability(approachSettings);
-  const adjustmentsLocked = deedNatureMatchBlocksValuation(gates);
+  // Deed/nature match is enforced at issuance only — it no longer holds up the appraiser's work.
+  const deedMatchPending = deedNatureMatchBlocksValuation(gates);
+  // Adjustment / cost tables go read-only once the form is closed.
+  const adjustmentsLocked = editLocked;
 
   const readModels = useValuationWorkReadModels({
     hints: { districtHint, property, intakeProperty },
@@ -453,6 +459,7 @@ export function useValuationWorkData({
     marketEnabled,
     costEnabled,
     adjustmentsLocked,
+    deedMatchPending,
     ...readModels,
   };
 }
