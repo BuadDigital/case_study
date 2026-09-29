@@ -146,7 +146,13 @@ public sealed record ValuationMethodologyAlertInput(
     /// Market-approach comparable gates (m15/m16-comps/m17/m19). False when أسلوب السوق is off —
     /// cost-only / «مبنى فقط» must not require adopted market comps.
     /// </summary>
-    bool MarketApproachRelevant = true);
+    bool MarketApproachRelevant = true,
+    /// <summary>
+    /// The cost approach is enabled in the approach settings. False ⇒ every cost-data alert
+    /// (m2–m10, m12–m14) is skipped, so figures left from a cost approach the appraiser later
+    /// turned off never warn or block issuance.
+    /// </summary>
+    bool CostApproachEnabled = true);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -160,7 +166,9 @@ public static class ValuationMethodologyAlertRules
     public static IReadOnlyList<ValuationMethodologyAlertCheck> Evaluate(
         ValuationMethodologyAlertInput input)
     {
-        var lines = input.CostLines.Where(l => l.IsIncluded).ToList();
+        // Cost data only counts while the cost approach is on (stale lines/ages are ignored).
+        var costOn = input.CostApproachEnabled;
+        var lines = costOn ? input.CostLines.Where(l => l.IsIncluded).ToList() : [];
         var comps = input.AdoptedComparables;
         var resolutions = (input.Resolutions ?? [])
             .Where(r => !string.IsNullOrWhiteSpace(r.Code))
@@ -178,21 +186,21 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(2, ValuationMethodologyAlertCodes.ExtendedLifeZero, "العمر الممتد صفر",
-                input.ActualAgeYears is not null || input.EconomicAgeYears is not null,
+                costOn && (input.ActualAgeYears is not null || input.EconomicAgeYears is not null),
                 () => (input.ExtendedLifeYears ?? 0m) <= 0m,
                 "العمر الممتد (الاقتصادي + التمديد) ≤ 0",
                 resolutions),
 
             Eval(3, ValuationMethodologyAlertCodes.EffectiveAgeExceedsLife,
                 "العمر الفعلي يتجاوز العمر الممتد",
-                input.ActualAgeYears is not null && (input.ExtendedLifeYears ?? 0m) > 0m,
+                costOn && input.ActualAgeYears is not null && (input.ExtendedLifeYears ?? 0m) > 0m,
                 () => input.ActualAgeYears! > input.ExtendedLifeYears!,
                 "الإهلاك المادي > ١٠٠٪ — العمر الفعلي يتجاوز الممتد",
                 resolutions),
 
             Eval(4, ValuationMethodologyAlertCodes.ObsolescenceOver100,
                 "مجموع التقادم يتجاوز ١٠٠٪",
-                input.TotalObsolescencePct is not null,
+                costOn && input.TotalObsolescencePct is not null,
                 () => input.TotalObsolescencePct! > 100m,
                 "مجموع التقادم > ١٠٠٪ — راجع الوظيفي والخارجي",
                 resolutions),
@@ -205,7 +213,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(6, ValuationMethodologyAlertCodes.LifeExtensionNoRationale,
                 "تمديد العمر مستخدم بلا بيان",
-                true,
+                costOn,
                 () => input.LifeExtensionYears > 0m
                       && string.IsNullOrWhiteSpace(input.LifeExtensionBasis),
                 "التمديد > 0 وبيان الأساس فارغ",
@@ -238,7 +246,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(10, ValuationMethodologyAlertCodes.UseRestrictionNoRationale,
                 "خصم تقييد الاستخدام بلا مبرر",
-                true,
+                costOn,
                 () => input.UseRestrictionDiscountPct > 0m
                       && string.IsNullOrWhiteSpace(input.UseRestrictionRationale),
                 "خصم تقييد الاستخدام > 0 والمبرر فارغ",
@@ -253,7 +261,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(12, ValuationMethodologyAlertCodes.ObsolescenceNoRationale,
                 "تقادم وظيفي أو خارجي بلا مبرر",
-                true,
+                costOn,
                 () => (input.FunctionalObsolescencePct > 0m
                        && string.IsNullOrWhiteSpace(input.FunctionalObsolescenceRationale))
                       || (input.ExternalObsolescencePct > 0m
@@ -263,7 +271,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(13, ValuationMethodologyAlertCodes.DeveloperProfitOutOfRange,
                 "أرباح المطور خارج النطاق",
-                input.DeveloperProfitPct is not null,
+                costOn && input.DeveloperProfitPct is not null,
                 () => input.DeveloperProfitPct is { } p
                       && (p < DeveloperProfitMinPct || p > DeveloperProfitMaxPct),
                 "أرباح المطور خارج ١٠٪–٢٠٪",
@@ -271,7 +279,7 @@ public static class ValuationMethodologyAlertRules
 
             Eval(14, ValuationMethodologyAlertCodes.IndirectRatesHigh,
                 "النسب غير المباشرة مرتفعة",
-                input.IndirectRatesSumPct is not null,
+                costOn && input.IndirectRatesSumPct is not null,
                 () => input.IndirectRatesSumPct is { } s && s > IndirectRatesWarnPct,
                 "مجموع النسب غير المباشرة > ٤٥٪",
                 resolutions),

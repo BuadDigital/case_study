@@ -24,7 +24,6 @@ import {
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
-import { deedNatureMatchBlocksValuation } from "./lib/deed-nature-match-gate";
 import { ValueDocumentsPanel } from "./ValueDocumentsPanel";
 
 /** Invoice line from the interactive-form spec — label | value | note. */
@@ -139,7 +138,6 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     saveReconciliation,
   } = workflow;
   const additions = recon?.additions ?? [];
-  const matchBlocksCalc = deedNatureMatchBlocksValuation(gates);
 
   return (
     <>
@@ -520,7 +518,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
 
             <div className="mt-[18px] flex flex-wrap gap-2.5">
             <PrimaryBtn
-              disabled={saving || reconMethods.length === 0 || matchBlocksCalc}
+              disabled={saving || reconMethods.length === 0}
               onClick={() => void saveReconciliation()}
             >
               {sole ? "حفظ الرأي النهائي" : "حفظ التوفيق والرأي النهائي"}

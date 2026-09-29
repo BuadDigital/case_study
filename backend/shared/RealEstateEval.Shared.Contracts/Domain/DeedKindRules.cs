@@ -7,7 +7,7 @@ public static class DeedKindRules
     public static bool SkipsSurveyMatchGate(DeedKind kind) =>
         kind == DeedKind.RegisteredTitle;
 
-    /// <summary>Traditional deed: match required before valuation and the case-study report.</summary>
+    /// <summary>Traditional deed: match required before report issuance and the case-study report.</summary>
     public static bool RequiresDeedNatureMatchGate(DeedKind kind) =>
         kind == DeedKind.Traditional;
 

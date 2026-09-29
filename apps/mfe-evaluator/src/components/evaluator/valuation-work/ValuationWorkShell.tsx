@@ -113,6 +113,7 @@ export function ValuationWorkShell({
     property,
     intakeProperty,
     onFinalOpinionChange,
+    editLocked: disabled,
   });
   const {
     loading,
@@ -142,6 +143,7 @@ export function ValuationWorkShell({
     marketEnabled,
     costEnabled,
     adjustmentsLocked,
+    deedMatchPending,
     subjectSpecs,
     visibleAdoptedMarket,
     visibleAdoptedLand,
@@ -554,13 +556,13 @@ export function ValuationWorkShell({
         </div>
       ) : null}
 
-      {adjustmentsLocked ? (
+      {deedMatchPending ? (
         <Card>
           <CardPad>
-            <CardTitle>بانتظار مطابقة الصك على الطبيعة</CardTitle>
+            <CardTitle>مطابقة الصك على الطبيعة لم تُحسم بعد</CardTitle>
             <p className="m-0 text-[13px] leading-relaxed text-text">
-              صك تقليدي: حساب القيمة بعد أن يعتمد دارس الحالة مطابقة المعاين أو
-              المكتب الهندسي (أو الرفع المساحي السابق) من تبويب مدخلات المعاين.
+              صك تقليدي: أكمل التقييم الآن — إصدار التقرير ينتظر اعتماد دارس الحالة لمطابقة
+              المعاين أو المكتب الهندسي (أو الرفع المساحي السابق) من تبويب مدخلات المعاين.
               {matchWaitDetail ? (
                 <span className="mt-1 block text-[12px] text-text-2">
                   {matchWaitDetail}

@@ -137,27 +137,8 @@ public sealed partial class ValuationReconciliationService(
                 new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
         }
 
- // Quality gate before calculation, not only at issuance: traditional deeds must clear
- // the deed↔nature match before the final opinion is computed (registered title skips).
-        var propertyGuid = vr.PropertyId;
-        if (propertyGuid != Guid.Empty)
-        {
-            var context = await caseStudy.GetValuationPropertyContextAsync(
-                propertyGuid,
-                cancellationToken);
-            if (context is not null
-                && DeedKindRules.RequiresDeedNatureMatchGate(context.DeedKindValue()))
-            {
-                var matchOutcome = context.DeedNatureMatchOutcome ?? "";
-                if (!DeedKindRules.AllowsValuationCalc(context.DeedKindValue(), matchOutcome))
-                {
-                    return (null, new Dictionary<string, string>
-                    {
-                        ["_"] = "بوابة المطابقة: صك تقليدي بلا مطابقة محسومة — يحسمها دارس الحالة قبل الحساب",
-                    });
-                }
-            }
-        }
+        // Deed/nature match (traditional deed) is enforced at issuance only — the appraiser may
+        // reconcile and save before the specialist settles the match.
 
         // "Blocking happens at adoption only — partial input is kept as draft":
         // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
