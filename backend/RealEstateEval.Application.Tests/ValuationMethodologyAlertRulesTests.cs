@@ -175,6 +175,21 @@ public class ValuationMethodologyAlertRulesTests
     }
 
     [Fact]
+    public void No_cost_line_m1_is_silent_when_the_cost_approach_is_off()
+    {
+        // An apartment valued by the market approach alone: buildings exist, no cost table needed.
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            HasStructuresToValue = true,
+            CostApproachRelevant = false,
+            CostLines = [],
+        });
+        var m1 = checks.Single(c => c.Number == 1);
+        Assert.False(m1.Triggered);
+        Assert.False(m1.BlocksIssuance);
+    }
+
+    [Fact]
     public void Vacant_land_building_comp_m11_is_hard()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with

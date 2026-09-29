@@ -267,7 +267,6 @@ export function CaseStudyMatrixTable({
 
   /* Fixed columns so header (yes/no) lines up with body cells */
   const ynColClass = "w-[72px] text-center align-middle";
-  /* Density overrides on the shared Th/Td contract — this matrix runs tighter. */
   const headClass = "whitespace-normal px-3 py-2.5 text-[12px]";
   const cellClass = "px-3 py-2.5 text-[12.5px]";
 
