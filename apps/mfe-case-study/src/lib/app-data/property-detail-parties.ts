@@ -166,6 +166,11 @@ export function buildPropertyDetailTimelinePartyRows(input: {
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
   staffUsers?: StaffUser[];
+  /**
+   * Inspector package was submitted. The workflow task row can still be open
+   * in the list the rail has, so completion has to come from the package too.
+   */
+  inspectionSubmitted?: boolean;
 }): PropertyDetailPartyStatusRow[] {
   const { task, allTasks } = input;
   const assignees = task
@@ -182,8 +187,10 @@ export function buildPropertyDetailTimelinePartyRows(input: {
 
   const workParties = defs.map((def) => {
     const party = byTrack(def.trackId);
-    const enabled = party?.enabled ?? false;
-    const state = party?.state ?? "new";
+    const submittedInspection =
+      def.key === "inspection" && input.inspectionSubmitted === true;
+    const enabled = (party?.enabled ?? false) || submittedInspection;
+    const state = submittedInspection ? "done" : (party?.state ?? "new");
     const name =
       enabled && party?.name && party.name !== "—"
         ? party.name

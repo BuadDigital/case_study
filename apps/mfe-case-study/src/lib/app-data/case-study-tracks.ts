@@ -125,10 +125,33 @@ function liveChild(child: WorkflowTask | undefined): WorkflowTask | undefined {
 }
 
 /**
- * Whether this party actually received a task. Checkboxes alone are not
- * enough: survey follows the spawned sibling (or the mirrored assigned flag
- * when party visibility hides the row). Inspection / appraisal follow a live
- * child, a mirrored sibling id, or the assignee id copied onto the row.
+ * A completion/assignment flag mirrored onto the case-study parent or a sibling.
+ * The party task itself is not always in the viewer's list.
+ */
+function familyPartyFlag(
+  parent: WorkflowTask,
+  allTasks: WorkflowTask[],
+  flag: "fieldInspectionCompleted" | "engineeringSurveyAssigned" | "engineeringSurveyCompleted",
+): boolean {
+  if (parent[flag] === true) return true;
+  const parentId = caseStudyFamilyParentId(parent);
+  const propertyId = parent.propertyId;
+  const po = parent.poNumber.trim();
+  return allTasks.some(
+    (task) =>
+      task[flag] === true &&
+      task.propertyId === propertyId &&
+      task.poNumber.trim() === po &&
+      (task.id === parentId ||
+        task.parentTaskId === parentId ||
+        task.id === parent.id),
+  );
+}
+
+/**
+ * Whether this party has a person or office to show. A checkbox with no
+ * assignee id is not enough. A named inspector, appraiser, or engineering
+ * office on the distribution counts, as does a live child or a mirrored flag.
  */
 export function isPartyTrackAssigned(input: {
   trackId: string;
@@ -138,9 +161,11 @@ export function isPartyTrackAssigned(input: {
 }): boolean {
   if (liveChild(input.child)) return true;
   if (input.trackId === "survey") {
-    return (
-      input.parent.engineeringSurveyAssigned === true ||
-      input.parent.engineeringSurveyCompleted === true
+    const id = (distributionAssigneeId(input.distribution, "survey") ?? "").trim();
+    return Boolean(
+      id ||
+        input.parent.engineeringSurveyAssigned === true ||
+        input.parent.engineeringSurveyCompleted === true,
     );
   }
   if (input.trackId === "inspection") {
@@ -152,7 +177,8 @@ export function isPartyTrackAssigned(input: {
     );
   }
   if (input.trackId === "appraisal") {
-    return input.parent.kind === "property-appraisal";
+    const id = (distributionAssigneeId(input.distribution, "appraisal") ?? "").trim();
+    return Boolean(id || input.parent.kind === "property-appraisal");
   }
   if (input.trackId === "caseStudy") {
     const id = (distributionAssigneeId(input.distribution, "caseStudy") ?? "").trim();
@@ -175,12 +201,15 @@ export function buildCaseStudyTracks(
     {
       id: "survey",
       label: "الرفع المساحي",
-      spawned: isPartyTrackAssigned({
-        trackId: "survey",
-        distribution,
-        child: childOf("engineering-survey"),
-        parent,
-      }),
+      spawned:
+        isPartyTrackAssigned({
+          trackId: "survey",
+          distribution,
+          child: childOf("engineering-survey"),
+          parent,
+        }) ||
+        familyPartyFlag(parent, allTasks, "engineeringSurveyAssigned") ||
+        familyPartyFlag(parent, allTasks, "engineeringSurveyCompleted"),
     },
     {
       id: "inspection",
@@ -224,12 +253,17 @@ export function buildCaseStudyTracks(
             ? PropertyListRowStatuses.Progress
             : PropertyListRowStatuses.New
         : trackStateFromTask(child, spawned);
-    // Party visibility hides the sibling rows from the appraiser, so a track with
-    // no child falls back to the completion flag the server mirrors onto the row.
-    if (id === "inspection" && !child && parent.fieldInspectionCompleted) {
+    // Party visibility hides the inspection row from some viewers, and the
+    // specialist's parent is the row حالة الأطراف reads. A mirrored completion
+    // flag on the parent or a sibling is enough — an open leftover child must
+    // not keep the badge on «لم يبدأ» after the inspection was completed.
+    if (id === "inspection" && familyPartyFlag(parent, allTasks, "fieldInspectionCompleted")) {
       state = PropertyListRowStatuses.Done;
     }
-    if (id === "survey" && !child && parent.engineeringSurveyCompleted) {
+    if (
+      id === "survey" &&
+      familyPartyFlag(parent, allTasks, "engineeringSurveyCompleted")
+    ) {
       state = PropertyListRowStatuses.Done;
     }
     const distName = distributionAssignee(distribution, id, staffUsers);
@@ -294,12 +328,17 @@ export function buildCaseStudyPartyAssignees(
             kind as Exclude<WorkflowTaskKind, "case-study-property">,
           ) ?? (parent.kind === kind ? parent : undefined))
         : undefined;
-    const enabled = isPartyTrackAssigned({
-      trackId: def.trackId,
-      distribution,
-      child,
-      parent,
-    });
+    const enabled =
+      isPartyTrackAssigned({
+        trackId: def.trackId,
+        distribution,
+        child,
+        parent,
+      }) ||
+      (def.trackId === "inspection" && state === PropertyListRowStatuses.Done) ||
+      (def.trackId === "survey" &&
+        (familyPartyFlag(parent, allTasks, "engineeringSurveyAssigned") ||
+          familyPartyFlag(parent, allTasks, "engineeringSurveyCompleted")));
 
     const formPct =
       progressByParty === undefined

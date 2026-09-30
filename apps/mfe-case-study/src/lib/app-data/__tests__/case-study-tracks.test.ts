@@ -116,7 +116,7 @@ describe("buildCaseStudyPartyAssignees", () => {
     expect(byTrack.survey.enabled).toBe(false);
   });
 
-  it("does not show the engineering office when the survey task was never spawned", () => {
+  it("shows the engineering office named on the distribution", () => {
     const appraisal = task({
       id: "val-1",
       kind: "property-appraisal",
@@ -144,7 +144,10 @@ describe("buildCaseStudyPartyAssignees", () => {
       undefined,
       staff,
     );
-    expect(parties.find((p) => p.trackId === "survey")?.enabled).toBe(false);
+    expect(parties.find((p) => p.trackId === "survey")).toMatchObject({
+      enabled: true,
+      name: "مكتب جدة الهندسي",
+    });
   });
 
   it("shows the engineering office from the mirrored assigned flag", () => {
@@ -178,7 +181,7 @@ describe("buildCaseStudyPartyAssignees", () => {
     expect(parties.find((p) => p.trackId === "survey")?.enabled).toBe(true);
   });
 
-  it("assignedCaseStudyParties lists only parties that actually received a task", () => {
+  it("assignedCaseStudyParties lists parties that have a named assignee", () => {
     const plannedOnly = task({
       id: "val-1",
       kind: "property-appraisal",
@@ -204,13 +207,14 @@ describe("buildCaseStudyPartyAssignees", () => {
       assignedCaseStudyParties(plannedOnly, [plannedOnly], staff).map(
         (p) => p.role,
       ),
-    ).toEqual(["المعاين", "المقيم"]);
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
 
     const noInspector = task({
       ...plannedOnly,
       distribution: {
         ...plannedOnly.distribution!,
         inspectorId: "",
+        engineeringOfficeId: "",
       },
     });
     expect(
@@ -383,6 +387,103 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
         staffUsers: staff,
       });
       expect(rows[0]).toMatchObject({ key: "specialist", label: "أسامة الصالح" });
+    });
+
+    it("shows the appraiser and engineering office named on the case-study parent", () => {
+      const parent = task({
+        id: "parent-1",
+        kind: "case-study-property",
+        assigneeName: "أسامة الصالح",
+        assigneeId: "cs-1",
+        distribution: {
+          ...distribution,
+          engineeringOffice: true,
+          engineeringOfficeId: "eo-jeddah",
+        },
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: parent,
+        allTasks: [parent],
+        staffUsers: staff,
+      });
+      expect(rows.find((r) => r.key === "appraisal")).toMatchObject({
+        label: "عبدالله الكثيري",
+        badge: "لم يبدأ",
+      });
+      expect(rows.find((r) => r.key === "survey")).toMatchObject({
+        label: "مكتب جدة الهندسي",
+        badge: "لم يبدأ",
+      });
+      expect(rows.find((r) => r.key === "inspection")?.label).toBe("أحمد سعيد");
+    });
+
+    it("shows the inspector as complete after inspection when only the parent is listed", () => {
+      const parent = task({
+        id: "parent-1",
+        kind: "case-study-property",
+        assigneeName: "أسامة الصالح",
+        assigneeId: "cs-1",
+        fieldInspectionCompleted: true,
+        distribution,
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: parent,
+        allTasks: [parent],
+        staffUsers: staff,
+      });
+      expect(rows.find((r) => r.key === "inspection")).toMatchObject({
+        label: "أحمد سعيد",
+        badge: "مكتمل",
+      });
+    });
+
+    it("shows the inspector as complete from a sibling mirror when the inspection row is hidden", () => {
+      const parent = task({
+        id: "parent-1",
+        kind: "case-study-property",
+        assigneeName: "أسامة الصالح",
+        assigneeId: "cs-1",
+        distribution,
+      });
+      const appraisal = task({
+        id: "val-1",
+        kind: "property-appraisal",
+        parentTaskId: "parent-1",
+        assigneeRole: "real-estate-appraiser",
+        assigneeName: "مقيم عقاري",
+        assigneeId: "val-abdullah",
+        fieldInspectionCompleted: true,
+        distribution,
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: parent,
+        allTasks: [parent, appraisal],
+        staffUsers: staff,
+      });
+      expect(rows.find((r) => r.key === "inspection")).toMatchObject({
+        label: "أحمد سعيد",
+        badge: "مكتمل",
+      });
+    });
+
+    it("shows the inspector as complete when the package was submitted", () => {
+      const parent = task({
+        id: "parent-1",
+        kind: "case-study-property",
+        assigneeName: "أسامة الصالح",
+        assigneeId: "cs-1",
+        distribution,
+      });
+      const rows = buildPropertyDetailTimelinePartyRows({
+        task: parent,
+        allTasks: [parent],
+        staffUsers: staff,
+        inspectionSubmitted: true,
+      });
+      expect(rows.find((r) => r.key === "inspection")).toMatchObject({
+        label: "أحمد سعيد",
+        badge: "مكتمل",
+      });
     });
 
     it("reads «لم يُعيَّن» without a task", () => {

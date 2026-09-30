@@ -60,7 +60,13 @@ const HTML_PHOTO_GROUPS: {
   },
 ];
 
-function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
+function PhotoTile({
+  photo,
+  gallery,
+}: {
+  photo: PropertyDetailDocumentEntry;
+  gallery: PropertyDetailDocumentEntry[];
+}) {
   const handle = photo.inspectionPhoto;
   const [dataUrl, setDataUrl] = useState(
     () =>
@@ -106,7 +112,12 @@ function PhotoTile({ photo }: { photo: PropertyDetailDocumentEntry }) {
         )}
         disabled={!canOpen}
         onClick={() =>
-          openPropertyDetailDocumentPreview({ ...photo, dataUrl })
+          openPropertyDetailDocumentPreview(
+            { ...photo, dataUrl },
+            gallery.map((item) =>
+              item.id === photo.id ? { ...item, dataUrl } : item,
+            ),
+          )
         }
         aria-label={photo.name}
       >
@@ -181,6 +192,7 @@ export function PropertyDetailPhotosTab({
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
   const groups = useMemo(() => buildDisplayGroups(photos), [photos]);
+  const ordered = useMemo(() => groups.flatMap((group) => group.items), [groups]);
 
   const downloadable = photos.filter((p) => p.dataUrl);
 
@@ -245,7 +257,7 @@ export function PropertyDetailPhotosTab({
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
               {group.items.map((photo) => (
-                <PhotoTile key={photo.id} photo={photo} />
+                <PhotoTile key={photo.id} photo={photo} gallery={ordered} />
               ))}
             </div>
           </div>

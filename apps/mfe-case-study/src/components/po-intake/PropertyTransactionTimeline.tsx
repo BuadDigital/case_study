@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -19,6 +19,8 @@ import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/propert
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks";
+import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -143,6 +145,7 @@ export function PropertyTransactionTimeline({
   const timelineQuery = usePropertyTimelineQuery(poNumber, property.id);
   const queryClient = useQueryClient();
 
+  const [inspectionRevision, setInspectionRevision] = useState(0);
   const invalidateTimeline = () => {
     void queryClient.invalidateQueries({
       queryKey: appDataKeys.propertyTimeline(poNumber, property.id),
@@ -152,6 +155,10 @@ export function PropertyTransactionTimeline({
     [TASKS_CHANGED_EVENT]: invalidateTimeline,
     [WORK_ORDERS_CHANGED_EVENT]: invalidateTimeline,
     [FAILURES_CHANGED_EVENT]: invalidateTimeline,
+    [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT]: () => {
+      invalidateTimeline();
+      setInspectionRevision((n) => n + 1);
+    },
   });
 
   const task = useMemo(
@@ -159,14 +166,50 @@ export function PropertyTransactionTimeline({
     [poNumber, property.id, tasks],
   );
 
+  const inspectionTaskId = useMemo(() => {
+    const onProperty = tasks.filter(
+      (row) =>
+        row.propertyId === property.id && row.poNumber.trim() === poNumber,
+    );
+    const inspection = onProperty.find(
+      (row) => row.kind === "field-inspection" && row.status !== "cancelled",
+    );
+    if (inspection) return inspection.id;
+    return (
+      onProperty.find((row) => row.fieldInspectionTaskId?.trim())
+        ?.fieldInspectionTaskId?.trim() || null
+    );
+  }, [tasks, property.id, poNumber]);
+
+  const [inspectionSubmitted, setInspectionSubmitted] = useState(false);
+  useEffect(() => {
+    const taskId = inspectionTaskId?.trim();
+    if (!taskId) {
+      setInspectionSubmitted(false);
+      return;
+    }
+    let cancelled = false;
+    void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
+      if (cancelled) return;
+      setInspectionSubmitted(
+        draft?.status === "submitted" ||
+          Boolean(draft?.acceptedAtUtc?.trim()),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inspectionTaskId, inspectionRevision]);
+
   const partyRows = useMemo(
     () =>
       buildPropertyDetailTimelinePartyRows({
         task: task ?? null,
         allTasks: tasks,
         staffUsers,
+        inspectionSubmitted,
       }),
-    [task, tasks, staffUsers],
+    [task, tasks, staffUsers, inspectionSubmitted],
   );
 
   const displayEvents = useMemo(() => {

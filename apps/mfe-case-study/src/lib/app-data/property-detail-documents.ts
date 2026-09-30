@@ -8,7 +8,10 @@ import {
   getCachedEvaluatorDepositCertificate,
   getCachedEvaluatorReport,
 } from "../evaluator-bridge";
-import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
+import {
+  requestDocumentPreview,
+  type DocumentPreviewItem,
+} from "@platform/app-shared/app-data/document-preview-store";
 import {
   downloadDocumentFile,
   previewDocumentFile,
@@ -580,8 +583,20 @@ export function listPropertyDetailPhotos(
     .filter((doc) => doc.kind === "image");
 }
 
+function previewItemFromEntry(entry: PropertyDetailDocumentEntry): DocumentPreviewItem {
+  return {
+    id: entry.id,
+    fileName: entry.fileName,
+    title: entry.name,
+    kind: entry.kind === "image" || entry.kind === "pdf" ? entry.kind : "file",
+    dataUrl: entry.dataUrl,
+    attachmentId: entry.attachmentId ?? entry.inspectionPhoto?.attachment.attachmentId,
+  };
+}
+
 export function openPropertyDetailDocumentPreview(
   entry: PropertyDetailDocumentEntry,
+  gallery?: PropertyDetailDocumentEntry[],
 ): void {
   if (entry.engineeringField && entry.engineeringTaskId) {
     openEngineeringSurveyDocumentPreview(
@@ -602,13 +617,14 @@ export function openPropertyDetailDocumentPreview(
     entry.attachmentId ?? entry.inspectionPhoto?.attachment.attachmentId;
   if (!entry.dataUrl && !attachmentId) return;
   // Same-page dialog (DocumentPreviewHost in the shell); a new tab only when none is mounted.
+  const images = (gallery ?? [entry]).filter((item) => item.kind === "image");
+  const previewGallery = images.map(previewItemFromEntry);
   if (
     requestDocumentPreview({
-      fileName: entry.fileName,
-      title: entry.name,
-      kind: entry.kind === "image" || entry.kind === "pdf" ? entry.kind : "file",
-      dataUrl: entry.dataUrl,
+      ...previewItemFromEntry(entry),
       attachmentId,
+      dataUrl: entry.dataUrl,
+      gallery: previewGallery.length > 1 ? previewGallery : undefined,
     })
   ) {
     return;
