@@ -322,7 +322,8 @@ export function InspectorWorkspaceWizard({
               <InspectorCaseStudyChips
                 def={caseStudyDef}
                 childTask={inspectionTask}
-                forceReadOnly={!editable}
+                // Specialist review edits inspection facts, not the inspector's party answers.
+                forceReadOnly={!editable || serviceProofFromTransactionPhotos}
               />
             </InsCard>
           ) : null}
