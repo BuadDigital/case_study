@@ -151,8 +151,11 @@ public class PartyTaskSubmissionAcceptTests
         var property = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
         property.SpecialistComponentsText = "فيلا من دورين";
         db.SaveChanges();
-        var (_, noLines) = await service.AcceptAsync(TaskId, actor);
-        Assert.Equal(SpecialistComponentsRules.LinesRequired, noLines!["componentsText"]);
+        // The components table is optional — report text alone clears the components gate.
+        var (result, errors) = await service.AcceptAsync(TaskId, actor);
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        Assert.False(string.IsNullOrWhiteSpace(result!.AcceptedAtUtc));
     }
 
     [Fact]

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import {
   SPECIALIST_COMPONENTS_TEXT_REQUIRED,
-  SPECIALIST_LINES_REQUIRED,
   componentLineForItem,
   componentLinesIssue,
   emptyComponentLine,
@@ -26,13 +25,11 @@ describe("specialist components", () => {
     expect(componentLineForItem(emptyComponentLine(0), "custom").label).toBe("");
   });
 
-  it("gates acceptance on the text, then the table (optional on land)", () => {
+  it("gates acceptance on the report text only; the table is optional", () => {
     expect(specialistComponentsMissing({ componentsText: " ", lines: [] }, true)).toBe(
       SPECIALIST_COMPONENTS_TEXT_REQUIRED,
     );
-    expect(specialistComponentsMissing({ componentsText: "فيلا", lines: [] }, false)).toBe(
-      SPECIALIST_LINES_REQUIRED,
-    );
+    expect(specialistComponentsMissing({ componentsText: "فيلا", lines: [] }, false)).toBeNull();
     expect(specialistComponentsMissing({ componentsText: "أرض فضاء", lines: [] }, true)).toBeNull();
     expect(
       specialistComponentsMissing({ componentsText: "فيلا", lines: [line("ground_floor", "200")] }, false),

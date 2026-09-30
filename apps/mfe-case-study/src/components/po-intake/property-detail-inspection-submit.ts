@@ -98,8 +98,8 @@ export async function submitPropertyDetailInspection(input: {
         showToast(finishingError, "error");
         return;
       }
-      // «مكونات العقار» (report text + components table) before accepting — the server
-      // enforces the same rule (SpecialistComponentsRules).
+      // «مكونات العقار» report text before accepting — the components table is optional.
+      // The server enforces the same rule (SpecialistComponentsRules).
       const componentsError = await specialistComponentsMissingFor(
         inspectionTask.poNumber,
         property.id,
