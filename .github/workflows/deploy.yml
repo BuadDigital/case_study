@@ -433,7 +433,9 @@ jobs:
               exit 1
             fi
 
-            if ! rollout_app_services || ! refresh_edge; then
+            # nginx first: its retry-on-the-other-container rules must already be live while the
+            # application containers are being swapped.
+            if ! refresh_edge || ! rollout_app_services; then
               echo "::error::rolling update failed — dumping service state"
               $COMPOSE ps -a || true
               rollback_to_previous || true
