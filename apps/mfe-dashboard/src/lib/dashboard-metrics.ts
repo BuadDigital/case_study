@@ -47,6 +47,7 @@ export function formatRelativeAr(ts: number, now = Date.now()): string {
   if (m < 1) return "الآن";
   if (m < 60) return `قبل ${m} د`;
   const h = Math.floor(m / 60);
+  if (h >= 24) return `قبل ${Math.floor(h / 24)} ي`;
   const mm = m % 60;
   return `قبل ${h} س${mm ? ` ${mm} د` : ""}`;
 }
@@ -54,6 +55,11 @@ export function formatRelativeAr(ts: number, now = Date.now()): string {
 export function formatGapAr(gapMin: number): string {
   if (gapMin < 60) return `منذ ${gapMin} دقيقة`;
   const h = Math.floor(gapMin / 60);
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    const hh = h % 24;
+    return `منذ ${d} يوم${hh ? ` و${hh} ساعة` : ""}`;
+  }
   const m = gapMin % 60;
   return `منذ ${h} ساعة${m ? ` و${m} دقيقة` : ""}`;
 }

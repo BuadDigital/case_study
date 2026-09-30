@@ -89,8 +89,6 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
             existing.ResolvedAtUtc = null;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
-
         await NotifyAsync(
             existing.PropertyId,
             ValuationNoticeAudiences.CaseSpecialist,
@@ -99,6 +97,8 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
             note: existing.Reason,
             href: "/active-case-study",
             cancellationToken);
+
+        await _db.SaveChangesAsync(cancellationToken);
 
         return (ToDto(existing), null);
     }
@@ -115,7 +115,6 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
 
         row.Status = EvaluatorRecallStatus.Approved;
         row.ResolvedAtUtc = _time.UtcNow();
-        await _db.SaveChangesAsync(cancellationToken);
 
         // Approval hands the report back to the appraiser — the same shape as any other
         // «إعادة للتصحيح», so it carries the reason the recall was asked for.
@@ -127,6 +126,8 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
             note: row.Reason,
             href: $"/property-appraisal/{Uri.EscapeDataString(row.TaskId.ToString("D"))}",
             cancellationToken);
+
+        await _db.SaveChangesAsync(cancellationToken);
 
         return ToDto(row);
     }
@@ -145,7 +146,6 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         row.Status = EvaluatorRecallStatus.Rejected;
         row.SpecialistNote = request.SpecialistNote?.Trim() ?? "";
         row.ResolvedAtUtc = _time.UtcNow();
-        await _db.SaveChangesAsync(cancellationToken);
 
         await NotifyAsync(
             row.PropertyId,
@@ -156,12 +156,15 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
             href: $"/property-appraisal/{Uri.EscapeDataString(row.TaskId.ToString("D"))}",
             cancellationToken);
 
+        await _db.SaveChangesAsync(cancellationToken);
+
         return ToDto(row);
     }
 
     /// <summary>
     /// Valuation cannot address users — it publishes the notice and Platform resolves the
-    /// audience to the property's open assignees. Best-effort: a recall is already committed.
+    /// audience to the property's open assignees. The publisher only stages the outbox row, so
+    /// this runs before the save that commits the recall: both land together or not at all.
     /// </summary>
     private async Task NotifyAsync(
         Guid propertyId,

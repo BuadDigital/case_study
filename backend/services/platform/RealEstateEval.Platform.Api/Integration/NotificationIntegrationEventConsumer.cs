@@ -81,12 +81,7 @@ public sealed class NotificationIntegrationEventConsumer : BackgroundService
             IntegrationEventTypes.NotificationUserCreated,
             cancellationToken: stoppingToken);
 
-        foreach (var routingKey in new[]
-                 {
-                     IntegrationEventTypes.ValuationReportSubmitted,
-                     IntegrationEventTypes.ValuationRequestCreated,
-                     IntegrationEventTypes.NotificationUsersRequested,
-                 })
+        foreach (var routingKey in NotificationIntegrationEventHandler.HandledEventTypes)
         {
             await channel.QueueBindAsync(
                 QueueName,

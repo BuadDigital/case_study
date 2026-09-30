@@ -14,6 +14,18 @@ public sealed class NotificationIntegrationEventHandler
 {
     private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
 
+    /// <summary>
+    /// Every event type <see cref="HandleEnvelopeAsync"/> acts on. The consumer binds its queue
+    /// to exactly these — a type handled here but not bound is never delivered.
+    /// </summary>
+    public static readonly IReadOnlyList<string> HandledEventTypes =
+    [
+        IntegrationEventTypes.NotificationUsersRequested,
+        IntegrationEventTypes.ValuationReportSubmitted,
+        IntegrationEventTypes.ValuationWorkflowNotice,
+        IntegrationEventTypes.ValuationRequestCreated,
+    ];
+
     private readonly NotificationRecipientResolver _recipients;
     private readonly INotificationService _notifications;
     private readonly ILogger<NotificationIntegrationEventHandler> _logger;

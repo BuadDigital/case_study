@@ -132,6 +132,30 @@ public sealed class BlockedPartyNotificationTests
             n => n.SourceEvent == $"field-inspection-accepted-appraiser:{InspectionTaskId}");
     }
 
+    [Fact]
+    public async Task Accepting_an_already_accepted_inspection_notifies_nobody_again()
+    {
+        var bundle = TestBoundedContexts.Create($"unblock-twice-{Guid.NewGuid():N}");
+        var db = bundle.CaseStudy;
+        SeedAcceptableInspectionWithSiblings(db);
+        var notifications = new RecordingNotifications();
+        var service = CreateService(db, bundle.Failures, notifications);
+        var actor = new PartySubmissionActor
+        {
+            UserId = "specialist-1",
+            DisplayName = "أخصائي",
+            PrototypeRole = "case-specialist",
+        };
+
+        await service.AcceptAsync(InspectionTaskId, actor);
+        var sentOnFirstAccept = notifications.Sent.Count;
+        var (result, errors) = await service.AcceptAsync(InspectionTaskId, actor);
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        Assert.Equal(sentOnFirstAccept, notifications.Sent.Count);
+    }
+
     private static void SeedAcceptableInspectionWithSiblings(
         CaseStudyDbContext db,
         bool surveyCompleted = false)

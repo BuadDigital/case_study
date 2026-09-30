@@ -49,13 +49,7 @@ function SituationIcon({
 }) {
   const resolved =
     kind ??
-    (tone === "red"
-      ? "alert"
-      : tone === "warn"
-        ? "clock"
-        : tone === "green"
-          ? "check"
-          : "clipboard");
+    (tone === "red" ? "alert" : tone === "warn" ? "clock" : tone === "green" ? "check": "clipboard");
 
   const props = {
     width: size,
