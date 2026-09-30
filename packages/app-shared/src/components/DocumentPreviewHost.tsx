@@ -4,8 +4,10 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppModal, Button } from "@platform/ui-kit";
 import {
   closeDocumentPreview,
+  documentPreviewIndex,
   getDocumentPreviewSnapshot,
   registerDocumentPreviewHost,
+  stepDocumentPreview,
   subscribeDocumentPreview,
   type DocumentPreviewRequest,
 } from "../app-data/document-preview-store";
@@ -90,7 +92,39 @@ export function DocumentPreviewHost() {
   );
   const loaded = useResolvedUrl(request);
 
+  useEffect(() => {
+    if (!request || request.kind !== "image") return;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDocumentPreview();
+        return;
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepDocumentPreview(1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepDocumentPreview(-1);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [request]);
+
   if (!request) return null;
+
+  if (request.kind === "image") {
+    return <ImagePreviewLightbox request={request} loaded={loaded} />;
+  }
 
   return (
     <AppModal
@@ -134,13 +168,6 @@ export function DocumentPreviewHost() {
           <span className="text-[13px] text-danger-text">
             تعذّر تحميل المستند — جرّب التنزيل.
           </span>
-        ) : request.kind === "image" ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={loaded.url}
-            alt={request.fileName}
-            className="max-h-full max-w-full object-contain"
-          />
         ) : request.kind === "pdf" ? (
           <iframe
             title={request.fileName}
@@ -156,5 +183,119 @@ export function DocumentPreviewHost() {
         )}
       </div>
     </AppModal>
+  );
+}
+
+function ImagePreviewLightbox({
+  request,
+  loaded,
+}: {
+  request: DocumentPreviewRequest;
+  loaded: Loaded;
+}) {
+  const index = documentPreviewIndex(request);
+  const total = request.gallery?.length ?? 0;
+  const caption = request.title || request.fileName;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={caption}
+      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center overflow-hidden bg-[rgba(8,16,28,0.92)]"
+      onClick={closeDocumentPreview}
+    >
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="إغلاق"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-xl text-white hover:bg-black/70"
+          onClick={closeDocumentPreview}
+        >
+          ×
+        </button>
+        <button
+          type="button"
+          className="rounded-full bg-black/50 px-3 py-2 text-[13px] font-semibold text-white hover:bg-black/70"
+          onClick={(event) => {
+            event.stopPropagation();
+            void downloadDocumentFile({
+              fileName: request.fileName,
+              dataUrl: request.dataUrl,
+              attachmentId: request.attachmentId,
+            });
+          }}
+        >
+          تنزيل
+        </button>
+      </div>
+      {loaded.status === "ready" ? (
+        // Native pixels only: max-* shrinks a large photo into the window
+        // and never stretches a smaller one, so it stays sharp and inside the viewport.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={loaded.url}
+          alt={caption}
+          className="block h-auto max-h-full min-h-0 w-auto max-w-full min-w-0 object-contain"
+          onClick={(event) => event.stopPropagation()}
+        />
+      ) : (
+        <span className="text-[13px] text-white/80">
+          {loaded.status === "error"
+            ? "تعذّر تحميل الصورة — جرّب التنزيل."
+            : "جاري التحميل…"}
+        </span>
+      )}
+      {index > 0 ? (
+        <button
+          type="button"
+          aria-label="الصورة السابقة"
+          className="absolute top-1/2 right-3 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+          onClick={(event) => {
+            event.stopPropagation();
+            stepDocumentPreview(-1);
+          }}
+        >
+          <PreviewChevron direction="right" />
+        </button>
+      ) : null}
+      {index >= 0 && index < total - 1 ? (
+        <button
+          type="button"
+          aria-label="الصورة التالية"
+          className="absolute top-1/2 left-3 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+          onClick={(event) => {
+            event.stopPropagation();
+            stepDocumentPreview(1);
+          }}
+        >
+          <PreviewChevron direction="left" />
+        </button>
+      ) : null}
+      <p className="pointer-events-none absolute inset-x-0 bottom-0 z-20 m-0 bg-gradient-to-t from-black/70 to-transparent px-16 py-4 text-center text-[12px] leading-relaxed text-white/90">
+        {total > 1 ? `${index + 1} من ${total} · ` : null}
+        {caption}
+      </p>
+    </div>
+  );
+}
+
+function PreviewChevron({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      aria-hidden
+    >
+      {direction === "right" ? (
+        <path d="m9 6 6 6-6 6" />
+      ) : (
+        <path d="m15 6-6 6 6 6" />
+      )}
+    </svg>
   );
 }

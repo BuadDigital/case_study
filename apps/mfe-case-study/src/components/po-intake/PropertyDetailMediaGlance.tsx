@@ -163,10 +163,13 @@ export function PropertyDetailMediaGlance({
           disabled={!hasPhoto}
           onClick={() => {
             if (primaryPhoto)
-              openPropertyDetailDocumentPreview({
-                ...primaryPhoto,
-                dataUrl: heroUrl,
-              });
+              openPropertyDetailDocumentPreview(
+                {
+                  ...primaryPhoto,
+                  dataUrl: heroUrl,
+                },
+                photos ?? undefined,
+              );
           }}
           aria-label={
             hasPhoto

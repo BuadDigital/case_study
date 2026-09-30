@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { downloadAttachmentBlob } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/app-data/task-attachments-api";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 import { cn } from "@platform/ui-kit";
@@ -89,7 +90,6 @@ export function KeyEnvelopeAttachmentPreview({
   icon?: ReactNode;
 }) {
   const [state, setState] = useState<PreviewState>({ status: "idle" });
-  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const resolvedColor = attKind ? KEY_ATT_COLORS[attKind] : chipColor;
   const chipIcon =
@@ -140,33 +140,18 @@ export function KeyEnvelopeAttachmentPreview({
 
   function openFull(preview: TaskAttachmentPreview) {
     if (!preview.dataUrl) return;
-    if (isImageMime(preview.mimeType)) {
-      setLightboxOpen(true);
+    if (isImageMime(preview.mimeType) && preview.dataUrl) {
+      requestDocumentPreview({
+        fileName: preview.fileName || label,
+        title: label,
+        kind: "image",
+        dataUrl: preview.dataUrl,
+        attachmentId: attachmentId,
+      });
       return;
     }
     openTaskAttachmentPreview(preview);
   }
-
-  const lightbox =
-    lightboxOpen && state.status === "ready" && state.preview.dataUrl ? (
-      <div
-        className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        onClick={() => setLightboxOpen(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") setLightboxOpen(false);
-        }}
-      >
-        <img
-          src={state.preview.dataUrl}
-          alt={label}
-          className="max-h-[90vh] max-w-[90vw] rounded-md object-contain shadow-lg"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-    ) : null;
 
   if (variant === "chip") {
     if (state.status === "idle") return null;
@@ -195,7 +180,6 @@ export function KeyEnvelopeAttachmentPreview({
           {chipIcon}
           {state.status === "loading" ? `جاري تحميل…` : label}
         </button>
-        {lightbox}
       </>
     );
   }
@@ -266,7 +250,6 @@ export function KeyEnvelopeAttachmentPreview({
           </button>
         )}
       </div>
-      {lightbox}
     </>
   );
 }

@@ -3,6 +3,7 @@
 
 
 import { useEffect, useState } from "react";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 
 import {
 
@@ -24,7 +25,7 @@ import {
 
 } from "../../lib/app-data/assignment-doc-attachments";
 
-import { Button, cn } from "@platform/ui-kit";
+import { cn } from "@platform/ui-kit";
 
 
 
@@ -264,8 +265,6 @@ function AttachmentPreview({
 
 }) {
 
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-
   const isPdf = isPdfMime(doc.mimeType, doc.fileName);
 
   const hasVisualPreview =
@@ -316,7 +315,14 @@ function AttachmentPreview({
 
           )}
 
-          onClick={() => setLightboxOpen(true)}
+          onClick={() =>
+            requestDocumentPreview({
+              fileName: doc.fileName,
+              title: doc.fileName,
+              kind: "image",
+              dataUrl: doc.dataUrl,
+            })
+          }
 
           title={`عرض ${doc.fileName}`}
 
@@ -352,79 +358,7 @@ function AttachmentPreview({
 
 
 
-        {lightboxOpen ? (
-
-          <div
-
-            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-slate-900/72 p-6 backdrop-blur-sm"
-
-            role="dialog"
-
-            aria-modal="true"
-
-            aria-label={doc.fileName}
-
-            onClick={() => setLightboxOpen(false)}
-
-            onKeyDown={(e) => {
-
-              if (e.key === "Escape") setLightboxOpen(false);
-
-            }}
-
-          >
-
-            <div
-
-              className="flex max-h-[90vh] max-w-[min(92vw,900px)] flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-[0_16px_48px_rgba(0,0,0,0.25)]"
-
-              onClick={(e) => e.stopPropagation()}
-
-            >
-
-              <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-2 px-3.5 py-2.5">
-
-                <span className="break-all text-xs text-text-2">
-
-                  {doc.fileName}
-
-                  {isPdf ? " — الصفحة الأولى" : ""}
-
-                </span>
-
-                <Button
-
-                  type="button"
-
-                  size="sm"
-
-                  onClick={() => setLightboxOpen(false)}
-
-                >
-
-                  إغلاق
-
-                </Button>
-
-              </div>
-
-              <img
-
-                key={doc.dataUrl.slice(0, 64)}
-
-                src={doc.dataUrl}
-
-                alt={`معاينة المرفق: ${doc.fileName}`}
-
-                className="mx-auto block max-h-[calc(90vh-52px)] w-auto max-w-full object-contain"
-
-              />
-
-            </div>
-
-          </div>
-
-        ) : null}
+        
 
       </>
 

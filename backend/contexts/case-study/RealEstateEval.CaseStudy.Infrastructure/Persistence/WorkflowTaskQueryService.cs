@@ -314,16 +314,26 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         }
     }
 
+    /// <summary>
+    /// Family key for sibling inspection facts. Party rows use their parent id;
+    /// the case-study task is that parent, so its own id is the key.
+    /// </summary>
+    private static string? FamilyParentId(WorkflowTaskDto dto) =>
+        dto.Kind == WorkflowTaskKindValues.CaseStudyProperty ? dto.Id : dto.ParentTaskId;
+
     internal async Task EnrichSiblingPartyFlagsAsync(
         IReadOnlyList<WorkflowTaskDto> dtos,
         CancellationToken cancellationToken)
     {
+        // Case-study parents need the same mirror: the specialist's parties rail
+        // reads that row, and a completed inspection child can be off the loaded page.
         var targets = dtos
             .Where(d =>
-                (d.Kind == WorkflowTaskKindValues.EngineeringSurvey
-                    || d.Kind == WorkflowTaskKindValues.PropertyAppraisal)
-                && !string.IsNullOrWhiteSpace(d.ParentTaskId)
-                && !string.IsNullOrWhiteSpace(d.PropertyId))
+                !string.IsNullOrWhiteSpace(d.PropertyId)
+                && !string.IsNullOrWhiteSpace(FamilyParentId(d))
+                && (d.Kind == WorkflowTaskKindValues.EngineeringSurvey
+                    || d.Kind == WorkflowTaskKindValues.PropertyAppraisal
+                    || d.Kind == WorkflowTaskKindValues.CaseStudyProperty))
             .ToList();
         if (targets.Count == 0) return;
 
@@ -331,7 +341,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         var propertyIds = new HashSet<Guid>();
         foreach (var target in targets)
         {
-            if (Guid.TryParse(target.ParentTaskId, out var parentId))
+            if (Guid.TryParse(FamilyParentId(target), out var parentId))
                 parentIds.Add(parentId);
             if (Guid.TryParse(target.PropertyId, out var propertyId))
                 propertyIds.Add(propertyId);
@@ -386,24 +396,23 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                     return preferred.Id.ToString();
                 });
 
-        // The appraiser never sees the engineering-survey row, so assignment and
-        // completion are mirrored onto the appraisal DTO the same way inspection is.
-        var appraisalParentIds = targets
-            .Where(t => t.Kind == WorkflowTaskKindValues.PropertyAppraisal)
-            .Select(t => Guid.TryParse(t.ParentTaskId, out var id) ? id : Guid.Empty)
+        // Survey rows are hidden from the appraiser, and the specialist rail reads
+        // the case-study parent. Mirror assignment and completion onto both.
+        var familyParentIds = targets
+            .Select(t => Guid.TryParse(FamilyParentId(t), out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty)
             .ToHashSet();
 
         var surveyAssigned = new HashSet<(string Parent, string Prop)>();
         var surveyCompleted = new HashSet<(string Parent, string Prop)>();
-        if (appraisalParentIds.Count > 0)
+        if (familyParentIds.Count > 0)
         {
             var surveyRows = await _caseStudy.WorkflowTasks.AsNoTracking()
                 .Where(t =>
                     t.Kind == WorkflowTaskKind.EngineeringSurvey
                     && t.Status != WorkflowTaskStatus.Cancelled
                     && t.ParentTaskId != null
-                    && appraisalParentIds.Contains(t.ParentTaskId.Value)
+                    && familyParentIds.Contains(t.ParentTaskId.Value)
                     && t.PropertyId != null
                     && propertyIds.Contains(t.PropertyId.Value))
                 .Select(t => new
@@ -425,13 +434,15 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         foreach (var target in targets)
         {
-            var key = (target.ParentTaskId!, target.PropertyId!);
+            var key = (FamilyParentId(target)!, target.PropertyId!);
             target.FieldInspectionCompleted = completed.Contains(key);
             if (preferredIdByKey.TryGetValue(key, out var inspectionTaskId))
                 target.FieldInspectionTaskId = inspectionTaskId;
             if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
-            {
                 target.FieldInspectionAccepted = accepted.Contains(key);
+            if (target.Kind is WorkflowTaskKindValues.PropertyAppraisal
+                or WorkflowTaskKindValues.CaseStudyProperty)
+            {
                 target.EngineeringSurveyAssigned = surveyAssigned.Contains(key);
                 target.EngineeringSurveyCompleted = surveyCompleted.Contains(key);
             }

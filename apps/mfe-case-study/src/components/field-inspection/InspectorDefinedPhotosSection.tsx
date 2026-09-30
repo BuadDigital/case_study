@@ -3,25 +3,14 @@
 /**
  * Bare section — always nested inside a parent card (InspectorCard / InsCard),
  * so it renders no outer chrome of its own. Owns the slot mutations (upload,
- * delete, «غير متوفر», pick from the transaction) and the approve/delete
- * preview modal; the grid itself is `InspectorDefinedPhotoSlotList` and the
+ * delete, «غير متوفر», pick from the transaction); the grid itself is
+ * `InspectorDefinedPhotoSlotList` and the
  * pure slot rules live in `inspector-wizard-state`.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import {
-  Button,
-  ModalBody,
-  ModalCard,
-  ModalClose,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  ModalTitle,
-  useToast,
-} from "@platform/ui-kit";
-import {
-  inspectorPhotoStampText,
   nextInspectorPhotoId,
   type InspectorDefinedPhotoSlot,
   type InspectorSlotPhoto,
@@ -31,8 +20,6 @@ import {
   clearInspectorPhotoDataUrl,
   getInspectorPhotoDataUrl,
   inspectorPhotoAttachmentFromTransactionDoc,
-  openInspectorPhotoPreview,
-  prefetchInspectorPhoto,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
@@ -41,11 +28,8 @@ import {
   definedPhotosIntroText,
   definedSlotNone,
   definedSlotReplacedBy,
-  definedSlotWithApproved,
-  definedSlotWithoutPhoto,
   definedSlotWithPhoto,
   emptyDefinedPhotoSlot,
-  findDefinedSlotPhoto,
   listDefinedPhotoSlotCells,
   setDefinedPhotoSlot,
   slotPhotoRef,
@@ -54,7 +38,6 @@ import {
 export { freePhotoRef } from "./inspector-wizard-state";
 
 type Patch = Partial<Pick<InspectorWorkspaceDraft, "definedPhotos">>;
-type PreviewRef = { kind: "slot"; slotId: string; photoId: number };
 
 export function InspectorDefinedPhotosSection({
   draft,
@@ -74,11 +57,7 @@ export function InspectorDefinedPhotosSection({
   /** Slot the validator sent the user to — highlight only after a failed save. */
   invalidSlotId?: string;
 }) {
-  const { showToast } = useToast();
-  const [previewRef, setPreviewRef] = useState<PreviewRef | null>(null);
   const [uploading, setUploading] = useState(false);
-
-  const stamp = inspectorPhotoStampText(draft);
 
   const cells = useMemo(
     () => listDefinedPhotoSlotCells(draft),
@@ -89,33 +68,32 @@ export function InspectorDefinedPhotosSection({
     transactionPhotos && transactionPhotos.length > 0,
   );
 
-  const previewPhoto = useMemo(() => {
-    if (!previewRef) return null;
-    return findDefinedSlotPhoto(draft.definedPhotos, previewRef.slotId, previewRef.photoId);
-  }, [draft, previewRef]);
-
-  const previewRefKey = previewRef
-    ? slotPhotoRef(previewRef.slotId, previewRef.photoId)
-    : null;
-
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!previewPhoto || !previewRefKey) {
-      setPreviewDataUrl(undefined);
+  function openSlotPhoto(slotId: string, photoId: number) {
+    const gallery = cells.flatMap((cell) =>
+      (cell.slot.photos ?? []).map((photo) => ({
+        id: `${cell.id}:${photo.id}`,
+        fileName: photo.fileName,
+        title: cell.label,
+        kind: "image" as const,
+        dataUrl: getInspectorPhotoDataUrl(
+          draft.taskId,
+          slotPhotoRef(cell.id, photo.id),
+        ),
+        attachmentId: photo.attachmentId,
+      })),
+    );
+    const current = gallery.find((item) => item.id === `${slotId}:${photoId}`);
+    if (!current || (!current.dataUrl && !current.attachmentId)) return;
+    if (
+      requestDocumentPreview({
+        ...current,
+        gallery: gallery.length > 1 ? gallery : undefined,
+      })
+    ) {
       return;
     }
-    const cached = getInspectorPhotoDataUrl(draft.taskId, previewRefKey);
-    if (cached) {
-      setPreviewDataUrl(cached);
-      return;
-    }
-    void prefetchInspectorPhoto(
-      draft.taskId,
-      previewRefKey,
-      previewPhoto,
-    ).then(setPreviewDataUrl);
-  }, [draft.taskId, previewPhoto, previewRefKey]);
+    if (current.dataUrl) window.open(current.dataUrl, "_blank", "noopener,noreferrer");
+  }
 
   function patchDefinedPhotos(
     slotId: string,
@@ -176,11 +154,6 @@ export function InspectorDefinedPhotosSection({
     }
   }
 
-  function deleteSlotPhoto(slotId: string, photoId: number) {
-    clearInspectorPhotoDataUrl(draft.taskId, slotPhotoRef(slotId, photoId));
-    patchDefinedPhotos(slotId, (slot) => definedSlotWithoutPhoto(slot, photoId));
-  }
-
   function toggleSlotNone(slotId: string, none: boolean) {
     if (none) {
       for (const photo of draft.definedPhotos[slotId]?.photos ?? []) {
@@ -209,22 +182,6 @@ export function InspectorDefinedPhotosSection({
     );
   }
 
-  function approvePreviewPhoto() {
-    if (!previewRef || !previewPhoto) return;
-    patchDefinedPhotos(previewRef.slotId, (slot) =>
-      definedSlotWithApproved(slot, previewRef.photoId),
-    );
-    setPreviewRef(null);
-    showToast("تم اعتماد الصورة");
-  }
-
-  function deletePreviewPhoto() {
-    if (!previewRef) return;
-    deleteSlotPhoto(previewRef.slotId, previewRef.photoId);
-    setPreviewRef(null);
-    showToast("تم حذف الصورة");
-  }
-
   return (
     <>
       <RegistrationFormCard>
@@ -246,71 +203,11 @@ export function InspectorDefinedPhotosSection({
           transactionPhotos={canPickFromTransaction ? transactionPhotos : undefined}
           onUpload={uploadSlotPhotos}
           onToggleNone={toggleSlotNone}
-          onOpen={(slotId, photoId) => setPreviewRef({ kind: "slot", slotId, photoId })}
+          onOpen={openSlotPhoto}
           onSelectTransactionPhoto={selectTransactionPhoto}
           invalidSlotId={invalidSlotId}
         />
       </RegistrationFormCard>
-
-      {previewRef && previewPhoto ? (
-        <ModalOverlay onClick={() => setPreviewRef(null)}>
-          <ModalCard wide onClick={(e) => e.stopPropagation()}>
-            <ModalHeader>
-              <ModalTitle className="flex items-center justify-center gap-2 text-right">
-                <i className="ti ti-eye text-primary" aria-hidden />
-                معاينة الصورة قبل الاعتماد
-              </ModalTitle>
-              <ModalClose onClick={() => setPreviewRef(null)} aria-label="إغلاق">
-                ×
-              </ModalClose>
-            </ModalHeader>
-            <ModalBody>
-              {previewDataUrl ? (
-                <button
-                  type="button"
-                  className="block w-full overflow-hidden rounded-lg border border-border"
-                  onClick={() => openInspectorPhotoPreview(previewDataUrl)}
-                >
-                  <img
-                    src={previewDataUrl}
-                    alt={previewPhoto.fileName}
-                    className="max-h-[420px] w-full object-contain"
-                  />
-                </button>
-              ) : (
-                <div className="flex h-[280px] items-center justify-center rounded-lg bg-surface-2 text-text-3">
-                  جاري تحميل المعاينة…
-                </div>
-              )}
-              <p className="mt-2 text-center text-[11px] text-text-3">
-                {previewPhoto.fileName} · {stamp}
-              </p>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                disabled={disabled}
-                onClick={deletePreviewPhoto}
-              >
-                <i className="ti ti-trash" aria-hidden /> حذف (غير واضحة)
-              </Button>
-              {!previewPhoto.approved ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  disabled={disabled}
-                  onClick={approvePreviewPhoto}
-                >
-                  <i className="ti ti-check" aria-hidden /> اعتماد الصورة
-                </Button>
-              ) : null}
-            </ModalFooter>
-          </ModalCard>
-        </ModalOverlay>
-      ) : null}
     </>
   );
 }

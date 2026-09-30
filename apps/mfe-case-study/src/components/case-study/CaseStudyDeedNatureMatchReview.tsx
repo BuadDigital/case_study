@@ -64,18 +64,12 @@ export function CaseStudyDeedNatureMatchReview({
         const nextDraft =
           form ?? emptyCaseStudyFormDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
         setDraft(nextDraft);
-        const inspectorSubmitted =
-          inspector?.status === "submitted" ||
-          isInspectorWorkspaceAccepted(inspector);
-        const engineeringSubmitted =
-          survey?.status === "submitted" ||
-          Boolean(survey?.acceptedAtUtc?.trim());
+        const inspectorSubmitted = inspector?.status === "submitted" || isInspectorWorkspaceAccepted(inspector);
+        const engineeringSubmitted = survey?.status === "submitted" || Boolean(survey?.acceptedAtUtc?.trim());
         const proposal = proposeDeedNatureMatch({
           hasPriorSurvey: Boolean(prior),
           engineeringAssigned,
-          engineeringDeedMatchesNature: engineeringSubmitted
-            ? (survey?.deedMatchesNature ?? null)
-            : null,
+          engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
           inspectorSubmitted: Boolean(inspectorSubmitted),
           inspectorBoundaryMismatch: inspectorBoundariesIndicateMismatch(
             inspector ? Object.values(inspector.boundaryMatches) : null,

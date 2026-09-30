@@ -255,6 +255,53 @@ public class WorkflowTaskReadAuthorizationTests
     }
 
     [Fact]
+    public async Task List_marks_case_study_parent_when_inspection_completed()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("12121212-1212-1212-1212-121212121212");
+        var propertyId = Guid.Parse("34343434-3434-3434-3434-343434343434");
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection,
+            "PO-parent-flag",
+            now,
+            title: "fi",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "field-inspector",
+            assigneeName: "fi",
+            assigneeId: "fi-1",
+            parentTaskId: parentId,
+            propertyId: propertyId);
+        inspection.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-parent-flag",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.CaseStudy,
+                assigneeRole: "case-specialist",
+                assigneeName: "cs",
+                assigneeId: "cs-1",
+                id: parentId,
+                propertyId: propertyId),
+            inspection);
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "cs-user",
+            PrototypeRole = "case-specialist",
+            DistributionAssigneeId = "cs-1",
+        });
+
+        var parent = Assert.Single(rows, row => row.Kind == "case-study-property");
+        Assert.True(parent.FieldInspectionCompleted);
+        Assert.Equal(inspection.Id.ToString(), parent.FieldInspectionTaskId);
+    }
+
+    [Fact]
     public async Task List_marks_property_appraisal_when_sibling_survey_exists()
     {
         await using var db = CreateDb();
@@ -308,6 +355,16 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.True(rows[0].EngineeringSurveyAssigned);
         Assert.False(rows[0].EngineeringSurveyCompleted);
+
+        var specialistRows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "cs-user",
+            PrototypeRole = "case-specialist",
+            DistributionAssigneeId = "cs-1",
+        });
+        var parent = Assert.Single(specialistRows, row => row.Kind == "case-study-property");
+        Assert.True(parent.EngineeringSurveyAssigned);
+        Assert.False(parent.EngineeringSurveyCompleted);
     }
 
     [Fact]

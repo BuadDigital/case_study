@@ -22,6 +22,7 @@ import {
   type InspectorFreePhotoUploader,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
+import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
@@ -56,11 +57,9 @@ export function InspectorPropertyPhotosSection({
 }) {
   const { showToast } = useToast();
   const [uploadingParent, setUploadingParent] = useState<ParentKey | null>(null);
-  const [previewPhotoId, setPreviewPhotoId] = useState<number | null>(null);
   const [classifyPhotoId, setClassifyPhotoId] = useState<number | null>(null);
   /** Parent locked when dropping into a bucket; null for legacy untagged. */
   const [classifyParent, setClassifyParent] = useState<ParentKey | null>(null);
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | undefined>();
   const [classifyDataUrl, setClassifyDataUrl] = useState<string | undefined>();
   const stamp = inspectorPhotoStampText(draft);
   const photos = draft.freePhotos;
@@ -84,37 +83,23 @@ export function InspectorPropertyPhotosSection({
     return { map, orphan };
   }, [photos]);
 
-  const previewPhoto = useMemo(
-    () => photos.find((photo) => photo.id === previewPhotoId) ?? null,
-    [photos, previewPhotoId],
-  );
+  const previewOrder = useMemo(() => {
+    const list: InspectorFreePhoto[] = [];
+    for (const parent of INSPECTOR_FREE_PHOTO_PARENTS) {
+      const bucket = photosByParent.map.get(parent.key) ?? [];
+      list.push(
+        ...bucket.filter((photo) => inspectorFreePhotoNeedsKind(photo.category)),
+        ...bucket.filter((photo) => !inspectorFreePhotoNeedsKind(photo.category)),
+      );
+    }
+    list.push(...photosByParent.orphan);
+    return list;
+  }, [photosByParent]);
   const classifyPhoto = useMemo(
     () => photos.find((photo) => photo.id === classifyPhotoId) ?? null,
     [photos, classifyPhotoId],
   );
-  const previewRefKey = previewPhoto ? freePhotoRef(previewPhoto.id) : null;
   const classifyRefKey = classifyPhoto ? freePhotoRef(classifyPhoto.id) : null;
-
-  useEffect(() => {
-    if (!previewPhoto || !previewRefKey) {
-      setPreviewDataUrl(undefined);
-      return;
-    }
-    const cached = getInspectorPhotoDataUrl(draft.taskId, previewRefKey);
-    if (cached) {
-      setPreviewDataUrl(cached);
-      return;
-    }
-    let cancelled = false;
-    void prefetchInspectorPhoto(draft.taskId, previewRefKey, previewPhoto).then(
-      (url) => {
-        if (!cancelled) setPreviewDataUrl(url);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [draft.taskId, previewPhoto, previewRefKey]);
 
   useEffect(() => {
     if (!classifyPhoto || !classifyRefKey) {
@@ -212,7 +197,6 @@ export function InspectorPropertyPhotosSection({
       setClassifyPhotoId(null);
       setClassifyParent(null);
     }
-    if (previewPhotoId === id) setPreviewPhotoId(null);
     showToast("تم حذف الصورة.", "success");
   }
 
@@ -276,7 +260,26 @@ export function InspectorPropertyPhotosSection({
       setClassifyPhotoId(photo.id);
       return;
     }
-    setPreviewPhotoId(photo.id);
+    const gallery = previewOrder.map((item) => ({
+      id: String(item.id),
+      fileName: item.fileName,
+      title:
+        inspectorFreePhotoCategoryMeta(item.category)?.label ?? item.fileName,
+      kind: "image" as const,
+      dataUrl: getInspectorPhotoDataUrl(draft.taskId, freePhotoRef(item.id)),
+      attachmentId: item.attachmentId,
+    }));
+    const current = gallery.find((item) => item.id === String(photo.id));
+    if (!current || (!current.dataUrl && !current.attachmentId)) return;
+    if (
+      requestDocumentPreview({
+        ...current,
+        gallery: gallery.length > 1 ? gallery : undefined,
+      })
+    ) {
+      return;
+    }
+    if (current.dataUrl) window.open(current.dataUrl, "_blank", "noopener,noreferrer");
   }
 
   function closeClassify() {
@@ -602,49 +605,6 @@ export function InspectorPropertyPhotosSection({
             ))}
           </div>
         )}
-      </AppModal>
-
-      <AppModal
-        open={previewPhoto !== null}
-        title="معاينة الصورة"
-        onClose={() => setPreviewPhotoId(null)}
-        footer={
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setPreviewPhotoId(null)}
-          >
-            إغلاق
-          </Button>
-        }
-      >
-        {previewDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewDataUrl}
-            alt={previewPhoto?.fileName ?? "صورة العقار"}
-            className="mx-auto block max-h-[min(70vh,560px)] w-full object-contain"
-          />
-        ) : (
-          <div className="flex h-[280px] items-center justify-center rounded-lg bg-surface-2 text-[13px] text-text-3">
-            جاري تحميل المعاينة…
-          </div>
-        )}
-        {previewPhoto ? (
-          <p className="mb-0 mt-3 text-center text-[11px] leading-relaxed text-text-3">
-            {previewPhoto.fileName}
-            {previewPhoto.category
-              ? ` · ${
-                  inspectorFreePhotoCategoryMeta(previewPhoto.category)?.label ??
-                  previewPhoto.category
-                }`
-              : ""}
-            {hasMixedUploaders ||
-            !canDeleteInspectorFreePhoto(previewPhoto, actor)
-              ? ` · ${inspectorFreePhotoUploaderLabel(inspectorFreePhotoUploader(previewPhoto))}`
-              : ""}
-          </p>
-        ) : null}
       </AppModal>
     </>
   );
