@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
+using RealEstateEval.Valuation.Infrastructure.Integration;
 using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
@@ -155,6 +158,37 @@ public class ValuationReportIssuanceTests
         db.ChangeTracker.Clear();
         Assert.Equal(2, db.ValuationReportIssuances.Count());
         Assert.Single(db.ValuationReportIssuances.Where(x => x.SupersededAtUtc == null));
+    }
+
+    /// <summary>The publisher only stages the outbox row — it has to ride the reopen's own save.</summary>
+    [Fact]
+    public async Task Reopen_commits_the_appraiser_notice_with_it()
+    {
+        await using var contexts = TestDatabases.Create("issuance-reopen-notice");
+        var db = contexts.Valuation;
+        var id = NewRequest(db, "VR-905");
+        await db.SaveChangesAsync();
+
+        var service = new ValuationReportIssuanceService(
+            db,
+            new StubGates(allows: true),
+            new StubDocuments(),
+            events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance));
+        await service.IssueDepositAsync(id, "user-1");
+
+        var (_, errors) = await service.ReopenAfterDepositAsync(
+            id,
+            new ReopenReportIssuanceRequest { Reason = "قيمة المقارنات تغيّرت بعد صفقة مسجلة أحدث" },
+            "supervisor-1");
+        Assert.Null(errors);
+
+        db.ChangeTracker.Clear();
+        var notice = Assert.Single(
+            db.OutboxMessages.Where(x => x.EventType == IntegrationEventTypes.ValuationWorkflowNotice));
+        using var doc = System.Text.Json.JsonDocument.Parse(notice.PayloadJson);
+        Assert.Equal(
+            "إعادة فتح إصدار التقرير",
+            doc.RootElement.GetProperty("Payload").GetProperty("Title").GetString());
     }
 
     [Fact]

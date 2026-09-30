@@ -121,12 +121,11 @@ public partial class PartyTaskSubmissionService
         }
 
         if (!alreadyAccepted)
+        {
             await NotifyPartyAcceptedAsync(task, cancellationToken);
             if (task.Kind == WorkflowTaskKind.FieldInspection)
                 await NotifySiblingsInspectionAcceptedAsync(task, cancellationToken);
 
-        if (!alreadyAccepted)
-        {
             await _auditLog.AppendAsync(_audit.Create(
                 actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId,
                 action: "case-study.party-submission.accepted",

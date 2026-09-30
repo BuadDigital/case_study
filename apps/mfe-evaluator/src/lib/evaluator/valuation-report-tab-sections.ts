@@ -138,7 +138,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
       {
         id: "asset-condition",
         label: "حالة العقار",
-        keys: ["building_condition_ar"],
+        keys: ["property_condition_ar"],
       },
       { id: "asset-desc", label: "وصف العقار", span: 2 },
       { id: "ownership", label: "نوع الملكية", span: 2 },

@@ -13,7 +13,6 @@ import {
 
 export const SPECIALIST_COMPONENTS_TEXT_REQUIRED =
   "اكتب «مكونات العقار» للتقرير قبل قبول المعاينة";
-export const SPECIALIST_LINES_REQUIRED = "أضف بنود جدول المكونات قبل قبول المعاينة";
 
 export function emptyComponentLine(sortOrder: number): BuildingInventoryLineDto {
   return {
@@ -63,14 +62,13 @@ export function componentLinesIssue(lines: BuildingInventoryLineDto[]): string |
 
 /**
  * Mirrors `SpecialistComponentsRules.MissingForAcceptance` — null when the specialist may accept.
- * The table is optional on land (a fence or a room is listed when present).
+ * The components table is optional; only the report text is required.
  */
 export function specialistComponentsMissing(
   inventory: Pick<BuildingInventoryDto, "componentsText" | "lines">,
-  isLand: boolean,
+  _isLand: boolean,
 ): string | null {
   if (!(inventory.componentsText ?? "").trim()) return SPECIALIST_COMPONENTS_TEXT_REQUIRED;
-  if (!isLand && inventory.lines.length === 0) return SPECIALIST_LINES_REQUIRED;
   return null;
 }
 

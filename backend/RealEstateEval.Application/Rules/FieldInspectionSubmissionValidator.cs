@@ -30,6 +30,7 @@ public static class FieldInspectionSubmissionValidator
     private static readonly HashSet<string> LandHiddenFeatureKeys = new(StringComparer.Ordinal)
     {
         "facade",
+        "propertyCondition",
         "buildState",
         "occupancyState",
         "carEntrance",
@@ -283,6 +284,7 @@ public static class FieldInspectionSubmissionValidator
         ("facade", "الواجهة", false, false),
         ("propertyUsage", "استخدام العقار", false, false),
         ("zoneStatus", "حالة منطقة العقار", false, false),
+        ("propertyCondition", "حالة العقار", false, false),
         ("buildState", "حالة البناء", false, false),
         ("occupancyState", "حالة الإشغال", false, false),
         ("districtState", "حالة الحي", false, false),

@@ -143,6 +143,7 @@ const inspectorInfathFields: PropertyFieldCatalogEntry[] = [
   { key: "hasCentralAc", label: "تكييف مركزي" },
   { key: "hasTanks", label: "خزانات" },
   { key: "hasLandscaping", label: "تشجير" },
+  { key: "propertyCondition", label: "حالة العقار" },
   { key: "buildState", label: "حالة البناء" },
   { key: "occupancyState", label: "حالة الإشغال" },
   { key: "districtState", label: "حالة الحي" },

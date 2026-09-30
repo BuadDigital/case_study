@@ -37,6 +37,7 @@ export const INFATH_FIELD_LABELS = {
   hasCentralAc: "تكييف مركزي",
   hasTanks: "خزانات",
   hasLandscaping: "تشجير",
+  propertyCondition: "حالة العقار",
   buildState: "حالة البناء",
   occupancyState: "حالة الإشغال",
   districtState: "حالة الحي",

@@ -88,6 +88,12 @@ export async function saveCaseStudyForm(
       body: JSON.stringify({ form }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      const message =
+        errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
+      return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
+    }
     if (res.status === 400) {
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "validation", errors };
@@ -190,6 +196,12 @@ export async function savePartyCaseStudyForm(
       body: JSON.stringify({ form }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      const message =
+        errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
+      return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
+    }
     if (res.status === 400) {
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "validation", errors };

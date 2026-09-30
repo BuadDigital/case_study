@@ -64,6 +64,7 @@ public static class ValuationReportFieldCatalog
         new("property_age_years", "عمر العقار", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, null),
         new("property_effective_age", "عمر العقار الفعال", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, null),
         new("building_type_ar", "نوع المبنى- الإسم العربي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, "فارغ للأرض الخالية"),
+        new("property_condition_ar", "حالة العقار- الإسم العربي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, "جديد أو مستخدم — من المعاين"),
         new("building_condition_ar", "حالة المبنى- الإسم العربي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, null),
         new("vacancy_ar", "شاغرية العقار- الإسم العربي", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, null),
         new("usage_type_ar", "نوع الاستخدام- الإسم العربي", ValuationReportFieldSourceKind.Platform, ValuationReportFieldValueType.Text, "من تصنيف العقار"),

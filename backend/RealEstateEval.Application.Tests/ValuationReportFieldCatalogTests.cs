@@ -8,7 +8,7 @@ public class ValuationReportFieldCatalogTests
     [Fact]
     public void Catalog_fields_have_key_label_and_value_type()
     {
-        Assert.Equal(247, ValuationReportFieldCatalog.Count);
+        Assert.Equal(248, ValuationReportFieldCatalog.Count);
         Assert.All(ValuationReportFieldCatalog.All, m =>
         {
             Assert.False(string.IsNullOrWhiteSpace(m.FieldKey));

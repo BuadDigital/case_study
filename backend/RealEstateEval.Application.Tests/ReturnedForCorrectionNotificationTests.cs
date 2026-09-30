@@ -109,6 +109,15 @@ public sealed class ReturnedForCorrectionNotificationTests
         Assert.Equal(propertyId.ToString("D"), row.EntityId);
     }
 
+    /// <summary>The consumer binds its queue to this list — a notice left out never arrives.</summary>
+    [Fact]
+    public void The_notification_queue_is_bound_to_valuation_notices()
+    {
+        Assert.Contains(
+            IntegrationEventTypes.ValuationWorkflowNotice,
+            NotificationIntegrationEventHandler.HandledEventTypes);
+    }
+
     [Fact]
     public async Task An_unknown_audience_writes_nothing()
     {

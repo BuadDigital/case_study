@@ -3,9 +3,9 @@
 /**
  * «مكونات العقار» — the case specialist's part of the property description:
  * the report text (written from what the inspector sent: text or a photographed sheet) and
- * the components table. The table is always listed and printed; whether the components are
- * valued is the appraiser's scope choice (land only / buildings only / land with buildings).
- * Text + table (table optional on land) are required before accepting the field inspection.
+ * the components table. The table is always listed and printed when filled; whether the
+ * components are valued is the appraiser's scope choice (land only / buildings only / land
+ * with buildings). Report text is required before accepting; the table is optional.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
@@ -153,7 +153,8 @@ export function SpecialistComponentsSection({
           <div>
             <p className="m-0 text-[12px] font-bold text-heading">جدول المكونات</p>
             <p className="m-0 mt-0.5 text-[11px] text-text-3">
-              احصر كل المكونات (أدوار، ملاحق، سور…) — تُطبع في التقرير، والمقيّم يقرّر هل تدخل في القيمة.
+              اختياري — احصر المكونات (أدوار، ملاحق، سور…) عند الحاجة. تُطبع في التقرير،
+              والمقيّم يقرّر هل تدخل في القيمة.
             </p>
           </div>
           {lines.length > 0 ? (

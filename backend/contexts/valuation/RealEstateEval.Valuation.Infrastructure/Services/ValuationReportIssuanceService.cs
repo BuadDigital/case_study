@@ -253,10 +253,10 @@ public sealed class ValuationReportIssuanceService(
 
         // Reverses professional-step completion — request reopens and holds the property until the new cycle.
         vr.ReopenReport(_time.UtcNow());
-        await db.SaveChangesAsync(cancellationToken);
 
         // The reopen starts a new cycle on the appraiser's desk — Platform resolves the property's
         // appraiser and writes the inbox row (Valuation has no assignee directory of its own).
+        // Staged before the save: the publisher only adds the outbox row to this context.
         if (events is not null)
         {
             var reopenReason = (request.Reason ?? "").Trim();
@@ -273,6 +273,8 @@ public sealed class ValuationReportIssuanceService(
                     "/property-appraisal"),
                 cancellationToken);
         }
+
+        await db.SaveChangesAsync(cancellationToken);
 
         // 2-B: every reopen leaves an audit entry with actor and reason — best-effort after the main save.
         if (audit is not null && auditLog is not null)

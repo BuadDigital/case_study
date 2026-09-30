@@ -110,7 +110,7 @@ describe("valuation report v3 header meta and page numbers", () => {
     });
     const html = prepareValuationReportV3Html(
       `<section class="page pg">
-        <section data-sec="6"><table><tr><td class="k">نوع العقار</td><td class="v">فيلا</td><td class="k">حالة العقار</td><td class="v">جيد</td></tr></table></section>
+        <section data-sec="6"><table><tr><td class="k">نوع العقار</td><td class="v">فيلا</td><td class="k">حالة العقار</td><td class="v">مستخدم</td></tr></table></section>
         <section data-sec="7"><table>
           <tr><td class="k">رقم رخصة البناء</td><td class="v">123</td><td class="k">تاريخ رخصة البناء</td><td class="v">—</td><td class="k">محضر التجزئة</td><td class="v">—</td></tr>
           <tr><td class="k">حالة البناء</td><td class="v">جيد</td><td class="k">حالة الإشغال</td><td class="v">شاغر</td></tr>

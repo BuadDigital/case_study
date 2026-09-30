@@ -32,6 +32,7 @@ import {
   resolveEffectiveScreen,
   type ValuationWorkScreenId,
 } from "./lib/shell-state";
+import { ApproachSummaryStrip } from "./ApproachSummaryStrip";
 import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
@@ -264,8 +265,43 @@ export function ValuationWorkShell({
     }
 
 
+    const marketIsUnit = (selection?.adjustmentBasis ?? "price_per_sqm") === "price_per_sqm";
+    const marketAdopted = visibleAdoptedMarket.length;
+    const marketValue = selection?.marketOpinionValueRaw ?? selection?.marketOpinionValue ?? 0;
+    const marketReady = marketAdopted > 0 && marketValue > 0;
+
     return (
       <>
+        <ApproachSummaryStrip
+          title="أسلوب السوق"
+          items={[
+            {
+              label: "مقارنات معتمدة",
+              value: String(marketAdopted),
+              tone: marketAdopted > 0 ? "heading" : "danger",
+            },
+            ...(marketAdopted > 0
+              ? [
+                  {
+                    label: "مجموع الأوزان",
+                    value: selection?.weightsSumTo100 ? "100٪" : "≠ 100٪",
+                    tone: selection?.weightsSumTo100 ? ("heading" as const) : ("danger" as const),
+                  },
+                  {
+                    label: marketIsUnit ? "سعر المتر بعد التسوية" : "المتوسط المرجّح",
+                    value: fmt(selection?.weightedPricePerSqm),
+                  },
+                ]
+              : []),
+            ...(marketIsUnit
+              ? [{ label: "المساحة", value: subjectAreaNum && subjectAreaNum > 0 ? `${fmt(subjectAreaNum)} م²` : "—" }]
+              : []),
+          ]}
+          resultLabel={marketIsUnit ? "سعر المتر × المساحة =" : "قيمة العقار بعد التسوية ="}
+          result={marketReady ? fmt(marketValue) : "غير مكتمل — يلزم اعتماد مقارن"}
+          resultTone={marketReady ? "heading" : "danger"}
+        />
+
         <ComparablesBankTable
           rows={bankRows}
           subjectSqm={subjectAreaNum}
@@ -334,62 +370,29 @@ export function ValuationWorkShell({
 
     return (
       <>
-        <div className="sticky top-0 z-[14] bg-[var(--page,#f7f5f0)] py-1 pb-2.5">
-          <div className="flex flex-wrap items-center gap-4 rounded-[10px] border border-border-md bg-surface px-[18px] py-[9px] shadow-[0_8px_20px_-18px_rgba(18,40,76,.4)]">
-            <span className="text-[13px] font-extrabold text-heading">
-              أسلوب التكلفة
-            </span>
-            <span className="text-[11.5px] text-text-3">
-              أرض{" "}
-              <b
-                dir="ltr"
-                className={cn(
-                  buildingOnly
-                    ? "text-text-3"
-                    : landComplete
-                      ? "text-heading"
-                      : "text-red-text",
-                )}
-              >
-                {buildingOnly
-                  ? "غير مشمولة"
-                  : landComplete
-                    ? fmt(cost?.landValueFromMarket)
-                    : "— بانتظار المقارنات"}
-              </b>
-            </span>
-            <span className="text-[11.5px] text-text-3">
-              إحلال{" "}
-              <b dir="ltr" className="text-heading">
-                {fmt(cost?.totalCostWithIndirect)}
-              </b>
-            </span>
-            <span className="text-[11.5px] text-text-3">
-              إهلاك{" "}
-              <b dir="ltr" className="text-red-text">
-                {fmt(cost?.depreciationValue)}
-              </b>
-            </span>
-            <span className="ms-auto flex items-baseline gap-[9px]">
-              <span className="text-[11.5px] font-bold text-gold-d">
-                {buildingOnly
-                  ? "تكلفة الإحلال − الإهلاك ="
-                  : "أرض + إحلال − إهلاك ="}
-              </span>
-              <span
-                dir="ltr"
-                className={cn(
-                  "text-[17px] font-extrabold",
-                  buildingOnly || landComplete ? "text-heading" : "text-red-text",
-                )}
-              >
-                {buildingOnly || landComplete
-                  ? fmt(cost?.costOpinionWithLand)
-                  : "غير مكتمل — يلزم قيمة الأرض"}
-              </span>
-            </span>
-          </div>
-        </div>
+        <ApproachSummaryStrip
+          title="أسلوب التكلفة"
+          items={[
+            {
+              label: "أرض",
+              value: buildingOnly
+                ? "غير مشمولة"
+                : landComplete
+                  ? fmt(cost?.landValueFromMarket)
+                  : "— بانتظار المقارنات",
+              tone: buildingOnly ? "muted" : landComplete ? "heading" : "danger",
+            },
+            { label: "إحلال", value: fmt(cost?.totalCostWithIndirect) },
+            { label: "إهلاك", value: fmt(cost?.depreciationValue), tone: "danger" },
+          ]}
+          resultLabel={buildingOnly ? "تكلفة الإحلال − الإهلاك =" : "أرض + إحلال − إهلاك ="}
+          result={
+            buildingOnly || landComplete
+              ? fmt(cost?.costOpinionWithLand)
+              : "غير مكتمل — يلزم قيمة الأرض"
+          }
+          resultTone={buildingOnly || landComplete ? "heading" : "danger"}
+        />
 
         {!buildingOnly ? (
         <>
