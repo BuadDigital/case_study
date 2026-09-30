@@ -672,7 +672,7 @@ export function buildValuationReportLiveFill(input: {
     "أساليب التقييم المستخدمة": dash(
       methodsUsed(choices, approachesUsed(choices, input), documentIndicators(input.recon)),
     ),
-    "حالة العقار": dash(inspector?.featureValues?.buildState),
+    "حالة العقار": dash(inspector?.featureValues?.propertyCondition),
     "حالة الصك": dash(property?.deedStatus),
     "نوع الملكية": dash(
       ownershipTypeDisplay(

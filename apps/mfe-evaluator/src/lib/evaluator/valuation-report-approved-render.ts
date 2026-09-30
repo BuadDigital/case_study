@@ -113,8 +113,7 @@ function buildSectionBody(sec: number, doc: ValuationReportDocumentDto): string 
         ["نوع الملكية", field(doc, 6, "ownershipType")],
         ["المدينة / الحي", `${field(doc, 6, "city")} / ${field(doc, 6, "district")}`],
         ["هل تُقيَّم المباني؟", field(doc, 6, "hasStructures") === "yes" ? "نعم" : "لا"],
-        // Building condition only when buildings are valued (decision 6 / 8b); the listed
-        // components describe the property and print whenever the specialist listed any.
+        // «حالة العقار» (جديد/مستخدم) عند تقييم المباني — منفصلة عن «حالة البناء».
         ...(doc.hasStructuresToValue
           ? ([["حالة العقار", field(doc, 6, "propertyCondition")]] as Array<[string, string]>)
           : []),

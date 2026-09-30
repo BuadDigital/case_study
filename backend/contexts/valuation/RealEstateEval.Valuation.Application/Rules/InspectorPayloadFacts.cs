@@ -6,6 +6,7 @@ namespace RealEstateEval.Valuation.Application.Rules;
 /// </summary>
 public sealed class InspectorPayloadFacts
 {
+    public string? PropertyCondition { get; init; }
     public string? BuildState { get; init; }
     public string? OccupancyState { get; init; }
     public string? Movables { get; init; }
@@ -119,6 +120,7 @@ public sealed class InspectorPayloadFacts
 
             return new InspectorPayloadFacts
             {
+                PropertyCondition = Feature("propertyCondition"),
                 BuildState = Feature("buildState"),
                 OccupancyState = Feature("occupancyState"),
                 Movables = Feature("movables"),

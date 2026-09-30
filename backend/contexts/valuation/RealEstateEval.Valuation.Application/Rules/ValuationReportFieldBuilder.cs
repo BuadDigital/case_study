@@ -179,9 +179,8 @@ public static class ValuationReportFieldBuilder
                         OwnershipTypeRules.ParseOwners(prop.DeedOwnersJson),
                         prop.RestrictionType));
                 d["hasStructures"] = hasStructures ? "yes" : "no";
- // Property condition prints for buildings only, deleted for land;
- // source is the field inspector ("building condition" item).
-                d["propertyCondition"] = hasStructures ? inspector.BuildState : null;
+                // «حالة العقار» (جديد/مستخدم) — حقل معاين مستقل عن «حالة البناء».
+                d["propertyCondition"] = hasStructures ? inspector.PropertyCondition : null;
  // Chattels are free text from the field inspector; absence is recorded as a denial.
                 d["movables"] = inspector.Movables switch
                 {

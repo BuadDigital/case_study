@@ -441,7 +441,8 @@ public sealed class ValuationReportFieldInjectionService(
         InspectorPayloadFacts inspector,
         bool hasStructures)
     {
-    put("building_condition_ar", inspector.BuildState);
+        put("property_condition_ar", inspector.PropertyCondition);
+        put("building_condition_ar", inspector.BuildState);
         put("vacancy_ar", inspector.OccupancyState);
         put("meter.4120", inspector.ElectricityMeterCount);
         put("meter.4130", inspector.ElectricityMeterNumbers);

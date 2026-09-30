@@ -109,6 +109,7 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.featureValues.facade = "شمالية";
     draft.featureValues.propertyUsage = "سكني";
     draft.featureValues.zoneStatus = "غير موقوفة";
+    draft.featureValues.propertyCondition = "مستخدم";
     draft.featureValues.buildState = "جيد";
     draft.featureValues.occupancyState = "شاغر";
     draft.featureValues.districtState = "متوسط";
@@ -141,6 +142,7 @@ describe("Field inspection frontend/backend rule parity", () => {
       "hasTanks",
       "hasLandscaping",
       "zoneStatus",
+      "propertyCondition",
     ]));
   });
 
@@ -150,6 +152,7 @@ describe("Field inspection frontend/backend rule parity", () => {
     draft.featureValues.facade = "شمالية";
     draft.featureValues.propertyUsage = "سكني";
     draft.featureValues.zoneStatus = "غير موقوفة";
+    draft.featureValues.propertyCondition = "مستخدم";
     draft.featureValues.buildState = "جيد";
     draft.featureValues.occupancyState = "شاغر";
     draft.featureValues.districtState = "متوسط";

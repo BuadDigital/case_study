@@ -405,6 +405,12 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     photoOnYes: false,
   },
   {
+    key: "propertyCondition",
+    label: "حالة العقار",
+    options: ["جديد", "مستخدم"],
+    photoOnYes: false,
+  },
+  {
     key: "buildState",
     label: "حالة البناء",
     options: ["جيد", "متوسط", "رديء"],
@@ -492,6 +498,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
 /** Building-only inspector rows — hidden on vacant land. */
 export const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
   "facade",
+  "propertyCondition",
   "buildState",
   "occupancyState",
   "carEntrance",

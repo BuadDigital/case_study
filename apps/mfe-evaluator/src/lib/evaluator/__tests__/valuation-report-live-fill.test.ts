@@ -394,6 +394,25 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع العقار"]).toBe("أرض");
   });
 
+  it("fills حالة العقار from propertyCondition, not buildState", () => {
+    const draft = createEvaluatorDraft({
+      taskId: "t1",
+      propertyId: "p1",
+      poNumber: "PO-1",
+    });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        featureValues: {
+          propertyCondition: "مستخدم",
+          buildState: "جيد",
+        },
+      } as never,
+    });
+    expect(fill.cells["حالة العقار"]).toBe("مستخدم");
+    expect(fill.cells["حالة البناء"]).toBe("جيد");
+  });
+
   it("uses the promoted inspected type over the initial property type", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
