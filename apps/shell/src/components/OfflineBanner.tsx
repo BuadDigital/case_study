@@ -19,7 +19,7 @@ export function OfflineBanner() {
   if (isOfflineCapableRole(role)) return null;
 
   return (
-    <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2">
+    <div className="shrink-0 border-b border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-4 py-2">
       <Note tone="warn" className="m-0 text-center text-xs">
         لا يوجد اتصال بالإنترنت — قد لا تُحفظ التغييرات حتى يعود الاتصال.
       </Note>

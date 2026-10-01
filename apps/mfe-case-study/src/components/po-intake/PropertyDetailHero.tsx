@@ -347,7 +347,7 @@ export function PropertyDetailHero({
                   compact
                     ? "px-2 py-0.5 text-[10px]"
                     : "px-[11px] py-1 text-[11.5px]",
-                  "bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]",
+                  "bg-success-bg text-heading",
                 )}
               >
                 {assignmentCompositeTag(record.assignmentType)}

@@ -17,8 +17,7 @@ import { PropertyLocationMapGlance } from "./PropertyLocationMapGlance";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
 import { useEffect, useState } from "react";
 
-const goldSoft =
-  "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";
+const goldSoft = "rounded border border-border bg-surface-2";
 
 export type PropertyGlanceFact = {
   label: string;
@@ -125,7 +124,7 @@ export function PropertyDetailMediaGlance({
 
   const descriptionBlock = (
     <>
-      <div className="mb-[3px] text-[10.5px] text-text-3">وصف العقار</div>
+      <div className="mb-[3px] text-[10.5px] text-text-2">وصف العقار</div>
       <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
         {description}
       </p>
@@ -134,7 +133,7 @@ export function PropertyDetailMediaGlance({
           key={fact.label}
           className="mt-2.5 border-t border-border/60 pt-2.5"
         >
-          <div className="mb-[3px] text-[10.5px] text-text-3">{fact.label}</div>
+          <div className="mb-[3px] text-[10.5px] text-text-2">{fact.label}</div>
           <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
             {fact.value}
           </p>
@@ -147,10 +146,10 @@ export function PropertyDetailMediaGlance({
     <div className="mb-1 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
       <div className="flex min-w-0 flex-col">
         <div className="mb-1.5 flex min-w-0 items-center justify-between gap-1.5">
-          <div className="truncate text-[11px] text-text-3">
+          <div className="truncate text-[11px] text-text-2">
             صورة العقار الرئيسية
           </div>
-          <span className="shrink-0 text-[10px] font-semibold text-[#8c7857]">
+          <span className="shrink-0 text-[10px] font-semibold text-gold-d">
             من المعاين
           </span>
         </div>

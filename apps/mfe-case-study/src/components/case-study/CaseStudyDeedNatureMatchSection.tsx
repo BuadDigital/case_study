@@ -112,7 +112,7 @@ export function CaseStudyDeedNatureMatchSection({
                   className={cn(
                     "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-[12px] font-medium transition-colors",
                     on
-                      ? "border-ink bg-ink text-white"
+                      ? "border-heading bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                       : "border-border-md bg-surface text-text-2 hover:text-heading",
                     outcomeInvalid && !on && invalidControlClass,
                     disabled && "cursor-not-allowed opacity-50",
@@ -138,8 +138,8 @@ export function CaseStudyDeedNatureMatchSection({
               className={cn(
                 "mb-0 mt-2 rounded-lg border px-3 py-2 text-[11.5px] leading-relaxed",
                 outcome === "matched"
-                  ? "border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] text-[var(--success)]"
-                  : "border-amber-200 bg-amber-50 text-amber-950",
+                  ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
+                  : "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text",
               )}
               role="status"
             >

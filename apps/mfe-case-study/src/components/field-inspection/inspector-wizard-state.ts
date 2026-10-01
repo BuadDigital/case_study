@@ -8,6 +8,7 @@ import {
   activeMapDiffersFromInspectorOriginal,
   hasInspectorOriginalMapPin,
   inspectorFeatureOffersPhoto,
+  MOVABLES_PHOTOS_SLOT_ID,
   isServiceAmenityPhotoSlotComplete,
   listServiceAmenityPhotoSlots,
   type InspectorDefinedPhotoSlot,
@@ -88,10 +89,9 @@ export const FALLBACK_FACADE_OPTIONS = [
 ];
 
 /** Pill styling for the yes/no component toggles. */
-export function inspectorBoolPillClass(on: boolean, disabled = false) {
+export function inspectorBoolPillClass(on: boolean) {
   return cn(
-    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] font-inherit text-xs font-semibold",
-    disabled ? "cursor-default" : "cursor-pointer",
+    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] font-inherit text-xs font-semibold cursor-pointer",
     on ? "border-ink bg-ink text-white" : "border-border-md bg-surface text-text-2",
   );
 }
@@ -170,7 +170,7 @@ export function inspectorWizardCoordsValue(
  * (unchanged, still gates submit) — this slot is only for extra photos beyond
  * it, via the same multi-photo `definedPhotos` mechanism as services/amenities.
  */
-export const MOVABLES_EXTRA_PHOTOS_SLOT_ID = "feature:movables";
+export const MOVABLES_EXTRA_PHOTOS_SLOT_ID = MOVABLES_PHOTOS_SLOT_ID;
 
 /** Cache key of a slot photo's data URL (`inspector-photo-upload`). */
 export function slotPhotoRef(slotId: string, photoId: number): string {
@@ -180,6 +180,26 @@ export function slotPhotoRef(slotId: string, photoId: number): string {
 /** Cache key of a free (uncategorised) photo's data URL. */
 export function freePhotoRef(photoId: number): string {
   return `free:${photoId}`;
+}
+
+/**
+ * «يوجد منقولات» switched away from «نعم» drops its photos (the single movables photo control
+ * keeps them in the `feature:movables` slot); any other change leaves the slot alone.
+ */
+export function movablesPhotosResetPatch(
+  draft: Pick<InspectorWorkspaceDraft, "definedPhotos">,
+  featureKey: string,
+  nextValue: string,
+): Partial<Pick<InspectorWorkspaceDraft, "definedPhotos">> {
+  if (featureKey !== "movables" || nextValue === "نعم") return {};
+  if (!draft.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID]) return {};
+  return {
+    definedPhotos: setDefinedPhotoSlot(
+      draft.definedPhotos,
+      MOVABLES_EXTRA_PHOTOS_SLOT_ID,
+      emptyDefinedPhotoSlot(),
+    ),
+  };
 }
 
 export function emptyDefinedPhotoSlot(): InspectorDefinedPhotoSlot {

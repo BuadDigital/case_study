@@ -52,15 +52,19 @@ export function InspectorBoundaryMatchTable({
         <InsCard
           title="الحدود والأطوال"
           badge={
-            <DetailBadge tone="teal">
-              أدخل الحدود ثم طابقها مع الواقع
-            </DetailBadge>
+            editable ? (
+              <DetailBadge tone="teal">
+                أدخل الحدود ثم طابقها مع الواقع
+              </DetailBadge>
+            ) : undefined
           }
         >
-          <p className="mb-2.5 text-[11.5px] leading-relaxed text-text-3">
-            أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
-            علّق بعدم المطابقة.
-          </p>
+          {editable ? (
+            <p className="mb-2.5 text-[11.5px] leading-relaxed text-text-3">
+              أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
+              علّق بعدم المطابقة.
+            </p>
+          ) : null}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-xs">
               <thead>
@@ -110,12 +114,11 @@ export function InspectorBoundaryMatchTable({
                         {row.label}
                       </td>
                       <td className={INS_TD_CLASS}>
+                        {editable ? (
                         <Select
                           className="text-[11.5px]"
-                          disabled={!editable}
                           value={facade}
                           onChange={(e) =>
-                            editable &&
                             onPatch(
                               boundaryMatchPatch(draft, matchKey, {
                                 facade: e.target.value,
@@ -133,6 +136,9 @@ export function InspectorBoundaryMatchTable({
                             </option>
                           ))}
                         </Select>
+                        ) : (
+                          facade.trim() || "—"
+                        )}
                       </td>
                       <td className={INS_TD_CLASS}>
                         {editable ? (
@@ -180,19 +186,28 @@ export function InspectorBoundaryMatchTable({
                         )}
                       </td>
                       <td className={cn(INS_TD_CLASS, "text-center")}>
+                        {!editable ? (
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                              ok
+                                ? "bg-success-bg text-heading"
+                                : "bg-danger-bg text-danger-text",
+                            )}
+                          >
+                            {ok ? "مطابق" : "غير مطابق"}
+                          </span>
+                        ) : (
                         <div className="inline-flex gap-1.5">
                           <button
                             type="button"
-                            disabled={!editable}
                             className={cn(
                               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
-                              !editable && "cursor-default",
                               ok
-                                ? "border-[color-mix(in_srgb,#1f6f6f_35%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+                                ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
                                 : "border-border bg-surface-2 text-text-3",
                             )}
                             onClick={() =>
-                              editable &&
                               onPatch({
                                 boundaryMatches: {
                                   ...draft.boundaryMatches,
@@ -209,16 +224,13 @@ export function InspectorBoundaryMatchTable({
                           </button>
                           <button
                             type="button"
-                            disabled={!editable}
                             className={cn(
                               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
-                              !editable && "cursor-default",
                               !ok
                                 ? "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-danger-bg text-danger-text"
                                 : "border-border bg-surface-2 text-text-3",
                             )}
                             onClick={() =>
-                              editable &&
                               onPatch({
                                 boundaryMatches: {
                                   ...draft.boundaryMatches,
@@ -233,6 +245,7 @@ export function InspectorBoundaryMatchTable({
                             غير مطابق
                           </button>
                         </div>
+                        )}
                       </td>
                       <td className={INS_TD_CLASS}>
                         {!ok ? (

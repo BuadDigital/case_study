@@ -500,7 +500,7 @@ export default function LoginPage() {
               <div className="mb-5 flex justify-end">
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-[13px] font-bold text-text-2 hover:text-ink"
+                  className="inline-flex cursor-pointer items-center gap-[7px] border-0 bg-transparent p-0 text-[13px] font-bold text-text-2 hover:text-heading"
                   disabled={loading}
                   onClick={() => {
                     setStep("creds");
@@ -580,7 +580,7 @@ export default function LoginPage() {
                       otpBad
                         ? "border-danger"
                         : digit
-                          ? "border-ink text-ink"
+                          ? "border-heading text-heading"
                           : "border-[#ddd8cc]",
                     )}
                   />

@@ -259,7 +259,7 @@ export function FinanceCostPartiesList({
                       </span>
                     ) : p.openStatements > 0 ? (
                       <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
-                        <span className="h-[7px] w-[7px] rounded-full bg-[#102B4E]" />
+                        <span className="h-[7px] w-[7px] rounded-full bg-heading" />
                         {p.openStatements} مسير/أمر
                       </span>
                     ) : (

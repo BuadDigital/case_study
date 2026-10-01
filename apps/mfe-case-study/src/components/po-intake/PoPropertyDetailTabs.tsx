@@ -176,7 +176,7 @@ export function PoPropertyDetailTabs({
                   className={cn(
                     "relative mb-0 max-lg:min-h-0 border-0 border-b-0 px-2.5 py-[9px] text-[12.5px] font-normal text-text-2",
                     "rounded-none transition-[background,color] duration-150",
-                    "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
+                    "hover:bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] hover:text-heading",
                     active &&
                       "!border-0 !bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
                     hasNew &&

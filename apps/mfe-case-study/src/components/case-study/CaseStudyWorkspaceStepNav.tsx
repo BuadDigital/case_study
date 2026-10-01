@@ -71,7 +71,9 @@ export function CaseStudyWorkspaceStepNav({
             <span
               className={cn(
                 "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
-                selected ? "bg-ink text-white" : "bg-surface-2 text-text-3",
+                selected
+                  ? "bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
+                  : "bg-surface-2 text-text-3",
               )}
             >
               {step.number}

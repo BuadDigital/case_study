@@ -3,7 +3,7 @@ import { cn } from "../lib/cn";
 
 const toneClasses = {
   default: "bg-surface-2 text-text-2",
-  primary: "bg-navy-soft text-ink",
+  primary: "bg-navy-soft text-heading",
   success: "bg-success-bg text-success-text",
   warning: "bg-amber-light text-amber-text",
   danger: "bg-danger-bg text-danger-text",

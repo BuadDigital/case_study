@@ -184,7 +184,7 @@ function FinanceDisbursementCloseForm({
           <div className="min-w-0 text-start">
             <ModalTitle
               id="disburse-close-title"
-              className="text-start text-base font-extrabold text-[#102B4E]"
+              className="text-start text-base font-extrabold text-heading"
             >
               توثيق الصرف — {statement.referenceNumber}
             </ModalTitle>
@@ -314,7 +314,7 @@ function FinanceDisbursementCloseForm({
                 void handleReceiptFile(e.target.files?.[0]);
                 e.target.value = "";
               }}
-              className="w-full text-[12.5px] text-text-2 file:me-3 file:rounded-md file:border-0 file:bg-[#f1ece2] file:px-3 file:py-1.5 file:text-[12px] file:font-bold file:text-[#102B4E]"
+              className="w-full text-[12.5px] text-text-2 file:me-3 file:rounded-md file:border-0 file:bg-gold-soft file:px-3 file:py-1.5 file:text-[12px] file:font-bold file:text-heading"
             />
             {uploading ? (
               <p className="mt-1.5 text-[12px] text-text-3">جاري رفع الإيصال…</p>

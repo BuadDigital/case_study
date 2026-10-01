@@ -26,7 +26,7 @@ import {
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { InsEditField, InsField } from "./PropertyDetailInspectionFields";
+import { InsEditField, InsReadField } from "./PropertyDetailInspectionFields";
 import {
   componentCountPatch,
   componentNeedsPhoto,
@@ -110,7 +110,7 @@ export function PhotoTile({
         </svg>
       ) : null}
       {!filled ? (
-        <span className="text-[10.5px] text-[#d9694f]">
+        <span className="text-[10.5px] text-danger">
           {photoTileEmptyLabel(none)}
         </span>
       ) : null}
@@ -165,6 +165,10 @@ export function EditableFeaturePhotoCell({
 
   const canPreview = Boolean(hasPhoto && taskId && photoRef && attachment);
 
+  if (disabled && !hasPhoto) {
+    return <span className="text-[11px] text-text-3">لا توجد صورة مرفقة</span>;
+  }
+
   return (
     <span
       className={cn(
@@ -213,7 +217,7 @@ export function EditableFeaturePhotoCell({
           type="button"
           disabled={disabled}
           title="استبدال — اسحب صورة جديدة أو اختر من الجهاز"
-          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-[#1f6f6f] hover:underline disabled:cursor-default"
+          className="inline-flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-[10.5px] text-heading hover:underline disabled:cursor-default"
           onClick={() => inputRef.current?.click()}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -234,7 +238,7 @@ export function EditableFeaturePhotoCell({
           onClick={() => inputRef.current?.click()}
         >
           <i className="ti ti-upload text-[13px]" aria-hidden />
-          {dragOver ? "أفلِت الصورة" : "إرفاق صورة"}
+          {dragOver ? "أفلِت الصورة" : "إرفاق صورة أو اسحبها"}
         </button>
       )}
       <input
@@ -294,11 +298,11 @@ export function ComponentCountWithPhotoField({
         id={`ins-component-photo-${photoKey}`}
         className={cn("min-w-0", invalid && invalidControlClass, invalid && "rounded-md p-0.5")}
       >
-        <InsField label={label} value={countValue} ltr />
+        <InsReadField label={label} value={countValue} ltr />
         {needsPhoto ? (
           <div className="mt-1.5 text-[11px] text-text-2">
             {attachment?.fileName ? (
-              <span className="inline-flex items-center gap-1 text-[#1f6f6f]">
+              <span className="inline-flex items-center gap-1 text-heading">
                 <i className="ti ti-circle-check" aria-hidden />
                 صورة {componentPhotoNoun(photoKey)} مرفقة
               </span>

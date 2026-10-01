@@ -185,21 +185,24 @@ export function InspectorDefinedPhotosSection({
   return (
     <>
       <RegistrationFormCard>
-        <p
-          className={
-            layout === "desktop"
-              ? "mb-3 text-[11px] leading-relaxed text-text-3"
-              : "mb-2.5 text-[11px] leading-relaxed text-text-3"
-          }
-        >
-          {definedPhotosIntroText(layout, canPickFromTransaction)}
-        </p>
+        {disabled ? null : (
+          <p
+            className={
+              layout === "desktop"
+                ? "mb-3 text-[11px] leading-relaxed text-text-3"
+                : "mb-2.5 text-[11px] leading-relaxed text-text-3"
+            }
+          >
+            {definedPhotosIntroText(layout, canPickFromTransaction)}
+          </p>
+        )}
 
         <InspectorDefinedPhotoSlotList
           cells={cells}
           layout={layout}
           taskId={draft.taskId}
           disabled={Boolean(disabled || uploading)}
+          readOnly={Boolean(disabled)}
           transactionPhotos={canPickFromTransaction ? transactionPhotos : undefined}
           onUpload={uploadSlotPhotos}
           onToggleNone={toggleSlotNone}

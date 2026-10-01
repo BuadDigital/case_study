@@ -3,10 +3,10 @@ import { cn } from "../lib/cn";
 
 const toneClasses = {
   default: "border-r-text-2 bg-surface-2 text-text-2",
-  info: "border-r-ink bg-navy-soft text-ink",
-  warn: "border-r-warning bg-warning-bg text-[#784212]",
+  info: "border-r-ink bg-navy-soft text-heading",
+  warn: "border-r-warning bg-warning-bg text-amber-text",
   success: "border-r-success bg-success-bg text-success-text",
-  danger: "border-r-danger bg-danger-bg text-[#922b21]",
+  danger: "border-r-danger bg-danger-bg text-danger-text",
 } as const;
 
 export type NoteTone = keyof typeof toneClasses;

@@ -5,6 +5,7 @@ import {
   OCCUPANCY_DESCRIPTION_KEY,
 } from "../../lib/app-data/inspector-workspace-data";
 import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Shown when «حالة الإشغال» = مشغول — explain why the property is occupied. */
@@ -19,6 +20,9 @@ export function InspectorOccupancyDescriptionField({
   invalid?: boolean;
   onChange: (next: string) => void;
 }) {
+  if (disabled) {
+    return <InsReadField label="سبب الإشغال" value={value} multiline className="mt-2" />;
+  }
   return (
     <textarea
       id={`ins-${OCCUPANCY_DESCRIPTION_KEY}`}

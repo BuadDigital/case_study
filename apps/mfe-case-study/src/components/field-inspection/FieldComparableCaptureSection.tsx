@@ -202,6 +202,7 @@ export function FieldComparableCaptureSection({
 
   return (
     <div dir="rtl">
+      {disabled ? null : (
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="m-0 text-[11px] text-text-2">
           إدخال أولي أثناء المعاينة — الحقول من إعدادات «قوائم التقييم / العقارات
@@ -211,7 +212,6 @@ export function FieldComparableCaptureSection({
           type="button"
           size="sm"
           variant="primary"
-          disabled={disabled}
           onClick={() => {
             setOpen((v) => {
               if (!v) {
@@ -226,8 +226,9 @@ export function FieldComparableCaptureSection({
           {open ? "إغلاق النموذج" : "إضافة مقارن"}
         </Button>
       </div>
+      )}
 
-      {open ? (
+      {open && !disabled ? (
         <div className="mt-3 rounded-md border border-border bg-surface p-3">
           <ComparablePropertyEntryFields
             key={formKey}
@@ -281,7 +282,7 @@ export function FieldComparableCaptureSection({
                     colSpan={Math.max(cols.length, 1)}
                     className="text-center text-[12px] text-text-3"
                   >
-                    لا توجد مقارنات بعد — اضغط «إضافة مقارن».
+                    {disabled ? "لا توجد مقارنات مسجّلة." : "لا توجد مقارنات بعد — اضغط «إضافة مقارن»."}
                   </Td>
                 </Tr>
               ) : (

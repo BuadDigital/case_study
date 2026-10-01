@@ -398,7 +398,7 @@ export function EngineeringSurveyWorkBody({
 
       <div id="eng-site-confirm">
         {formDisabled ? (
-          <div className="mt-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+          <div className="mt-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text">
             {draft.siteConfirmed
               ? "✓ تم الإقرار بأن المكتب الهندسي تحقق ميدانياً وأن بيانات التقرير المساحي صحيحة ودقيقة."
               : "لم يتم الإقرار بعد بصحة الموقع."}
@@ -406,7 +406,7 @@ export function EngineeringSurveyWorkBody({
         ) : (
           <label
             className={cn(
-              "mt-3 flex cursor-pointer items-start gap-[9px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]",
+              "mt-3 flex cursor-pointer items-start gap-[9px] rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text",
               fieldErrors.site_confirmed && engineeringInvalidControlClass,
             )}
           >

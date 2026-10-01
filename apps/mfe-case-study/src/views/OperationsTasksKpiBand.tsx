@@ -27,7 +27,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
         />
         <KpiCell
           icon={<TasksKpiCreatedIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink"
+          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading"
           label="منشأة"
           value={kpis.created}
           sub="بانتظار البدء"
@@ -42,7 +42,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
         <KpiCell
           last
           icon={<TasksKpiCompletedIcon />}
-          iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
+          iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-heading"
           label="مكتملة"
           value={kpis.completed}
           sub="أُنجزت مؤخراً"
@@ -70,7 +70,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             value: kpis.created,
             icon: <TasksKpiCreatedIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
           },
           {
@@ -91,9 +91,9 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             value: kpis.completed,
             icon: <TasksKpiCompletedIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
-            valueClass: "!text-ink",
+            valueClass: "!text-heading",
           },
         ]}
       />

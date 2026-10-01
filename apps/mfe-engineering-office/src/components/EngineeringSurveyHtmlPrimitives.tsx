@@ -27,9 +27,9 @@ export function EngInfo({
 }) {
   const styles =
     variant === "amber"
-      ? "border-[#fad7a0] bg-[#fef3d7] text-[#7a5b12]"
+      ? "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text"
       : variant === "red"
-        ? "border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_9%,transparent)] text-[#a5432e]"
+        ? "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-danger-bg text-danger-text"
         : "border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-text-2";
   return (
     <div
@@ -116,7 +116,7 @@ export function EngTabBar({
             onClick={() => onChange(tab.id)}
             className={cn(
               "relative mb-0 max-lg:min-h-0 cursor-pointer rounded-none border-0 border-b-0 bg-transparent px-2.5 py-[9px] font-[inherit] text-[12.5px] font-normal text-text-2 transition-[background,color] duration-150",
-              "hover:bg-[color-mix(in_srgb,#102B4E_6%,transparent)] hover:text-heading",
+              "hover:bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] hover:text-heading",
               on && "!bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
             )}
           >

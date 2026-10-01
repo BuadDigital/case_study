@@ -125,7 +125,7 @@ html[data-theme="dark"] {
   --gold-d: #d6bd8c; /* Dark-mode gold text color */
   --gold-2: #e0cca0; /* Dark-mode secondary gold tint */
   --gold-soft: rgba(194, 168, 120, 0.16); /* Dark-mode gold wash */
-  --heading: #dde2ec; /* Dark-mode heading text color */
+  --heading: #f3f6fb; /* Dark-mode heading text color */
   --row-hover: #242e40; /* Dark-mode row hover background */
 
   --bg: #161d2a; /* Dark-mode page background */
@@ -133,11 +133,17 @@ html[data-theme="dark"] {
   --surface-2: #262f42; /* Dark-mode subtle panel background */
   --border: #2f3a4e; /* Dark-mode hairline border */
   --border-md: #3a4761; /* Dark-mode stronger hairline */
-  --text-1: #cbd1de; /* Dark-mode primary text */
-  --text-2: #949cad; /* Dark-mode secondary text */
-  --text-3: #727c90; /* Dark-mode muted text */
+  --text-1: #dce3ee; /* Dark-mode primary text — readable on slate */
+  --text-2: #b7c2d4; /* Dark-mode secondary text — field labels and meta */
+  --text-3: #96a2b8; /* Dark-mode muted text — still above the old gray that disappeared */
   --red: #d9694f; /* Dark-mode danger fill — unchanged from the pre-AA-fix value */
   --on-ink: #f3f5f9; /* Dark-mode text/icon color on an --ink fill */
+  /* Label colors sit on translucent washes. The light-theme values are dark
+     paints, so they disappear on slate. These stay light enough to read. */
+  --success-text: var(--heading);
+  --amber-text: #f0d090;
+  --red-text: #f3b5a8;
+  --blue-text: #a9cff6;
 
   --surface3: rgba(194, 168, 120, 0.16); /* Dark-mode legacy alias → gold wash */
   --navy-soft: color-mix(in srgb, var(--ink) 18%, transparent); /* Dark-mode navy wash */

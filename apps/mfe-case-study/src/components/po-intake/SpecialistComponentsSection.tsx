@@ -28,6 +28,7 @@ import {
   emptyComponentLine,
 } from "../../lib/app-data/specialist-components";
 import { SpecialistComponentsTable } from "./SpecialistComponentsTable";
+import { InsReadField } from "./PropertyDetailInspectionFields";
 
 export function SpecialistComponentsSection({
   poNumber,
@@ -130,37 +131,44 @@ export function SpecialistComponentsSection({
         </GentleBusy>
       ) : (
         <>
-          <FormGroup>
-            <Label htmlFor={`components-text-${propertyId}`} className="text-[12px] font-semibold">
-              مكونات العقار (تُطبع في التقرير)
-            </Label>
-            <p className="m-0 mb-1.5 text-[11px] text-text-3">
-              نسّق وصف المعاين هنا، أو اكتبه من الصورة إذا أرسل صورة فقط.
-            </p>
-            <Textarea
-              id={`components-text-${propertyId}`}
-              rows={5}
-              disabled={locked}
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                setDirty(true);
-              }}
-              className="min-h-[110px] resize-y text-[13px]"
-            />
-          </FormGroup>
+          {disabled ? (
+            <InsReadField label="مكونات العقار (تُطبع في التقرير)" value={text} multiline />
+          ) : (
+            <FormGroup>
+              <Label htmlFor={`components-text-${propertyId}`} className="text-[12px] font-semibold">
+                مكونات العقار (تُطبع في التقرير)
+              </Label>
+              <p className="m-0 mb-1.5 text-[11px] text-text-3">
+                نسّق وصف المعاين هنا، أو اكتبه من الصورة إذا أرسل صورة فقط.
+              </p>
+              <Textarea
+                id={`components-text-${propertyId}`}
+                rows={5}
+                disabled={locked}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setDirty(true);
+                }}
+                className="min-h-[110px] resize-y text-[13px]"
+              />
+            </FormGroup>
+          )}
 
           <div>
             <p className="m-0 text-[12px] font-bold text-heading">جدول المكونات</p>
-            <p className="m-0 mt-0.5 text-[11px] text-text-3">
-              اختياري — احصر المكونات (أدوار، ملاحق، سور…) عند الحاجة. تُطبع في التقرير،
-              والمقيّم يقرّر هل تدخل في القيمة.
-            </p>
+            {disabled ? null : (
+              <p className="m-0 mt-0.5 text-[11px] text-text-3">
+                اختياري — احصر المكونات (أدوار، ملاحق، سور…) عند الحاجة. تُطبع في التقرير،
+                والمقيّم يقرّر هل تدخل في القيمة.
+              </p>
+            )}
           </div>
           {lines.length > 0 ? (
             <SpecialistComponentsTable
               lines={lines}
               disabled={locked}
+              readView={Boolean(disabled)}
               onPatch={(index, next) => {
                 setLines((prev) => prev.map((l, i) => (i === index ? next : l)));
                 setDirty(true);
@@ -171,7 +179,7 @@ export function SpecialistComponentsSection({
               }}
             />
           ) : (
-            <p className="m-0 text-[12px] text-text-3">لا توجد بنود بعد.</p>
+            <p className="m-0 text-[12px] text-text-3">{disabled ? "لا توجد بنود." : "لا توجد بنود بعد."}</p>
           )}
 
           {!disabled ? (

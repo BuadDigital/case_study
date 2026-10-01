@@ -143,7 +143,7 @@ export const INS_WIZARD_PIN_BUTTON_CLASS =
 
 /** Mobile map pin action — full width. */
 export const INS_MOBILE_PIN_BUTTON_CLASS =
-  "flex w-full min-h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "flex w-full min-h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit text-[14px] font-bold text-heading transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Desktop feature photo cell — same thumb preview as the wizard picker.
@@ -405,7 +405,7 @@ export function MobileCountStepper({
         <button
           type="button"
           disabled={disabled || n <= 0}
-          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-[var(--border-md,#ddd8cc)] bg-surface text-[22px] font-bold leading-none text-ink disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-xl border-[1.5px] border-border-md bg-surface text-[22px] font-bold leading-none text-heading disabled:opacity-40"
           onClick={() => onChange(String(Math.max(0, n - 1)))}
         >
           −

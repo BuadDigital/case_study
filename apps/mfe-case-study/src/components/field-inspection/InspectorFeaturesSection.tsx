@@ -40,6 +40,7 @@ import {
 import {
   InspectorMovablesPhotosField,
 } from "./InspectorMovablesPhotosField";
+import { movablesPhotosResetPatch } from "./inspector-wizard-state";
 import {
   InspectorOccupancyDescriptionField,
 } from "./InspectorOccupancyDescriptionField";
@@ -185,6 +186,7 @@ export function InspectorFeaturesSection({
                     onChange={(e) => {
                       const next = e.target.value;
                       persist({
+                        ...movablesPhotosResetPatch(draft, field.key, next),
                         featureValues: patchInspectorFeatureValues(
                           draft.featureValues,
                           field.key,
@@ -223,6 +225,18 @@ export function InspectorFeaturesSection({
                     photoMissing && "bg-danger-bg",
                   )}
                 >
+                  {field.key === "movables" ? (
+                    inspectorFeatureOffersPhoto(field, value) ? (
+                      <InspectorMovablesPhotosField
+                        draft={draft}
+                        disabled={locked}
+                        invalid={photoMissing}
+                        onPatch={persist}
+                      />
+                    ) : (
+                      <span className="text-text-3">—</span>
+                    )
+                  ) : (
                   <DesktopFeaturePhotoCell
                     needsPhoto={inspectorFeatureOffersPhoto(field, value)}
                     hasPhoto={Boolean(attachment?.fileName)}
@@ -265,6 +279,7 @@ export function InspectorFeaturesSection({
                       return true;
                     }}
                   />
+                  )}
                 </Td>
               </Tr>
               {field.key === "movables" && isMovablesPresent(draft.featureValues) ? (
@@ -291,13 +306,7 @@ export function InspectorFeaturesSection({
                         })
                       }
                     />
-                    <div className="mt-2">
-                      <InspectorMovablesPhotosField
-                        draft={draft}
-                        disabled={locked}
-                        onPatch={persist}
-                      />
-                    </div>
+
                   </Td>
                 </Tr>
               ) : null}
@@ -351,6 +360,7 @@ export function InspectorFeaturesSection({
 
         function setFeatureValue(next: string) {
           persist({
+            ...movablesPhotosResetPatch(liveDraft, field.key, next),
             featureValues: patchInspectorFeatureValues(
               liveDraft.featureValues,
               field.key,
@@ -409,7 +419,16 @@ export function InspectorFeaturesSection({
                 />
               </>
             )}
-            {needsPhoto ? (
+            {needsPhoto && field.key === "movables" ? (
+              <div className="mt-2.5">
+                <InspectorMovablesPhotosField
+                  draft={draft}
+                  disabled={locked}
+                  invalid={photoMissing}
+                  onPatch={persist}
+                />
+              </div>
+            ) : needsPhoto ? (
               <div className="mt-2.5">
                 {attachment?.fileName ? (
                   <InspectorStampedPhotoThumb
@@ -492,11 +511,6 @@ export function InspectorFeaturesSection({
                       },
                     })
                   }
-                />
-                <InspectorMovablesPhotosField
-                  draft={draft}
-                  disabled={locked}
-                  onPatch={persist}
                 />
               </div>
             ) : null}

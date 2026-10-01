@@ -12,7 +12,7 @@ export const primaryBtn =
 export const ghostBtn =
   "flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-[11px] border border-[#ddd8cc] bg-surface py-[13px] text-[14.5px] font-bold text-heading transition-[border-color,background,transform] duration-150 hover:-translate-y-px hover:border-gold hover:bg-surface-2";
 export const linkSm =
-  "cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-gold-d hover:text-ink disabled:cursor-not-allowed disabled:opacity-45";
+  "cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-gold-d hover:text-heading disabled:cursor-not-allowed disabled:opacity-45";
 export const stepTag =
   "mb-4 inline-flex items-center gap-[7px] rounded-full bg-gold-soft px-3 py-[5px] text-xs font-bold text-gold-d";
 export const footNote =

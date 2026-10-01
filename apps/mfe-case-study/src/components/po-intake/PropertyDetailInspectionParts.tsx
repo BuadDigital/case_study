@@ -15,6 +15,7 @@ export {
 export { formatAcceptedDate } from "./property-detail-inspection-state";
 export {
   InsField,
+  InsReadField,
   InsEditField,
   InsEditSelect,
   InsEditTextarea,

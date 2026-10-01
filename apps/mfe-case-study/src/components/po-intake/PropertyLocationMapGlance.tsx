@@ -8,8 +8,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 
-const goldSoft =
-  "rounded border border-transparent bg-[color-mix(in_srgb,#f1ece2_45%,transparent)]";
+const goldSoft = "rounded border border-border bg-surface-2";
 
 const INSPECTOR_PIN_PENDING_MESSAGE =
   "لم يتم تحديد الموقع من قبل المعاين بعد";
@@ -77,7 +76,7 @@ export function PropertyLocationMapGlance({
   return (
     <div className="flex min-w-0 flex-col">
       <div className="mb-1.5 flex min-w-0 items-center justify-between gap-1.5">
-        <div className="truncate text-[11px] text-text-3">
+        <div className="truncate text-[11px] text-text-2">
           موقع العقار المعتمد
         </div>
         {googleUrl ? (
@@ -85,7 +84,7 @@ export function PropertyLocationMapGlance({
             href={googleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-[#8c7857] no-underline"
+            className="shrink-0 whitespace-nowrap text-[11px] font-semibold text-gold-d no-underline"
           >
             خرائط جوجل ↗
           </a>
@@ -113,7 +112,7 @@ export function PropertyLocationMapGlance({
         >
           <div className="flex items-center justify-between gap-2.5">
             <div className="min-w-0">
-              <div className="mb-[3px] text-[10.5px] text-text-3">
+              <div className="mb-[3px] text-[10.5px] text-text-2">
                 إحداثيات الموقع
               </div>
               <div
@@ -133,7 +132,7 @@ export function PropertyLocationMapGlance({
               type="button"
               title="نسخ الإحداثيات"
               onClick={() => void copyCoords()}
-              className="inline-flex shrink-0 items-center gap-[5px] rounded-md border border-border-md bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-[#8c7857]"
+              className="inline-flex shrink-0 items-center gap-[5px] rounded-md border border-border-md bg-surface px-2.5 py-1.5 text-[11px] font-semibold text-gold-d"
             >
               <svg
                 width="13"

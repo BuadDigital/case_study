@@ -156,8 +156,7 @@ export function CaseStudyDeedNatureMatchReview({
         onAdoptSuggestion={() =>
           void persist({
             deedNatureMatchOutcome: suggestedOutcome,
-            deedNatureMatchNotes: suggestedOutcome === 
-            DeedNatureMatchOutcomes.Matched ? "" : draft.deedNatureMatchNotes,
+            deedNatureMatchNotes: suggestedOutcome === DeedNatureMatchOutcomes.Matched ? "" : draft.deedNatureMatchNotes,
           })
         }
         onPatch={(p) => void persist(p)}

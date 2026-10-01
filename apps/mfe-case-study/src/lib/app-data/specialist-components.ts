@@ -46,6 +46,39 @@ export function componentLineForItem(
   };
 }
 
+/** Catalog item whose Arabic name the specialist typed (ignores spacing / alef-hamza variants). */
+export function catalogItemForTypedName(text: string) {
+  const norm = (v: string) => v.replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
+  const typed = norm(text);
+  if (!typed) return undefined;
+  return COST_ITEM_OPTIONS.find((o) => o.key !== "custom" && norm(o.label) === typed);
+}
+
+/**
+ * The specialist types the item name instead of picking it: an exact catalog name keeps the
+ * catalog behaviour (unit, floor/annex kind, built-up ratio, repeated floors — what Infath areas
+ * and the appraiser's cost table key on); anything else is a custom item that keeps its unit.
+ */
+export function componentLineForTypedName(
+  line: BuildingInventoryLineDto,
+  text: string,
+): BuildingInventoryLineDto {
+  const match = catalogItemForTypedName(text);
+  if (match) {
+    return match.key === line.itemKey
+      ? { ...line, label: text }
+      : { ...componentLineForItem(line, match.key), label: text };
+  }
+  return {
+    ...line,
+    itemKey: "custom",
+    structureKind: line.itemKey === "custom" ? line.structureKind : structureKindForCostItem("custom"),
+    label: text,
+    buildRatioPct: null,
+    repeatedFloorCount: null,
+  };
+}
+
 export function componentLineAcceptsBuildRatio(line: BuildingInventoryLineDto): boolean {
   return Boolean(line.itemKey && COST_GROUP1_KEYS.has(line.itemKey)) && (line.unit || "sqm") === "sqm";
 }
@@ -54,8 +87,7 @@ export function componentLineAcceptsBuildRatio(line: BuildingInventoryLineDto): 
 export function componentLinesIssue(lines: BuildingInventoryLineDto[]): string | null {
   for (const [i, line] of lines.entries()) {
     const n = i + 1;
-    if (!line.itemKey?.trim()) return `اختر البند في السطر ${n}`;
-    if (!line.label.trim()) return `اكتب اسم البند المخصص في السطر ${n}`;
+    if (!line.label.trim()) return `اكتب اسم البند في السطر ${n}`;
   }
   return null;
 }

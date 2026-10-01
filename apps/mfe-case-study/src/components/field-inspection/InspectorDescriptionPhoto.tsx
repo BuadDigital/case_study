@@ -33,6 +33,7 @@ export function InspectorDescriptionPhoto({
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const attachment = draft.featurePhotoAttachments[PROPERTY_DESCRIPTION_PHOTO_KEY] ?? null;
+  if (!editable && !attachment?.attachmentId) return null;
   return (
     <div
       id="ins-desc-photo"
@@ -42,7 +43,7 @@ export function InspectorDescriptionPhoto({
       )}
     >
       <span className="text-[11px] font-semibold text-text-2">
-        أو صورة لتفاصيل المكونات
+        {editable ? "أو صورة لتفاصيل المكونات" : "صورة تفاصيل المكونات"}
       </span>
       <EditableFeaturePhotoCell
         needsPhoto

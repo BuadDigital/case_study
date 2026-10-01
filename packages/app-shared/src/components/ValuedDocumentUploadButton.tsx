@@ -97,7 +97,7 @@ export function ValuedDocumentUploadButton({
           }
         >
           <div className="grid gap-3">
-            <p className="m-0 rounded-md border border-[#e8d3a3] bg-[#fbf5e6] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5a14]">
+            <p className="m-0 rounded-md border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text">
               يراجعه أخصائي دراسة الحالة ويعتمده، ولا يطّلع عليه بعد الرفع إلا الأخصائي والمقيّم.
             </p>
             <div>

@@ -22,6 +22,7 @@ export function InspectorDefinedPhotoSlotList({
   layout,
   taskId,
   disabled,
+  readOnly = false,
   transactionPhotos,
   onUpload,
   onToggleNone,
@@ -34,6 +35,8 @@ export function InspectorDefinedPhotoSlotList({
   taskId: string;
   /** Section disabled or an upload in flight. */
   disabled: boolean;
+  /** Section is a view-only page (not just busy): hide every edit affordance. */
+  readOnly?: boolean;
   /** When set (case-study specialist), empty slots can pick from transaction images. */
   transactionPhotos?: PropertyDetailDocumentEntry[];
   onUpload: (slotId: string, files: File[]) => Promise<boolean>;
@@ -50,7 +53,7 @@ export function InspectorDefinedPhotoSlotList({
   if (cells.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-surface-2 px-3.5 py-5 text-center text-[12px] text-text-3">
-        {DEFINED_PHOTOS_EMPTY_TEXT}
+        {readOnly ? "لا توجد صور خدمات أو مرافق موثّقة." : DEFINED_PHOTOS_EMPTY_TEXT}
       </div>
     );
   }
@@ -103,11 +106,12 @@ export function InspectorDefinedPhotoSlotList({
             photoRef={photoRef}
             photo={first}
             disabled={disabled}
+            readOnly={readOnly}
             onUpload={(files) => onUpload(id, files)}
             onToggleNone={() => onToggleNone(id, !slot.none)}
             onOpen={first ? () => onOpen(id, first.id) : undefined}
           />
-          {canPickFromTransaction && !slot.none ? (
+          {canPickFromTransaction && !slot.none && !readOnly ? (
             <InspectorPhotoFilePicker
               label={transactionPickerLabel(done)}
               compact

@@ -20,7 +20,7 @@ import {
 import { DualCalendarPickerPanel } from "../field-inspection/DualCalendarPickerPanel";
 import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 import {
-  InsField,
+  InsReadField,
   insFieldLabelClass,
   insFieldLabelRowClass,
   useInsFieldsGridCentered,
@@ -143,7 +143,13 @@ export function InsDualCalendarDateField({
 
   if (disabled) {
     return (
-      <InsField label={label} value={value} ltr className={className} />
+      <InsReadField
+        id={id}
+        label={label}
+        value={parsed ? formatDualCalendarDate(parsed) : value}
+        ltr
+        className={className}
+      />
     );
   }
 

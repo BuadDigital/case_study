@@ -448,7 +448,7 @@ export function CourtsView() {
                     <Td>
                       <button
                         type="button"
-                        className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-[13px] text-ink hover:text-gold-d"
+                        className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-[13px] text-heading hover:text-gold-d"
                         onClick={() => void openCircuits(court)}
                       >
                         {court.circuitsCount}

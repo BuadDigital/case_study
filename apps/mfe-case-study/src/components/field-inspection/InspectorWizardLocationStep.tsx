@@ -32,12 +32,12 @@ import {
   InsCard,
   InsEditField,
   InsFieldsGrid,
+  InsReadField,
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
-  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
@@ -136,11 +136,9 @@ export function InspectorWizardLocationStep({
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2.5">
-          <div className="min-w-[240px] flex-1">
-            <span className={INS_LABEL_CLASS}>
-              الإحداثيات
-            </span>
-            {editable && !mapPinned ? (
+          {editable && !mapPinned ? (
+            <div className="min-w-[240px] flex-1">
+              <span className={INS_LABEL_CLASS}>الإحداثيات</span>
               <input
                 id="ins-map-coords"
                 className={cn(
@@ -163,18 +161,16 @@ export function InspectorWizardLocationStep({
                   );
                 }}
               />
-            ) : (
-              <input
-                id="ins-map-coords"
-                readOnly
-                tabIndex={-1}
-                aria-readonly="true"
-                className={cn(INSPECTOR_LOCKED_CONTROL_CLASS, "tabular-nums")}
-                dir="ltr"
-                value={coordsValue || "—"}
-              />
-            )}
-          </div>
+            </div>
+          ) : (
+            <InsReadField
+              id="ins-map-coords"
+              label="الإحداثيات"
+              value={coordsValue}
+              ltr
+              className="min-w-[240px] flex-1"
+            />
+          )}
           {editable && !mapPinned ? (
             <button
               type="button"
@@ -186,14 +182,14 @@ export function InspectorWizardLocationStep({
           ) : null}
           {editable && mapPinned ? (
             <div
-              className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-[#B7E4C7] bg-[#F0FFF4] pe-1.5 ps-3.5 text-[12.5px] font-bold text-[#1B7A4A]"
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg pe-1.5 ps-3.5 text-[12.5px] font-bold text-heading"
               role="status"
             >
               <i className="ti ti-pin-filled text-sm" aria-hidden />
               تم تثبيت الموقع
               <button
                 type="button"
-                className="grid size-7 place-items-center rounded-md border-0 bg-transparent font-inherit text-[15px] text-[#1B7A4A] transition-colors hover:bg-[color-mix(in_srgb,#1B7A4A_12%,transparent)]"
+                className="grid size-7 place-items-center rounded-md border-0 bg-transparent font-inherit text-[15px] text-heading transition-colors hover:bg-[color-mix(in_srgb,var(--heading)_12%,transparent)]"
                 aria-label="إلغاء تثبيت الموقع"
                 title="إلغاء التثبيت وإعادة التعيين"
                 onClick={onUnpin}

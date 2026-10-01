@@ -320,7 +320,7 @@ export function PartyActiveTaskWork({
       record && surveyProperty && surveyPropertyIndex >= 0 ? (
         <div
           id="view-active-inspection-workspace"
-          className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+          className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
         >
           {/* Own scrollport — #content is overflow-hidden for this route; PageShell canvas uses h-fit. */}
           <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[30px] py-[26px] max-sm:px-4 max-sm:py-4">
@@ -343,7 +343,7 @@ export function PartyActiveTaskWork({
           </div>
         </div>
       ) : recordLoading && !record ? (
-        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
           <PanelSkeleton />
         </div>
       ) : (
@@ -418,11 +418,11 @@ export function PartyActiveTaskWork({
       return (
         <div
           id="view-engineering-survey-workspace"
-          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
         >
           <PageShell
             variant="canvas"
-            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+            className="gap-0 overflow-x-hidden overflow-y-auto bg-bg px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
           >
             <PropertyDetailHero
               record={record}
@@ -463,7 +463,7 @@ export function PartyActiveTaskWork({
   if (recordLoading && !record) {
     if (isAppraisal && layout === "page") {
       return (
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]">
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
           <PanelSkeleton />
         </div>
       );
@@ -572,11 +572,11 @@ export function PartyActiveTaskWork({
       return (
         <div
           id="view-property-appraisal-workspace"
-          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
         >
           <PageShell
             variant="canvas"
-            className="gap-0 overflow-x-hidden overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+            className="gap-0 overflow-x-hidden overflow-y-auto bg-bg px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
           >
             <PropertyDetailHero
               record={record}

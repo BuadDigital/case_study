@@ -389,7 +389,7 @@ export function CloseTaskModalBody({
           </>
         ) : (
           <>
-            سيتم تحويل حالة المهمة إلى <b className="text-[#2f7a4d]">منجزة</b> وإشعار
+            سيتم تحويل حالة المهمة إلى <b className="text-heading">منجزة</b> وإشعار
             المنشئ.
           </>
         )}

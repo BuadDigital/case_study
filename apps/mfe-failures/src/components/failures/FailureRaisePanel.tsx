@@ -247,7 +247,7 @@ export function FailureRaisePanel({
     <div className="min-w-0">
       <div className={sectionClassName}>تسجيل تعذر</div>
       {raiseDisabled ? (
-        <p className="mb-3 max-w-[560px] rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+        <p className="mb-3 max-w-[560px] rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text">
           {raiseDisabledReason ??
             "لا يمكن تسجيل تعذر في الوضع الحالي."}
         </p>

@@ -69,9 +69,9 @@ export function InspectorStepNav({
               className={cn(
                 "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
                 active
-                  ? "bg-ink text-white"
+                  ? "bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                   : done
-                    ? "bg-[#1f6f6f] text-white"
+                    ? "bg-[color-mix(in_srgb,#3f8f5f_55%,var(--surface))] text-on-ink"
                     : "bg-surface-2 text-text-3",
               )}
             >

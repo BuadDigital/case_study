@@ -100,8 +100,8 @@ export function FinanceReceiptUploadField({
             "rounded-[10px] border-2 border-dashed px-4 py-4 text-center transition-[border-color,background,opacity]",
             blocked ? "cursor-not-allowed opacity-65" : "cursor-pointer",
             dragOver && !blocked
-              ? "border-[#102B4E] bg-[color-mix(in_srgb,#102B4E_6%,transparent)]"
-              : "border-[#ddd8cc] bg-surface-2 hover:border-[#a4906f] hover:bg-[#faf8f3]",
+              ? "border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)]"
+              : "border-[#ddd8cc] bg-surface-2 hover:border-[#a4906f] hover:bg-surface-2",
           )}
           onClick={() => {
             if (blocked) return;
@@ -146,7 +146,7 @@ export function FinanceReceiptUploadField({
           <div className="mt-1 text-[11px] text-text-3">
             PDF أو صورة · اسحب وأفلِت أو اختر من الجهاز
           </div>
-          <span className="mt-2.5 inline-flex rounded-lg bg-[#102B4E] px-3.5 py-1.5 text-[11.5px] font-semibold text-white">
+          <span className="mt-2.5 inline-flex rounded-lg bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] px-3.5 py-1.5 text-[11.5px] font-semibold text-on-ink">
             {busy ? "جاري الرفع…" : "اختيار ملف"}
           </span>
         </div>

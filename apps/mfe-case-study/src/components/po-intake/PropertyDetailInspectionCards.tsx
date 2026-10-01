@@ -7,7 +7,7 @@ import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
 
 export function SharedBadge() {
   return (
-    <span className="inline-flex shrink-0 rounded-md border border-[color-mix(in_srgb,#8b5cf6_30%,transparent)] bg-[color-mix(in_srgb,#8b5cf6_14%,transparent)] px-2 py-0.5 text-[10px] font-bold text-[#6b46c1]">
+    <span className="inline-flex shrink-0 rounded-md border border-[color-mix(in_srgb,var(--info)_40%,var(--border))] bg-info-bg px-2 py-0.5 text-[10px] font-bold text-info-text">
       مشترك
     </span>
   );
@@ -34,7 +34,7 @@ export function InsCard({
     <section className="mb-3 rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-none">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {step != null ? (
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#c8b591)]">
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-[14px] font-extrabold text-gold-2">
             {arabicStepLabel(step)}
           </span>
         ) : null}
@@ -52,21 +52,28 @@ export function ChipRow({
   selected,
   onToggle,
   labelOf,
+  selectedOnly,
 }: {
   items: string[];
   selected: string[];
   onToggle?: (item: string) => void;
   /** Display wording for a stored item value (the value itself is what gets saved). */
   labelOf?: (item: string) => string;
+  /** Read view: list only what applies instead of every option greyed out. */
+  selectedOnly?: boolean;
 }) {
+  const shown = selectedOnly ? items.filter((item) => selected.includes(item)) : items;
+  if (selectedOnly && shown.length === 0) {
+    return <p className="m-0 text-[11.5px] text-text-3">لا شيء مسجّل.</p>;
+  }
   return (
     <div className="flex flex-wrap gap-[7px]">
-      {items.map((item) => {
+      {shown.map((item) => {
         const on = selected.includes(item);
         const chipClass = cn(
           "inline-flex items-center gap-[5px] rounded-lg border px-[11px] py-[5px] text-[11.5px]",
           on
-            ? "border-[color-mix(in_srgb,#1f6f6f_30%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+            ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
             : "border-border bg-surface-2 text-text-3",
         );
         const content = (

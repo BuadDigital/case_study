@@ -70,8 +70,8 @@ function KpiIco({
       className={cn(
         "grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[7px]",
         gold
-          ? "bg-[#f1ece2] text-[#8c7857]"
-          : "bg-[color-mix(in_srgb,#a4906f_12%,transparent)] text-[#102B4E]",
+          ? "bg-gold-soft text-gold-d"
+          : "bg-[color-mix(in_srgb,#a4906f_12%,transparent)] text-heading",
       )}
       aria-hidden
     >
@@ -88,7 +88,7 @@ function DomainChip({ domain }: { domain: "revenue" | "costs" }) {
         "inline-flex w-fit items-center rounded-md px-2 py-0.5 text-[10px] font-bold",
         isRev
           ? "bg-[color-mix(in_srgb,#3f8f5f_12%,transparent)] text-[#2f7a4d]"
-          : "bg-[color-mix(in_srgb,#102B4E_10%,transparent)] text-[#1f3a5f]",
+          : "bg-navy-soft text-heading",
       )}
     >
       {isRev ? "الإيرادات" : "التكاليف"}
@@ -112,7 +112,7 @@ function AgeBlock({
       <span
         className={cn(
           "text-[18px] font-extrabold leading-none tabular-nums",
-          urgent ? "text-[#a5432e]" : "text-[#102B4E]",
+          urgent ? "text-[#a5432e]" : "text-heading",
         )}
         dir="ltr"
       >
@@ -149,14 +149,14 @@ function TaskRow({
       <Td>
         <div className="flex min-w-0 flex-col items-start gap-1.5">
           <DomainChip domain={task.domain} />
-          <span className="text-[12.5px] font-bold leading-snug text-[#102B4E]">
+          <span className="text-[12.5px] font-bold leading-snug text-heading">
             {task.title}
           </span>
         </div>
       </Td>
       <Td className="text-center">
         <div className="flex min-w-0 flex-col items-center gap-0.5">
-          <span className="text-[13px] font-bold text-[#8c7857]" dir="ltr">
+          <span className="text-[13px] font-bold text-gold-d" dir="ltr">
             {task.reference}
           </span>
           {task.subject && task.subject !== task.reference ? (
@@ -171,7 +171,7 @@ function TaskRow({
       </Td>
       <TdLtr
         className="text-center"
-        valueClassName="text-[14px] font-extrabold text-[#102B4E]"
+        valueClassName="text-[14px] font-extrabold text-heading"
       >
         {fmtMax(task.amountSar)}
       </TdLtr>
@@ -181,7 +181,7 @@ function TaskRow({
         </span>
       </Td>
       <Td className="text-center">
-        <span className="text-[12px] font-semibold text-[#3a3f4d]">
+        <span className="text-[12px] font-semibold text-text">
           {task.movesTo}
         </span>
       </Td>
@@ -192,7 +192,7 @@ function TaskRow({
         {opensModal ? (
           <button
             type="button"
-            className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-[#3a3f4d] transition-colors hover:text-[#102B4E]"
+            className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-text transition-colors hover:text-heading"
             onClick={() => onOpen(task)}
             onMouseEnter={preloadModal}
             onFocus={preloadModal}
@@ -205,7 +205,7 @@ function TaskRow({
         ) : (
           <Link
             href={task.href}
-            className="inline-flex items-center gap-1 text-[12px] font-bold text-[#3a3f4d] no-underline transition-colors hover:text-[#102B4E]"
+            className="inline-flex items-center gap-1 text-[12px] font-bold text-text no-underline transition-colors hover:text-heading"
           >
             {task.openLabel}
             <span className="text-[14px] leading-none" aria-hidden>
@@ -321,7 +321,7 @@ export function FinanceMyTasks() {
 
   return (
     <div>
-      <div className={cn(opsLetterCard, "mb-6 flex flex-wrap rounded-xl border-[#ece8df] bg-white")}>
+      <div className={cn(opsLetterCard, "mb-6 flex flex-wrap rounded-xl border-border bg-surface")}>
         <div className="relative min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-[#a4906f] before:content-['']">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco>
@@ -335,7 +335,7 @@ export function FinanceMyTasks() {
             </span>
           </div>
           <div
-            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
             {kpi.matchCount}
@@ -359,7 +359,7 @@ export function FinanceMyTasks() {
             </span>
           </div>
           <div
-            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
             {kpi.collectCount}
@@ -384,7 +384,7 @@ export function FinanceMyTasks() {
             </span>
           </div>
           <div
-            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
             {kpi.docsCount}
@@ -407,7 +407,7 @@ export function FinanceMyTasks() {
             </span>
           </div>
           <div
-            className="text-end text-[32px] font-extrabold leading-none text-[#102B4E]"
+            className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
             {kpi.closeCount}
@@ -419,20 +419,20 @@ export function FinanceMyTasks() {
         </div>
       </div>
 
-      <p className="m-0 mb-3.5 rounded-[10px] border border-dashed border-[#ddd8cc] bg-[#faf8f3] px-3.5 py-3 text-[12.5px] leading-[1.65] text-[#a4a6ad]">
+      <p className="m-0 mb-3.5 rounded-[10px] border border-dashed border-[#ddd8cc] bg-surface-2 px-3.5 py-3 text-[12.5px] leading-[1.65] text-[#a4a6ad]">
         كل ما يتطلب إجراءً من المالية في مكان واحد — إيرادات وتكاليف. مطابقة
         فاتورة المورّد تُفتح هنا؛ بعد الإقرار يخرج المسير من مهامي ويُكمل توثيق
         الصرف من التكاليف.
       </p>
 
       {pending ? (
-        <div className={cn(opsLetterCard, "rounded-xl border-[#ece8df] bg-white")}>
+        <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>
           <div className="px-5 py-[54px] text-center text-[14px] font-bold text-[#73767f]">
             <GentleBusy>جاري التحميل…</GentleBusy>
           </div>
         </div>
       ) : tasks.length === 0 ? (
-        <div className={cn(opsLetterCard, "rounded-xl border-[#ece8df] bg-white")}>
+        <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>
           <div className="px-5 py-[54px] text-center">
             <div className="text-sm font-bold text-[#73767f]">
               لا إجراءات معلّقة — كل شيء مُحدَّث

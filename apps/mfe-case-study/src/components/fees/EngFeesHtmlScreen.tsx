@@ -142,7 +142,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         />
         <KpiCell
           icon={<CardIcon />}
-          iconClass="bg-navy-soft text-ink"
+          iconClass="bg-navy-soft text-heading"
           label="جاهزة للفوترة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
@@ -154,7 +154,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         <KpiCell
           last
           icon={<CurrencyIcon />}
-          iconClass="bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
+          iconClass="bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-heading"
           label="مفوترة / مدفوعة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
