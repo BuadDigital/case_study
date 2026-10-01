@@ -5,6 +5,7 @@ import {
   MOVABLES_DESCRIPTION_KEY,
 } from "../../lib/app-data/inspector-workspace-data";
 import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 
 /** Field Inspection Workspace.dc.html — single-line input beside «يوجد منقولات». */
@@ -19,6 +20,7 @@ export function InspectorMovablesDescriptionField({
   invalid?: boolean;
   onChange: (next: string) => void;
 }) {
+  if (disabled) return <InsReadField label="وصف المنقولات" value={value} multiline />;
   return (
     <input
       id={`ins-${MOVABLES_DESCRIPTION_KEY}`}

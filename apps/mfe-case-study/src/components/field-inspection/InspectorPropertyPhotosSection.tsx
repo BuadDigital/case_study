@@ -361,7 +361,7 @@ export function InspectorPropertyPhotosSection({
               </option>
             ))}
           </select>
-        ) : pendingKind ? (
+        ) : pendingKind && !disabled ? (
           <button
             type="button"
             disabled={disabled}
@@ -377,6 +377,8 @@ export function InspectorPropertyPhotosSection({
                 <i className={`ti ${display.icon} me-1`} aria-hidden />
                 {display.label}
               </>
+            ) : pendingKind ? (
+              "غير مصنّفة"
             ) : (
               "معرّفة"
             )}
@@ -388,8 +390,11 @@ export function InspectorPropertyPhotosSection({
 
   function renderBucket(parent: (typeof INSPECTOR_FREE_PHOTO_PARENTS)[number]) {
     const bucketPhotos = photosByParent.map.get(parent.key) ?? [];
-    const pendingInBucket = bucketPhotos.filter(needsKindClassify);
-    const doneInBucket = bucketPhotos.filter((p) => !needsKindClassify(p));
+    // View-only page: nothing to classify, so unclassified photos sit in the same grid.
+    const pendingInBucket = disabled ? [] : bucketPhotos.filter(needsKindClassify);
+    const doneInBucket = disabled
+      ? bucketPhotos
+      : bucketPhotos.filter((p) => !needsKindClassify(p));
     const busy = uploadingParent === parent.key;
     const isExterior = parent.key === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR;
 
@@ -408,17 +413,19 @@ export function InspectorPropertyPhotosSection({
           </p>
         </div>
 
-        <InspectorPhotoFilePicker
-          label={
-            bucketPhotos.length > 0
-              ? `إضافة صورة ${isExterior ? "خارجية" : "داخلية"}`
-              : `التقاط صورة ${isExterior ? "خارجية" : "داخلية"}`
-          }
-          disabled={!canUpload || (uploading && !busy)}
-          loading={busy}
-          multiple
-          onFilesSelected={(files) => upload(files, parent.key as ParentKey)}
-        />
+        {canUpload ? (
+          <InspectorPhotoFilePicker
+            label={
+              bucketPhotos.length > 0
+                ? `إضافة صورة ${isExterior ? "خارجية" : "داخلية"}`
+                : `التقاط صورة ${isExterior ? "خارجية" : "داخلية"}`
+            }
+            disabled={uploading && !busy}
+            loading={busy}
+            multiple
+            onFilesSelected={(files) => upload(files, parent.key as ParentKey)}
+          />
+        ) : null}
 
         {pendingInBucket.length > 0 ? (
           <div className="mt-3">
@@ -441,7 +448,9 @@ export function InspectorPropertyPhotosSection({
           </div>
         ) : bucketPhotos.length === 0 ? (
           <p className="m-0 mt-2 text-[11px] leading-relaxed text-text-3">
-            {isExterior
+            {!canUpload
+              ? "لا توجد صور."
+              : isExterior
               ? "ارفع صور الواجهات والمحيط الخارجي، ثم حدّد نوع كل صورة: واجهة / خدمة / مرفق / أخرى."
               : "ارفع صور الفراغات الداخلية، ثم حدّد نوع كل صورة: خدمة / مرفق / أخرى."}
           </p>
@@ -472,7 +481,7 @@ export function InspectorPropertyPhotosSection({
         </div>
       ) : null}
 
-      {photos.length === 0 ? (
+      {photos.length === 0 && canUpload ? (
         <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-text-3">
           {actor === "specialist"
             ? "لم تُضف صور بعد — صور المعاين تظهر هنا للمراجعة، ويمكنك إضافة صورك في القسم المناسب."
@@ -480,7 +489,7 @@ export function InspectorPropertyPhotosSection({
         </p>
       ) : null}
 
-      {hasReadOnlyPhotos ? (
+      {hasReadOnlyPhotos && canUpload ? (
         <p className="m-0 mt-2.5 text-[11px] leading-relaxed text-text-3">
           صور {readOnlyOtherPartyLabel} للعرض فقط — لا يمكن حذفها.
         </p>

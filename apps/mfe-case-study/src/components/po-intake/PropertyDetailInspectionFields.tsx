@@ -5,7 +5,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@platform/ui-kit";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
-import { EDIT_CONTROL_CLASS, INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
+import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 
 const InsFieldsGridCenteredContext = createContext(false);
 
@@ -60,6 +60,70 @@ export function InsField({
   );
 }
 
+/**
+ * Read-view counterpart of the edit controls — label over a plain value with a hairline
+ * underneath. Used wherever a field is locked so a view-only page never looks fillable.
+ */
+export function InsReadField({
+  id,
+  label,
+  value,
+  ltr,
+  badge,
+  multiline,
+  className,
+}: {
+  id?: string;
+  label: string;
+  value?: string;
+  ltr?: boolean;
+  badge?: ReactNode;
+  multiline?: boolean;
+  className?: string;
+}) {
+  const gridCentered = useInsFieldsGridCentered();
+  const trimmed = value?.trim() ?? "";
+  return (
+    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+      <div className={insFieldLabelRowClass(gridCentered)}>
+        <span className={insFieldLabelClass(gridCentered)}>{label}</span>
+        {badge}
+      </div>
+      <div
+        id={id}
+        className={cn(
+          "border-b border-border/70 pb-1.5 pt-0.5 text-[13px] font-semibold leading-relaxed text-heading",
+          gridCentered && "text-center",
+          multiline && "whitespace-pre-wrap break-words",
+          !trimmed && "font-normal text-text-3",
+        )}
+      >
+        {trimmed ? (
+          ltr ? <bdi dir="ltr" className="tabular-nums">{trimmed}</bdi> : trimmed
+        ) : (
+          "—"
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** `<input type=date|time>` values are ISO / 24h — show them the way the person reads them. */
+function readViewValue(type: string, value: string): string {
+  const v = value.trim();
+  if (type === "date") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : v;
+  }
+  if (type === "time") {
+    const m = /^(\d{2}):(\d{2})/.exec(v);
+    if (!m) return v;
+    const h = Number(m[1]);
+    return `${h % 12 || 12}:${m[2]} ${h >= 12 ? "PM" : "AM"}`;
+  }
+  return v;
+}
+
 /** Editable counterpart of `InsField` — used when the tab is in edit mode. */
 export function InsEditField({
   id,
@@ -96,24 +160,14 @@ export function InsEditField({
 
   if (disabled) {
     return (
-      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
-        <div className={insFieldLabelRowClass(gridCentered)}>
-          <span className={insFieldLabelClass(gridCentered)}>{label}</span>
-          {badge}
-        </div>
-        <input
-          id={id}
-          type={type}
-          readOnly
-          tabIndex={-1}
-          aria-readonly="true"
-          className={cn(
-            INSPECTOR_LOCKED_CONTROL_CLASS,
-            inputCenterClass,
-          )}
-          value={value}
-        />
-      </div>
+      <InsReadField
+        id={id}
+        label={label}
+        value={readViewValue(type, value)}
+        ltr={ltr || type === "date" || type === "time"}
+        badge={badge}
+        className={className}
+      />
     );
   }
   return (
@@ -215,22 +269,7 @@ export function InsEditTextarea({
   hint?: string;
 }) {
   if (disabled) {
-    return (
-      <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
-        <div className="mb-1 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-text-2">{label}</span>
-        </div>
-        <textarea
-          id={id}
-          rows={rows}
-          readOnly
-          tabIndex={-1}
-          aria-readonly="true"
-          className={cn(INSPECTOR_LOCKED_CONTROL_CLASS, "resize-none")}
-          value={value}
-        />
-      </div>
-    );
+    return <InsReadField id={id} label={label} value={value} multiline className={className} />;
   }
   return (
     <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>

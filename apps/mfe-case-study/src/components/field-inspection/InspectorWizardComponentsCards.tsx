@@ -13,12 +13,13 @@ import {
   ComponentCountWithPhotoField,
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
+  visibleInspectorFeatureFields,
   isShopHiddenInspectorComponentKey,
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
-import { inspectorBoolPillClass } from "./inspector-wizard-state";
-import { InspectorComponentBoolPills } from "./InspectorComponentBoolPills";
+import { inspectorBoolPillClass, listComponentBoolPhotoSlots } from "./inspector-wizard-state";
+import { InspectorComponentBoolPills, InspectorPresentChip } from "./InspectorComponentBoolPills";
 
 export function InspectorWizardComponentsCards({
   deedNumber,
@@ -45,6 +46,11 @@ export function InspectorWizardComponentsCards({
 }) {
   const showShop = (key: string) =>
     !isShop || !isShopHiddenInspectorComponentKey(key);
+  const hasAnyPresentItem =
+    draft.hasAnnex === "نعم" ||
+    listComponentBoolPhotoSlots(draft, visibleInspectorFeatureFields(false), isLand).some(
+      (slot) => slot.on,
+    );
 
   return (
     <>
@@ -128,20 +134,22 @@ export function InspectorWizardComponentsCards({
               disabled={!editable} />
             ) : null}
           </InsFieldsGrid>
-          <div className="mt-3.5 flex flex-wrap gap-2 border-t border-border pt-3">
-            <button
-              type="button"
-              disabled={!editable}
-              className={inspectorBoolPillClass(draft.hasAnnex === "نعم", !editable)}
-              onClick={() =>
-                editable &&
-                onPatch({
-                  hasAnnex: draft.hasAnnex === "نعم" ? "لا" : "نعم",
-                })
-              }
-            >
-              يوجد ملحق
-            </button>
+          <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            {editable ? (
+              <button
+                type="button"
+                className={inspectorBoolPillClass(draft.hasAnnex === "نعم")}
+                onClick={() =>
+                  onPatch({
+                    hasAnnex: draft.hasAnnex === "نعم" ? "لا" : "نعم",
+                  })
+                }
+              >
+                يوجد ملحق
+              </button>
+            ) : draft.hasAnnex === "نعم" ? (
+              <InspectorPresentChip label="يوجد ملحق" />
+            ) : null}
             <InspectorComponentBoolPills
               deedNumber={deedNumber}
               draft={draft}
@@ -150,38 +158,48 @@ export function InspectorWizardComponentsCards({
               missingFeaturePhotoKey={missingFeaturePhotoKey}
               onPatch={onPatch}
             />
+            {!editable && !hasAnyPresentItem ? (
+              <span className="text-[11.5px] text-text-3">
+                لا توجد إضافات أو ملاحق مسجّلة.
+              </span>
+            ) : null}
           </div>
           {draft.hasAnnex === "نعم" ? (
-            <div className="mt-2.5 flex flex-wrap gap-4 rounded-lg bg-surface-2 px-3 py-2.5">
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
-                <input
-                  type="checkbox"
-                  className="size-[15px] accent-ink"
-                  checked={Boolean(draft.annexUpperCount.trim())}
-                  
-                  onChange={(e) =>
-                    onPatch({
-                      annexUpperCount: e.target.checked ? "1" : "",
-                    })
-                  }
-                />
-                ملحق علوي
-              </label>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
-                <input
-                  type="checkbox"
-                  className="size-[15px] accent-ink"
-                  checked={Boolean(draft.annexGroundCount.trim())}
-                  
-                  onChange={(e) =>
-                    onPatch({
-                      annexGroundCount: e.target.checked ? "1" : "",
-                    })
-                  }
-                />
-                ملحق سفلي
-              </label>
-            </div>
+            editable ? (
+              <div className="mt-2.5 flex flex-wrap gap-4 rounded-lg bg-surface-2 px-3 py-2.5">
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
+                  <input
+                    type="checkbox"
+                    className="size-[15px] accent-ink"
+                    checked={Boolean(draft.annexUpperCount.trim())}
+                    onChange={(e) =>
+                      onPatch({
+                        annexUpperCount: e.target.checked ? "1" : "",
+                      })
+                    }
+                  />
+                  ملحق علوي
+                </label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
+                  <input
+                    type="checkbox"
+                    className="size-[15px] accent-ink"
+                    checked={Boolean(draft.annexGroundCount.trim())}
+                    onChange={(e) =>
+                      onPatch({
+                        annexGroundCount: e.target.checked ? "1" : "",
+                      })
+                    }
+                  />
+                  ملحق سفلي
+                </label>
+              </div>
+            ) : (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {draft.annexUpperCount.trim() ? <InspectorPresentChip label="ملحق علوي" /> : null}
+                {draft.annexGroundCount.trim() ? <InspectorPresentChip label="ملحق سفلي" /> : null}
+              </div>
+            )
           ) : null}
         </InsCard>
         </div>

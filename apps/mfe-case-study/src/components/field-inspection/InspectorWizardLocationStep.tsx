@@ -32,12 +32,12 @@ import {
   InsCard,
   InsEditField,
   InsFieldsGrid,
+  InsReadField,
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
-  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
@@ -136,11 +136,9 @@ export function InspectorWizardLocationStep({
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2.5">
-          <div className="min-w-[240px] flex-1">
-            <span className={INS_LABEL_CLASS}>
-              الإحداثيات
-            </span>
-            {editable && !mapPinned ? (
+          {editable && !mapPinned ? (
+            <div className="min-w-[240px] flex-1">
+              <span className={INS_LABEL_CLASS}>الإحداثيات</span>
               <input
                 id="ins-map-coords"
                 className={cn(
@@ -163,18 +161,16 @@ export function InspectorWizardLocationStep({
                   );
                 }}
               />
-            ) : (
-              <input
-                id="ins-map-coords"
-                readOnly
-                tabIndex={-1}
-                aria-readonly="true"
-                className={cn(INSPECTOR_LOCKED_CONTROL_CLASS, "tabular-nums")}
-                dir="ltr"
-                value={coordsValue || "—"}
-              />
-            )}
-          </div>
+            </div>
+          ) : (
+            <InsReadField
+              id="ins-map-coords"
+              label="الإحداثيات"
+              value={coordsValue}
+              ltr
+              className="min-w-[240px] flex-1"
+            />
+          )}
           {editable && !mapPinned ? (
             <button
               type="button"

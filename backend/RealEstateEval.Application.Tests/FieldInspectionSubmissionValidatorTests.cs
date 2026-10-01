@@ -202,6 +202,36 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_accepts_any_movables_slot_photo_as_the_proof()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "movables": "نعم", "movablesDescription": "أثاث" } """)
+            .Replace(
+                "\"definedPhotos\": {",
+                """ "definedPhotos": { "feature:movables": { "none": false, "photos": [ { "id": 3, "approved": true, "fileName": "m.jpg", "attachmentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3" } ] }, """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_requires_movables_photo_when_slot_is_empty()
+    {
+        var json = MinimalValidPayload()
+            .Replace("\"featureValues\": {}", """ "featureValues": { "movables": "نعم", "movablesDescription": "أثاث" } """)
+            .Replace(
+                "\"definedPhotos\": {",
+                """ "definedPhotos": { "feature:movables": { "none": false, "photos": [] }, """);
+
+        using var doc = JsonDocument.Parse(json);
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.Contains("توثيقية", errors["featurePhotos"]);
+    }
+
+    [Fact]
     public void Validate_does_not_require_optional_yes_photos()
     {
         var json = MinimalValidPayload().Replace(

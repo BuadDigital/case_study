@@ -26,7 +26,7 @@ import {
 import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { InsEditField, InsField } from "./PropertyDetailInspectionFields";
+import { InsEditField, InsReadField } from "./PropertyDetailInspectionFields";
 import {
   componentCountPatch,
   componentNeedsPhoto,
@@ -165,6 +165,10 @@ export function EditableFeaturePhotoCell({
 
   const canPreview = Boolean(hasPhoto && taskId && photoRef && attachment);
 
+  if (disabled && !hasPhoto) {
+    return <span className="text-[11px] text-text-3">لا توجد صورة مرفقة</span>;
+  }
+
   return (
     <span
       className={cn(
@@ -234,7 +238,7 @@ export function EditableFeaturePhotoCell({
           onClick={() => inputRef.current?.click()}
         >
           <i className="ti ti-upload text-[13px]" aria-hidden />
-          {dragOver ? "أفلِت الصورة" : "إرفاق صورة"}
+          {dragOver ? "أفلِت الصورة" : "إرفاق صورة أو اسحبها"}
         </button>
       )}
       <input
@@ -294,7 +298,7 @@ export function ComponentCountWithPhotoField({
         id={`ins-component-photo-${photoKey}`}
         className={cn("min-w-0", invalid && invalidControlClass, invalid && "rounded-md p-0.5")}
       >
-        <InsField label={label} value={countValue} ltr />
+        <InsReadField label={label} value={countValue} ltr />
         {needsPhoto ? (
           <div className="mt-1.5 text-[11px] text-text-2">
             {attachment?.fileName ? (

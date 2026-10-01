@@ -51,7 +51,9 @@ export function InspectorFieldObservationsCard({
       <InsCard
         title="الملاحظات الميدانية"
         badge={
-          <DetailBadge tone="gray">شرح + صورة لكل ملاحظة</DetailBadge>
+          editable ? (
+            <DetailBadge tone="gray">شرح + صورة لكل ملاحظة</DetailBadge>
+          ) : undefined
         }
       >
         <div id="ins-observations">
@@ -63,6 +65,33 @@ export function InspectorFieldObservationsCard({
         <div className="mt-2 flex flex-col gap-2">
           {draft.observations.map((obs, index) => {
             const obsPhotoRef = `observation:${obs.id}`;
+            if (!editable) {
+              return (
+                <div
+                  key={obs.id}
+                  id={`ins-observation-${obs.id}`}
+                  className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface-2 p-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="mb-1 inline-flex rounded-md bg-surface px-2 py-0.5 text-[10.5px] font-bold text-text-2">
+                      {obs.category}
+                    </span>
+                    <p className="m-0 whitespace-pre-wrap break-words text-[13px] font-semibold leading-relaxed text-heading">
+                      {obs.text.trim() || "—"}
+                    </p>
+                  </div>
+                  {obs.photo?.fileName ? (
+                    <InspectorStampedPhotoThumb
+                      stamp={photoStamp}
+                      compact
+                      taskId={draft.taskId}
+                      photoRef={obsPhotoRef}
+                      attachment={obs.photo}
+                    />
+                  ) : null}
+                </div>
+              );
+            }
             return (
             <div
               key={obs.id}
@@ -74,7 +103,6 @@ export function InspectorFieldObservationsCard({
             >
               <Select
                 value={obs.category}
-                disabled={!editable}
                 className="h-full min-h-9"
                 onChange={(e) => {
                   const next = [...draft.observations];
@@ -96,7 +124,6 @@ export function InspectorFieldObservationsCard({
                 )}
                 placeholder="اشرح الملاحظة…"
                 value={obs.text}
-                disabled={!editable}
                 onChange={(e) => {
                   const next = [...draft.observations];
                   next[index] = { ...obs, text: e.target.value };

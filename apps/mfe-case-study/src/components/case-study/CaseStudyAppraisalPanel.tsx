@@ -23,7 +23,6 @@ import {
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,
 } from "../../lib/app-data/inspector-workspace-data";
-import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { reopenInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import {
@@ -341,7 +340,6 @@ export function CaseStudyAppraisalPanel({
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
             transactionPhotos={transactionPhotos}
-            caseStudyDef={partyTaskPageDef("active-inspection") ?? undefined}
             submitSuccessToast={SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS}
             submitFooterAfter={!inspectionUsesLand ? (
               <SpecialistValuationReportInputs

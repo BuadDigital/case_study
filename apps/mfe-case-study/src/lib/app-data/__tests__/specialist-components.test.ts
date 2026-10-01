@@ -3,6 +3,7 @@ import type { BuildingInventoryLineDto } from "@platform/api-client";
 import {
   SPECIALIST_COMPONENTS_TEXT_REQUIRED,
   componentLineForItem,
+  componentLineForTypedName,
   componentLinesIssue,
   emptyComponentLine,
   infathBuildingAreasFromComponents,
@@ -36,10 +37,37 @@ describe("specialist components", () => {
     ).toBeNull();
   });
 
-  it("flags legacy rows without an item and custom rows without a name", () => {
-    expect(componentLinesIssue([{ ...emptyComponentLine(0), label: "دور" }])).toBe("اختر البند في السطر 1");
-    expect(componentLinesIssue([line("custom", "10")])).toBe("اكتب اسم البند المخصص في السطر 1");
+  it("flags only rows without a name", () => {
+    expect(componentLinesIssue([{ ...emptyComponentLine(0), label: "دور" }])).toBeNull();
+    expect(componentLinesIssue([line("custom", "10")])).toBe("اكتب اسم البند في السطر 1");
     expect(componentLinesIssue([line("ground_floor", "10")])).toBeNull();
+  });
+
+  it("a typed catalog name behaves like the picked item", () => {
+    const typed = componentLineForTypedName(emptyComponentLine(0), "الدور الأرضي");
+    expect(typed).toMatchObject({ itemKey: "ground_floor", structureKind: "floor", unit: "sqm", label: "الدور الأرضي" });
+    // alef-hamza variants and extra spaces still match
+    expect(componentLineForTypedName(emptyComponentLine(0), "  السور ").itemKey).toBe("fence");
+    expect(componentLineForTypedName(emptyComponentLine(0), "الاملحق العلوي").itemKey).toBe("custom");
+    expect(componentLineForTypedName(emptyComponentLine(0), "الملحق العلوي")).toMatchObject({
+      itemKey: "upper_annex",
+      structureKind: "annex",
+    });
+  });
+
+  it("any other typed name is a custom item that keeps its unit and drops catalog-only fields", () => {
+    const floor = { ...line("first_floor", "100"), buildRatioPct: 80 };
+    const custom = componentLineForTypedName(floor, "غرفة حارس");
+    expect(custom).toMatchObject({
+      itemKey: "custom",
+      label: "غرفة حارس",
+      unit: "sqm",
+      structureKind: "other",
+      buildRatioPct: null,
+      repeatedFloorCount: null,
+    });
+    // keeps typing: a custom line stays custom and keeps its kind
+    expect(componentLineForTypedName(custom, "غرفة حارس ٢")).toMatchObject({ itemKey: "custom", structureKind: "other" });
   });
 
   it("derives the Infath building areas, repeating the first floor", () => {

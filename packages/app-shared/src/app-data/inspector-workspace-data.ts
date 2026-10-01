@@ -1614,6 +1614,17 @@ export function isInspectorPresenceToggleField(
   return field.options.includes("نعم");
 }
 
+/** Multi-photo slot the «يوجد منقولات» photo control stores into (any one photo satisfies the gate). */
+export const MOVABLES_PHOTOS_SLOT_ID = "feature:movables";
+
+export function hasMovablesSlotPhoto(
+  draft: Pick<InspectorWorkspaceDraft, "definedPhotos">,
+): boolean {
+  return (draft.definedPhotos[MOVABLES_PHOTOS_SLOT_ID]?.photos ?? []).some(
+    (photo) => Boolean(photo.fileName?.trim()) && Boolean(photo.attachmentId),
+  );
+}
+
 export function listInspectorPhotoValidationIssues(
   draft: InspectorWorkspaceDraft,
   options?: {
@@ -1649,7 +1660,8 @@ export function listInspectorPhotoValidationIssues(
     const value = draft.featureValues[field.key] ?? "";
     if (
       inspectorFeatureRequiresPhoto(field, value) &&
-      !draft.featurePhotoAttachments[field.key]?.attachmentId
+      !draft.featurePhotoAttachments[field.key]?.attachmentId &&
+      !(field.key === MOVABLES_FEATURE_KEY && hasMovablesSlotPhoto(draft))
     ) {
       issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
     }

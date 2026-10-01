@@ -39,12 +39,13 @@ export function InspectorWizardServicesCard({
     <>
       <InsCard
         title="الخدمات والمرافق المحيطة"
-        badge={<DetailBadge tone="gray">اختيار متعدد</DetailBadge>}
+        badge={editable ? <DetailBadge tone="gray">اختيار متعدد</DetailBadge> : undefined}
       >
         <span className={INS_LABEL_CLASS}>
           الخدمات المتوفرة
         </span>
         <ChipRow
+          selectedOnly={!editable}
           items={[...INSPECTOR_SERVICE_OPTIONS]}
           selected={draft.services}
           onToggle={
@@ -77,6 +78,7 @@ export function InspectorWizardServicesCard({
             المرافق المحيطة
           </span>
           <ChipRow
+            selectedOnly={!editable}
             items={[...DESIGN_AMENITIES]}
             labelOf={inspectorAmenityLabel}
             selected={draft.amenities.filter((a) =>

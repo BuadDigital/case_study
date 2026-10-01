@@ -26,8 +26,8 @@ import {
   EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
-  INSPECTOR_LOCKED_CONTROL_CLASS,
 } from "./FieldInspectionWorkParts";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorSiteLocationAckButton } from "./InspectorSiteLocationAckButton";
 
 const NEW_CONTACT_VALUE = "__new__";
@@ -219,13 +219,33 @@ export function InspectorAccessContactFields({
     [draft.accessContactRole],
   );
 
+  if (!editable) {
+    return (
+      <div className="mt-4">
+        <p className="m-0 mb-2 text-[12px] font-bold text-heading">
+          {ACCESS_ROUTE_DESCRIPTION_LABEL}
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <InsReadField id="ins-access-name" label={ACCESS_CONTACT_NAME_LABEL} value={draft.accessContactName} />
+          <InsReadField
+            id="ins-access-national-id"
+            label={ACCESS_CONTACT_NATIONAL_ID_LABEL}
+            value={draft.accessContactNationalId}
+            ltr
+          />
+          <InsReadField id="ins-access-phone" label={ACCESS_CONTACT_PHONE_LABEL} value={draft.accessContactPhone} ltr />
+          <InsReadField id="ins-access-role" label={ACCESS_CONTACT_ROLE_LABEL} value={draft.accessContactRole} />
+        </div>
+      </div>
+    );
+  }
+
   const controlClass = (invalid?: boolean) =>
     cn(
-      editable ? EDIT_CONTROL_CLASS : INSPECTOR_LOCKED_CONTROL_CLASS,
+      EDIT_CONTROL_CLASS,
       layout === "desktop" && "h-[38px]",
       layout === "mobile" && "h-12",
       invalid && invalidControlClass,
-      !editable && "cursor-default",
     );
 
   const actionBtnClass = cn(
@@ -258,7 +278,6 @@ export function InspectorAccessContactFields({
           <div className="min-w-0 flex-1">
             <select
               id="ins-access-contact-pick"
-              disabled={!editable}
               aria-label="جهة الاتصال من المعاملة"
               className={controlClass()}
               value={selectedValue}
@@ -301,7 +320,6 @@ export function InspectorAccessContactFields({
                 ref={nameInputRef}
                 id="ins-access-name"
                 type="text"
-                disabled={!editable}
                 aria-invalid={Boolean(fieldErrors.accessContactName) || undefined}
                 className={controlClass(Boolean(fieldErrors.accessContactName))}
                 value={draft.accessContactName}
@@ -325,7 +343,6 @@ export function InspectorAccessContactFields({
                 inputMode="numeric"
                 dir="ltr"
                 maxLength={10}
-                disabled={!editable}
                 aria-invalid={Boolean(fieldErrors.accessContactNationalId) || undefined}
                 className={controlClass(Boolean(fieldErrors.accessContactNationalId))}
                 value={draft.accessContactNationalId}
@@ -350,7 +367,6 @@ export function InspectorAccessContactFields({
                 type="tel"
                 inputMode="numeric"
                 dir="ltr"
-                disabled={!editable}
                 aria-invalid={Boolean(fieldErrors.accessContactPhone) || undefined}
                 className={controlClass(Boolean(fieldErrors.accessContactPhone))}
                 value={draft.accessContactPhone}
@@ -370,7 +386,6 @@ export function InspectorAccessContactFields({
               </label>
               <select
                 id="ins-access-role"
-                disabled={!editable}
                 aria-invalid={Boolean(fieldErrors.accessContactRole) || undefined}
                 className={controlClass(Boolean(fieldErrors.accessContactRole))}
                 value={draft.accessContactRole}

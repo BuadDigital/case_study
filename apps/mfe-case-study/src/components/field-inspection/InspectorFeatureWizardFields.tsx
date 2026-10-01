@@ -14,15 +14,12 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
-import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionParts";
+import { EditableFeaturePhotoCell, InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
 import { InspectorMovablesPhotosField } from "./InspectorMovablesPhotosField";
+import { movablesPhotosResetPatch } from "./inspector-wizard-state";
 import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
-import {
-  EDIT_CONTROL_CLASS,
-  INS_LABEL_CLASS,
-  INSPECTOR_LOCKED_CONTROL_CLASS,
-} from "./FieldInspectionWorkParts";
+import { EDIT_CONTROL_CLASS, INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
 import {
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_STATE_KEY,
@@ -36,20 +33,18 @@ const INS_GRID_NUMERIC_CLASS = cn(
   "text-center tabular-nums [direction:ltr] [unicode-bidi:isolate]",
 );
 
-function chipStyle(on: boolean, disabled = false) {
+function chipStyle(on: boolean) {
   return cn(
-    "inline-flex items-center gap-1.5 rounded-lg border px-[11px] py-[5px] font-inherit text-[11.5px]",
-    disabled ? "cursor-default" : "cursor-pointer",
+    "inline-flex items-center gap-1.5 rounded-lg border px-[11px] py-[5px] font-inherit text-[11.5px] cursor-pointer",
     on
       ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
       : "border-border bg-surface-2 text-text-3",
   );
 }
 
-function boolPillStyle(on: boolean, disabled = false) {
+function boolPillStyle(on: boolean) {
   return cn(
-    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] font-inherit text-xs font-semibold",
-    disabled ? "cursor-default" : "cursor-pointer",
+    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] font-inherit text-xs font-semibold cursor-pointer",
     on
       ? "border-ink bg-ink text-white"
       : "border-border-md bg-surface text-text-2",
@@ -99,6 +94,7 @@ export function InspectorFeatureWizardFields({
     if (disabled || readOnlyKeys.has(key)) return;
     const photoRef = `feature:${key}`;
     onPatch({
+      ...movablesPhotosResetPatch(draft, key, next),
       featureValues: patchInspectorFeatureValues(draft.featureValues, key, next),
       featurePhotoAttachments: {
         ...draft.featurePhotoAttachments,
@@ -132,29 +128,32 @@ export function InspectorFeatureWizardFields({
           const photoMissing = missingFeaturePhotoKey === field.key;
           return (
             <div key={field.key} id={`ins-feature-${field.key}`}>
-              <span className={INS_LABEL_CENTERED_CLASS}>
-                {field.label}
-              </span>
-              <select
-                id={`ins-feature-select-${field.key}`}
-                aria-invalid={valueMissing || undefined}
-                disabled={fieldDisabled}
-                className={cn(
-                  fieldDisabled
-                    ? cn(INSPECTOR_LOCKED_CONTROL_CLASS, "text-center")
-                    : INS_GRID_SELECT_CLASS,
-                  (valueMissing || photoMissing) && invalidControlClass,
-                )}
-                value={rawVal}
-                onChange={(e) => setFeature(field.key, e.target.value)}
-              >
-                <option value="">— اختر —</option>
-                {field.options.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
+              {fieldDisabled ? (
+                <InsReadField label={field.label} value={rawVal} />
+              ) : (
+                <>
+                  <span className={INS_LABEL_CENTERED_CLASS}>
+                    {field.label}
+                  </span>
+                  <select
+                    id={`ins-feature-select-${field.key}`}
+                    aria-invalid={valueMissing || undefined}
+                    className={cn(
+                      INS_GRID_SELECT_CLASS,
+                      (valueMissing || photoMissing) && invalidControlClass,
+                    )}
+                    value={rawVal}
+                    onChange={(e) => setFeature(field.key, e.target.value)}
+                  >
+                    <option value="">— اختر —</option>
+                    {field.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
               {!hidePhotos && needsPhoto ? (
                 <div
                   id={`ins-feature-photo-${field.key}`}
@@ -166,6 +165,7 @@ export function InspectorFeatureWizardFields({
                   <EditableFeaturePhotoCell
                     needsPhoto
                     hasPhoto={hasPhoto}
+                    disabled={fieldDisabled}
                     taskId={draft.taskId}
                     photoRef={`feature:${field.key}`}
                     attachment={draft.featurePhotoAttachments[field.key]}
@@ -208,23 +208,21 @@ export function InspectorFeatureWizardFields({
           );
         })}
         <div>
-          <span className={INS_LABEL_CENTERED_CLASS}>
-            عمر العقار (سنوات)
-          </span>
-          <input
-            className={cn(
-              disabled
-                ? cn(INSPECTOR_LOCKED_CONTROL_CLASS, "text-center tabular-nums [direction:ltr] [unicode-bidi:isolate]")
-                : INS_GRID_NUMERIC_CLASS,
-            )}
-            inputMode="numeric"
-            disabled={disabled}
-            value={draft.propertyAgeYears}
-            onChange={(e) => {
-              if (disabled) return;
-              onPatch({ propertyAgeYears: e.target.value });
-            }}
-          />
+          {disabled ? (
+            <InsReadField label="عمر العقار (سنوات)" value={draft.propertyAgeYears} ltr />
+          ) : (
+            <>
+              <span className={INS_LABEL_CENTERED_CLASS}>
+                عمر العقار (سنوات)
+              </span>
+              <input
+                className={INS_GRID_NUMERIC_CLASS}
+                inputMode="numeric"
+                value={draft.propertyAgeYears}
+                onChange={(e) => onPatch({ propertyAgeYears: e.target.value })}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -242,22 +240,27 @@ export function InspectorFeatureWizardFields({
               id={`ins-feature-${field.key}`}
               className={cn(valueMissing && invalidControlClass, valueMissing && "rounded-md p-1")}
             >
-              <span className={INS_LABEL_CENTERED_CLASS}>
-                {field.label}
-              </span>
-              <div className="flex flex-wrap justify-center gap-1.5">
-                {field.options.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    disabled={fieldDisabled}
-                    className={chipStyle(rawVal === opt, fieldDisabled)}
-                    onClick={() => setFeature(field.key, opt)}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
+              {fieldDisabled ? (
+                <InsReadField label={field.label} value={rawVal} />
+              ) : (
+                <>
+                  <span className={INS_LABEL_CENTERED_CLASS}>
+                    {field.label}
+                  </span>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {field.options.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        className={chipStyle(rawVal === opt)}
+                        onClick={() => setFeature(field.key, opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
               {!hidePhotos && needsPhoto ? (
                 <div
                   id={`ins-feature-photo-${field.key}`}
@@ -269,6 +272,7 @@ export function InspectorFeatureWizardFields({
                   <EditableFeaturePhotoCell
                     needsPhoto
                     hasPhoto={hasPhoto}
+                    disabled={fieldDisabled}
                     taskId={draft.taskId}
                     photoRef={`feature:${field.key}`}
                     attachment={draft.featurePhotoAttachments[field.key]}
@@ -342,27 +346,30 @@ export function InspectorFeatureWizardFields({
                   id={`ins-feature-${field.key}`}
                   className="flex flex-wrap items-center gap-2"
                 >
-                  <button
-                    type="button"
-                    disabled={fieldDisabled}
-                    className={boolPillStyle(on, fieldDisabled)}
-                    onClick={() => setFeature(field.key, on ? "لا" : "نعم")}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="size-3"
-                      aria-hidden
+                  {fieldDisabled ? (
+                    <InsReadField label={field.label} value={on ? "نعم" : "لا"} className="min-w-[150px]" />
+                  ) : (
+                    <button
+                      type="button"
+                      className={boolPillStyle(on)}
+                      onClick={() => setFeature(field.key, on ? "لا" : "نعم")}
                     >
-                      <path d={on ? "M20 6 9 17l-5-5" : "M12 5v14M5 12h14"} />
-                    </svg>
-                    {field.label}
-                  </button>
-                  {!hidePhotos && needsPhoto ? (
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="size-3"
+                        aria-hidden
+                      >
+                        <path d={on ? "M20 6 9 17l-5-5" : "M12 5v14M5 12h14"} />
+                      </svg>
+                      {field.label}
+                    </button>
+                  )}
+                  {!hidePhotos && needsPhoto && field.key !== "movables" ? (
                     <span
                       id={`ins-feature-photo-${field.key}`}
                       className={cn(
@@ -374,6 +381,7 @@ export function InspectorFeatureWizardFields({
                       <EditableFeaturePhotoCell
                         needsPhoto
                         hasPhoto={hasPhoto}
+                        disabled={fieldDisabled}
                         taskId={draft.taskId}
                         photoRef={`feature:${field.key}`}
                         attachment={draft.featurePhotoAttachments[field.key]}
@@ -427,11 +435,14 @@ export function InspectorFeatureWizardFields({
                           })
                         }
                       />
-                      <InspectorMovablesPhotosField
-                        draft={draft}
-                        disabled={disabled}
-                        onPatch={onPatch}
-                      />
+                      {!hidePhotos ? (
+                        <InspectorMovablesPhotosField
+                          draft={draft}
+                          disabled={disabled}
+                          invalid={photoMissing}
+                          onPatch={onPatch}
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

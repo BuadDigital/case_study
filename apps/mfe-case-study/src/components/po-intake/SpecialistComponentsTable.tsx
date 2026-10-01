@@ -11,7 +11,7 @@ import { COST_ITEM_OPTIONS, COST_UNIT_OPTIONS } from "@platform/app-shared/domai
 import { partyProvenanceLines } from "../../lib/app-data/property-party-fields";
 import {
   componentLineAcceptsBuildRatio,
-  componentLineForItem,
+  componentLineForTypedName,
 } from "../../lib/app-data/specialist-components";
 
 function LineProvenance({ line }: { line: BuildingInventoryLineDto }) {
@@ -25,19 +25,78 @@ function LineProvenance({ line }: { line: BuildingInventoryLineDto }) {
   );
 }
 
+function lineItemLabel(line: BuildingInventoryLineDto): string {
+  if (line.itemKey && line.itemKey !== "custom") {
+    return COST_ITEM_OPTIONS.find((o) => o.key === line.itemKey)?.label ?? line.label;
+  }
+  return line.label;
+}
+
+/** View-only rendering: plain text cells, no controls. */
+function SpecialistComponentsReadTable({ lines }: { lines: BuildingInventoryLineDto[] }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <Table className="min-w-[640px]">
+        <THead>
+          <Tr hoverable={false}>
+            <Th className="text-start">البند</Th>
+            <Th className="w-[130px] text-center">المساحة / العدد</Th>
+            <Th className="w-[110px] text-center">نسبة البناء ٪</Th>
+            <Th className="w-[110px] text-center">الوحدة</Th>
+            <Th className="text-start">ملاحظات</Th>
+          </Tr>
+        </THead>
+        <TBody>
+          {lines.map((line, index) => {
+            const isRepeated = line.itemKey === "repeated_floors";
+            const qty = isRepeated ? line.repeatedFloorCount : line.areaSqm;
+            return (
+              <Tr key={line.id ?? `new-${index}`} hoverable={false}>
+                <Td className="align-top text-[12.5px] font-semibold text-heading">
+                  {lineItemLabel(line) || "—"}
+                  <LineProvenance line={line} />
+                </Td>
+                <Td className="text-center align-top tabular-nums">{qty ?? "—"}</Td>
+                <Td className="text-center align-top tabular-nums">
+                  {componentLineAcceptsBuildRatio(line) && line.buildRatioPct != null
+                    ? line.buildRatioPct
+                    : "—"}
+                </Td>
+                <Td className="text-center align-top">
+                  {COST_UNIT_OPTIONS.find((u) => u.key === (line.unit || "sqm"))?.label ?? "—"}
+                </Td>
+                <Td className="align-top text-[12.5px]">{line.notes?.trim() || "—"}</Td>
+              </Tr>
+            );
+          })}
+        </TBody>
+      </Table>
+    </div>
+  );
+}
+
 export function SpecialistComponentsTable({
   lines,
   disabled,
+  readView = false,
   onPatch,
   onRemove,
 }: {
   lines: BuildingInventoryLineDto[];
   disabled: boolean;
+  /** Page is view-only (not merely busy saving): render text instead of locked inputs. */
+  readView?: boolean;
   onPatch: (index: number, next: BuildingInventoryLineDto) => void;
   onRemove: (index: number) => void;
 }) {
+  if (readView) return <SpecialistComponentsReadTable lines={lines} />;
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
+      <datalist id="specialist-component-items">
+        {COST_ITEM_OPTIONS.filter((o) => o.key !== "custom").map((o) => (
+          <option key={o.key} value={o.label} />
+        ))}
+      </datalist>
       <Table className="min-w-[760px]">
         <THead>
           <Tr hoverable={false}>
@@ -52,34 +111,18 @@ export function SpecialistComponentsTable({
         <TBody>
           {lines.map((line, index) => {
             const isRepeated = line.itemKey === "repeated_floors";
-            const legacy = !line.itemKey;
             return (
               <Tr key={line.id ?? `new-${index}`} hoverable={false}>
                 <Td className="align-top">
-                  <Select
+                  <Input
                     aria-label={`البند — السطر ${index + 1}`}
+                    list="specialist-component-items"
                     disabled={disabled}
-                    value={line.itemKey ?? ""}
-                    onChange={(e) => onPatch(index, componentLineForItem(line, e.target.value))}
-                    className={cn("text-xs", legacy && !disabled && "border-danger")}
-                  >
-                    <option value="">{legacy && line.label ? `— ${line.label} (اختر البند) —` : "— اختر البند —"}</option>
-                    {COST_ITEM_OPTIONS.map((o) => (
-                      <option key={o.key} value={o.key}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                  {line.itemKey === "custom" ? (
-                    <Input
-                      aria-label={`اسم البند المخصص — السطر ${index + 1}`}
-                      disabled={disabled}
-                      value={line.label}
-                      placeholder="اسم البند"
-                      onChange={(e) => onPatch(index, { ...line, label: e.target.value })}
-                      className="mt-1.5 text-xs"
-                    />
-                  ) : null}
+                    value={line.label}
+                    placeholder="اكتب اسم البند"
+                    onChange={(e) => onPatch(index, componentLineForTypedName(line, e.target.value))}
+                    className="text-xs"
+                  />
                   <LineProvenance line={line} />
                 </Td>
                 <Td className="align-top">

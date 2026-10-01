@@ -249,7 +249,8 @@ public static class FieldInspectionSubmissionValidator
                 : "";
             if (!FeatureRequiresPhoto(photoOnYes, yesNo, value))
                 continue;
-            if (!HasBoundAttachment(featurePhotos, key))
+            if (!HasBoundAttachment(featurePhotos, key)
+                && !(key == "movables" && HasMovablesSlotPhoto(root)))
                 issues.Add($"يجب إرفاق صورة توثيقية: {label}");
         }
 
@@ -328,6 +329,29 @@ public static class FieldInspectionSubmissionValidator
             return false;
         return (HasNonEmptyString(el, "fileName") || HasNonEmptyString(el, "fileName"))
             && (HasNonEmptyString(el, "attachmentId") || HasNonEmptyString(el, "attachmentId"));
+    }
+
+    /// <summary>
+    /// «يوجد منقولات» photos are kept in the multi-photo slot <c>definedPhotos["feature:movables"]</c>;
+    /// any one uploaded photo satisfies the proof-photo rule (the old single proof slot still does too).
+    /// </summary>
+    private static bool HasMovablesSlotPhoto(JsonElement root)
+    {
+        var defined = GetObject(root, "definedPhotos");
+        if (defined.ValueKind != JsonValueKind.Object
+            || !defined.TryGetProperty("feature:movables", out var slot)
+            || slot.ValueKind != JsonValueKind.Object
+            || !slot.TryGetProperty("photos", out var photos)
+            || photos.ValueKind != JsonValueKind.Array)
+            return false;
+        foreach (var photo in photos.EnumerateArray())
+        {
+            if (photo.ValueKind == JsonValueKind.Object
+                && HasNonEmptyString(photo, "fileName")
+                && HasNonEmptyString(photo, "attachmentId"))
+                return true;
+        }
+        return false;
     }
 
     private static bool HasPhotosWithoutServerAttachment(JsonElement root) =>

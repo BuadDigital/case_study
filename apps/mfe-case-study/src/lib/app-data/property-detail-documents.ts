@@ -23,6 +23,8 @@ import {
 import type { PoPropertyIntake } from "./po-intake-data";
 import {
   INSPECTOR_FEATURE_FIELDS,
+  MOVABLES_PHOTOS_SLOT_ID,
+  isMovablesPresent,
   includeInspectorPhotoForReaders,
   inspectorFreePhotoCategoryMeta,
   listServiceAmenityPhotoSlots,
@@ -390,6 +392,33 @@ export function collectFieldInspectionDocumentsFromSubmission(
           ...inspectionPhotoFields(taskId, photoRef, attachment),
         });
       });
+  }
+
+  // «يوجد منقولات» photos live in one multi-photo slot that is not a service/amenity slot.
+  const movablesSlot = submission.definedPhotos[MOVABLES_PHOTOS_SLOT_ID];
+  if (movablesSlot && !movablesSlot.none && isMovablesPresent(submission.featureValues)) {
+    const movablesPhotos = movablesSlot.photos.filter((photo) =>
+      includeInspectorPhotoForReaders(photo.approved, submission),
+    );
+    movablesPhotos.forEach((photo, i) => {
+      pushEntry(docs, {
+        id: `inspection-photo-${MOVABLES_PHOTOS_SLOT_ID}-${photo.id}`,
+        documentTypeKey: "inspection-photo",
+        name:
+          movablesPhotos.length > 1
+            ? `صورة توثيقية — ${inspectorFeaturePhotoLabel("movables")} ${i + 1}`
+            : `صورة توثيقية — ${inspectorFeaturePhotoLabel("movables")}`,
+        fileName: photo.fileName,
+        source,
+        kind: fileKind(photo.fileName, photo.mimeType),
+        ...inspectionPhotoFields(taskId, `slot:${MOVABLES_PHOTOS_SLOT_ID}:${photo.id}`, {
+          fileName: photo.fileName,
+          mimeType: photo.mimeType,
+          attachmentId: photo.attachmentId,
+          sizeBytes: photo.sizeBytes,
+        }),
+      });
+    });
   }
 
   submission.freePhotos

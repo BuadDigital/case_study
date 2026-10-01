@@ -138,6 +138,7 @@ export function DesktopHtmlPhotoTile({
   photoRef,
   photo,
   disabled,
+  readOnly,
   onUpload,
   onToggleNone,
   onOpen,
@@ -149,12 +150,15 @@ export function DesktopHtmlPhotoTile({
   photoRef?: string;
   photo?: InspectorSlotPhoto;
   disabled?: boolean;
+  /** View-only page: no upload affordances, but existing photos still open. */
+  readOnly?: boolean;
   onUpload: UploadHandler;
   onToggleNone: () => void;
   onOpen?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
+  const openable = Boolean(done && onOpen && !none);
   const dropBlocked = Boolean(disabled || none);
   const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
     disabled: dropBlocked,
@@ -190,7 +194,7 @@ export function DesktopHtmlPhotoTile({
     <div className="flex flex-col gap-0.5">
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled && !openable}
         title={
           none
             ? "اضغط لإلغاء «غير متوفر»"
@@ -209,7 +213,7 @@ export function DesktopHtmlPhotoTile({
               : "border-dashed border-[var(--gold-d,#a4906f)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
           dragOver &&
             "border-primary bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]",
-          !disabled && "cursor-pointer",
+          (!disabled || openable) && "cursor-pointer",
         )}
         style={
           dataUrl && !none && !dragOver
@@ -223,21 +227,21 @@ export function DesktopHtmlPhotoTile({
         {...dropZoneProps}
         onClick={() => {
           if (none) {
-            onToggleNone();
+            if (!disabled) onToggleNone();
             return;
           }
           if (done && onOpen) {
             onOpen();
             return;
           }
-          inputRef.current?.click();
+          if (!disabled) inputRef.current?.click();
         }}
       >
         {!dataUrl || none ? (
           none ? (
             <span className="flex flex-col items-center gap-0.5 pb-4 text-center">
               <span className="text-[11px] font-semibold text-text-3">غير متوفر</span>
-              <span className="text-[9px] text-text-3">اضغط للإلغاء</span>
+              {readOnly ? null : <span className="text-[9px] text-text-3">اضغط للإلغاء</span>}
             </span>
           ) : done ? (
             <svg
@@ -253,6 +257,8 @@ export function DesktopHtmlPhotoTile({
               <circle cx="8.5" cy="9.5" r="1.5" />
               <path d="m4 17 5-5 4 4 3-2 4 4" />
             </svg>
+          ) : readOnly ? (
+            <span className="pb-4 text-[11px] text-text-3">لا توجد صورة</span>
           ) : dragOver ? (
             <span className="flex flex-col items-center gap-1 px-1.5 pb-5 text-center">
               <i className="ti ti-upload text-xl text-primary" aria-hidden />
@@ -274,17 +280,19 @@ export function DesktopHtmlPhotoTile({
         ) : null}
         <span className="absolute inset-x-0 bottom-0 bg-[rgba(16,43,78,0.78)] px-1.5 py-[3px] text-center text-[9.5px] text-white">
           {label}
-          <span className="ms-1 opacity-80">· اختياري</span>
+          {readOnly ? null : <span className="ms-1 opacity-80">· اختياري</span>}
         </span>
       </button>
-      <button
-        type="button"
-        disabled={disabled}
-        className="py-0.5 text-center text-[10px] font-medium text-text-3 underline-offset-2 hover:text-text-2 hover:underline"
-        onClick={onToggleNone}
-      >
-        {none ? "إلغاء «غير متوفر»" : "غير متوفر هنا"}
-      </button>
+      {readOnly ? null : (
+        <button
+          type="button"
+          disabled={disabled}
+          className="py-0.5 text-center text-[10px] font-medium text-text-3 underline-offset-2 hover:text-text-2 hover:underline"
+          onClick={onToggleNone}
+        >
+          {none ? "إلغاء «غير متوفر»" : "غير متوفر هنا"}
+        </button>
+      )}
       <input
         ref={inputRef}
         type="file"

@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * Extra movables photos beyond the required proof shot (`featurePhotoAttachments.movables`,
- * unchanged and still gating submit) — stores into the same multi-photo `definedPhotos`
- * slot mechanism used for services/amenities, so any number of photos can be attached.
+ * «يوجد منقولات» photos — ONE control, one or more photos. New photos go into the multi-photo
+ * `definedPhotos` slot `feature:movables`; the submit gate accepts any one of them. A photo saved
+ * by the older single-proof picker (`featurePhotoAttachments.movables`) is still shown and
+ * deletable, and counts for the gate too.
  */
 import { useRef, useState } from "react";
 import { cn, useToast } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   nextInspectorPhotoId,
   type InspectorWorkspaceDraft,
@@ -18,6 +20,7 @@ import {
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
+  useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import {
@@ -32,16 +35,29 @@ import {
 export function InspectorMovablesPhotosField({
   draft,
   disabled,
+  invalid,
   onPatch,
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
-  onPatch: (patch: Pick<InspectorWorkspaceDraft, "definedPhotos">) => void;
+  /** Highlight after a failed save that asked for the photo. */
+  invalid?: boolean;
+  onPatch: (
+    patch: Partial<Pick<InspectorWorkspaceDraft, "definedPhotos" | "featurePhotoAttachments">>,
+  ) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
   const [uploading, setUploading] = useState(false);
   const photos = draft.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID]?.photos ?? [];
+  const legacyProof = draft.featurePhotoAttachments.movables?.fileName
+    ? draft.featurePhotoAttachments.movables
+    : null;
+  const hasAny = photos.length > 0 || Boolean(legacyProof);
+  const { dragOver, dropZoneProps } = useInspectorPhotoDropZone({
+    disabled: Boolean(disabled) || uploading,
+    onFiles: (files) => runWithUploadToast(() => addFiles(files)),
+  });
 
   async function addFiles(files: File[]) {
     if (disabled || uploading || files.length === 0) return;
@@ -87,8 +103,35 @@ export function InspectorMovablesPhotosField({
     });
   }
 
+  function removeLegacyProof() {
+    clearInspectorPhotoDataUrl(draft.taskId, "feature:movables");
+    onPatch({ featurePhotoAttachments: { ...draft.featurePhotoAttachments, movables: null } });
+  }
+
+  if (disabled && !hasAny) {
+    return <span className="text-[11px] text-text-3">لا توجد صور للمنقولات</span>;
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div
+      id="ins-feature-photo-movables"
+      className={cn(
+        "flex flex-wrap items-center gap-1.5 rounded-md",
+        invalid && cn(invalidControlClass, "bg-danger-bg p-1"),
+        dragOver && "bg-[color-mix(in_srgb,var(--primary)_8%,transparent)] ring-2 ring-primary/30",
+      )}
+      {...dropZoneProps}
+    >
+      {legacyProof ? (
+        <InspectorStampedPhotoThumb
+          compact
+          stamp=""
+          taskId={draft.taskId}
+          photoRef="feature:movables"
+          attachment={legacyProof}
+          onClear={disabled ? undefined : removeLegacyProof}
+        />
+      ) : null}
       {photos.map((photo) => (
         <InspectorStampedPhotoThumb
           key={photo.id}
@@ -105,14 +148,19 @@ export function InspectorMovablesPhotosField({
           type="button"
           disabled={uploading}
           className={cn(
-            "inline-flex items-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2 py-1.5",
+            "inline-flex items-center gap-1 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-1.5",
             "font-inherit text-[10.5px] font-semibold text-text-2 hover:border-primary hover:text-primary",
             "disabled:cursor-not-allowed disabled:opacity-60",
+            dragOver && "border-primary text-primary",
           )}
           onClick={() => inputRef.current?.click()}
         >
-          <i className="ti ti-plus text-[12px]" aria-hidden />
-          أضف صورة أخرى
+          <i className="ti ti-upload text-[13px]" aria-hidden />
+          {dragOver
+            ? "أفلِت الصور هنا"
+            : hasAny
+              ? "إضافة صورة أخرى"
+              : "إرفاق صورة (واحدة أو أكثر) أو اسحبها"}
         </button>
       ) : null}
       <input

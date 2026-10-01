@@ -52,16 +52,23 @@ export function ChipRow({
   selected,
   onToggle,
   labelOf,
+  selectedOnly,
 }: {
   items: string[];
   selected: string[];
   onToggle?: (item: string) => void;
   /** Display wording for a stored item value (the value itself is what gets saved). */
   labelOf?: (item: string) => string;
+  /** Read view: list only what applies instead of every option greyed out. */
+  selectedOnly?: boolean;
 }) {
+  const shown = selectedOnly ? items.filter((item) => selected.includes(item)) : items;
+  if (selectedOnly && shown.length === 0) {
+    return <p className="m-0 text-[11.5px] text-text-3">لا شيء مسجّل.</p>;
+  }
   return (
     <div className="flex flex-wrap gap-[7px]">
-      {items.map((item) => {
+      {shown.map((item) => {
         const on = selected.includes(item);
         const chipClass = cn(
           "inline-flex items-center gap-[5px] rounded-lg border px-[11px] py-[5px] text-[11.5px]",
