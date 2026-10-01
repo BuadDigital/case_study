@@ -235,9 +235,9 @@ export function FinancePartyBillingDuesSection({
                       )}
                     </Td>
                     <Td>
-                      <div className="flex min-w-0 flex-col items-end gap-0.5 text-end">
+                      <div className="flex w-full min-w-0 flex-col items-stretch gap-0.5 text-start">
                         <span
-                          className="text-[12.5px] font-bold text-gold-d"
+                          className="block w-full text-end text-[12.5px] font-bold text-gold-d"
                           dir="ltr"
                         >
                           {lineRefMain(line)}
