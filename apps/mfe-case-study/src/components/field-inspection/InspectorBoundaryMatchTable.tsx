@@ -188,7 +188,7 @@ export function InspectorBoundaryMatchTable({
                               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
                               !editable && "cursor-default",
                               ok
-                                ? "border-[color-mix(in_srgb,#1f6f6f_35%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+                                ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
                                 : "border-border bg-surface-2 text-text-3",
                             )}
                             onClick={() =>

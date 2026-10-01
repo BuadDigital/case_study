@@ -123,7 +123,7 @@ export function KeysViewKpiBand({
             value: ready ? kpis.active : "—",
             icon: <KpiClockIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
           },
           {

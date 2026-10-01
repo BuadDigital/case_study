@@ -351,7 +351,7 @@ export function ComparablePropertyEntryFields({
               ) : null}
               {mapPinned ? (
                 <div className="flex gap-2">
-                  <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[9px] border border-[#B7E4C7] bg-[#F0FFF4] text-[13px] font-bold text-[#1B7A4A]">
+                  <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[9px] border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-[13px] font-bold text-heading">
                     موقع المقارن مثبت
                   </div>
                   <Button

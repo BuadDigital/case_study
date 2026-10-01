@@ -137,7 +137,7 @@ export function PropertyDetailPartyPackageReview({
       {!returnOpen && canReview ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {accepted ? (
-            <div className="me-auto rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)] max-lg:w-full">
+            <div className="me-auto rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading max-lg:w-full">
               {acceptedLabel}
               {acceptedByName?.trim() ? ` — ${acceptedByName.trim()}` : ""}
               {acceptedAtUtc ? ` · ${formatAcceptedDate(acceptedAtUtc)}` : ""}

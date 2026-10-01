@@ -319,7 +319,7 @@ export function FinanceEngOfficePortal({
                   <Meta label="مسير الصرف">
                     <span
                       dir="ltr"
-                      className="text-[14px] font-extrabold text-[#102B4E]"
+                      className="text-[14px] font-extrabold text-heading"
                     >
                       {s.referenceNumber}
                     </span>
@@ -353,7 +353,7 @@ export function FinanceEngOfficePortal({
                       </span>
                     </span>
                   </Meta>
-                  <span className="ms-auto inline-flex items-center whitespace-nowrap rounded-md bg-[color-mix(in_srgb,#102B4E_10%,transparent)] px-[11px] py-1 text-[12px] font-bold text-[#102B4E]">
+                  <span className="ms-auto inline-flex items-center whitespace-nowrap rounded-md bg-navy-soft px-[11px] py-1 text-[12px] font-bold text-heading">
                     بانتظار فاتورتكم
                   </span>
                 </div>
@@ -417,7 +417,7 @@ export function FinanceEngOfficePortal({
               <path d="M9 10v10" />
             </svg>
           </div>
-          <div className="mb-2 text-[15px] font-extrabold text-[#102B4E]">
+          <div className="mb-2 text-[15px] font-extrabold text-heading">
             لا مسيرات محوّلة بانتظار فاتورة
           </div>
           <p className="mb-5 max-w-[420px] text-[12.5px] leading-[1.85] text-text-2">
@@ -464,7 +464,7 @@ export function FinanceEngOfficePortal({
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader className="justify-between px-[22px] py-4">
-              <ModalTitle className="text-start text-base font-extrabold text-[#102B4E]">
+              <ModalTitle className="text-start text-base font-extrabold text-heading">
                 رفع فاتورة على المسير {modalRun.referenceNumber}
               </ModalTitle>
               <ModalClose
@@ -494,7 +494,7 @@ export function FinanceEngOfficePortal({
                   </label>
                   <div
                     dir="ltr"
-                    className="rounded-[9px] border border-border bg-[#f1ece2] px-3 py-2.5 text-[14px] font-extrabold text-[#102B4E]"
+                    className="rounded-[9px] border border-border bg-gold-soft px-3 py-2.5 text-[14px] font-extrabold text-heading"
                   >
                     {money(statementDisplayTotal(modalRun))} ر.س
                   </div>
@@ -616,7 +616,7 @@ function StatChip({
       className={cn(
         "inline-flex items-center gap-[7px] rounded-lg border px-[11px] py-[5px] text-[12px] font-semibold",
         accent
-          ? "border-[#102B4E] bg-[color-mix(in_srgb,#102B4E_8%,#ffffff)] text-[#102B4E]"
+          ? "border-heading bg-[color-mix(in_srgb,var(--heading)_10%,var(--surface))] text-heading"
           : "border-border bg-surface text-text-2",
       )}
     >

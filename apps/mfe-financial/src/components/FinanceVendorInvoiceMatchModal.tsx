@@ -173,7 +173,7 @@ function FinanceVendorInvoiceMatchForm({
           <div className="min-w-0 text-start">
             <ModalTitle
               id="vendor-inv-match-title"
-              className="text-start text-base font-extrabold text-[#102B4E]"
+              className="text-start text-base font-extrabold text-heading"
             >
               مطابقة فاتورة المورّد – {statement.referenceNumber}
             </ModalTitle>
@@ -242,7 +242,7 @@ function FinanceVendorInvoiceMatchForm({
                 {hasAttachment ? (
                   <button
                     type="button"
-                    className="max-w-full cursor-pointer truncate border-none bg-transparent p-0 text-center text-[12.5px] font-semibold text-[#8c7857] underline underline-offset-2 hover:text-[#102B4E]"
+                    className="max-w-full cursor-pointer truncate border-none bg-transparent p-0 text-center text-[12.5px] font-semibold text-gold-d underline underline-offset-2 hover:text-heading"
                     dir="ltr"
                     disabled={busy}
                     onClick={() => void openAttachment()}

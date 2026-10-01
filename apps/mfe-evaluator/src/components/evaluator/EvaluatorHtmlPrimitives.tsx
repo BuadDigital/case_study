@@ -91,9 +91,9 @@ export function EngInfo({
 }) {
   const styles =
     variant === "amber"
-      ? "border-[#fad7a0] bg-[#fef3d7] text-[#7a5b12]"
+      ? "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text"
       : variant === "red"
-        ? "border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_9%,transparent)] text-[#a5432e]"
+        ? "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-danger-bg text-danger-text"
         : "border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-text-2";
   return (
     <div

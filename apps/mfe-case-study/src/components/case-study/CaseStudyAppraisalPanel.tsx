@@ -249,7 +249,7 @@ export function CaseStudyAppraisalPanel({
           <h3 className="m-0 text-[14px] font-extrabold text-heading"> معاينة العقار — مراجعة الاخصائي </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
           {inspectionAccepted ? (
-            <span className="rounded-lg border border-[color-mix(in_srgb,var(--success)_35%,var(--border))] bg-[var(--success-bg)] px-3 py-1.5 text-[11.5px] font-semibold text-[var(--success)]">
+            <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading">
               مؤكَّدة — القسم مقفل
             </span>
           ) : null}
@@ -319,7 +319,7 @@ export function CaseStudyAppraisalPanel({
         {inspectionPackageStatus === "submitted" &&
         inspectionAssetSubject.trim() &&
         inspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <div className="mb-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-sm text-amber-text">
             النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
             ميدانياً: {inspectionAssetSubject.trim()}
           </div>

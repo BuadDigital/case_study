@@ -181,7 +181,7 @@ export function FinancePartyBillingStatementDetail({
                 key={String(label)}
                 className={cn(
                   "flex items-center justify-between gap-4 px-3.5 py-2",
-                  bold && "border-t border-border bg-[#faf8f3]",
+                  bold && "border-t border-border bg-surface-2",
                 )}
               >
                 <span
@@ -356,7 +356,7 @@ export function FinancePartyBillingStatementDetail({
             </div>
 
             {!selectedStatement.vendorInvoiceMatched ? (
-              <div className="border-t border-dashed border-border-md bg-[#faf8f3] px-3.5 py-3">
+              <div className="border-t border-dashed border-border-md bg-surface-2 px-3.5 py-3">
                 <div className={opsFld}>
                   <label className="text-xs font-semibold text-text-2">
                     سبب الإعادة للمورّد

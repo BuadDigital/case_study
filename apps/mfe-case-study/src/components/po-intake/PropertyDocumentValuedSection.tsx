@@ -18,8 +18,8 @@ const STATUS_LABELS = {
 } as const;
 
 const STATUS_CLASSES = {
-  pending: "border-[#e8d3a3] bg-[#fbf5e6] text-[#7a5a14]",
-  approved: "border-[#bfdcc9] bg-[#eef7f1] text-[#2f7a4c]",
+  pending: "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text",
+  approved: "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading",
   rejected: "border-red/30 bg-danger-bg text-danger-text",
 } as const;
 

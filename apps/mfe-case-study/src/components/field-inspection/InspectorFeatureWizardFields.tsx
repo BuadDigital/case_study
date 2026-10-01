@@ -41,7 +41,7 @@ function chipStyle(on: boolean, disabled = false) {
     "inline-flex items-center gap-1.5 rounded-lg border px-[11px] py-[5px] font-inherit text-[11.5px]",
     disabled ? "cursor-default" : "cursor-pointer",
     on
-      ? "border-[color-mix(in_srgb,#1f6f6f_30%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+      ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
       : "border-border bg-surface-2 text-text-3",
   );
 }

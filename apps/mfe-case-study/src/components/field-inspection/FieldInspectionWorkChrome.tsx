@@ -37,7 +37,7 @@ export function InspectorFormErrorNote({
                 <button
                   key={item.key}
                   type="button"
-                  className="flex w-full items-start justify-between gap-3 rounded-xl border border-[#F5C2C7] bg-white px-3 py-2 text-right text-[11px] text-danger-text transition-colors hover:bg-[#FFF5F5]"
+                  className="flex w-full items-start justify-between gap-3 rounded-xl border border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-surface px-3 py-2 text-right text-[11px] text-danger-text transition-colors hover:bg-danger-bg"
                   onClick={() => scrollToErrorTarget(item.targetId)}
                 >
                   <span className="min-w-0 flex-1 leading-5 break-words">

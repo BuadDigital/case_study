@@ -100,7 +100,7 @@ export function InspectorLocationCard({
         type="button"
         disabled={locked}
         className={cn(
-          "mb-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit text-[14px] font-bold text-ink",
+          "mb-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit text-[14px] font-bold text-heading",
           !mobile && "min-h-10 text-[13px]",
         )}
         onClick={captureDeviceGps}
@@ -233,7 +233,7 @@ export function InspectorLocationCard({
             <button
               type="button"
               className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] font-inherit font-bold text-ink",
+                "flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit font-bold text-heading",
                 mobile ? "min-h-12 text-[14px]" : "min-h-11 text-[13px]",
               )}
               onClick={() => {
@@ -246,12 +246,12 @@ export function InspectorLocationCard({
             </button>
           ) : null}
           {mapPinned ? (
-            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[#B7E4C7] bg-[#F0FFF4] pe-1.5 ps-3.5 text-[13px] font-bold text-[#1B7A4A]">
+            <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg pe-1.5 ps-3.5 text-[13px] font-bold text-heading">
               <i className="ti ti-pin-filled text-base" aria-hidden />
               <span className="flex-1">تم تثبيت الموقع</span>
               <button
                 type="button"
-                className="grid size-9 shrink-0 place-items-center rounded-lg border-0 bg-transparent font-inherit text-base text-[#1B7A4A] transition-colors hover:bg-[color-mix(in_srgb,#1B7A4A_12%,transparent)]"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border-0 bg-transparent font-inherit text-base text-heading transition-colors hover:bg-[color-mix(in_srgb,var(--heading)_12%,transparent)]"
                 aria-label="إلغاء تثبيت الموقع"
                 title="إلغاء التثبيت وإعادة التعيين"
                 onClick={() => setMapPinned(false)}

@@ -186,14 +186,14 @@ export function InspectorWizardLocationStep({
           ) : null}
           {editable && mapPinned ? (
             <div
-              className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-[#B7E4C7] bg-[#F0FFF4] pe-1.5 ps-3.5 text-[12.5px] font-bold text-[#1B7A4A]"
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg pe-1.5 ps-3.5 text-[12.5px] font-bold text-heading"
               role="status"
             >
               <i className="ti ti-pin-filled text-sm" aria-hidden />
               تم تثبيت الموقع
               <button
                 type="button"
-                className="grid size-7 place-items-center rounded-md border-0 bg-transparent font-inherit text-[15px] text-[#1B7A4A] transition-colors hover:bg-[color-mix(in_srgb,#1B7A4A_12%,transparent)]"
+                className="grid size-7 place-items-center rounded-md border-0 bg-transparent font-inherit text-[15px] text-heading transition-colors hover:bg-[color-mix(in_srgb,var(--heading)_12%,transparent)]"
                 aria-label="إلغاء تثبيت الموقع"
                 title="إلغاء التثبيت وإعادة التعيين"
                 onClick={onUnpin}

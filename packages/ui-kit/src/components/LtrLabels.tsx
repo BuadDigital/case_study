@@ -51,7 +51,7 @@ export function PoLabel({
 }) {
   const text = (value || "").trim() || empty;
   return (
-    <LtrCode className={cn("text-[12px] font-semibold text-ink", className)}>
+    <LtrCode className={cn("text-[12px] font-semibold text-heading", className)}>
       {text}
     </LtrCode>
   );

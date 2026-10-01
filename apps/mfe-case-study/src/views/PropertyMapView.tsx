@@ -118,7 +118,7 @@ export function PropertyMapView() {
               <div>
                 <div className="mb-1.5 text-[11.5px] font-bold text-gold-d">نوع المقارن</div>
                 <select
-                  className="w-full rounded-lg border border-[#ddd8cc] bg-white px-2.5 py-1.5 text-[12.5px] text-text"
+                  className="w-full rounded-lg border border-border-md bg-surface px-2.5 py-1.5 text-[12.5px] text-text"
                   value={operationType}
                   onChange={(e) => setOperationType(e.target.value)}
                   aria-label="نوع العملية"
@@ -267,7 +267,7 @@ export function PropertyMapView() {
           </div>
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-3.5 bottom-3.5 z-[400] flex flex-wrap items-center gap-3.5 rounded-[10px] border border-border bg-white/95 px-3.5 py-2 text-[12px] text-text-2 shadow-card">
+        <div className="pointer-events-none absolute inset-x-3.5 bottom-3.5 z-[400] flex flex-wrap items-center gap-3.5 rounded-[10px] border border-border bg-surface/95 px-3.5 py-2 text-[12px] text-text-2 shadow-card">
           <LegendDot color="#12284C" label="نشط" ring />
           <LegendDot color="#8a8d96" label="أرشيف" />
           <LegendDot color="#a4906f" label="مقارن" diamond />

@@ -154,7 +154,7 @@ function CaseStudySectionAccordion({
         aria-expanded={open}
         className="flex w-full cursor-pointer items-center gap-2.5 rounded border border-border bg-surface-2 px-3 py-2.5 text-start font-inherit"
       >
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-ink text-xs font-extrabold text-gold-2">
+        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-xs font-extrabold text-gold-2">
           {SECTION_AR_NUMS[section.id]}
         </span>
         <span className="flex-1 text-[13px] font-bold text-heading">
@@ -164,7 +164,7 @@ function CaseStudySectionAccordion({
           className={cn(
             "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold",
             done
-              ? "bg-[color-mix(in_srgb,#2f7a4d_12%,transparent)] text-[#2f7a4d]"
+              ? "bg-success-bg text-heading"
               : "bg-[color-mix(in_srgb,var(--gold-d)_12%,transparent)] text-gold-d",
           )}
         >
@@ -215,7 +215,7 @@ function CaseStudySectionAccordion({
                       </span>
                       {row.question}
                       {unanswered ? (
-                        <span className="ms-1.5 inline-flex align-middle rounded-full bg-[#fef3d7] px-2 py-px text-[10px] font-bold text-[#946100]">
+                        <span className="ms-1.5 inline-flex align-middle rounded-full bg-warning-bg px-2 py-px text-[10px] font-bold text-amber-text">
                           بانتظار الإجابة
                         </span>
                       ) : null}
@@ -227,14 +227,14 @@ function CaseStudySectionAccordion({
                     </td>
                     <td className="w-[130px] border-b border-s border-border px-2 py-1.5 text-center">
                       {row.markA ? (
-                        <span className="inline-flex text-[#2f7a4d]">
+                        <span className="inline-flex text-heading">
                           <CheckMark />
                         </span>
                       ) : null}
                     </td>
                     <td className="w-[130px] border-b border-border px-2 py-1.5 text-center">
                       {row.markB ? (
-                        <span className="inline-flex text-[#c0553d]">
+                        <span className="inline-flex text-danger">
                           <svg
                             width="14"
                             height="14"

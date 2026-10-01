@@ -399,7 +399,7 @@ export function InspectorAccessContactFields({
               className={cn(
                 "shrink-0",
                 layout === "mobile"
-                  ? "h-12 min-h-12 rounded-xl border-[1.5px] border-ink bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] px-4 text-[14px] text-ink"
+                  ? "h-12 min-h-12 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] px-4 text-[14px] text-heading"
                   : undefined,
               )}
               onClick={onAckClick}

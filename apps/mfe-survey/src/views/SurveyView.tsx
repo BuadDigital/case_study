@@ -101,9 +101,9 @@ export function SurveyView() {
             value: ready ? (stats?.completed ?? 0) : "—",
             icon: <KpiCheckIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
-            valueClass: "!text-ink",
+            valueClass: "!text-heading",
           },
           {
             key: "inProgress",

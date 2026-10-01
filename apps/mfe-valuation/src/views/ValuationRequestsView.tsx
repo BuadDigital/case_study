@@ -271,9 +271,9 @@ export function ValuationRequestsView() {
             value: ready ? done : "—",
             icon: <KpiCheckIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
-            valueClass: "!text-ink",
+            valueClass: "!text-heading",
           },
           {
             key: "prog",

@@ -273,7 +273,7 @@ export function CaseStudyWorkspaceView({
 
   if (hasLoadError) {
     return (
-      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] p-4">
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg p-4">
         <Note tone="warn">{loadErrorMessage}</Note>
         <div className="mt-3">
           <Button
@@ -295,7 +295,7 @@ export function CaseStudyWorkspaceView({
   if (waitingForWorkspace || !task || !record || !property) {
     return (
       <div
-        className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee]"
+        className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
         aria-busy
       >
         <PanelSkeleton />
@@ -306,11 +306,11 @@ export function CaseStudyWorkspaceView({
   return (
     <div
       id="view-case-study-workspace"
-      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f5f3ee] [zoom:0.85]"
+      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg [zoom:0.85]"
     >
       <PageShell
         variant="canvas"
-        className="gap-0 overflow-y-auto bg-[#f5f3ee] px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+        className="gap-0 overflow-y-auto bg-bg px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
       >
         <PropertyDetailHero
           record={record}

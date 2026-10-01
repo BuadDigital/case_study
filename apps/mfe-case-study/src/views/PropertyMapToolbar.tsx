@@ -66,7 +66,7 @@ export function PropertyMapToolbar({
 
   return (
     <div className="relative z-[1200] flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-2">
-      <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-[#faf8f3] p-[3px]">
+      <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-surface-2 p-[3px]">
         {LAYER_CHIPS.map((chip) => (
           <LayerPill
             key={chip.key}
@@ -94,7 +94,7 @@ export function PropertyMapToolbar({
             "inline-flex h-[30px] items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-bold",
             infeasOnly
               ? "border-[#d9694f] bg-[#d9694f] text-white"
-              : "border-[#f0c9bf] bg-white text-[#d9694f]",
+              : "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-surface text-danger",
           )}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -154,8 +154,8 @@ export function PropertyMapToolbar({
             className={cn(
               "inline-flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2 text-[12.5px] font-semibold",
               dateLabel
-                ? "border-gold bg-[#f1ece2] font-bold text-gold-d"
-                : "border-[#ddd8cc] bg-white text-text-2 hover:border-gold hover:text-gold-d",
+                ? "border-gold bg-gold-soft font-bold text-gold-d"
+                : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-gold-d",
             )}
             aria-label="فترة زمنية"
             title={dateLabel || "فلترة التاريخ"}
@@ -176,8 +176,8 @@ export function PropertyMapToolbar({
                   className={cn(
                     "w-full rounded-lg px-2.5 py-2 text-start text-[12.5px]",
                     (p.value === "all" ? !dateLabel : dateLabel === p.label)
-                      ? "bg-[#f1ece2] font-bold text-gold-d"
-                      : "font-medium text-text hover:bg-[#faf6ee]",
+                      ? "bg-gold-soft font-bold text-gold-d"
+                      : "font-medium text-text hover:bg-row-hover",
                   )}
                 >
                   {p.label}
@@ -187,7 +187,7 @@ export function PropertyMapToolbar({
               <div className="px-2 pb-1.5">
                 <div className="mb-1.5 text-[11.5px] font-bold text-gold-d">اختر سنة</div>
                 <select
-                  className="mb-2 w-full rounded-lg border border-[#ddd8cc] bg-white px-2 py-1.5 text-[12px] text-text"
+                  className="mb-2 w-full rounded-lg border border-border-md bg-surface px-2 py-1.5 text-[12px] text-text"
                   value={dateLabel.startsWith("سنة ") ? dateLabel.slice(4) : ""}
                   onChange={(e) => {
                     const y = Number(e.target.value);

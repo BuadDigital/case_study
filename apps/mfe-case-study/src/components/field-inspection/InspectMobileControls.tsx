@@ -87,7 +87,7 @@ export function MobileChips({
             className={cn(
               "inline-flex min-h-11 items-center gap-1.5 rounded-xl border-[1.5px] px-[15px] py-2.5 font-inherit text-[14px] font-semibold",
               on
-                ? "border-[color-mix(in_srgb,#2a8f8f_45%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+                ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
                 : "border-[var(--border-md,#ddd8cc)] bg-surface text-text-2",
             )}
             onClick={() => {

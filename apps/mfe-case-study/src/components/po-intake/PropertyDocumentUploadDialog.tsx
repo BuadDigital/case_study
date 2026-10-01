@@ -171,7 +171,7 @@ export function PropertyDocumentUploadDialog({
 
         {isUnlisted ? (
           <>
-            <p className="m-0 rounded-md border border-[#e8d3a3] bg-[#fbf5e6] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5a14]">
+            <p className="m-0 rounded-md border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text">
               المستند غير المعرّف يُحفظ بانتظار مراجعة مشرف القسم، ولا يُحتسب ضمن
               المستندات الإلزامية ولا يُطبع في التقرير.
             </p>
@@ -204,7 +204,7 @@ export function PropertyDocumentUploadDialog({
 
         {isValued ? (
           <>
-            <p className="m-0 rounded-md border border-[#e8d3a3] bg-[#fbf5e6] px-3 py-2 text-[11.5px] leading-relaxed text-[#7a5a14]">
+            <p className="m-0 rounded-md border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text">
               المستند ذو القيمة يُحفظ بانتظار اعتماد أخصائي دراسة الحالة، ويطّلع عليه الأخصائي والمقيّم
               فقط، والمقيّم يحدد أثره على التقييم.
             </p>

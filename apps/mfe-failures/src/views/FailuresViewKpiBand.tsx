@@ -46,7 +46,7 @@ export function FailuresViewKpiBand({
         />
         <KpiCell
           icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink"
+          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading"
           label="معتمدة / تم الحل"
           value={!isFetched ? "—" : stats.closed}
           sub={isFetched ? stats.closedPct : "—"}
@@ -92,9 +92,9 @@ export function FailuresViewKpiBand({
             value: !isFetched ? "—" : stats.closed,
             icon: <KpiCheckIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
-            valueClass: "!text-ink",
+            valueClass: "!text-heading",
           },
           {
             key: "total",
@@ -103,7 +103,7 @@ export function FailuresViewKpiBand({
             value: !isFetched ? "—" : stats.total,
             icon: <KpiClipboardIcon />,
             iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-ink",
+              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
             tone: "ink",
           },
         ]}

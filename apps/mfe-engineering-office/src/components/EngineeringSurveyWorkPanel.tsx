@@ -110,14 +110,14 @@ export function EngineeringSurveyWorkPanel({
           />
 
           {!documentaryGate.ready ? (
-            <div className="mb-3.5 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+            <div className="mb-3.5 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text">
               <strong>⚠ الرفع مجمّد ولا يُحتسب الوقت:</strong>{" "}
               {documentaryGate.reason}
             </div>
           ) : null}
 
           {viewOnly && documentaryGate.ready ? (
-            <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#fad7a0] bg-[#fef3d7] px-3 py-2.5 text-[11.5px] leading-[1.7] text-[#7a5b12]">
+            <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text">
               <span>
                 👁 وضع الاستعراض — جميع الحقول للقراءة فقط.
                 {locked ? "" : " للتعديل ابدأ عملية الرفع."}

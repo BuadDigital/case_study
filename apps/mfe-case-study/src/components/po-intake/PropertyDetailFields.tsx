@@ -40,7 +40,7 @@ export function FieldBox({
   const isEmpty = !trimmed && !children;
   const linkClass =
     link || href
-      ? "cursor-pointer text-[#8c7857] underline underline-offset-[3px]"
+      ? "cursor-pointer text-gold-d underline underline-offset-[3px]"
       : "";
 
   const content =
@@ -56,7 +56,7 @@ export function FieldBox({
     ));
 
   const valueClass = cn(
-    "text-[12.5px] font-semibold leading-snug text-text break-words",
+    "text-[12.5px] font-semibold leading-snug text-heading break-words",
     isEmpty && "font-normal text-text-3",
     ltr && !children && "text-end [direction:ltr]",
     linkClass,
@@ -65,13 +65,13 @@ export function FieldBox({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-[4px] bg-[color-mix(in_srgb,#f1ece2_45%,transparent)] px-3.5 py-2.5",
+        "min-w-0 rounded-[4px] border border-border bg-surface-2 px-3.5 py-2.5",
         span === 2 && "col-span-1 sm:col-span-2",
         span === 3 && "col-span-1 sm:col-span-3",
         span === 4 && "col-span-1 sm:col-span-2 lg:col-span-4",
       )}
     >
-      <div className="mb-[3px] text-[10.5px] leading-snug text-text-3">
+      <div className="mb-[3px] text-[10.5px] leading-snug text-text">
         {label}
       </div>
       {href && !isEmpty ? (
@@ -135,9 +135,9 @@ export function SectionDivider() {
 
 const infoBoxTone: Record<"default" | "teal" | "amber" | "red", string> = {
   default: "bg-surface-2 text-text-2",
-  teal: "border border-[color-mix(in_srgb,#3f8f5f_26%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_8%,transparent)] text-[#2f7a4d]",
+  teal: "border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading",
   amber:
-    "border border-[#fad7a0] bg-[#fef3d7] text-[#7a5b12]",
+    "border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text",
   red: "bg-danger-bg text-danger-text",
 };
 

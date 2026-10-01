@@ -13,7 +13,7 @@ const variantClasses = {
   accent:
     "border-none bg-gold-d text-white shadow-[0_6px_16px_-6px_color-mix(in_srgb,var(--gold-d)_60%,transparent)] enabled:hover:bg-gold",
   danger:
-    "border border-red/30 bg-danger-bg text-danger-text enabled:hover:bg-[#f7ddd4]",
+    "border border-red/30 bg-danger-bg text-danger-text enabled:hover:bg-[color-mix(in_srgb,var(--danger)_22%,var(--surface))]",
   success:
     "border-none bg-ink text-white enabled:hover:bg-navy-3",
   dangerOutline:

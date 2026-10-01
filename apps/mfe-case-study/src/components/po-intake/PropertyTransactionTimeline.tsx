@@ -235,10 +235,10 @@ export function PropertyTransactionTimeline({
                 color={partyRingColor(row.badgeClass)}
               />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[11.5px] font-semibold text-text">
+                <span className="block truncate text-[11.5px] font-semibold text-heading">
                   {row.label}
                 </span>
-                <span className="block truncate text-[10px] text-text-3">
+                <span className="block truncate text-[10px] text-text-2">
                   {row.role}
                 </span>
               </span>

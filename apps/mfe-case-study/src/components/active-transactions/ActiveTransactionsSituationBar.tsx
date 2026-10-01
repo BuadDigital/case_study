@@ -8,17 +8,17 @@ import { useActiveTransactionPageSituation } from "@case-study/mfe/query/use-act
 import type { PageSituationCardDef, SituationIconKind, SituationTone } from "@case-study/mfe/lib/app-data/active-transaction-page-situation";
 
 const toneIconClass: Record<SituationTone, string> = {
-  blue: "bg-navy-soft text-ink",
+  blue: "bg-navy-soft text-heading",
   warn: "bg-gold-soft text-gold-d",
-  green: "bg-navy-soft text-ink",
+  green: "bg-navy-soft text-heading",
   red: "bg-[color-mix(in_srgb,var(--red)_12%,transparent)] text-red",
 };
 
 const goldSoftIconClass = "bg-gold-soft text-gold-d";
-const inkIconClass = "bg-navy-soft text-ink";
+const inkIconClass = "bg-navy-soft text-heading";
 
 const toneValueClass: Partial<Record<SituationTone, string>> = {
-  green: "!text-ink",
+  green: "!text-heading",
   red: "!text-red",
   warn: "!text-gold-d",
 };

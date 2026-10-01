@@ -173,7 +173,7 @@ export function PartyIndividualFeesHtmlScreen({
         />
         <KpiCell
           icon={<CardIcon />}
-          iconClass="bg-navy-soft text-ink"
+          iconClass="bg-navy-soft text-heading"
           label={copy.readyKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
@@ -185,7 +185,7 @@ export function PartyIndividualFeesHtmlScreen({
         <KpiCell
           last
           icon={<CurrencyIcon />}
-          iconClass="bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
+          iconClass="bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-heading"
           label={copy.paidKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
@@ -396,7 +396,7 @@ export function PartyIndividualFeesHtmlScreen({
                               المالية تتولى أمر الصرف
                             </span>
                           ) : st === "paid" ? (
-                            <span className="text-[11px] font-semibold text-[#2f7a4d]">
+                            <span className="text-[11px] font-semibold text-heading">
                               ✓ مصروف
                             </span>
                           ) : (

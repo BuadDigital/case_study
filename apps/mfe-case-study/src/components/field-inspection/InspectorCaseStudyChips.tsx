@@ -233,7 +233,7 @@ export function InspectorCaseStudyChips({
                             className={cn(
                               "rounded-lg border px-[11px] py-[5px] font-inherit text-[11.5px]",
                               on
-                                ? "border-[color-mix(in_srgb,#1f6f6f_30%,transparent)] bg-[color-mix(in_srgb,#2a8f8f_12%,transparent)] text-[#1f6f6f]"
+                                ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
                                 : "border-border bg-surface text-text-3",
                               forceReadOnly && "cursor-default opacity-80",
                             )}

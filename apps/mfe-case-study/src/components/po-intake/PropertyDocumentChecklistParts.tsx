@@ -48,7 +48,7 @@ export function DocumentFileLine({
     <div className="flex items-center justify-between gap-2.5 rounded border border-border bg-surface px-3 py-2">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
-          className="inline-flex h-[26px] min-w-[26px] shrink-0 items-center justify-center rounded-md border border-border bg-[color-mix(in_srgb,#a4906f_14%,transparent)] px-1.5 text-[10px] font-extrabold text-[#8c7857]"
+          className="inline-flex h-[26px] min-w-[26px] shrink-0 items-center justify-center rounded-md border border-border bg-gold-soft px-1.5 text-[10px] font-extrabold text-gold-d"
           aria-hidden
         >
           {docKindLabel(doc)}
@@ -116,7 +116,7 @@ function RowStatusIcon({ row }: { row: PropertyDocumentChecklistRow }) {
       className={cn(
         "grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border text-[12px] font-bold",
         done &&
-          "border-transparent bg-[color-mix(in_srgb,#3f8f5f_12%,transparent)] text-[#2f7a4d]",
+          "border-transparent bg-success-bg text-heading",
         !done && row.missing && "border-red/30 bg-danger-bg text-danger-text",
         !done && !row.missing && "border-border-md text-text-3",
       )}

@@ -278,7 +278,7 @@ export function FinanceInspectorPortal({
     <div data-screen-label="بوابة المعاين">
       <p className={cn(opsTfNote, "mb-3.5 leading-[1.8]")}>
         بوابة المعاين —{" "}
-        <b className="font-bold text-[#102B4E]">لبيان أثر المالية فقط</b>.
+        <b className="font-bold text-heading">لبيان أثر المالية فقط</b>.
         المعاين مستحق بصفة «فرد»: لا فاتورة ولا مسير مورّد، ويُصرف له بأمر صرف
         مباشر. وإن كانت متابعة مستحقاته معطّلة فلا تظهر أرقام لأنها تُدار خارج
         النظام.
@@ -312,7 +312,7 @@ export function FinanceInspectorPortal({
           "mb-3.5 flex flex-wrap items-center gap-3 px-[18px] py-3.5",
         )}
       >
-        <span className="text-[14.5px] font-extrabold text-[#102B4E]">
+        <span className="text-[14.5px] font-extrabold text-heading">
           {headerName}
         </span>
         <Pill className="bg-[color-mix(in_srgb,#0f766e_13%,transparent)] text-[#0f766e]">
@@ -347,7 +347,7 @@ export function FinanceInspectorPortal({
         </div>
       ) : !tracked ? (
         <div className={cn(opsLetterCard, "px-6 py-[26px] text-center")}>
-          <div className="mb-1.5 text-[13.5px] font-bold text-[#102B4E]">
+          <div className="mb-1.5 text-[13.5px] font-bold text-heading">
             لا مستحقات تُتابع على هذا النظام
           </div>
           <p className="mx-auto max-w-[420px] text-[12px] leading-[1.9] text-text-3">

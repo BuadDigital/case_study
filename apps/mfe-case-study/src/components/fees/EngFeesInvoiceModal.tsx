@@ -217,7 +217,7 @@ export function EngFeesInvoiceModal({
 
               {openStatement.status === "closed" ? (
                 <div className="rounded-xl border border-[color-mix(in_srgb,#3f8f5f_28%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_10%,transparent)] px-3.5 py-3 text-center">
-                  <div className="text-[13px] font-bold text-[#2f7a4d]">
+                  <div className="text-[13px] font-bold text-heading">
                     تم صرف هذا الكشف
                   </div>
                   {openStatement.vendorInvoiceNumber ? (

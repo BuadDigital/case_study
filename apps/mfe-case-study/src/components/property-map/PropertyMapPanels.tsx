@@ -42,7 +42,7 @@ export function LayerPill({
         "inline-flex h-[30px] items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-bold transition-colors",
         active
           ? "border-ink bg-ink text-white"
-          : "border-[#ddd8cc] bg-white text-text-2 hover:border-gold hover:text-heading",
+          : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-heading",
       )}
     >
       <span
@@ -57,7 +57,7 @@ export function LayerPill({
       <span
         className={cn(
           "grid min-w-[17px] place-items-center rounded-full px-1 text-[10px] font-bold",
-          active ? "bg-gold/25 text-gold" : "bg-[#f1ece2] text-gold-d",
+          active ? "bg-gold/25 text-gold" : "bg-gold-soft text-gold-d",
         )}
       >
         {count}
@@ -105,12 +105,12 @@ export function LayerSidePanel({
         wide ? "w-[320px]" : "w-[250px]",
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border bg-[#faf8f3] px-3.5 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-3.5 py-2.5">
         <span className="text-[13px] font-extrabold text-heading">{title}</span>
         <button
           type="button"
           onClick={onHide}
-          className="ms-auto rounded-lg border border-[#ddd8cc] bg-white px-2.5 py-1 text-[11.5px] font-bold text-text-2 hover:border-[#d9694f] hover:text-[#d9694f]"
+          className="ms-auto rounded-lg border border-border-md bg-surface px-2.5 py-1 text-[11.5px] font-bold text-text-2 hover:border-danger hover:text-danger"
         >
           إخفاء الطبقة
         </button>
@@ -293,9 +293,9 @@ export function DetailCard({
 }) {
   return (
     <aside className={cn(opsFloatPanel, "absolute bottom-3.5 end-3.5 top-3.5 z-[950] flex w-[330px] max-w-[calc(100%-1.75rem)] flex-col")}>
-      <div className="border-b border-border bg-[#faf8f3] px-4 py-3.5">
+      <div className="border-b border-border bg-surface-2 px-4 py-3.5">
         <div className="flex items-start justify-between gap-2">
-          <span className="rounded-md bg-[#f1ece2] px-2 py-0.5 text-[11px] font-bold text-gold-d">
+          <span className="rounded-md bg-gold-soft px-2 py-0.5 text-[11px] font-bold text-gold-d">
             {familyLabel}
           </span>
           <button
@@ -310,7 +310,7 @@ export function DetailCard({
         <div className="mt-2 flex items-center gap-3">
           {isProperty ? (
             /* Later: show the transaction photo (photoUrl / first attachment) with lightbox zoom; if no photo, keep this slot and report «no attached photo». */
-            <div className="grid size-[84px] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-[#f1ece2] text-[#c2b49a] shadow-[0_4px_12px_-6px_rgba(18,40,76,.45)]">
+            <div className="grid size-[84px] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-gold-soft text-gold-2 shadow-[0_4px_12px_-6px_rgba(18,40,76,.45)]">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                 <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <circle cx="12" cy="12.5" r="3.2" />
@@ -342,7 +342,7 @@ export function DetailCard({
                   key={item.id}
                   type="button"
                   onClick={() => onNearby?.(item)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-[#faf8f3] px-2.5 py-2 text-start hover:border-gold hover:bg-[#f1ece2]"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-2.5 py-2 text-start hover:border-gold hover:bg-gold-soft"
                 >
                   <span className="flex items-center gap-2 text-[12px] font-bold text-heading">
                     <span

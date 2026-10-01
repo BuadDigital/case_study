@@ -136,7 +136,7 @@ export function FieldInspectionWorkBody({
         className={cn(
           "m-0 min-w-0 border-0 p-0 [&_*]:min-w-0",
           workLocked &&
-            "pointer-events-none select-none rounded-[10px] bg-[#F1F5F9] p-3 opacity-70 grayscale-[0.35]",
+            "pointer-events-none select-none rounded-[10px] bg-surface-2 p-3 opacity-70 grayscale-[0.35]",
         )}
       >
         <InspectorLocationCard
