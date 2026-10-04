@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { 
-  Button, 
+import { Button, 
   Label,
   cn,
   formControlClassName,
@@ -200,8 +199,7 @@ export function CaseStudyAppraisalPanel({
     inspectionTaskId,
     enabled: documentsEnabled && Boolean(inspectionTask && inspectionCard),
   });
-  const transactionPhotos = useMemo(
-    () => listPropertyDetailPhotos(propertyDocumentSections),
+  const transactionPhotos = useMemo( () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
   );
 
