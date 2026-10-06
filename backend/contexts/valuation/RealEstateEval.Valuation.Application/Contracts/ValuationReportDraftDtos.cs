@@ -79,7 +79,7 @@ public class FinalReportStatusDto
 /// <summary>The specialist saves his report choices (only while the draft is being prepared).</summary>
 public class SaveReportDraftChoicesRequest
 {
-    /// <summary>A JSON object with allow-listed keys only (ESG, print attachments…).</summary>
+    /// <summary>A JSON object with allow-listed keys only (the print attachments, their order and slots).</summary>
     [Required]
     public JsonElement Choices { get; init; }
 }

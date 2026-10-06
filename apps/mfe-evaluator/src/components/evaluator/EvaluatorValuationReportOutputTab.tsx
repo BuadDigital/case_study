@@ -101,7 +101,7 @@ export function EvaluatorValuationReportOutputTab({
   const [printing, setPrinting] = useState(false);
   /** Why the last print copy fell back from Google maps (Static Maps API not enabled on the key). */
   const [mapNotice, setMapNotice] = useState<string | null>(null);
-  // The specialist's report choices (ESG, print attachments) overlay the appraiser's own; once the
+  // The specialist's report choices (the print attachments) overlay the appraiser's own; once the
   // appraiser approved, the approved report date is the printed one.
   const reportDraftQuery = useReportDraftByProperty(property?.id ?? draft.propertyId);
   const reportDraft = reportDraftQuery.data ?? null;

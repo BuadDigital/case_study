@@ -35,9 +35,6 @@ vi.mock("../../../lib/case-study-bridge", () => ({
 vi.mock("../../../lib/evaluator/evaluator-submission-reads", () => ({
   fetchEvaluatorSubmission: async () => null,
 }));
-vi.mock("../ValuationReportEsgEditor", () => ({
-  ValuationReportEsgEditor: () => <div data-testid="esg-editor" />,
-}));
 vi.mock("../ValuationReportAttachmentsEditor", () => ({
   ValuationReportAttachmentsEditor: () => <div data-testid="attachments-editor" />,
 }));
@@ -96,7 +93,7 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     renderPanel(draft({ status: "none", canPrepare: false, packageStatus: "draft" }));
 
     expect(await screen.findByText("تُفتح المسودة بعد أن يسلّم المقيّم تقييمه للأخصائي.")).toBeTruthy();
-    expect(screen.queryByTestId("esg-editor")).toBeNull();
+    expect(screen.queryByTestId("attachments-editor")).toBeNull();
   });
 
   it("sends only after he confirms the valuation matches the property study", async () => {
@@ -118,7 +115,9 @@ describe("ReportDraftPanel (the specialist's side)", () => {
   it("is read-only for everyone who may not prepare it", async () => {
     renderPanel(draft(), false);
 
-    expect(await screen.findByTestId("esg-editor")).toBeTruthy();
+    expect(await screen.findByTestId("attachments-editor")).toBeTruthy();
+    // ESG is the appraiser's own — the specialist's panel never offers it.
+    expect(screen.queryByText("العوامل البيئية والاجتماعية والحوكمة (ESG)")).toBeNull();
     expect(screen.queryByRole("button", { name: "إرسال المسودة للمقيّم" })).toBeNull();
   });
 

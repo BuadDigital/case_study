@@ -158,6 +158,9 @@ export function useEvaluatorSubmit({
           valuationMethod: draft.valuationMethod,
           valueBasis: draft.valueBasis,
           demandLevel: draft.demandLevel,
+          // The ESG choices are saved after a short debounce — flush them with the submit, which
+          // locks the package right after.
+          reportChoices: draft.reportChoices,
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {

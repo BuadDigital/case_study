@@ -31,6 +31,7 @@ import {
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
 import { useCostInspectorSync } from "./useCostInspectorSync";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
 export type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
@@ -69,6 +70,7 @@ export function useCostApproachWorkflow({
   onCostSaved,
 }: CostApproachWorkflowArgs) {
   const { showToast } = useToast();
+  const { reportSaveFailure, clearSaveErrors } = useValuationWorkErrors();
   const [costDraft, setCostDraft] = useState<ValuationCostLineDto[]>([]);
   const [fields, setFields] = useState<CostApproachFields>(EMPTY_COST_FIELDS);
   /** Drag a cost line to reorder within its group (drag-to-reorder from the interactive form). */
@@ -184,19 +186,21 @@ export function useCostApproachWorkflow({
     );
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ التكلفة", "error");
+      reportSaveFailure(res, "تعذّر حفظ التكلفة");
       return;
     }
+    clearSaveErrors();
     setCostDraft(res.data.lines);
     showToast("تم حفظ أسلوب التكلفة", "success");
     // Silent reload — no loading-skeleton flash after save (used to be a full reload).
     onCostSaved(res.data);
   }, [
+    clearSaveErrors,
     costDraft,
     fields,
     onCostSaved,
     onSavingChange,
-    showToast,
+    reportSaveFailure,
     valuationRequestId,
   ]);
 

@@ -16,6 +16,7 @@ import {
   basisOfValueKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   alertOverridesFromRecon,
   finalOpinionComputed,
@@ -25,6 +26,10 @@ import {
   workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { apiConfig } from "./lib/shell-utils";
+
+/** Same requirement the server states, phrased for a field we scroll to. */
+export const METHODS_RATIONALE_REQUIRED =
+  "مبرر استخدام طرق التقييم مطلوب — اكتب مبرر الرأي النهائي في هذا الحقل.";
 
 export type FinalOpinionWorkflowArgs = {
   valuationRequestId: string | null;
@@ -56,6 +61,8 @@ export function useFinalOpinionWorkflow({
   onReconSaved,
 }: FinalOpinionWorkflowArgs) {
   const { showToast } = useToast();
+  const { reportFieldError, reportSaveFailure, clearSaveErrors } =
+    useValuationWorkErrors();
   const [reconMethods, setReconMethods] = useState<ValuationReconciliationMethodDto[]>(
     [],
   );
@@ -171,6 +178,12 @@ export function useFinalOpinionWorkflow({
   async function saveReconciliation() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
+    // The server rejects an empty rationale too; checking here marks the field
+    // without spending a round trip on it.
+    if (!methodsRationale.trim()) {
+      reportFieldError("methodsRationale", METHODS_RATIONALE_REQUIRED);
+      return;
+    }
     onSavingChange(true);
     const res = await saveValuationReconciliation(
       config,
@@ -188,9 +201,10 @@ export function useFinalOpinionWorkflow({
     );
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ الترجيح", "error");
+      reportSaveFailure(res, "تعذّر حفظ الترجيح");
       return;
     }
+    clearSaveErrors();
     setReconMethods(res.data.methods);
     const savedRationale = res.data.methodsRationale ?? "";
     setMethodsRationale(

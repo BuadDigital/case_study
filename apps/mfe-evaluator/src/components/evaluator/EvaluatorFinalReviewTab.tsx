@@ -23,9 +23,11 @@ import {
   scheduleScrollToFormField,
 } from "@platform/app-shared/form-ux";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
-import type {
-  EvaluatorReportChoices,
-  EvaluatorSubmission,
+import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
+import {
+  emptyReportChoices,
+  type EvaluatorReportChoices,
+  type EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSpecialistDraft } from "../../lib/evaluator/evaluator-validation";
 import {
@@ -38,12 +40,13 @@ import {
 } from "../../lib/evaluator/special-assumption-rows";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
+import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
 
 const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
 const ASSUMPTIONS_AUTOSAVE_MS = 500;
 
-/** Final review: asset confirmation, special assumptions, ESG + attachments (appraiser). */
+/** Final review: asset confirmation, special assumptions and ESG (appraiser). The print attachments are the specialist's, in his report draft. */
 export function EvaluatorFinalReviewTab({
   draft,
   disabled = false,
@@ -51,6 +54,7 @@ export function EvaluatorFinalReviewTab({
   valuationRequestId: knownValuationRequestId,
   approachSettings: approachSettingsFromShell,
   onDraftPatch,
+  onReportChoicesPatch,
   onSettingsSaved,
   onSpecialistDraftChange,
   fieldErrors,
@@ -69,7 +73,7 @@ export function EvaluatorFinalReviewTab({
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
   }) => void;
-  /** @deprecated ESG and the print attachments moved to the case specialist's report draft. */
+  /** ESG choices — the appraiser's; the print attachments moved to the case specialist's report draft. */
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
   /** Live specialist choice for submit validation (before autosave settles). */
@@ -372,6 +376,7 @@ export function EvaluatorFinalReviewTab({
   }, [disabled]);
 
   const err = (key: string) => fieldErrors?.[key];
+  const esgChoices = draft.reportChoices ?? emptyReportChoices();
 
   if (loading) {
     return (
@@ -559,7 +564,30 @@ export function EvaluatorFinalReviewTab({
         ) : null}
       </ValCard>
 
-      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG) ومرفقات التقرير">
+      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">
+        <p className={noteClassName}>
+          يعبّئها المقيّم في المراجعة النهائية وتُطبع في تقرير التقييم.
+        </p>
+        <ValuationReportEsgEditor
+          esgEnv={esgChoices.esgEnv}
+          esgSoc={esgChoices.esgSoc}
+          esgGov={esgChoices.esgGov}
+          disabled={disabled}
+          invalidGroups={
+            err("esg_impact_notes")
+              ? esgGroupsMissingImpactDescription(esgChoices)
+              : undefined
+          }
+          onPatch={(patch) => onReportChoicesPatch?.(patch)}
+        />
+        {err("esg_impact_notes") ? (
+          <p className="mt-2 mb-0 text-[11px] text-danger-text">
+            {err("esg_impact_notes")}
+          </p>
+        ) : null}
+      </ValCard>
+
+      <ValCard title="مرفقات التقرير">
         <p className={noteClassName}>
           يعبّئها أخصائي دراسة الحالة في مسودة التقرير بعد تسليمك التقييم، وتصلك المسودة لاعتمادها.
         </p>

@@ -10,6 +10,7 @@ import {
 import { cn, useToast } from "@platform/ui-kit";
 
 import { Card, CardPad, PrimaryBtn } from "./atoms";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   alertOverridesFromRecon,
   reconciliationSaveRequest,
@@ -48,6 +49,8 @@ export function MethodologyAlertsPanel({
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 }) {
   const { showToast } = useToast();
+  const { reportFieldError, reportSaveFailure, clearSaveErrors } =
+    useValuationWorkErrors();
   const [alertOverrides, setAlertOverrides] = useState<AlertOverrideRecord>(
     () => alertOverridesFromRecon(recon),
   );
@@ -66,6 +69,16 @@ export function MethodologyAlertsPanel({
   async function saveOverrides(next: AlertOverrideRecord) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
+    // This write carries the whole reconciliation, so the server's required
+    // rationale blocks it from here too — point at that field instead of
+    // telling the appraiser to go find it.
+    if (!(recon?.methodsRationale ?? "").trim()) {
+      reportFieldError(
+        "methodsRationale",
+        "مبرر استخدام طرق التقييم غير محفوظ — اكتبه واحفظ الرأي النهائي، ثم أعد حفظ معالجة التنبيه.",
+      );
+      return;
+    }
     onSavingChange(true);
     const draft = draftFromRecon(recon);
     const res = await saveValuationReconciliation(
@@ -75,9 +88,10 @@ export function MethodologyAlertsPanel({
     );
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ معالجة التنبيه", "error");
+      reportSaveFailure(res, "تعذّر حفظ معالجة التنبيه");
       return;
     }
+    clearSaveErrors();
     setAlertOverrides(alertOverridesFromRecon(res.data));
     showToast("تم حفظ معالجة التنبيهات المنهجية", "success");
     onReconSaved(res.data);

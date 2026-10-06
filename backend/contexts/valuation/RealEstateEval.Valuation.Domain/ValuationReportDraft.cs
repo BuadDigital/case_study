@@ -18,7 +18,7 @@ public static class ReportDraftStatuses
 /// <summary>
 /// The draft of the valuation report, from the appraiser's hand-over to his approval. After the
 /// appraiser submits his package the case specialist (his assistant) prepares the report — his own
-/// choices (ESG, print attachments…) and the confirmation that the valuation matches the property
+/// choices (the print attachments; ESG is the appraiser's) and the confirmation that the valuation matches the property
 /// study — and sends it; the appraiser reviews and approves it (the approved printed report is
 /// snapshotted), or the specialist withdraws it. The appraiser's own sections (opinion, reconciliation)
 /// are his valuation data, locked at hand-over — they are not written here.

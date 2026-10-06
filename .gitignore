@@ -78,3 +78,14 @@ packages/ui-kit/.ds-sync-cache/
 
 # Local probe drivers (e2e/.probe-*.mjs) — not tracked
 e2e/.probe-*.mjs
+
+# Working notes, specs and design mock-ups — kept on disk, not in git (they were
+# 96% of the last commit's churn). The four baselines below stay tracked because
+# the architecture ratchets read them at run time.
+docs/*
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/frontend-size-baseline.json
+!docs/architecture/boundary-baseline.json
+!docs/architecture/property-document-types.json
+!docs/architecture/table-ownership.json

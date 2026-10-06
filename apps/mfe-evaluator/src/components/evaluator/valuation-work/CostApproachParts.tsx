@@ -1,6 +1,10 @@
 "use client";
 
 import type { ValuationCostApproachDto } from "@platform/api-client";
+import {
+  invalidControlClass,
+  scheduleScrollToFirstFormField,
+} from "@platform/app-shared/form-ux";
 import { cn } from "@platform/ui-kit";
 
 import {
@@ -8,6 +12,8 @@ import {
   CardPad,
   FieldLabel,
 } from "./atoms";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
+import { COST_FIELD_ERROR_KEYS } from "./lib/valuation-work-error-targets";
 import { INDIRECT_COST_ITEMS } from "./lib/cost-line-math";
 import { costNum } from "./lib/cost-approach-state";
 import type {
@@ -64,6 +70,7 @@ export function CostLandValueCard({
           <label className="flex flex-col gap-1.5">
             <FieldLabel>خصم تقييد الاستخدام (٪)</FieldLabel>
             <input
+              id="cost-useRestrictionPct"
               dir="ltr"
               type="number"
               min={0}
@@ -79,6 +86,7 @@ export function CostLandValueCard({
           <label className="flex min-w-[220px] flex-1 flex-col gap-1.5">
             <FieldLabel>مبرر التقييد</FieldLabel>
             <input
+              id="cost-useRestrictionRationale"
               placeholder="مبرر تقييد الاستخدام…"
               value={fields.useRestrictionRationale}
               onChange={(e) => setField("useRestrictionRationale", e.target.value)}
@@ -89,6 +97,7 @@ export function CostLandValueCard({
             <label className="flex flex-col gap-1.5">
               <FieldLabel>حصة الشقة من الأرض (م²)</FieldLabel>
               <input
+                id="cost-apartmentLandShare"
                 dir="ltr"
                 value={fields.apartmentLandShare}
                 placeholder="120"
@@ -144,7 +153,7 @@ export function CostIndirectCard({
   const { financingPctLocal, indirectSumLocal, totalCostLocal } = derived;
   const finPct = formatPct2(financingPctLocal);
   return (
-    <Card className="mb-0">
+    <Card id="cost-indirect" className="mb-0">
       <div className="px-[22px] pb-5 pt-[18px]">
         <div className="mb-[14px] text-[14.5px] font-extrabold text-heading">
           التكاليف غير المباشرة
@@ -196,6 +205,7 @@ export function CostIndirectCard({
                 {fmt((directTotal * financingPctLocal) / 100)}
               </span>
               <input
+                id="cost-financingRate"
                 dir="ltr"
                 type="number"
                 min={0}
@@ -207,6 +217,7 @@ export function CostIndirectCard({
                 className={cn(htmlNumInput, "w-[70px]")}
               />
               <input
+                id="cost-financingMonths"
                 dir="ltr"
                 type="number"
                 min={0}
@@ -295,8 +306,9 @@ export function CostAgeCard({
   setField: FieldSetter;
   derived: CostApproachDerived;
 }) {
+  const { fieldErrors } = useValuationWorkErrors();
   return (
-    <Card className="mb-0">
+    <Card id="cost-age" className="mb-0">
       <div className="px-[22px] pb-5 pt-[18px]">
         <div className="mb-[14px] text-[14.5px] font-extrabold text-heading">
           العمر والإهلاك
@@ -308,19 +320,26 @@ export function CostAgeCard({
                 {label}
               </span>
               <input
+                id={`cost-${justification}`}
                 placeholder="مبرر التقدير…"
                 value={fields[justification]}
                 onChange={(e) => setField(justification, e.target.value)}
                 className={htmlJustInput}
               />
               <input
+                id={`cost-${value}`}
                 dir="ltr"
                 type="number"
                 min={0}
                 step={1}
                 value={fields[value]}
                 onChange={(e) => setField(value, e.target.value)}
-                className={cn(htmlNumInput, "w-[78px] shrink-0")}
+                className={cn(
+                  htmlNumInput,
+                  "w-[78px] shrink-0",
+                  fieldErrors[COST_FIELD_ERROR_KEYS[value] ?? value] &&
+                    invalidControlClass,
+                )}
               />
             </div>
           ))}
@@ -450,25 +469,22 @@ const ALERT_SKIN = {
   },
 } as const;
 
-/** Cost-approach alert list — one colored card per trigger, matching the HTML. */
+/**
+ * Cost-approach alert list — one colored card per trigger, matching the HTML.
+ * An alert that names a control is a link to it: clicking scrolls the field
+ * into view, pulses it and focuses it.
+ */
 export function CostAlertsCard({ alerts }: { alerts: CostApproachAlert[] }) {
   return (
     <div className="mb-6 grid grid-cols-1 gap-3">
       {alerts.map((a, i) => {
         const skin = ALERT_SKIN[a.kind];
-        return (
-          <div
-            key={i}
-            role={a.kind === "error" ? "alert" : "status"}
-            className={cn(
-              "flex items-start gap-[11px] rounded-[10px] border px-4 py-[13px]",
-              skin.box,
-            )}
-          >
+        const body = (
+          <>
             <span
               className={cn("mt-1.5 size-2 shrink-0 rounded-full", skin.dot)}
             />
-            <div>
+            <div className="min-w-0 flex-1">
               <div className={cn("text-[13px] font-bold", skin.title)}>
                 {a.title}
               </div>
@@ -476,7 +492,44 @@ export function CostAlertsCard({ alerts }: { alerts: CostApproachAlert[] }) {
                 {a.body}
               </div>
             </div>
-          </div>
+          </>
+        );
+        const box = "flex w-full items-start gap-[11px] rounded-[10px] border px-4 py-[13px] text-start";
+        if (!a.targetId) {
+          return (
+            <div
+              key={i}
+              role={a.kind === "error" ? "alert" : "status"}
+              className={cn(box, skin.box)}
+            >
+              {body}
+            </div>
+          );
+        }
+        return (
+          <button
+            key={i}
+            type="button"
+            title="انتقل إلى الحقل"
+            data-target-id={a.targetId}
+            onClick={() =>
+              scheduleScrollToFirstFormField(
+                [a.targetId, a.fallbackTargetId],
+                0,
+                { retries: 8 },
+              )
+            }
+            className={cn(
+              box,
+              skin.box,
+              "cursor-pointer transition-[box-shadow,transform] duration-150 hover:shadow-[0_1px_8px_rgba(0,0,0,.08)]",
+            )}
+          >
+            {body}
+            <span className="mt-0.5 shrink-0 text-[11px] font-bold text-text-3">
+              انتقل للحقل ←
+            </span>
+          </button>
         );
       })}
     </div>

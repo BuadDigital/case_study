@@ -79,7 +79,7 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.retrospective_date_to).toBe("حدّد تاريخ نهاية الفترة");
   });
 
-  it("does not require ESG impact notes from the appraiser — ESG is the specialist's (his report draft)", () => {
+  it("requires ESG impact notes from the appraiser when «يوجد تأثير» is chosen", () => {
     const errors = validateEvaluatorSubmission({
       ...base,
       reportChoices: {
@@ -91,7 +91,9 @@ describe("validateEvaluatorSubmission", () => {
         },
       },
     });
-    expect(errors).not.toHaveProperty("esg_impact_notes");
+    expect(errors.esg_impact_notes).toBe(
+      "عند اختيار «يوجد تأثير» في ESG يجب كتابة وصف الأثر.",
+    );
   });
 
   it("passes ESG when impact notes are filled", () => {

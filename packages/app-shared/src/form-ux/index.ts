@@ -3,6 +3,7 @@ export {
   invalidPulseRingClass,
 } from "./invalid-styles";
 export {
+  scheduleScrollToFirstFormField,
   scheduleScrollToFormField,
   scrollToFormField,
   type ScrollToFormFieldOptions,

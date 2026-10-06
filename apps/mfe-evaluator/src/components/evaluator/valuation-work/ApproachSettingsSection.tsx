@@ -7,10 +7,7 @@ import {
   saveValuationApproachSettings,
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
-import {
-  invalidControlClass,
-  scheduleScrollToFormField,
-} from "@platform/app-shared/form-ux";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { cn, opsFldControl, AppModal, Button, useToast } from "@platform/ui-kit";
 import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
 
@@ -25,6 +22,7 @@ import {
 } from "./atoms";
 
 import { apiConfig } from "./lib/shell-utils";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   approachesDisabledWithWork,
   disableApproachConfirmCopy,
@@ -49,7 +47,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   saving,
   onSavingChange,
   onSettingsSaved,
-  fieldErrors,
+  fieldErrors: sendErrors,
   onRetrospectiveDraftChange,
   hasMarketWork = false,
   hasCostWork = false,
@@ -69,6 +67,22 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   onDraftApproachesChange?: (nav: { market: boolean; cost: boolean }) => void;
 }) {
   const { showToast } = useToast();
+  const {
+    fieldErrors: workErrors,
+    reportFieldError,
+    reportSaveFailure,
+    clearSaveErrors,
+  } = useValuationWorkErrors();
+  /** Send-time errors (snake_case keys) plus the last failed save (server keys). */
+  const fieldErrors = { ...sendErrors, ...workErrors };
+  const approachesError =
+    fieldErrors.appliedApproaches ||
+    fieldErrors.costApproachEnabled ||
+    fieldErrors.incomeApproachEnabled ||
+    fieldErrors.marketApproachEnabled ||
+    fieldErrors.valuationPurposeKey ||
+    fieldErrors.valuationPurposeNote ||
+    "";
   const [asMarketEnabled, setAsMarketEnabled] = useState(false);
   const [asCostEnabled, setAsCostEnabled] = useState(false);
   const [asCostBasis, setAsCostBasis] = useState("replacement");
@@ -165,21 +179,19 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     }
     if (asDateMode === "retrospective") {
       if (!asRetroDate.trim()) {
-        showToast("تاريخ الأثر الرجعي إلزامي", "error");
-        scheduleScrollToFormField(
-          asRetroKind === "range" ? "as-retro-date-from" : "as-retro-date",
-        );
+        reportFieldError("retrospectiveDate", "تاريخ الأثر الرجعي إلزامي");
         return;
       }
       if (asRetroKind === "range") {
         if (!asRetroDateEnd.trim()) {
-          showToast("حدّد تاريخ نهاية الفترة", "error");
-          scheduleScrollToFormField("as-retro-date-to");
+          reportFieldError("retrospectiveDateEnd", "حدّد تاريخ نهاية الفترة");
           return;
         }
         if (asRetroDateEnd < asRetroDate) {
-          showToast("تاريخ النهاية يجب ألا يسبق تاريخ البداية", "error");
-          scheduleScrollToFormField("as-retro-date-to");
+          reportFieldError(
+            "retrospectiveDateEnd",
+            "تاريخ النهاية يجب ألا يسبق تاريخ البداية",
+          );
           return;
         }
       }
@@ -247,9 +259,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
           : res.kind === "network"
             ? "تعذّر الاتصال بالخادم — تحقق من اتصالك بالإنترنت وأعد المحاولة."
             : "تعذّر حفظ الأساليب — أعد المحاولة بعد قليل، وإن تكرر الخطأ تواصل مع الدعم الفني.";
-      showToast(res.message ?? fallback, "error");
+      reportSaveFailure(res, fallback);
       return;
     }
+    clearSaveErrors();
     showToast(
       settings?.isSaved ? "تم حفظ الأساليب" : "تم بدء التقييم",
       "success",
@@ -284,7 +297,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
 
   function requestSave() {
     if (!asMarketEnabled && !nextCostEnabled) {
-      showToast("يلزم تفعيل أسلوب واحد على الأقل", "error");
+      reportFieldError("appliedApproaches", "يلزم تفعيل أسلوب واحد على الأقل");
       return;
     }
     if (confirmCopy) {
@@ -300,7 +313,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         <CardPad>
           <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>
           <FieldLabel>نطاق التقييم</FieldLabel>
-          <div className="my-2 mb-1.5 flex flex-wrap gap-2">
+          <div
+            id="as-scope"
+            className={cn(
+              "my-2 mb-1.5 flex flex-wrap gap-2 rounded-[10px]",
+              fieldErrors.costScopeKey && invalidControlClass,
+            )}
+          >
             <ToggleChip
               active={asCostScope === "land_only"}
               disabled={saving}
@@ -323,6 +342,11 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               أرض مع المباني
             </ToggleChip>
           </div>
+          {fieldErrors.costScopeKey ? (
+            <p className="mb-0 mt-1.5 text-[11px] text-danger-text">
+              {fieldErrors.costScopeKey}
+            </p>
+          ) : null}
           <p className="mb-4 mt-0 text-[10.5px] text-text-3">
             {!buildingsAllowed
               ? "لا توجد مكونات محصورة لدى الأخصائي — التقييم أرض فقط."
@@ -332,7 +356,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                   ? "تُقيَّم المكونات المحصورة وحدها بأسلوب التكلفة، دون تقدير الأرض."
                   : "تُقيَّم الأرض مع المكونات المحصورة."}
           </p>
-          <div className="mb-4 grid grid-cols-3 gap-3">
+          <div
+            id="as-approaches"
+            className={cn(
+              "mb-4 grid grid-cols-3 gap-3 rounded-[10px]",
+              approachesError && invalidControlClass,
+            )}
+          >
             <label
               className={cn(
                 "flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
@@ -411,6 +441,11 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </label>
           </div>
 
+          {approachesError ? (
+            <p className="mb-3 mt-[-8px] text-[11px] text-danger-text">
+              {approachesError}
+            </p>
+          ) : null}
           {asCostEnabled && costAllowed && asCostScope !== "building_only" ? (
             <p className="mb-3 text-[11.5px] text-gold-d">
               طريقة المقاول تستلزم تقييم أرض المبنى بطريقة المقارنة.
@@ -425,7 +460,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                   : "«أرض مع المباني» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
               </p>
               <FieldLabel>طريقة تقدير التكلفة</FieldLabel>
-              <div className="my-2 mb-1.5 flex flex-wrap gap-2">
+              <div
+                id="as-cost-basis"
+                className={cn(
+                  "my-2 mb-1.5 flex flex-wrap gap-2 rounded-[10px]",
+                  fieldErrors.costBasisKey && invalidControlClass,
+                )}
+              >
                 <ToggleChip
                   active={asCostBasis === "replacement"}
                   disabled={saving}
@@ -451,7 +492,13 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
 
           <div className="mb-4 border-t border-border pt-4">
             <FieldLabel>تاريخ التقييم</FieldLabel>
-            <div className="my-2 mb-1.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
+            <div
+              id="as-valuation-date"
+              className={cn(
+                "my-2 mb-1.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1 rounded-[10px]",
+                fieldErrors.valuationDateMode && invalidControlClass,
+              )}
+            >
               <button
                 type="button"
                 disabled={saving}
@@ -532,7 +579,9 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       className={cn(
                         opsFldControl,
                         "font-semibold",
-                        fieldErrors?.retrospective_date && invalidControlClass,
+                        (fieldErrors.retrospective_date ||
+                          fieldErrors.retrospectiveDate) &&
+                          invalidControlClass,
                       )}
                     />
                   </div>
@@ -554,7 +603,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                           className={cn(
                             opsFldControl,
                             "font-semibold",
-                            fieldErrors?.retrospective_date_from &&
+                            (fieldErrors.retrospective_date_from ||
+                              fieldErrors.retrospectiveDate) &&
                               invalidControlClass,
                           )}
                         />
@@ -576,7 +626,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                           className={cn(
                             opsFldControl,
                             "font-semibold",
-                            fieldErrors?.retrospective_date_to &&
+                            (fieldErrors.retrospective_date_to ||
+                              fieldErrors.retrospectiveDateEnd) &&
                               invalidControlClass,
                           )}
                         />

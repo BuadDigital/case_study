@@ -31,7 +31,7 @@ import { useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
-import { fetchBankCandidates } from "./lib/bank-ranking";
+import { fetchBankCandidates, NEARBY_RADIUS_KM } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {
   LAND_WITHIN_COST,
@@ -99,6 +99,8 @@ export function useValuationWorkData({
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
   const [bankSubjectCoords, setBankSubjectCoords] = useState<SubjectCoords | null>(null);
   const [bankSearch, setBankSearch] = useState("");
+  // How far around the property the bank tables look (3 km by default); `null` = all.
+  const [bankRadiusKm, setBankRadiusKm] = useState<number | null>(NEARBY_RADIUS_KM);
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -423,6 +425,7 @@ export function useValuationWorkData({
     candidates,
     bankSubjectCoords,
     bankSearch,
+    bankRadiusKm,
     subjectArea,
     analysisNotes,
     cost,
@@ -461,6 +464,8 @@ export function useValuationWorkData({
     officialValuationDate,
     reload,
     bankSubjectCoords,
+    bankRadiusKm,
+    setBankRadiusKm,
     ...sectionSaves,
     settingsSaved,
     marketEnabled,

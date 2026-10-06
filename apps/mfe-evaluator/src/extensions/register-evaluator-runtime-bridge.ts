@@ -44,7 +44,7 @@ const ValuationReportPreview = dynamic(
   { ssr: false, loading: () => ValuationReportLoading() },
 );
 
-/** The specialist's report-draft workspace (ESG + print attachments, send / withdraw). */
+/** The specialist's report-draft workspace (print attachments, send / withdraw). */
 const ReportDraftPanel = dynamic(
   () => import("../components/evaluator/ReportDraftPanel").then((m) => m.ReportDraftPanel),
   { ssr: false },

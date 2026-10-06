@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, type DragEvent } from "react";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { TBody, THead, Table, Td, Th, Tr, cn } from "@platform/ui-kit";
 
 import { Card } from "./atoms";
@@ -12,6 +13,7 @@ import {
 } from "./lib/cost-line-math";
 import { fmt } from "./lib/shell-utils";
 import type { CostApproachWorkflow } from "./useCostApproachWorkflow";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
 const COLS = 8;
 const cell = "px-3 py-2 align-middle";
@@ -113,8 +115,9 @@ export function CostApproachLinesTable({
   const { computedLines, areaSubtotal, extraSubtotal, directTotal } = totals;
   const { indirectSumLocal } = derived;
 
+  const { fieldErrors } = useValuationWorkErrors();
   return (
-    <Card className="mb-6 !overflow-visible">
+    <Card id="cost-lines" className="mb-6 !overflow-visible">
       <Table
         className="min-w-[1160px] table-fixed"
         wrapClassName="!overflow-y-visible"
@@ -189,6 +192,8 @@ export function CostApproachLinesTable({
                 const comp = computedLines[idx]!;
                 const patch = (partial: Parameters<typeof patchLine>[1]) =>
                   patchLine(idx, partial);
+                const lineError = (field: string) =>
+                  fieldErrors[`lines[${idx}].${field}`];
                 const nameOptions = COST_ITEM_OPTIONS.filter(
                   (o) =>
                     o.key === line.itemKey ||
@@ -250,10 +255,14 @@ export function CostApproachLinesTable({
                         {line.itemKey === "custom" ? (
                           <>
                             <input
+                              id={`cost-line-${idx}-label`}
                               value={line.label}
                               placeholder="اكتب اسم البند…"
                               onChange={(e) => patch({ label: e.target.value })}
-                              className="w-full rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-bold text-heading"
+                              className={cn(
+                                "w-full rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-bold text-heading",
+                                lineError("label") && invalidControlClass,
+                              )}
                             />
                             {!line.label.trim() ? (
                               <select
@@ -293,6 +302,9 @@ export function CostApproachLinesTable({
                           </span>
                         ) : (
                           <input
+                            id={`cost-line-${idx}-${
+                              comp.isRepeated ? "repeatedFloorCount" : "areaSqm"
+                            }`}
                             dir="ltr"
                             title={
                               comp.isRepeated
@@ -321,11 +333,15 @@ export function CostApproachLinesTable({
                               comp.isRepeated
                                 ? "bg-surface-2 text-gold-d"
                                 : "bg-surface text-heading",
+                              (lineError("areaSqm") ||
+                                lineError("repeatedFloorCount")) &&
+                                invalidControlClass,
                             )}
                           />
                         )}
                         {comp.usesPct ? (
                           <input
+                            id={`cost-line-${idx}-buildRatioPct`}
                             dir="ltr"
                             title="نسبة البناء"
                             value={
@@ -338,7 +354,10 @@ export function CostApproachLinesTable({
                               const raw = e.target.value.replace(/[^\d.]/g, "");
                               patch({ buildRatioPct: raw ? Number(raw) : null });
                             }}
-                            className="ms-[5px] inline-block w-[54px] rounded-[7px] border border-dashed border-border-md bg-surface-2 px-0.5 py-2 text-center text-[11.5px] font-bold text-gold-d"
+                            className={cn(
+                              "ms-[5px] inline-block w-[54px] rounded-[7px] border border-dashed border-border-md bg-surface-2 px-0.5 py-2 text-center text-[11.5px] font-bold text-gold-d",
+                              lineError("buildRatioPct") && invalidControlClass,
+                            )}
                           />
                         ) : null}
                         {comp.usesPct &&
@@ -355,6 +374,7 @@ export function CostApproachLinesTable({
                       </Td>
                       <Td className={cellCenter}>
                         <select
+                          id={`cost-line-${idx}-unit`}
                           value={line.unit || "sqm"}
                           onChange={(e) =>
                             patch({
@@ -362,7 +382,10 @@ export function CostApproachLinesTable({
                               areaSqm: e.target.value === "lump" ? 1 : line.areaSqm,
                             })
                           }
-                          className="cursor-pointer rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text"
+                          className={cn(
+                            "cursor-pointer rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text",
+                            lineError("unit") && invalidControlClass,
+                          )}
                         >
                           {COST_UNIT_OPTIONS.map((o) => (
                             <option key={o.key} value={o.key}>
@@ -373,6 +396,7 @@ export function CostApproachLinesTable({
                       </Td>
                       <Td className={cellCenter}>
                         <input
+                          id={`cost-line-${idx}-unitCostSar`}
                           dir="ltr"
                           value={comp.inherited ? "" : String(line.unitCostSar)}
                           placeholder={
@@ -389,6 +413,7 @@ export function CostApproachLinesTable({
                             comp.inherited
                               ? "border-border bg-surface-2 text-gold-d"
                               : "border-border-md bg-surface text-heading",
+                            lineError("unitCostSar") && invalidControlClass,
                           )}
                         />
                         {comp.inherited ? (
@@ -417,10 +442,14 @@ export function CostApproachLinesTable({
                       </Td>
                       <Td className="px-3 py-2">
                         <input
+                          id={`cost-line-${idx}-rationale`}
                           value={line.rationale}
                           onChange={(e) => patch({ rationale: e.target.value })}
                           placeholder="أساس التقدير…"
-                          className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-2 text-xs font-medium text-text"
+                          className={cn(
+                            "w-full rounded-[7px] border border-border bg-surface px-2.5 py-2 text-xs font-medium text-text",
+                            lineError("rationale") && invalidControlClass,
+                          )}
                         />
                       </Td>
                       <Td className="w-12 px-2 py-2 text-center">

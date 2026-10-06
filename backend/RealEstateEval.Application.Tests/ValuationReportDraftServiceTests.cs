@@ -40,7 +40,7 @@ public class ValuationReportDraftServiceTests
 
     private static JsonElement Choices(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
-    private const string EsgChoices = "{\"esgEnv\":{\"none\":true,\"selected\":[],\"notes\":\"x\"}}";
+    private const string PrintChoices = "{\"printAttachmentKeys\":[\"deed\",\"survey\"]}";
 
     // ---- preparing ----
 
@@ -54,10 +54,10 @@ public class ValuationReportDraftServiceTests
         Assert.True(read.CanPrepare);
 
         var (saved, saveErrors) = await rig.Service.SaveChoicesAsync(
-            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(EsgChoices) }, Specialist);
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
         Assert.Null(saveErrors);
         Assert.Equal(ReportDraftStatuses.Preparing, saved!.Status);
-        Assert.Equal("x", saved.SpecialistChoices!.Value.GetProperty("esgEnv").GetProperty("notes").GetString());
+        Assert.Equal("deed", saved.SpecialistChoices!.Value.GetProperty("printAttachmentKeys")[0].GetString());
 
         var (_, unconfirmed) = await rig.Service.SendAsync(
             rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = false }, Specialist);
@@ -88,7 +88,7 @@ public class ValuationReportDraftServiceTests
         Assert.False(read!.CanPrepare);
 
         var (result, errors) = await rig.Service.SaveChoicesAsync(
-            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(EsgChoices) }, Specialist);
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
         Assert.Null(result);
         Assert.Equal(ValuationReportDraftService.PackageNotSubmittedAr, errors!["_"]);
         Assert.Empty(rig.Contexts.Valuation.ValuationReportDrafts);
@@ -105,7 +105,7 @@ public class ValuationReportDraftServiceTests
         var actor = new ReportDraftActor { UserId = "u-x", PrototypeRole = role, DistributionAssigneeId = AppraiserDistributionId };
 
         var save = await rig.Service.SaveChoicesAsync(
-            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(EsgChoices) }, actor);
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, actor);
         var send = await rig.Service.SendAsync(
             rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, actor);
         var withdraw = await rig.Service.WithdrawAsync(rig.RequestId, new WithdrawReportDraftRequest(), actor);
@@ -119,6 +119,8 @@ public class ValuationReportDraftServiceTests
     [InlineData("[]")]
     [InlineData("\"x\"")]
     [InlineData("{\"purposeKey\":\"sale\"}")]
+    // ESG is the appraiser's own (decision 2026-10-06) — the specialist's draft refuses it.
+    [InlineData("{\"esgEnv\":{\"none\":true,\"selected\":[],\"notes\":\"x\"}}")]
     public async Task Only_the_allow_listed_choice_keys_are_accepted(string json)
     {
         await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted);
@@ -135,7 +137,7 @@ public class ValuationReportDraftServiceTests
     {
         await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted);
         await rig.Service.SaveChoicesAsync(
-            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(EsgChoices) }, Specialist);
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
         await rig.Service.SendAsync(rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
 
         var (_, whileSent) = await rig.Service.SaveChoicesAsync(
@@ -143,9 +145,9 @@ public class ValuationReportDraftServiceTests
         Assert.Equal(ValuationReportDraft.NotPreparingAr, whileSent!["_"]);
 
         var (withdrawn, _) = await rig.Service.WithdrawAsync(
-            rig.RequestId, new WithdrawReportDraftRequest { Note = "تعديل ESG" }, Specialist);
+            rig.RequestId, new WithdrawReportDraftRequest { Note = "تعديل المرفقات" }, Specialist);
         Assert.Equal(ReportDraftStatuses.Preparing, withdrawn!.Status);
-        Assert.Equal("تعديل ESG", withdrawn.SpecialistNote);
+        Assert.Equal("تعديل المرفقات", withdrawn.SpecialistNote);
         Assert.Null(withdrawn.ConformityConfirmedAtUtc);
 
         // A repeated withdrawal is a no-op.
@@ -319,7 +321,7 @@ public class ValuationReportDraftServiceTests
     {
         var rig = Arrange(PartyTaskSubmissionStatus.Submitted);
         await rig.Service.SaveChoicesAsync(
-            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(EsgChoices) }, Specialist);
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
         await rig.Service.SendAsync(
             rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
         return rig;

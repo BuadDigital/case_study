@@ -25,6 +25,10 @@ export type CostApproachAlert = {
   kind: "error" | "warn" | "ok";
   title: string;
   body: string;
+  /** Control the appraiser has to fix — the alert is a link to it. */
+  targetId?: string;
+  /** Used when the control is not rendered (a collapsed row, a hidden section). */
+  fallbackTargetId?: string;
 };
 
 /** Every free-text/number field the cost screen edits, as typed strings. */
@@ -535,24 +539,31 @@ export function buildCostAlerts(
       kind: "error",
       title: "لا يوجد بند تكلفة",
       body: "يلزم بند واحد على الأقل في جدول التكلفة.",
+      targetId: "cost-lines",
     });
   if (extLifeLocal <= 0)
     alerts.push({
       kind: "error",
       title: "العمر الممتد صفر",
       body: "العمر الاقتصادي + التمديد يجب أن يكون أكبر من صفر.",
+      targetId: "cost-economicAge",
+      fallbackTargetId: "cost-age",
     });
   else if (actualLocal > extLifeLocal)
     alerts.push({
       kind: "error",
       title: "العمر الفعلي يتجاوز العمر الممتد",
       body: "الإهلاك المادي يتجاوز ١٠٠٪.",
+      targetId: "cost-actualAge",
+      fallbackTargetId: "cost-age",
     });
   if (totalDepLocal > 100)
     alerts.push({
       kind: "error",
       title: "مجموع التقادم يتجاوز ١٠٠٪",
       body: "راجع نسب التقادم الوظيفي والخارجي.",
+      targetId: "cost-functionalObs",
+      fallbackTargetId: "cost-age",
     });
   if (
     costDraft.some((l) => l.itemKey === "repeated_floors") &&
@@ -562,14 +573,17 @@ export function buildCostAlerts(
       kind: "error",
       title: "بند الأدوار المتكررة بلا «الدور الأول»",
       body: "كمية المتكررة تُشتقّ من مسطح الدور الأول — أعد إدراجه أو احذف بند المتكررة.",
+      targetId: "cost-lines",
     });
   if (costNum(fields.lifeExtension) > 0 && !fields.lifeExtensionBasis.trim())
     alerts.push({
       kind: "warn",
       title: "تمديد العمر مستخدم",
       body: "يلزم بيان أساس التمديد كتابةً.",
+      targetId: "cost-lifeExtensionBasis",
+      fallbackTargetId: "cost-age",
     });
-  for (const l of costDraft) {
+  for (const [lineIndex, l] of costDraft.entries()) {
     if (
       costGroupOf(l) === "extra" &&
       (l.label.trim() || l.itemKey !== "custom") &&
@@ -579,6 +593,8 @@ export function buildCostAlerts(
         kind: "warn",
         title: `بند إضافي بلا مبرر: ${costItemLabel(l)}`,
         body: "يلزم توثيق أساس التقدير — احتمال ازدواج مع ما هو مضمَّن في تكلفة المتر.",
+        targetId: `cost-line-${lineIndex}-rationale`,
+        fallbackTargetId: "cost-lines",
       });
     }
     if (
@@ -591,6 +607,8 @@ export function buildCostAlerts(
         kind: "warn",
         title: "تكلفة متر المتكررة تخالف الدور الأول",
         body: "التجاوز مسموح بمبرر مكتوب — دوّن سببه.",
+        targetId: `cost-line-${lineIndex}-rationale`,
+        fallbackTargetId: "cost-lines",
       });
     }
   }
@@ -602,33 +620,43 @@ export function buildCostAlerts(
       kind: "warn",
       title: "خصم تقييد الاستخدام بلا مبرر",
       body: "افتراضه صفر ولا يُملأ إلا بمبرر موثّق.",
+      targetId: "cost-useRestrictionRationale",
     });
   if (!buildingOnly && !landComplete)
     alerts.push({
       kind: "error",
       title: "قيمة الأرض غير مقدَّرة",
       body: "اعتمد مقارنات أراضٍ فضاء — مؤشر الأسلوب يبقى غير مكتمل بدونها.",
+      targetId: "cost-land-bank",
     });
+  const functionalUnjustified =
+    functionalLocal > 0 && !fields.functionalObsRationale.trim();
   if (
-    (functionalLocal > 0 && !fields.functionalObsRationale.trim()) ||
+    functionalUnjustified ||
     (externalLocal > 0 && !fields.externalObsRationale.trim())
   )
     alerts.push({
       kind: "warn",
       title: "تقادم وظيفي أو خارجي بلا مبرر",
       body: "يلزم مبرر مكتوب لكل نسبة تقادم غير مادية.",
+      targetId: functionalUnjustified
+        ? "cost-functionalObsRationale"
+        : "cost-externalObsRationale",
+      fallbackTargetId: "cost-age",
     });
   if (developerProfitPct < 10 || developerProfitPct > 20)
     alerts.push({
       kind: "warn",
       title: "أرباح المطور خارج النطاق",
       body: `النطاق المعتاد ١٠٪–٢٠٪، والحالي ${developerProfitPct}٪.`,
+      targetId: "cost-indirect",
     });
   if (indirectSumLocal > 45)
     alerts.push({
       kind: "warn",
       title: "النسب غير المباشرة مرتفعة",
       body: `المجموع ${(Math.round(indirectSumLocal * 100) / 100).toFixed(2)}٪ يتجاوز ٤٥٪.`,
+      targetId: "cost-indirect",
     });
   if (alerts.length === 0)
     alerts.push({

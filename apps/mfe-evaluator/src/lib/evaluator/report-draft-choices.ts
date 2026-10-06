@@ -7,14 +7,11 @@ import {
 } from "./evaluator-window-data";
 
 /**
- * The report choices the case specialist owns (ESG + print attachments). Mirrors the server's
- * allow-list (`ReportDraftChoiceRules.AllowedKeys`): the specialist's copy overlays the appraiser's own
- * `reportChoices` when the report is rendered; every other choice stays the appraiser's.
+ * The report choices the case specialist owns (the print attachments, their order and slots). Mirrors the
+ * server's allow-list (`ReportDraftChoiceRules.AllowedKeys`): the specialist's copy overlays the appraiser's
+ * own `reportChoices` when the report is rendered; every other choice — ESG included — stays the appraiser's.
  */
 export const SPECIALIST_REPORT_CHOICE_KEYS = [
-  "esgEnv",
-  "esgSoc",
-  "esgGov",
   "printAttachmentKeys",
   "printAttachmentOrder",
   "printAttachmentDocIds",

@@ -4,9 +4,10 @@ using System.Text.Json.Nodes;
 namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>
-/// The report choices the case specialist owns — ESG and the print attachments. They are the
-/// appraiser's report-choice keys (<c>reportChoices</c> in his package); the specialist's copy
-/// overlays them when the report is rendered. Everything else stays the appraiser's.
+/// The report choices the case specialist owns — the print attachments, their order and slots. They are
+/// the appraiser's report-choice keys (<c>reportChoices</c> in his package); the specialist's copy
+/// overlays them when the report is rendered. Everything else stays the appraiser's — ESG included
+/// (decision 2026-10-06; the first version gave ESG to the specialist).
 /// </summary>
 public static class ReportDraftChoiceRules
 {
@@ -15,9 +16,6 @@ public static class ReportDraftChoiceRules
 
     public static readonly IReadOnlyList<string> AllowedKeys =
     [
-        "esgEnv",
-        "esgSoc",
-        "esgGov",
         "printAttachmentKeys",
         "printAttachmentOrder",
         "printAttachmentDocIds",

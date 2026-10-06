@@ -12,7 +12,6 @@ import {
 } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import type { EvaluatorReportDraftPanelProps } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
-import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import { findSiblingInspectionTask } from "../../lib/evaluator/evaluator-inspection-gate";
@@ -31,7 +30,6 @@ import {
 import { FinalReportDownload } from "./FinalReportDownload";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
-import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 import { reportDraftKey, useReportDraftByProperty, useSetReportDraft } from "./useReportDraft";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 
@@ -52,7 +50,7 @@ function formatDate(iso: string | null | undefined): string {
 
 /**
  * The case specialist's workspace for the valuation-report draft: after the appraiser hands his package
- * over, he fills the report choices he owns (ESG, print attachments), confirms the valuation matches the
+ * over, he fills the report choices he owns (the print attachments; the appraiser's own ESG is his), confirms the valuation matches the
  * property study, and sends the draft to the appraiser — who approves it (or he withdraws it).
  * Read-only for everyone else.
  */
@@ -185,19 +183,10 @@ export function ReportDraftPanel({
     [printRows, choices?.printAttachmentOrder],
   );
 
-  const esgMissing = useMemo(
-    () => (choices ? esgGroupsMissingImpactDescription(choices) : []),
-    [choices],
-  );
-
   // ---- actions ----
   const send = useCallback(async () => {
     const config = apiConfig();
     if (!config || !draft || !choices) return;
-    if (esgMissing.length > 0) {
-      showToast("اكتب وصف الأثر لكل مجموعة ESG اخترت فيها «يوجد تأثير»", "error");
-      return;
-    }
     setBusy(true);
     try {
       // The server keeps what he last saved; flush a pending edit before sending.
@@ -215,7 +204,7 @@ export function ReportDraftPanel({
     } finally {
       setBusy(false);
     }
-  }, [choices, conformity, draft, esgMissing.length, note, persist, setDraft, showToast]);
+  }, [choices, conformity, draft, note, persist, setDraft, showToast]);
 
   const withdraw = useCallback(async () => {
     const config = apiConfig();
@@ -335,19 +324,6 @@ export function ReportDraftPanel({
       {choices && !waitingForHandOver ? (
         <div className="flex flex-col gap-4">
           <div>
-            <h4 className="mb-2 mt-0 text-[13px] font-extrabold text-heading">
-              العوامل البيئية والاجتماعية والحوكمة (ESG)
-            </h4>
-            <ValuationReportEsgEditor
-              esgEnv={choices.esgEnv}
-              esgSoc={choices.esgSoc}
-              esgGov={choices.esgGov}
-              disabled={!editable || busy}
-              invalidGroups={esgMissing}
-              onPatch={patchChoices}
-            />
-          </div>
-          <div>
             <h4 className="mb-2 mt-0 text-[13px] font-extrabold text-heading">مرفقات التقرير</h4>
             <ValuationReportAttachmentsEditor
               rows={printRows}
@@ -394,7 +370,7 @@ export function ReportDraftPanel({
                   type="button"
                   variant="accent"
                   size="sm"
-                  disabled={busy || !conformity || esgMissing.length > 0}
+                  disabled={busy || !conformity}
                   onClick={() => void send()}
                 >
                   إرسال المسودة للمقيّم

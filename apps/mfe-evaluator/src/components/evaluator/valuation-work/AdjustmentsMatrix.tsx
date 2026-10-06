@@ -116,7 +116,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   }
 
   return (
-    <>
+    <div id="mx-adjustments">
       <div className="mb-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
@@ -508,7 +508,9 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                                   text,
                                 })
                               }
-                              className="mt-1 w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
+                              // Its own line under the percentage box — the two
+                              // used to sit side by side in a wide column.
+                              className="mx-auto mt-1 block w-[110px] rounded-md border border-dashed border-border bg-surface px-1.5 py-1 text-center text-[10.5px] font-medium text-text-2"
                             />
                           ) : null
                         }
@@ -657,6 +659,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
       <MatrixAlertsPanel alerts={alerts} />
 
-    </>
+    </div>
   );
 });

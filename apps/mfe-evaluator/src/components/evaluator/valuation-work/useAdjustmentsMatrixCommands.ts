@@ -40,6 +40,7 @@ import {
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
 import type { useMarketApproachCommands } from "./useMarketApproachCommands";
 import type { ValuationWorkData } from "./useValuationWorkData";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
 type MarketApproachCommands = ReturnType<typeof useMarketApproachCommands>;
 
@@ -49,6 +50,7 @@ export function useAdjustmentsMatrixCommands(
   approach: MarketApproachCommands,
 ) {
   const { showToast, setSelection, setLandSelection, setSaving, reload } = data;
+  const { reportSaveFailure } = useValuationWorkErrors();
   const {
     writeContext,
     contextOfItem,
@@ -172,7 +174,7 @@ export function useAdjustmentsMatrixCommands(
     });
     setSaving(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ مبرر التسوية", "error");
+      reportSaveFailure(res, "تعذّر حفظ مبرر التسوية");
       return false;
     }
     await reload({ silent: true, scope: "derived" });

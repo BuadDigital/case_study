@@ -15,11 +15,8 @@ function submission() {
 }
 
 describe("report draft choices", () => {
-  it("only the ESG and print keys belong to the specialist", () => {
+  it("only the print attachment keys belong to the specialist — ESG stays the appraiser's", () => {
     expect([...SPECIALIST_REPORT_CHOICE_KEYS]).toEqual([
-      "esgEnv",
-      "esgSoc",
-      "esgGov",
       "printAttachmentKeys",
       "printAttachmentOrder",
       "printAttachmentDocIds",
@@ -29,16 +26,17 @@ describe("report draft choices", () => {
     const picked = pickSpecialistChoices({ ...emptyReportChoices(), purposeKey: "sale" });
     expect(Object.keys(picked).sort()).toEqual([...SPECIALIST_REPORT_CHOICE_KEYS].sort());
     expect("purposeKey" in picked).toBe(false);
+    expect("esgEnv" in picked).toBe(false);
   });
 
-  it("the overlay replaces the appraiser's ESG and leaves his own choices alone", () => {
+  it("the overlay replaces the print attachments and leaves the appraiser's own choices (ESG included) alone", () => {
     const base = submission();
+    const esgEnv = { none: false, selected: ["كفاءة الطاقة"], notes: "أثر بيئي محدود" };
     const withOwn = {
       ...base,
-      reportChoices: { ...emptyReportChoices(), purposeKey: "sale", methodsRationale: "تعليل المقيّم" },
+      reportChoices: { ...emptyReportChoices(), purposeKey: "sale", methodsRationale: "تعليل المقيّم", esgEnv },
     };
     const merged = applyReportDraftChoices(withOwn, {
-      esgEnv: { none: false, selected: ["كفاءة الطاقة"], notes: "أثر بيئي محدود" },
       printAttachmentKeys: ["deed"],
     });
     expect(merged.reportChoices.esgEnv.notes).toBe("أثر بيئي محدود");
