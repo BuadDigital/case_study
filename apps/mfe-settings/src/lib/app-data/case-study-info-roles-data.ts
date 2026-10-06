@@ -1,16 +1,20 @@
 import type { RoleId } from "@platform/types";
 import {
-  CASE_STUDY_FORM_STEPS,
+  CASE_STUDY_REPORT_STEPS,
   CASE_STUDY_SECTION_QUESTIONS,
   caseStudyAnswerKey,
   type CaseStudyQuestionSection,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 
-/** Party in the user–information relationship matrix */
+/**
+ * Party in the user–information relationship matrix.
+ * The government reviewer («gov») was removed (2026-10-04): the case specialist
+ * answers its questions. Old stored rows may still carry the id; the model
+ * (`normalizeMatrixFromSaved`) and the platform service drop it.
+ */
 export type CaseStudyInfoPartyId =
   | "specA"
   | "insp"
-  | "gov"
   | "val"
   | "eng"
   | "sup";
@@ -43,13 +47,6 @@ export const CASE_STUDY_INFO_PARTIES: CaseStudyInfoParty[] = [
     abbr: "مع",
     color: "#102b4e",
     roleId: "field-inspector",
-  },
-  {
-    id: "gov",
-    name: "المراجع الحكومي",
-    abbr: "حك",
-    color: "#0284C7",
-    roleId: "government-reviewer",
   },
   {
     id: "val",
@@ -123,7 +120,7 @@ function buildCaseStudyQuestionCatalog(): CaseStudyQuestionCatalogItem[] {
 
 export const CASE_STUDY_QUESTION_CATALOG = buildCaseStudyQuestionCatalog();
 
-export const CASE_STUDY_INFO_SECTIONS = CASE_STUDY_FORM_STEPS.map((s, i) => {
+export const CASE_STUDY_INFO_SECTIONS = CASE_STUDY_REPORT_STEPS.map((s, i) => {
   const sectionIds: CaseStudyQuestionSection[] = [
     "deed",
     "survey",

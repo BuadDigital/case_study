@@ -1,19 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyHasRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import { emptyCaseStudyFormDraft, type CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
-import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
-import { saveCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
+import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
+import { saveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { isInspectorWorkspaceAccepted } from "../../lib/app-data/inspector-workspace-data";
 import { loadEngineeringSurveySubmissionSnapshot } from "../../lib/app-data/property-detail-party-submission-loaders";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { inspectorBoundariesIndicateMismatch, proposeDeedNatureMatch } from "../../lib/app-data/deed-nature-match-proposal";
+import { proposeDeedNatureMatch, type DeedNatureMatchProposal } from "../../lib/app-data/deed-nature-match-proposal";
+
+/**
+ * Notes that go with an adopted suggestion: «matched» clears them; «differences» carries the
+ * inspector's per-side notes (the server rejects differences with empty notes) without
+ * dropping what the specialist already wrote.
+ */
+function adoptedNotes(suggested: string, current: string | undefined, inspectorNotes: string): string {
+  if (suggested === DeedNatureMatchOutcomes.Matched) return "";
+  const existing = (current ?? "").trim();
+  if (!inspectorNotes || existing.includes(inspectorNotes)) return current ?? "";
+  return existing ? `${existing}\n${inspectorNotes}` : inspectorNotes;
+}
 
 export function CaseStudyDeedNatureMatchReview({
   caseStudyTaskId,
@@ -31,25 +43,25 @@ export function CaseStudyDeedNatureMatchReview({
   inspectionTaskId: string | null;
   engineeringAssigned?: boolean;
   /**
-   * Locked together with معاينة العقار — the caller passes true once the
-   * specialist accepts the inspector package («تأكيد مدخلات المعاين»), so
-   * both sections freeze/reopen as one unit («إعادة للتصحيح» unlocks both).
+   * Locked by the caller once the case-study task is completed. Accepting the
+   * inspector package does NOT lock this section: it stays editable until the
+   * report is issued (the `draft.status === "issued"` lock below).
    */
   readOnly?: boolean;
 }) {
   const { showToast } = useToast();
-  const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
-  const [sourceLabelAr, setSourceLabelAr] = useState("");
-  const [suggestedOutcome, setSuggestedOutcome] = useState("");
+  const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
+  const [proposal, setProposal] = useState<DeedNatureMatchProposal | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingLock = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const [form, inspector, survey, prior] = await Promise.all([
-          loadCaseStudyFormDraft(caseStudyTaskId),
+          loadCaseStudyReportDraft(caseStudyTaskId),
           inspectionTaskId
             ? loadInspectorWorkspaceSnapshot(inspectionTaskId)
             : Promise.resolve(null),
@@ -62,21 +74,19 @@ export function CaseStudyDeedNatureMatchReview({
         ]);
         if (cancelled) return;
         const nextDraft =
-          form ?? emptyCaseStudyFormDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
+          form ?? emptyCaseStudyReportDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
         setDraft(nextDraft);
         const inspectorSubmitted = inspector?.status === "submitted" || isInspectorWorkspaceAccepted(inspector);
         const engineeringSubmitted = survey?.status === "submitted" || Boolean(survey?.acceptedAtUtc?.trim());
-        const proposal = proposeDeedNatureMatch({
-          hasPriorSurvey: Boolean(prior),
-          engineeringAssigned,
-          engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
-          inspectorSubmitted: Boolean(inspectorSubmitted),
-          inspectorBoundaryMismatch: inspectorBoundariesIndicateMismatch(
-            inspector ? Object.values(inspector.boundaryMatches) : null,
-          ),
-        });
-        setSourceLabelAr(proposal.sourceLabelAr);
-        setSuggestedOutcome(proposal.suggested);
+        setProposal(
+          proposeDeedNatureMatch({
+            inspector,
+            inspectorSubmitted: Boolean(inspectorSubmitted),
+            hasPriorSurvey: Boolean(prior),
+            engineeringAssigned,
+            engineeringDeedMatchesNature: engineeringSubmitted ? (survey?.deedMatchesNature ?? null) : null,
+          }),
+        );
       } catch (err) {
         if (!cancelled) {
           setLoadError(
@@ -99,31 +109,35 @@ export function CaseStudyDeedNatureMatchReview({
   ]);
 
   const locked =
-    readOnly || draft?.status === "submitted";
+    readOnly || draft?.status === "issued";
 
   const persist = useCallback(
-    async (patch: Partial<CaseStudyFormDraft>) => {
-      if (!draft || locked || saving) return;
+    async (patch: Partial<CaseStudyReportDraft>) => {
+      if (!draft || locked || savingLock.current) return;
+      savingLock.current = true;
       setSaving(true);
-      const latest =
-        (await loadCaseStudyFormDraft(caseStudyTaskId)) ?? draft;
-      if (latest.status === "submitted") {
-        setDraft(latest);
+      try {
+        const latest =
+          (await loadCaseStudyReportDraft(caseStudyTaskId)) ?? draft;
+        if (latest.status === "issued") {
+          setDraft(latest);
+          showToast("التقرير صادر — المطابقة للعرض فقط", "error");
+          return;
+        }
+        const next = { ...latest, ...patch };
+        setDraft(next);
+        const result = await saveCaseStudyReportDraft(next);
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+        if (result.draft) setDraft(result.draft);
+      } finally {
+        savingLock.current = false;
         setSaving(false);
-        showToast("النموذج مُرفَع — المطابقة للعرض فقط", "error");
-        return;
       }
-      const next = { ...latest, ...patch };
-      setDraft(next);
-      const result = await saveCaseStudyFormDraft(next);
-      setSaving(false);
-      if (!result.ok) {
-        showToast(result.error, "error");
-        return;
-      }
-      if (result.draft) setDraft(result.draft);
     },
-    [caseStudyTaskId, draft, locked, saving, showToast],
+    [caseStudyTaskId, draft, locked, showToast],
   );
 
   if (propertyHasRegisteredTitle(property)) {
@@ -151,14 +165,20 @@ export function CaseStudyDeedNatureMatchReview({
       <CaseStudyDeedNatureMatchSection
         draft={draft}
         disabled={locked || saving}
-        sourceLabelAr={sourceLabelAr}
-        suggestedOutcome={suggestedOutcome}
-        onAdoptSuggestion={() =>
+        sourceLabelAr={proposal?.sourceLabelAr}
+        suggestedOutcome={proposal?.suggested}
+        infoLinesAr={proposal?.infoLinesAr}
+        onAdoptSuggestion={() => {
+          if (!proposal?.suggested) return;
           void persist({
-            deedNatureMatchOutcome: suggestedOutcome,
-            deedNatureMatchNotes: suggestedOutcome === DeedNatureMatchOutcomes.Matched ? "" : draft.deedNatureMatchNotes,
-          })
-        }
+            deedNatureMatchOutcome: proposal.suggested,
+            deedNatureMatchNotes: adoptedNotes(
+              proposal.suggested,
+              draft.deedNatureMatchNotes,
+              proposal.inspectorMismatchNotes,
+            ),
+          });
+        }}
         onPatch={(p) => void persist(p)}
       />
     </div>

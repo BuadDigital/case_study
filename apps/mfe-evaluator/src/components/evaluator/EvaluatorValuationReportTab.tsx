@@ -58,6 +58,7 @@ import {
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
+import { InspectorDataSyncNote } from "./InspectorDataSyncNote";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
@@ -182,9 +183,12 @@ export function EvaluatorValuationReportTab({
   choicesRef.current = choices;
 
   const specialistPropertyId = property?.id ?? draft.propertyId;
-  useEffect(() => {
+  // Another property has another saved finishing level.
+  const [finishingFor, setFinishingFor] = useState(specialistPropertyId);
+  if (finishingFor !== specialistPropertyId) {
+    setFinishingFor(specialistPropertyId);
     setSpecialistFinishing(loadSpecialistFinishingLevel(specialistPropertyId));
-  }, [specialistPropertyId]);
+  }
   // Refresh synced specialist inputs via window events — ignore other properties.
   const ifThisProperty = (refresh: () => void) => (ev: Event) => {
     const detail = (ev as CustomEvent<{ propertyId?: string }>).detail;
@@ -318,15 +322,24 @@ export function EvaluatorValuationReportTab({
     [draft.buildingValue, draft.landValue, onDraftPatch],
   );
 
+  const recordAssignmentType = record?.assignmentType;
+  const reportSubClientId = record
+    ? subClientIdFromReportUsers(record.reportUserClientIds)
+    : undefined;
+
   useEffect(() => {
-    const type = (assignmentType ?? record?.assignmentType ?? "").trim();
+    const type = (assignmentType ?? recordAssignmentType ?? "").trim();
     if (!type) return;
-    const sub = record
-      ? subClientIdFromReportUsers(record.reportUserClientIds)
-      : undefined;
     const current = choicesRef.current;
-    const seeded = seedReportChoicesFromAssignment(type, sub, current);
-    const expectedBasis = basisOfValueLabelArForAssignment(type, sub);
+    const seeded = seedReportChoicesFromAssignment(
+      type,
+      reportSubClientId,
+      current,
+    );
+    const expectedBasis = basisOfValueLabelArForAssignment(
+      type,
+      reportSubClientId,
+    );
     if (
       seeded.purposeKey === current.purposeKey &&
       seeded.valueBasisKey === current.valueBasisKey &&
@@ -345,8 +358,8 @@ export function EvaluatorValuationReportTab({
     );
   }, [
     assignmentType,
-    record?.assignmentType,
-    record?.reportUserClientIds,
+    recordAssignmentType,
+    reportSubClientId,
     draft.valueBasis,
   ]);
 
@@ -392,6 +405,7 @@ export function EvaluatorValuationReportTab({
 
       {showPropertyMedia ? (
         <div className="mb-4">
+          <InspectorDataSyncNote workspace={inspector} />
           <PropertyDetailMediaGlance
             property={property}
             primaryPhoto={primaryPhoto}

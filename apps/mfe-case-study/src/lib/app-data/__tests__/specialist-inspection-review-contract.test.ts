@@ -5,6 +5,7 @@ import {
 } from "../inspector-workspace-data";
 import {
   draftToPayload,
+  mergeInspectorWorkspacePatch,
   payloadToDraft,
 } from "../inspector-workspace-model";
 
@@ -112,5 +113,66 @@ describe("specialist inspection review contract", () => {
     });
     expect(reloaded.boundaryMatches.north.deedDesc).toBe("شارع عرض 15م");
     expect(reloaded.boundaryMatches.north.deedLength).toBe("25.00");
+  });
+});
+
+describe("inspector deed-match verdict payload", () => {
+  const dto = (payload: Record<string, unknown>) => ({
+    taskId: "task-1",
+    propertyId: "prop-1",
+    poNumber: "PO-1",
+    kind: "field-inspection" as const,
+    status: "submitted" as const,
+    payload,
+    updatedAtUtc: "2026-09-02T11:30:00Z",
+  });
+
+  it("round-trips deedMatchesNature and an untouched table stays untouched", () => {
+    const draft = createInspectorWorkspaceDraft({ taskId: "task-1", propertyId: "prop-1", poNumber: "PO-1" });
+    expect(draft.deedMatchesNature).toBe("");
+    expect(draft.boundaryMatches.north.matches).toBeNull();
+    const payload = draftToPayload({ ...draft, deedMatchesNature: "no" });
+    expect(payload.deedMatchesNature).toBe("no");
+    const reloaded = payloadToDraft(dto(payload));
+    expect(reloaded.deedMatchesNature).toBe("no");
+    expect(reloaded.boundaryMatches.south.matches).toBeNull();
+  });
+
+  it("reads a legacy payload's explicit booleans and leaves the verdict empty", () => {
+    const reloaded = payloadToDraft(
+      dto({
+        boundaryMatches: {
+          north: { matches: true },
+          south: { matches: false, mismatchNote: "فرق" },
+        },
+      }),
+    );
+    expect(reloaded.deedMatchesNature).toBe("");
+    expect(reloaded.boundaryMatches.north.matches).toBe(true);
+    expect(reloaded.boundaryMatches.south.matches).toBe(false);
+    expect(reloaded.boundaryMatches.east.matches).toBeNull();
+  });
+
+  it("ignores an unknown verdict value", () => {
+    expect(payloadToDraft(dto({ deedMatchesNature: "maybe" })).deedMatchesNature).toBe("");
+  });
+
+  it("round-trips landHasValuableStructures; missing or unknown reads as not answered", () => {
+    const draft = createInspectorWorkspaceDraft({ taskId: "task-1", propertyId: "prop-1", poNumber: "PO-1" });
+    expect(draft.landHasValuableStructures).toBe("");
+    expect(draftToPayload(draft).landHasValuableStructures).toBe("");
+    for (const answer of ["yes", "no"] as const) {
+      const payload = draftToPayload({ ...draft, landHasValuableStructures: answer });
+      expect(payload.landHasValuableStructures).toBe(answer);
+      expect(payloadToDraft(dto(payload)).landHasValuableStructures).toBe(answer);
+    }
+    expect(payloadToDraft(dto({})).landHasValuableStructures).toBe("");
+    expect(payloadToDraft(dto({ landHasValuableStructures: "maybe" })).landHasValuableStructures).toBe("");
+  });
+
+  it("merges the land answer like any other patch", () => {
+    const draft = createInspectorWorkspaceDraft({ taskId: "task-1", propertyId: "prop-1", poNumber: "PO-1" });
+    const merged = mergeInspectorWorkspacePatch(draft, { landHasValuableStructures: "yes" });
+    expect(merged.landHasValuableStructures).toBe("yes");
   });
 });

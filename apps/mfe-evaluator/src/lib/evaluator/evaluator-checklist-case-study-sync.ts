@@ -1,4 +1,4 @@
-import type { CaseStudyFormAnswer } from "@platform/app-shared/app-data/case-study-form-model";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
+import type { CaseStudyReportAnswer } from "@platform/app-shared/app-data/case-study-report-model";import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { isPartyQuestionVisible } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import type {
   EvaluatorChecklistAnswers,
@@ -109,13 +109,13 @@ export function appraiserOnlyCaseStudyChecklistItems(
 }
 
 export function caseStudyAnswerDisplayLabel(
-  answer: CaseStudyFormAnswer | null | undefined,
+  answer: CaseStudyReportAnswer | null | undefined,
 ): string {
   return checklistAnswerLabel(caseStudyAnswerToChecklistBoolean(answer));
 }
 
 export function caseStudyAnswerToChecklistBoolean(
-  answer: CaseStudyFormAnswer | null | undefined,
+  answer: CaseStudyReportAnswer | null | undefined,
 ): boolean | null {
   if (answer === "A") return true;
   if (answer === "B") return false;
@@ -123,7 +123,7 @@ export function caseStudyAnswerToChecklistBoolean(
 }
 
 function sharedDeedScopeFromCaseStudy(
-  answers: Record<string, CaseStudyFormAnswer | null | undefined>,
+  answers: Record<string, CaseStudyReportAnswer | null | undefined>,
 ): SharedDeedScope | null {
   const answer = answers.deed_10;
   if (answer === "A") return "full";
@@ -144,7 +144,7 @@ export type MergeEvaluatorChecklistOptions = {
 /** Fills the checklist from case-study form answers (appraiser party). */
 export function mergeEvaluatorChecklistFromCaseStudy(
   checklist: EvaluatorChecklistAnswers,
-  answers: Record<string, CaseStudyFormAnswer | null | undefined>,
+  answers: Record<string, CaseStudyReportAnswer | null | undefined>,
   remarks: CaseStudyChecklistRemarks = {},
   options: MergeEvaluatorChecklistOptions = {},
 ): EvaluatorChecklistAnswers {

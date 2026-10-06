@@ -63,21 +63,11 @@ public static class WorkOrderValidator
     {
         var policy = fieldPolicy ?? ClientFieldPolicy.Default;
         var errors = new Dictionary<string, string>();
-        PropertyIdentifierTypeLabels.TryParseApiValue(dto.IdentifierType, out var idType);
 
-        // Specific to each track: Check ID + Deed date (Real Estate Exchange inquiry) or authorization letter (Deed/record).
-        if (idType == PropertyIdentifierType.BourseInquiry)
-        {
-            ValidateIdentifierNumber(dto, idType, errors);
-            if (string.IsNullOrWhiteSpace(dto.DeedDate))
-                errors["deedDate"] = "تاريخ الصك مطلوب";
-        }
-        else
-        {
-            ValidateDeedOrRealEstateReg(dto, errors);
-            if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
-                errors["delegationLetterFileNames"] = "خطاب التكليف مطلوب";
-        }
+        // The deed (or registry) number and the authorization letter.
+        ValidateDeedOrRealEstateReg(dto, errors);
+        if (dto.DelegationLetterFileNames.All(string.IsNullOrWhiteSpace))
+            errors["delegationLetterFileNames"] = "خطاب التكليف مطلوب";
 
         ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, policy, errors);
 
@@ -215,16 +205,6 @@ public static class WorkOrderValidator
                     "ارفع السجل العقاري كمرفق (يُطلب من أطراف التنفيذ)";
             }
         }
-    }
-
-    private static void ValidateIdentifierNumber(
-        WorkOrderPropertyDto dto,
-        PropertyIdentifierType idType,
-        Dictionary<string, string> errors)
-    {
-        _ = idType;
-        if (string.IsNullOrWhiteSpace(dto.DeedNumber))
-            errors["deedNumber"] = "رقم الصك مطلوب";
     }
 
     private static readonly HashSet<string> AllowedRestrictionTypes = new(StringComparer.Ordinal)

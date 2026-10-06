@@ -90,6 +90,34 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         return property is null ? null : ToSnapshot(property);
     }
 
+    public async Task<CaseStudyAppraisalPackageStateDto?> GetAppraisalPackageStateAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var task = await caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Kind == WorkflowTaskKind.PropertyAppraisal
+                        && t.PropertyId == propertyId
+                        && t.Status != WorkflowTaskStatus.Cancelled)
+            .OrderByDescending(t => t.UpdatedAtUtc)
+            .Select(t => new { t.Id, t.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (task is null)
+            return new CaseStudyAppraisalPackageStateDto();
+
+        var packageStatus = await caseStudy.PartyTaskSubmissions.AsNoTracking()
+            .Where(s => s.WorkflowTaskId == task.Id)
+            .Select(s => s.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+        return new CaseStudyAppraisalPackageStateDto
+        {
+            TaskId = task.Id,
+            TaskStatus = task.Status.ToDbValue(),
+            PackageStatus = string.IsNullOrWhiteSpace(packageStatus)
+                ? AppraisalPackageStates.None
+                : packageStatus,
+        };
+    }
+
     public async Task<CaseStudyValuationPropertyContextDto?> GetValuationPropertyContextAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default)
@@ -116,11 +144,13 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
-        var deedNatureMatchOutcome = await caseStudy.CaseStudyForms.AsNoTracking()
-            .Where(f => f.PropertyId == propertyId && !f.IsPartyForm)
+        var latestReport = await caseStudy.CaseStudyReports.AsNoTracking()
+            .Where(f => f.PropertyId == propertyId && !f.IsPartyContribution)
             .OrderByDescending(f => f.UpdatedAtUtc)
-            .Select(f => f.DeedNatureMatchOutcome)
+            .Select(f => new { f.DeedNatureMatchOutcome, f.Status })
             .FirstOrDefaultAsync(cancellationToken);
+        var deedNatureMatchOutcome = latestReport?.DeedNatureMatchOutcome;
+        var studyReportIssued = latestReport?.Status == CaseStudyReportStatuses.Issued;
 
         string? clientNameAr = null;
         string? clientNameEn = null;
@@ -169,8 +199,6 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             DeedDate = property.DeedDate,
             OwnerName = property.OwnerName,
             DeedOwnersJson = property.DeedOwnersJson,
-            OwnershipType = property.OwnershipType,
-            OwnershipTypeIsManual = property.OwnershipTypeIsManual,
             RestrictionsPresent = property.RestrictionsPresent,
             RestrictionType = property.RestrictionType,
             RestrictionOtherReason = property.RestrictionOtherReason,
@@ -181,6 +209,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             Classification = property.Classification,
             PropertyType = property.PropertyType,
             InspectedPropertyType = property.InspectedPropertyType,
+            DraftInspectedPropertyType = InspectedPropertyTypeRules.FromPayload(inspectorPayloadJson),
             PlanNumber = property.PlanNumber,
             PlanName = property.PlanName,
             PlotNumber = property.PlotNumber,
@@ -240,6 +269,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                 },
             InspectorPayloadJson = inspectorPayloadJson,
             DeedNatureMatchOutcome = deedNatureMatchOutcome,
+            StudyReportIssued = studyReportIssued,
             ClientNameAr = clientNameAr,
             ClientNameEn = clientNameEn,
             ReportUserClientNamesAr = reportUserNames,
@@ -551,6 +581,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         PropertyId = task.PropertyId,
         PropertyOrdinal = task.PropertyOrdinal,
         AssigneeId = task.AssigneeId,
+        ParentTaskId = task.ParentTaskId,
         UpdatedAtUtc = task.UpdatedAtUtc,
     };
 

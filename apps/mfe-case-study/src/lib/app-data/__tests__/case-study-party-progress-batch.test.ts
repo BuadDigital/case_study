@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CaseStudyInfoRolesMatrix } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
-import type { CaseStudyFormBatchDto, CaseStudyFormDto } from "@platform/api-client";
+import type { CaseStudyReportBatchDto, CaseStudyReportDto } from "@platform/api-client";
 import {
   computePartyCaseStudyProgress,
   loadPartyCaseStudyAnswersForParents,
@@ -8,11 +8,11 @@ import {
 } from "../case-study-party-progress";
 import type { WorkflowTask } from "../tasks";
 
-const getCaseStudyFormsBatch = vi.fn();
+const getCaseStudyReportsBatch = vi.fn();
 
 vi.mock("@platform/api-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@platform/api-client")>()),
-  getCaseStudyFormsBatch: (...args: unknown[]) => getCaseStudyFormsBatch(...args),
+  getCaseStudyReportsBatch: (...args: unknown[]) => getCaseStudyReportsBatch(...args),
 }));
 
 vi.mock("@platform/app-shared/app-data/work-orders-api-config", async (importOriginal) => ({
@@ -40,7 +40,7 @@ function task(
   };
 }
 
-function form(taskId: string, answers: Record<string, string>): CaseStudyFormDto {
+function form(taskId: string, answers: Record<string, string>): CaseStudyReportDto {
   return {
     taskId,
     status: "draft",
@@ -84,12 +84,12 @@ const engB = task({
 });
 const tasks = [parentA, inspA, engA, parentB, engB];
 
-const batch: CaseStudyFormBatchDto = {
+const batch: CaseStudyReportBatchDto = {
   byParentTaskId: {
     a: {
       parentTaskId: "a",
       parent: form("a", { survey_0: "A" }),
-      partyFormsByChildTaskId: {
+      partyContributionsByChildTaskId: {
         "a-insp": form("a-insp", { survey_1: "B", comp_0: "A" }),
         "a-eng": form("a-eng", { survey_0: "NA" }),
       },
@@ -99,19 +99,19 @@ const batch: CaseStudyFormBatchDto = {
 
 describe("loadPartyCaseStudyAnswersForParents", () => {
   beforeEach(() => {
-    getCaseStudyFormsBatch.mockReset();
+    getCaseStudyReportsBatch.mockReset();
   });
 
   it("makes one batch request for every listed parent and folds answers per party", async () => {
-    getCaseStudyFormsBatch.mockResolvedValue({ ok: true, data: batch });
+    getCaseStudyReportsBatch.mockResolvedValue({ ok: true, data: batch });
 
     const byParent = await loadPartyCaseStudyAnswersForParents(
       [parentA, parentB],
       tasks,
     );
 
-    expect(getCaseStudyFormsBatch).toHaveBeenCalledTimes(1);
-    expect(getCaseStudyFormsBatch.mock.calls[0]?.[1]).toEqual(["A", "B"]);
+    expect(getCaseStudyReportsBatch).toHaveBeenCalledTimes(1);
+    expect(getCaseStudyReportsBatch.mock.calls[0]?.[1]).toEqual(["A", "B"]);
     expect(byParent.get("A")).toEqual({
       specA: { survey_0: "A" },
       insp: { survey_1: "B", comp_0: "A" },
@@ -122,7 +122,7 @@ describe("loadPartyCaseStudyAnswersForParents", () => {
   });
 
   it("chunks at the server cap", async () => {
-    getCaseStudyFormsBatch.mockResolvedValue({
+    getCaseStudyReportsBatch.mockResolvedValue({
       ok: true,
       data: { byParentTaskId: {} },
     });
@@ -132,13 +132,13 @@ describe("loadPartyCaseStudyAnswersForParents", () => {
 
     await loadPartyCaseStudyAnswersForParents(parents, parents);
 
-    expect(getCaseStudyFormsBatch).toHaveBeenCalledTimes(2);
-    expect(getCaseStudyFormsBatch.mock.calls[0]?.[1]).toHaveLength(100);
-    expect(getCaseStudyFormsBatch.mock.calls[1]?.[1]).toHaveLength(1);
+    expect(getCaseStudyReportsBatch).toHaveBeenCalledTimes(2);
+    expect(getCaseStudyReportsBatch.mock.calls[0]?.[1]).toHaveLength(100);
+    expect(getCaseStudyReportsBatch.mock.calls[1]?.[1]).toHaveLength(1);
   });
 
   it("surfaces a failed batch instead of silently showing zero progress", async () => {
-    getCaseStudyFormsBatch.mockResolvedValue({ ok: false, kind: "server" });
+    getCaseStudyReportsBatch.mockResolvedValue({ ok: false, kind: "server" });
 
     await expect(
       loadPartyCaseStudyAnswersForParents([parentA], tasks),

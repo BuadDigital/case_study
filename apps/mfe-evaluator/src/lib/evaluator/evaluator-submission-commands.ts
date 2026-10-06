@@ -8,7 +8,7 @@ import {
   dispatchWorkflowSubmitted,
   EVALUATOR_SUBMITTED_EVENT,
 } from "@platform/app-shared/app-data/party-workflow-events";
-import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
+import { loadPartyCaseStudyReportDraft } from "../../lib/case-study-bridge";
 import { ensureOpenValuationRequestByProperty } from "@platform/api-client";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
@@ -87,7 +87,7 @@ export async function syncEvaluatorChecklistFromPartyCaseStudy(
     return current;
   }
 
-  const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
+  const partyDraft = await loadPartyCaseStudyReportDraft(appraisalTaskId);
   if (!partyDraft) return current;
 
   const checklist = mergeEvaluatorChecklistFromCaseStudy(

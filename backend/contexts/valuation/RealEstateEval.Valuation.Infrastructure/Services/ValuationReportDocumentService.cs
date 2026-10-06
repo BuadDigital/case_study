@@ -309,14 +309,6 @@ public sealed class ValuationReportDocumentService(
         };
     }
 
-    public async Task<byte[]?> GetPreviewPdfAsync(
-        Guid valuationRequestId,
-        CancellationToken cancellationToken = default)
-    {
-        var dto = await GetPreviewAsync(valuationRequestId, cancellationToken);
-        return dto is null ? null : ValuationReportPdfGenerator.Generate(dto);
-    }
-
     private async Task<(
         List<ValuationReportPrintedAttachmentDto> SiteMaps,
         List<ValuationReportPrintedAttachmentDto> Photos,

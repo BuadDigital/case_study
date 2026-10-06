@@ -1,11 +1,9 @@
 import {
   ensureOpenValuationRequestByProperty,
   getValuationReportDocument,
-  getValuationReportPdf,
   type ValuationRequestLiteDto,
 } from "@platform/api-client";
 import { apiConfig } from "./api-config";
-import { cacheIssuedValuationReport } from "./evaluator-report-attachments";
 import { reservedValuationReportNumber } from "./valuation-report-number";
 
 function openFailureMessage(
@@ -88,41 +86,4 @@ export async function previewGeneratedValuationReport(input: {
     ...input.extras,
     reportNumber,
   });
-}
-
-export async function snapshotIssuedValuationReport(input: {
-  taskId: string;
-  propertyId: string;
-  reportNo: string;
-  reportIssueDate: string;
-  depositCode?: string;
-  area?: string;
-  propertyType?: string;
-  appraiserName?: string;
-}): Promise<void> {
-  // Cheap session check before a call that opens a valuation request on the server (async-cheap-condition-before-await).
-  const config = apiConfig();
-  if (!config) {
-    throw new Error("تعذّر توليد تقرير التقييم — تحقق من تسجيل الدخول.");
-  }
-  const open = await ensureOpenValuationRequest({
-    propertyId: input.propertyId,
-    area: input.area,
-    propertyType: input.propertyType,
-    appraiserName: input.appraiserName,
-  });
-
-  const pdf = await getValuationReportPdf(config, open.id);
-  if (!pdf.ok) {
-    throw new Error("تعذّر إصدار ملف PDF للتقرير.");
-  }
-
-  const reportNo = input.reportNo.trim() || reservedNumberFromValuationRequest(open);
-  const file = new File([pdf.data], `${reportNo || "valuation-report"}.pdf`, {
-    type: "application/pdf",
-  });
-  const cached = await cacheIssuedValuationReport(input.taskId, file, reportNo);
-  if (!cached.ok) {
-    throw new Error(cached.error);
-  }
 }

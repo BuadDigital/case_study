@@ -7,6 +7,7 @@ using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
@@ -17,19 +18,13 @@ public class ValuationRequestsController : ControllerBase
 {
     private readonly IValuationRequestService _service;
     private readonly IValuationIssuanceGateService _issuanceGates;
-    private readonly IPriorValuationBankFeeder _bankFeeder;
-    private readonly ILogger<ValuationRequestsController> _logger;
 
     public ValuationRequestsController(
         IValuationRequestService service,
-        IValuationIssuanceGateService issuanceGates,
-        IPriorValuationBankFeeder bankFeeder,
-        ILogger<ValuationRequestsController> logger)
+        IValuationIssuanceGateService issuanceGates)
     {
         _service = service;
         _issuanceGates = issuanceGates;
-        _bankFeeder = bankFeeder;
-        _logger = logger;
     }
 
     [HttpGet]
@@ -106,39 +101,16 @@ public class ValuationRequestsController : ControllerBase
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public async Task<ActionResult<ValuationRequestDto>> SubmitReport(Guid id, CancellationToken ct)
     {
-        var gates = await _issuanceGates.EvaluateAsync(id, ct);
-        if (gates is null) return this.NotFoundProblem("طلب التقييم غير موجود.");
-        if (!gates.AllowsIssuance)
-        {
-            return this.BadRequestProblem("تعذّر إصدار التقرير — بوابات الإصدار غير مكتملة")
-                .WithProblemExtension("code", "issuance_blocked")
-                .WithProblemExtension("blockingReasons", gates.BlockingReasonsAr);
-        }
-
+        // Kept for one release (rolling deploys). The request now closes with the final issuance
+        // (deposit code + certificate), which also feeds the comparables bank; this route only
+        // answers for a request whose final copy is already issued.
         var (result, error) = await _service.SubmitReportAsync(id, ct);
-        if (error is null)
-        {
- // the completed valuation feeds the shared bank ("prior valuation").
- // Best-effort: harvest failure must never fail the submit itself.
-            try
-            {
-                await _bankFeeder.FeedAsync(id, ct);
-            }
-            catch (Exception ex)
-            {
-                // Missing bank inputs skip inside the feeder; harvest failure
-                // must never fail the submit itself.
-                _logger.LogWarning(
-                    ex,
-                    "Prior-valuation bank feed failed after report submit for {ValuationRequestId}",
-                    id);
-            }
-        }
-
         return error switch
         {
             "not_found" => this.NotFoundProblem("طلب التقييم غير موجود."),
             "already_submitted" => this.BadRequestProblem("report already submitted"),
+            "final_issuance_required" => this.ConflictProblem(
+                "يُغلق طلب التقييم بالإصدار النهائي: سجّل رمز الإيداع وأرفق الشهادة"),
             _ => Ok(result),
         };
     }
@@ -167,6 +139,8 @@ public class ValuationRequestsController : ControllerBase
             "already_submitted" => this.BadRequestProblem("report already submitted"),
             "already_impeded" => this.BadRequestProblem("impediment already recorded"),
             "reason_required" => this.BadRequestProblem("reason is required"),
+            not null when error.StartsWith(ValuationReportFreezeRules.LockedErrorPrefix, StringComparison.Ordinal) =>
+                this.ConflictProblem(error[ValuationReportFreezeRules.LockedErrorPrefix.Length..]),
             _ => Ok(result),
         };
     }

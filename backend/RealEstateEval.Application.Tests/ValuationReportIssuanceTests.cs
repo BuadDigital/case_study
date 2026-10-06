@@ -41,12 +41,10 @@ public class ValuationReportIssuanceTests
         var service = new ValuationReportIssuanceService(
             db, new StubGates(allows: true), new StubDocuments());
 
-        // Phase 1: deposit copy — freeze + PDF with empty code field.
+        // Phase 1: deposit copy — freeze.
         var (deposit, depositErrors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Null(depositErrors);
         Assert.Equal(ReportIssuanceStages.DepositIssued, deposit!.Stage);
-        Assert.True(deposit.HasDepositPdf);
-        Assert.False(deposit.HasFinalPdf);
 
         // Repeat rejected — report is frozen.
         var (_, dupErrors) = await service.IssueDepositAsync(id, "user-1");
@@ -55,33 +53,20 @@ public class ValuationReportIssuanceTests
         // Q-6: freeze guard blocks editing adjustments after the deposit copy.
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
-        var depositPdf = await service.GetDepositPdfAsync(id);
-        Assert.NotNull(depositPdf);
-        Assert.True(depositPdf!.Length > 0);
-
-        // Phase 2: register certificate and code — final copy with certificate page and code.
+        // Phase 2: register certificate and code — final copy.
         var (final, finalErrors) = await service.RegisterCertificateAsync(
             id,
             new RegisterDepositCertificateRequest
             {
                 DepositCode = "QYM-2026-001234",
-                CertificateFileName = "certificate.png",
-                CertificateContentType = "image/png",
-                CertificateContentBase64 = Convert.ToBase64String(TinyPng),
+                CertificateFileName = "certificate.pdf",
+                CertificateContentType = "application/pdf",
+                CertificateContentBase64 = TestPdf.OnePageBase64,
             },
             "user-2");
         Assert.Null(finalErrors);
         Assert.Equal(ReportIssuanceStages.FinalIssued, final!.Stage);
         Assert.Equal("QYM-2026-001234", final.DepositCode);
-        Assert.True(final.HasFinalPdf);
-
-        var finalPdf = await service.GetFinalPdfAsync(id);
-        Assert.NotNull(finalPdf);
-        Assert.True(finalPdf!.Length > 0);
-
-        // "Same frozen report literally" — deposit copy does not change after the final.
-        var depositPdfAfter = await service.GetDepositPdfAsync(id);
-        Assert.Equal(depositPdf, depositPdfAfter);
 
         // Code is filled into its field inside the frozen snapshot for the final copy.
         var row = db.ValuationReportIssuances.Single();
@@ -121,6 +106,8 @@ public class ValuationReportIssuanceTests
 
         var (deposit, _) = await service.IssueDepositAsync(id, "user-1");
         Assert.Equal(1, deposit!.Version);
+        // Only a recorded deposit (code + certificate) is reopened as a new version.
+        await service.RegisterCertificateAsync(id, Certificate("QYM-9"), "appraiser-1");
 
         // 2-B: reopen reason required — blank rejected; nothing changes.
         var (_, shortErrors) = await service.ReopenAfterDepositAsync(
@@ -175,6 +162,7 @@ public class ValuationReportIssuanceTests
             new StubDocuments(),
             events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance));
         await service.IssueDepositAsync(id, "user-1");
+        await service.RegisterCertificateAsync(id, Certificate("QYM-10"), "appraiser-1");
 
         var (_, errors) = await service.ReopenAfterDepositAsync(
             id,
@@ -207,6 +195,14 @@ public class ValuationReportIssuanceTests
         Assert.Contains("ر1", errors!["_"]);
     }
 
+    private static RegisterDepositCertificateRequest Certificate(string code, string? base64 = null) => new()
+    {
+        DepositCode = code,
+        CertificateFileName = "certificate.pdf",
+        CertificateContentType = "application/pdf",
+        CertificateContentBase64 = base64 ?? TestPdf.OnePageBase64,
+    };
+
     private static Guid NewRequest(
         RealEstateEval.Valuation.Infrastructure.Data.Contexts.ValuationDbContext db,
         string displayId)
@@ -217,10 +213,6 @@ public class ValuationReportIssuanceTests
             "2026-06-25", DateTime.UtcNow));
         return id;
     }
-
- // Smallest valid PNG (1×1) for testing certificate-page embedding.
-    private static readonly byte[] TinyPng = Convert.FromBase64String(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
 
     private sealed class StubGates(bool allows, IReadOnlyList<string>? reasons = null)
         : IValuationIssuanceGateService
@@ -263,10 +255,5 @@ public class ValuationReportIssuanceTests
                     },
                 ],
             });
-
-        public Task<byte[]?> GetPreviewPdfAsync(
-            Guid valuationRequestId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<byte[]?>(null);
     }
 }

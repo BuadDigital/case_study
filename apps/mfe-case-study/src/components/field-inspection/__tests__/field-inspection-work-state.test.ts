@@ -3,6 +3,8 @@ import {
   boundaryDeedDisplay,
   boundaryMatchPatch,
   canPinInspectorMap,
+  deedVerdictHeadline,
+  deedVerdictPatch,
   inspectionContextOf,
   inspectorErrorLinks,
   inspectorMapCoordsLabel,
@@ -128,6 +130,21 @@ describe("inspectionContextOf", () => {
   });
 });
 
+describe("inspectorErrorLinks — land structures question", () => {
+  it("routes the land answer error to the question", () => {
+    const errors = {
+      landHasValuableStructures: "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم",
+    } as InspectorWorkspaceFieldErrors;
+    expect(inspectorErrorLinks(errors)).toEqual([
+      {
+        key: "landHasValuableStructures",
+        message: "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم",
+        targetId: "ins-land-structures",
+      },
+    ]);
+  });
+});
+
 describe("inspectorErrorLinks", () => {
   it("routes feature errors to the first empty feature field", () => {
     const errors = {
@@ -189,6 +206,25 @@ describe("inspectorErrorLinks", () => {
     ]);
   });
 
+  it("routes the deed-match verdict to its control, before the boundaries row", () => {
+    const errors = {
+      boundaries: "أشِر إلى الضلع غير المطابق",
+      deedMatchesNature: "اختر هل حدود الصك مطابقة للطبيعة أم لا",
+    } as InspectorWorkspaceFieldErrors;
+    expect(inspectorErrorLinks(errors)).toEqual([
+      {
+        key: "deedMatchesNature",
+        message: "اختر هل حدود الصك مطابقة للطبيعة أم لا",
+        targetId: "ins-deed-match",
+      },
+      {
+        key: "boundaries",
+        message: "أشِر إلى الضلع غير المطابق",
+        targetId: "ins-boundaries-section",
+      },
+    ]);
+  });
+
   it("skips non-string entries", () => {
     const errors = { emptyFeatureKeys: ["x"] } as unknown as InspectorWorkspaceFieldErrors;
     expect(inspectorErrorLinks(errors)).toEqual([]);
@@ -208,5 +244,44 @@ describe("newerInspectorDraft", () => {
     expect(newerInspectorDraft(null, older)).toBe(older);
     const junk = { updatedAtUtc: "n/a" } as InspectorWorkspaceDraft;
     expect(newerInspectorDraft(newer, junk)).toBe(junk);
+  });
+});
+
+describe("deedVerdictPatch", () => {
+  it("yes sets all four sides matching and clears notes in one patch", () => {
+    const patch = deedVerdictPatch({ boundaryMatches }, "yes");
+    expect(patch.deedMatchesNature).toBe("yes");
+    for (const key of ["north", "south", "east", "west"] as const) {
+      expect(patch.boundaryMatches[key].matches).toBe(true);
+      expect(patch.boundaryMatches[key].mismatchNote).toBe("");
+    }
+    expect(patch.boundaryMatches.north.facade).toBe("شارع");
+  });
+
+  it("no keeps the sides' answers and starts an untouched side as matching", () => {
+    const untouched = {
+      ...boundaryMatches,
+      east: { ...boundaryMatches.east, matches: null },
+    } as InspectorWorkspaceDraft["boundaryMatches"];
+    const patch = deedVerdictPatch({ boundaryMatches: untouched }, "no");
+    expect(patch.deedMatchesNature).toBe("no");
+    expect(patch.boundaryMatches.south.matches).toBe(false);
+    expect(patch.boundaryMatches.south.mismatchNote).toBe("أقصر بمترين");
+    expect(patch.boundaryMatches.east.matches).toBe(true);
+  });
+});
+
+describe("deedVerdictHeadline", () => {
+  const untouched = {
+    north: { ...boundaryMatches.north, matches: null },
+    south: { ...boundaryMatches.south, matches: null },
+    east: { ...boundaryMatches.east, matches: null },
+    west: { ...boundaryMatches.west, matches: null },
+  } as InspectorWorkspaceDraft["boundaryMatches"];
+
+  it("prints the inspector's verdict, or «لم يحدد» when nothing explicit exists", () => {
+    expect(deedVerdictHeadline({ deedMatchesNature: "yes", boundaryMatches })).toBe("المعاين: مطابق");
+    expect(deedVerdictHeadline({ deedMatchesNature: "no", boundaryMatches })).toBe("المعاين: غير مطابق");
+    expect(deedVerdictHeadline({ deedMatchesNature: "", boundaryMatches: untouched })).toBe("المعاين: لم يحدد");
   });
 });

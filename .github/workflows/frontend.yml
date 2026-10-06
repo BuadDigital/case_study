@@ -25,5 +25,11 @@ jobs:
       - name: Typecheck Microfrontends (MFEs)
         run: npm run typecheck:mfes
 
+      - name: Typecheck Shell (catches cross-package breakage the MFE pass misses)
+        run: npx tsc --noEmit -p apps/shell/tsconfig.json
+
+      - name: Lint React Hooks Rules
+        run: npm run lint:hooks
+
       - name: Run Frontend Unit Tests
         run: npm run test:unit

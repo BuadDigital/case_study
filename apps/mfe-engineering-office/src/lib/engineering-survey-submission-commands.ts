@@ -216,8 +216,9 @@ export async function reopenEngineeringSurveySubmission(
 /** Specialist acceptance — accrues engineering-office fee from the pricing table. */
 export async function acceptEngineeringSurveySubmission(
   taskId: string,
+  idempotencyKey?: string,
 ): Promise<PartyWorkMutationResult<EngineeringSurveySubmission>> {
-  const accepted = await acceptPartySubmission(taskId);
+  const accepted = await acceptPartySubmission(taskId, idempotencyKey);
   if (!accepted.ok) return { ok: false, error: accepted.error };
   notifyChanged();
   notifyTasksChanged();

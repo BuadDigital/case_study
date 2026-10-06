@@ -198,8 +198,8 @@ function buildAttachments(
   const items: InfathUploadAttachment[] = [
     {
       id: "case-study",
-      name: "نموذج دراسة الحالة",
-      infathTarget: "نموذج دراسة الحالة",
+      name: "تقرير دراسة الحالة",
+      infathTarget: "تقرير دراسة الحالة",
       status: caseStudy?.dataUrl ? "ready" : "missing",
       document: caseStudy,
     },
@@ -414,12 +414,10 @@ export function buildInfathUploadModel(input: {
         txt(
           "deposit-code",
           L.depositCode,
-          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim() || "",
+          ops?.depositCode?.trim() || "",
           "EV",
           "text",
-          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim()
-            ? ""
-            : "ms",
+          ops?.depositCode?.trim() ? "" : "ms",
         ),
         sel(
           "value-basis",
@@ -779,9 +777,7 @@ export function buildInfathUploadModel(input: {
         file(
           "deposit-certificate",
           L.depositCertificate,
-          partyField(appraisal, L.depositCertificate) ||
-            ops?.depositCertificateName?.trim() ||
-            "",
+          ops?.depositCertificateName?.trim() || "",
           "EV",
         ),
       ],
@@ -817,7 +813,7 @@ export function buildInfathUploadModel(input: {
   const attachments = buildAttachments(
     documentSections,
     keysReceived,
-    partyField(appraisal, L.depositCertificate) || ops?.depositCertificateName,
+    ops?.depositCertificateName,
   );
   const stats = computeStats(sections);
 

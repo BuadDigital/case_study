@@ -24,6 +24,11 @@ import {
   CardTitle,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
+import { EngInfo } from "../EvaluatorHtmlPrimitives";
+import {
+  ASSET_TYPE_CHANGED_MESSAGE,
+  assetTypeChangedNeedsReview,
+} from "../../../lib/evaluator/inspector-data-changes";
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
@@ -572,6 +577,12 @@ export function ValuationWorkShell({
         ) : null}
         {visitedScreensRef.current.has("basic") ? (
           <Activity mode={screenMode("basic")}>
+            {assetTypeChangedNeedsReview({
+              changedGroups: draft?.inspectorDataChangedGroups,
+              settingsSaved,
+            }) ? (
+              <EngInfo variant="amber">{ASSET_TYPE_CHANGED_MESSAGE}</EngInfo>
+            ) : null}
             <ApproachSettingsSection
               valuationRequestId={valuationRequestId}
               assignmentType={assignmentType}
@@ -603,6 +614,7 @@ export function ValuationWorkShell({
                   poNumber={poNumber}
                   propertyId={propertyId}
                   inspectionTaskId={inspectionTaskId}
+                  inspectorChangedGroups={draft?.inspectorDataChangedGroups}
                   cost={cost}
                   hydrateKey={costHydrateKey}
                   buildingOnly={

@@ -15,8 +15,6 @@ export type PropertyComparableLinkItemDto = {
 export type PropertyComparableLinkListDto = {
   propertyId: string;
   linkedCount: number;
-  meetsMinimumForAppraisalPrep: boolean;
-  minimumRequired: number;
   items: PropertyComparableLinkItemDto[];
 };
 

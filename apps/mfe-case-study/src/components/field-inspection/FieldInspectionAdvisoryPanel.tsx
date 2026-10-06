@@ -5,20 +5,14 @@ import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { dmy, hhmm } from "@platform/app-shared/format/date";
 import { inspectionLateUploadAtUtc } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
-import {
-  Button,
-  InlineLoadingSkeleton,
-  Label,
-  cn,
-  formControlClassName,
-} from "@platform/ui-kit";
+import { Button, InlineLoadingSkeleton } from "@platform/ui-kit";
+import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
 import { PartyRecallAdvisorySection } from "../party-tasks/PartyRecallAdvisorySection";
 import { PARTY_TASK_RECALL_CHANGED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { findInspectionChildForParent } from "../../lib/field-inspection-task";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import { reopenInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import {
   inspectorPhotoCoverageLabel,
   inspectorWorkspaceStatusLabel,
@@ -38,8 +32,6 @@ export function FieldInspectionAdvisoryPanel({
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [returnNote, setReturnNote] = useState("");
-  const [returnError, setReturnError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<InspectorWorkspaceDraft | null>(
     null,
   );
@@ -61,7 +53,7 @@ export function FieldInspectionAdvisoryPanel({
 
   const inspectionTask = useMemo(
     () => findInspectionChildForParent(parentTask.id, propertyId, tasks),
-    [parentTask.id, propertyId, tasks, refreshKey],
+    [parentTask.id, propertyId, tasks],
   );
 
   useEffect(() => {
@@ -104,7 +96,8 @@ export function FieldInspectionAdvisoryPanel({
     );
   }
 
-  if (loadingSubmission) {
+  // Only the first load shows the skeleton — a refresh keeps the card (and an open dialog) mounted.
+  if (loadingSubmission && !submission) {
     return (
       <RegistrationFormCard title="معاينة العقار (استرشادي)">
         <InlineLoadingSkeleton />
@@ -140,26 +133,6 @@ export function FieldInspectionAdvisoryPanel({
   }
 
   const lateUploadAt = inspectionLateUploadAtUtc(submission);
-
-  async function handleReturnForCorrection() {
-    if (!inspectionTask) return;
-    const trimmed = returnNote.trim();
-    if (!trimmed) {
-      setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
-      return;
-    }
-    const reopened = await reopenInspectorWorkspace(inspectionTask.id, trimmed);
-    if (!reopened.ok) {
-      setReturnError(reopened.error);
-      return;
-    }
-    setSubmission(reopened.data);
-    setReturnOpen(false);
-    setReturnNote("");
-    setReturnError(null);
-    setRefreshKey((k) => k + 1);
-    onReturned?.();
-  }
 
   return (
     <RegistrationFormCard title="معاينة العقار (استرشادي — للقراءة فقط)">
@@ -223,61 +196,28 @@ export function FieldInspectionAdvisoryPanel({
 
       {submission.status === "submitted" ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {!returnOpen ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
-            >
-              إعادة للتصحيح
-            </Button>
-          ) : (
-            <div className="w-full">
-              <Label htmlFor="inspection-return-note" className="text-xs">
-                سبب الإرجاع للتصحيح{" "}
-                <span className="text-danger-text">*</span>
-              </Label>
-              <textarea
-                id="inspection-return-note"
-                className={cn(
-                  formControlClassName,
-                  "mt-1 min-h-[72px] text-xs",
-                )}
-                value={returnNote}
-                onChange={(e) => setReturnNote(e.target.value)}
-              />
-              {returnError ? (
-                <p className="mt-1 text-xs text-danger-text">{returnError}</p>
-              ) : null}
-              <div className="mt-2 flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  onClick={() => void handleReturnForCorrection()}
-                >
-                  تأكيد الإرجاع
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setReturnOpen(false);
-                    setReturnError(null);
-                  }}
-                >
-                  إلغاء
-                </Button>
-              </div>
-            </div>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setReturnOpen(true)}
+          >
+            {submission.acceptedAtUtc?.trim()
+              ? "إلغاء الاعتماد وإعادة للتصحيح"
+              : "إعادة للتصحيح"}
+          </Button>
         </div>
       ) : null}
+      {/* Kept outside the status gate: the outcomes stay on screen after the status flips. */}
+      <ReturnInspectionDialog
+        open={returnOpen}
+        inspectionTaskId={inspectionTask.id}
+        onClose={() => setReturnOpen(false)}
+        onReturned={() => {
+          setRefreshKey((k) => k + 1);
+          onReturned?.();
+        }}
+      />
     </RegistrationFormCard>
   );
 }

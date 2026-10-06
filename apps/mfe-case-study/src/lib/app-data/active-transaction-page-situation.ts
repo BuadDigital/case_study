@@ -85,18 +85,18 @@ function partyCards(submittedLabel = "مُرسَلة"): PageSituationCardDef[] {
 function appraisalCards(): PageSituationCardDef[] {
   return [
     {
-      key: "ready",
-      label: "جاهزة للتقييم",
-      sub: "معاينة مكتملة — باشر التقييم",
-      tone: "blue",
-      icon: "play",
+      key: "drafting",
+      label: "قيد التقييم",
+      sub: "بانتظار إصدار الأخصائي لتقرير الدراسة",
+      tone: "warn",
+      icon: "clipboard",
     },
     {
-      key: "gated",
-      label: "تراقب تقدم الأطراف",
-      sub: "بانتظار اكتمال معاينة العقار",
-      tone: "warn",
-      icon: "clock",
+      key: "ready",
+      label: "جاهزة للتسليم",
+      sub: "صدر تقرير الدراسة — سلّم التقييم",
+      tone: "blue",
+      icon: "play",
     },
     {
       key: "submitted",
@@ -661,9 +661,12 @@ export function computePageSituationValues(
 function computeAppraisalSituation(
   appraisalTasks: WorkflowTask[],
   allTasks: WorkflowTask[],
-): Pick<PageSituationValues, "ready" | "gated" | "submitted" | "reopened"> {
+): Pick<
+  PageSituationValues,
+  "drafting" | "ready" | "submitted" | "reopened"
+> {
+  let drafting = 0;
   let ready = 0;
-  let gated = 0;
   let submitted = 0;
   let reopened = 0;
 
@@ -673,7 +676,11 @@ function computeAppraisalSituation(
       | null
       | undefined;
     const st = sub?.status ?? "draft";
-    if (st === "submitted" || task.status === "completed") {
+    if (
+      st === "submitted" ||
+      task.appraisalPackageStatus === "submitted" ||
+      task.status === "completed"
+    ) {
       submitted += 1;
       continue;
     }
@@ -682,9 +689,10 @@ function computeAppraisalSituation(
       continue;
     }
     const group = appraiserQueueStatusGroup(task, allTasks);
+    // A not-yet-inspected appraisal is just «قيد التقييم» — no start gate.
     if (group === "ready") ready += 1;
-    else gated += 1;
+    else drafting += 1;
   }
 
-  return { ready, gated, submitted, reopened };
+  return { drafting, ready, submitted, reopened };
 }

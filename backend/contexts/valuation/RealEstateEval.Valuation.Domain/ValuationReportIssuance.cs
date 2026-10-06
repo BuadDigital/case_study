@@ -22,21 +22,47 @@ public class ValuationReportIssuance
  /// <summary>Frozen snapshot of the full report (ValuationReportDocumentDto) — source for both copies.</summary>
     public string DocumentJson { get; set; } = "";
 
- /// <summary>Deposit copy — deposit-code field empty.</summary>
-    public byte[] DepositPdf { get; set; } = [];
-
  /// <summary>Deposit-certificate code from Qiama — outside freeze scope.</summary>
     public string? DepositCode { get; set; }
     public string? CertificateFileName { get; set; }
     public string? CertificateContentType { get; set; }
- /// <summary>Deposit certificate — stored on the transaction file and appended as a page in the final copy.</summary>
+ /// <summary>The certificate in the attachments service — stored on the transaction file and appended as a page in the final copy.</summary>
+    public Guid? CertificateAttachmentId { get; set; }
+ /// <summary>Legacy: certificates recorded before they moved to the attachments service live here.</summary>
     public byte[]? CertificateContent { get; set; }
     public DateTime? CertificateUploadedAtUtc { get; set; }
     public string? CertificateUploadedByUserId { get; set; }
 
  /// <summary>Circulated final copy — frozen report + certificate page + code.</summary>
     public DateTime? FinalIssuedAtUtc { get; set; }
-    public byte[]? FinalPdf { get; set; }
+
+ /// <summary>The generated final PDF (report with the code + the certificate page) in the attachments service; null until generated.</summary>
+    public Guid? FinalPdfAttachmentId { get; set; }
+ /// <summary>The deposit code printed in the stored final PDF — a different current code means it must be regenerated.</summary>
+    public string? FinalPdfDepositCode { get; set; }
+    public DateTime? FinalPdfGeneratedAtUtc { get; set; }
+
+ /// <summary>The certificate is on record (attachments service, or legacy inline bytes).</summary>
+    public bool HasCertificate => CertificateAttachmentId is not null || CertificateContent is { Length: > 0 };
+
+ /// <summary>The final PDF exists and carries the current deposit code.</summary>
+    public bool FinalPdfIsCurrent =>
+        FinalPdfAttachmentId is not null
+        && string.Equals(FinalPdfDepositCode, DepositCode, StringComparison.Ordinal);
+
+ /// <summary>none | preparing | ready — see <see cref="FinalReportStatuses"/>.</summary>
+    public string FinalReportStatus =>
+        FinalIssuedAtUtc is null
+            ? FinalReportStatuses.None
+            : FinalPdfIsCurrent ? FinalReportStatuses.Ready : FinalReportStatuses.Preparing;
+
+ /// <summary>Records the freshly generated final PDF; the caller removes the replaced attachment.</summary>
+    public void SetFinalPdf(Guid attachmentId, string depositCode, DateTime nowUtc)
+    {
+        FinalPdfAttachmentId = attachmentId;
+        FinalPdfDepositCode = depositCode;
+        FinalPdfGeneratedAtUtc = nowUtc;
+    }
 
  /* ─── Q-9 supplement (R2): deposit copies N+1 — current = non-superseded; superseded stays on file ─── */
 
@@ -72,7 +98,6 @@ public class ValuationReportIssuance
     public static ValuationReportIssuance IssueDeposit(
         Guid valuationRequestId,
         string documentJson,
-        byte[] depositPdf,
         string? issuedByUserId,
         DateTime nowUtc,
         int version = 1) => new()
@@ -82,7 +107,6 @@ public class ValuationReportIssuance
             DepositIssuedAtUtc = nowUtc,
             DepositIssuedByUserId = issuedByUserId,
             DocumentJson = documentJson,
-            DepositPdf = depositPdf,
             Version = version,
         };
 
@@ -94,7 +118,8 @@ public class ValuationReportIssuance
         string depositCode,
         string? certificateFileName,
         string? certificateContentType,
-        byte[]? certificateContent,
+        Guid? certificateAttachmentId,
+        byte[]? legacyCertificateContent,
         string? uploadedByUserId,
         DateTime nowUtc)
     {
@@ -103,25 +128,43 @@ public class ValuationReportIssuance
             return "رمز الإيداع مطلوب";
 
         DepositCode = code;
-        CertificateFileName = certificateFileName?.Trim();
-        CertificateContentType = certificateContentType?.Trim();
-        if (certificateContent is not null)
-            CertificateContent = certificateContent;
+        // A code-only correction keeps the certificate (and its name) already on the copy.
+        if (certificateAttachmentId is not null || legacyCertificateContent is not null)
+        {
+            CertificateFileName = certificateFileName?.Trim();
+            CertificateContentType = certificateContentType?.Trim();
+            CertificateAttachmentId = certificateAttachmentId;
+            CertificateContent = legacyCertificateContent;
+        }
         CertificateUploadedAtUtc = nowUtc;
         CertificateUploadedByUserId = uploadedByUserId;
         return null;
     }
 
  /// <summary>Q-6-4: final copy is not issued before the code is registered.</summary>
-    public string? IssueFinal(byte[] finalPdf, DateTime nowUtc)
+    public string? IssueFinal(DateTime nowUtc)
     {
         if (string.IsNullOrWhiteSpace(DepositCode))
             return "سجّل رمز الإيداع أولاً (ق-6-3)";
+        if (!HasCertificate)
+            return "أرفق شهادة الإيداع (PDF)";
 
-        FinalPdf = finalPdf;
         FinalIssuedAtUtc = nowUtc;
         return null;
     }
+}
+
+/// <summary>Where the generated final PDF stands (the report with the deposit code + the certificate page).</summary>
+public static class FinalReportStatuses
+{
+    /// <summary>The final copy is not issued yet.</summary>
+    public const string None = "none";
+
+    /// <summary>Issued, but the PDF is not generated yet (or the renderer failed) — can be retried.</summary>
+    public const string Preparing = "preparing";
+
+    /// <summary>The stored PDF carries the current deposit code.</summary>
+    public const string Ready = "ready";
 }
 
 /// <summary>Q-6 phases as shown to the UI.</summary>

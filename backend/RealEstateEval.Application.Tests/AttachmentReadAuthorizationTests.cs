@@ -108,6 +108,61 @@ public class AttachmentReadAuthorizationTests
         Assert.NotNull(await db.FileAttachments.FindAsync(id));
     }
 
+    [Fact]
+    public async Task OwnValuedDocuments_lists_only_the_actors_own_uploads_by_name_and_status()
+    {
+        await using var db = CreateDb();
+        var scopeKey = "PO-1:prop-1";
+        db.FileAttachments.AddRange(
+            ValuedRow("inspector-1", scopeKey, "تقرير الآلات", "pending"),
+            ValuedRow("inspector-1", scopeKey, "دراسة الدخل", "rejected", "الملف غير واضح"),
+            ValuedRow("other-inspector", scopeKey, "ليس لي", "pending"),
+            ValuedRow("inspector-1", "PO-1:prop-2", "عقار آخر", "pending"));
+        await db.SaveChangesAsync();
+        var service = new AttachmentService(db, new MemoryBlobs());
+
+        var mine = await service.ListOwnValuedDocumentsAsync(
+            scopeKey,
+            new PermissionsDto { UserId = "inspector-1", PrototypeRole = "field-inspector" });
+
+        Assert.Equal(["تقرير الآلات", "دراسة الدخل"], mine.Select(m => m.Name).OrderBy(n => n, StringComparer.Ordinal));
+        Assert.Equal("الملف غير واضح", mine.Single(m => m.Name == "دراسة الدخل").ReviewNote);
+        Assert.Equal("pending", mine.Single(m => m.Name == "تقرير الآلات").Status);
+        Assert.Empty(await service.ListOwnValuedDocumentsAsync(scopeKey, actor: null));
+
+        // The specialist sees every valued document of the property, not only their own.
+        var all = await service.ListOwnValuedDocumentsAsync(
+            scopeKey,
+            new PermissionsDto { UserId = "specialist-1", PrototypeRole = "case-specialist" });
+        Assert.Equal(3, all.Count);
+
+        // The uploader may open their own file (the «معاينة» button) — and nobody else outside the trio.
+        var firstId = mine[0].Id;
+        Assert.NotNull(await service.GetMetaAsync(
+            firstId,
+            new PermissionsDto { UserId = "inspector-1", PrototypeRole = "field-inspector" }));
+        Assert.Null(await service.GetMetaAsync(
+            firstId,
+            new PermissionsDto { UserId = "inspector-2", PrototypeRole = "field-inspector" }));
+    }
+
+    private static FileAttachment ValuedRow(
+        string uploadedBy, string scopeKey, string label, string status, string? note = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        Scope = PropertyDocumentTypes.ValuedScope,
+        ScopeKey = scopeKey,
+        FileName = "doc.pdf",
+        ContentType = "application/pdf",
+        SizeBytes = 4,
+        UploadedByUserId = uploadedBy,
+        DocumentTypeKey = PropertyDocumentTypes.ValuedKey,
+        CustomDocumentLabel = label,
+        ValueDocStatus = status,
+        ValueDocReviewNote = note,
+        CreatedAtUtc = DateTime.UtcNow,
+    };
+
     private static async Task<Guid> SeedAsync(AttachmentsDbContext db, string uploadedBy)
     {
         var id = Guid.NewGuid();

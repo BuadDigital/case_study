@@ -12,6 +12,12 @@ public interface IAttachmentService
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The «مستندات ذات القيمة» of one property this actor may see: all of them for the specialist / appraiser / CDO, otherwise only their own uploads — name, type and decision.</summary>
+    Task<IReadOnlyList<OwnValuedDocumentDto>> ListOwnValuedDocumentsAsync(
+        string scopeKey,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default);
+
     Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
         PermissionsDto? actor,

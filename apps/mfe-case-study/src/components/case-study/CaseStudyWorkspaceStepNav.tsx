@@ -17,7 +17,7 @@ const CASE_STUDY_WORKSPACE_STEPS: {
   {
     id: "study",
     number: 1,
-    title: "نموذج الدراسة",
+    title: "تقرير دراسة الحالة",
     hint: "أسئلة دراسة الحالة وإجابات الأطراف",
   },
   {

@@ -31,10 +31,20 @@ import {
   allTransactionsPhaseLabel,
   buildAllTransactionsRowMoreItems,
 } from "../lib/app-data/all-transactions-queue";
+import { reopenCaseStudyReportDraft } from "../lib/app-data/case-study-report-commands";
+import { caseStudyReopenSuccessMessage } from "../lib/app-data/case-study-report-issue-errors";
 const ReopenCompletedTransactionModal = dynamic(
   () =>
     import("../components/transactions/ReopenCompletedTransactionModal").then(
       (m) => m.ReopenCompletedTransactionModal,
+    ),
+  { ssr: false },
+);
+
+const CaseStudyReportReopenDialog = dynamic(
+  () =>
+    import("../components/case-study/CaseStudyReportReopenDialog").then(
+      (m) => m.CaseStudyReportReopenDialog,
     ),
   { ssr: false },
 );
@@ -160,7 +170,31 @@ export function AllAssignedTransactionsView() {
               )
         }
       />
-      {reopenTask !== null ? (
+      {reopenTask !== null && reopenTask.kind === "case-study-property" ? (
+        // A case-study parent reopens through its issued report (the server refuses the generic reopen).
+        <CaseStudyReportReopenDialog
+          open
+          deedLabel={reopenDeedLabel}
+          onClose={() => {
+            setReopenTask(null);
+            setReopenDeedLabel("");
+          }}
+          onReopen={async (reason, clearEnfazHandover) => {
+            const result = await reopenCaseStudyReportDraft(
+              reopenTask.id,
+              reason,
+              clearEnfazHandover,
+            );
+            if (!result.ok) return result;
+            showToast(
+              caseStudyReopenSuccessMessage(result.appraiserSubmitted),
+              "success",
+            );
+            return { ok: true };
+          }}
+        />
+      ) : null}
+      {reopenTask !== null && reopenTask.kind !== "case-study-property" ? (
         <ReopenCompletedTransactionModal
           open={reopenTask !== null}
           task={reopenTask}

@@ -61,6 +61,9 @@ export function InspectorDefinedPhotosSection({
 
   const cells = useMemo(
     () => listDefinedPhotoSlotCells(draft),
+    // The helper takes a `Pick` of exactly these fields — the whole draft would
+    // rebuild the grid on every keystroke elsewhere in the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft.services, draft.amenities, draft.definedPhotos],
   );
 

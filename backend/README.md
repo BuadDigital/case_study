@@ -69,7 +69,7 @@ not. New types in `RealEstateEval.Application.Contracts` use:
 | Command body | `Request` | `CreateWorkOrderRequest` |
 | GET query object | `Query` | `ComparablePropertyListQuery` |
 | Nested write fragment | `Input` | `PhotoMetadataInput` |
-| Internal actor (not HTTP) | `Actor` | `CaseStudyFormActor` |
+| Internal actor (not HTTP) | `Actor` | `CaseStudyReportActor` |
 
 Do not introduce a bare `Response` or `Result` suffix for HTTP payloads — use `ResponseDto`.
 Do not rename JSON properties to finish a C# rename; that would be a v2.

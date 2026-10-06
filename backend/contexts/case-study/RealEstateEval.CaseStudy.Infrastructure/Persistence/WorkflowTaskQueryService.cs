@@ -349,10 +349,13 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         if (parentIds.Count == 0 || propertyIds.Count == 0) return;
 
-        var inspectionRows = await _caseStudy.WorkflowTasks.AsNoTracking()
+        // Every non-cancelled inspection: the appraiser reads the inspector's package from its
+        // draft on (batch 2C), so its task id must be known before the inspection completes. The
+        // completed / accepted flags keep their meaning — they are computed from the completed rows only.
+        var allInspectionRows = await _caseStudy.WorkflowTasks.AsNoTracking()
             .Where(t =>
                 t.Kind == WorkflowTaskKind.FieldInspection
-                && t.Status == WorkflowTaskStatus.Completed
+                && t.Status != WorkflowTaskStatus.Cancelled
                 && t.ParentTaskId != null
                 && parentIds.Contains(t.ParentTaskId.Value)
                 && t.PropertyId != null
@@ -360,10 +363,16 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(t => new
             {
                 t.Id,
+                t.Status,
+                t.CreatedAtUtc,
                 ParentId = t.ParentTaskId!.Value,
                 PropertyId = t.PropertyId!.Value,
             })
             .ToListAsync(cancellationToken);
+
+        var inspectionRows = allInspectionRows
+            .Where(r => r.Status == WorkflowTaskStatus.Completed)
+            .ToList();
 
         var completed = inspectionRows
             .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
@@ -385,6 +394,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
             .ToHashSet();
 
+        // Completed-only choice (survey office, specialist parent): accepted first, else any completed.
         var preferredIdByKey = inspectionRows
             .GroupBy(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
             .ToDictionary(
@@ -393,6 +403,22 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
                 {
                     var preferred = g.FirstOrDefault(r => acceptedInspectionIds.Contains(r.Id))
                         ?? g.First();
+                    return preferred.Id.ToString();
+                });
+
+        // Appraiser choice: accepted, then completed, then the latest non-cancelled (draft / reopened /
+        // submitted-not-yet-completed) inspection.
+        var appraiserPreferredIdByKey = allInspectionRows
+            .GroupBy(k => (Parent: k.ParentId.ToString(), Prop: k.PropertyId.ToString()))
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var preferred = g.FirstOrDefault(r => acceptedInspectionIds.Contains(r.Id))
+                        ?? g.Where(r => r.Status == WorkflowTaskStatus.Completed)
+                            .OrderByDescending(r => r.CreatedAtUtc)
+                            .FirstOrDefault()
+                        ?? g.OrderByDescending(r => r.CreatedAtUtc).First();
                     return preferred.Id.ToString();
                 });
 
@@ -432,11 +458,72 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             }
         }
 
+        // The appraiser's submission opens when the specialist issues the parent's case-study
+        // report: ONE query over the parent ids already built above (appraisal rows and the parents).
+        var issuedParentIds = (await _caseStudy.CaseStudyReports.AsNoTracking()
+                .Where(r => parentIds.Contains(r.TaskId)
+                    && !r.IsPartyContribution
+                    && r.Status == CaseStudyReportStatuses.Issued)
+                .Select(r => r.TaskId)
+                .ToListAsync(cancellationToken))
+            .Select(id => id.ToString())
+            .ToHashSet(StringComparer.Ordinal);
+
+        // The appraiser's package status (draft / submitted / reopened) per family property: the latest
+        // non-cancelled appraisal task's submission — two queries, no payload read.
+        var appraisalPackageByKey = new Dictionary<(string Parent, string Prop), string>();
+        if (targets.Any(t => t.Kind is WorkflowTaskKindValues.PropertyAppraisal
+                or WorkflowTaskKindValues.CaseStudyProperty))
+        {
+            var appraisalRows = await _caseStudy.WorkflowTasks.AsNoTracking()
+                .Where(t =>
+                    t.Kind == WorkflowTaskKind.PropertyAppraisal
+                    && t.Status != WorkflowTaskStatus.Cancelled
+                    && t.ParentTaskId != null
+                    && parentIds.Contains(t.ParentTaskId.Value)
+                    && t.PropertyId != null
+                    && propertyIds.Contains(t.PropertyId.Value))
+                .Select(t => new
+                {
+                    t.Id,
+                    t.CreatedAtUtc,
+                    ParentId = t.ParentTaskId!.Value,
+                    PropertyId = t.PropertyId!.Value,
+                })
+                .ToListAsync(cancellationToken);
+            var latestAppraisalByKey = appraisalRows
+                .GroupBy(r => (Parent: r.ParentId.ToString(), Prop: r.PropertyId.ToString()))
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.CreatedAtUtc).First().Id);
+            var appraisalIds = latestAppraisalByKey.Values.ToList();
+            if (appraisalIds.Count > 0)
+            {
+                var statusByTask = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
+                    .Where(s => appraisalIds.Contains(s.WorkflowTaskId))
+                    .Select(s => new { s.WorkflowTaskId, s.Status })
+                    .ToDictionaryAsync(s => s.WorkflowTaskId, s => s.Status, cancellationToken);
+                foreach (var (appraisalKey, appraisalId) in latestAppraisalByKey)
+                {
+                    if (statusByTask.TryGetValue(appraisalId, out var packageStatus))
+                        appraisalPackageByKey[appraisalKey] = packageStatus;
+                }
+            }
+        }
+
         foreach (var target in targets)
         {
             var key = (FamilyParentId(target)!, target.PropertyId!);
+            if (target.Kind is WorkflowTaskKindValues.PropertyAppraisal
+                or WorkflowTaskKindValues.CaseStudyProperty)
+            {
+                target.StudyReportIssued = issuedParentIds.Contains(key.Item1);
+                if (appraisalPackageByKey.TryGetValue(key, out var appraisalPackage))
+                    target.AppraisalPackageStatus = appraisalPackage;
+            }
             target.FieldInspectionCompleted = completed.Contains(key);
-            if (preferredIdByKey.TryGetValue(key, out var inspectionTaskId))
+            var preferredForTarget = target.Kind == WorkflowTaskKindValues.PropertyAppraisal
+                ? appraiserPreferredIdByKey
+                : preferredIdByKey;
+            if (preferredForTarget.TryGetValue(key, out var inspectionTaskId))
                 target.FieldInspectionTaskId = inspectionTaskId;
             if (target.Kind == WorkflowTaskKindValues.PropertyAppraisal)
                 target.FieldInspectionAccepted = accepted.Contains(key);

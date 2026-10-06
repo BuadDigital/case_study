@@ -4,7 +4,7 @@ import { getAuthSession } from "@platform/auth-client";
 type SystemResetResult = {
   workOrdersDeleted: number;
   workflowTasksDeleted: number;
-  caseStudyFormsDeleted: number;
+  caseStudyReportsDeleted: number;
   registeredUsersDeleted: number;
 };
 
@@ -17,7 +17,7 @@ function mapResetResult(raw: Record<string, unknown>): SystemResetResult {
   return {
     workOrdersDeleted: n("workOrdersDeleted"),
     workflowTasksDeleted: n("workflowTasksDeleted"),
-    caseStudyFormsDeleted: n("caseStudyFormsDeleted"),
+    caseStudyReportsDeleted: n("caseStudyReportsDeleted"),
     registeredUsersDeleted: n("registeredUsersDeleted"),
   };
 }

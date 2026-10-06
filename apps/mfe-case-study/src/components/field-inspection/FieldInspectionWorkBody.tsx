@@ -36,6 +36,7 @@ import {
   InspectorDescriptionCard,
 } from "./InspectorDescriptionDocsCards";
 import { InspectorFeaturesSection } from "./InspectorFeaturesSection";
+import { InspectorInventoryCard } from "./InspectorInventoryCard";
 import { InspectorLocationCard } from "./InspectorLocationCard";
 import { InspectorObservationsSection } from "./InspectorObservationsSection";
 import { InspectorServicesCards } from "./InspectorServicesCards";
@@ -195,6 +196,8 @@ export function FieldInspectionWorkBody({
           poNumber={task.poNumber}
           property={property}
         />
+
+        <InspectorInventoryCard activeStep={activeStep} draft={draft} fieldErrors={fieldErrors} layout={layout} mobile={mobile} persist={persist} poNumber={task.poNumber} propertyId={propertyId} taskId={task.id} workLocked={workLocked} />
 
         {!boundariesUnavailable && property ? (
           <InspectorBoundariesCard

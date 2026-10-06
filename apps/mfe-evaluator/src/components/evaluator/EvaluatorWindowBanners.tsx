@@ -1,6 +1,10 @@
 "use client";
 
 import { Spinner, opsPpHeadCard } from "@platform/ui-kit";
+import {
+  STUDY_REPORT_NOT_ISSUED_MESSAGE,
+  isStudyReportBlockMessage,
+} from "../../lib/evaluator/evaluator-inspection-gate";
 import { EngInfo } from "./EvaluatorHtmlPrimitives";
 import { PrimaryBtn } from "./valuation-work/atoms";
 
@@ -8,32 +12,51 @@ export function EvaluatorWindowBanners({
   needsSurvey,
   surveyed,
   locked,
-  gateReady,
+  studyReportPending = false,
+  finalIssued = false,
   formError,
 }: {
   needsSurvey: boolean;
   surveyed: boolean;
   locked: boolean;
-  gateReady: boolean;
+  /** The specialist's study report is not issued yet — the appraiser works in draft but cannot submit. */
+  studyReportPending?: boolean;
+  /** The final report is issued (deposit code + certificate) and the task is completed. */
+  finalIssued?: boolean;
   formError: string | null;
 }) {
+  const showStudyReportNotice = studyReportPending && !locked;
+  // The same rule refused a submit — the amber notice already says it, so no second red box.
+  const showFormError =
+    Boolean(formError) &&
+    !(showStudyReportNotice && isStudyReportBlockMessage(formError));
   return (
     <>
-      {needsSurvey && !surveyed && !locked && gateReady ? (
+      {needsSurvey && !surveyed && !locked ? (
         <EngInfo variant="amber">
-          ℹ يمكنك التقييم الآن (بيانات معاينة العقار معتمدة) — الرفع المساحي
-          وصف إضافي: قد يلزم تعديل التقييم بعد صدوره.
+          ℹ الرفع المساحي وصف إضافي: قد يلزم تعديل التقييم بعد صدوره.
         </EngInfo>
       ) : null}
 
-      {locked ? (
+      {showStudyReportNotice ? (
         <EngInfo variant="amber">
-          تم الإرسال لأخصائي دراسة الحالة — لا يمكن التعديل إلا بإعادة فتح من
-          الأخصائي.
+          {STUDY_REPORT_NOT_ISSUED_MESSAGE} — يمكنك العمل على التقييم كمسودة، ويُفتح
+          الاعتماد والإرسال فور صدور التقرير.
         </EngInfo>
       ) : null}
 
-      {formError ? (
+      {locked && finalIssued ? (
+        <EngInfo variant="gold">صدر التقرير النهائي — اكتمل التقييم.</EngInfo>
+      ) : null}
+
+      {locked && !finalIssued ? (
+        <EngInfo variant="amber">
+          سُلِّم التقييم للأخصائي وبياناته مقفلة. يُعدّ الأخصائي مسودة التقرير وسيصلك
+          إشعار لاعتمادها وإيداعها في «قيمة». لتعديل الأرقام اطلب استرجاع التقييم.
+        </EngInfo>
+      ) : null}
+
+      {showFormError ? (
         <EngInfo variant="red">
           <strong>!</strong> {formError}
         </EngInfo>
@@ -45,16 +68,27 @@ export function EvaluatorWindowBanners({
 export function EvaluatorWindowSubmitBar({
   visible,
   submitBusy,
+  submitBlockedReason,
   onSubmit,
 }: {
   visible: boolean;
   submitBusy: boolean;
+  /** When set, the submit control is disabled and this is shown beside it. */
+  submitBlockedReason?: string | null;
   onSubmit: () => void;
 }) {
   if (!visible) return null;
   return (
     <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-      <PrimaryBtn disabled={submitBusy} onClick={onSubmit}>
+      {submitBlockedReason ? (
+        <span className="text-[12.5px] font-semibold text-text-3">
+          {submitBlockedReason}
+        </span>
+      ) : null}
+      <PrimaryBtn
+        disabled={submitBusy || Boolean(submitBlockedReason)}
+        onClick={onSubmit}
+      >
         {submitBusy ? <Spinner /> : null}
         <span>
           {submitBusy ? "جاري الاعتماد…" : "اعتماد التقييم وإرسال للأخصائي"}

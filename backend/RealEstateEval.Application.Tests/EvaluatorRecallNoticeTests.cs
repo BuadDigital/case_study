@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
@@ -41,7 +42,9 @@ public sealed class EvaluatorRecallNoticeTests
         await service.RequestAsync(NewRequest("خطأ في المساحة"));
         await ClearOutboxAsync(db);
 
-        var result = await service.ApproveAsync(TaskId.ToString("D"));
+        var (result, _) = await service.DecideAsync(
+            TaskId.ToString("D"),
+            new DecideEvaluatorRecallRequest { Decision = EvaluatorRecallDecisions.Approve });
 
         Assert.NotNull(result);
         var notice = await SingleNoticeAsync(db);
@@ -57,9 +60,13 @@ public sealed class EvaluatorRecallNoticeTests
         await service.RequestAsync(NewRequest("خطأ في المساحة"));
         await ClearOutboxAsync(db);
 
-        var result = await service.RejectAsync(
+        var (result, _) = await service.DecideAsync(
             TaskId.ToString("D"),
-            new RejectEvaluatorRecallRequest { SpecialistNote = "التقرير سليم" });
+            new DecideEvaluatorRecallRequest
+            {
+                Decision = EvaluatorRecallDecisions.Reject,
+                Note = "التقرير سليم",
+            });
 
         Assert.NotNull(result);
         var notice = await SingleNoticeAsync(db);
@@ -68,7 +75,7 @@ public sealed class EvaluatorRecallNoticeTests
     }
 
     private static EvaluatorRecallsService CreateService(ValuationDbContext db) =>
-        new(db, events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance));
+        new(db, new FakeRecallReopen(), events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance));
 
     private static CreateEvaluatorRecallRequest NewRequest(string reason) => new()
     {
@@ -97,5 +104,21 @@ public sealed class EvaluatorRecallNoticeTests
     {
         db.OutboxMessages.RemoveRange(await db.OutboxMessages.ToListAsync());
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>A Case Study that always accepts the reopen.</summary>
+    internal sealed class FakeRecallReopen : ICaseStudyRecallCommands
+    {
+        public List<(Guid TaskId, string? Reason)> Calls { get; } = [];
+        public Func<Task<(bool Reopened, string? Error)>>? Behaviour { get; set; }
+
+        public Task<(bool Reopened, string? Error)> ReopenAppraisalForRecallAsync(
+            Guid appraisalTaskId,
+            string? reason,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add((appraisalTaskId, reason));
+            return Behaviour is null ? Task.FromResult((true, (string?)null)) : Behaviour();
+        }
     }
 }

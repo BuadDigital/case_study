@@ -1,5 +1,5 @@
-import type { CaseStudyFormAnswer } from "@case-study/mfe/lib/app-data/case-study-form-data";
-import { caseStudyAnswerKey } from "@case-study/mfe/lib/app-data/case-study-form-data";
+import type { CaseStudyReportAnswer } from "@case-study/mfe/lib/app-data/case-study-report-data";
+import { caseStudyAnswerKey } from "@case-study/mfe/lib/app-data/case-study-report-data";
 import type {
   ChecklistAnswer,
   EngineeringSurveyChecklistRow,
@@ -54,24 +54,24 @@ const CHECKLIST_CASE_STUDY_LINKS: ChecklistCaseStudyLink[] = [
 function checklistAnswerToCaseStudy(
   answer: ChecklistAnswer,
   yesMapsToA: boolean,
-): CaseStudyFormAnswer | null {
+): CaseStudyReportAnswer | null {
   if (answer === null) return null;
   if (yesMapsToA) return answer === "yes" ? "A" : "B";
   return answer === "yes" ? "B" : "A";
 }
 
 function isAnswered(
-  value: CaseStudyFormAnswer | null | undefined,
-): value is CaseStudyFormAnswer {
+  value: CaseStudyReportAnswer | null | undefined,
+): value is CaseStudyReportAnswer {
   return value === "A" || value === "B";
 }
 
 /** One-way: checklist → case study. Skips keys the party already answered. */
 export function applyChecklistToCaseStudyAnswers(
   checklist: EngineeringSurveyChecklistRow[],
-  answers: Record<string, CaseStudyFormAnswer | null | undefined>,
-): Record<string, CaseStudyFormAnswer | null> {
-  const next: Record<string, CaseStudyFormAnswer | null> = {};
+  answers: Record<string, CaseStudyReportAnswer | null | undefined>,
+): Record<string, CaseStudyReportAnswer | null> {
+  const next: Record<string, CaseStudyReportAnswer | null> = {};
   for (const [key, value] of Object.entries(answers)) {
     next[key] = value ?? null;
   }
@@ -91,8 +91,8 @@ export function applyChecklistToCaseStudyAnswers(
 }
 
 export function caseStudyAnswersChanged(
-  before: Record<string, CaseStudyFormAnswer | null | undefined>,
-  after: Record<string, CaseStudyFormAnswer | null>,
+  before: Record<string, CaseStudyReportAnswer | null | undefined>,
+  after: Record<string, CaseStudyReportAnswer | null>,
 ): boolean {
   for (const link of CHECKLIST_CASE_STUDY_LINKS) {
     if (before[link.caseStudyKey] !== after[link.caseStudyKey]) return true;

@@ -49,6 +49,8 @@ public static class AttachmentUploadRules
         "engineering-site-letter",
         "evaluator-report",
         "evaluator-plan-image",
+        // The deposit certificate the valuation service stores (one-page PDF; see ReportFileScopes there).
+        "evaluator-deposit-certificate",
     };
 
  /// <summary>

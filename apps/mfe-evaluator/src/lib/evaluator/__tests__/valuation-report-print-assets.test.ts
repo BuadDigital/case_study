@@ -9,7 +9,7 @@ import {
 const parse = (html: string) => new DOMParser().parseFromString(html, "text/html");
 
 describe("inlinePrintHtmlAssets", () => {
-  it("inlines images, CSS url() and fonts, then drops <base>, links and scripts", async () => {
+  it("inlines images, CSS url() and fonts, then drops <base>, links and external scripts (inline scripts stay)", async () => {
     const seen: string[] = [];
     const fetchDataUrl = vi.fn(async (url: string) => {
       seen.push(url);
@@ -24,7 +24,7 @@ describe("inlinePrintHtmlAssets", () => {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=X"/>
 <style>@font-face{font-family:"Tajawal";src:url("ejadah/fonts/Tajawal-Regular.woff2") format("woff2")}
 .lh-slice{background-image:url("http://localhost:3000/case-study/ejadah-letterhead.png")}</style>
-<script src="/ejadah/image-slot.js"></script></head>
+<script src="/ejadah/image-slot.js"></script><script>document.documentElement.setAttribute("data-rpt-ready","1")</script></head>
 <body><section class="page pg" style="background:url('case-study/ejadah-letterhead.png') no-repeat">
 <img src="/api/attachments/abc" alt="photo" loading="lazy"/>
 <img src="data:image/svg+xml;charset=utf-8,%3Csvg%3E" alt="map"/>
@@ -36,7 +36,9 @@ describe("inlinePrintHtmlAssets", () => {
     expect(out.startsWith("<!DOCTYPE html>")).toBe(true);
     expect(out).not.toContain("<base");
     expect(out).not.toContain("<link");
-    expect(out).not.toContain("<script");
+    expect(out).not.toContain("image-slot.js");
+    // The pagination script that marks the document ready for the renderer must survive.
+    expect(out).toContain('data-rpt-ready');
     expect(out).toContain('src="data:image/jpeg;base64,SlBH"');
     expect(out).toContain("data:image/svg+xml;charset=utf-8,%3Csvg%3E");
     expect(out).toContain("url('data:font/woff2;base64,Rk9OVA==')");

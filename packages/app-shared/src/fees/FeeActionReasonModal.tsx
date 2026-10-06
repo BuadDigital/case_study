@@ -34,12 +34,16 @@ export function FeeActionReasonModal({
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setReason("");
-    setError(false);
-    setBusy(false);
-  }, [open]);
+  // Each open starts from an empty reason.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setReason("");
+      setError(false);
+      setBusy(false);
+    }
+  }
 
   if (!open) return null;
 

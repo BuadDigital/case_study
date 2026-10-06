@@ -1,4 +1,4 @@
-// Session-local diagnostic driver: case-study workspace section cards (1 نموذج الدراسة / 2 تقييم العقار).
+// Session-local diagnostic driver: case-study workspace section cards (1 تقرير دراسة الحالة / 2 تقييم العقار).
 // AUTH_FILE=<login json> TASK_ID=<case-study-property task id> SHOT_DIR=<dir> node e2e/.shot-case-study-workspace.mjs
 import { chromium } from "@playwright/test";
 import fs from "node:fs";

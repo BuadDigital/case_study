@@ -47,9 +47,13 @@ public sealed class InspectionSourceChangeAlertTests
         property.Area = "900";
         Assert.Equal(before, InspectionSourceDataRules.Fingerprint(property));
 
-        property.DeedOwnersJson = """[ { "sharePct": 100, "name": "مالك أول" } ]""";
+        property.DeedOwnersJson = """[ { "name": "مالك أول" } ]""";
         Assert.Equal(before, InspectionSourceDataRules.Fingerprint(property));
 
+        property.DeedOwnersJson = """[{"name":"مالك أول"},{"name":"مالك ثانٍ"}]""";
+        Assert.NotEqual(before, InspectionSourceDataRules.Fingerprint(property));
+
+        property.DeedOwnersJson = """[{"name":"مالك أول"}]""";
         property.DeedNumber = "999999999999";
         Assert.NotEqual(before, InspectionSourceDataRules.Fingerprint(property));
     }
@@ -142,7 +146,7 @@ public sealed class InspectionSourceChangeAlertTests
         AssignmentMandateNumber = "AM-9",
         AssignmentMandateDate = "2026-09-01",
         OwnerName = "مالك أول",
-        DeedOwnersJson = """[{"name":"مالك أول","sharePct":100}]""",
+        DeedOwnersJson = """[{"name":"مالك أول"}]""",
         Court = "المحكمة العامة بجدة",
         Circuit = "3",
         City = "جدة",

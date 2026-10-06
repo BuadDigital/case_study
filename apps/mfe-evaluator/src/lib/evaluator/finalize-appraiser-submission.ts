@@ -1,5 +1,5 @@
-import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
-import { savePartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
+import { loadPartyCaseStudyReportDraft } from "../../lib/case-study-bridge";
+import { readFreshStudyReportGate } from "./evaluator-submit-gates";
 import { loadEvaluatorSubmission } from "./evaluator-submission-model";
 import {
   saveEvaluatorSubmission,
@@ -9,7 +9,6 @@ import {
 import {
   ensureOpenValuationRequest,
   reservedNumberFromValuationRequest,
-  snapshotIssuedValuationReport,
 } from "./issue-valuation-report";
 import {
   formatValuationReportIssueDateIso,
@@ -26,7 +25,12 @@ export async function finalizeAppraiserSubmission(
   appraisalTaskId: string,
   idempotencyKey?: string,
 ): Promise<FinalizeAppraiserResult> {
-  const partyDraft = await loadPartyCaseStudyFormDraft(appraisalTaskId);
+  // Fresh study-report flag BEFORE any side effect (checklist sync write, valuation-request
+  // open / report-number reservation, draft save). Fails closed on an unreadable flag.
+  const studyGate = await readFreshStudyReportGate(appraisalTaskId);
+  if (!studyGate.ready) return { ok: false, message: studyGate.reason };
+
+  const partyDraft = await loadPartyCaseStudyReportDraft(appraisalTaskId);
   if (loadEvaluatorSubmission(appraisalTaskId) && partyDraft) {
     await syncEvaluatorChecklistFromPartyCaseStudy(appraisalTaskId, {
       overwriteLinked: true,
@@ -71,24 +75,6 @@ export async function finalizeAppraiserSubmission(
     if (!prepared) {
       return { ok: false, message: "تعذّر تثبيت رقم التقرير قبل الإرسال." };
     }
-
-    try {
-      await snapshotIssuedValuationReport({
-        taskId: appraisalTaskId,
-        propertyId: prepared.propertyId,
-        reportNo,
-        reportIssueDate,
-        depositCode: prepared.depositCode,
-      });
-    } catch (err: unknown) {
-      return {
-        ok: false,
-        message:
-          err instanceof Error
-            ? err.message
-            : "تعذّر توليد تقرير التقييم من النظام.",
-      };
-    }
   }
 
   const result = await submitEvaluatorSubmission(appraisalTaskId, idempotencyKey);
@@ -96,16 +82,8 @@ export async function finalizeAppraiserSubmission(
 
   clearPartyTaskRecall(appraisalTaskId);
 
-  if (partyDraft) {
-    const saved = await savePartyCaseStudyFormDraft({
-      ...partyDraft,
-      status: "submitted",
-      savedAtUtc: new Date().toISOString(),
-    });
-    if (!saved.ok) {
-      return { ok: false, message: saved.error };
-    }
-  }
-
+  // No post-submit write of the party draft: the study report is already issued (the submit
+  // gate), so the server has locked party contributions and such a save would be refused
+  // although the submit itself succeeded.
   return result;
 }

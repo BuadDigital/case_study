@@ -53,6 +53,15 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return dto is null ? NotFound() : Ok(dto);
     }
 
+    [HttpGet("appraisal-package-state/{propertyId:guid}")]
+    public async Task<ActionResult<CaseStudyAppraisalPackageStateDto>> AppraisalPackageState(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var dto = await lookup.GetAppraisalPackageStateAsync(propertyId, cancellationToken);
+        return dto is null ? NotFound() : Ok(dto);
+    }
+
     [HttpGet("valuation-property-context/{propertyId:guid}")]
     public async Task<ActionResult<CaseStudyValuationPropertyContextDto>> ValuationPropertyContext(
         Guid propertyId,

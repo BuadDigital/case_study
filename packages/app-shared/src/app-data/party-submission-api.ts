@@ -2,10 +2,15 @@ import {
   getPartyTaskSubmission,
   listPartyTaskSubmissions,
   acceptPartyTaskSubmission,
+  getReturnImpact,
   reopenPartyTaskSubmission,
+  returnInspectionPackage,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
   type PartyTaskSubmissionDto,
+  type ReturnImpactDto,
+  type ReturnInspectionRequest,
+  type ReturnInspectionResultDto,
 } from "@platform/api-client";
 import { savePrefetch } from "@platform/offline-client";
 import {
@@ -286,6 +291,62 @@ export async function reopenPartySubmission(
   const mapped = mutationFromApiResult(result, "تعذّر إعادة فتح مهمة الطرف");
   if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
   return mapped;
+}
+
+export type ReturnImpactLoadResult =
+  | { ok: true; data: ReturnImpactDto }
+  | { ok: false; error: string };
+
+/** Who a return of these inspector-data sections would hit — read-only. */
+export async function fetchReturnImpact(
+  inspectionTaskId: string,
+  sections: string[],
+): Promise<ReturnImpactLoadResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await getReturnImpact(config, inspectionTaskId, sections);
+  return mutationFromApiResult(result, "تعذّر تحميل الأطراف المتأثرة");
+}
+
+export type ReturnInspectionMutationResult =
+  | { ok: true; data: ReturnInspectionResultDto }
+  | { ok: false; error: string; errors?: Record<string, string> };
+
+/**
+ * Return the inspection with the picked parties in one server transaction.
+ * Refreshes the caches the plain reopen refreshed: the inspection itself, and every
+ * party package the server reopened (their cached copies are stale now).
+ */
+export async function returnInspectionWithImpact(
+  inspectionTaskId: string,
+  request: ReturnInspectionRequest,
+  idempotencyKey?: string,
+): Promise<ReturnInspectionMutationResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await returnInspectionPackage(
+    config,
+    inspectionTaskId,
+    request,
+    idempotencyKey,
+  );
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        result.errors,
+        "تعذّر إعادة المعاينة للمعاين",
+        result.message,
+      ),
+      errors: result.errors,
+    };
+  }
+  setCachedPartySubmission(result.data.inspection, inspectionTaskId);
+  for (const party of result.data.parties) {
+    if (party.outcome === "reopened") setCachedPartySubmission(null, party.taskId);
+  }
+  return { ok: true, data: result.data };
 }
 
 export async function acceptPartySubmission(

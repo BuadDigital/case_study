@@ -6,6 +6,8 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
@@ -18,18 +20,21 @@ public sealed class ValuationRequestService : IValuationRequestService
     private readonly IValuationEventPublisher _events;
     private readonly IPropertyPoNumberLookup _poNumbers;
     private readonly TimeProvider _time;
+    private readonly IValuationReportFreezeGate? _freeze;
 
     public ValuationRequestService(
         ValuationDbContext db,
         IValuationEventPublisher events,
         IPropertyPoNumberLookup poNumbers,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IValuationReportFreezeGate? freeze = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _events = events;
         _poNumbers = poNumbers;
+        _freeze = freeze;
     }
 
     public async Task<IReadOnlyList<ValuationRequestDto>> ListAsync(
@@ -65,7 +70,30 @@ public sealed class ValuationRequestService : IValuationRequestService
             .Where(x => x.PropertyId == key && x.Status != ValuationRequestStatus.Done)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
-        return row is null ? null : ToDto(row);
+        if (row is null) return null;
+
+        // One light read: Case Study refuses to reopen the appraiser's package while the report is frozen.
+        var stage = await _db.ValuationReportIssuances.AsNoTracking()
+            .Where(x => x.ValuationRequestId == row.Id && x.SupersededAtUtc == null)
+            .Select(x => x.FinalIssuedAtUtc != null ? ReportIssuanceStages.FinalIssued : ReportIssuanceStages.DepositIssued)
+            .FirstOrDefaultAsync(cancellationToken);
+        return ToDto(row, new RequestMapOverlay(null, null, stage ?? ReportIssuanceStages.Draft));
+    }
+
+    private async Task<ValuationRequestDto?> GetLatestClosedByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken)
+    {
+        var key = NormalizePropertyId(propertyId);
+        if (key == Guid.Empty) return null;
+
+        var row = await _db.ValuationRequests.AsNoTracking()
+            .Where(x => x.PropertyId == key && x.Status == ValuationRequestStatus.Done)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (row is null) return null;
+        var overlays = await LoadOverlaysAsync([row.Id], cancellationToken);
+        return ToDto(row, OverlayFor(overlays, row.Id));
     }
 
     public async Task<(ValuationRequestDto? Result, string? Error)> CreateAsync(
@@ -123,6 +151,11 @@ public sealed class ValuationRequestService : IValuationRequestService
         var existing = await GetOpenByPropertyAsync(request.PropId, cancellationToken);
         if (existing is not null) return (existing, null);
 
+        // A closed request is reopened in place (ReopenReport), never replaced: opening the
+        // evaluator window after the final issuance must not mint a second VR for the property.
+        var closed = await GetLatestClosedByPropertyAsync(request.PropId, cancellationToken);
+        if (closed is not null) return (closed, null);
+
         var (created, error) = await CreateAsync(request, cancellationToken);
         if (created is not null) return (created, null);
         if (error != "valuation_already_open") return (null, error);
@@ -137,6 +170,16 @@ public sealed class ValuationRequestService : IValuationRequestService
     {
         var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (row is null) return (null, "not_found");
+        if (row.Status == ValuationRequestStatus.Done) return (null, "already_submitted");
+
+        // The request closes only with the final issuance (deposit code + certificate): that step
+        // publishes the delivery event. This manual route survives one release for rolling deploys.
+        var finalIssued = await _db.ValuationReportIssuances.AsNoTracking()
+            .AnyAsync(
+                x => x.ValuationRequestId == id && x.SupersededAtUtc == null && x.FinalIssuedAtUtc != null,
+                cancellationToken);
+        if (!finalIssued) return (null, "final_issuance_required");
+
         if (row.SubmitReport(_time.UtcNow()) == ValuationRequestTransition.AlreadySubmitted)
             return (null, "already_submitted");
 
@@ -163,6 +206,14 @@ public sealed class ValuationRequestService : IValuationRequestService
  // The reason is checked before the transition so a missing reason leaves the row untouched.
         if (string.IsNullOrWhiteSpace(request.Reason) && row.Status == ValuationRequestStatus.Progress)
             return (null, "reason_required");
+
+        // An impediment is a valuation write too: closed once the package is handed over or deposited.
+        if (_freeze is not null && row.Status != ValuationRequestStatus.Done)
+        {
+            var frozenMessage = await _freeze.GetFrozenMessageAsync(row.Id, row.PropertyId, cancellationToken);
+            if (frozenMessage is not null)
+                return (null, $"{ValuationReportFreezeRules.LockedErrorPrefix}{frozenMessage}");
+        }
 
         switch (row.RecordImpediment(_time.UtcNow()))
         {
@@ -292,11 +343,13 @@ public sealed class ValuationRequestService : IValuationRequestService
         IssueDate = overlay.IssueAtUtc is { } at
             ? DateOnly.FromDateTime(at).ToString("yyyy-MM-dd")
             : null,
+        ReportStage = overlay.ReportStage,
     };
 
     private readonly record struct RequestMapOverlay(
         decimal? FinalOpinionValue,
-        DateTime? IssueAtUtc);
+        DateTime? IssueAtUtc,
+        string? ReportStage = null);
 
  /// <summary>
  /// The wire carries the property id as text in any Guid format or casing; the column is a

@@ -94,13 +94,3 @@ export function partyTaskRecallStatusLabel(
   if (status === "approved") return "وُوفّق على الاسترجاع";
   return "رُفض الاسترجاع";
 }
-
-/**
- * The recall reason is optional for the party, but the server requires a
- * non-empty return note to reopen engineering-survey and field-inspection work.
- */
-const DEFAULT_RECALL_RETURN_NOTE = "طلب استرجاع من الطرف";
-
-export function partyTaskRecallReturnNote(reason: string): string {
-  return reason.trim() || DEFAULT_RECALL_RETURN_NOTE;
-}

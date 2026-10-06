@@ -42,11 +42,24 @@ export type PartyTaskSubmissionDto = {
   fieldInspectionCompleted?: boolean | null;
   /** Property-appraisal: sibling inspection package specialist-accepted (server). */
   fieldInspectionAccepted?: boolean | null;
+  /** Property-appraisal: the specialist's study report is issued (server) — opens the appraiser's submit. */
+  studyReportIssued?: boolean | null;
   /**
    * Field-inspection: the server's fingerprint of the specialist-owned source data.
    * The inspector's device echoes it back with each save (spec §4.4).
    */
   sourceFingerprint?: string;
+  /**
+   * Property-appraisal: fingerprint of the inspector's data as the server sees it now. The appraiser
+   * acknowledges it by saving it into his own draft payload as `inspectorDataSeen`.
+   */
+  inspectorDataFingerprint?: string;
+  /**
+   * Property-appraisal: inspector-data groups that changed since the fingerprint the appraiser last
+   * acknowledged (`assetType, components, area, age, boundaries, location, photos, narrative,
+   * services`). Empty / absent on the first open (no baseline yet).
+   */
+  inspectorDataChangedGroups?: string[];
   /**
    * Payload key → writer / latest editor. Keys are top-level payload keys, or `parent.child`
    * for one level of nesting (e.g. `featureValues.assetSubject`).
@@ -160,6 +173,11 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
       if (raw === true || raw === false) return raw;
       return undefined;
     })(),
+    studyReportIssued: (() => {
+      const raw = row.studyReportIssued ?? row.StudyReportIssued;
+      if (raw === true || raw === false) return raw;
+      return undefined;
+    })(),
     fieldProvenance: normalizeProvenance(
       row.fieldProvenance ?? row.FieldProvenance,
     ),
@@ -167,6 +185,15 @@ function normalizeSubmissionDto(raw: unknown): PartyTaskSubmissionDto {
       (row.sourceFingerprint ?? row.SourceFingerprint ?? undefined) as
         | string
         | undefined,
+    inspectorDataFingerprint: (() => {
+      const raw = row.inspectorDataFingerprint ?? row.InspectorDataFingerprint;
+      return typeof raw === "string" && raw.trim() ? raw : undefined;
+    })(),
+    inspectorDataChangedGroups: (() => {
+      const raw = row.inspectorDataChangedGroups ?? row.InspectorDataChangedGroups;
+      if (!Array.isArray(raw)) return undefined;
+      return raw.filter((g): g is string => typeof g === "string" && g.trim() !== "");
+    })(),
   };
 }
 
@@ -313,6 +340,176 @@ export async function listPartyTaskSubmissions(
       ok: true,
       data: Array.isArray(raw) ? raw.map(normalizeSubmissionDto) : [],
     };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/* ─── Return the inspection with the affected parties (batch 2C, wire (d)) ─── */
+
+/** Inspector-data groups the specialist may send back. */
+export type ReturnImpactSection = { key: string; labelAr: string };
+
+export type ReturnImpactPartyKind = "property-appraisal" | "engineering-survey";
+export type ReturnImpactPackageStatus = "none" | "draft" | "submitted" | "reopened";
+
+export type ReturnImpactParty = {
+  taskId: string;
+  kind: ReturnImpactPartyKind | string;
+  assigneeName: string;
+  packageStatus: ReturnImpactPackageStatus | string;
+  /** The server's default for the chosen sections (pre-checked in the dialog). */
+  suggested: boolean;
+  suggestedBecause: string[];
+  /** What happens to this party if it is picked: its package is reopened, or it is only notified. */
+  willBe: "reopen" | "notify" | string;
+};
+
+export type ReturnImpactDto = {
+  sections: ReturnImpactSection[];
+  parties: ReturnImpactParty[];
+  studyReportIssued: boolean;
+  valuationClosed: boolean;
+};
+
+export type ReturnInspectionStudyReportDecision = "keep" | "reopen";
+
+export type ReturnInspectionRequest = {
+  returnNote: string;
+  sections: string[];
+  affectedTaskIds: string[];
+  /** Required by the server when the study report is already issued. */
+  studyReport: ReturnInspectionStudyReportDecision | null;
+  studyReportReopenReason?: string;
+};
+
+export type ReturnInspectionPartyOutcomeKind =
+  | "reopened"
+  | "notified"
+  | "already"
+  | "skipped_deposited"
+  | "skipped_no_assignee";
+
+export type ReturnInspectionPartyOutcome = {
+  taskId: string;
+  kind: string;
+  outcome: ReturnInspectionPartyOutcomeKind | string;
+};
+
+export type ReturnInspectionResultDto = {
+  inspection: PartyTaskSubmissionDto;
+  parties: ReturnInspectionPartyOutcome[];
+  studyReport: { issued: boolean; reopened: boolean };
+};
+
+function textOf(raw: unknown): string {
+  return typeof raw === "string" ? raw : "";
+}
+
+function listOf(raw: unknown): unknown[] {
+  return Array.isArray(raw) ? raw : [];
+}
+
+function normalizeReturnImpact(raw: unknown): ReturnImpactDto {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  return {
+    sections: listOf(row.sections ?? row.Sections).map((s) => {
+      const r = (s ?? {}) as Record<string, unknown>;
+      return {
+        key: textOf(r.key ?? r.Key),
+        labelAr: textOf(r.labelAr ?? r.LabelAr),
+      };
+    }),
+    parties: listOf(row.parties ?? row.Parties).map((p) => {
+      const r = (p ?? {}) as Record<string, unknown>;
+      return {
+        taskId: textOf(r.taskId ?? r.TaskId),
+        kind: textOf(r.kind ?? r.Kind),
+        assigneeName: textOf(r.assigneeName ?? r.AssigneeName),
+        packageStatus: textOf(r.packageStatus ?? r.PackageStatus) || "none",
+        suggested: (r.suggested ?? r.Suggested) === true,
+        suggestedBecause: listOf(r.suggestedBecause ?? r.SuggestedBecause).filter(
+          (x): x is string => typeof x === "string",
+        ),
+        willBe: textOf(r.willBe ?? r.WillBe) || "notify",
+      };
+    }),
+    studyReportIssued: (row.studyReportIssued ?? row.StudyReportIssued) === true,
+    valuationClosed: (row.valuationClosed ?? row.ValuationClosed) === true,
+  };
+}
+
+function normalizeReturnInspectionResult(raw: unknown): ReturnInspectionResultDto {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  const study = ((row.studyReport ?? row.StudyReport) ?? {}) as Record<string, unknown>;
+  return {
+    inspection: normalizeSubmissionDto(row.inspection ?? row.Inspection ?? {}),
+    parties: listOf(row.parties ?? row.Parties).map((p) => {
+      const r = (p ?? {}) as Record<string, unknown>;
+      return {
+        taskId: textOf(r.taskId ?? r.TaskId),
+        kind: textOf(r.kind ?? r.Kind),
+        outcome: textOf(r.outcome ?? r.Outcome),
+      };
+    }),
+    studyReport: {
+      issued: (study.issued ?? study.Issued) === true,
+      reopened: (study.reopened ?? study.Reopened) === true,
+    },
+  };
+}
+
+/** Who a return of these inspector-data sections would hit (read-only; nothing changes). */
+export async function getReturnImpact(
+  config: WorkOrdersApiConfig,
+  inspectionTaskId: string,
+  sections: string[],
+): Promise<ApiOk<ReturnImpactDto> | (ApiErr & { errors?: Record<string, string> })> {
+  const base = config.baseUrl ?? getApiBase();
+  const query = new URLSearchParams({ sections: sections.join(",") });
+  try {
+    const res = await fetch(
+      `${base}/api/party-task-submissions/${inspectionTaskId}/return-impact?${query}`,
+      { headers: headers(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: normalizeReturnImpact(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Returns the inspection to the inspector and reopens / notifies the picked parties in one transaction. */
+export async function returnInspectionPackage(
+  config: WorkOrdersApiConfig,
+  inspectionTaskId: string,
+  request: ReturnInspectionRequest,
+  idempotencyKey?: string,
+): Promise<
+  | ApiOk<ReturnInspectionResultDto>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/party-task-submissions/${inspectionTaskId}/return-inspection`,
+      {
+        method: "POST",
+        headers: headers(config.token, idempotencyKey),
+        body: JSON.stringify(request),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
+    if (res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: normalizeReturnInspectionResult(await res.json()) };
   } catch {
     return { ok: false, kind: "network" };
   }

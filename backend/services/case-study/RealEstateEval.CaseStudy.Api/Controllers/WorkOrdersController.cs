@@ -270,7 +270,11 @@ public class WorkOrdersController : ControllerBase
         [FromBody] WorkOrderPropertyDto property,
         CancellationToken cancellationToken)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanReceivePo, cancellationToken);
+        // Registering a property's initial data is the case specialist's, not the PO receiver's.
+        var forbidden = await ForbidUnlessAsync(
+            PoRoleMatrixRules.CanEditProperty,
+            cancellationToken,
+            "تسجيل البيانات الأولية للعقار متاح لأخصائي دراسة الحالة فقط");
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.AddPropertyAsync(

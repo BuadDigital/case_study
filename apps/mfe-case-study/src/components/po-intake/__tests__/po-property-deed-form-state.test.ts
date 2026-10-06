@@ -19,18 +19,13 @@ import type { PoPropertyIntake } from "../../../lib/app-data/po-intake-data";
 
 describe("enfathFormVisibility", () => {
   const base = {
-    fieldsMode: "all" as const,
     assignmentType: "تنفيذ" as const,
-    identifierType: "deed" as const,
     realEstateRegNumber: "",
     hasRequestNumber: undefined,
   };
 
-  it("shows the deed sections, delegation and other docs for a court deed in mode all", () => {
+  it("shows delegation and other docs for a court deed", () => {
     const v = enfathFormVisibility(base);
-    expect(v.isBourseId).toBe(false);
-    expect(v.showDeedFields).toBe(true);
-    expect(v.showBoursePrimary).toBe(false);
     expect(v.showExtended).toBe(true);
     expect(v.showCourt).toBe(true);
     expect(v.showRequestNumber).toBe(true);
@@ -49,39 +44,6 @@ describe("enfathFormVisibility", () => {
     });
     expect(v.showExtended).toBe(true);
     expect(v.showAssignmentDoc).toBe(false);
-  });
-
-  it("switches to the bourse primary sections for a bourse identifier", () => {
-    const v = enfathFormVisibility({ ...base, identifierType: "bourse_inquiry" });
-    expect(v.isBourseId).toBe(true);
-    expect(v.showBoursePrimary).toBe(true);
-    expect(v.showDeedFields).toBe(false);
-    expect(v.showDelegationDoc).toBe(false);
-  });
-
-  it("hides everything but the identifier in identifier-only mode", () => {
-    const v = enfathFormVisibility({ ...base, fieldsMode: "identifier-only" });
-    expect(v.isIdentifierOnly).toBe(true);
-    expect(v.showExtended).toBe(false);
-    expect(v.showDeedFields).toBe(false);
-    expect(v.showBoursePrimary).toBe(false);
-    expect(v.showDelegationDoc).toBe(false);
-    expect(v.showRegistryDoc).toBe(false);
-    expect(v.showOtherDocs).toBe(false);
-  });
-
-  it("keeps extended sections but no deed fields in bourse-inquiry-primary mode", () => {
-    const v = enfathFormVisibility({
-      ...base,
-      fieldsMode: "bourse-inquiry-primary",
-      identifierType: "bourse_inquiry",
-    });
-    expect(v.isPrimaryOnly).toBe(true);
-    expect(v.showExtended).toBe(true);
-    expect(v.showBoursePrimary).toBe(true);
-    expect(v.showDeedFields).toBe(false);
-    expect(v.showOtherDocs).toBe(true);
-    expect(v.showDelegationDoc).toBe(false);
   });
 
   it("shows the registry attachment once a real-estate registration number is entered", () => {
@@ -140,11 +102,9 @@ describe("texts and keys", () => {
     expect(derivedIdentifierType("9")).toBe("real_estate_reg");
   });
 
-  it("picks the stage note per path", () => {
-    expect(stageNoteText(true, false)).toContain("استعلام البورصة");
-    expect(stageNoteText(false, true)).toContain("يلزم رقم الصك");
-    expect(stageNoteText(false, true)).not.toContain("تجاوز");
-    expect(stageNoteText(false, false)).toContain("يلزم رقم الصك");
+  it("words the stage note around the deed or registry number", () => {
+    expect(stageNoteText()).toContain("يلزم رقم الصك");
+    expect(stageNoteText()).not.toContain("تجاوز");
   });
 
   it("marks the contacts section required or optional", () => {

@@ -105,5 +105,18 @@ public interface IFailureService
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lifts the engineering-survey freeze on every active failure of the property (idempotent:
+    /// already-lifted failures are left alone). The failures stay active. Case specialist only —
+    /// <paramref name="actorPrototypeRole"/> is judged by <c>PoRoleMatrixRules.CanLiftSurveyFreeze</c>
+    /// (error key <c>_</c> when denied; the API answers 403 before it gets here). Field errors:
+    /// <c>poNumber</c>, <c>propertyId</c>, <c>reason</c> (at least ten characters).
+    /// </summary>
+    Task<(LiftSurveyFreezeResultDto? Result, Dictionary<string, string>? Errors)> LiftSurveyFreezeAsync(
+        LiftSurveyFreezeRequest request,
+        string? actorUserId,
+        string? actorPrototypeRole,
+        CancellationToken cancellationToken = default);
+
     Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default);
 }

@@ -2,7 +2,7 @@
 
 /**
  * Step cards of `CaseStudyTaskWork`: Infath (primary data), bourse (with the
- * bourse-inquiry fast path and the deed-vitality flow) and distribution. Each
+ * deed-vitality flow) and distribution. Each
  * card `Pick`s what it needs from the `useMyTaskWorkWorkflow` bag and wires
  * the next step's chunk preload on hover/focus.
  */
@@ -26,7 +26,6 @@ type PropertyFormProps = Pick<
   | "fieldErrors"
   | "patchProperty"
   | "replaceProperty"
-  | "steps"
 >;
 
 export function MyTaskWorkEnfathStep({
@@ -38,7 +37,6 @@ export function MyTaskWorkEnfathStep({
   fieldErrors,
   patchProperty,
   replaceProperty,
-  steps,
 }: PropertyFormProps) {
   return (
     <RegistrationFormCard
@@ -61,11 +59,7 @@ export function MyTaskWorkEnfathStep({
           onReplaceProperty={replaceProperty}
           poNumber={task.poNumber}
           excludePoNumber={task.poNumber}
-          fieldsMode={
-            steps.bourseInquiryFastPath ? "bourse-inquiry-primary" : "all"
-          }
           showStageNote={layout !== "panel"}
-          hideBoursePathStatus={steps.bourseInquiryPanelOnly}
         />
       </div>
     </RegistrationFormCard>
@@ -75,52 +69,24 @@ export function MyTaskWorkEnfathStep({
 export function MyTaskWorkBourseStep({
   task,
   property,
-  assignmentType,
-  fieldPolicy,
   fieldErrors,
   patchProperty,
-  replaceProperty,
-  steps,
   deedVitality,
   setDeedVitality,
-  obstructionReason,
-  onObstructionReasonChange,
-  obstructionReasonError,
-}: Omit<PropertyFormProps, "layout"> &
-  Pick<
-    MyTaskWorkflow,
-    | "deedVitality"
-    | "setDeedVitality"
-    | "obstructionReason"
-    | "onObstructionReasonChange"
-    | "obstructionReasonError"
-  >) {
-  const { bourseInquiryFastPath } = steps;
+}: Pick<
+  MyTaskWorkflow,
+  | "task"
+  | "property"
+  | "fieldErrors"
+  | "patchProperty"
+  | "deedVitality"
+  | "setDeedVitality"
+>) {
   return (
     <RegistrationFormCard
       title="بيانات البورصة"
-      subtitle={
-        bourseInquiryFastPath
-          ? "استعلام البورصة — أكمل المعرف ثم بيانات البورصة"
-          : "يمكن تعديلها هنا أو من استعلام البورصة"
-      }
+      subtitle="يمكن تعديلها هنا أو من استعلام البورصة"
     >
-      {bourseInquiryFastPath ? (
-        <PoPropertyEnfathForm
-          property={property}
-          assignmentType={assignmentType}
-          fieldPolicy={fieldPolicy}
-          fieldErrors={fieldErrors}
-          onPatch={patchProperty}
-          onReplaceProperty={replaceProperty}
-          poNumber={task.poNumber}
-          excludePoNumber={task.poNumber}
-          fieldsMode="bourse-inquiry-primary"
-        />
-      ) : null}
-      {bourseInquiryFastPath ? (
-        <hr className="my-4 border-0 border-t border-border" aria-hidden />
-      ) : null}
       {/* Working the bourse step = next step is distribution — prefetch (bundle-preload). */}
       <div
         onMouseEnter={preloadDistributionPartiesForm}
@@ -134,9 +100,6 @@ export function MyTaskWorkBourseStep({
           showDeedVitalityFlow
           deedVitality={deedVitality}
           onDeedVitalityChange={setDeedVitality}
-          obstructionReason={obstructionReason}
-          onObstructionReasonChange={onObstructionReasonChange}
-          obstructionReasonError={obstructionReasonError}
         />
       </div>
     </RegistrationFormCard>

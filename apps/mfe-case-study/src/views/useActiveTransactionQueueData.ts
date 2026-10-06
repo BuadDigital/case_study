@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { getAuthSession } from "@platform/auth-client";
@@ -165,9 +166,11 @@ export function useActiveTransactionQueueData({
   // Any change to the filters or the search resets to page 1 — page 3 of the old
   // query is never page 3 of the new one.
   const serverQueryKey = JSON.stringify(queueServerQuery);
-  useEffect(() => {
+  const [pagedQueryKey, setPagedQueryKey] = useState(serverQueryKey);
+  if (pagedQueryKey !== serverQueryKey) {
+    setPagedQueryKey(serverQueryKey);
     setPage(1);
-  }, [serverQueryKey]);
+  }
   const listQuery = useWorkflowTasksFilteredQuery(queueServerQuery, {
     live: true,
     enabled: !paged,
@@ -245,6 +248,12 @@ export function useActiveTransactionQueueData({
     [listed],
   );
 
+  // The appraiser queue's finer labels (draft sent / approved) come from the valuation service.
+  const draftStateVersion = useReportDraftStates(
+    listed.map((t) => t.propertyId),
+    isPropertyAppraisalTable,
+  );
+
   const selectedTask = useMemo((): WorkflowTask | null => {
     if (!selectedId) return null;
     return listed.find((t) => t.id === selectedId) ?? null;
@@ -257,6 +266,8 @@ export function useActiveTransactionQueueData({
         inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
         partySubmission: getCachedPartySubmission(task.id),
       }),
+    // `getCachedPartySubmission` reads a cache; the counter is its invalidation key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [config, inspectionWorkspaceByTaskId, submissionCacheGen],
   );
 
@@ -326,6 +337,7 @@ export function useActiveTransactionQueueData({
         search: deferredSearch,
         statusFilter,
         tasks: tasks ?? EMPTY_TASKS,
+        draftStateVersion,
       });
     }
     // No search pass: this queue pages, and the server already matched `q`
@@ -343,6 +355,7 @@ export function useActiveTransactionQueueData({
     deferredSearch,
     statusFilter,
     typeFilter,
+    draftStateVersion,
   ]);
 
   const filteredListed = useMemo(() => {
@@ -384,12 +397,16 @@ export function useActiveTransactionQueueData({
     infoRolesMatrix,
   });
 
-  useEffect(() => {
+  // Moving to another queue page starts from clean filters — adjusted during
+  // render so the new page never paints the previous page’s filters first.
+  const [filtersForPage, setFiltersForPage] = useState(config.pageId);
+  if (filtersForPage !== config.pageId) {
+    setFiltersForPage(config.pageId);
     setStatusFilter("");
     setTypeFilter("");
     setSearch("");
     setShowCompleted(false);
-  }, [config.pageId]);
+  }
 
   /*
    * Pager numbers straight off the envelope. `totalCount` is the actor's total

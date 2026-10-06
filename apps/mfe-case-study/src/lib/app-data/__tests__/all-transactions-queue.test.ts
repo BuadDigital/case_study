@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAllTransactionsRowMoreItems,
   collapseAllTransactionsToLatestPhase,
   formatAllTransactionsDeedWithPhase,
   type AllTransactionsQueueRowMeta,
@@ -150,3 +151,33 @@ describe("collapseAllTransactionsToLatestPhase", () => {
     expect(collapsed).toHaveLength(2);
   });
 });
+
+describe("buildAllTransactionsRowMoreItems reopen", () => {
+  const build = (t: WorkflowTask, viewerRole: Parameters<typeof buildAllTransactionsRowMoreItems>[0]["viewerRole"]) =>
+    buildAllTransactionsRowMoreItems({
+      task: t,
+      openTask: () => {},
+      router: { push: () => {} },
+      viewerRole,
+      onReopenCompleted: () => {},
+    }).map((item) => item.id);
+
+  it("offers the report reopen to the case specialist for a completed case-study parent", () => {
+    const parent = task({ id: "p", kind: "case-study-property", phase: "done", status: "completed" });
+    expect(build(parent, "case-specialist")).toContain("reopen-case-study-report");
+    expect(build(parent, "case-specialist")).not.toContain("reopen-completed");
+  });
+
+  it("hides the generic reopen for a case-study parent from the supervisor", () => {
+    const parent = task({ id: "p", kind: "case-study-property", phase: "done", status: "completed" });
+    const ids = build(parent, "section-supervisor");
+    expect(ids).not.toContain("reopen-completed");
+    expect(ids).not.toContain("reopen-case-study-report");
+  });
+
+  it("keeps the generic reopen for other kinds", () => {
+    const child = task({ id: "c", kind: "field-inspection", phase: "done", status: "completed" });
+    expect(build(child, "section-supervisor")).toContain("reopen-completed");
+  });
+});
+

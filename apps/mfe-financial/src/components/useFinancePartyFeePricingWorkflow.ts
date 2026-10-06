@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@platform/ui-kit";
+import { useToast, confirmAction } from "@platform/ui-kit";
 import { useCapability } from "@platform/app-shared/components/Can";
 import type {
   PartyFeePricingCategory,
@@ -318,7 +318,13 @@ export function useFinancePartyFeePricingWorkflow() {
 
   const removeTable = async () => {
     if (!draft.id || tables.length <= 1) return;
-    if (!window.confirm(`حذف جدول «${draft.name}»؟ لا يمكن التراجع.`)) return;
+    const confirmed = await confirmAction({
+      title: "حذف جدول التسعير",
+      message: `حذف جدول «${draft.name}»؟ لا يمكن التراجع.`,
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       await deletePartyFeePricingTable(draft.id);

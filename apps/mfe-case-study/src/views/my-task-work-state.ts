@@ -7,13 +7,14 @@
 import type { RoleId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
+  DEED_STATUS_ACTIVE,
+  DEED_STATUS_INACTIVE,
   formatPoDisplay,
-  isBourseInquiryIdentifier,
   propertySkipsBourse,
   type BourseDeedVitality,
   type PoPropertyIntake,
-  type PropertyIdentifierType,
 } from "../lib/app-data/po-intake-data";
+import { canEditProperty as canEditPropertyRole } from "../lib/app-data/po-roles";
 import { taskDisplayPropertyLabel } from "../lib/app-data/tasks-model";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 
@@ -29,16 +30,11 @@ export const CONFIRM_DISTRIBUTION_ERROR =
 export const DISTRIBUTION_SAVE_ERROR = "تعذّر حفظ التوزيع — حاول مرة أخرى";
 
 export const ENFATH_SAVE_ACTION = "حفظ";
-export const BOURSE_OBSTRUCTION_ACTION = "إرسال للمشرف — إدارة التعذرات";
 export const BOURSE_SAVE_ACTION = "حفظ والانتقال للتوزيع";
 export const DISTRIBUTION_CONFIRM_ACTION = "تأكيد التوزيع وإرسال المهام";
 
 /** Which step cards render for the effective phase (phase override applied). */
 export type TaskWorkSteps = {
-  /** Bourse-inquiry identifier while still on «enfath» — both forms in one step. */
-  bourseInquiryFastPath: boolean;
-  /** Primary-data panel: bourse-inquiry fields live on the «Bourse inquiry» tab only. */
-  bourseInquiryPanelOnly: boolean;
   showEnfathStep: boolean;
   showBourseStep: boolean;
   showDistribution: boolean;
@@ -47,21 +43,10 @@ export type TaskWorkSteps = {
 
 export function resolveTaskWorkSteps(
   effectivePhase: WorkflowTask["phase"],
-  layout: TaskWorkLayout,
-  identifierType: PropertyIdentifierType,
 ): TaskWorkSteps {
-  const bourseInquiryFastPath =
-    effectivePhase === "enfath" && isBourseInquiryIdentifier(identifierType);
-  const bourseInquiryPanelOnly = layout === "panel" && bourseInquiryFastPath;
   return {
-    bourseInquiryFastPath,
-    bourseInquiryPanelOnly,
-    showEnfathStep:
-      effectivePhase === "enfath" &&
-      (!bourseInquiryFastPath || bourseInquiryPanelOnly),
-    showBourseStep:
-      (effectivePhase === "bourse" || bourseInquiryFastPath) &&
-      !bourseInquiryPanelOnly,
+    showEnfathStep: effectivePhase === "enfath",
+    showBourseStep: effectivePhase === "bourse",
     showDistribution: effectivePhase === "distribution",
     showCaseStudy: effectivePhase === "case-study",
   };
@@ -77,25 +62,18 @@ export function activeTaskWorkStep(steps: TaskWorkSteps): TaskWorkStep | null {
   return null;
 }
 
-/** «غير فعال» on the bourse step routes the save to the supervisor instead. */
-export function isBourseObstructionPath(
-  steps: TaskWorkSteps,
-  deedVitality: BourseDeedVitality | null,
-): boolean {
-  return steps.showBourseStep && deedVitality === "inactive";
+/** The `deedStatus` the bourse save records for the specialist's «حالة الصك» pick. */
+export function bourseDeedStatus(vitality: BourseDeedVitality | null): string {
+  return vitality === "inactive" ? DEED_STATUS_INACTIVE : DEED_STATUS_ACTIVE;
 }
 
-export function taskWorkSaveLabel(
-  steps: TaskWorkSteps,
-  deedVitality: BourseDeedVitality | null,
-): string {
+/** An inactive deed no longer forces a تعذّر: the bourse save is the same either way. */
+export function taskWorkSaveLabel(steps: TaskWorkSteps): string {
   switch (activeTaskWorkStep(steps)) {
     case "enfath":
       return ENFATH_SAVE_ACTION;
     case "bourse":
-      return isBourseObstructionPath(steps, deedVitality)
-        ? BOURSE_OBSTRUCTION_ACTION
-        : BOURSE_SAVE_ACTION;
+      return BOURSE_SAVE_ACTION;
     case "distribution":
       return DISTRIBUTION_CONFIRM_ACTION;
     default:
@@ -201,15 +179,32 @@ export function taskWorkTitles(
   };
 }
 
+/**
+ * Whether the viewer may work the step shown. Distribution keeps its wider
+ * audience; the Infath and bourse writes (and the advance after them) are the
+ * case specialist's alone, as the server enforces.
+ */
+export function canWorkTaskStep(
+  steps: Pick<TaskWorkSteps, "showEnfathStep" | "showBourseStep">,
+  flags: { isSpecialist: boolean; canEditProperty: boolean },
+): boolean {
+  const writesProperty = steps.showEnfathStep || steps.showBourseStep;
+  return flags.isSpecialist && (!writesProperty || flags.canEditProperty);
+}
+
 export function taskWorkRoleFlags(role: RoleId): {
   isSupervisor: boolean;
   isSpecialist: boolean;
+  /** Infath / bourse writes — mirrors `PoRoleMatrixRules.CanEditProperty`. */
+  canEditProperty: boolean;
   /** Name stamped on a raised failure. */
   failureSpecialist: string;
 } {
   return {
-    isSupervisor: role === "section-supervisor" || role === "cdo",
+    // The supervisor, the general manager and the CDO resolve an obstruction (hand the task back to the specialist).
+    isSupervisor: role === "section-supervisor" || role === "cdo" || role === "general-manager",
     isSpecialist: role === "case-specialist" || role === "cdo",
+    canEditProperty: canEditPropertyRole(role),
     failureSpecialist: ROLES[role]?.name ?? "أخصائي",
   };
 }

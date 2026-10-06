@@ -27,12 +27,8 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>Real-estate registration date — registered-title path (yyyy-MM-dd).</summary>
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
- /// <summary>JSON array of {name, sharePct} — Owners and Their Shares from the dead transcription.</summary>
+ /// <summary>JSON array of {name} — the owners from the deed transcription (their count decides the ownership type).</summary>
     public string? DeedOwnersJson { get; set; }
- /// <summary>Manual Ownership Type override — see <see cref="OwnershipTypes"/>. Null = derived.</summary>
-    public string? OwnershipType { get; set; }
- /// <summary>True when the appraiser overrode the derived ownership type (e.g. investment).</summary>
-    public bool OwnershipTypeIsManual { get; set; }
  /// <summary>yes / no — property restrictions (bourse stage).</summary>
     public string? RestrictionsPresent { get; set; }
  /// <summary>mortgaged / seized / suspended / other — comma-separated when multiple.</summary>
@@ -169,6 +165,25 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>Q-9 (Second End): Upload the Transaction over Enfaz — Complete Delivery after Deposit Certificate.</summary>
     public DateTime? EnfazHandoverAtUtc { get; set; }
     public string? EnfazHandoverByUserId { get; set; }
+
+ /// <summary>
+ /// True once the transaction was recorded as handed over to Enfaz. A handed-over transaction is
+ /// frozen against reopening the case-study report until the specialist takes it back.
+ /// </summary>
+    public bool IsHandedOverToEnfaz => EnfazHandoverAtUtc is not null;
+
+ /// <summary>
+ /// Clears the Enfaz handover stamp (the specialist re-opens work on a transaction that was
+ /// already handed over). Idempotent; returns whether a stamp was actually cleared.
+ /// </summary>
+    public bool ClearEnfazHandover()
+    {
+        if (EnfazHandoverAtUtc is null && EnfazHandoverByUserId is null) return false;
+
+        EnfazHandoverAtUtc = null;
+        EnfazHandoverByUserId = null;
+        return true;
+    }
 
  /// <summary>Soft-removed from transaction queues; still listed on the work-order property list.</summary>
     public bool IsRemoved { get; set; }

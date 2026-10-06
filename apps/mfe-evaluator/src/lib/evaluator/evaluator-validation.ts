@@ -4,7 +4,6 @@ import {
   resolveFirstErrorTarget,
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
-import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { parseEvaluatorAmount } from "./value-estimation";
 
@@ -48,7 +47,6 @@ const EVALUATOR_ERROR_TARGETS: readonly FormErrorTarget[] = [
   { key: "evaluator_price", targetId: "final-inf-total" },
   { key: "forced_sale_discount", targetId: "final-inf-discount" },
   { key: "specialist_details", targetId: "val-specialist-details" },
-  { key: "esg_impact_notes", targetId: "val-esg" },
 ] as const;
 
 const RETRO_DATE_TARGET_IDS = new Set([
@@ -173,13 +171,8 @@ export function validateEvaluatorSubmission(input: {
       "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم».";
   }
 
-  if (
-    reportChoices &&
-    esgGroupsMissingImpactDescription(reportChoices).length > 0
-  ) {
-    errors.esg_impact_notes =
-      "عند اختيار «يوجد تأثير» في ESG يجب كتابة وصف الأثر.";
-  }
+  // ESG and the print attachments belong to the case specialist (his report draft): the appraiser's own
+  // copy is no longer required at submit.
 
   return errors;
 }

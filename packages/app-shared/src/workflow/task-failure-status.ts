@@ -1,3 +1,4 @@
+import { isPartyTaskDone } from "./task-done";
 import type { WorkflowTask } from "./task-types";
 
 /** Queue pill for a task whose property has a raised failure — same wording for every party. */
@@ -12,8 +13,8 @@ export const FAILURE_OBSTRUCTED_BADGE = {
  * the obstruction phase. A finished task keeps its own status: the failure no longer holds it.
  */
 export function isTaskFailureObstructed(
-  task: Pick<WorkflowTask, "status" | "phase" | "propertyFailureBlocked">,
+  task: Pick<WorkflowTask, "kind" | "status" | "phase" | "propertyFailureBlocked">,
 ): boolean {
-  if (task.status === "completed" || task.phase === "done") return false;
+  if (isPartyTaskDone(task)) return false;
   return task.propertyFailureBlocked === true || task.phase === "obstruction";
 }

@@ -296,6 +296,52 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
     expect(byKey.survey.badge).toBe("معطّل");
   });
 
+  it("refines the appraiser's badge once his package is handed over", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      appraisalPackageStatus: "submitted",
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: false,
+        engineeringOfficeId: "",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+    const badgeFor = (appraisalInput?: {
+      packageSubmitted: boolean;
+      draft?: { status: "none" | "preparing" | "sent" | "approved"; reportStage: "draft" | "deposit_issued" | "final_issued" };
+    }) =>
+      buildPropertyDetailTimelinePartyRows({
+        task: caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal]) ?? null,
+        allTasks: [appraisal],
+        staffUsers: staff,
+        appraisal: appraisalInput,
+      }).find((r) => r.key === "appraisal")?.badge;
+
+    expect(badgeFor(undefined)).toBe("قيد التنفيذ");
+    expect(badgeFor({ packageSubmitted: false })).toBe("قيد التنفيذ");
+    expect(badgeFor({ packageSubmitted: true })).toBe("بانتظار المسودة");
+    expect(badgeFor({ packageSubmitted: true, draft: { status: "preparing", reportStage: "draft" } })).toBe(
+      "بانتظار المسودة",
+    );
+    expect(badgeFor({ packageSubmitted: true, draft: { status: "sent", reportStage: "draft" } })).toBe(
+      "بانتظار اعتماد المقيّم",
+    );
+    expect(
+      badgeFor({ packageSubmitted: true, draft: { status: "approved", reportStage: "deposit_issued" } }),
+    ).toBe("معتمد — بانتظار الإيداع");
+  });
+
   it("reads the mirrored survey flag when the sibling task is not visible", () => {
     // The appraiser's /api/workflow-tasks returns property-appraisal rows only,
     // so the survey row's state can only come from the server-mirrored flag.

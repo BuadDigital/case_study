@@ -46,6 +46,10 @@ export type WorkflowTaskDto = {
   fieldInspectionCompleted?: boolean | null;
   /** Property-appraisal: sibling inspection package specialist-accepted (server). */
   fieldInspectionAccepted?: boolean | null;
+  /** Property-appraisal / case-study-property: the specialist's study report is issued (server). */
+  studyReportIssued?: boolean | null;
+  /** Property-appraisal / case-study-property: draft | submitted | reopened (server); null without a package. */
+  appraisalPackageStatus?: string | null;
   /** Completed sibling field-inspection task id (server; for loading facts without list visibility). */
   fieldInspectionTaskId?: string | null;
   /** Property-appraisal: sibling engineering-survey completed (server). */
@@ -362,6 +366,12 @@ export async function patchWorkflowTask(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
+    // A refusal (e.g. completing / reopening a case-study task by hand: «يُنجز الإصدار وإعادة الفتح
+    // من تقرير دراسة الحالة») carries its Arabic text in field error `_` — keep it for the caller.
+    if (res.status === 400 || res.status === 409 || res.status === 422) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return { ok: false, kind: "validation", errors, message: errors._ };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
   } catch {

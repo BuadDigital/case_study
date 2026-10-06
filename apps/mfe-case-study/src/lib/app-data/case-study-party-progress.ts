@@ -9,17 +9,17 @@ import {
 } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
-  type CaseStudyFormAnswer,
+  type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
-} from "./case-study-form-data";
+} from "./case-study-report-data";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
-import type { CaseStudyFormDraft } from "./case-study-form-model";
+import type { CaseStudyReportDraft } from "./case-study-report-model";
 import {
-  loadCaseStudyFormDraft,
-  loadCaseStudyFormDraftsForParents,
-  loadPartyCaseStudyFormDraft,
-  type CaseStudyFormDraftsForParent,
-} from "./case-study-form-reads";
+  loadCaseStudyReportDraft,
+  loadCaseStudyReportDraftsForParents,
+  loadPartyCaseStudyReportDraft,
+  type CaseStudyReportDraftsForParent,
+} from "./case-study-report-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
 
 const FORM_SECTIONS: CaseStudyQuestionSection[] = [
@@ -56,7 +56,6 @@ export type ComputePartyCaseStudyProgressOptions = {
 export const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
   "specA",
   "insp",
-  "gov",
   "val",
   "eng",
   "sup",
@@ -96,7 +95,7 @@ export function computePartyCaseStudyProgress(
   answersByParty: Partial<
     Record<
       CaseStudyInfoPartyId,
-      Record<string, CaseStudyFormAnswer | null | undefined>
+      Record<string, CaseStudyReportAnswer | null | undefined>
     >
   >,
   options: ComputePartyCaseStudyProgressOptions = {},
@@ -136,7 +135,7 @@ export function computePartyCaseStudyProgress(
 export type PartyCaseStudyAnswersByParty = Partial<
   Record<
     CaseStudyInfoPartyId,
-    Record<string, CaseStudyFormAnswer | null | undefined>
+    Record<string, CaseStudyReportAnswer | null | undefined>
   >
 >;
 
@@ -154,9 +153,9 @@ function partyChildrenOf(
 
 /** Fold the parent's draft and each child's party draft into answers per party. */
 function foldPartyAnswers(
-  parentDraft: CaseStudyFormDraft | null | undefined,
+  parentDraft: CaseStudyReportDraft | null | undefined,
   children: PartyChild[],
-  childDraftFor: (child: WorkflowTask) => CaseStudyFormDraft | null | undefined,
+  childDraftFor: (child: WorkflowTask) => CaseStudyReportDraft | null | undefined,
 ): PartyCaseStudyAnswersByParty {
   const byParty: PartyCaseStudyAnswersByParty = {};
   byParty.specA = parentDraft?.answers ?? {};
@@ -183,10 +182,10 @@ export async function loadPartyCaseStudyAnswersByParty(
 ): Promise<PartyCaseStudyAnswersByParty> {
   const children = partyChildrenOf(parentTask, tasks);
   const [parentDraft, ...childDrafts] = await Promise.all([
-    loadCaseStudyFormDraft(parentTask.id),
+    loadCaseStudyReportDraft(parentTask.id),
     ...children.map(({ child, partyId }) =>
       partyId && partyId !== "specA"
-        ? loadPartyCaseStudyFormDraft(child.id)
+        ? loadPartyCaseStudyReportDraft(child.id)
         : null,
     ),
   ]);
@@ -199,14 +198,14 @@ export async function loadPartyCaseStudyAnswersByParty(
 }
 
 /**
- * Pure projection of one batch row (`loadCaseStudyFormDraftsForParents`) onto the
+ * Pure projection of one batch row (`loadCaseStudyReportDraftsForParents`) onto the
  * party map. `drafts` undefined means the parent was not in the batch — not visible
  * or not found — and reads as "no answers", exactly like a `null` single-item draft.
  */
 export function partyCaseStudyAnswersFromBatch(
   parentTask: WorkflowTask,
   tasks: WorkflowTask[],
-  drafts: CaseStudyFormDraftsForParent | undefined,
+  drafts: CaseStudyReportDraftsForParent | undefined,
 ): PartyCaseStudyAnswersByParty {
   return foldPartyAnswers(
     drafts?.parent,
@@ -220,7 +219,7 @@ export async function loadPartyCaseStudyAnswersForParents(
   parentTasks: readonly WorkflowTask[],
   tasks: WorkflowTask[],
 ): Promise<Map<string, PartyCaseStudyAnswersByParty>> {
-  const drafts = await loadCaseStudyFormDraftsForParents(
+  const drafts = await loadCaseStudyReportDraftsForParents(
     parentTasks.map((parent) => parent.id),
   );
   return new Map(

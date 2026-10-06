@@ -40,13 +40,18 @@ export function FeeDiscountModal({
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open || !row) return;
-    setAmount(String(row.supervisorDiscountSar || 0));
-    setReason(row.discountReason ?? "");
-    setError(false);
-    setBusy(false);
-  }, [open, row]);
+  // Opening on another row seeds that row’s saved discount.
+  const openedRow = open ? row : null;
+  const [seededRow, setSeededRow] = useState(openedRow);
+  if (seededRow !== openedRow) {
+    setSeededRow(openedRow);
+    if (openedRow) {
+      setAmount(String(openedRow.supervisorDiscountSar || 0));
+      setReason(openedRow.discountReason ?? "");
+      setError(false);
+      setBusy(false);
+    }
+  }
 
   const net = useMemo(() => {
     if (!row) return 0;

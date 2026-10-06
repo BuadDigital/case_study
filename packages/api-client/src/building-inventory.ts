@@ -36,10 +36,19 @@ export type BuildingInventoryDto = {
   lines: BuildingInventoryLineDto[];
 };
 
+/**
+ * Full replace: lines missing from the request are deleted, lines carrying an `id` are
+ * updated in place, lines without one are created. Writers: the case study staff, and the
+ * field inspector assigned to this property (before he submits; a reopened inspection is
+ * open again). After he submitted the server answers with the field error `_`.
+ */
 export type SaveBuildingInventoryRequest = {
   /** Ignored by the server — derived from whether any line is listed. */
   hasStructuresToValue?: "" | "yes" | "no" | string;
-  /** Omit to keep the saved text. */
+  /**
+   * Omit to keep the saved text. The text is the case specialist's: the server ignores it
+   * when the inspector writes, so the inspector's screen never shows or edits it.
+   */
   componentsText?: string;
   lines: BuildingInventoryLineDto[];
 };
@@ -55,6 +64,10 @@ function url(base: string, poNumber: string, propertyId: string): string {
   return `${base}/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/building-inventory`;
 }
 
+/**
+ * GET the table. Readable by the case study staff and by the assigned field inspector; the
+ * field inspector's session keeps a copy on the device (`building-inventory-offline`).
+ */
 export async function getBuildingInventory(
   config: WorkOrdersApiConfig,
   poNumber: string,
@@ -74,6 +87,12 @@ export async function getBuildingInventory(
   }
 }
 
+/**
+ * PUT the table (see `SaveBuildingInventoryRequest`). A 4xx the server will never accept
+ * on retry (400/409/422 — e.g. «المعاينة أُرسلت…» under `errors._`) is `validation`; 403 is
+ * `forbidden`; a 5xx is `server` — so the offline replay can drop the first two and retry
+ * the last.
+ */
 export async function saveBuildingInventory(
   config: WorkOrdersApiConfig,
   poNumber: string,
@@ -88,10 +107,13 @@ export async function saveBuildingInventory(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
+    if (res.status === 403) {
+      return { ok: false, kind: "forbidden", errors: await parseFieldErrorsFromResponse(res) };
+    }
     if (!res.ok) {
       const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "server", errors };
+      const rejected = res.status === 400 || res.status === 409 || res.status === 422;
+      return { ok: false, kind: rejected ? "validation" : "server", errors };
     }
     return { ok: true, data: (await res.json()) as BuildingInventoryDto };
   } catch {

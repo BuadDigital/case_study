@@ -177,12 +177,10 @@ export type PoPropertyIntake = {
  /** traditional | registered_title ("" = use suggestion). */
   deedKind: string;
   suggestedDeedKind: string;
- /** JSON array [{name, sharePct}] (flat-draft representation). */
+ /** JSON array [{name}] (flat-draft representation). */
   ownersJson: string;
-  /** Effective ownership type from the API ("" until loaded). */
+  /** Ownership type derived by the API from the owners count ("" until loaded). */
   ownershipType: string;
-  suggestedOwnershipType: string;
-  ownershipTypeIsManual: boolean;
   restrictionsPresent: string;
   restrictionType: string;
   restrictionOtherReason: string;
@@ -312,8 +310,6 @@ export function emptyProperty(): PoPropertyIntake {
     suggestedDeedKind: "",
     ownersJson: "",
     ownershipType: "",
-    suggestedOwnershipType: "",
-    ownershipTypeIsManual: false,
     restrictionsPresent: "",
     restrictionType: "",
     restrictionOtherReason: "",

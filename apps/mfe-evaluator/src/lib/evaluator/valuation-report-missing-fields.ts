@@ -12,7 +12,13 @@ import {
   type ValuationReportLiveFill,
 } from "./valuation-report-fill-model";
 
-export type ReportFieldSource = "intake" | "inspector" | "survey" | "appraiser" | "org";
+export type ReportFieldSource =
+  | "intake"
+  | "specialist"
+  | "inspector"
+  | "survey"
+  | "appraiser"
+  | "org";
 /** Evaluator window tabs that complete the appraiser's own report fields. */
 export type ReportAppraiserTab = "basic" | "market" | "cost" | "final" | "review";
 /** Organization-settings tabs that hold report values. */
@@ -20,6 +26,9 @@ export type ReportSettingsSection = "company" | "evaluator" | "report";
 
 export const REPORT_FIELD_SOURCES: Record<ReportFieldSource, { label: string }> = {
   intake: { label: "البيانات الأولية" },
+  // Report text the case specialist writes («مكونات العقار»); notified through the work
+  // order's specialist, the same recipient the server resolves for the intake source.
+  specialist: { label: "أخصائي دراسة الحالة" },
   inspector: { label: "المعاين الميداني" },
   survey: { label: "المكتب الهندسي" },
   appraiser: { label: "المقيّم" },
@@ -41,6 +50,7 @@ type FieldOrigin = {
 };
 
 const INTAKE: FieldOrigin = { source: "intake" };
+const SPECIALIST: FieldOrigin = { source: "specialist" };
 const INSPECTOR: FieldOrigin = { source: "inspector" };
 const SURVEY: FieldOrigin = { source: "survey" };
 const BASIC: FieldOrigin = { source: "appraiser", tab: "basic" };
@@ -81,7 +91,8 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
   "6": {
     "نوع العقار": INSPECTOR,
     "حالة العقار": INSPECTOR,
-    "وصف العقار": INSPECTOR,
+    // «مكونات العقار» — since 2026-09-27 the specialist's text, not the inspector's.
+    "وصف العقار": SPECIALIST,
     "نوع الملكية": INTAKE,
     "هل يوجد منقولات": INSPECTOR,
     "وصف المنقولات": INSPECTOR,

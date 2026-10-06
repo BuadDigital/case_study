@@ -98,9 +98,12 @@ export function InsDualCalendarDateField({
     () => parsed?.kind ?? "gregorian",
   );
 
-  useEffect(() => {
+  // A typed value decides which calendar the panel opens on.
+  const [parsedForValue, setParsedForValue] = useState(value);
+  if (parsedForValue !== value) {
+    setParsedForValue(value);
     if (parsed) setPanelCalendar(parsed.kind);
-  }, [value, parsed]);
+  }
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return;

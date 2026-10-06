@@ -12,13 +12,15 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 /// + Raise Enfaz) and derive the state via <see cref="TransactionStateRules"/> — the screen displays from
 /// Waiting for who?
 /// </summary>
-public sealed class TransactionStateService(
+public sealed partial class TransactionStateService(
     ITransactionStateRepository db,
     IValuationRequestService valuationRequests,
     IPropertyTimelineService timeline,
     TimeProvider? time = null,
     IAuditLogWriter? audit = null,
-    IAuditLogAppend? auditLog = null)
+    IAuditLogAppend? auditLog = null,
+    ICaseStudyReportService? caseStudyReports = null,
+    IValuationReportReopenCommands? valuationReopen = null)
     : ITransactionStateService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -47,13 +49,10 @@ public sealed class TransactionStateService(
 
         var (input, hasSurvey, property) = facts.Value;
         if (input.EnfazHandedOver)
-            return (null, "المعاملة مرفوعة على إنفاذ سلفاً");
-        if (!TransactionStateRules.AllowsEnfazHandover(input))
-        {
-            return (null,
-                "رفع إنفاذ لا يقع قبل شهادة الإيداع (ق-6) واكتمال كل الأطراف — "
-                + "راجع شبكة الحالة");
-        }
+            return (null, TransactionStateRules.AlreadyHandedOverAr);
+        var blockReasons = TransactionStateRules.EnfazHandoverBlockReasonsAr(input);
+        if (blockReasons.Count > 0)
+            return (null, EnfazHandoverBlockedAr(blockReasons));
 
         property.EnfazHandoverAtUtc = _time.UtcNow();
         property.EnfazHandoverByUserId = recordedByUserId;
@@ -131,42 +130,29 @@ public sealed class TransactionStateService(
             .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty)
             .OrderByDescending(t => t.CreatedAtUtc)
             .FirstOrDefault();
+        var appraisalTask = TransactionStateInputBuilder.LatestTask(tasks, WorkflowTaskKind.PropertyAppraisal);
 
-        TransactionStateRules.PartyFacts FactsFor(WorkflowTaskKind kind)
-        {
-            var task = tasks
-                .Where(t => t.Kind == kind && t.Status != WorkflowTaskStatus.Cancelled)
-                .OrderByDescending(t => t.CreatedAtUtc)
-                .FirstOrDefault();
-            return new TransactionStateRules.PartyFacts(
-                Assigned: task?.AssigneeId is not null || task is not null,
-                Completed: task?.Status == WorkflowTaskStatus.Completed);
-        }
+        // Handed over to the specialist but not yet completed (the task completes at the final issuance).
+        var appraiserSubmitted = appraisalTask is { Status: not WorkflowTaskStatus.Completed }
+            && await db.IsPartyPackageSubmittedAsync(appraisalTask.Id, cancellationToken);
+        var studyReportIssued = parent is not null
+            && await db.IsCaseStudyReportIssuedAsync(parent.Id, cancellationToken);
 
-        var surveyTask = tasks.Any(t =>
-            t.Kind == WorkflowTaskKind.EngineeringSurvey
-            && t.Status != WorkflowTaskStatus.Cancelled);
+        var input = TransactionStateInputBuilder.Build(
+            tasks,
+            enfazHandedOver: property.EnfazHandoverAtUtc is not null,
+            studyReportIssued: studyReportIssued,
+            appraiserSubmitted: appraiserSubmitted);
 
         // Q-6: Valuation Report closure = the appraiser completed and no Valuation Request remains open for the property.
-        var appraiser = FactsFor(WorkflowTaskKind.PropertyAppraisal);
-        var openValuation = appraiser.Completed
-            ? await valuationRequests.GetOpenByPropertyAsync(
-                propertyId.ToString(), cancellationToken)
-            : null;
-        var valuationClosed = appraiser.Completed && openValuation is null;
+        if (input.Appraiser.Completed)
+        {
+            var openValuation = await valuationRequests.GetOpenByPropertyAsync(
+                propertyId.ToString(), cancellationToken);
+            input = input with { ValuationReportClosed = openValuation is null };
+        }
 
-        var input = new TransactionStateRules.Input(
-            ParentPhase: (parent?.Phase ?? WorkflowTaskPhase.Enfath).ToDbValue(),
-            Inspector: FactsFor(WorkflowTaskKind.FieldInspection),
-            Appraiser: appraiser,
-            EngineeringOffice: surveyTask
-                ? FactsFor(WorkflowTaskKind.EngineeringSurvey)
-                : null,
-            CaseSpecialist: new TransactionStateRules.PartyFacts(
-                Assigned: parent is not null,
-                Completed: parent?.Status == WorkflowTaskStatus.Completed),
-            ValuationReportClosed: valuationClosed,
-            EnfazHandedOver: property.EnfazHandoverAtUtc is not null);
+        var surveyTask = input.EngineeringOffice is not null;
 
         return (input, surveyTask, property);
     }
@@ -176,7 +162,8 @@ public sealed class TransactionStateService(
         Guid propertyId,
         TransactionStateRules.Input input,
         bool hasSurvey,
-        WorkOrderProperty property)
+        WorkOrderProperty property,
+        IReadOnlyList<string>? returnNoticesAr = null)
     {
         var result = TransactionStateRules.Evaluate(input);
         return new TransactionStateDto
@@ -209,6 +196,11 @@ public sealed class TransactionStateService(
             OverallStatusLabelAr = TransactionStateRules.Statuses.LabelAr(result.OverallStatus),
             WaitingSummaryAr = result.WaitingSummaryAr,
             AllowsEnfazHandover = TransactionStateRules.AllowsEnfazHandover(input),
+            StudyReportIssued = input.StudyReportIssued,
+            EnfazBlockReasonsAr = input.EnfazHandedOver
+                ? []
+                : TransactionStateRules.EnfazHandoverBlockReasonsAr(input),
+            EnfazReturnNoticesAr = returnNoticesAr ?? [],
             EnfazHandoverAtUtc = property.EnfazHandoverAtUtc?.ToString("o"),
             HandoverPackageAr = TransactionStateRules.HandoverPackageAr(hasSurvey),
         };

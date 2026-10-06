@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -9,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@platform/ui-kit";
+import { cn, useIsHydrated } from "@platform/ui-kit";
 
 const TOOLTIP_GAP = 8;
 const VIEWPORT_MARGIN = 8;
@@ -62,12 +61,8 @@ export function HoverPortalCard({
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsHydrated();
   const [cardStyle, setCardStyle] = useState<CSSProperties>({});
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current || !cardRef.current) return;

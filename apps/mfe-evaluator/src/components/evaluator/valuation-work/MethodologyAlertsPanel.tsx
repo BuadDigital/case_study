@@ -52,9 +52,12 @@ export function MethodologyAlertsPanel({
     () => alertOverridesFromRecon(recon),
   );
 
-  useEffect(() => {
+  // A reloaded reconciliation replaces the local overrides.
+  const [syncedRecon, setSyncedRecon] = useState(recon);
+  if (syncedRecon !== recon) {
+    setSyncedRecon(recon);
     setAlertOverrides(alertOverridesFromRecon(recon));
-  }, [recon]);
+  }
 
   const triggeredAlerts = gates.methodologyAlerts.filter(
     (a) => a.triggered && isMarketMethodologyAlert(a.number),

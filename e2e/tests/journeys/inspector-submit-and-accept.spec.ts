@@ -21,6 +21,7 @@ import {
   api,
   apiLogin,
   apiOk,
+  completeSpecialistComponents,
   createDistributedTransaction,
   deleteWorkOrder,
   tinyPngBuffer,
@@ -205,6 +206,7 @@ test.describe("Field inspector: submit → specialist accept", () => {
     ).toBe(200);
 
     // ── 5. specialist accepts and sees the timeline entry ───────────────────
+    await completeSpecialistComponents(osamaToken, tx.poNumber, tx.propertyId);
     const accept = await api(
       osamaToken,
       "POST",

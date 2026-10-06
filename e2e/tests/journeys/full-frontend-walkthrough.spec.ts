@@ -35,6 +35,7 @@ import {
   apiLogin,
   apiOk,
   clearPoIntakeDraft,
+  completeSpecialistComponents,
   deleteWorkOrder,
   distributeParties,
   tinyPdfBuffer,
@@ -290,7 +291,8 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
 
   test("3 · specialist accepts the inspection package", async ({ page }) => {
     test.slow();
-    // API: the «معاينة العقار» tab mounts no accept control.
+    // API: the «معاينة العقار» tab mounts no accept control (accepting needs the specialist's components first).
+    await completeSpecialistComponents(osamaToken, poNumber, propertyId);
     const accept = await api(
       osamaToken,
       "POST",

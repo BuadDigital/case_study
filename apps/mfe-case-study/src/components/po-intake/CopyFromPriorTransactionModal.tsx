@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  AppModal,
-  Button,
-  cn,
-  Note,
-  useToast,
-} from "@platform/ui-kit";
+import { AppModal, Button, cn, Note, useToast, confirmAction } from "@platform/ui-kit";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
@@ -181,9 +175,12 @@ function CopyFromPriorTransactionForm({
     }
 
     if (selectedTarget.hasExistingData) {
-      const ok = window.confirm(
-        `استبدال بيانات «${selectedTarget.label}» بالبيانات المنسوخة؟`,
-      );
+      const ok = await confirmAction({
+        title: "استبدال البيانات",
+        message: `استبدال بيانات «${selectedTarget.label}» بالبيانات المنسوخة؟`,
+        confirmLabel: "استبدال",
+        danger: true,
+      });
       if (!ok) return;
     }
 

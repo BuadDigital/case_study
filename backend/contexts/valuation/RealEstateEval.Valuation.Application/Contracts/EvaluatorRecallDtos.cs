@@ -32,3 +32,21 @@ public class RejectEvaluatorRecallRequest
     [MaxLength(4000)]
     public string? SpecialistNote { get; init; }
 }
+
+/// <summary>Body of <c>PATCH /api/evaluator-recalls/{taskId}/decide</c>.</summary>
+public class DecideEvaluatorRecallRequest
+{
+    /// <summary>approve | reject — validated by the service (plain attributes leak raw English).</summary>
+    public string? Decision { get; init; }
+    [MaxLength(4000)]
+    public string? Note { get; init; }
+}
+
+public static class EvaluatorRecallDecisions
+{
+    public const string Approve = "approve";
+    public const string Reject = "reject";
+
+    /// <summary>Error key for a transport failure toward Case Study — the controller answers 503.</summary>
+    public const string UpstreamErrorKey = "upstream";
+}

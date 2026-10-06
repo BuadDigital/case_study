@@ -43,10 +43,13 @@ export function ReceiveEnvelopeModal({
   const { execute: executeReceive, loading: receiving } = useIdempotentAction(
     useCallback(
       async (idempotencyKey: string) => {
-        if (!pending) throw new Error("لا توجد مناولة بانتظار التأكيد");
-        return confirmEnvelopeHandoff(env.id, pending.id, idempotencyKey);
+        // Read the pending handoff again here: the dialog may have been open while
+        // the envelope changed under it.
+        const target = findPendingHandoff(env);
+        if (!target) throw new Error("لا توجد مناولة بانتظار التأكيد");
+        return confirmEnvelopeHandoff(env.id, target.id, idempotencyKey);
       },
-      [env.id, pending?.id],
+      [env],
     ),
   );
 

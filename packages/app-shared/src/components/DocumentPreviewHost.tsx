@@ -93,7 +93,7 @@ export function DocumentPreviewHost() {
   const loaded = useResolvedUrl(request);
 
   useEffect(() => {
-    if (!request || request.kind !== "image") return;
+    if (!request || (request.kind !== "image" && request.kind !== "pdf")) return;
     const prevBody = document.body.style.overflow;
     const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -124,6 +124,10 @@ export function DocumentPreviewHost() {
 
   if (request.kind === "image") {
     return <ImagePreviewLightbox request={request} loaded={loaded} />;
+  }
+
+  if (request.kind === "pdf") {
+    return <PdfPreviewLightbox request={request} loaded={loaded} />;
   }
 
   return (
@@ -168,14 +172,6 @@ export function DocumentPreviewHost() {
           <span className="text-[13px] text-danger-text">
             تعذّر تحميل المستند — جرّب التنزيل.
           </span>
-        ) : request.kind === "pdf" ? (
-          <iframe
-            title={request.fileName}
-            // Chromium/Edge open the thumbnail sidebar by default. navpanes=0
-            // keeps that gray pane closed so only the page is shown.
-            src={pdfPreviewFrameSrc(loaded.url)}
-            className="h-full w-full border-0 bg-surface"
-          />
         ) : (
           <span className="text-[13px] text-text-3">
             لا تتوفر معاينة لهذا النوع من الملفات — استخدم التنزيل.
@@ -183,6 +179,71 @@ export function DocumentPreviewHost() {
         )}
       </div>
     </AppModal>
+  );
+}
+
+/**
+ * A PDF fills the whole window like the photo lightbox — no white dialog frame around it.
+ * A slim dark bar on top carries the title, download and close; the viewer takes the rest.
+ */
+function PdfPreviewLightbox({
+  request,
+  loaded,
+}: {
+  request: DocumentPreviewRequest;
+  loaded: Loaded;
+}) {
+  const caption = request.title || request.fileName;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={caption}
+      className="fixed inset-0 z-[var(--z-modal)] flex flex-col bg-[rgba(8,16,28,0.92)]"
+    >
+      <div className="flex h-12 shrink-0 items-center gap-3 px-3">
+        <button
+          type="button"
+          aria-label="إغلاق"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-xl text-white hover:bg-black/70"
+          onClick={closeDocumentPreview}
+        >
+          ×
+        </button>
+        <button
+          type="button"
+          className="rounded-full bg-black/50 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-black/70"
+          onClick={() =>
+            void downloadDocumentFile({
+              fileName: request.fileName,
+              dataUrl: request.dataUrl,
+              attachmentId: request.attachmentId,
+            })
+          }
+        >
+          تنزيل
+        </button>
+        <p className="m-0 min-w-0 flex-1 truncate text-end text-[13px] font-semibold text-white/90">
+          {caption}
+        </p>
+      </div>
+      {loaded.status === "ready" ? (
+        <iframe
+          title={request.fileName}
+          // Chromium/Edge open the thumbnail sidebar by default. navpanes=0
+          // keeps that gray pane closed so only the page is shown.
+          src={pdfPreviewFrameSrc(loaded.url)}
+          className="min-h-0 w-full flex-1 border-0"
+        />
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-[13px] text-white/80">
+          {loaded.status === "error"
+            ? "تعذّر تحميل المستند — جرّب التنزيل."
+            : "جاري التحميل…"}
+        </div>
+      )}
+    </div>
   );
 }
 

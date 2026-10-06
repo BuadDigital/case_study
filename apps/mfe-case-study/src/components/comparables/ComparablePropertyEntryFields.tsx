@@ -142,16 +142,21 @@ export function ComparablePropertyEntryFields({
     [subjectPin],
   );
 
-  useEffect(() => {
+  // Clearing the coordinates drops the pin and any place lookup with it.
+  const coordinateKey = `${draft.latitude}|${draft.longitude}`;
+  const [prevCoordinateKey, setPrevCoordinateKey] = useState(coordinateKey);
+  if (prevCoordinateKey !== coordinateKey) {
+    setPrevCoordinateKey(coordinateKey);
     if (!comparableLocationPinned(draft)) {
       setMapPinned(false);
       setPlaceLookup("idle");
     }
-  }, [draft.latitude, draft.longitude]);
+  }
 
+  const locationConfirmed = mapPinned && comparableLocationPinned(draft);
   useEffect(() => {
-    onLocationConfirmedChange?.(mapPinned && comparableLocationPinned(draft));
-  }, [mapPinned, draft.latitude, draft.longitude, onLocationConfirmedChange]);
+    onLocationConfirmedChange?.(locationConfirmed);
+  }, [locationConfirmed, onLocationConfirmedChange]);
 
   function setKind(kind: ComparableKind) {
     onChange({

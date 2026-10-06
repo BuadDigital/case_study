@@ -17,6 +17,8 @@ public static class ValuationIssuanceGateCodes
     public const string RequiredAttachments = "required_attachments";
     /// <summary>Every «مستند ذو قيمة» the appraiser used is approved by the case specialist.</summary>
     public const string ValueDocuments = "value_documents";
+    /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
+    public const string StudyReportIssued = "study_report_issued";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -128,6 +130,23 @@ public static class ValuationIssuanceGateRules
             ok,
             IsHard: true,
             DetailAr: detail);
+    }
+
+    /// <summary>
+    /// A valuation is built on the specialist's case-study report, so it cannot be issued before that
+    /// report is. A defensive mirror of the appraiser's submit gate (hard, no bypass).
+    /// <paramref name="studyReportIssued"/> null = the case-study side did not say (older host during a
+    /// rolling deploy) — not a block; false = no issued report.
+    /// </summary>
+    public static ValuationIssuanceGateCheck StudyReportIssued(bool? studyReportIssued)
+    {
+        var ok = studyReportIssued != false;
+        return new ValuationIssuanceGateCheck(
+            ValuationIssuanceGateCodes.StudyReportIssued,
+            "تقرير دراسة الحالة صادر",
+            ok,
+            IsHard: true,
+            DetailAr: ok ? null : "لم يُصدر الأخصائي تقرير دراسة الحالة بعد — لا يصدر التقييم قبله");
     }
 
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>

@@ -6,6 +6,15 @@ import {
   canRaisePropertyFailure,
   canReceivePo,
   canRedistributeParties,
+  canRevertTaskPhase,
+  canIssueCaseStudyReport,
+  canReopenCaseStudyReport,
+  canDecideAppraisalRecall,
+  canHandOverToEnfaz,
+  canReturnFromEnfaz,
+  canLiftSurveyFreeze,
+  canPrepareReportDraft,
+  canReopenValuationReport,
 } from "../po-roles";
 
 describe("po-roles", () => {
@@ -25,11 +34,45 @@ describe("po-roles", () => {
     expect(canEditProperty("section-supervisor")).toBe(false);
   });
 
-  it("CDO receives full PO powers via super-admin", () => {
-    expect(canReceivePo("cdo")).toBe(true);
+  it("CDO keeps header/delete/property-edit powers but cannot receive a PO", () => {
+    expect(canReceivePo("cdo")).toBe(false);
     expect(canEditPoHeader("cdo")).toBe(true);
     expect(canEditProperty("cdo")).toBe(true);
     expect(canDeletePo("cdo")).toBe(true);
+    expect(canRaisePropertyFailure("cdo")).toBe(true);
+  });
+
+  it("initial data and bourse belong to the case specialist and the system admin (CDO)", () => {
+    expect(canEditProperty("case-specialist")).toBe(true);
+    expect(canEditProperty("section-supervisor")).toBe(false);
+    expect(canEditProperty("general-manager")).toBe(false);
+    expect(canEditProperty("cdo")).toBe(true);
+  });
+
+  it("the specialist, the CDO and the supervisor revert a task phase", () => {
+    expect(canRevertTaskPhase("section-supervisor")).toBe(true);
+    expect(canRevertTaskPhase("case-specialist")).toBe(true);
+    expect(canRevertTaskPhase("cdo")).toBe(true);
+    expect(canRevertTaskPhase("general-manager")).toBe(false);
+  });
+
+  it("the specialist decisions on a study belong to the case specialist only", () => {
+    for (const can of [
+      canIssueCaseStudyReport,
+      canReopenCaseStudyReport,
+      canDecideAppraisalRecall,
+      canHandOverToEnfaz,
+      canReturnFromEnfaz,
+      canLiftSurveyFreeze,
+      canPrepareReportDraft,
+      canReopenValuationReport,
+    ]) {
+      expect(can("case-specialist")).toBe(true);
+      expect(can("section-supervisor")).toBe(false);
+      expect(can("general-manager")).toBe(false);
+      expect(can("cdo")).toBe(false);
+      expect(can("real-estate-appraiser")).toBe(false);
+    }
   });
 
   it("party roles cannot receive PO", () => {

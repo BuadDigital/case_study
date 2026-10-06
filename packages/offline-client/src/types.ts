@@ -7,6 +7,11 @@ export type OutboxKind =
   | "operations-task-patch"
   | "operations-task-comment"
   | "property-court-access"
+  /**
+   * The inspector's «جدول الحصر» (PUT building-inventory): a full replace of the property's
+   * lines, one waiting row per property (the last write wins), replayed before the submit.
+   */
+  | "building-inventory-save"
   | "key-envelope-create"
   | "key-envelope-assignment-add"
   | "key-envelope-assignment-confirm"
@@ -45,6 +50,16 @@ export type OfflineOutboxItem = {
   fileName?: string;
   contentType?: string;
   sizeBytes?: number;
+};
+
+/** `payloadJson` of a `building-inventory-save` row; `targetId` is the property id. */
+export type BuildingInventoryOutboxPayload = {
+  poNumber: string;
+  propertyId: string;
+  /** Inspection task the table belongs to, when known — the submit of that task waits for it. */
+  taskId?: string;
+  /** The PUT body as sent online (`componentsText` + the full list of lines). */
+  body: Record<string, unknown>;
 };
 
 export type OfflineDraftRecord = {

@@ -13,6 +13,7 @@ import {
   cn,
   formControlClassName,
   formControlErrorClassName,
+  useIsHydrated,
 } from "@platform/ui-kit";
 import type {
   FailureProblemType,
@@ -72,15 +73,11 @@ export function FailureTypeMenuSelect({
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsHydrated();
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
 
   const flat = groups.flatMap((g) => g.types);
   const selected = flat.find((t) => t.id === value);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;

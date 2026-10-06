@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationCostApproachDto } from "@platform/api-client";
 import {
+  appendNewInventoryLines,
+  applyInventoryAreaChanges,
   buildCostNarrative,
+  costInventoryDrift,
+  isUntouchedCostSeed,
+  reseedUntouchedCostLines,
   costApproachDerived,
   costFieldsFromDto,
   costLinesFromInventory,
@@ -216,5 +221,113 @@ describe("costLinesFromInventory", () => {
     ]);
     expect(annex.itemKey).toBe("upper_annex");
     expect(other.itemKey).toBe("custom");
+  });
+});
+
+describe("costInventoryDrift — early cost seeds follow the components table", () => {
+  const inv = (id: string, areaSqm: number, label = `بند ${id}`) => ({
+    id,
+    label,
+    structureKind: "floor",
+    itemKey: "first_floor",
+    areaSqm,
+  });
+
+  it("reports no drift for a draft that matches the inventory", () => {
+    const inventory = [inv("a", 100), inv("b", 50)];
+    const lines = costLinesFromInventory(inventory);
+    expect(costInventoryDrift(lines, inventory)).toEqual({
+      added: [],
+      removed: [],
+      changedArea: [],
+      hasDrift: false,
+    });
+  });
+
+  it("finds added, removed and changed-area lines", () => {
+    const lines = costLinesFromInventory([inv("a", 100), inv("b", 50), inv("c", 30)]);
+    const drift = costInventoryDrift(lines, [inv("a", 120), inv("c", 30), inv("d", 10)]);
+    expect(drift.added.map((l) => l.id)).toEqual(["d"]);
+    expect(drift.removed.map((l) => l.sourceInventoryLineId)).toEqual(["b"]);
+    expect(drift.changedArea).toMatchObject([
+      { inventoryLineId: "a", fromSqm: 100, toSqm: 120 },
+    ]);
+    expect(drift.hasDrift).toBe(true);
+  });
+
+  it("ignores lines the appraiser added himself and inventory rows without an id", () => {
+    const lines = [
+      ...costLinesFromInventory([inv("a", 100)]),
+      { ...costLinesFromInventory([inv("x", 5)])[0]!, sourceInventoryLineId: null },
+    ];
+    const drift = costInventoryDrift(lines, [inv("a", 100), { label: "بلا معرّف", areaSqm: 9 }]);
+    expect(drift.hasDrift).toBe(false);
+  });
+
+  it("an area difference below half a hundredth is not a change", () => {
+    const lines = costLinesFromInventory([inv("a", 100)]);
+    expect(costInventoryDrift(lines, [inv("a", 100.004)]).hasDrift).toBe(false);
+  });
+
+  it("appending new rows and updating areas never touch an entered unitCostSar", () => {
+    const seeded = costLinesFromInventory([inv("a", 100), inv("b", 50)]);
+    const entered = seeded.map((l) => ({ ...l, unitCostSar: 1800, rationale: "من مسح السوق" }));
+    const inventory = [inv("a", 120), inv("b", 50), inv("c", 40)];
+    const drift = costInventoryDrift(entered, inventory);
+
+    const withNew = appendNewInventoryLines(entered, drift.added);
+    expect(withNew).toHaveLength(3);
+    expect(withNew[2]).toMatchObject({
+      sourceInventoryLineId: "c",
+      areaSqm: 40,
+      unitCostSar: 0,
+      sortOrder: 2,
+    });
+    expect(withNew.slice(0, 2)).toEqual(entered);
+
+    const updated = applyInventoryAreaChanges(withNew, drift.changedArea);
+    expect(updated[0]).toMatchObject({
+      areaSqm: 120,
+      unitCostSar: 1800,
+      rationale: "من مسح السوق",
+    });
+    expect(updated[1]).toEqual(entered[1]);
+    expect(costInventoryDrift(updated, inventory).hasDrift).toBe(false);
+  });
+
+  it("appending nothing returns the same lines", () => {
+    const lines = costLinesFromInventory([inv("a", 1)]);
+    expect(appendNewInventoryLines(lines, [])).toEqual(lines);
+    expect(applyInventoryAreaChanges(lines, [])).toEqual(lines);
+  });
+});
+
+describe("untouched cost seed", () => {
+  const inv = (id: string, areaSqm: number) => ({
+    id,
+    label: id,
+    structureKind: "floor",
+    areaSqm,
+  });
+
+  it("is an untouched seed only while every line is from the inventory with no cost, note or exclusion", () => {
+    const lines = costLinesFromInventory([inv("a", 10), inv("b", 20)]);
+    expect(isUntouchedCostSeed(lines)).toBe(true);
+    expect(isUntouchedCostSeed([])).toBe(false);
+    expect(isUntouchedCostSeed([{ ...lines[0]!, unitCostSar: 1 }, lines[1]!])).toBe(false);
+    expect(isUntouchedCostSeed([{ ...lines[0]!, rationale: "ملاحظة" }, lines[1]!])).toBe(false);
+    expect(isUntouchedCostSeed([{ ...lines[0]!, isIncluded: false }, lines[1]!])).toBe(false);
+    expect(
+      isUntouchedCostSeed([{ ...lines[0]!, sourceInventoryLineId: null }, lines[1]!]),
+    ).toBe(false);
+  });
+
+  it("re-seeds from the inventory keeping the ids of lines that still match", () => {
+    const lines = costLinesFromInventory([inv("a", 10), inv("b", 20)]);
+    const next = reseedUntouchedCostLines(lines, [inv("a", 15), inv("c", 5)]);
+    expect(next.map((l) => l.sourceInventoryLineId)).toEqual(["a", "c"]);
+    expect(next[0]).toMatchObject({ id: lines[0]!.id, areaSqm: 15 });
+    expect(next[1]!.id).not.toBe(lines[1]!.id);
+    expect(next.every((l) => l.unitCostSar === 0)).toBe(true);
   });
 });

@@ -10,22 +10,37 @@ using RealEstateEval.Shared.Contracts;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
-public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
+public sealed partial class EvaluatorRecallsService : IEvaluatorRecallsService
 {
     private const int MaxListRows = 500;
 
+    /// <summary>Error key for a transport failure toward Case Study — the controller answers 503.</summary>
+    public const string UpstreamErrorKey = EvaluatorRecallDecisions.UpstreamErrorKey;
+
+    public const string DepositedRecallMessageAr =
+        "اعتمد المقيّم التقرير وجُمّد — يسحب اعتماده أولاً؛ وبعد تسجيل رمز الإيداع يُفتح بنسخة جديدة";
+
+    public const string ReopenUnavailableMessageAr =
+        "تعذّر إعادة فتح تقييم العقار الآن — لم يُسجَّل القرار ويمكن إعادة المحاولة";
+
     private readonly ValuationDbContext _db;
+    private readonly ICaseStudyRecallCommands _caseStudy;
     private readonly TimeProvider _time;
     private readonly IValuationEventPublisher? _events;
+    private readonly IValuationReportIssuanceService? _issuance;
 
     public EvaluatorRecallsService(
         ValuationDbContext db,
+        ICaseStudyRecallCommands caseStudy,
         TimeProvider? time = null,
-        IValuationEventPublisher? events = null)
+        IValuationEventPublisher? events = null,
+        IValuationReportIssuanceService? issuance = null)
     {
         _db = db;
+        _caseStudy = caseStudy;
         _time = time ?? TimeProvider.System;
         _events = events;
+        _issuance = issuance;
     }
 
     public async Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
@@ -101,64 +116,6 @@ public sealed class EvaluatorRecallsService : IEvaluatorRecallsService
         await _db.SaveChangesAsync(cancellationToken);
 
         return (ToDto(existing), null);
-    }
-
-    public async Task<EvaluatorRecallDto?> ApproveAsync(
-        string taskId,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryParseId(taskId, out var id)) return null;
-        var row = await _db.EvaluatorRecallRecords
-            .FirstOrDefaultAsync(x => x.TaskId == id, cancellationToken);
-        if (row is null) return null;
-        if (row.Status != EvaluatorRecallStatus.Pending) return ToDto(row);
-
-        row.Status = EvaluatorRecallStatus.Approved;
-        row.ResolvedAtUtc = _time.UtcNow();
-
-        // Approval hands the report back to the appraiser — the same shape as any other
-        // «إعادة للتصحيح», so it carries the reason the recall was asked for.
-        await NotifyAsync(
-            row.PropertyId,
-            ValuationNoticeAudiences.Appraiser,
-            title: "قُبل استرجاع التقرير",
-            summary: "وافق الأخصائي على استرجاع تقرير التقييم — التقرير عاد إليك للتعديل",
-            note: row.Reason,
-            href: $"/property-appraisal/{Uri.EscapeDataString(row.TaskId.ToString("D"))}",
-            cancellationToken);
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return ToDto(row);
-    }
-
-    public async Task<EvaluatorRecallDto?> RejectAsync(
-        string taskId,
-        RejectEvaluatorRecallRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TryParseId(taskId, out var id)) return null;
-        var row = await _db.EvaluatorRecallRecords
-            .FirstOrDefaultAsync(x => x.TaskId == id, cancellationToken);
-        if (row is null) return null;
-        if (row.Status != EvaluatorRecallStatus.Pending) return ToDto(row);
-
-        row.Status = EvaluatorRecallStatus.Rejected;
-        row.SpecialistNote = request.SpecialistNote?.Trim() ?? "";
-        row.ResolvedAtUtc = _time.UtcNow();
-
-        await NotifyAsync(
-            row.PropertyId,
-            ValuationNoticeAudiences.Appraiser,
-            title: "رُفض استرجاع التقرير",
-            summary: "رفض الأخصائي طلب استرجاع تقرير التقييم",
-            note: row.SpecialistNote,
-            href: $"/property-appraisal/{Uri.EscapeDataString(row.TaskId.ToString("D"))}",
-            cancellationToken);
-
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return ToDto(row);
     }
 
     /// <summary>

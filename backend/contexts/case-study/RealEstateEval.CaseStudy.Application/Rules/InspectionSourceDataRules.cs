@@ -47,16 +47,14 @@ public static class InspectionSourceDataRules
         return Convert.ToHexString(hash, 0, 16).ToLowerInvariant();
     }
 
-    /// <summary>Owners JSON compared by content, not by formatting or key order.</summary>
+    /// <summary>Owners JSON compared by the owner names, not by formatting or key order.</summary>
     private static string NormalizeOwners(string? ownersJson)
     {
         if (string.IsNullOrWhiteSpace(ownersJson)) return "";
         try
         {
-            var owners = JsonSerializer.Deserialize<List<OwnerShare>>(ownersJson, JsonOpts) ?? [];
-            return string.Join(
-                ";",
-                owners.Select(o => $"{o.Name?.Trim()}={o.SharePct?.GetRawText().Trim('"')}"));
+            var owners = JsonSerializer.Deserialize<List<OwnerName>>(ownersJson, JsonOpts) ?? [];
+            return string.Join(";", owners.Select(o => o.Name?.Trim()));
         }
         catch (JsonException)
         {
@@ -64,11 +62,9 @@ public static class InspectionSourceDataRules
         }
     }
 
-    private sealed class OwnerShare
+    private sealed class OwnerName
     {
         public string? Name { get; set; }
-        /// <summary>Number or string in stored data — compared by its raw text.</summary>
-        public JsonElement? SharePct { get; set; }
     }
 
     /// <summary>

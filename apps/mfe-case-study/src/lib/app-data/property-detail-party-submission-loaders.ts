@@ -38,11 +38,6 @@ function parseEvaluatorPayload(
     appraiserAddress: String(raw.appraiserAddress ?? ""),
     appraiserPhone: String(raw.appraiserPhone ?? ""),
     reportIssueDate: String(raw.reportIssueDate ?? ""),
-    depositCode: String(raw.depositCode ?? ""),
-    depositCertificateFileName:
-      typeof raw.depositCertificateFileName === "string"
-        ? raw.depositCertificateFileName
-        : null,
     independenceDeclared: Boolean(raw.independenceDeclared),
     reportWorkers: Array.isArray(raw.reportWorkers)
       ? (raw.reportWorkers as EvaluatorSubmissionSnapshot["reportWorkers"])

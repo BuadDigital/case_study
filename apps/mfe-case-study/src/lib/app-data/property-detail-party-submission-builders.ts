@@ -1,18 +1,18 @@
 import {
-  CASE_STUDY_FORM_STEPS,
+  CASE_STUDY_REPORT_STEPS,
   CASE_STUDY_TABLE_HEADERS,
-  caseStudyFormSummary,
-  type CaseStudyFormAnswer,
+  caseStudyReportSummary,
+  type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
-} from "./case-study-form-data";
+} from "./case-study-report-data";
 import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   questionLabelFromCatalog,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 import {
-  type CaseStudyFormDraft,
-  type CaseStudyFormStatus,
-} from "./case-study-form-model";
+  type CaseStudyReportDraft,
+  type CaseStudyReportStatus,
+} from "./case-study-report-model";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   FAILURE_OBSTRUCTED_LABEL,
@@ -79,8 +79,8 @@ const ROLE_CHILD_KIND: Partial<
   appraisal: "property-appraisal",
 };
 
-export function formStatusLabel(status: CaseStudyFormStatus): string {
-  if (status === "submitted") return "مُقدَّم";
+export function formStatusLabel(status: CaseStudyReportStatus): string {
+  if (status === "issued") return "صادر";
   if (status === "draft") return "مسودة";
   return "جديد";
 }
@@ -97,7 +97,7 @@ export function workflowStatusLabel(
 
 export function answerDisplay(
   section: CaseStudyQuestionSection,
-  value: CaseStudyFormAnswer,
+  value: CaseStudyReportAnswer,
 ): string {
   const headers = CASE_STUDY_TABLE_HEADERS[section];
   return value === "A" ? headers.colA : headers.colB;
@@ -113,8 +113,8 @@ export function questionLabelFromKey(key: string): string | null {
 }
 
 export function answeredRows(
-  answers: Record<string, CaseStudyFormAnswer | null | undefined>,
-  provenance?: CaseStudyFormDraft["answerProvenance"],
+  answers: Record<string, CaseStudyReportAnswer | null | undefined>,
+  provenance?: CaseStudyReportDraft["answerProvenance"],
   taskId?: string | null,
 ): PartyAnswerRow[] {
   const rows: PartyAnswerRow[] = [];
@@ -138,7 +138,7 @@ export function answeredRows(
   return rows;
 }
 
-export function nonEmptyRemarks(draft: CaseStudyFormDraft): { label: string; value: string }[] {
+export function nonEmptyRemarks(draft: CaseStudyReportDraft): { label: string; value: string }[] {
   const defs = [
     { label: "ملاحظات الصك", value: draft.deedRemarks },
     { label: "ملاحظات الرفع المساحي", value: draft.surveyRemarks },
@@ -204,7 +204,7 @@ export function checklistAnswerLabel(value: boolean | null): string {
 export function evaluatorChecklistRows(
   checklist: EvaluatorChecklist,
   matrix?: CaseStudyInfoRolesMatrix,
-  caseStudyAnswers?: Record<string, CaseStudyFormAnswer | null | undefined>,
+  caseStudyAnswers?: Record<string, CaseStudyReportAnswer | null | undefined>,
 ): PartyAnswerRow[] {
   const labels: Record<EvaluatorChecklistBooleanKey, string> = {
     q_plan_match: "هل رقم المخطط مطابق للصك؟",
@@ -486,10 +486,10 @@ export function formatPriceDisplay(raw: string): string {
 
 export function buildFromFormDraft(
   roleKey: PropertyDetailPartyRoleKey,
-  draft: CaseStudyFormDraft,
+  draft: CaseStudyReportDraft,
   childTask?: WorkflowTask | null,
 ): PropertyDetailPartySubmission {
-  const summary = caseStudyFormSummary(draft.answers);
+  const summary = caseStudyReportSummary(draft.answers);
   const answers = answeredRows(
     draft.answers,
     draft.answerProvenance,
@@ -497,12 +497,12 @@ export function buildFromFormDraft(
   );
   const remarks = nonEmptyRemarks(draft);
   const step =
-    CASE_STUDY_FORM_STEPS[draft.currentStep]?.label ??
-    CASE_STUDY_FORM_STEPS[0]?.label ??
+    CASE_STUDY_REPORT_STEPS[draft.currentStep]?.label ??
+    CASE_STUDY_REPORT_STEPS[0]?.label ??
     "";
 
   const fields: PropertyDetailPartySubmission["fields"] = [
-    { label: "حالة النموذج", value: formStatusLabel(draft.status) },
+    { label: "حالة التقرير", value: formStatusLabel(draft.status) },
     { label: "الإجابات المكتملة", value: `${summary.answered} / ${summary.total}` },
   ];
 
@@ -572,7 +572,7 @@ export function buildFromFormDraft(
       ? workflowStatusLabel(childTask.status, isTaskFailureObstructed(childTask))
       : undefined,
     submittedAtUtc:
-      draft.status === "submitted" ? draft.savedAtUtc?.trim() || null : null,
+      draft.status === "issued" ? draft.savedAtUtc?.trim() || null : null,
     fields,
     answers,
     remarks,
@@ -582,7 +582,7 @@ export function buildFromFormDraft(
 export function buildFromEvaluator(
   submission: EvaluatorSubmissionSnapshot,
   matrix?: CaseStudyInfoRolesMatrix,
-  caseStudyAnswers?: Record<string, CaseStudyFormAnswer | null | undefined>,
+  caseStudyAnswers?: Record<string, CaseStudyReportAnswer | null | undefined>,
 ): PropertyDetailPartySubmission {
   const answers = evaluatorChecklistRows(
     submission.checklist,
@@ -648,11 +648,6 @@ export function buildFromEvaluator(
       true,
     );
   }
-  pushEval(INFATH_FIELD_LABELS.depositCode, submission.depositCode);
-  pushEval(
-    INFATH_FIELD_LABELS.depositCertificate,
-    submission.depositCertificateFileName ?? undefined,
-  );
   pushEval(INFATH_FIELD_LABELS.planPhoto, submission.planImageFileName ?? undefined);
   if (submission.independenceDeclared) {
     fields.push({

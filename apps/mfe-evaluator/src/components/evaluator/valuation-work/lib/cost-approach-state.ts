@@ -219,6 +219,142 @@ export function costLinesFromInventory(
   });
 }
 
+/* ─── Early seeds: the cost table follows the specialist's components table ─── */
+
+function inventoryAreaSqm(l: CostSeedInventoryLine): number {
+  return Number(String(l.areaSqm ?? "0").replace(",", ".")) || 0;
+}
+
+const AREA_EPSILON = 0.005;
+
+export type CostInventoryAreaChange = {
+  lineId: string;
+  inventoryLineId: string;
+  label: string;
+  fromSqm: number;
+  toSqm: number;
+};
+
+export type CostInventoryDrift = {
+  /** Inventory rows (with an id) no cost line points at yet. */
+  added: CostSeedInventoryLine[];
+  /** Cost lines whose inventory row is gone — reported only, never removed automatically. */
+  removed: ValuationCostLineDto[];
+  /** Linked lines whose quantity differs from the inventory row. */
+  changedArea: CostInventoryAreaChange[];
+  hasDrift: boolean;
+};
+
+/**
+ * How the cost draft has drifted from the specialist's components table. Only lines linked by
+ * `sourceInventoryLineId` can be compared; inventory rows without an id and cost lines the
+ * appraiser added himself (no link) never count as drift.
+ */
+export function costInventoryDrift(
+  lines: readonly ValuationCostLineDto[],
+  inventoryLines: readonly CostSeedInventoryLine[],
+): CostInventoryDrift {
+  const inventoryById = new Map<string, CostSeedInventoryLine>();
+  for (const inv of inventoryLines) {
+    const id = inv.id?.trim();
+    if (id) inventoryById.set(id, inv);
+  }
+  const linked = new Set<string>();
+  const removed: ValuationCostLineDto[] = [];
+  const changedArea: CostInventoryAreaChange[] = [];
+  for (const line of lines) {
+    const sourceId = line.sourceInventoryLineId?.trim();
+    if (!sourceId) continue;
+    linked.add(sourceId);
+    const inv = inventoryById.get(sourceId);
+    if (!inv) {
+      removed.push(line);
+      continue;
+    }
+    const toSqm = inventoryAreaSqm(inv);
+    if (Math.abs(toSqm - (line.areaSqm ?? 0)) > AREA_EPSILON) {
+      changedArea.push({
+        lineId: line.id,
+        inventoryLineId: sourceId,
+        label: line.label || inv.label,
+        fromSqm: line.areaSqm ?? 0,
+        toSqm,
+      });
+    }
+  }
+  const added = [...inventoryById.values()].filter(
+    (inv) => !linked.has(inv.id!.trim()),
+  );
+  return {
+    added,
+    removed,
+    changedArea,
+    hasDrift: added.length + removed.length + changedArea.length > 0,
+  };
+}
+
+/**
+ * A draft nobody has worked on: lines exist, every one came from the inventory, and no unit cost,
+ * rationale or exclusion was entered. Safe to rebuild from the inventory without asking.
+ */
+export function isUntouchedCostSeed(
+  lines: readonly ValuationCostLineDto[],
+): boolean {
+  return (
+    lines.length > 0 &&
+    lines.every(
+      (l) =>
+        Boolean(l.sourceInventoryLineId?.trim()) &&
+        (l.unitCostSar ?? 0) === 0 &&
+        !(l.rationale ?? "").trim() &&
+        l.isIncluded !== false,
+    )
+  );
+}
+
+/** Rebuilds an untouched seed from the current inventory, keeping the ids of lines that still match. */
+export function reseedUntouchedCostLines(
+  lines: readonly ValuationCostLineDto[],
+  inventoryLines: readonly CostSeedInventoryLine[],
+): ValuationCostLineDto[] {
+  const idBySource = new Map<string, string>();
+  for (const l of lines) {
+    const source = l.sourceInventoryLineId?.trim();
+    if (source) idBySource.set(source, l.id);
+  }
+  return costLinesFromInventory([...inventoryLines]).map((l) => {
+    const keep = l.sourceInventoryLineId
+      ? idBySource.get(l.sourceInventoryLineId.trim())
+      : undefined;
+    return keep ? { ...l, id: keep } : l;
+  });
+}
+
+/** Appends the inventory rows that have no cost line yet — nothing already entered is touched. */
+export function appendNewInventoryLines(
+  lines: readonly ValuationCostLineDto[],
+  added: readonly CostSeedInventoryLine[],
+): ValuationCostLineDto[] {
+  if (added.length === 0) return [...lines];
+  const seeded = costLinesFromInventory([...added]).map((l, i) => ({
+    ...l,
+    sortOrder: lines.length + i,
+  }));
+  return [...lines, ...seeded];
+}
+
+/** Takes the inventory's quantity for the changed lines; `unitCostSar` and everything else stay. */
+export function applyInventoryAreaChanges(
+  lines: readonly ValuationCostLineDto[],
+  changes: readonly CostInventoryAreaChange[],
+): ValuationCostLineDto[] {
+  if (changes.length === 0) return [...lines];
+  const toById = new Map(changes.map((c) => [c.lineId, c.toSqm]));
+  return lines.map((l) =>
+    toById.has(l.id) ? { ...l, areaSqm: toById.get(l.id)! } : l,
+  );
+}
+
 export function blankCostLine(
   sortOrder: number,
   partial: Partial<ValuationCostLineDto>,

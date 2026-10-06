@@ -10,4 +10,13 @@ public interface IPartyTaskFailureGate
         string poNumber,
         string propertyId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether an active failure still freezes the engineering-survey work on the property — false
+    /// once the case specialist lifted the freeze, even though the failure itself stays active.
+    /// </summary>
+    Task<bool> HasSurveyFreezingFailureAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken);
 }

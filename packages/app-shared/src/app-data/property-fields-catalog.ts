@@ -303,7 +303,7 @@ const evaluatorFormKeyFields: PropertyFieldCatalogEntry[] = [
 const caseStudyMetaFields: PropertyFieldCatalogEntry[] = [
   { key: "requestNumber", label: "رقم الطلب" },
   { key: "requestDate", label: "تاريخ الطلب" },
-  { key: "deedNumber", label: "رقم الصك (نموذج الدراسة)" },
+  { key: "deedNumber", label: "رقم الصك (تقرير دراسة الحالة)" },
   { key: "deedRemarks", label: "ملاحظات قسم الصك" },
   { key: "surveyRemarks", label: "ملاحظات الرفع المساحي" },
   { key: "componentsRemarks", label: "ملاحظات مكونات العقار" },
@@ -677,37 +677,37 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   {
     id: "case-study-meta",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — بيانات عامة",
+    screen: "تقرير دراسة الحالة — بيانات عامة",
     fields: caseStudyMetaFields,
   },
   {
     id: "case-study-deed",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الصك والعقار",
+    screen: "تقرير دراسة الحالة — الصك والعقار",
     fields: caseStudyDeedQuestions,
   },
   {
     id: "case-study-survey",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الرفع المساحي",
+    screen: "تقرير دراسة الحالة — الرفع المساحي",
     fields: caseStudySurveyQuestions,
   },
   {
     id: "case-study-comp",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — مكونات العقار",
+    screen: "تقرير دراسة الحالة — مكونات العقار",
     fields: caseStudyComponentsQuestions,
   },
   {
     id: "case-study-occ",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الإشغال والإيجار",
+    screen: "تقرير دراسة الحالة — الإشغال والإيجار",
     fields: caseStudyOccupancyQuestions,
   },
   {
     id: "case-study-extra",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — ملاحظات إضافية",
+    screen: "تقرير دراسة الحالة — ملاحظات إضافية",
     fields: caseStudyExtraQuestions,
   },
   {

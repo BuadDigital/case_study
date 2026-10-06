@@ -1,1 +1,0 @@
-function taskActive(t){ return t.status==='in_progress'||t.status==='paused'; }

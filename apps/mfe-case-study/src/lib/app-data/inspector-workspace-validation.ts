@@ -1,5 +1,10 @@
 import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
+  boundariesMarkedUnavailable,
+  isRegisteredTitleDeedKind,
+  propertyHasRegisteredTitle,
+} from "@platform/app-shared/app-data/po-intake-identifiers";
+import {
   invalidControlClass,
   resolveFirstErrorMessage,
   scheduleScrollToFormField,
@@ -21,6 +26,7 @@ import {
   inspectorDescriptionMissing,
   listInspectorPhotoValidationIssues,
   sanitizeInspectorDraftForLand,
+  textLooksLikeVacantLand,
   isInspectorPresenceToggleField,
   isInspectorRetiredFeatureKey,
   INSPECTOR_BOUNDARY_KEYS,
@@ -34,6 +40,16 @@ import {
 /** Mirrors FieldInspectionSubmissionValidator — text or components photo, at least one. */
 export const PROPERTY_DESCRIPTION_REQUIRED =
   "أدخل وصف العقار أو أرفق صورة لتفاصيل المكونات";
+
+/** Mirrors InspectorDeedNatureMatchRules messages. */
+export const DEED_MATCH_VERDICT_REQUIRED = "اختر هل حدود الصك مطابقة للطبيعة أم لا";
+export const DEED_MATCH_NEEDS_A_SIDE =
+  "حدّدت أن الحدود غير مطابقة — أشِر إلى الضلع غير المطابق";
+export const DEED_MATCH_YES_CONTRADICTS_SIDES =
+  "اخترت «مطابق» بينما أُشير إلى ضلع غير مطابق";
+
+/** Mirrors SpecialistComponentsRules.LandHasValuableStructuresRequired. */
+export const LAND_STRUCTURES_REQUIRED = "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم";
 
 export type InspectorWorkspaceFieldErrors = Partial<
   Record<
@@ -56,6 +72,8 @@ export type InspectorWorkspaceFieldErrors = Partial<
     | "movablesDescription"
     | "occupancyDescription"
     | "propertyDescription"
+    | "deedMatchesNature"
+    | "landHasValuableStructures"
     | "boundaries"
     | "_"
     ,
@@ -142,6 +160,10 @@ export function inspectorFieldTargetId(
       return "ins-observations";
     case "inspectionConfirmed":
       return "ins-confirm";
+    case "deedMatchesNature":
+      return "ins-deed-match";
+    case "landHasValuableStructures":
+      return "ins-land-structures";
     case "boundaries":
       return "ins-boundaries-section";
     default:
@@ -198,6 +220,10 @@ export function firstInspectorWorkspaceErrorTarget(
     );
   }
   if (errors.componentPhotos) return inspectorFieldTargetId("componentPhotos");
+  if (errors.landHasValuableStructures) {
+    return inspectorFieldTargetId("landHasValuableStructures");
+  }
+  if (errors.deedMatchesNature) return inspectorFieldTargetId("deedMatchesNature");
   if (errors.missingBoundaryKey) {
     return inspectorFieldTargetId(`boundary:${errors.missingBoundaryKey}`);
   }
@@ -228,6 +254,27 @@ export function scrollToInspectorField(
 
 export { scheduleScrollToFormField };
 
+/**
+ * Whether the inspector must give the explicit «حدود الصك مطابقة للطبيعة؟» verdict on submit —
+ * the server's gate: a traditional deed (not a registered title, whose boundaries are
+ * definitive) whose boundaries are available. The explicit deed kind wins; the registration
+ * number / identifier heuristics apply only while the deed kind is empty.
+ */
+export function inspectorMustDecideDeedMatch(property: {
+  deedKind?: string | null;
+  suggestedDeedKind?: string | null;
+  realEstateRegNumber: string;
+  identifierType: Parameters<typeof propertyHasRegisteredTitle>[0]["identifierType"];
+  boundariesAvailability: string;
+}): boolean {
+  if (boundariesMarkedUnavailable(property.boundariesAvailability)) return false;
+  const kind = (property.deedKind ?? "").trim();
+  const registered = kind
+    ? isRegisteredTitleDeedKind(kind)
+    : propertyHasRegisteredTitle(property);
+  return !registered;
+}
+
 export function validateInspectorWorkspace(
   rawSubmission: InspectorWorkspaceDraft,
   options?: {
@@ -236,6 +283,19 @@ export function validateInspectorWorkspace(
     propertyType?: string | null;
     includeRetiredFeatureKeys?: readonly string[];
     specialistProofServicesOnly?: boolean;
+    /**
+     * Mirrors the server's InspectorDeedNatureMatchRules on inspector submit: the explicit
+     * verdict «حدود الصك مطابقة للطبيعة؟» is required. Opt-in — callers pass
+     * `!registeredTitle && !boundariesUnavailable` for the inspector only; the specialist's
+     * accept path must not demand it.
+     */
+    requireDeedMatch?: boolean;
+    /**
+     * Mirrors the server on inspector submit: for an asset typed «أرض» the inspector must answer
+     * «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» (it decides whether «جدول الحصر» is mandatory).
+     * Opt-in — only the inspector's own submit demands it, never the specialist's accept path.
+     */
+    requireLandStructures?: boolean;
   },
 ): InspectorWorkspaceFieldErrors {
   const errors: InspectorWorkspaceFieldErrors = {};
@@ -327,7 +387,35 @@ export function validateInspectorWorkspace(
     errors.propertyDescription = PROPERTY_DESCRIPTION_REQUIRED;
   }
 
-  if (!options?.boundariesUnavailable) {
+  if (
+    options?.requireLandStructures &&
+    textLooksLikeVacantLand(submission.featureValues.assetSubject) &&
+    submission.landHasValuableStructures !== "yes" &&
+    submission.landHasValuableStructures !== "no"
+  ) {
+    errors.landHasValuableStructures = LAND_STRUCTURES_REQUIRED;
+  }
+
+  if (options?.requireDeedMatch && !options?.boundariesUnavailable) {
+    const verdict = submission.deedMatchesNature;
+    const rows = INSPECTOR_BOUNDARY_KEYS.map((key) => ({
+      key,
+      row: submission.boundaryMatches[key],
+    })).filter(({ row }) => Boolean(row));
+    const mismatched = rows.filter(({ row }) => row.matches === false);
+    if (verdict !== "yes" && verdict !== "no") {
+      errors.deedMatchesNature = DEED_MATCH_VERDICT_REQUIRED;
+    } else if (verdict === "no") {
+      if (mismatched.length === 0) {
+        errors.boundaries = DEED_MATCH_NEEDS_A_SIDE;
+      }
+    } else if (mismatched.length > 0) {
+      errors.boundaries = DEED_MATCH_YES_CONTRADICTS_SIDES;
+      errors.missingBoundaryKey = mismatched[0].key;
+    }
+  }
+
+  if (!options?.boundariesUnavailable && !errors.boundaries) {
     const missingMismatchNotes = INSPECTOR_BOUNDARY_KEYS.filter((key) => {
       const row = submission.boundaryMatches[key];
       return Boolean(row) && row.matches === false && !row.mismatchNote.trim();
@@ -409,6 +497,8 @@ const INSPECTOR_ERROR_KEYS = [
   "propertyDescription",
   "featurePhotos",
   "componentPhotos",
+  "landHasValuableStructures",
+  "deedMatchesNature",
   "boundaries",
   "freePhotos",
   "definedPhotos",
@@ -452,6 +542,8 @@ const WIZARD_STEP_ERROR_KEYS: Record<
   2: [
     "propertyDescription",
     "componentPhotos",
+    "landHasValuableStructures",
+    "deedMatchesNature",
     "boundaries",
     "definedPhotos",
   ],

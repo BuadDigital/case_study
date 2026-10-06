@@ -153,8 +153,9 @@ export async function inlinePrintHtmlAssets(
 
   await Promise.all(jobs);
 
-  // External stylesheets and scripts have no place in a renderer without network access.
-  doc.querySelectorAll("link[rel='stylesheet'], link[rel='preconnect'], link[rel='preload'], script").forEach((el) => {
+  // External stylesheets and scripts have no place in a renderer without network access. Inline scripts stay:
+  // the print flow's own pagination script lays the sheets out and sets `data-rpt-ready`, which the renderer waits for.
+  doc.querySelectorAll("link[rel='stylesheet'], link[rel='preconnect'], link[rel='preload'], script[src]").forEach((el) => {
     el.remove();
   });
   doc.querySelectorAll("base").forEach((el) => el.remove());

@@ -47,6 +47,62 @@ public sealed class HttpValuationListsService(
             "Valuation-lists writes belong on the Platform API.");
 }
 
+/// <summary>
+/// Reads the info-roles matrix from the Platform API (<c>GET /api/case-study-info-roles</c>,
+/// authorize-only — the caller's bearer is forwarded). Parses only the part the 100% completeness
+/// rule needs, so no Platform contract type is referenced. An unreachable or unreadable upstream
+/// yields null: the use case fails closed instead of treating «can't read» as «no questions».
+/// </summary>
+public sealed class HttpCaseStudyInfoRolesLookup(
+    HttpClient http,
+    IHttpContextAccessor httpContext,
+    IOptions<UpstreamServicesOptions> options) : ICaseStudyInfoRolesLookup
+{
+    public async Task<IReadOnlyDictionary<string, IReadOnlyCollection<string>>?> GetQuestionRolesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        InfoRolesPayload? payload;
+        try
+        {
+            payload = await UpstreamJson.GetOrDefaultAsync<InfoRolesPayload>(
+                http,
+                httpContext,
+                options.Value.PlatformBaseUrl,
+                "/api/case-study-info-roles",
+                "UpstreamServices:PlatformBaseUrl",
+                cancellationToken,
+                allowNotFound: false);
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException
+            || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            return null;
+        }
+
+        if (payload?.Matrix is null) return null;
+
+        var result = new Dictionary<string, IReadOnlyCollection<string>>(StringComparer.Ordinal);
+        foreach (var (questionKey, parties) in payload.Matrix)
+        {
+            if (string.IsNullOrWhiteSpace(questionKey)) continue;
+            result[questionKey.Trim()] = (parties ?? [])
+                .Where(p => !string.IsNullOrWhiteSpace(p.Key)
+                    && !string.IsNullOrWhiteSpace(p.Value)
+                    && !string.Equals(p.Value.Trim(), "none", StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Key)
+                .ToList();
+        }
+
+        return result;
+    }
+
+    private sealed class InfoRolesPayload
+    {
+        public Dictionary<string, Dictionary<string, string?>>? Matrix { get; set; }
+    }
+}
+
 public sealed class HttpOrganizationSettingsService(
     HttpClient http,
     IHttpContextAccessor httpContext,

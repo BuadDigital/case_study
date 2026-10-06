@@ -19,8 +19,9 @@ public class ValuationReportIssuanceStateDto
     public string? CertificateFileName { get; init; }
     public string? CertificateUploadedAtUtc { get; init; }
     public string? FinalIssuedAtUtc { get; init; }
-    public bool HasDepositPdf { get; init; }
-    public bool HasFinalPdf { get; init; }
+
+ /// <summary>none | preparing | ready — the generated final PDF (report + deposit code + certificate page).</summary>
+    public string FinalReportStatus { get; init; } = "none";
 
  /// <summary>Q-9 supplement (R2): current valuation cycle number — 1 before any reopen.</summary>
     public int Version { get; init; } = 1;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCommandMutation } from "@platform/app-shared";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { Button, InlineLoadingSkeleton, Label, cn, formControlClassName } from "@platform/ui-kit";
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
@@ -39,7 +40,6 @@ export function EngineeringSurveyAdvisoryPanel({
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
-  const [acceptBusy, setAcceptBusy] = useState(false);
   const [submission, setSubmission] = useState<EngineeringSurveySubmission | null>(
     null,
   );
@@ -60,7 +60,7 @@ export function EngineeringSurveyAdvisoryPanel({
 
   const surveyTask = useMemo(
     () => findSurveyChildForParent(parentTask.id, propertyId, tasks),
-    [parentTask.id, propertyId, tasks, refreshKey],
+    [parentTask.id, propertyId, tasks],
   );
 
   useEffect(() => {
@@ -92,6 +92,31 @@ export function EngineeringSurveyAdvisoryPanel({
     };
   }, [surveyTask, refreshKey]);
 
+  const { run: runAccept, loading: acceptBusy } = useCommandMutation(
+    useCallback(async (taskId: string, idempotencyKey: string) => {
+      const accepted = await acceptEngineeringSurveySubmission(
+        taskId,
+        idempotencyKey,
+      );
+      if (!accepted.ok) throw new Error(accepted.error);
+      return accepted.data;
+    }, []),
+  );
+
+  const { run: runReturn, loading: returnBusy } = useCommandMutation(
+    useCallback(
+      async (args: { taskId: string; note: string }) => {
+        const reopened = await reopenEngineeringSurveySubmission(
+          args.taskId,
+          args.note,
+        );
+        if (!reopened.ok) throw new Error(reopened.error);
+        return reopened.data;
+      },
+      [],
+    ),
+  );
+
   if (!surveyTask) {
     return (
       <RegistrationFormCard title="بيانات المكتب الهندسي (استرشادي)">
@@ -121,43 +146,41 @@ export function EngineeringSurveyAdvisoryPanel({
   }
 
   async function handleReturnForCorrection() {
-    if (!surveyTask) return;
+    if (!surveyTask || returnBusy || acceptBusy) return;
     const trimmed = returnNote.trim();
     if (!trimmed) {
       setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
       return;
     }
-    const reopened = await reopenEngineeringSurveySubmission(
-      surveyTask.id,
-      trimmed,
-    );
-    if (!reopened.ok) {
-      setReturnError(reopened.error);
-      return;
-    }
-    setSubmission(reopened.data);
-    setReturnOpen(false);
-    setReturnNote("");
     setReturnError(null);
-    setRefreshKey((k) => k + 1);
-    onReturned?.();
+    try {
+      const outcome = await runReturn({ taskId: surveyTask.id, note: trimmed });
+      if (outcome.status === "skipped") return;
+      setSubmission(outcome.value);
+      setReturnOpen(false);
+      setReturnNote("");
+      setRefreshKey((k) => k + 1);
+      onReturned?.();
+    } catch (err) {
+      setReturnError(
+        err instanceof Error ? err.message : "تعذّر إعادة الرفع للتصحيح",
+      );
+    }
   }
 
   async function handleAcceptOutputs() {
-    if (!surveyTask) return;
-    setAcceptBusy(true);
+    if (!surveyTask || acceptBusy || returnBusy) return;
     setAcceptError(null);
     try {
-      const accepted = await acceptEngineeringSurveySubmission(surveyTask.id);
-      if (!accepted.ok) {
-        setAcceptError(accepted.error);
-        return;
-      }
-      setSubmission(accepted.data);
+      const outcome = await runAccept(surveyTask.id);
+      if (outcome.status === "skipped") return;
+      setSubmission(outcome.value);
       setRefreshKey((k) => k + 1);
       onReturned?.();
-    } finally {
-      setAcceptBusy(false);
+    } catch (err) {
+      setAcceptError(
+        err instanceof Error ? err.message : "تعذّر قبول المخرجات",
+      );
     }
   }
 
@@ -207,7 +230,8 @@ export function EngineeringSurveyAdvisoryPanel({
                 type="button"
                 size="sm"
                 variant="primary"
-                disabled={acceptBusy || feeAccrued}
+                loading={acceptBusy}
+                disabled={acceptBusy || returnBusy || feeAccrued}
                 onClick={() => {
                   void handleAcceptOutputs();
                 }}
@@ -218,7 +242,7 @@ export function EngineeringSurveyAdvisoryPanel({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={acceptBusy}
+                disabled={acceptBusy || returnBusy}
                 onClick={() => {
                   setReturnOpen(true);
                   setReturnError(null);
@@ -254,6 +278,8 @@ export function EngineeringSurveyAdvisoryPanel({
                   type="button"
                   size="sm"
                   variant="primary"
+                  loading={returnBusy}
+                  disabled={returnBusy || acceptBusy}
                   onClick={() => {
                     void handleReturnForCorrection();
                   }}

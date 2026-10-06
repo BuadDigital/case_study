@@ -41,7 +41,7 @@ public static class CaseStudyAnswerProvenance
         Dictionary<string, AnswerProvenanceEntryDto> existing,
         IReadOnlyDictionary<string, string?> previousValues,
         IReadOnlyDictionary<string, string?> nextValues,
-        CaseStudyFormActor actor,
+        CaseStudyReportActor actor,
         Guid workflowTaskId,
         Guid? formId,
         string? sourcePartyId,

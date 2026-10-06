@@ -16,9 +16,12 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import { useInspectorFeesQuery } from "@case-study/mfe/query/inspector-fees-queries";
-import { blockingFailureForProperty } from "@failures/mfe/lib/failure-property-match";
+import { surveyFreezingFailureForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
+import {
+  isActiveFailureStatus,
+  type FailureRecord,
+} from "@platform/app-shared/failures/failures-types";
 import {
   createEngineeringSurveyDraft,
   isEngineeringSurveyFormLocked,
@@ -45,6 +48,9 @@ import {
   type WorkTab,
 } from "./EngineeringSurveyWorkParts";
 
+const EMPTY_FAILURES: FailureRecord[] = [];
+const EMPTY_WORKFLOW_TASKS: WorkflowTask[] = [];
+
 export type EngineeringSurveyDataArgs = {
   childTask: WorkflowTask;
   hostRef: EngineeringSurveyWindowHostRefObject;
@@ -66,8 +72,8 @@ export function useEngineeringSurveyData({
   const { showToast, runWithUploadToast } = useToast();
   const { data: record } = usePoRecordQuery(task.poNumber);
   const property = record?.properties.find((p) => p.id === propertyId);
-  const { data: failures = [] } = useFailuresQuery();
-  const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: failures = EMPTY_FAILURES } = useFailuresQuery();
+  const { data: workflowTasks = EMPTY_WORKFLOW_TASKS } = useWorkflowTasksQuery();
   const { data: feesSummary } = useInspectorFeesQuery({
     workflowTaskId: task.id,
     submittedOnly: false,
@@ -88,9 +94,10 @@ export function useEngineeringSurveyData({
     ).length;
   }, [failures, propertyId, task.poNumber]);
 
+  // A failure whose survey freeze the specialist lifted no longer blocks the survey (it stays open).
   const blockingFailure = useMemo(() => {
     if (!propertyId) return null;
-    return blockingFailureForProperty(failures, {
+    return surveyFreezingFailureForProperty(failures, {
       poNumber: task.poNumber,
       propertyId,
       deedNumber,
@@ -136,13 +143,12 @@ export function useEngineeringSurveyData({
         role,
         surveyTask: liveSurveyTask,
         tasks: workflowTasks,
-        hasActiveFailure: Boolean(blockingFailure) || activeFailureCount > 0,
+        hasActiveFailure: Boolean(blockingFailure),
         fieldInspectionCompleted:
           draft?.fieldInspectionCompleted ??
           liveSurveyTask.fieldInspectionCompleted,
       }),
     [
-      activeFailureCount,
       blockingFailure,
       draft?.fieldInspectionCompleted,
       liveSurveyTask,
@@ -350,10 +356,20 @@ export function useEngineeringSurveyData({
   );
 
   useEffect(() => {
+    const taskId = task.id;
     return () => {
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+      const patch = pendingPatchRef.current;
+      pendingPatchRef.current = {};
+      if (!taskId || Object.keys(patch).length === 0) return;
+      void updateEngineeringSurveyDraft(taskId, patch).catch(() => {
+        // The screen is gone — the write still has to land, with nowhere to toast.
+      });
     };
-  }, []);
+  }, [task.id]);
 
   const onWorkTabChange = useCallback((id: string) => {
     setWorkTab(id as WorkTab);

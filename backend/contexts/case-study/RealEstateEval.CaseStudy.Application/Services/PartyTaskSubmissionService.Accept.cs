@@ -10,7 +10,7 @@ using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
-/// <summary>Specialist acceptance of a party package (fee accrual, sibling unblock, audit).</summary>
+/// <summary>Specialist acceptance of a party package (fee accrual, sibling notices, audit).</summary>
 public partial class PartyTaskSubmissionService
 {
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
@@ -32,22 +32,29 @@ public partial class PartyTaskSubmissionService
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
             return (null, Error("لا يوجد إرسال مكتمل لقبوله"));
 
-        if (task.Status != WorkflowTaskStatus.Completed)
+        // The appraiser's task stays open after the hand-over (it completes at the final issuance),
+        // so only the other kinds must be completed before acceptance.
+        if (task.Kind != WorkflowTaskKind.PropertyAppraisal && task.Status != WorkflowTaskStatus.Completed)
             return (null, Error("المهمة غير مكتملة بعد"));
 
         var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
         // The specialist turns the inspector's description into «مكونات العقار» (report text
-        // + components table) before accepting the inspection.
+        // + inventory table, listed for anything with structures or annexes) before accepting
+        // the inspection; every missing part is reported at once.
         if (!alreadyAccepted
             && task.Kind == WorkflowTaskKind.FieldInspection
             && task.PropertyId is Guid gatePropertyId)
         {
             var gateProperty = await _repo.GetPropertyWithInventoryAsync(gatePropertyId, cancellationToken);
-            var missing = gateProperty is null ? null : SpecialistComponentsRules.MissingForAcceptance(gateProperty);
-            if (missing is not null)
-                return (null, new Dictionary<string, string> { ["componentsText"] = missing });
+            var missing = gateProperty is null
+                ? []
+                : SpecialistComponentsRules.MissingForAcceptance(
+                    gateProperty,
+                    SpecialistComponentsRules.ReadLandHasValuableStructures(entity.PayloadJson));
+            if (missing.Count > 0)
+                return (null, missing);
         }
 
         InspectorFeeRowDto? accruedFee = null;
@@ -80,8 +87,8 @@ public partial class PartyTaskSubmissionService
         }
         else if (!alreadyAccepted)
         {
-            // Appraisal accept = specialist اعتماد of تقرير التقييم in دراسة الحالة.
-            // Field inspection accept stamp is legacy/optional (no longer gates appraisal).
+            // Appraisal accept is only the specialist's acknowledgement stamp: the report is approved by
+            // the appraiser (not a gate). Field inspection accept stamp is legacy/optional too.
             _ = entity.Accept(_time.UtcNow(), actorUserId, actor.DisplayName);
             if (task.Kind == WorkflowTaskKind.FieldInspection && task.PropertyId is Guid boundaryPropertyId)
             {

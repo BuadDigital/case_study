@@ -1,1 +1,0 @@
-function closeTaskModal(){ var m=document.getElementById('taskModalOverlay'); if(m) m.remove(); }

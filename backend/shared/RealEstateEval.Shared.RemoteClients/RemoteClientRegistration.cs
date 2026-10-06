@@ -32,7 +32,21 @@ public static class RemoteClientRegistration
     }
 
     /// <summary>
-    /// Print dictionary and organization settings via the Platform HTTP API.
+    /// Writes of system-generated files (a report's certificate, its final PDF) via the Attachments HTTP API.
+    /// Do not combine with <c>AddAttachmentsPersistence</c> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteAttachmentFileStore(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IAttachmentFileStore, HttpAttachmentFileStore>();
+        return services;
+    }
+
+    /// <summary>
+    /// Print dictionary, organization settings and the case-study info-roles matrix via the
+    /// Platform HTTP API.
     /// Do not combine with <c>AddPlatformPersistence</c> on the same host.
     /// </summary>
     public static IServiceCollection AddRemotePlatformCatalogs(
@@ -43,6 +57,7 @@ public static class RemoteClientRegistration
         services.AddHttpClient<IAttachmentPrintDictionaryService, HttpAttachmentPrintDictionaryService>();
         services.AddHttpClient<IValuationListsService, HttpValuationListsService>();
         services.AddHttpClient<IOrganizationSettingsService, HttpOrganizationSettingsService>();
+        services.AddHttpClient<ICaseStudyInfoRolesLookup, HttpCaseStudyInfoRolesLookup>();
         return services;
     }
 
@@ -56,7 +71,7 @@ public static class RemoteClientRegistration
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>();
-        services.AddHttpClient<IPropertyComparableLinkLookup, HttpPropertyComparableLinkLookup>();
+        services.AddHttpClient<IValuationReportReopenCommands, HttpValuationReportReopenCommands>();
         return services;
     }
 

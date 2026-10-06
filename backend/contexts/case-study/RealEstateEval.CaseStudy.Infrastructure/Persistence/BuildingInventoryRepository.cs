@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
@@ -32,6 +34,36 @@ public sealed class BuildingInventoryRepository(CaseStudyDbContext db) : IBuildi
             .AsNoTracking()
             .Include(p => p.BuildingInventoryLines)
             .FirstAsync(p => p.Id == propertyId, cancellationToken);
+
+    public async Task<IReadOnlyList<FieldInspectionWriteFacts>> GetFieldInspectionWriteFactsAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var po = IWorkOrderLoader.NormalizePo(poNumber);
+        var tasks = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.Kind == WorkflowTaskKind.FieldInspection
+                && t.PoNumber == po
+                && t.PropertyId == propertyId
+                && t.Status != WorkflowTaskStatus.Cancelled)
+            .Select(t => new { t.Id, t.AssigneeId })
+            .ToListAsync(cancellationToken);
+        if (tasks.Count == 0) return [];
+
+        var taskIds = tasks.Select(t => t.Id).ToList();
+        var statuses = await db.PartyTaskSubmissions
+            .AsNoTracking()
+            .Where(s => taskIds.Contains(s.WorkflowTaskId))
+            .Select(s => new { s.WorkflowTaskId, s.Status })
+            .ToDictionaryAsync(s => s.WorkflowTaskId, s => s.Status, cancellationToken);
+
+        return tasks
+            .Select(t => new FieldInspectionWriteFacts(
+                t.AssigneeId,
+                statuses.GetValueOrDefault(t.Id)))
+            .ToList();
+    }
 
     public void AddLine(BuildingInventoryLine line) => db.BuildingInventoryLines.Add(line);
 

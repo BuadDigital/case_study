@@ -130,11 +130,12 @@ public sealed partial class ValuationReconciliationService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
         {
             return (
                 null,
-                new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+                new Dictionary<string, string> { ["_"] = frozenMessage });
         }
 
         // Deed/nature match (traditional deed) is enforced at issuance only — the appraiser may

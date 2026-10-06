@@ -27,14 +27,10 @@ describe("validatePropertyEnfathFields — field policy", () => {
     expect(errors.ownerName).toBeUndefined();
   });
 
-  it("skips the same fields for a bourse-inquiry property under a relaxed policy", () => {
-    const prop = {
-      ...deedProperty(),
-      identifierType: "bourse_inquiry" as const,
-      deedDate: "2026-01-01",
-    };
+  it("validates a stored bourse-inquiry row like any deed (no separate rules)", () => {
+    const prop = { ...deedProperty(), identifierType: "bourse_inquiry" as const };
     const errors = validatePropertyEnfathFields(prop, "تنفيذ", relaxedPolicy);
-    expect(errors.assignmentDocFileNames).toBeUndefined();
-    expect(errors.ownerName).toBeUndefined();
+    expect(errors.deedDate).toBeUndefined();
+    expect(errors.delegationLetterFileNames).toBeUndefined();
   });
 });

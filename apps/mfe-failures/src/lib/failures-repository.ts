@@ -3,6 +3,7 @@ import {
   createFailureAsync,
   deleteFailuresForPoAsync,
   getPropertyFailureFromCache,
+  liftSurveyFreezeAsync,
   loadFailuresForQuery,
   loadFailuresPageForQuery,
   reportBourseObstructionAsync,
@@ -12,6 +13,7 @@ import {
   suspendFailureAsync,
   upgradeFailureToInternalAsync,
   type FailureMutationResult,
+  type LiftSurveyFreezeResult,
 } from "./failures-api";
 import type { FailureListQuery, PagedResultDto } from "@platform/api-client";
 import type {
@@ -40,6 +42,17 @@ export async function createFailure(
 ): Promise<FailureRecord> {
   return createFailureAsync(input, idempotencyKey);
 }
+
+/** The specialist lifts the survey freeze on one property — the failure stays open. */
+export async function liftSurveyFreeze(input: {
+  poNumber: string;
+  propertyId: string;
+  reason: string;
+}): Promise<LiftSurveyFreezeResult> {
+  return liftSurveyFreezeAsync(input);
+}
+
+export type { LiftSurveyFreezeResult } from "./failures-api";
 
 export async function upgradeFailureToInternal(
   id: string,

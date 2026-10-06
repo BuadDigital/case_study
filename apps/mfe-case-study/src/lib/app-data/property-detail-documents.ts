@@ -4,10 +4,7 @@ import {
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "../engineering-survey-bridge";
-import {
-  getCachedEvaluatorDepositCertificate,
-  getCachedEvaluatorReport,
-} from "../evaluator-bridge";
+import { getCachedEvaluatorReport } from "../evaluator-bridge";
 import {
   requestDocumentPreview,
   type DocumentPreviewItem,
@@ -331,19 +328,8 @@ export function collectAppraisalDocuments(
       attachmentId: cached.attachmentId,
     });
   }
-  const deposit = getCachedEvaluatorDepositCertificate(appraisalTaskId);
-  if (deposit?.fileName?.trim()) {
-    docs.push({
-      id: "appraisal-deposit-certificate",
-      documentTypeKey: "deposit-certificate",
-      name: "شهادة الإيداع",
-      fileName: deposit.fileName.trim(),
-      source: "المقيّم العقاري",
-      kind: fileKind(deposit.fileName, deposit.mimeType),
-      dataUrl: deposit.dataUrl,
-      attachmentId: deposit.attachmentId,
-    });
-  }
+  // The deposit certificate and the generated final report are property attachments now (registry types
+  // «شهادة الإيداع» / «تقرير التقييم»): they reach the documents tab through the property's attachment list.
   return docs;
 }
 

@@ -31,9 +31,10 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useIdempotentAction } from "@platform/app-shared";
 import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
-  submitBourseObstruction,
-  validateBourseObstructionReason,
-} from "../lib/app-data/bourse-obstruction";
+  FAILURE_RAISER_SPECIALIST,
+  FAILURE_RAISER_SUPERVISOR,
+} from "@failures/mfe/lib/failure-party-roles";
+import { FailureRaiseModal } from "@case-study/mfe/components/failures/FailureRaiseModal";
 import type { BourseDeedVitality } from "../lib/app-data/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
@@ -69,7 +70,6 @@ import {
   validatePropertyBourseFields,
 } from "../lib/domain/po-intake/property-bourse-validation";
 import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
-import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
 import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
@@ -80,7 +80,8 @@ import { caseStudyTaskForProperty } from "../lib/app-data/tasks";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
+import { canEditProperty } from "../lib/app-data/po-roles";
+import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 
 const ROW = queueTableRowClassName;
@@ -110,10 +111,7 @@ export function BourseInquiryView() {
   const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
-  const [obstructionReason, setObstructionReason] = useState("");
-  const [obstructionReasonError, setObstructionReasonError] = useState<
-    string | undefined
-  >();
+  const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [, startOpenItem] = useTransition();
   const [openingItemKey, setOpeningItemKey] = useState<string | null>(null);
 
@@ -187,7 +185,20 @@ export function BourseInquiryView() {
     [selected],
   );
 
-  async function openItem(item: PendingBoursePropertyDto) {
+  const closeForm = useCallback(async () => {
+    if (selected) {
+      await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
+    }
+    setSelected(null);
+    setProperty(emptyProperty());
+    setFormError(null);
+    setFieldErrors({});
+    setDeedVitality(null);
+    setFailureModalOpen(false);
+  }, [selected]);
+
+  const openItem = useCallback(
+    async (item: PendingBoursePropertyDto) => {
     const key = itemKey(item);
     // Toggle close if re-selecting the open row.
     if (
@@ -210,8 +221,7 @@ export function BourseInquiryView() {
           setFormError(null);
           setFieldErrors({});
           setDeedVitality(null);
-          setObstructionReason("");
-          setObstructionReasonError(undefined);
+          setFailureModalOpen(false);
           const local = peekPropertyFieldAutosave(item.poNumber, item.propertyId);
           if (local) {
             setProperty({ ...local, id: item.propertyId });
@@ -244,20 +254,9 @@ export function BourseInquiryView() {
         }
       })();
     });
-  }
-
-  async function closeForm() {
-    if (selected) {
-      await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
-    }
-    setSelected(null);
-    setProperty(emptyProperty());
-    setFormError(null);
-    setFieldErrors({});
-    setDeedVitality(null);
-    setObstructionReason("");
-    setObstructionReasonError(undefined);
-  }
+  },
+    [selected, closeForm, startOpenItem, itemKey],
+  );
 
   async function handleSubmit() {
     if (!selected) return;
@@ -271,45 +270,6 @@ export function BourseInquiryView() {
       setFieldErrors(errors);
       setFormError(DEED_VITALITY_REQUIRED_ERROR);
       scheduleScrollToFirstPoPropertyError(errors, property);
-      return;
-    }
-
-    if (!compactRegisteredTitle && deedVitality === "inactive") {
-      const obstructionError = validateBourseObstructionReason(
-        deedVitality,
-        obstructionReason,
-      );
-      if (obstructionError) {
-        setObstructionReasonError(obstructionError);
-        setFormError(obstructionError);
-        scheduleScrollToFormField("obstruction_reason");
-        return;
-      }
-
-      await runWithActionToast("إرسال للمشرف — إدارة التعذرات", async () => {
-        setSaving(true);
-        setFormError(null);
-        setObstructionReasonError(undefined);
-        try {
-          await submitBourseObstruction({
-            poNumber: selected.poNumber,
-            propertyId: selected.propertyId,
-            deedNumber: property.deedNumber || selected.deedNumber,
-            reason: obstructionReason,
-            specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
-          });
-          closeForm();
-          // refresh() invalidates workflowTasks on its own — keep invalidating failures in parallel with it.
-          await Promise.all([
-            queryClient.invalidateQueries({
-              queryKey: appDataKeys.failures(),
-            }),
-            refresh(),
-          ]);
-        } finally {
-          setSaving(false);
-        }
-      });
       return;
     }
 
@@ -330,7 +290,7 @@ export function BourseInquiryView() {
           propertyId: selected.propertyId,
           property: compactRegisteredTitle
             ? property
-            : { ...property, deedStatus: "فعال" },
+            : { ...property, deedStatus: bourseDeedStatus(deedVitality) },
         };
         const outcome = await executeBourseComplete();
         if (outcome.status === "skipped") return;
@@ -350,8 +310,6 @@ export function BourseInquiryView() {
       }
     });
   }
-
-  const obstructionPath = deedVitality === "inactive";
 
   const hasRail = isFetched && items.length > 0;
   const panelOpen = Boolean(selected);
@@ -419,6 +377,7 @@ export function BourseInquiryView() {
     role,
     isItemOpening,
     confirm,
+    openItem,
   ]);
 
   const queuePanel = (
@@ -598,36 +557,62 @@ export function BourseInquiryView() {
                         cur === DEED_VITALITY_REQUIRED_ERROR ? null : cur,
                       );
                     }}
-                    obstructionReason={obstructionReason}
-                    onObstructionReasonChange={(v) => {
-                      setObstructionReason(v);
-                      setObstructionReasonError(undefined);
-                    }}
-                    obstructionReasonError={obstructionReasonError}
                   />
                 </RegistrationFormCard>
               </div>
 
               <div className="shrink-0 border-t border-border bg-surface px-4 py-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
-                {/** Keep the toast action label unchanged, but render a simpler visible label for cleaner RTL centering. */}
-                <Button
-                  type="button"
-                  variant="primary"
-                  loading={saving || bourseCompleting}
-                  disabled={saving || bourseCompleting}
-                  showActionToast={false}
-                  className="min-h-10 leading-tight"
-                  actionLabel={
-                    obstructionPath
-                      ? "إرسال للمشرف — إدارة التعذرات"
-                      : "حفظ وإكمال البورصة"
-                  }
-                  onClick={() => void handleSubmit()}
-                >
-                  {obstructionPath
-                    ? "إرسال للمشرف - إدارة التعذرات"
-                    : "حفظ وإكمال البورصة"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* The bourse write is the case specialist's alone (server-enforced). */}
+                  {canEditProperty(role) ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      loading={saving || bourseCompleting}
+                      disabled={saving || bourseCompleting}
+                      showActionToast={false}
+                      className="min-h-10 leading-tight"
+                      actionLabel="حفظ وإكمال البورصة"
+                      onClick={() => void handleSubmit()}
+                    >
+                      حفظ وإكمال البورصة
+                    </Button>
+                  ) : null}
+                  {/* The inactive deed no longer forces a تعذّر — raising one stays an explicit choice. */}
+                  <Button
+                    type="button"
+                    variant="dangerOutline"
+                    size="sm"
+                    disabled={saving || bourseCompleting}
+                    onClick={() => setFailureModalOpen(true)}
+                  >
+                    تسجيل تعذر
+                  </Button>
+                </div>
+                {failureModalOpen ? (
+                  <FailureRaiseModal
+                    open={failureModalOpen}
+                    onClose={() => setFailureModalOpen(false)}
+                    poNumber={selected.poNumber}
+                    propertyId={selected.propertyId}
+                    deedNumber={property.deedNumber?.trim() || selected.deedNumber}
+                    specialist={ROLES[role]?.name ?? "أخصائي دراسة الحالة"}
+                    raisedByRole={
+                      role === "section-supervisor"
+                        ? FAILURE_RAISER_SUPERVISOR
+                        : FAILURE_RAISER_SPECIALIST
+                    }
+                    onSubmitted={() => {
+                      void closeForm();
+                      void Promise.all([
+                        queryClient.invalidateQueries({
+                          queryKey: appDataKeys.failures(),
+                        }),
+                        refresh(),
+                      ]);
+                    }}
+                  />
+                ) : null}
               </div>
             </CardBody>
           </Card>

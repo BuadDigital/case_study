@@ -455,6 +455,15 @@ export async function submitFieldInspection(
         kitchen: "نعم",
       },
       featurePhotoAttachments,
+      // The submit gate: the inspector describes the property and says the deed's boundaries match the site.
+      propertyDescription: "فيلا سكنية من دورين وملحق",
+      deedMatchesNature: "yes",
+      boundaryMatches: {
+        north: { matches: true },
+        south: { matches: true },
+        east: { matches: true },
+        west: { matches: true },
+      },
       observations: [],
       services: [],
       amenities: [],
@@ -463,6 +472,35 @@ export async function submitFieldInspection(
     },
   });
   await apiOk(inspectorToken, "POST", `/api/party-task-submissions/${taskId}/submit`);
+}
+
+/**
+ * The specialist's «مكونات العقار» (text + a one-line building inventory): accepting the inspector's package
+ * needs both, so every journey that accepts one fills them first.
+ */
+export async function completeSpecialistComponents(
+  specialistToken: string,
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  await apiOk(
+    specialistToken,
+    "PUT",
+    `/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/building-inventory`,
+    {
+      componentsText: "فيلا من دورين وملحق وسور",
+      lines: [
+        {
+          sortOrder: 0,
+          structureKind: "floor",
+          label: "الدور الأرضي",
+          areaSqm: "200",
+          itemKey: "ground_floor",
+          unit: "sqm",
+        },
+      ],
+    },
+  );
 }
 
 /** Best-effort teardown so repeated local runs do not pile up POs. */

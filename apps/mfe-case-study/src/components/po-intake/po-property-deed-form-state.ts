@@ -6,7 +6,6 @@
  */
 import {
   DEFAULT_CLIENT_FIELD_POLICY,
-  isBourseInquiryIdentifier,
   requiresContacts,
   requiresRequestNumberField,
   showsCourtFields,
@@ -17,8 +16,6 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import type { ClonedPropertyDocNames } from "../../lib/app-data/assignment-doc-attachments";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-
-export type EnfathFieldsMode = "all" | "identifier-only" | "bourse-inquiry-primary";
 
 export type PoPropertyPatch = <K extends keyof PoPropertyIntake>(
   key: K,
@@ -33,13 +30,8 @@ export type EnfathSectionProps = {
 };
 
 export type EnfathFormVisibility = {
-  isBourseId: boolean;
-  isIdentifierOnly: boolean;
-  isPrimaryOnly: boolean;
-  /** Extended sections (bourse primary, attachments, contacts). */
+  /** Extended sections (attachments, contacts). */
   showExtended: boolean;
-  showBoursePrimary: boolean;
-  showDeedFields: boolean;
   showCourt: boolean;
   showRequestNumber: boolean;
   contactsRequired: boolean;
@@ -53,36 +45,24 @@ export type EnfathFormVisibility = {
 };
 
 export function enfathFormVisibility(input: {
-  fieldsMode: EnfathFieldsMode;
   assignmentType: AssignmentType;
-  identifierType: PropertyIdentifierType;
   realEstateRegNumber: string;
   hasRequestNumber: boolean | null | undefined;
   fieldPolicy?: ClientFieldPolicy;
 }): EnfathFormVisibility {
   const fieldPolicy = input.fieldPolicy ?? DEFAULT_CLIENT_FIELD_POLICY;
-  const { fieldsMode } = input;
-  const isBourseId = isBourseInquiryIdentifier(input.identifierType);
-  const isIdentifierOnly = fieldsMode === "identifier-only";
-  const isPrimaryOnly = fieldsMode === "bourse-inquiry-primary";
-  const showExtended = fieldsMode === "all" || isPrimaryOnly;
   const hasRealEstateReg = input.realEstateRegNumber.trim().length > 0;
   return {
-    isBourseId,
-    isIdentifierOnly,
-    isPrimaryOnly,
-    showExtended,
-    showBoursePrimary: isBourseId && showExtended,
-    showDeedFields: !isBourseId && fieldsMode === "all",
+    showExtended: true,
     showCourt: showsCourtFields(input.assignmentType),
     showRequestNumber: requiresRequestNumberField(input.assignmentType),
     contactsRequired: requiresContacts(input.assignmentType),
     hasRealEstateReg,
     hasRequestNumber: input.hasRequestNumber !== false,
-    showDelegationDoc: !isBourseId && fieldsMode === "all",
-    showRegistryDoc: hasRealEstateReg && fieldsMode === "all",
-    showOtherDocs: fieldsMode === "all" || isPrimaryOnly,
-    showAssignmentDoc: showExtended && fieldPolicy.requiresAssignmentDoc,
+    showDelegationDoc: true,
+    showRegistryDoc: hasRealEstateReg,
+    showOtherDocs: true,
+    showAssignmentDoc: fieldPolicy.requiresAssignmentDoc,
   };
 }
 
@@ -104,15 +84,12 @@ export function resolvePriorExclusion(input: {
   };
 }
 
-/** Identifier type implied by the entered numbers (fields-mode "all" only). */
+/** Identifier type implied by the entered numbers. */
 export function derivedIdentifierType(realEstateRegNumber: string): PropertyIdentifierType {
   return realEstateRegNumber.trim().length > 0 ? "real_estate_reg" : "deed";
 }
 
-export function stageNoteText(isBourseId: boolean, _hasRealEstateReg = false): string {
-  if (isBourseId) {
-    return "مسار استعلام البورصة — أدخل البيانات الأولية وبيانات البورصة معاً.";
-  }
+export function stageNoteText(): string {
   return "بيانات مرحلة إنفاذ — يلزم رقم الصك أو التسجيل العيني (أو كلاهما)؛ بيانات البورصة تُكمّل لاحقاً من «استعلام البورصة».";
 }
 

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
-using RealEstateEval.Application.Rules;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Contracts;
@@ -32,6 +32,11 @@ public class BuildingInventoryController : ControllerBase
         Guid propertyId,
         CancellationToken cancellationToken)
     {
+        // A field inspector reads only the property of an inspection task assigned to him.
+        var actor = await ResolveActorAsync(cancellationToken);
+        if (!await _inventory.CanReadAsync(poNumber, propertyId, actor, cancellationToken))
+            return Forbid();
+
         var row = await _inventory.GetAsync(poNumber, propertyId, cancellationToken);
         return row is null ? NotFound() : Ok(row);
     }
@@ -44,16 +49,19 @@ public class BuildingInventoryController : ControllerBase
         [FromBody] SaveBuildingInventoryRequest request,
         CancellationToken cancellationToken)
     {
-        // «مكونات العقار» (text + table) belongs to the case specialist and staff above —
-        // the field inspector only sends a description text or photo.
+        // The inventory table is written by case staff and by the field inspector assigned to this
+        // property (until he submits); the «مكونات العقار» text stays the specialist's.
         var actor = await ResolveActorAsync(cancellationToken);
-        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        var access = await _inventory.ResolveWriteAccessAsync(
+            poNumber, propertyId, actor, cancellationToken);
+        if (access == BuildingInventoryWriteAccess.Denied)
             return Forbid();
 
         var (result, errors) = await _inventory.SaveAsync(
             poNumber,
             propertyId,
             request,
+            access,
             cancellationToken,
             actor);
         if (errors is not null)

@@ -31,14 +31,11 @@ public class WorkOrderPropertyDto
     public string? DeedKindLabelAr { get; set; }
  /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
     public string? SuggestedDeedKind { get; set; }
- /// <summary>Owners and Their Shares — deed transcription.</summary>
+ /// <summary>The deed owners (name only) — their count decides the ownership type.</summary>
     public List<DeedOwnerDto> Owners { get; set; } = [];
- /// <summary>Effective Ownership Type (manual override or derived).</summary>
+ /// <summary>Ownership Type derived from the owners count: absolute (one owner) or shared (several).</summary>
     public string? OwnershipType { get; set; }
     public string? OwnershipTypeLabelAr { get; set; }
- /// <summary>Derived suggestion (mortgage → mortgaged · shares → shared · else absolute).</summary>
-    public string? SuggestedOwnershipType { get; set; }
-    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -227,11 +224,8 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? BourseDeedImageFileName { get; set; }
- /// <summary>Owners and Their Shares — replaces the whole list when provided.</summary>
+ /// <summary>The deed owners — replaces the whole list when provided.</summary>
     public List<DeedOwnerDto>? Owners { get; set; }
- /// <summary>Manual Ownership Type override; requires OwnershipTypeIsManual.</summary>
-    public string? OwnershipType { get; set; }
-    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -448,10 +442,8 @@ public class PendingBoursePropertyDto
 
 // Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).
 
-/// <summary>One deed owner (Owners and Their Shares) — share optional for single-owner deeds.</summary>
+/// <summary>One deed owner.</summary>
 public class DeedOwnerDto
 {
     public string Name { get; set; } = "";
- /// <summary>Share % in (0, 100]; null = unstated.</summary>
-    public decimal? SharePct { get; set; }
 }

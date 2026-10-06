@@ -78,9 +78,9 @@ export const appDataKeys = {
   fieldInspectionWorkspaces: () =>
     [...appDataKeys.all, "field-inspection-workspaces"] as const,
   /** Every batch of case-study + party form drafts — invalidate here when a party form changes. */
-  caseStudyFormBatches: () =>
-    [...appDataKeys.all, "case-study-form-batches"] as const,
-  /** One `GET /api/case-study-forms/batch` for a sorted `\0`-joined set of parent task ids. */
-  caseStudyFormBatch: (parentTaskIdsKey: string) =>
-    [...appDataKeys.caseStudyFormBatches(), parentTaskIdsKey] as const,
+  caseStudyReportBatches: () =>
+    [...appDataKeys.all, "case-study-report-batches"] as const,
+  /** One `GET /api/case-study-reports/batch` for a sorted `\0`-joined set of parent task ids. */
+  caseStudyReportBatch: (parentTaskIdsKey: string) =>
+    [...appDataKeys.caseStudyReportBatches(), parentTaskIdsKey] as const,
 };

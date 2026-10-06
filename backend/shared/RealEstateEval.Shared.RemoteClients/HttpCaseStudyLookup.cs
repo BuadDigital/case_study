@@ -65,6 +65,13 @@ public sealed class HttpCaseStudyLookup(
             $"/api/case-study-dispatch/valuation-property-context/{propertyId:D}",
             cancellationToken);
 
+    public Task<CaseStudyAppraisalPackageStateDto?> GetAppraisalPackageStateAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default) =>
+        GetOrDefaultAsync<CaseStudyAppraisalPackageStateDto>(
+            $"/api/case-study-dispatch/appraisal-package-state/{propertyId:D}",
+            cancellationToken);
+
     public Task<CaseStudyPropertySnapshotDto?> GetPropertyByPoAndDeedAsync(
         string poNumber,
         string deedNumber,

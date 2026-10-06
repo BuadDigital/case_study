@@ -32,6 +32,26 @@ public class ValuationIssuanceGateRulesTests
     }
 
     [Fact]
+    public void Study_report_gate_is_hard_and_blocks_only_a_report_known_not_to_be_issued()
+    {
+        var missing = ValuationIssuanceGateRules.StudyReportIssued(false);
+        Assert.Equal("study_report_issued", missing.Code);
+        Assert.Equal(ValuationIssuanceGateCodes.StudyReportIssued, missing.Code);
+        Assert.True(missing.IsHard);
+        Assert.False(missing.Passed);
+        Assert.NotNull(missing.DetailAr);
+        Assert.False(ValuationIssuanceGateRules.AllowsIssuance([missing]));
+
+        var issued = ValuationIssuanceGateRules.StudyReportIssued(true);
+        Assert.True(issued.Passed);
+        Assert.Null(issued.DetailAr);
+        Assert.True(ValuationIssuanceGateRules.AllowsIssuance([issued]));
+
+        // «Unknown» (an older case-study host during a rolling deploy) is not a block.
+        Assert.True(ValuationIssuanceGateRules.StudyReportIssued(null).Passed);
+    }
+
+    [Fact]
     public void Blocks_when_credentials_expired()
     {
         var check = ValuationIssuanceGateRules.Credentials("2020-01-01", "2027-01-01", Today);

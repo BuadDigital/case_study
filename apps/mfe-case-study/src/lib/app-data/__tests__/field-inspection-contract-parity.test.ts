@@ -10,6 +10,7 @@ import {
   serviceAmenityPhotoSlotId,
 } from "../inspector-workspace-data";
 import {
+  inspectorMustDecideDeedMatch,
   validateInspectorWorkspace,
   pickInspectorErrorsForWizardStep,
   inspectorWorkspaceHasBlockingErrors,
@@ -189,6 +190,149 @@ describe("Field inspection frontend/backend rule parity", () => {
     );
     draft.boundaryMatches.south.mismatchNote = "أقصر بمترين";
     expect(validateInspectorWorkspace(draft).boundaries).toBeUndefined();
+  });
+
+  describe("requireLandStructures (inspector submit gate, opt-in)", () => {
+    const require = { requireLandStructures: true } as const;
+
+    it("does nothing without the option — the specialist's accept path is unchanged", () => {
+      const draft = completeDraft();
+      draft.featureValues.assetSubject = "أرض";
+      expect(validateInspectorWorkspace(draft).landHasValuableStructures).toBeUndefined();
+    });
+
+    it("demands the answer only when the inspected asset is land", () => {
+      const land = completeDraft();
+      land.featureValues.assetSubject = "أرض";
+      expect(land.landHasValuableStructures).toBe("");
+      const errors = validateInspectorWorkspace(land, require);
+      expect(errors.landHasValuableStructures).toBe("حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم");
+      expect(inspectorWorkspaceHasBlockingErrors(errors)).toBe(true);
+      expect(pickInspectorErrorsForWizardStep(errors, 2).landHasValuableStructures).toBeTruthy();
+
+      const villa = completeDraft();
+      villa.featureValues.assetSubject = "فيلا";
+      expect(validateInspectorWorkspace(villa, require).landHasValuableStructures).toBeUndefined();
+    });
+
+    it("accepts yes and no for land", () => {
+      for (const answer of ["yes", "no"] as const) {
+        const draft = completeDraft();
+        draft.featureValues.assetSubject = "أرض";
+        draft.landHasValuableStructures = answer;
+        expect(validateInspectorWorkspace(draft, require).landHasValuableStructures).toBeUndefined();
+      }
+    });
+
+    it("sorts a server error with the same key onto the question", () => {
+      expect(firstInspectorWorkspaceErrorTarget({ landHasValuableStructures: "x" })).toBe(
+        "ins-land-structures",
+      );
+      expect(inspectorWizardStepForErrorTarget("ins-land-structures")).toBe(2);
+    });
+  });
+
+  describe("requireDeedMatch (inspector submit gate, opt-in)", () => {
+    const require = { requireDeedMatch: true } as const;
+
+    it("does nothing without the option — existing callers are unchanged", () => {
+      const draft = completeDraft();
+      const errors = validateInspectorWorkspace(draft);
+      expect(errors.deedMatchesNature).toBeUndefined();
+      expect(errors.boundaries).toBeUndefined();
+    });
+
+    it("demands an explicit verdict; an untouched table is not a verdict", () => {
+      const draft = completeDraft();
+      expect(draft.deedMatchesNature).toBe("");
+      const errors = validateInspectorWorkspace(draft, require);
+      expect(errors.deedMatchesNature).toBeTruthy();
+      expect(inspectorWorkspaceHasBlockingErrors(errors)).toBe(true);
+      expect(firstInspectorWorkspaceErrorTarget({ deedMatchesNature: "x" })).toBe("ins-deed-match");
+      expect(pickInspectorErrorsForWizardStep(errors, 2).deedMatchesNature).toBeTruthy();
+    });
+
+    it("orders the verdict before the boundaries error", () => {
+      expect(
+        firstInspectorWorkspaceErrorTarget({ deedMatchesNature: "x", boundaries: "y" }),
+      ).toBe("ins-deed-match");
+    });
+
+    it("is skipped when boundaries are unavailable", () => {
+      const errors = validateInspectorWorkspace(completeDraft(), {
+        ...require,
+        boundariesUnavailable: true,
+      });
+      expect(errors.deedMatchesNature).toBeUndefined();
+    });
+
+    it("yes passes with no non-matching side", () => {
+      const draft = completeDraft();
+      draft.deedMatchesNature = "yes";
+      const errors = validateInspectorWorkspace(draft, require);
+      expect(errors.deedMatchesNature).toBeUndefined();
+      expect(errors.boundaries).toBeUndefined();
+    });
+
+    it("yes with a non-matching side is a contradiction", () => {
+      const draft = completeDraft();
+      draft.deedMatchesNature = "yes";
+      draft.boundaryMatches.north = {
+        ...draft.boundaryMatches.north,
+        matches: false,
+        mismatchNote: "فرق",
+      };
+      const errors = validateInspectorWorkspace(draft, require);
+      expect(errors.boundaries).toBeTruthy();
+      expect(errors.missingBoundaryKey).toBe("north");
+    });
+
+    it("no needs at least one non-matching side, each with a note", () => {
+      const draft = completeDraft();
+      draft.deedMatchesNature = "no";
+      expect(validateInspectorWorkspace(draft, require).boundaries).toBeTruthy();
+      draft.boundaryMatches.east = {
+        ...draft.boundaryMatches.east,
+        matches: false,
+        mismatchNote: "",
+      };
+      const noNote = validateInspectorWorkspace(draft, require);
+      expect(noNote.boundaries).toBe("أضف ملاحظة عدم التطابق لكل حد غير مطابق");
+      expect(noNote.missingBoundaryKey).toBe("east");
+      draft.boundaryMatches.east.mismatchNote = "أقصر بمترين";
+      const ok = validateInspectorWorkspace(draft, require);
+      expect(ok.deedMatchesNature).toBeUndefined();
+      expect(ok.boundaries).toBeUndefined();
+    });
+  });
+
+  describe("inspectorMustDecideDeedMatch", () => {
+    const traditional = {
+      deedKind: "traditional",
+      realEstateRegNumber: "",
+      identifierType: "deed" as const,
+      boundariesAvailability: "yes",
+    };
+
+    it("applies to a traditional deed with available boundaries", () => {
+      expect(inspectorMustDecideDeedMatch(traditional)).toBe(true);
+    });
+
+    it("not for a registered title or unavailable boundaries", () => {
+      expect(inspectorMustDecideDeedMatch({ ...traditional, deedKind: "registered_title" })).toBe(false);
+      expect(inspectorMustDecideDeedMatch({ ...traditional, boundariesAvailability: "no" })).toBe(false);
+    });
+
+    it("the explicit deed kind wins over a stray registration number", () => {
+      expect(inspectorMustDecideDeedMatch({ ...traditional, realEstateRegNumber: "123" })).toBe(true);
+    });
+
+    it("falls back to the registration number while the deed kind is empty", () => {
+      expect(
+        inspectorMustDecideDeedMatch({ ...traditional, deedKind: "", realEstateRegNumber: "123" }),
+      ).toBe(false);
+      expect(inspectorMustDecideDeedMatch({ ...traditional, deedKind: "" })).toBe(true);
+    });
   });
 
   it("keeps step-1 continue independent of later-step gaps", () => {

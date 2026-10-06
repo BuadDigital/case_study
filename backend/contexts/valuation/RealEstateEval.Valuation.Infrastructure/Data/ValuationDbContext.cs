@@ -25,6 +25,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
         Set<ValuationComparableSelection>();
     public DbSet<ValuationReportIssuance> ValuationReportIssuances =>
         Set<ValuationReportIssuance>();
+    public DbSet<ValuationReportDraft> ValuationReportDrafts => Set<ValuationReportDraft>();
     public DbSet<ValuationReportPdf> ValuationReportPdfs => Set<ValuationReportPdf>();
     public DbSet<ValuationAdjustmentFactorRationale> ValuationAdjustmentFactorRationales =>
         Set<ValuationAdjustmentFactorRationale>();

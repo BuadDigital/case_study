@@ -3,14 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  cn,
-  EmptyState,
-  InlineLoadingSkeleton,
-  PageShell,
-  Spinner,
-  useToast,
-} from "@platform/ui-kit";
+import { cn, EmptyState, InlineLoadingSkeleton, PageShell, Spinner, useToast, confirmAction } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -118,10 +111,10 @@ export function CaseStudyInfoRolesView() {
   );
 
   useEffect(() => {
+    // Captured now: the cleanup must clear the timers this mount created.
+    const timers = noteSaveTimersRef.current;
     return () => {
-      for (const timer of Object.values(noteSaveTimersRef.current)) {
-        clearTimeout(timer);
-      }
+      for (const timer of Object.values(timers)) clearTimeout(timer);
     };
   }, []);
 
@@ -299,8 +292,15 @@ export function CaseStudyInfoRolesView() {
               type="button"
               className={opsBtnGhost}
               onClick={() => {
-                if (!window.confirm("إعادة تعيين جميع الاختيارات؟")) return;
-                applyConfig(() => emptyCaseStudyInfoRolesConfig());
+                void (async () => {
+                  const ok = await confirmAction({
+                    title: "إعادة التعيين",
+                    message: "إعادة تعيين جميع الاختيارات؟",
+                    confirmLabel: "إعادة التعيين",
+                    danger: true,
+                  });
+                  if (ok) applyConfig(() => emptyCaseStudyInfoRolesConfig());
+                })();
               }}
             >
               إعادة تعيين
@@ -310,7 +310,7 @@ export function CaseStudyInfoRolesView() {
       </section>
 
       <div className={cn(opsFilters, "mb-3.5")}>
-        <div className="inline-flex flex-wrap" role="tablist" aria-label="أقسام النموذج">
+        <div className="inline-flex flex-wrap" role="tablist" aria-label="أقسام التقرير">
           {CASE_STUDY_INFO_SECTIONS.map((sec) => {
             const qs = CASE_STUDY_QUESTION_CATALOG.filter(
               (q) => q.section === sec.id,

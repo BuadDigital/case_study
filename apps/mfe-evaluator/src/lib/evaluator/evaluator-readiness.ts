@@ -3,15 +3,22 @@ import {
   FAILURE_OBSTRUCTED_BADGE,
   isTaskFailureObstructed,
 } from "@platform/app-shared/workflow/task-failure-status";
+import {
+  appraisalStageLabel,
+  getReportDraftState,
+} from "@platform/app-shared/workflow/report-draft-state";
 import { findSiblingInspectionTask } from "./evaluator-inspection-gate";
 import { loadEvaluatorSubmission } from "./evaluator-submission-model";
 import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
 
-/** Case Study.html `valReadiness` buckets. */
-export type AppraiserReadiness =
-  | "new"
-  | "wait_inspection"
-  | "ready";
+/**
+ * Readiness buckets. The appraiser drafts from the start (no inspection gate): `drafting` until the
+ * specialist issues the study report, `ready` once it is issued (the submit is open).
+ */
+export type AppraiserReadiness = "drafting" | "ready";
+
+export const APPRAISER_DRAFTING_LABEL = "قيد التقييم — بانتظار إصدار الدراسة";
+export const APPRAISER_READY_LABEL = "جاهزة للتسليم";
 
 export function findSiblingSurveyTask(
   appraisalTask: WorkflowTask,
@@ -29,7 +36,8 @@ export function findSiblingSurveyTask(
 }
 
 /**
- * Prefer server `fieldInspectionCompleted` — party appraiser lists hide sibling
+ * Whether the field inspection is COMPLETED (informational only — it no longer gates the
+ * appraiser). Prefer server `fieldInspectionCompleted` — party appraiser lists hide sibling
  * inspection tasks (same pattern as EO surveyWorkGate).
  */
 export function appraiserInspectionDone(
@@ -79,24 +87,29 @@ export function appraiserReadiness(
   appraisalTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): AppraiserReadiness {
-  if (appraiserInspectionDone(appraisalTask, tasks)) return "ready";
-  return "wait_inspection";
+  void tasks;
+  return appraisalTask.studyReportIssued === true ? "ready" : "drafting";
 }
 
 /**
  * Case Study.html queue status pill for property valuation.
  * className maps to StatusPill colors (same vocabulary as eng survey).
  */
+/** The package status: the server's word (handed over to the specialist) first, then the local draft. */
+function submissionStatus(task: WorkflowTask): string {
+  if (task.appraisalPackageStatus === "submitted") return "submitted";
+  return loadEvaluatorSubmission(task.id)?.status ?? "draft";
+}
+
 export function appraiserQueueStatusBadge(
   task: WorkflowTask,
   tasks: WorkflowTask[],
 ): { label: string; className: string } {
   if (task.status === "completed") {
-    return { label: "مكتملة على النظام", className: "b-done" };
+    return { label: "صدر التقرير النهائي", className: "b-done" };
   }
   if (isTaskFailureObstructed(task)) return { ...FAILURE_OBSTRUCTED_BADGE };
-  const sub = loadEvaluatorSubmission(task.id);
-  const st = sub?.status ?? "draft";
+  const st = submissionStatus(task);
   if (st === "submitted") {
     const recall = getPartyTaskRecall(task.id);
     if (recall?.status === "pending") {
@@ -105,17 +118,17 @@ export function appraiserQueueStatusBadge(
     if (recall?.status === "rejected") {
       return { label: "مُرسَل — رُفِض الاستدعاء", className: "b-fail" };
     }
-    return { label: "مُرسَلة للأخصائي", className: "b-navy" };
+    const stage = appraisalStageLabel(getReportDraftState(task.propertyId));
+    if (stage) return { label: stage.label, className: stage.className };
+    return { label: "مُسلَّمة — بانتظار مسودة التقرير", className: "b-navy" };
   }
   if (st === "reopened") {
     return { label: "معادة للتصحيح", className: "b-returned" };
   }
-  const rd = appraiserReadiness(task, tasks);
-  if (rd === "ready") return { label: "جاهزة للتقييم", className: "b-gold" };
-  if (rd === "wait_inspection") {
-    return { label: "تراقب تقدم الأطراف", className: "b-new" };
+  if (appraiserReadiness(task, tasks) === "ready") {
+    return { label: APPRAISER_READY_LABEL, className: "b-gold" };
   }
-  return { label: "جديدة", className: "b-new" };
+  return { label: APPRAISER_DRAFTING_LABEL, className: "b-prog" };
 }
 
 export function appraiserQueueStatusGroup(
@@ -123,9 +136,10 @@ export function appraiserQueueStatusGroup(
   tasks: WorkflowTask[],
 ): string {
   if (task.status === "completed") return "closed";
-  const sub = loadEvaluatorSubmission(task.id);
-  const st = sub?.status ?? "draft";
-  if (st === "submitted") return "submitted";
+  const st = submissionStatus(task);
+  if (st === "submitted") {
+    return appraisalStageLabel(getReportDraftState(task.propertyId))?.group ?? "submitted";
+  }
   if (st === "reopened") return "reopened";
   return appraiserReadiness(task, tasks);
 }

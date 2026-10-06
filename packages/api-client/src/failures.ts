@@ -27,6 +27,9 @@ export type FailureRecordDto = {
   specialist: string;
   createdAt: string;
   updatedAt: string;
+  /** Set when the specialist lifted the survey freeze this failure caused (ISO UTC). */
+  surveyFreezeLiftedAt?: string | null;
+  surveyFreezeLiftReason?: string | null;
 };
 
 export type CreateFailureRequest = {
@@ -293,5 +296,52 @@ export function dtoToFailureRecord(dto: FailureRecordDto) {
     specialist: dto.specialist,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    surveyFreezeLiftedAt: dto.surveyFreezeLiftedAt ?? null,
+    surveyFreezeLiftReason: dto.surveyFreezeLiftReason ?? null,
   };
+}
+
+export type LiftSurveyFreezeRequest = {
+  poNumber: string;
+  propertyId: string;
+  /** At least 10 characters. */
+  reason: string;
+};
+
+/**
+ * The case specialist lifts the survey freeze on one property (the failure stays open) — the engineering
+ * office may then start the survey. Answers how many failures were lifted; a refusal carries its Arabic
+ * reason in `errors._`.
+ */
+export async function liftSurveyFreeze(
+  config: FailuresApiConfig,
+  request: LiftSurveyFreezeRequest,
+): Promise<
+  | ApiOk<{ lifted: number }>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/failures/by-property/lift-survey-freeze`, {
+      method: "POST",
+      headers: headers(config.token),
+      body: JSON.stringify(request),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403 || res.status === 400 || res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return {
+        ok: false,
+        kind: res.status === 403 ? "forbidden" : "validation",
+        errors,
+        message: errors._,
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const body = (await res.json()) as { lifted?: number };
+    return { ok: true, data: { lifted: Number(body.lifted ?? 0) } };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
 }

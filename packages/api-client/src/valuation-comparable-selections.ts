@@ -1092,25 +1092,6 @@ export async function getValuationReportDocument(
   }
 }
 
-export async function getValuationReportPdf(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<Blob>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-document/pdf`,
-      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await res.blob() };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 /* ─── Q-6: two-phase issuance + deposit certificate ─── */
 
 export type ValuationReportIssuanceStateDto = {
@@ -1124,8 +1105,6 @@ export type ValuationReportIssuanceStateDto = {
   certificateFileName?: string | null;
   certificateUploadedAtUtc?: string | null;
   finalIssuedAtUtc?: string | null;
-  hasDepositPdf: boolean;
-  hasFinalPdf: boolean;
   /** Q-9 supplement (r2): active valuation round number — 1 before any reopen. */
   version: number;
   /** Count of superseded cancelled copies still kept on the transaction file. */
@@ -1163,18 +1142,24 @@ async function postIssuance(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
+    if (res.status === 400 || res.status === 403 || res.status === 409) {
       const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
+        errors?: Record<string, string | string[]>;
         message?: string;
+        detail?: string;
       } | null;
+      const errors = Object.fromEntries(
+        Object.entries(payload?.errors ?? {}).map(([k, v]) => [k, Array.isArray(v) ? (v[0] ?? "") : v]),
+      );
       return {
         ok: false,
         kind: "validation",
-        message: payload?.errors
-          ? Object.values(payload.errors)[0]
-          : (payload?.message ?? "تعذّر تنفيذ خطوة الإصدار"),
-        errors: payload?.errors,
+        message:
+          Object.values(errors)[0] ??
+          payload?.detail ??
+          payload?.message ??
+          "تعذّر تنفيذ خطوة الإصدار",
+        errors,
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };
@@ -1182,18 +1167,6 @@ async function postIssuance(
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-/** Q-6-1: when gates complete — full freeze + generate deposit copy (code field empty). */
-export function issueDepositVersion(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportIssuanceStateDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  return postIssuance(
-    config,
-    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/deposit`,
-  );
 }
 
 /** Q-6-3/4: record certificate and code — generates final copy with certificate/code page in meta. */
@@ -1232,23 +1205,3 @@ export function reopenReportIssuance(
   );
 }
 
-/** Download deposit copy or final PDF. */
-export async function getIssuancePdf(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  kind: "deposit" | "final",
-): Promise<Result<Blob>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/${kind}-pdf`,
-      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await res.blob() };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}

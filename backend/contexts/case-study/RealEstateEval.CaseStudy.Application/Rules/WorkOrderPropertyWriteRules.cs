@@ -332,30 +332,12 @@ public static class WorkOrderPropertyWriteRules
         if (dto.Owners is not null)
         {
             var owners = dto.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
                 .Where(o => !string.IsNullOrWhiteSpace(o.Name))
                 .ToList();
-            // Soft draft: skip invalid owner sets rather than failing the whole autosave.
-            if (OwnershipTypeRules.ValidateOwners(owners) is null)
-            {
-                entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
-                if (owners.Count > 0)
-                    entity.OwnerName = owners[0].Name;
-            }
-        }
-
-        if (dto.OwnershipTypeIsManual)
-        {
-            if (OwnershipTypes.IsKnown(dto.OwnershipType))
-            {
-                entity.OwnershipType = dto.OwnershipType!.Trim().ToLowerInvariant();
-                entity.OwnershipTypeIsManual = true;
-            }
-        }
-        else
-        {
-            entity.OwnershipType = null;
-            entity.OwnershipTypeIsManual = false;
+            entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
+            if (owners.Count > 0)
+                entity.OwnerName = owners[0].Name;
         }
     }
 
@@ -383,36 +365,16 @@ public static class WorkOrderPropertyWriteRules
         entity.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent,request.RestrictionType);
         entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(request.RestrictionsPresent, request.RestrictionType, request.RestrictionOtherReason);
 
- // owners+shares from the transcription; ownership type is editable-derived.
+ // owners from the transcription; the ownership type is derived from their count (never stored).
         if (request.Owners is not null)
         {
             var owners = request.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
                 .Where(o => !string.IsNullOrWhiteSpace(o.Name))
                 .ToList();
-            if (OwnershipTypeRules.ValidateOwners(owners) is { } ownersError)
-                return (new Dictionary<string, string> { ["owners"] = ownersError }, false);
             entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
             if (owners.Count > 0)
                 entity.OwnerName = owners[0].Name;
-        }
-
-        if (request.OwnershipTypeIsManual)
-        {
-            if (!OwnershipTypes.IsKnown(request.OwnershipType))
-            {
-                return (
-                    new Dictionary<string, string> { ["ownershipType"] = "نوع ملكية غير معروف" },
-                    false);
-            }
-
-            entity.OwnershipType = request.OwnershipType!.Trim().ToLowerInvariant();
-            entity.OwnershipTypeIsManual = true;
-        }
-        else
-        {
-            entity.OwnershipType = null;
-            entity.OwnershipTypeIsManual = false;
         }
 
         entity.BoundariesAvailability = request.BoundariesAvailability?.Trim();

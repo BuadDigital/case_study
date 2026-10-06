@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Valuation.Application.Contracts;
@@ -9,25 +10,30 @@ using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
+/// <summary>
+/// The appraiser's «استرجاع التقرير» requests. Reads go to the case staff who run the
+/// transaction (the report policy admits manage-work-orders); the decision belongs to the case
+/// specialist alone — the capability only gets a caller to the door, the role check decides.
+/// </summary>
 [ApiController]
 [Route("api/evaluator-recalls")]
 [Authorize]
-public class EvaluatorRecallsController : ControllerBase
+public class EvaluatorRecallsController(
+    IEvaluatorRecallsService recalls,
+    IPermissionService permissions) : ControllerBase
 {
-    private readonly IEvaluatorRecallsService _recalls;
-
-    public EvaluatorRecallsController(IEvaluatorRecallsService recalls) => _recalls = recalls;
+    public const string DecisionForbiddenAr = "قرار استرجاع التقييم للأخصائي فقط";
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<IReadOnlyList<EvaluatorRecallDto>>> List(CancellationToken ct)
-        => Ok(await _recalls.ListAsync(ct));
+        => Ok(await recalls.ListAsync(ct));
 
     [HttpGet("{taskId}")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<EvaluatorRecallDto>> Get(string taskId, CancellationToken ct)
     {
-        var dto = await _recalls.GetAsync(taskId, ct);
+        var dto = await recalls.GetAsync(taskId, ct);
         return this.OkOrEmpty(dto);
     }
 
@@ -37,27 +43,61 @@ public class EvaluatorRecallsController : ControllerBase
         [FromBody] CreateEvaluatorRecallRequest request,
         CancellationToken ct)
     {
-        var (dto, error) = await _recalls.RequestAsync(request, ct);
+        var (dto, error) = await recalls.RequestAsync(request, ct);
         if (dto is null) return this.BadRequestProblem(error ?? "طلب غير صالح");
         return CreatedAtAction(nameof(Get), new { taskId = dto.TaskId }, dto);
     }
 
+    [HttpPatch("{taskId}/decide")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<EvaluatorRecallDto>> Decide(
+        string taskId,
+        [FromBody] DecideEvaluatorRecallRequest request,
+        CancellationToken ct)
+        => DecideAsCaseSpecialistAsync(taskId, request, ct);
+
+    // Old routes stay for a rolling deploy; they carry the same rule as /decide.
     [HttpPatch("{taskId}/approve")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
-    public async Task<ActionResult<EvaluatorRecallDto>> Approve(string taskId, CancellationToken ct)
-    {
-        var dto = await _recalls.ApproveAsync(taskId, ct);
-        return dto is null ? NotFound() : Ok(dto);
-    }
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<EvaluatorRecallDto>> Approve(string taskId, CancellationToken ct)
+        => DecideAsCaseSpecialistAsync(
+            taskId,
+            new DecideEvaluatorRecallRequest { Decision = EvaluatorRecallDecisions.Approve },
+            ct);
 
     [HttpPatch("{taskId}/reject")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageValuationRequests)]
-    public async Task<ActionResult<EvaluatorRecallDto>> Reject(
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<EvaluatorRecallDto>> Reject(
         string taskId,
         [FromBody] RejectEvaluatorRecallRequest request,
         CancellationToken ct)
+        => DecideAsCaseSpecialistAsync(
+            taskId,
+            new DecideEvaluatorRecallRequest
+            {
+                Decision = EvaluatorRecallDecisions.Reject,
+                Note = request.SpecialistNote,
+            },
+            ct);
+
+    private async Task<ActionResult<EvaluatorRecallDto>> DecideAsCaseSpecialistAsync(
+        string taskId,
+        DecideEvaluatorRecallRequest request,
+        CancellationToken ct)
     {
-        var dto = await _recalls.RejectAsync(taskId, request, ct);
+        var actor = await permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        if (!PoRoleMatrixRules.CanDecideAppraisalRecall(actor?.PrototypeRole))
+            return this.ForbiddenProblem(DecisionForbiddenAr);
+
+        var (dto, errors) = await recalls.DecideAsync(taskId, request, ct, actor?.UserId);
+        if (errors is not null)
+        {
+            return errors.ContainsKey(EvaluatorRecallDecisions.UpstreamErrorKey)
+                ? this.FieldErrorsProblem(
+                    errors, StatusCodes.Status503ServiceUnavailable, "Service Unavailable")
+                : this.FieldErrorsProblem(errors);
+        }
+
         return dto is null ? NotFound() : Ok(dto);
     }
 }

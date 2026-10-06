@@ -15,7 +15,6 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   mergeEvaluatorChecklistFromCaseStudy,
 } from "../lib/evaluator/evaluator-checklist-case-study-sync";
-import { getCachedEvaluatorDepositCertificate } from "../lib/evaluator/evaluator-deposit-attachments";
 import { findSiblingInspectionTask } from "../lib/evaluator/evaluator-inspection-gate";
 import {
   appraiserInspectionDone,
@@ -43,6 +42,12 @@ const ValuationReportPreview = dynamic(
       (m) => m.EvaluatorValuationReportPreview,
     ),
   { ssr: false, loading: () => ValuationReportLoading() },
+);
+
+/** The specialist's report-draft workspace (ESG + print attachments, send / withdraw). */
+const ReportDraftPanel = dynamic(
+  () => import("../components/evaluator/ReportDraftPanel").then((m) => m.ReportDraftPanel),
+  { ssr: false },
 );
 
 let registered = false;
@@ -73,7 +78,6 @@ export function ensureEvaluatorRuntimeBridgeRegistered(): void {
       void prefetchEvaluatorReport(taskId);
     },
     getCachedEvaluatorReport,
-    getCachedEvaluatorDepositCertificate,
     mergeEvaluatorChecklistFromCaseStudy: (
       checklist,
       answers,
@@ -107,5 +111,6 @@ export function ensureEvaluatorRuntimeBridgeRegistered(): void {
       void syncEvaluatorChecklistFromPartyCaseStudy(taskId, options);
     },
     ValuationReportPreview,
+    ReportDraftPanel,
   });
 }

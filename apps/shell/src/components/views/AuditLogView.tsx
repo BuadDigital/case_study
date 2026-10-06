@@ -40,9 +40,15 @@ import {
 } from "@/lib/audit-log-labels";
 
 // Hoisted: constructing Intl.DateTimeFormat per row is expensive.
-const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA", {
-  dateStyle: "short",
-  timeStyle: "short",
+// Weekday first: «الأربعاء، ٣٠‏/٩‏/٢٠٢٦، ٣:٣٣ م». The calendar is pinned to
+// Gregorian so the row reads the same on every runtime.
+const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+  weekday: "long",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 });
 
 function formatAt(iso: string): string {
@@ -148,7 +154,7 @@ export function AuditLogView() {
                 exportRowsToCsv(
                   "audit-log",
                   [
-                    { header: "الوقت", value: (r) => formatAt(r.createdAtUtc) },
+                    { header: "التاريخ والوقت", value: (r) => formatAt(r.createdAtUtc) },
                     {
                       header: "المستخدم",
                       value: (r) =>
@@ -202,7 +208,7 @@ export function AuditLogView() {
           <Table wrapClassName="min-w-[860px]">
             <THead>
               <Tr hoverable={false}>
-                <Th className="w-[150px] whitespace-nowrap">الوقت</Th>
+                <Th className="w-[205px] whitespace-nowrap">التاريخ والوقت</Th>
                 <Th>المستخدم</Th>
                 <Th>الإجراء</Th>
                 <Th>الكيان</Th>

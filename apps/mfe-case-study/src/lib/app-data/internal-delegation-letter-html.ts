@@ -7,7 +7,7 @@ import {
   caseStudyProviderName,
   caseStudySignatureImage,
   caseStudyStampImage,
-} from "./case-study-form-data";
+} from "./case-study-report-data";
 import {
   ensureOrganizationSettingsLoaded,
   getCachedOrganizationSettings,

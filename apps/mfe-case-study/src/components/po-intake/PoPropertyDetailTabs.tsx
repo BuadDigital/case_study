@@ -48,7 +48,9 @@ import {
   PropertyDetailPropertyKeys,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
-import { canEditProperty } from "../../lib/app-data/po-roles";
+import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
+import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
+import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
 import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../../lib/app-data/inspector-workspace-data";
 
 export type PoPropertyDetailInspectorWorkspace = {
@@ -255,6 +257,7 @@ export function PoPropertyDetailTabs({
                           ? ` · السبب: ${failure.internalNote}`
                           : null}
                       </div>
+                      <PropertyFailureSurveyFreezeLift failure={failure} />
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1">
                       <DetailBadge tone="amber">
@@ -501,7 +504,13 @@ export function PoPropertyDetailTabs({
         </div>
 
         {showCaseStudySideRail ? (
-          <div className="sticky top-0">
+          <div className="sticky top-0 flex flex-col gap-3">
+            {canHandOverToEnfaz(role) ? (
+              <PropertyDetailEnfazHandoverCard
+                workOrderId={record.id}
+                propertyId={property.id}
+              />
+            ) : null}
             <PropertyTransactionTimeline record={record} property={property} />
           </div>
         ) : null}

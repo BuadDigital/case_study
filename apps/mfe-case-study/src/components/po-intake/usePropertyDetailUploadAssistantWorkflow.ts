@@ -31,11 +31,8 @@ import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
+import { usePropertyReportDraftQuery } from "../../query/use-property-report-draft-query";
 import {
-  DEPOSIT_CERTIFICATE_FIELD_LABEL,
-  DEPOSIT_CODE_FIELD_LABEL,
-  appraisalFieldValue,
   collapsedSectionIds,
   copyToastPreview,
   courtVisitOpsFields,
@@ -86,10 +83,8 @@ export function usePropertyDetailEnfathUploadWorkflow({
     requestNumber: property.requestNumber.trim() || undefined,
   });
 
-  // Historical fallback only — nothing writes to this anymore now that the
-  // manual deposit-entry panel is gone; the evaluator's own report draft is
-  // the sole source going forward.
-  const depositDraft = useMemo(() => loadInfathDeposit(property.id), [property.id]);
+  // The deposit code and the certificate are recorded on the valuation report's issuance — nowhere else.
+  const { data: reportDraft } = usePropertyReportDraftQuery(property.id);
 
   const opsContext = useMemo((): InfathOpsContext => {
     const visit = primaryCourtVisit;
@@ -97,20 +92,15 @@ export function usePropertyDetailEnfathUploadWorkflow({
       keyGate,
       visit?.linkedEnvelopeId,
     );
-    const appraisalFields = parties?.appraisal?.fields;
     return {
       ...courtVisitOpsFields(visit),
       keysStatus: keyGate?.keysStatus ?? null,
       keyAvailable: keyGate?.keyAvailable,
       envelopeId,
-      depositCode:
-        appraisalFieldValue(appraisalFields, DEPOSIT_CODE_FIELD_LABEL) ??
-        depositDraft.depositCode,
-      depositCertificateName:
-        appraisalFieldValue(appraisalFields, DEPOSIT_CERTIFICATE_FIELD_LABEL) ??
-        depositDraft.depositCertificateName,
+      depositCode: reportDraft?.depositCode?.trim() ?? "",
+      depositCertificateName: reportDraft?.certificateFileName?.trim() ?? "",
     };
-  }, [primaryCourtVisit, keyGate, depositDraft, parties]);
+  }, [primaryCourtVisit, keyGate, reportDraft]);
 
   // Building areas come from the specialist's «جدول المكونات» (the inspector no longer enters them).
   const [componentLines, setComponentLines] = useState<BuildingInventoryLineDto[] | null>(null);

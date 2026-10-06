@@ -207,5 +207,3 @@ export function appraisalFieldValue(
   return fields?.find((f) => f.label === label)?.value;
 }
 
-export const DEPOSIT_CODE_FIELD_LABEL = "رمز إيداع التقرير";
-export const DEPOSIT_CERTIFICATE_FIELD_LABEL = "شهادة الإيداع";

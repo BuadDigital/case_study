@@ -499,44 +499,7 @@ public class WorkflowTaskReadAuthorizationTests
     public async Task List_marks_property_appraisal_false_when_sibling_inspection_open()
     {
         await using var db = CreateDb();
-        var parentId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        var propertyId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-        var now = DateTime.UtcNow;
-        db.WorkflowTasks.AddRange(
-            WorkflowTask.Create(
-                WorkflowTaskKind.CaseStudyProperty,
-                "PO-open-fi",
-                now,
-                title: "parent",
-                phase: WorkflowTaskPhase.Done,
-                assigneeRole: "case-specialist",
-                assigneeName: "cs",
-                assigneeId: "cs-1",
-                id: parentId,
-                propertyId: propertyId),
-            WorkflowTask.Create(
-                WorkflowTaskKind.FieldInspection,
-                "PO-open-fi",
-                now,
-                title: "fi",
-                phase: WorkflowTaskPhase.Done,
-                assigneeRole: "field-inspector",
-                assigneeName: "fi",
-                assigneeId: "fi-1",
-                parentTaskId: parentId,
-                propertyId: propertyId),
-            WorkflowTask.Create(
-                WorkflowTaskKind.PropertyAppraisal,
-                "PO-open-fi",
-                now,
-                title: "appraisal",
-                phase: WorkflowTaskPhase.Done,
-                assigneeRole: "real-estate-appraiser",
-                assigneeName: "val",
-                assigneeId: "val-1",
-                parentTaskId: parentId,
-                propertyId: propertyId));
-        await db.SaveChangesAsync();
+        var (_, _, openInspectionId) = SeedOpenInspectionFamily(db, "PO-open-fi");
 
         var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
         var rows = await service.ListAsync(new PermissionsDto
@@ -549,8 +512,140 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("property-appraisal", rows[0].Kind);
         Assert.False(rows[0].FieldInspectionCompleted);
-        Assert.Null(rows[0].FieldInspectionTaskId);
+        Assert.False(rows[0].FieldInspectionAccepted);
+        // Batch 2C: the appraiser reads the inspector's draft, so the open inspection's id is filled.
+        Assert.Equal(openInspectionId.ToString(), rows[0].FieldInspectionTaskId);
         Assert.False(rows[0].EngineeringSurveyAssigned);
+    }
+
+    [Fact]
+    public async Task List_keeps_survey_office_inspection_task_id_completed_only()
+    {
+        await using var db = CreateDb();
+        var (parentId, propertyId, openInspectionId) = SeedOpenInspectionFamily(db, "PO-open-survey");
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-open-survey",
+            DateTime.UtcNow,
+            title: "survey",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "engineering-office",
+            assigneeName: "office",
+            assigneeId: "eo-1",
+            parentTaskId: parentId,
+            propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "eo-user",
+            PrototypeRole = "engineering-office",
+            DistributionAssigneeId = "eo-1",
+        });
+
+        var survey = Assert.Single(rows, r => r.Kind == "engineering-survey");
+        Assert.False(survey.FieldInspectionCompleted);
+        Assert.Null(survey.FieldInspectionTaskId);
+        Assert.NotEqual(openInspectionId.ToString(), survey.FieldInspectionTaskId);
+    }
+
+    [Fact]
+    public async Task List_appraiser_inspection_task_id_prefers_completed_then_ignores_cancelled()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var propertyId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var now = DateTime.UtcNow;
+        var cancelled = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection, "PO-pick", now.AddMinutes(3), title: "fi-cancelled",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "field-inspector", assigneeName: "fi",
+            assigneeId: "fi-1", parentTaskId: parentId, propertyId: propertyId);
+        cancelled.Cancel(now.AddMinutes(4));
+        var draft = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection, "PO-pick", now.AddMinutes(2), title: "fi-draft",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "field-inspector", assigneeName: "fi",
+            assigneeId: "fi-1", parentTaskId: parentId, propertyId: propertyId);
+        var completed = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection, "PO-pick", now.AddMinutes(1), title: "fi-done",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "field-inspector", assigneeName: "fi",
+            assigneeId: "fi-1", parentTaskId: parentId, propertyId: propertyId);
+        completed.Complete(now.AddMinutes(1));
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty, "PO-pick", now, title: "parent",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "case-specialist", assigneeName: "cs",
+                assigneeId: "cs-1", id: parentId, propertyId: propertyId),
+            cancelled,
+            draft,
+            completed,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal, "PO-pick", now, title: "appraisal",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "real-estate-appraiser", assigneeName: "val",
+                assigneeId: "val-1", parentTaskId: parentId, propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        var row = Assert.Single(rows);
+        Assert.True(row.FieldInspectionCompleted);
+        Assert.Equal(completed.Id.ToString(), row.FieldInspectionTaskId);
+    }
+
+    [Fact]
+    public async Task List_appraiser_gets_no_inspection_task_id_when_the_only_inspection_is_cancelled()
+    {
+        await using var db = CreateDb();
+        var (parentId, propertyId, openInspectionId) = SeedOpenInspectionFamily(db, "PO-cancelled-only");
+        var inspection = await db.WorkflowTasks.FindAsync(openInspectionId);
+        inspection!.Cancel(DateTime.UtcNow);
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        var row = Assert.Single(rows);
+        Assert.Null(row.FieldInspectionTaskId);
+        Assert.False(row.FieldInspectionCompleted);
+        Assert.NotEqual(Guid.Empty, parentId);
+        Assert.NotEqual(Guid.Empty, propertyId);
+    }
+
+    /// <summary>Parent + OPEN field inspection + appraisal assigned to «val-1».</summary>
+    private static (Guid ParentId, Guid PropertyId, Guid InspectionId) SeedOpenInspectionFamily(
+        CaseStudyDbContext db,
+        string po)
+    {
+        var parentId = Guid.NewGuid();
+        var propertyId = Guid.NewGuid();
+        var inspectionId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty, po, now, title: "parent",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "case-specialist", assigneeName: "cs",
+                assigneeId: "cs-1", id: parentId, propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.FieldInspection, po, now, title: "fi",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "field-inspector", assigneeName: "fi",
+                assigneeId: "fi-1", id: inspectionId, parentTaskId: parentId, propertyId: propertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal, po, now, title: "appraisal",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "real-estate-appraiser", assigneeName: "val",
+                assigneeId: "val-1", parentTaskId: parentId, propertyId: propertyId));
+        db.SaveChanges();
+        return (parentId, propertyId, inspectionId);
     }
 
     private static CaseStudyDbContext CreateDb()

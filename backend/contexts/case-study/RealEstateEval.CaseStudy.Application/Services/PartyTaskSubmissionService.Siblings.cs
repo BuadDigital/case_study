@@ -34,6 +34,38 @@ public partial class PartyTaskSubmissionService
             dto.FieldInspectionAccepted = flags.Accepted;
     }
 
+    /// <summary>
+    /// <see cref="PartyTaskSubmissionDto.StudyReportIssued"/> for the appraisal packages of a list —
+    /// two queries in total (parents of the appraisal tasks, then which of those parents issued).
+    /// A package with no parent reads as not issued, the same as the single read.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, bool>> LoadStudyReportIssuedAsync(
+        IReadOnlyList<PartyTaskSubmission> entities,
+        CancellationToken cancellationToken)
+    {
+        var appraisalTaskIds = entities
+            .Where(e => e.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+            .Select(e => e.WorkflowTaskId)
+            .Distinct()
+            .ToList();
+        var result = new Dictionary<Guid, bool>();
+        if (appraisalTaskIds.Count == 0) return result;
+
+        var parentByTask = (await _repo.ListTaskFactsAsync(appraisalTaskIds, cancellationToken))
+            .ToDictionary(t => t.Id, t => t.ParentTaskId);
+        var issuedParents = await _repo.ListIssuedReportParentIdsAsync(
+            parentByTask.Values.Where(p => p is not null).Select(p => p!.Value).Distinct().ToList(),
+            cancellationToken);
+
+        foreach (var taskId in appraisalTaskIds)
+        {
+            result[taskId] = parentByTask.GetValueOrDefault(taskId) is Guid parent
+                && issuedParents.Contains(parent);
+        }
+
+        return result;
+    }
+
     private async Task<(bool Completed, bool Accepted)> SiblingInspectionFlagsAsync(
         Guid partyTaskId,
         Guid propertyId,

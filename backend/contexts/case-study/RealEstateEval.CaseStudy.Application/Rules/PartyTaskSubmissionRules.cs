@@ -27,12 +27,14 @@ public static class PartyTaskSubmissionRules
 
     /// <summary>
     /// Case staff may correct a party package from the property-edit screen: a submitted
-    /// inspection / survey / appraisal package (field values, map pin, etc.), and an inspection
-    /// draft (the specialist's long-standing inspection-tab edits).
+    /// inspection / survey package (field values, map pin, etc.), and an inspection draft (the
+    /// specialist's long-standing inspection-tab edits). Never the appraiser's package: his numbers
+    /// are accepted or returned, not edited by staff.
     /// </summary>
     public static bool StaffMayCorrectPartyPackage(PartySubmissionActor? actor, WorkflowTask task) =>
         actor is not null
         && IsPartySubmissionKind(task.Kind)
+        && task.Kind != WorkflowTaskKind.PropertyAppraisal
         && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.PrototypeRole);
 
     /// <summary>
@@ -77,7 +79,10 @@ public static class PartyTaskSubmissionRules
     /// <summary>
     /// Documentary gates per kind: the survey needs a completed inspection and no active failure,
     /// a site letter unless the property is platted, and a party phone once the site is confirmed;
-    /// the inspection needs a party phone once the client declaration is signed. Informal map-URL
+    /// the inspection needs a party phone once the client declaration is signed and, on a traditional
+    /// deed with available boundaries, an explicit «deed matches nature» verdict, and — when the
+    /// inspected asset is land — an explicit yes/no «does the land hold buildings or annexes worth
+    /// valuing» answer. Informal map-URL
     /// access gate removed — tasks are not assigned without initial data. Key envelopes remain
     /// tracked (payload keyAvailable) but do not block submit.
     /// </summary>
@@ -132,12 +137,51 @@ public static class PartyTaskSubmissionRules
                     phoneWasPresent);
                 if (phoneBlock is not null && PartyTaskSubmissionPayloadRules.GetBool(root, "clientDeclarationSigned"))
                     errors["clientDeclarationSigned"] = phoneBlock;
+
+                // The inspector's yes/no verdict on the deed boundaries against the site is a data
+                // requirement, not a documentary gate — the role bypass does not skip it. Checked
+                // only when the property is known (a package with no property has no deed to match).
+                if (property is not null)
+                {
+                    foreach (var (key, message) in InspectorDeedNatureMatchRules.Validate(
+                                 property.DeedKind,
+                                 property.BoundariesAvailability,
+                                 root))
+                    {
+                        errors[key] = message;
+                    }
+
+                    // An asset typed land must carry the inspector's explicit answer on whether the
+                    // land holds buildings or annexes worth valuing — it decides whether the
+                    // specialist's inventory table is mandatory. Data requirement: no role bypass.
+                    if (InspectedPropertyTypeRules.IsLand(InspectedPropertyTypeRules.FromRoot(root))
+                        && SpecialistComponentsRules.ReadLandHasValuableStructures(root) is null)
+                    {
+                        errors[SpecialistComponentsRules.LandHasValuableStructuresKey] =
+                            SpecialistComponentsRules.LandHasValuableStructuresRequired;
+                    }
+                }
                 break;
             }
         }
 
         return errors;
     }
+
+    public const string StudyReportKey = "studyReport";
+
+    public const string StudyReportNotIssuedAr =
+        "لا يمكن تسليم التقييم قبل أن يصدر الأخصائي تقرير دراسة الحالة";
+
+    /// <summary>
+    /// The appraiser's submission waits on the specialist's issued case-study report. A hard block:
+    /// unlike the documentary gates, no role bypasses it, so it is decided here from one fact — whether
+    /// the parent's own (non-party) report is issued. Null when the report is issued.
+    /// </summary>
+    public static Dictionary<string, string>? StudyReportGateError(bool studyReportIssued) =>
+        studyReportIssued
+            ? null
+            : new Dictionary<string, string> { [StudyReportKey] = StudyReportNotIssuedAr };
 
     /// <summary>An unsaved draft shape for a party task that has no submission row yet.</summary>
     public static PartyTaskSubmission UnsavedDraft(WorkflowTask task) => new()

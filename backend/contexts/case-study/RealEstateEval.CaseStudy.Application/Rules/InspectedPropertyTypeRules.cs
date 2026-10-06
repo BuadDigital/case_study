@@ -41,22 +41,28 @@ public static class InspectedPropertyTypeRules
         try
         {
             using var doc = JsonDocument.Parse(payloadJson);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("featureValues", out var features)
-                || features.ValueKind != JsonValueKind.Object
-                || !features.TryGetProperty("assetSubject", out var subject)
-                || subject.ValueKind != JsonValueKind.String)
-            {
-                return null;
-            }
-
-            var value = subject.GetString()?.Trim() ?? "";
-            return Allowed.Contains(value) ? value : null;
+            return FromRoot(doc.RootElement);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    /// <summary>The closed-list «الأصل محل التقييم» answer from a parsed inspector payload root.</summary>
+    public static string? FromRoot(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("featureValues", out var features)
+            || features.ValueKind != JsonValueKind.Object
+            || !features.TryGetProperty("assetSubject", out var subject)
+            || subject.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var value = subject.GetString()?.Trim() ?? "";
+        return Allowed.Contains(value) ? value : null;
     }
 
     public static bool IsLand(string? propertyType)

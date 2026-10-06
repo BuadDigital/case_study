@@ -7,7 +7,6 @@
  */
 
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -17,7 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { poListStatusMeta } from "@platform/app-shared/app-data/po-list-status";
-import { cn, StatusPill } from "@platform/ui-kit";
+import { cn, StatusPill, useIsHydrated } from "@platform/ui-kit";
 import {
   poStatusStyle,
   TEAM_COLORS,
@@ -74,12 +73,8 @@ export function HoverPortalCard({
   const triggerRef = useRef<HTMLSpanElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsHydrated();
   const [cardStyle, setCardStyle] = useState<CSSProperties>({});
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current || !cardRef.current) return;

@@ -66,6 +66,8 @@ export function outboxKindLabel(kind: string): string {
       return "تعليق مهمة";
     case "property-court-access":
       return "مسار دخول المحكمة";
+    case "building-inventory-save":
+      return "جدول الحصر";
     case "key-envelope-create":
       return "تسجيل ظرف مفاتيح";
     case "key-envelope-assignment-add":

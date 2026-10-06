@@ -2,19 +2,17 @@
 
 /**
  * Save/confirm commands behind `CaseStudyTaskWork`: the Infath save, the
- * bourse save (with the obstruction and bourse-inquiry fast paths), the
- * distribution confirm/patch, and the supervisor's obstruction release. Owns
+ * bourse save, the distribution confirm/patch, and the supervisor's
+ * obstruction release. Owns
  * only the idempotency guards; every other piece of state arrives from
  * `useMyTaskWorkWorkflow`, which composes this hook.
  */
 import { useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import type { RoleId } from "@platform/types";
 import { useToast } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
-import { ROLES, type StaffUser } from "@platform/app-shared/app-data/constants";
-import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
+import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   hasFieldErrors,
@@ -31,7 +29,6 @@ import {
 import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
 import {
   formatPropertyDeedDisplay,
-  isBourseInquiryIdentifier,
   propertyHasRegisteredTitle,
   type AssignmentType,
   type BourseDeedVitality,
@@ -39,10 +36,6 @@ import {
   type PoPropertyIntake,
   type PropertyIdentifierType,
 } from "../lib/app-data/po-intake-data";
-import {
-  submitBourseObstruction,
-  validateBourseObstructionReason,
-} from "../lib/app-data/bourse-obstruction";
 import { deedExistsInPo } from "../lib/app-data/po-intake-reads";
 import {
   addPropertyToPo,
@@ -66,7 +59,7 @@ import {
 } from "../lib/app-data/tasks";
 import {
   activeTaskWorkStep,
-  BOURSE_OBSTRUCTION_ACTION,
+  bourseDeedStatus,
   BOURSE_SAVE_ACTION,
   CONFIRM_DISTRIBUTION_ERROR,
   DEED_VITALITY_REQUIRED_ERROR,
@@ -84,14 +77,12 @@ import {
 
 export type MyTaskWorkCommandsInput = {
   task: WorkflowTask;
-  role: RoleId;
   property: PoPropertyIntake;
   assignmentType: AssignmentType;
   fieldPolicy: ClientFieldPolicy;
   distribution: TaskDistributionDraft;
   showEngineering: boolean;
   deedVitality: BourseDeedVitality | null;
-  obstructionReason: string;
   linkedPropertyRemoved: boolean;
   staffUsers: StaffUser[];
   steps: TaskWorkSteps;
@@ -99,7 +90,6 @@ export type MyTaskWorkCommandsInput = {
   setFieldErrors: (value: FieldErrors) => void;
   setSaving: (value: boolean) => void;
   setPhaseOverride: (value: WorkflowTask["phase"] | null) => void;
-  setObstructionReasonError: (value: string | undefined) => void;
   setDistribution: (value: TaskDistributionDraft) => void;
   onRefresh: () => void;
   onEnfathSaved?: (
@@ -137,14 +127,12 @@ async function findEnfathSaveErrors(
 
 export function useMyTaskWorkCommands({
   task,
-  role,
   property,
   assignmentType,
   fieldPolicy,
   distribution,
   showEngineering,
   deedVitality,
-  obstructionReason,
   linkedPropertyRemoved,
   staffUsers,
   steps,
@@ -152,7 +140,6 @@ export function useMyTaskWorkCommands({
   setFieldErrors,
   setSaving,
   setPhaseOverride,
-  setObstructionReasonError,
   setDistribution,
   onRefresh,
   onEnfathSaved,
@@ -267,44 +254,6 @@ export function useMyTaskWorkCommands({
     });
   }
 
-  async function submitObstruction() {
-    const obstructionError = validateBourseObstructionReason(
-      deedVitality,
-      obstructionReason,
-    );
-    if (obstructionError) {
-      setObstructionReasonError(obstructionError);
-      setFormError(obstructionError);
-      scheduleScrollToFormField("obstruction_reason");
-      return;
-    }
-    if (!task.propertyId) {
-      setFormError(NO_LINKED_PROPERTY_ERROR);
-      return;
-    }
-    await runWithActionToast(BOURSE_OBSTRUCTION_ACTION, async () => {
-      setSaving(true);
-      try {
-        await submitBourseObstruction({
-          poNumber: task.poNumber,
-          propertyId: task.propertyId!,
-          deedNumber: property.deedNumber,
-          reason: obstructionReason,
-          specialist: ROLES[role]?.name ?? "أخصائي دراسة الحالة",
-        });
-        void queryClient.invalidateQueries({
-          queryKey: appDataKeys.failures(),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: appDataKeys.workflowTasks(),
-        });
-        onRefresh();
-      } finally {
-        setSaving(false);
-      }
-    });
-  }
-
   async function saveBourse() {
     setFormError(null);
     if (linkedPropertyRemoved) {
@@ -319,18 +268,6 @@ export function useMyTaskWorkCommands({
       scheduleScrollToFirstPoPropertyError(errors, property);
       return;
     }
-    if (!compactRegisteredTitle && deedVitality === "inactive") {
-      await submitObstruction();
-      return;
-    }
-
-    // Persisted phase, not the override: the fast path only applies while the
-    // task is still on «enfath» server-side.
-    const bourseInquiryFastPath =
-      task.phase === "enfath" && isBourseInquiryIdentifier(property.identifierType);
-
-    if (bourseInquiryFastPath && (await rejectIfEnfathInvalid())) return;
-
     const errors = validatePropertyBourseFields(property);
     if (hasFieldErrors(errors)) {
       setFieldErrors(errors);
@@ -339,7 +276,7 @@ export function useMyTaskWorkCommands({
       return;
     }
 
-    if (!task.propertyId && !bourseInquiryFastPath) {
+    if (!task.propertyId) {
       setFormError(NO_LINKED_PROPERTY_ERROR);
       return;
     }
@@ -351,37 +288,12 @@ export function useMyTaskWorkCommands({
     await runWithActionToast(BOURSE_SAVE_ACTION, async () => {
       setSaving(true);
       try {
-        let prop = property;
-        let propertyId = task.propertyId;
-
-        if (!propertyId) {
-          const insert = await addPropertyToPo(task.poNumber, property, {
-            assignToTaskId: task.id,
-          });
-          if (!insert.ok) throw failure(insert.error, insert.errors);
-          prop = insert.data;
-          propertyId = insert.data.id;
-          // Now has a real server id — drop the local-only pre-save draft.
-          cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
-        } else if (bourseInquiryFastPath) {
-          const updated = await updatePropertyInPo(
-            task.poNumber,
-            propertyId,
-            property,
-          );
-          if (!updated.ok) throw failure(updated.error, updated.errors);
-          prop = updated.data;
-          const enfathAdvance = await advanceTaskAfterEnfath(task.id, updated.data);
-          if (!enfathAdvance.ok) throw failure(enfathAdvance.error);
-          setPhaseOverride(enfathAdvance.task.phase);
-        }
-
         pendingBourseComplete.current = {
           poNumber: task.poNumber,
-          propertyId: propertyId!,
+          propertyId: task.propertyId!,
           property: compactRegisteredTitle
-            ? prop
-            : { ...prop, deedStatus: "فعال" },
+            ? property
+            : { ...property, deedStatus: bourseDeedStatus(deedVitality) },
         };
         const outcome = await executeBourseComplete();
         if (outcome.status === "skipped") {

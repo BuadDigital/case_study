@@ -11,6 +11,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canReviewValuedDocuments } from "../../lib/app-data/po-roles";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import { type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
@@ -27,7 +29,11 @@ import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsCard, InsEditTextarea } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorDescriptionPhoto } from "./InspectorDescriptionPhoto";
 import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
+import { InspectorLandStructuresQuestion } from "./InspectorLandStructuresQuestion";
+import { inspectorInventoryVisible } from "../../lib/app-data/building-inventory-editor-state";
+import { inspectedAssetIsLand } from "../../lib/app-data/specialist-components";
 import { InspectorWizardLocationStep } from "./InspectorWizardLocationStep";
+import { InspectorInventoryEditor } from "./InspectorInventoryEditor";
 import { InspectorWizardComponentsCards } from "./InspectorWizardComponentsCards";
 import { InspectorBoundaryMatchTable } from "./InspectorBoundaryMatchTable";
 import { InspectorWizardServicesCard } from "./InspectorWizardServicesCard";
@@ -104,6 +110,7 @@ export function InspectorWorkspaceWizard({
   hideSubmitFooter?: boolean;
   specialistComponents?: ReactNode;
 }) {
+  const { role } = useAppAccess();
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
@@ -151,12 +158,19 @@ export function InspectorWorkspaceWizard({
     setActiveStep((prev) => (prev === 3 ? prev : ((prev + 1) as InspectorStepId)));
   }
 
-  useEffect(() => {
+  // Validation errors move the wizard to the step that holds the first one, then
+  // the scroll runs as an effect because it touches the DOM.
+  const [prevFieldErrors, setPrevFieldErrors] = useState(fieldErrors);
+  if (prevFieldErrors !== fieldErrors) {
+    setPrevFieldErrors(fieldErrors);
     const targetId = firstInspectorWorkspaceErrorTarget(fieldErrors);
-    if (!targetId) return;
-    if (!flat) {
+    if (targetId && !flat) {
       setActiveStep(inspectorWizardStepForErrorTarget(targetId));
     }
+  }
+
+  useEffect(() => {
+    if (!firstInspectorWorkspaceErrorTarget(fieldErrors)) return;
     scheduleInspectorErrorScroll(fieldErrors, flat ? 60 : 180);
   }, [fieldErrors, flat]);
 
@@ -224,6 +238,18 @@ export function InspectorWorkspaceWizard({
           </InsCard>
           )}
 
+          {inspectedAssetIsLand(draft.featureValues.assetSubject) ? (
+            <InsCard title="مبانٍ أو ملاحق على الأرض">
+              <InspectorLandStructuresQuestion
+                value={draft.landHasValuableStructures}
+                mobile={false}
+                disabled={!editable}
+                errorMessage={fieldErrors.landHasValuableStructures}
+                onChange={(next) => onPatch({ landHasValuableStructures: next })}
+              />
+            </InsCard>
+          ) : null}
+
           <InspectorWizardComponentsCards
             deedNumber={property.deedNumber}
             draft={draft}
@@ -235,6 +261,26 @@ export function InspectorWorkspaceWizard({
             missingComponentPhotoKey={fieldErrors.missingComponentPhotoKey}
             onPatch={onPatch}
           />
+
+          {/* Same «جدول الحصر» the phone shell shows — the inspector fills it on either device.
+              Hidden for the case specialist, whose own section already carries the table. */}
+          {!specialistComponents &&
+          property.id &&
+          inspectorInventoryVisible({
+            assetSubject: draft.featureValues.assetSubject,
+            landHasValuableStructures: draft.landHasValuableStructures,
+          }) ? (
+            <InsCard title="جدول الحصر">
+              <InspectorInventoryEditor
+                draft={draft}
+                mobile={false}
+                poNumber={inspectionTask.poNumber}
+                propertyId={property.id}
+                taskId={inspectionTask.id}
+                workLocked={!editable}
+              />
+            </InsCard>
+          ) : null}
 
           <InspectorBoundaryMatchTable
             property={property}
@@ -274,14 +320,17 @@ export function InspectorWorkspaceWizard({
 
           {editable ? (
             <InsCard title="مستندات ذات قيمة">
-              <p className="m-0 mb-2 text-[11.5px] leading-relaxed text-text-3">
-                مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
-                دراسة الحالة ويقرر المقيّم أثره.
-              </p>
-              <ValuedDocumentUploadButton
-                poNumber={inspectionTask.poNumber}
-                propertyId={property.id}
-              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="m-0 min-w-0 flex-1 basis-64 text-[11.5px] leading-relaxed text-text-3">
+                  مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
+                  دراسة الحالة ويقرر المقيّم أثره.
+                </p>
+                <ValuedDocumentUploadButton
+                  poNumber={inspectionTask.poNumber}
+                  propertyId={property.id}
+                  canReview={canReviewValuedDocuments(role)}
+                />
+              </div>
             </InsCard>
           ) : null}
 

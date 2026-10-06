@@ -46,6 +46,7 @@ public sealed class CaseStudyWorkflowTaskSnapshotDto
     public Guid? PropertyId { get; set; }
     public int PropertyOrdinal { get; set; } = 1;
     public string? AssigneeId { get; set; }
+    public Guid? ParentTaskId { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
     public WorkflowTask ToWorkflowTask()
@@ -69,8 +70,26 @@ public sealed class CaseStudyWorkflowTaskSnapshotDto
             propertyId: PropertyId,
             propertyOrdinal: PropertyOrdinal,
             assigneeId: AssigneeId,
+            parentTaskId: ParentTaskId,
             updatedAtUtc: UpdatedAtUtc);
     }
+}
+
+/// <summary>
+/// Light read for the valuation write lock: where the property's appraisal package stands.
+/// <see cref="PackageStatus"/> is <c>none</c> (no appraisal task/package), or the party
+/// submission status <c>draft</c> | <c>submitted</c> | <c>reopened</c>.
+/// </summary>
+public sealed class CaseStudyAppraisalPackageStateDto
+{
+    public Guid? TaskId { get; set; }
+    public string? TaskStatus { get; set; }
+    public string PackageStatus { get; set; } = AppraisalPackageStates.None;
+}
+
+public static class AppraisalPackageStates
+{
+    public const string None = "none";
 }
 
 public sealed class CaseStudyPartyTaskSubmissionSnapshotDto

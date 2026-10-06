@@ -128,6 +128,16 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
       typeof dto.fieldInspectionAccepted === "boolean"
         ? dto.fieldInspectionAccepted
         : undefined,
+    studyReportIssued:
+      typeof dto.studyReportIssued === "boolean"
+        ? dto.studyReportIssued
+        : undefined,
+    appraisalPackageStatus:
+      dto.appraisalPackageStatus === "draft" ||
+      dto.appraisalPackageStatus === "submitted" ||
+      dto.appraisalPackageStatus === "reopened"
+        ? dto.appraisalPackageStatus
+        : undefined,
     fieldInspectionTaskId: dto.fieldInspectionTaskId?.trim() || undefined,
     engineeringSurveyCompleted:
       typeof dto.engineeringSurveyCompleted === "boolean"

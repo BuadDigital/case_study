@@ -29,6 +29,7 @@ import {
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
+import { flushInspectorInventorySave } from "./inspector-inventory-flush";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
 import { mergeInspectorWorkspacePatch, setCache } from "../../lib/app-data/inspector-workspace-model";
 import {
@@ -44,6 +45,7 @@ import {
   firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
   inspectorWizardStepForErrorTarget,
+  inspectorMustDecideDeedMatch,
   inspectorWorkspaceHasBlockingErrors,
   scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
@@ -298,10 +300,15 @@ export function useFieldInspectionWorkflow({
       return false;
     }
 
+    // The inventory card keeps a debounced save; land it before the gates read the server.
+    await flushInspectorInventorySave();
+
     const errors = validateInspectorWorkspace(draft, {
       boundariesUnavailable,
       classification: property?.classification,
       propertyType: property?.propertyType,
+      requireDeedMatch: property ? inspectorMustDecideDeedMatch(property) : false,
+      requireLandStructures: true,
     });
     setFieldErrors(errors);
     if (inspectorWorkspaceHasBlockingErrors(errors)) {

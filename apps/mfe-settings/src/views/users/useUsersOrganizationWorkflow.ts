@@ -57,7 +57,7 @@ export function useUsersOrganizationWorkflow() {
   const canManage = useCapability("manage-users");
   const currentUserId = getAuthSession()?.user.id ?? null;
   const { data, isPending } = useStaffUsersQuery();
-  const users = data?.users ?? [];
+  const users = useMemo(() => data?.users ?? [], [data]);
   const loadError = data?.loadError ?? null;
 
   const [form, setForm] = useState<StaffFormState>(EMPTY_STAFF_FORM);

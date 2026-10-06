@@ -25,6 +25,16 @@ public interface IValuationReportIssuanceService
             CancellationToken cancellationToken = default);
 
  /// <summary>
+ /// The appraiser took his approval back before any deposit code was recorded: the current deposit
+ /// copy is removed (nothing external was recorded, so no version number is spent). Idempotent —
+ /// no current copy is a success; a recorded code or final copy is refused (that is a new version).
+ /// </summary>
+    Task<(bool Ok, string? Error)> WithdrawDepositAsync(
+        Guid valuationRequestId,
+        string? requestedByUserId,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>
  /// Q-9 supplement (R2): reopen valuation cycle after deposit — current copy is marked
  /// "superseded — replaced by a newer copy" (no hard delete); request reopens toward deposit copy N+1.
  /// </summary>
@@ -34,8 +44,4 @@ public interface IValuationReportIssuanceService
             ReopenReportIssuanceRequest request,
             string? requestedByUserId,
             CancellationToken cancellationToken = default);
-
-    Task<byte[]?> GetDepositPdfAsync(Guid valuationRequestId, CancellationToken cancellationToken = default);
-
-    Task<byte[]?> GetFinalPdfAsync(Guid valuationRequestId, CancellationToken cancellationToken = default);
 }

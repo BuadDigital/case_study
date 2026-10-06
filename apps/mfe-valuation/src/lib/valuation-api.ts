@@ -1,7 +1,6 @@
 import {
   listValuationRequests,
   submitValuationImpediment,
-  submitValuationReport,
 } from "@platform/api-client";
 import type { VrRow } from "@platform/app-shared/app-data/constants";
 import {
@@ -27,19 +26,6 @@ export async function loadValuationRequests(): Promise<VrRow[]> {
     status: mapStatus(row.status),
     date: row.date,
   }));
-}
-
-export async function submitValuationRequestReport(
-  recordId: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const config = prototypeModulesApiConfig();
-  if (!config) return { ok: false, message: "واجهة التقييم غير متصلة بالخادم" };
-
-  const result = await submitValuationReport(config, recordId);
-  if (result.ok) return { ok: true };
-  if (result.kind === "auth") return { ok: false, message: "انتهت الجلسة — سجّل الدخول مجدداً" };
-  if (result.kind === "not_found") return { ok: false, message: "طلب التقييم غير موجود" };
-  return { ok: false, message: "تعذّر إرسال التقرير — حاول لاحقاً" };
 }
 
 export async function submitValuationRequestImpediment(

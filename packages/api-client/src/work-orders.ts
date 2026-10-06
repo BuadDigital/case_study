@@ -32,7 +32,6 @@ export type PropertyContactDto = {
 
 export type DeedOwnerDto = {
   name: string;
-  sharePct?: number | null;
 };
 
 export type WorkOrderPropertyDto = {
@@ -53,12 +52,11 @@ export type WorkOrderPropertyDto = {
   deedKind?: string;
   deedKindLabelAr?: string;
   suggestedDeedKind?: string;
- /** Owners and their shares. */
+ /** The deed owners (names). */
   owners?: DeedOwnerDto[];
+  /** Derived by the server from the owners count: absolute (one owner) | shared (several). */
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
-  suggestedOwnershipType?: string;
-  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -214,8 +212,6 @@ export type UpdatePropertyBourseRequest = {
   bourseDeedImageFileName?: string;
  /** replaces the whole owners list when provided. */
   owners?: DeedOwnerDto[];
-  ownershipType?: string;
-  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -1109,7 +1105,56 @@ export type TransactionStateDto = {
   allowsEnfazHandover: boolean;
   enfazHandoverAtUtc?: string | null;
   handoverPackageAr: string[];
+  /** The study report is issued (the specialist's gate before the Enfaz upload). */
+  studyReportIssued: boolean;
+  /** Why the handover is refused right now — empty when it is allowed. */
+  enfazBlockReasonsAr: string[];
+  /** Only on the answer of `enfaz-return`: what was done per part (study report / valuation). */
+  enfazReturnNoticesAr: string[];
 };
+
+function stringList(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((r): r is string => typeof r === "string" && r.trim().length > 0)
+    : [];
+}
+
+/** Fills the 2C fields a rolling-deploy older server does not send yet. */
+function normalizeTransactionState(raw: unknown): TransactionStateDto {
+  const row = raw as TransactionStateDto & {
+    studyReportIssued?: boolean;
+    enfazBlockReasonsAr?: string[];
+    enfazReturnNoticesAr?: string[];
+  };
+  return {
+    ...row,
+    studyReportIssued: row.studyReportIssued === true,
+    enfazBlockReasonsAr: stringList(row.enfazBlockReasonsAr),
+    enfazReturnNoticesAr: stringList(row.enfazReturnNoticesAr),
+  };
+}
+
+type TransactionStateFailure = {
+  ok: false;
+  kind: "auth" | "forbidden" | "server" | "network";
+  message?: string;
+};
+
+/** The server's specific refusal text: field error `_` first, then any field, then `message`. */
+async function transactionStateFailure(
+  res: Response,
+): Promise<TransactionStateFailure> {
+  const payload = (await res.json().catch(() => null)) as {
+    errors?: Record<string, string>;
+    message?: string;
+  } | null;
+  const errors = payload?.errors;
+  const message =
+    errors?._?.trim() ||
+    (errors ? Object.values(errors).find((v) => typeof v === "string" && v.trim()) : undefined) ||
+    payload?.message;
+  return { ok: false, kind: res.status === 403 ? "forbidden" : "server", message };
+}
 
 /** Q-9: transaction status grid — UI shows who waits on whom. */
 export async function getTransactionState(
@@ -1129,20 +1174,22 @@ export async function getTransactionState(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as TransactionStateDto };
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
     return { ok: false, kind: "network" };
   }
 }
 
-/** Q-9 (second closing): upload transaction to Enfaz — after deposit certificate and parties complete. */
+/**
+ * Q-9 (second closing): upload transaction to Enfaz — specialist only. A refusal (study report not
+ * issued / valuation not closed / parties not complete) comes back as the server's own Arabic text.
+ */
 export async function recordEnfazHandover(
   config: WorkOrdersApiConfig,
   workOrderId: string,
   propertyId: string,
 ): Promise<
-  | { ok: true; data: TransactionStateDto }
-  | { ok: false; kind: "auth" | "server" | "network"; message?: string }
+  { ok: true; data: TransactionStateDto } | TransactionStateFailure
 > {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -1151,18 +1198,42 @@ export async function recordEnfazHandover(
       { method: "POST", headers: headers(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) {
-      const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
-        message?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "server",
-        message: payload?.errors ? Object.values(payload.errors)[0] : payload?.message,
-      };
-    }
-    return { ok: true, data: (await res.json()) as TransactionStateDto };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type EnfazReturnRequest = {
+  /** At least 10 characters. */
+  reason: string;
+  reopenStudy: boolean;
+  reopenValuation: boolean;
+};
+
+/** Takes the transaction back from Enfaz — specialist only; clears the handover stamp. */
+export async function returnFromEnfaz(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+  request: EnfazReturnRequest,
+): Promise<
+  { ok: true; data: TransactionStateDto } | TransactionStateFailure
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-return`,
+      {
+        method: "POST",
+        headers: headers(config.token),
+        body: JSON.stringify(request),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
     return { ok: false, kind: "network" };
   }

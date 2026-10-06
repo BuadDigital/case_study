@@ -324,10 +324,6 @@ export type EvaluatorSubmission = {
   appraiserPhone: string;
   /** Report issue date — fixed when the valuation is approved. */
   reportIssueDate: string;
-  /** Qeema deposit code for the report — optional; does not block approval. */
-  depositCode: string;
-  /** Qeema upload certificate — optional attachment printed with the report. */
-  depositCertificateFileName: string | null;
   /** Independence / no-conflict-of-interest declaration. */
   independenceDeclared: boolean;
   /** Report staff details (preparer / reviewer / approver). */
@@ -338,6 +334,15 @@ export type EvaluatorSubmission = {
   assetDataVarianceNotes: string;
   /** Professional valuation-report choices on the work order. */
   reportChoices: EvaluatorReportChoices;
+  /**
+   * The inspector-data fingerprint this appraiser last acknowledged (client-owned, lives in his own
+   * draft payload; the server compares it and never strips it).
+   */
+  inspectorDataSeen?: string;
+  /** Server-computed, NOT part of the saved payload: fingerprint of the inspector's data right now. */
+  inspectorDataFingerprint?: string;
+  /** Server-computed, NOT part of the saved payload: inspector-data groups changed since `inspectorDataSeen`. */
+  inspectorDataChangedGroups?: string[];
   submittedAtUtc: string | null;
   updatedAtUtc: string;
 };
@@ -503,8 +508,6 @@ export function createEvaluatorDraft(input: {
     appraiserAddress: DEFAULT_APPRAISER_ADDRESS,
     appraiserPhone: DEFAULT_APPRAISER_PHONE,
     reportIssueDate: "",
-    depositCode: "",
-    depositCertificateFileName: null,
     independenceDeclared: true,
     reportWorkers: [createEmptyReportWorker("معد")],
     assetDataConfirmed: false,

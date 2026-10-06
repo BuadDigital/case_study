@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from "react";
-import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 
 export type CaseStudyReportFrameHandle = {

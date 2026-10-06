@@ -1,4 +1,5 @@
 import { pad2 } from "@platform/app-shared/format/date";
+import { isPartyTaskDone } from "@platform/app-shared/workflow/task-done";
 import {
   FAILURE_OBSTRUCTED_BADGE,
   isTaskFailureObstructed,
@@ -228,7 +229,7 @@ export function buildTaskTableRow(
 
   const deedStatus = property?.deedStatus?.trim() || "—";
 
-  if (task.status === "completed" || task.phase === "done") {
+  if (isPartyTaskDone(task)) {
     return {
       deedLabel,
       location,

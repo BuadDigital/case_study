@@ -10,15 +10,16 @@ namespace RealEstateEval.Application.Rules;
 /// <see cref="PlatformCapabilities.ManageAttachments"/> only authorizes upload — every
 /// field role holds it, so it must not bypass the uploader check (audit A-002).
 /// Delete is narrower: the uploader, or case staff who manage party submissions.
-/// A «مستند ذو قيمة» is stricter on both: only the case specialist, the appraiser and the CDO
-/// see it — the uploader from any other role loses sight of it once uploaded.
+/// A «مستند ذو قيمة» is stricter: only the case specialist, the appraiser and the CDO see it — plus its
+/// own uploader (so they can preview what they uploaded). Deleting stays with the specialist / CDO and a
+/// seeing uploader.
 /// </summary>
 public static class AttachmentAccessRules
 {
     /// <summary>Read rule that knows the row's document type (valued documents are restricted).</summary>
     public static bool Allows(string uploadedByUserId, string? documentTypeKey, PermissionsDto? actor) =>
         PropertyDocumentTypes.IsValued(documentTypeKey)
-            ? AllowsValuedDocument(actor)
+            ? AllowsValuedDocument(actor) || (actor is not null && IsUploader(uploadedByUserId, actor))
             : Allows(uploadedByUserId, actor);
 
     public static bool AllowsDelete(string uploadedByUserId, string? documentTypeKey, PermissionsDto? actor)

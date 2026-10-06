@@ -4,7 +4,8 @@ import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 
 /**
  * Appraiser queue — Case Study.html `renderValOrders`:
- * submitted rows hidden by default; "Show all" restores them.
+ * completed (final issuance) rows hidden by default; "Show all" restores them. A submitted
+ * package is only handed over, so its task stays listed.
  */
 export function filterAppraiserListedTasks(
   tasks: WorkflowTask[],

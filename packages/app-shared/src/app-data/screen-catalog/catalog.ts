@@ -240,12 +240,12 @@ function buildPoSubRoutes(): SystemScreenEntry[] {
     }),
     subRouteEntry({
       id: "case-study-workspace",
-      name: "نموذج دراسة الحالة (الأخصائي)",
+      name: "تقرير دراسة الحالة (الأخصائي)",
       path: "/case-study/{taskId}",
       whereToFind: "المعاملات النشطة ← دراسة حالة العقارات ← فتح مهمة",
       pageId: "active-case-study",
       group: "المعاملات النشطة",
-      notes: "نموذج الأخصائي، الأسئلة، والمصفوفة.",
+      notes: "تقرير الأخصائي، الأسئلة، والمصفوفة.",
     }),
   ];
 }

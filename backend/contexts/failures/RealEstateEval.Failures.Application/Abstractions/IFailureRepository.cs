@@ -52,6 +52,12 @@ public interface IFailureRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>Tracked active failures of one property whose survey freeze is still standing — the lift.</summary>
+    Task<IReadOnlyList<PropertyFailure>> FindSurveyFreezingForPropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken);
+
     /// <summary>Tracked newest unresolved failure of one property — the hold upsert.</summary>
     Task<PropertyFailure?> FindLatestUnresolvedAsync(
         string poNumber,

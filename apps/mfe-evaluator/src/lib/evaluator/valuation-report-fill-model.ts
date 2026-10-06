@@ -101,8 +101,6 @@ import { parseEvaluatorAmount } from "./value-estimation";
 
 const OWNERSHIP_LABELS: Record<string, string> = {
   absolute: "ملكية مطلقة",
-  mortgaged: "مرهون",
-  investment: "استثمار",
   shared: "مشاع",
 };
 
@@ -675,9 +673,7 @@ export function buildValuationReportLiveFill(input: {
     "حالة العقار": dash(inspector?.featureValues?.propertyCondition),
     "حالة الصك": dash(property?.deedStatus),
     "نوع الملكية": dash(
-      ownershipTypeDisplay(
-        property?.ownershipType || property?.suggestedOwnershipType,
-      ),
+      ownershipTypeDisplay(property?.ownershipType),
     ),
     "هل يوجد منقولات": dash(inspector?.featureValues?.movables),
     "وصف المنقولات": inspector?.featureValues?.movables === "نعم"

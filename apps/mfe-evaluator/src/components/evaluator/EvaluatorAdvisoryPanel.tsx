@@ -7,10 +7,10 @@ import { emptyCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-s
 import { useCaseStudyInfoRolesQuery } from "@settings/mfe/query/settings-queries";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
-  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
-  type CaseStudyFormDraft,
-} from "@platform/app-shared/app-data/case-study-form-model";
-import { loadPartyCaseStudyFormDraft } from "../../lib/case-study-bridge";
+  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
+  type CaseStudyReportDraft,
+} from "@platform/app-shared/app-data/case-study-report-model";
+import { loadPartyCaseStudyReportDraft } from "../../lib/case-study-bridge";
 import { findAppraisalChildForParent } from "../../lib/evaluator/evaluator-inspection-gate";
 import { openEvaluatorReportPreview } from "../../lib/evaluator/evaluator-report-attachments";
 import {
@@ -65,7 +65,7 @@ export function EvaluatorAdvisoryPanel({
   const [refreshKey, setRefreshKey] = useState(0);
   const [submissionVersion, setSubmissionVersion] = useState(0);
   const [loadingSubmission, setLoadingSubmission] = useState(false);
-  const [partyDraft, setPartyDraft] = useState<CaseStudyFormDraft | null>(null);
+  const [partyDraft, setPartyDraft] = useState<CaseStudyReportDraft | null>(null);
   const [partyDraftError, setPartyDraftError] = useState<string | null>(null);
   const [prefetchError, setPrefetchError] = useState<string | null>(null);
   const { data: infoRolesData } = useCaseStudyInfoRolesQuery();
@@ -73,25 +73,27 @@ export function EvaluatorAdvisoryPanel({
 
   const appraisalTask = useMemo(
     () => findAppraisalChildForParent(parentTask.id, propertyId, tasks),
-    [parentTask.id, propertyId, tasks, refreshKey],
+    [parentTask.id, propertyId, tasks],
   );
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
   useWindowEvents({
     [EVALUATOR_SUBMISSION_CHANGED_EVENT]: bumpRefresh,
     [PARTY_TASK_RECALL_CHANGED_EVENT]: bumpRefresh,
-    [PARTY_CASE_STUDY_FORM_CHANGED_EVENT]: bumpRefresh,
+    [PARTY_CASE_STUDY_REPORT_CHANGED_EVENT]: bumpRefresh,
   });
 
+  const appraisalTaskId = appraisalTask?.id ?? null;
+
   useEffect(() => {
-    if (!appraisalTask) {
+    if (!appraisalTaskId) {
       setPartyDraft(null);
       setPartyDraftError(null);
       return;
     }
     let cancelled = false;
     setPartyDraftError(null);
-    void loadPartyCaseStudyFormDraft(appraisalTask.id).then((draft) => {
+    void loadPartyCaseStudyReportDraft(appraisalTaskId).then((draft) => {
       if (!cancelled) setPartyDraft(draft);
     }).catch((err: unknown) => {
       if (!cancelled) {
@@ -104,10 +106,10 @@ export function EvaluatorAdvisoryPanel({
     return () => {
       cancelled = true;
     };
-  }, [appraisalTask?.id, refreshKey]);
+  }, [appraisalTaskId, refreshKey]);
 
   useEffect(() => {
-    if (!appraisalTask) {
+    if (!appraisalTaskId) {
       setLoadingSubmission(false);
       setPrefetchError(null);
       return;
@@ -115,7 +117,7 @@ export function EvaluatorAdvisoryPanel({
     let cancelled = false;
     setLoadingSubmission(true);
     setPrefetchError(null);
-    void fetchEvaluatorSubmissionSnapshot(appraisalTask.id)
+    void fetchEvaluatorSubmissionSnapshot(appraisalTaskId)
       .then(() => {
         if (!cancelled) {
           setSubmissionVersion((v) => v + 1);
@@ -132,11 +134,14 @@ export function EvaluatorAdvisoryPanel({
     return () => {
       cancelled = true;
     };
-  }, [appraisalTask?.id, refreshKey]);
+  }, [appraisalTaskId, refreshKey]);
 
   const submission = useMemo(() => {
     if (!appraisalTask) return null;
     return loadEvaluatorSubmission(appraisalTask.id);
+    // The draft is read from local storage, so the two counters are the only
+    // signal that it changed — they are invalidation keys, not inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appraisalTask, refreshKey, submissionVersion]);
 
   const displayChecklist = useMemo((): EvaluatorChecklistAnswers | null => {

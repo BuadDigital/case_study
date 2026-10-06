@@ -48,9 +48,25 @@ public class WorkflowTaskDto
 
  /// <summary>
  /// Property-appraisal: sibling field-inspection package is specialist-accepted.
- /// Appraiser starts valuation only after this stamp — completed-but-unaccepted is monitor-only.
+ /// Informational only — acceptance does not gate the appraiser's start; readiness uses
+ /// <see cref="FieldInspectionCompleted"/> (the inspector submitted).
  /// </summary>
     public bool? FieldInspectionAccepted { get; set; }
+
+ /// <summary>
+ /// Property-appraisal / case-study parent: the case-study report of the family is issued (the
+ /// specialist's decision that opens the appraiser's submission). Populated on list from one batch
+ /// query so the queue never reads the report per row. Null for other kinds.
+ /// </summary>
+    public bool? StudyReportIssued { get; set; }
+
+ /// <summary>
+ /// Property-appraisal / case-study parent: where the appraiser's package stands —
+ /// <c>draft</c> | <c>submitted</c> | <c>reopened</c>; null when there is no appraisal package yet.
+ /// <c>submitted</c> with an open task = handed to the specialist, data locked, task completes only at
+ /// the final issuance. Mirrored onto the parent so the specialist's parties rail reads it.
+ /// </summary>
+    public string? AppraisalPackageStatus { get; set; }
 
  /// <summary>
  /// Property-appraisal: sibling engineering-survey workflow task is completed.

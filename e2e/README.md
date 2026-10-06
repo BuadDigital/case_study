@@ -148,13 +148,22 @@ UI: the evaluator workspace — `بدء التقييم` (which is the first real
 (`طريقة المقارنة`, `طريقة المقاول`), and the final-opinion screen
 (`الرأي النهائي للقيمة`, `اعتماد التقييم — شروط الإصدار`).
 
-API: the transaction plus completing **and accepting** the field inspection —
-the appraiser cannot start until the inspection package is specialist-accepted
-(`WorkflowTaskDto.FieldInspectionAccepted`).
+API: the transaction plus submitting the field inspection, the specialist's
+`مكونات العقار` (text + a one-line inventory — accepting needs them) and
+accepting it, then the guard rails of the report cycle that hold before the
+appraiser hands over: the draft is `none` and cannot be prepared, an unsent
+draft cannot be approved, only the assigned appraiser records a deposit, and
+there is no final report to download.
 
-The specialist's `تقييم العقار` report-panel test **skips** while the case
-specialist is denied `GET /api/valuation-requests/open-by-property` (see
-*Known gaps*).
+The specialist's `تقييم العقار` tab shows the `مسودة تقرير التقييم` panel
+(`لم تبدأ`, waiting for the hand-over) above the valuation report.
+
+Everything after the hand-over — the specialist's draft, the appraiser's
+approval, the deposit code + certificate, the generated final PDF and its code
+correction — needs a complete valuation (comparables, cost, reconciliation,
+credentials) and is covered by the backend tests
+(`ValuationReportDraftServiceTests`, `ValuationDepositAndNewVersionTests`,
+`ValuationFinalReportTests`) and `ValuationReportDraftPostgresTests`.
 
 Evaluator screen switches are `role="tab"` buttons inside
 `aria-label="أقسام نافذة التقييم"` — not plain buttons. The older ad-hoc driver
@@ -183,12 +192,12 @@ The ledger-row test **skips** for the same pricing reason as the survey accept.
    ever created. Both the survey-accept test and the finance ledger test skip
    with that reason and will start running as soon as a tier is configured under
    `/fee-pricing`.
-2. **The case specialist cannot read the valuation request.**
+2. **The case specialist cannot read `open-by-property`.**
    `GET /api/valuation-requests/open-by-property/{id}` is gated by the
-   `ReadValuationQueue` capability, which `case-specialist` does not hold. The
-   `تقييم العقار` tab therefore always renders
-   `تعذّر تحميل تقرير التقييم` / `أعد المحاولة لاحقاً أو تحقق من الاتصال.`
-   instead of the final-report panel. The CDO gets 200 on the same call.
+   `ReadValuationQueue` capability, which `case-specialist` does not hold (the
+   CDO gets 200). The `تقييم العقار` tab no longer depends on it — the draft
+   panel reads `GET /api/valuation-report-drafts/by-property/{id}` — but any
+   other screen that calls it as the specialist still gets 403.
 3. **Desktop inspector wizard cannot satisfy its own photo rules.**
    `carEntrance` / `hasBasement` / `hasElevator` / `hasPool` / `kitchen` render
    in `مكوّنات العقار` as toggle pills with no upload control, yet answering

@@ -4,7 +4,7 @@
  */
 
 import { getEvaluatorCaseStudyBridge } from "@platform/app-shared/evaluator/case-study-bridge";
-import type { CaseStudyFormDraft } from "@platform/app-shared/app-data/case-study-form-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
@@ -39,12 +39,12 @@ export function usePropertyDetailDocuments(input: {
   return getEvaluatorCaseStudyBridge().usePropertyDetailDocuments(input);
 }
 
-export function loadPartyCaseStudyFormDraft(childTaskId: string) {
-  return getEvaluatorCaseStudyBridge().loadPartyCaseStudyFormDraft(childTaskId);
+export function loadPartyCaseStudyReportDraft(childTaskId: string) {
+  return getEvaluatorCaseStudyBridge().loadPartyCaseStudyReportDraft(childTaskId);
 }
 
-export function savePartyCaseStudyFormDraft(draft: CaseStudyFormDraft) {
-  return getEvaluatorCaseStudyBridge().savePartyCaseStudyFormDraft(draft);
+export function savePartyCaseStudyReportDraft(draft: CaseStudyReportDraft) {
+  return getEvaluatorCaseStudyBridge().savePartyCaseStudyReportDraft(draft);
 }
 
 export function collectFieldInspectionDocumentsFromSubmission(

@@ -284,12 +284,13 @@ export function PropertyDetailInspectionTab({
     };
   }, [inspectionTask, editMode]);
 
-  useEffect(() => {
-    if (editMode) {
-      setFormError(null);
-      setFieldErrors({});
-    }
-  }, [editMode]);
+  // Entering edit mode clears the previous submit errors.
+  const [prevEditMode, setPrevEditMode] = useState(editMode);
+  if (prevEditMode !== editMode) {
+    setPrevEditMode(editMode);
+    if (editMode) setFormError(null);
+    if (editMode) setFieldErrors({});
+  }
 
   const mapGeo = useMemo(() => {
     const lat = Number(draft?.mapLatitude);

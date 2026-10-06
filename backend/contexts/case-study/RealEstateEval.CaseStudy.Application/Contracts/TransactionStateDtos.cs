@@ -31,6 +31,15 @@ public class TransactionStateDto
 
  /// <summary>The second conclusion is ready: Deposit Certificate issued and all terminals completed.</summary>
     public bool AllowsEnfazHandover { get; init; }
+ /// <summary>The specialist issued the case-study report (a precondition of the handover).</summary>
+    public bool StudyReportIssued { get; init; }
+ /// <summary>What still blocks the handover, in Arabic; empty when it is allowed.</summary>
+    public IReadOnlyList<string> EnfazBlockReasonsAr { get; init; } = [];
+ /// <summary>
+ /// Only on the answer of <c>enfaz-return</c>: what was done per part — the study report, and why
+ /// the valuation part is (or is not) reopened by this call.
+ /// </summary>
+    public IReadOnlyList<string> EnfazReturnNoticesAr { get; init; } = [];
     public string? EnfazHandoverAtUtc { get; init; }
  /// <summary>Enfaz upload package (Q-9/Q-14).</summary>
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
@@ -49,4 +58,17 @@ public class PostEnfazDecisionRequest
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.MaxLength(1024)]
     public string Reason { get; init; } = "";
+}
+
+
+/// <summary>
+/// The case specialist takes a handed-over transaction back from Enfaz. Validated by the service
+/// with Arabic messages (plain attributes would leak raw English): a reason of at least 10
+/// characters and at least one of the two reopen choices.
+/// </summary>
+public class ReturnFromEnfazRequest
+{
+    public string? Reason { get; init; }
+    public bool ReopenStudy { get; init; }
+    public bool ReopenValuation { get; init; }
 }

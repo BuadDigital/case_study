@@ -15,10 +15,16 @@ public interface IEvaluatorRecallsService
         CreateEvaluatorRecallRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<EvaluatorRecallDto?> ApproveAsync(string taskId, CancellationToken cancellationToken = default);
-
-    Task<EvaluatorRecallDto?> RejectAsync(
+    /// <summary>
+    /// The case specialist's decision. Approve reopens the appraiser's package FIRST (trusted,
+    /// idempotent call to Case Study) and only then records the approval; when that call fails
+    /// the recall stays pending. A recall of a DEPOSITED report (code recorded) reopens it as a new version (n+1)
+    /// instead — the same single operation the specialist's reopen uses. Result and errors both null means the recall does not exist;
+    /// an already-decided recall is returned unchanged.
+    /// </summary>
+    Task<(EvaluatorRecallDto? Result, Dictionary<string, string>? Errors)> DecideAsync(
         string taskId,
-        RejectEvaluatorRecallRequest request,
-        CancellationToken cancellationToken = default);
+        DecideEvaluatorRecallRequest request,
+        CancellationToken cancellationToken = default,
+        string? actorUserId = null);
 }

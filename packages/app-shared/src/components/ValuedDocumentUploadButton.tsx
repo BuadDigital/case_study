@@ -3,11 +3,13 @@
 /**
  * «إضافة مستند ذي قيمة» for party screens (appraiser, inspector, engineering office). The
  * uploader names the document and attaches the file; it then waits for the case specialist's
- * approval and is no longer listed on the uploader's screen.
+ * approval. The file is no longer reachable from the uploader's screen, but its name and the
+ * specialist's decision stay listed under the button.
  */
 
 import { useRef, useState } from "react";
 import { AppModal, Button, Input, Label, useToast } from "@platform/ui-kit";
+import { OwnValuedDocumentsList } from "./OwnValuedDocumentsList";
 import {
   VALUED_DOCUMENT_FILE_ACCEPT,
   VALUED_DOCUMENT_NAME_MAX_LENGTH,
@@ -19,11 +21,17 @@ export function ValuedDocumentUploadButton({
   poNumber,
   propertyId,
   disabled,
+  showOwnList = true,
+  canReview = false,
   onUploaded,
 }: {
   poNumber: string;
   propertyId: string;
   disabled?: boolean;
+  /** List what this user uploaded (name + decision) under the button; the appraiser's panel already lists all. */
+  showOwnList?: boolean;
+  /** The case specialist: approve / reject the listed documents. */
+  canReview?: boolean;
   onUploaded?: () => void;
 }) {
   const { showToast } = useToast();
@@ -32,6 +40,7 @@ export function ValuedDocumentUploadButton({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!poNumber.trim() || !propertyId.trim()) return null;
@@ -64,6 +73,7 @@ export function ValuedDocumentUploadButton({
     showToast("تم رفع المستند — بانتظار اعتماد أخصائي دراسة الحالة", "success");
     setOpen(false);
     reset();
+    setReloadKey((k) => k + 1);
     onUploaded?.();
   }
 
@@ -78,6 +88,17 @@ export function ValuedDocumentUploadButton({
       >
         + إضافة مستند ذي قيمة
       </Button>
+      {showOwnList ? (
+        // Full width: drops under the button inside a wrapping flex row as well as a block parent.
+        <div className="w-full basis-full">
+          <OwnValuedDocumentsList
+            poNumber={poNumber}
+            propertyId={propertyId}
+            reloadKey={reloadKey}
+            canReview={canReview}
+          />
+        </div>
+      ) : null}
       {open ? (
         <AppModal
           open

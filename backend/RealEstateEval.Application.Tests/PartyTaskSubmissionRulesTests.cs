@@ -41,12 +41,12 @@ public class PartyTaskSubmissionRulesTests
     }
 
     [Fact]
-    public void Staff_may_correct_any_party_package_but_parties_and_anonymous_may_not()
+    public void Staff_may_correct_inspection_and_survey_packages_but_never_the_appraisers()
     {
         Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(Actor("case-specialist"), MakeTask()));
         Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
             Actor("case-specialist"), MakeTask(WorkflowTaskKind.EngineeringSurvey)));
-        Assert.True(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
+        Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
             Actor("case-specialist"), MakeTask(WorkflowTaskKind.PropertyAppraisal)));
         Assert.False(PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(
             Actor("case-specialist"), MakeTask(WorkflowTaskKind.CaseStudyProperty)));
@@ -195,6 +195,108 @@ public class PartyTaskSubmissionRulesTests
         var unsigned = PartyTaskSubmissionRules.DocumentaryGateErrors(
             WorkflowTaskKindValues.FieldInspection, Root("{}"), false, false, false, null);
         Assert.Empty(unsigned);
+    }
+
+    private static Dictionary<string, string> InspectionGate(
+        string json,
+        WorkOrderProperty? property,
+        bool bypass = false) =>
+        PartyTaskSubmissionRules.DocumentaryGateErrors(
+            WorkflowTaskKindValues.FieldInspection, Root(json), bypass, false, false, property);
+
+    [Fact]
+    public void Inspection_gate_wants_the_deed_nature_verdict_when_the_property_is_known()
+    {
+        var errors = InspectionGate("{}", Property(withPhone: true));
+
+        Assert.Equal(InspectorDeedNatureMatchRules.VerdictRequired, errors["deedMatchesNature"]);
+        Assert.Single(errors);
+    }
+
+    [Fact]
+    public void Inspection_gate_skips_the_deed_nature_verdict_without_a_property()
+    {
+        Assert.Empty(InspectionGate("{}", null));
+    }
+
+    [Fact]
+    public void Inspection_gate_passes_with_a_yes_verdict()
+    {
+        Assert.Empty(InspectionGate("""{"deedMatchesNature":"yes"}""", Property(withPhone: true)));
+    }
+
+    [Fact]
+    public void Inspection_gate_reports_a_mismatch_without_notes_under_boundaries()
+    {
+        var errors = InspectionGate(
+            """{"deedMatchesNature":"no","boundaryMatches":{"east":{"matches":false,"mismatchNote":""}}}""",
+            Property(withPhone: true));
+
+        Assert.Equal(InspectorDeedNatureMatchRules.MismatchNeedsNotes, errors["boundaries"]);
+    }
+
+    [Fact]
+    public void The_role_bypass_does_not_skip_the_deed_nature_verdict()
+    {
+        var errors = InspectionGate("{}", Property(withPhone: false), bypass: true);
+
+        Assert.Contains("deedMatchesNature", errors.Keys);
+    }
+
+    [Fact]
+    public void Inspection_gate_exempts_a_registered_title_and_unavailable_boundaries()
+    {
+        var registered = Property(withPhone: true);
+        registered.DeedKind = DeedKind.RegisteredTitle;
+        Assert.Empty(InspectionGate("{}", registered));
+
+        var noBoundaries = Property(withPhone: true);
+        noBoundaries.BoundariesAvailability = "no";
+        Assert.Empty(InspectionGate("{}", noBoundaries));
+    }
+
+    private static string InspectedPayload(string subject, string? landAnswer = null)
+    {
+        var answer = landAnswer is null ? "" : $",\"landHasValuableStructures\":\"{landAnswer}\"";
+        return "{\"featureValues\":{\"assetSubject\":\"" + subject + "\"},\"deedMatchesNature\":\"yes\"" + answer + "}";
+    }
+
+    [Fact]
+    public void Inspection_gate_wants_the_land_structures_answer_for_an_asset_typed_land()
+    {
+        var errors = InspectionGate(InspectedPayload("أرض"), Property(withPhone: true));
+
+        Assert.Equal(
+            "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم",
+            errors["landHasValuableStructures"]);
+        Assert.Equal(SpecialistComponentsRules.LandHasValuableStructuresRequired, errors["landHasValuableStructures"]);
+        Assert.Single(errors);
+
+        var blank = InspectionGate(InspectedPayload("أرض", landAnswer: ""), Property(withPhone: true));
+        Assert.Contains("landHasValuableStructures", blank.Keys);
+    }
+
+    [Theory]
+    [InlineData("yes")]
+    [InlineData("no")]
+    public void Inspection_gate_passes_a_land_with_an_answer(string answer)
+    {
+        Assert.Empty(InspectionGate(InspectedPayload("أرض", answer), Property(withPhone: true)));
+    }
+
+    [Fact]
+    public void Inspection_gate_does_not_ask_the_land_question_of_a_non_land_asset()
+    {
+        Assert.Empty(InspectionGate(InspectedPayload("فيلا"), Property(withPhone: true)));
+    }
+
+    [Fact]
+    public void Inspection_gate_skips_the_land_question_without_a_property_and_ignores_the_bypass()
+    {
+        Assert.Empty(InspectionGate(InspectedPayload("أرض"), null));
+
+        var bypassed = InspectionGate(InspectedPayload("أرض"), Property(withPhone: true), bypass: true);
+        Assert.Contains("landHasValuableStructures", bypassed.Keys);
     }
 
     [Fact]

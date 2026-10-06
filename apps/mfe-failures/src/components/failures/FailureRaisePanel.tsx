@@ -127,13 +127,19 @@ export function FailureRaisePanel({
     [failures, propertyRef],
   );
 
-  useEffect(() => {
+  // Opening the panel again clears a previous validation mark, and a problem type
+  // handed in from outside selects itself — both adjusted during render.
+  const [prevAutoOpen, setPrevAutoOpen] = useState(autoOpenRaise);
+  if (prevAutoOpen !== autoOpenRaise) {
+    setPrevAutoOpen(autoOpenRaise);
     if (autoOpenRaise) setInvalid(false);
-  }, [autoOpenRaise]);
+  }
 
-  useEffect(() => {
+  const [prevInitialType, setPrevInitialType] = useState(initialProblemTypeId);
+  if (prevInitialType !== initialProblemTypeId) {
+    setPrevInitialType(initialProblemTypeId);
     if (initialProblemTypeId) setProblemTypeId(initialProblemTypeId);
-  }, [initialProblemTypeId]);
+  }
 
   function formatFailureDate(iso: string): string {
     const day = iso.slice(0, 10);

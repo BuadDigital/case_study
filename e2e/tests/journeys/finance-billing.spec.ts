@@ -32,6 +32,7 @@ import {
   apiOk,
   createDistributedTransaction,
   deleteWorkOrder,
+  completeSpecialistComponents,
   submitFieldInspection,
   TINY_PDF_BASE64,
   uploadAttachment,
@@ -72,6 +73,7 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
 
     tx = await createDistributedTransaction(osamaToken);
     await submitFieldInspection(inspectorToken, tx.fieldInspection.id);
+    await completeSpecialistComponents(osamaToken, tx.poNumber, tx.propertyId);
     await apiOk(
       osamaToken,
       "POST",

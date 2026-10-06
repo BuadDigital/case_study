@@ -575,44 +575,9 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
 
     private static TransactionStateRules.Input BuildTransactionProgressInput(
         WorkOrderProperty property,
-        IReadOnlyList<WorkflowTask> tasks)
-    {
-        var parent = tasks
-            .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty)
-            .OrderByDescending(t => t.CreatedAtUtc)
-            .FirstOrDefault();
-
-        TransactionStateRules.PartyFacts FactsFor(WorkflowTaskKind kind)
-        {
-            var task = tasks
-                .Where(t => t.Kind == kind && t.Status != WorkflowTaskStatus.Cancelled)
-                .OrderByDescending(t => t.CreatedAtUtc)
-                .FirstOrDefault();
-            return new TransactionStateRules.PartyFacts(
-                Assigned: task is not null,
-                Completed: task?.Status == WorkflowTaskStatus.Completed);
-        }
-
-        var hasSurvey = tasks.Any(t =>
-            t.Kind == WorkflowTaskKind.EngineeringSurvey
-            && t.Status != WorkflowTaskStatus.Cancelled);
-        var appraiser = FactsFor(WorkflowTaskKind.PropertyAppraisal);
-        // List path skips open-valuation lookup; treat completed appraisal as closed for bar fill.
-        var valuationClosed = appraiser.Completed;
-
-        return new TransactionStateRules.Input(
-            ParentPhase: (parent?.Phase ?? WorkflowTaskPhase.Enfath).ToDbValue(),
-            Inspector: FactsFor(WorkflowTaskKind.FieldInspection),
-            Appraiser: appraiser,
-            EngineeringOffice: hasSurvey
-                ? FactsFor(WorkflowTaskKind.EngineeringSurvey)
-                : null,
-            CaseSpecialist: new TransactionStateRules.PartyFacts(
-                Assigned: parent is not null,
-                Completed: parent?.Status == WorkflowTaskStatus.Completed),
-            ValuationReportClosed: valuationClosed,
-            EnfazHandedOver: property.EnfazHandoverAtUtc is not null);
-    }
+        IReadOnlyList<WorkflowTask> tasks) =>
+        // List path skips the open-valuation lookup and the issued-report read: a completed appraisal counts as closed for bar fill.
+        TransactionStateInputBuilder.Build(tasks, enfazHandedOver: property.EnfazHandoverAtUtc is not null);
 
     private async Task<IReadOnlyList<WorkOrderDto>> WithResolvedSpecialistsAsync(
         IReadOnlyList<WorkOrderDto> rows,

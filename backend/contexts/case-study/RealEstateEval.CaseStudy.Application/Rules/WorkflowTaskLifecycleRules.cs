@@ -8,7 +8,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 /// validation, phase-revert target parsing, cascade selection for slot / property deletion,
 /// and the assignee lists that displaced-party notifications fan out to. No ports, no I/O.
 /// </summary>
-public static class WorkflowTaskLifecycleRules
+public static partial class WorkflowTaskLifecycleRules
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 

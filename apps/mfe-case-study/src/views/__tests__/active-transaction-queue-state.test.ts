@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  APPRAISAL_STATUS_FILTERS,
   collapseAllPoGroups,
   copyPriorTargetKey,
   filterAllTxMetaToListed,
@@ -94,5 +95,26 @@ describe("queueSelectionIsStale", () => {
     expect(
       queueSelectionIsStale({ selectedId: "z", tasks, listed: [task("z")] }),
     ).toBe(true);
+  });
+});
+
+describe("APPRAISAL_STATUS_FILTERS", () => {
+  it("offers drafting and ready — no start-gate filters", () => {
+    const values = APPRAISAL_STATUS_FILTERS.map((o) => o.value);
+    expect(values).toEqual([
+      "drafting",
+      "ready",
+      "submitted",
+      "draft_sent",
+      "approved",
+      "closed",
+      "reopened",
+    ]);
+    expect(
+      APPRAISAL_STATUS_FILTERS.find((o) => o.value === "drafting")?.label,
+    ).toBe("قيد التقييم — بانتظار إصدار الدراسة");
+    expect(
+      APPRAISAL_STATUS_FILTERS.find((o) => o.value === "ready")?.label,
+    ).toBe("جاهزة للتسليم");
   });
 });

@@ -123,11 +123,13 @@ export function FinanceRevenueView({
     [filteredBuckets, viewStage],
   );
 
-  /** Reset selection when the stage changes */
-  useEffect(() => {
+  /** Reset selection when the stage changes — during render, before the rows paint. */
+  const [selectionStage, setSelectionStage] = useState(viewStage);
+  if (selectionStage !== viewStage) {
+    setSelectionStage(viewStage);
     setSelected({});
     setFollowMode(false);
-  }, [viewStage]);
+  }
 
   const toggleGroup = useCallback((key: string) => {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));

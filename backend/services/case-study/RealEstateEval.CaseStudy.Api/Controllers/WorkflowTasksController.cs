@@ -7,6 +7,7 @@ using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
@@ -127,6 +128,10 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] AdvanceTaskAfterEnfathRequest request,
         CancellationToken cancellationToken)
     {
+        // Initial data (Enfaz stage) is the case specialist's only.
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var dto = await _tasks.AdvanceAfterEnfathAsync(id, request, cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
@@ -139,6 +144,10 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] AdvanceTaskAfterBourseRequest request,
         CancellationToken cancellationToken)
     {
+        // The bourse inquiry is the case specialist's only.
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var dto = await _tasks.AdvanceAfterBourseAsync(id, request, cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);
@@ -151,6 +160,9 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] RevertWorkflowTaskPhaseRequest request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanRevertTaskPhase, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _tasks.RevertPhaseAsync(id, request, cancellationToken);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
@@ -165,6 +177,20 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] PatchWorkflowTaskRequest request,
         CancellationToken cancellationToken)
     {
+        // Phase / status moves have their own endpoints (advance, revert, confirm, reopen); through
+        // this route they are limited to the roles that run the lifecycle (see CanPatchTaskLifecycle).
+        var forbidden = await ForbidUnlessAsync(
+            role => PoRoleMatrixRules.CanPatchTaskLifecycle(role, request.Phase, request.Status),
+            cancellationToken);
+        if (forbidden is not null) return forbidden;
+
+        // A case-study parent is completed and reopened by its report, never by this route.
+        var state = await _tasks.GetPatchStateAsync(id, cancellationToken);
+        if (state is null) return NotFound();
+        var blocked = WorkflowTaskLifecycleRules.ClientPatchBlockReason(state.Kind, state.Status, request);
+        if (blocked is not null)
+            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = blocked });
+
         var dto = await _tasks.PatchAsync(id, request, cancellationToken);
         if (dto is null) return NotFound();
         return Ok(dto);

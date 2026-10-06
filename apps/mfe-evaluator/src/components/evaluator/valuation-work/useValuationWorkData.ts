@@ -177,6 +177,10 @@ export function useValuationWorkData({
         intakeProperty,
       });
     },
+    // The individual fields are the inputs on purpose: the property objects come
+    // from queries and change identity on every refetch, which would refire the
+    // bank search for untouched fields.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       inspectionTaskId,
       propertyId,
@@ -363,7 +367,10 @@ export function useValuationWorkData({
     // Market / cost / recon just refreshed — drop the printed-report cache (debounced).
     scheduleInvalidateEvaluatorReportOutput(queryClient);
     },
+    // Field-level inputs on purpose — see `resolveBankFetchOpts` above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+    applyBankResult,
     propertyId,
     districtHint,
     assignmentType,

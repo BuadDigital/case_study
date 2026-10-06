@@ -107,6 +107,17 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("SurveyFreezeLiftReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("SurveyFreezeLiftedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SurveyFreezeLiftedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateTime?>("SuspendedAtUtc")
                         .HasColumnType("timestamp with time zone");
 

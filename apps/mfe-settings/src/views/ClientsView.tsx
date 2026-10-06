@@ -12,28 +12,7 @@ import {
   type UpsertClientRequest,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import {
-  Badge,
-  cn,
-  EmptyState,
-  ModalBody,
-  ModalCard,
-  ModalClose,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  ModalTitle,
-  PageShell,
-  PageLoadingHint,
-  Table,
-  TBody,
-  Td,
-  TdLtr,
-  Th,
-  THead,
-  Tr,
-  useToast,
-} from "@platform/ui-kit";
+import { Badge, cn, EmptyState, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, PageShell, PageLoadingHint, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, confirmAction } from "@platform/ui-kit";
 import { organizationSettingsApiConfig } from "../lib/settings-api-config";
 import {
   opsBtnGhost,
@@ -188,7 +167,13 @@ export function ClientsView() {
       showToast("لا يمكن تعطيل شركة نبر العقارية", "error");
       return;
     }
-    if (!window.confirm(`تعطيل العميل «${row.nameAr}»؟`)) return;
+    const confirmed = await confirmAction({
+      title: "تعطيل العميل",
+      message: `تعطيل العميل «${row.nameAr}»؟`,
+      confirmLabel: "تعطيل",
+      danger: true,
+    });
+    if (!confirmed) return;
     const config = organizationSettingsApiConfig();
     if (!config) return;
     const res = await deactivateClient(config, row.id);

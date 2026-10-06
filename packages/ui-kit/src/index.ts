@@ -86,6 +86,7 @@ export {
   useDeferredVisible,
   GENTLE_LOADING_DELAY_MS,
 } from "./hooks/use-deferred-visible";
+export { useIsHydrated } from "./hooks/use-is-hydrated";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
 export { Input, type InputProps } from "./components/Input";
@@ -251,6 +252,16 @@ export {
   type RowMoreMenuItem,
 } from "./components/RowMoreMenu";
 export { AppModal, type AppModalProps } from "./components/AppModal";
+export {
+  ActionDialogHost,
+  alertAction,
+  confirmAction,
+  promptAction,
+  promptValidationMessage,
+  type AlertActionRequest,
+  type ConfirmActionRequest as ActionConfirmRequest,
+  type PromptActionRequest,
+} from "./components/ActionDialogs";
 export { SideSheet, type SideSheetProps } from "./components/SideSheet";
 export {
   TransactionRow,

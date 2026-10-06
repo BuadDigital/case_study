@@ -228,12 +228,10 @@ export function PoPropertyDetailTopbarActions({
     };
   }, [dismissToast]);
 
-  useEffect(() => {
-    if (!openingCaseStudy) return;
-    if (searchParams.get("tab") === "report") {
-      setOpeningCaseStudy(false);
-    }
-  }, [openingCaseStudy, searchParams]);
+  // The report tab is open — the button stops showing its pending state.
+  if (openingCaseStudy && searchParams.get("tab") === "report") {
+    setOpeningCaseStudy(false);
+  }
 
   useEffect(() => {
     if (!showCaseStudyFeedback) {

@@ -23,6 +23,7 @@ import {
 import { hasAnyPartyPhone } from "../../lib/app-data/documentary-workflow-gates";
 import {
   INSPECTOR_OBSERVATION_CATEGORIES,
+  isLandInspectionContext,
   newObservationId,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -432,17 +433,12 @@ export function InspectorObservationsSection({
         <i className="ti ti-plus" aria-hidden /> إضافة ملاحظة موثّقة
       </Button>
     )}
-    <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">
-      <input
-        type="checkbox"
-        className="mt-0.5"
-        id="ins-vacant-land"
-        checked={draft.vacantLand}
-        onChange={(e) => persist({ vacantLand: e.target.checked })}
-      />
-      <span>هل الموقع أرض فضاء؟</span>
-    </label>
-    {!draft.vacantLand && !keyAvailability.keyAvailable ? (
+    {!isLandInspectionContext({
+      vacantLand: draft.vacantLand,
+      assetSubject: draft.featureValues.assetSubject,
+      classification: property?.classification,
+      propertyType: property?.propertyType,
+    }) && !keyAvailability.keyAvailable ? (
       <Note tone="info" className="mt-3">
         المفتاح غير مُسلَّم بعد (معلومة من ظرف المفاتيح) — يمكنك إتمام
         المعاينة. إن كان الدخول متعذراً بسبب المفتاح سجّل تعذراً.

@@ -62,6 +62,39 @@ public sealed partial class AttachmentService : IAttachmentService
         return rows.Select(row => ToMeta(row, photos.GetValueOrDefault(row.Id))).ToList();
     }
 
+    public async Task<IReadOnlyList<OwnValuedDocumentDto>> ListOwnValuedDocumentsAsync(
+        string scopeKey,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = actor?.UserId;
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(scopeKey))
+            return [];
+
+        var key = scopeKey.Trim();
+        // The specialist / appraiser / CDO see every valued document of the property; anyone else only their own.
+        var seesAll = AttachmentAccessRules.AllowsValuedDocument(actor);
+        var rows = await _db.FileAttachments.AsNoTracking()
+            .Where(x => x.Scope == PropertyDocumentTypes.ValuedScope
+                && x.ScopeKey == key
+                && (seesAll || x.UploadedByUserId == userId))
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxAttachmentsPerScope)
+            .ToListAsync(cancellationToken);
+        return rows
+            .Select(r => new OwnValuedDocumentDto
+            {
+                Id = r.Id,
+                Name = string.IsNullOrWhiteSpace(r.CustomDocumentLabel) ? r.FileName : r.CustomDocumentLabel!,
+                FileName = r.FileName,
+                ContentType = r.ContentType,
+                Status = string.IsNullOrWhiteSpace(r.ValueDocStatus) ? ValueDocumentStatuses.Pending : r.ValueDocStatus!,
+                ReviewNote = r.ValueDocReviewNote,
+                CreatedAtUtc = r.CreatedAtUtc,
+            })
+            .ToList();
+    }
+
     public async Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
         PermissionsDto? actor,

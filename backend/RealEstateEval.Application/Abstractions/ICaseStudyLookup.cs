@@ -39,6 +39,15 @@ public interface ICaseStudyLookup
         Guid propertyId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Appraisal package state of a property (latest non-cancelled appraisal task). Null = unknown
+    /// (an older Case Study host without the endpoint) — callers treat it as "not locked".
+    /// </summary>
+    Task<CaseStudyAppraisalPackageStateDto?> GetAppraisalPackageStateAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<CaseStudyAppraisalPackageStateDto?>(null);
+
     Task<CaseStudyPropertySnapshotDto?> GetPropertyByPoAndDeedAsync(
         string poNumber,
         string deedNumber,

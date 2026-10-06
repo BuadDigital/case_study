@@ -1,6 +1,7 @@
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
@@ -27,13 +28,65 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
         return prop is null ? null : ToDto(prop);
     }
 
+    public async Task<BuildingInventoryWriteAccess> ResolveWriteAccessAsync(
+        string poNumber,
+        Guid propertyId,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        // Staff never needs the task facts, so skip the query for them.
+        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+            return BuildingInventoryWriteAccess.Staff;
+
+        var facts = await db.GetFieldInspectionWriteFactsAsync(poNumber, propertyId, cancellationToken);
+        return BuildingInventoryWriteRules.Resolve(
+            actor.PrototypeRole, actor.UserId, actor.DistributionAssigneeId, facts);
+    }
+
+    public async Task<bool> CanReadAsync(
+        string poNumber,
+        Guid propertyId,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken)
+    {
+        // Only the field inspector is scoped; skip the query for every other reader.
+        if (!string.Equals(
+                actor.PrototypeRole?.Trim(),
+                BuildingInventoryWriteRules.FieldInspectorRole,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var facts = await db.GetFieldInspectionWriteFactsAsync(poNumber, propertyId, cancellationToken);
+        return BuildingInventoryWriteRules.InspectorMayRead(
+            actor.PrototypeRole, actor.UserId, actor.DistributionAssigneeId, facts);
+    }
+
     public async Task<(BuildingInventoryDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
         string poNumber,
         Guid propertyId,
         SaveBuildingInventoryRequest request,
+        BuildingInventoryWriteAccess access,
         CancellationToken cancellationToken,
         PartySubmissionActor? actor = null)
     {
+        if (access == BuildingInventoryWriteAccess.Denied)
+            return (null, new Dictionary<string, string> { ["_"] = "ليس لديك صلاحية تعديل الحصر" });
+
+        // The inspector's access was decided before this call; re-check the package right here so a
+        // submit that landed in between cannot be overwritten by a late save (e.g. a replayed offline write).
+        if (access == BuildingInventoryWriteAccess.Inspector
+            && (actor is null
+                || await ResolveWriteAccessAsync(poNumber, propertyId, actor, cancellationToken)
+                    != BuildingInventoryWriteAccess.Inspector))
+        {
+            return (null, new Dictionary<string, string> { ["_"] = BuildingInventoryWriteRules.PackageSubmitted });
+        }
+
+        // «مكونات العقار» text is the specialist's; the inspector writes the table only and any
+        // text he sends is ignored (the stored text is kept).
+        var writesText = access == BuildingInventoryWriteAccess.Staff;
         var errors = new Dictionary<string, string>();
         // The specialist lists the components whenever they exist; whether they are valued is the
         // appraiser's scope choice (land only / buildings only / land and buildings). The stored
@@ -58,7 +111,8 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
                 errors[$"lines[{i}].repeatedFloorCount"] = "عدد الأدوار المتكررة غير صالح";
         }
 
-        if ((request.ComponentsText?.Trim().Length ?? 0) > SpecialistComponentsRules.TextMaxLength)
+        if (writesText
+            && (request.ComponentsText?.Trim().Length ?? 0) > SpecialistComponentsRules.TextMaxLength)
             errors["componentsText"] = "نص «مكونات العقار» أطول من المسموح";
 
         if (errors.Count > 0) return (null, errors);
@@ -72,7 +126,7 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
             return (null, new Dictionary<string, string> { ["_"] = "العقار غير موجود" });
 
         prop.HasStructuresToValue = answer;
-        if (request.ComponentsText is not null)
+        if (writesText && request.ComponentsText is not null)
         {
             prop.SpecialistComponentsText = string.IsNullOrWhiteSpace(request.ComponentsText)
                 ? null

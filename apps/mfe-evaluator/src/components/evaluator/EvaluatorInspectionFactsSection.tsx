@@ -14,6 +14,7 @@ import {
 import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
 import { EvaluatorCopyField } from "./EvaluatorChecklistTab";
 import { EngInfo, EngSection } from "./EvaluatorHtmlPrimitives";
+import { InspectorDataSyncNote } from "./InspectorDataSyncNote";
 
 export function inspectionFactChips(
   workspace: InspectorWorkspaceDraft | null | undefined,
@@ -207,6 +208,7 @@ export function EvaluatorInspectionFactsSection({
   return (
     <>
       <EngSection>معاينة العقار</EngSection>
+      <InspectorDataSyncNote workspace={workspace} />
       <EngInfo>
         معاينة العقار عمل ميداني يدخل بياناته المعاين. تظهر هنا للمقيم ليبني
         عليها تقرير التقييم — وليست استعراض تقرير التقييم.

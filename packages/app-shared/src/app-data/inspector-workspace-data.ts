@@ -12,7 +12,12 @@ export const INSPECTOR_BOUNDARY_KEYS: InspectorBoundaryKey[] = [
 ];
 
 export type InspectorBoundaryMatch = {
-  matches: boolean;
+  /**
+   * Tri-state: `true` = مطابق، `false` = غير مطابق، `null` = untouched (the inspector has
+   * not answered yet — never defaulted to «matches»). The server only treats an explicit
+   * `false` as a mismatch, so `null` is wire-safe.
+   */
+  matches: boolean | null;
   mismatchNote: string;
   /** «نوع الواجهة» — facade finish on this side; options come from the report dictionary. */
   facade: string;
@@ -1021,6 +1026,12 @@ export type InspectorWorkspaceDraft = {
   buildLicenseDate: string;
   /** checklist — is the site vacant land */
   vacantLand: boolean;
+  /**
+   * «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» — meaningful only when the inspected asset is
+   * land; `""` = not answered (the server rejects an inspector submit then). `"yes"` makes the
+   * inventory table («جدول الحصر») mandatory even though the asset is land; `"no"` exempts it.
+   */
+  landHasValuableStructures: "" | "yes" | "no";
   /** Derived from reviewer delivery — updated on submit */
   keyAvailable: boolean;
   /** Client acknowledgment signature */
@@ -1044,6 +1055,11 @@ export type InspectorWorkspaceDraft = {
   violationsCount: string;
   violationsDescription: string;
   boundaryMatches: Record<InspectorBoundaryKey, InspectorBoundaryMatch>;
+  /**
+   * «هل حدود الصك مطابقة للطبيعة؟» — the inspector's explicit verdict; `""` = not chosen
+   * (never defaulted). `"yes"` means all four sides match; `"no"` needs ≥1 non-matching side.
+   */
+  deedMatchesNature: "" | "yes" | "no";
   services: string[];
   amenities: string[];
   propertyDescription: string;
@@ -1130,6 +1146,24 @@ export function patchAccessContact(
   };
 }
 
+/**
+ * The inspector's deed↔nature verdict for DISPLAY / proposal: the explicit
+ * `deedMatchesNature` wins. A legacy payload without the key is derived from the sides —
+ * any explicit non-match → «no»; all four explicitly matching → «yes»; an untouched table
+ * (any side still `null`) is unknown, never «matched» by default.
+ */
+export function effectiveDeedVerdict(
+  draft: Pick<InspectorWorkspaceDraft, "deedMatchesNature" | "boundaryMatches">,
+): "" | "yes" | "no" {
+  if (draft.deedMatchesNature === "yes" || draft.deedMatchesNature === "no") {
+    return draft.deedMatchesNature;
+  }
+  const rows = INSPECTOR_BOUNDARY_KEYS.map((key) => draft.boundaryMatches?.[key]);
+  if (rows.some((row) => row?.matches === false)) return "no";
+  if (rows.every((row) => row?.matches === true)) return "yes";
+  return "";
+}
+
 function emptyDefinedPhotos(): Record<string, InspectorDefinedPhotoSlot> {
   return {};
 }
@@ -1139,10 +1173,10 @@ function emptyBoundaryMatches(): Record<
   InspectorBoundaryMatch
 > {
   return {
-    north: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    south: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    east: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    west: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    north: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    south: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    east: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    west: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
   };
 }
 
@@ -1211,6 +1245,7 @@ export function createInspectorWorkspaceDraft(input: {
     buildLicenseNumber: "",
     buildLicenseDate: "",
     vacantLand: false,
+    landHasValuableStructures: "",
     keyAvailable: false,
     clientDeclarationSigned: false,
     declarationPhoneSatisfied: false,
@@ -1231,6 +1266,7 @@ export function createInspectorWorkspaceDraft(input: {
     violationsCount: "",
     violationsDescription: "",
     boundaryMatches: emptyBoundaryMatches(),
+    deedMatchesNature: "",
     services: [],
     amenities: [],
     propertyDescription: "",
@@ -1286,10 +1322,10 @@ export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
 
 /** Specialist (supervisor) attestation — not the field inspector's reality pledge. */
 export const SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK =
-  "راجعت مدخلات المعاين وأؤكد أنها جاهزة وبدء عمل المقيّم";
+  "راجعت مدخلات المعاين وأؤكد أنها جاهزة";
 
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS =
-  "تم تأكيد مدخلات المعاين — يمكن للمقيم بدء التقييم";
+  "تم تأكيد مدخلات المعاين";
 
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
@@ -1383,8 +1419,9 @@ export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
 
 /**
  * Inspector cannot edit after submit. Specialist may correct the package
- * while reviewing it, but accepting it locks the form — acceptance both
- * opens the path for the appraiser and closes out the specialist's review.
+ * while reviewing it, but accepting it locks the form — acceptance closes out
+ * the specialist's review (and releases the inspector's description to the
+ * appraiser); it does not gate the appraiser's start, which needs only submission.
  */
 export function isInspectorWorkspaceReviewLocked(
   draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,

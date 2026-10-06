@@ -188,6 +188,12 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("annexGroundCount", "عدد الملاحق الأرضية", true),
     readonly("buildingsTotal", "إجمالي مساحة المباني (م²)"),
     flag("vacantLand", "أرض فضاء"),
+    {
+      key: "landHasValuableStructures",
+      label: "مبانٍ أو ملاحق تستحق التقييم (أرض)",
+      input: "select",
+      options: ["yes", "no"],
+    },
     text("propertyAgeYears", L.propertyAge, true),
     text("buildLicenseNumber", L.buildLicenseNumber, true),
     date("buildLicenseDate", L.buildLicenseDate),
@@ -202,6 +208,12 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     area("districtProsCons", L.districtProsCons),
     area("assetNotes", L.assetNotes),
     ...MOVABLES_AND_OCCUPANCY_DEFS,
+    {
+      key: "deedMatchesNature",
+      label: "مطابقة الحدود للصك",
+      input: "select",
+      options: ["yes", "no"],
+    },
     ...BOUNDARY_MATCH_DEFS,
     chips("services", L.services, INSPECTOR_SERVICE_OPTIONS),
     chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS, "أخرى"),
@@ -269,7 +281,6 @@ export const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
     text("appraiserAddress", L.appraiserAddress),
     text("appraiserPhone", L.appraiserPhone, true),
     text("reportIssueDate", L.reportIssueDate, true),
-    text("depositCode", L.depositCode, true),
     area("evaluatorNotes", "ملاحظات على العقار"),
     area("searchScopeNotes", L.searchScope),
     area("assetDataVarianceNotes", "ملاحظات التباين"),
@@ -290,9 +301,11 @@ export { INSPECTOR_OBSERVATION_CATEGORIES };
 
 const DEED_MATCH_LABELS: Record<string, string> = { yes: "نعم", no: "لا" };
 
-/** Arabic label for a stored option value (deed-match yes/no; amenities use the report wording). */
+/** Arabic label for a stored option value (deed-match / land-structures yes/no; amenities use the report wording). */
 export function partyOptionLabel(key: string, value: string): string {
-  if (key === "deedMatchesNature") return DEED_MATCH_LABELS[value] ?? value;
+  if (key === "deedMatchesNature" || key === "landHasValuableStructures") {
+    return DEED_MATCH_LABELS[value] ?? value;
+  }
   if (key === "amenities") return inspectorAmenityLabel(value);
   return value;
 }

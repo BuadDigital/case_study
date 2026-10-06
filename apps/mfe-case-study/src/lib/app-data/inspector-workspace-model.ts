@@ -9,6 +9,7 @@ import {
   computeBuildingsTotalSqm,
   createInspectorWorkspaceDraft,
   sanitizeInspectorDraftForLand,
+  textLooksLikeVacantLand,
   type InspectorBoundaryKey,
   type InspectorBoundaryMatch,
   type InspectorDefinedPhotoSlot,
@@ -58,7 +59,8 @@ function readBoundaryMatches(
     if (!row || typeof row !== "object") continue;
     const obj = row as Record<string, unknown>;
     base[key] = {
-      matches: obj.matches !== false,
+      // Tri-state: an explicit boolean is kept; anything else stays «untouched» (null).
+      matches: typeof obj.matches === "boolean" ? obj.matches : null,
       mismatchNote: readString(obj.mismatchNote),
       facade: readString(obj.facade),
       deedDesc: readString(obj.deedDesc),
@@ -66,6 +68,22 @@ function readBoundaryMatches(
     };
   }
   return base;
+}
+
+/**
+ * `vacantLand` is no longer ticked by the inspector (the server mirrors «الأصل محل التقييم» = أرض
+ * into it on submit), so a chosen asset type decides it; a stored tick only counts while the
+ * asset type is still empty (legacy drafts).
+ */
+function legacyVacantLand(stored: unknown, featureValues: Record<string, string>): boolean {
+  const subject = (featureValues.assetSubject ?? "").trim();
+  return subject ? textLooksLikeVacantLand(subject) : Boolean(stored);
+}
+
+/** A yes/no/empty verdict string (deed match, land-has-valuable-structures). */
+function readDeedMatchesNature(value: unknown): "" | "yes" | "no" {
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return raw === "yes" || raw === "no" ? raw : "";
 }
 
 function readPhotoAttachment(value: unknown): InspectorPhotoAttachment | null {
@@ -326,7 +344,8 @@ export function payloadToDraft(
     propertyAgeYears: readString(payload.propertyAgeYears),
     buildLicenseNumber: readString(payload.buildLicenseNumber),
     buildLicenseDate: readString(payload.buildLicenseDate),
-    vacantLand: Boolean(payload.vacantLand),
+    vacantLand: legacyVacantLand(payload.vacantLand, readRecord(payload.featureValues)),
+    landHasValuableStructures: readDeedMatchesNature(payload.landHasValuableStructures),
     keyAvailable: Boolean(payload.keyAvailable),
     clientDeclarationSigned: Boolean(payload.clientDeclarationSigned),
     declarationPhoneSatisfied: Boolean(payload.declarationPhoneSatisfied),
@@ -351,6 +370,7 @@ export function payloadToDraft(
     violationsCount: readString(payload.violationsCount),
     violationsDescription: readString(payload.violationsDescription),
     boundaryMatches: readBoundaryMatches(payload.boundaryMatches),
+    deedMatchesNature: readDeedMatchesNature(payload.deedMatchesNature),
     services: readStringArray(payload.services),
     amenities: readStringArray(payload.amenities),
     propertyDescription: readString(payload.propertyDescription),
@@ -436,6 +456,7 @@ export function draftToPayload(
     buildLicenseNumber: draft.buildLicenseNumber,
     buildLicenseDate: draft.buildLicenseDate,
     vacantLand: draft.vacantLand,
+    landHasValuableStructures: draft.landHasValuableStructures,
     keyAvailable: draft.keyAvailable,
     clientDeclarationSigned: draft.clientDeclarationSigned,
     declarationPhoneSatisfied: draft.declarationPhoneSatisfied,
@@ -456,6 +477,7 @@ export function draftToPayload(
     violationsCount: draft.violationsCount,
     violationsDescription: draft.violationsDescription,
     boundaryMatches: draft.boundaryMatches,
+    deedMatchesNature: draft.deedMatchesNature,
     services: draft.services,
     amenities: draft.amenities,
     propertyDescription: draft.propertyDescription,
@@ -515,6 +537,10 @@ export function mergeInspectorWorkspacePatch(
     observations: patch.observations ?? current.observations,
     boundaryMatches: patch.boundaryMatches ?? current.boundaryMatches,
     featureValues: patch.featureValues ?? current.featureValues,
+    // The asset type decides vacantLand (no tick any more); keep a legacy tick while it is empty.
+    vacantLand:
+      patch.vacantLand ??
+      legacyVacantLand(current.vacantLand, patch.featureValues ?? current.featureValues),
     featurePhotoAttachments:
       patch.featurePhotoAttachments ?? current.featurePhotoAttachments,
     componentPhotoAttachments:

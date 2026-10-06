@@ -10,7 +10,6 @@ import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadValuationRequests,
   submitValuationRequestImpediment,
-  submitValuationRequestReport,
 } from "../lib/valuation-api";
 
 const STALE_MS = 60_000;
@@ -45,29 +44,6 @@ export function useValuationRequestsQuery() {
     queryFn: loadValuationRequests,
     staleTime: STALE_MS,
     gcTime: GC_MS,
-  });
-}
-
-export function useSubmitValuationReportMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: submitValuationRequestReport,
-    // Serialize per request so rapid double-submits cannot desync optimistic status.
-    scope: { id: "valuation-report" },
-    onMutate: async (recordId) => {
-      await queryClient.cancelQueries({ queryKey: valuationKey });
-      return { snapshot: patchValuationStatus(queryClient, recordId, "done") };
-    },
-    onSuccess: (result, _recordId, context) => {
-      if (!result.ok) {
-        restoreOptimisticPatch(queryClient, valuationKey, context?.snapshot);
-        return;
-      }
-      invalidateValuationQueries(queryClient);
-    },
-    onError: (_err, _recordId, context) => {
-      restoreOptimisticPatch(queryClient, valuationKey, context?.snapshot);
-    },
   });
 }
 

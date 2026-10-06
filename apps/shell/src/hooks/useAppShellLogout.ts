@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmAction } from "@platform/ui-kit";
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearAuthSession, getAuthSession } from "@platform/auth-client";
@@ -27,19 +28,26 @@ export function useAppShellLogout(): () => Promise<void> {
           }),
         ]);
         if (pending !== 0) {
-          const proceed = window.confirm(
-            pending > 0
-              ? `هناك ${pending} عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل.\nهل تريد تسجيل الخروج على أي حال؟ البيانات المعلّقة تبقى مشفّرة على الجهاز.`
-              : `تعذّر التأكد من عناصر المزامنة. قد تكون هناك بيانات لم تُرفع بعد.\nهل تريد تسجيل الخروج على أي حال؟`,
-          );
+          const proceed = await confirmAction({
+            title: "تسجيل الخروج",
+            message:
+              pending > 0
+                ? `هناك ${pending} عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل.\nهل تريد تسجيل الخروج على أي حال؟ البيانات المعلّقة تبقى مشفّرة على الجهاز.`
+                : `تعذّر التأكد من عناصر المزامنة. قد تكون هناك بيانات لم تُرفع بعد.\nهل تريد تسجيل الخروج على أي حال؟`,
+            confirmLabel: "تسجيل الخروج",
+            danger: true,
+          });
           if (!proceed) return;
           keepUnsynced = true;
         }
       } catch {
         keepUnsynced = true;
-        const proceed = window.confirm(
-          `تعذّر التأكد من عناصر المزامنة. قد تكون هناك بيانات لم تُرفع بعد.\nهل تريد تسجيل الخروج على أي حال؟`,
-        );
+        const proceed = await confirmAction({
+          title: "تسجيل الخروج",
+          message: `تعذّر التأكد من عناصر المزامنة. قد تكون هناك بيانات لم تُرفع بعد.\nهل تريد تسجيل الخروج على أي حال؟`,
+          confirmLabel: "تسجيل الخروج",
+          danger: true,
+        });
         if (!proceed) return;
       }
     }

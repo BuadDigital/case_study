@@ -8,6 +8,11 @@ using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Integration;
 
+/// <summary>
+/// The final issuance of the valuation report (deposit code + certificate) is the one event that
+/// completes the appraiser's task: submitting the package only hands it to the case specialist and
+/// leaves the task open. A package that was never submitted is never completed by this event.
+/// </summary>
 public sealed class ValuationReportWorkflowHandler
 {
     private static readonly JsonSerializerOptions JsonOpts = JsonDefaults.CaseInsensitive;
@@ -15,15 +20,21 @@ public sealed class ValuationReportWorkflowHandler
     private readonly IValuationReportWorkflowTaskLookup _tasksLookup;
     private readonly IWorkflowTaskService _tasks;
     private readonly ILogger<ValuationReportWorkflowHandler> _logger;
+    private readonly IPropertyTimelineService? _timeline;
+    private readonly TimeProvider _time;
 
     public ValuationReportWorkflowHandler(
         IValuationReportWorkflowTaskLookup tasksLookup,
         IWorkflowTaskService tasks,
-        ILogger<ValuationReportWorkflowHandler> logger)
+        ILogger<ValuationReportWorkflowHandler> logger,
+        IPropertyTimelineService? timeline = null,
+        TimeProvider? time = null)
     {
         _tasksLookup = tasksLookup;
         _tasks = tasks;
         _logger = logger;
+        _timeline = timeline;
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task HandleEnvelopeAsync(string payloadJson, CancellationToken cancellationToken = default)
@@ -60,9 +71,9 @@ public sealed class ValuationReportWorkflowHandler
             return;
         }
 
-        var taskId = await _tasksLookup.FindOpenAppraisalTaskIdAsync(propertyId, cancellationToken);
+        var task = await _tasksLookup.FindOpenAppraisalTaskAsync(propertyId, cancellationToken);
 
-        if (taskId is null)
+        if (task is null)
         {
             _logger.LogInformation(
                 "ValuationReportSubmitted: no open property-appraisal task for property {PropertyId}",
@@ -70,8 +81,17 @@ public sealed class ValuationReportWorkflowHandler
             return;
         }
 
+        if (!task.PackageSubmitted)
+        {
+            _logger.LogWarning(
+                "ValuationReportSubmitted: appraisal package of task {TaskId} (VR {DisplayId}) was never submitted; task left open",
+                task.TaskId,
+                payload.DisplayId);
+            return;
+        }
+
         await _tasks.PatchAsync(
-            taskId.Value,
+            task.TaskId,
             new PatchWorkflowTaskRequest
             {
                 Status = WorkflowTaskStatusValues.Completed,
@@ -79,9 +99,22 @@ public sealed class ValuationReportWorkflowHandler
             },
             cancellationToken);
 
+        if (_timeline is not null && !string.IsNullOrWhiteSpace(task.PoNumber))
+        {
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                propertyId,
+                $"appraisal:{task.TaskId}:final-issued",
+                WorkflowTaskKindLabels.AppraisalCompletedTitleAr,
+                $"صدر التقرير النهائي ({payload.DisplayId}) — اكتمل تقييم العقار",
+                "done",
+                _time.GetUtcNow().UtcDateTime,
+                cancellationToken);
+        }
+
         _logger.LogInformation(
             "ValuationReportSubmitted: completed workflow task {TaskId} for VR {DisplayId}",
-            taskId.Value,
+            task.TaskId,
             payload.DisplayId);
     }
 }

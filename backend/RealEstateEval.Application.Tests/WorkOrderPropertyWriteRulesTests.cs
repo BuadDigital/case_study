@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Domain;
@@ -316,48 +317,6 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
-    public void Bourse_request_rejects_an_unknown_manual_ownership_type()
-    {
-        var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
-        var request = new UpdatePropertyBourseRequest
-        {
-            City = "الرياض",
-            District = "النرجس",
-            Classification = "سكني",
-            PropertyType = "أرض",
-            OwnershipTypeIsManual = true,
-            OwnershipType = "not-a-type",
-        };
-
-        var (errors, _) = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
-        Assert.Equal("نوع ملكية غير معروف", errors!["ownershipType"]);
-    }
-
-    [Fact]
-    public void Bourse_request_clears_a_derived_ownership_type()
-    {
-        var entity = new WorkOrderProperty
-        {
-            Id = Guid.NewGuid(),
-            OwnershipType = "absolute",
-            OwnershipTypeIsManual = true,
-        };
-        var request = new UpdatePropertyBourseRequest
-        {
-            City = "الرياض",
-            District = "النرجس",
-            Classification = "سكني",
-            PropertyType = "أرض",
-            OwnershipTypeIsManual = false,
-        };
-
-        WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
-
-        Assert.Null(entity.OwnershipType);
-        Assert.False(entity.OwnershipTypeIsManual);
-    }
-
-    [Fact]
     public void Bourse_request_stores_named_owners_and_names_the_first_one()
     {
         var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
@@ -369,9 +328,9 @@ public class WorkOrderPropertyWriteRulesTests
             PropertyType = "أرض",
             Owners =
             [
-                new DeedOwnerDto { Name = " سالم ", SharePct = 60 },
-                new DeedOwnerDto { Name = "  ", SharePct = 0 },
-                new DeedOwnerDto { Name = "نورة", SharePct = 40 },
+                new DeedOwnerDto { Name = " سالم " },
+                new DeedOwnerDto { Name = "  " },
+                new DeedOwnerDto { Name = "نورة" },
             ],
         };
 
@@ -379,7 +338,10 @@ public class WorkOrderPropertyWriteRulesTests
 
         Assert.Null(errors);
         Assert.Equal("سالم", entity.OwnerName);
-        Assert.NotNull(entity.DeedOwnersJson);
+        Assert.Equal(
+            ["سالم", "نورة"],
+            OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Select(o => o.Name));
+        Assert.Equal(OwnershipTypes.Shared, WorkOrderMapper.ToPropertyDto(entity).OwnershipType);
     }
 
     // ---- stored file-name column ----

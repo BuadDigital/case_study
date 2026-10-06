@@ -1145,39 +1145,38 @@ export async function requestEvaluatorRecallApi(
   }
 }
 
-export async function approveEvaluatorRecallApi(
-  config: PrototypeModulesApiConfig,
-  taskId: string,
-): Promise<PrototypeModulesResult<EvaluatorRecallDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/evaluator-recalls/${taskId}/approve`, {
-      method: "PATCH",
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
+export type EvaluatorRecallDecision = "approve" | "reject";
 
-export async function rejectEvaluatorRecallApi(
+/**
+ * The specialist's decision on a recall in ONE call (batch 2C): approving reopens the appraiser's
+ * package on the server first (idempotent) and then records the approval. 400/409 carry the
+ * Arabic refusal in `errors._` (e.g. the appraiser already deposited the report); 403 when the
+ * caller is not the case specialist.
+ */
+export async function decideEvaluatorRecallApi(
   config: PrototypeModulesApiConfig,
   taskId: string,
-  specialistNote?: string,
+  decision: EvaluatorRecallDecision,
+  note?: string,
 ): Promise<PrototypeModulesResult<EvaluatorRecallDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
-    const res = await fetch(`${base}/api/evaluator-recalls/${taskId}/reject`, {
+    const res = await fetch(`${base}/api/evaluator-recalls/${taskId}/decide`, {
       method: "PATCH",
       headers: headers(config.token),
-      body: JSON.stringify({ specialistNote: specialistNote ?? "" }),
+      body: JSON.stringify({ decision, ...(note?.trim() ? { note: note.trim() } : {}) }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 403 || res.status === 400 || res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return {
+        ok: false,
+        kind: res.status === 403 ? "forbidden" : "validation",
+        errors,
+        message: errors._,
+      };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<EvaluatorRecallDto>(res) };
   } catch {

@@ -35,6 +35,8 @@ export function EngineeringSurveyMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const onCoordsChangeRef = useRef(onCoordsChange);
+  onCoordsChangeRef.current = onCoordsChange;
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -87,13 +89,13 @@ export function EngineeringSurveyMap({
             marker.setPosition(pos);
             map.panTo(pos);
             if (map.getZoom()! < PIN_ZOOM) map.setZoom(PIN_ZOOM);
-            onCoordsChange(pos.lat().toFixed(6), pos.lng().toFixed(6));
+            onCoordsChangeRef.current(pos.lat().toFixed(6), pos.lng().toFixed(6));
           });
 
           marker.addListener("dragend", () => {
             const pos = marker.getPosition();
             if (!pos) return;
-            onCoordsChange(pos.lat().toFixed(6), pos.lng().toFixed(6));
+            onCoordsChangeRef.current(pos.lat().toFixed(6), pos.lng().toFixed(6));
           });
         }
 

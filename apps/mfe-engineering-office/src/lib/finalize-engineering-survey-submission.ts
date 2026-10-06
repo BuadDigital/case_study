@@ -1,5 +1,5 @@
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
-import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
+import { loadPartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-reads";
+import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-commands";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-commands";
 
@@ -8,15 +8,15 @@ export type FinalizeEngineeringSurveyResult = {
   warning?: string;
 };
 
-/** API lock message when the party case-study form is already submitted. */
-const PARTY_FORM_ALREADY_CLOSED =
-  "تم إغلاق نموذج الطرف بعد رفع دراسة الحالة";
+/** API lock message when the party case-study report is already issued. */
+const PARTY_CONTRIBUTION_ALREADY_CLOSED =
+  "تم إغلاق مساهمة الطرف بعد إصدار تقرير دراسة الحالة";
 
-function isPartyFormAlreadyClosedError(error: string | undefined): boolean {
+function isPartyContributionAlreadyClosedError(error: string | undefined): boolean {
   if (!error) return false;
   return (
-    error === PARTY_FORM_ALREADY_CLOSED ||
-    error.includes("إغلاق نموذج الطرف")
+    error === PARTY_CONTRIBUTION_ALREADY_CLOSED ||
+    error.includes("إغلاق مساهمة الطرف")
   );
 }
 
@@ -29,16 +29,16 @@ export async function finalizeEngineeringSurveySubmission(
   if (!submitted.ok) return null;
 
   let warning: string | undefined;
-  const partyDraft = await loadPartyCaseStudyFormDraft(surveyTaskId);
+  const partyDraft = await loadPartyCaseStudyReportDraft(surveyTaskId);
   // Already locked on a previous attempt — leave alone; success UI is the
   // single host toast ("survey completed…"), not this side-effect.
-  if (partyDraft && partyDraft.status !== "submitted") {
-    const saved = await savePartyCaseStudyFormDraft({
+  if (partyDraft && partyDraft.status !== "issued") {
+    const saved = await savePartyCaseStudyReportDraft({
       ...partyDraft,
-      status: "submitted",
+      status: "issued",
       savedAtUtc: new Date().toISOString(),
     });
-    if (!saved.ok && !isPartyFormAlreadyClosedError(saved.error)) {
+    if (!saved.ok && !isPartyContributionAlreadyClosedError(saved.error)) {
       warning =
         saved.error ?? "تعذّر حفظ إجابات دراسة الحالة — راجع مع الأخصائي";
     }

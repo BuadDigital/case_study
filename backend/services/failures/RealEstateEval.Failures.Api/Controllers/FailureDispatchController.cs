@@ -29,6 +29,7 @@ public sealed class FailureDispatchController(
         {
             HasActive = await lookup.HasActiveAsync(poNumber, propertyId, cancellationToken),
             HasBlocking = await lookup.HasBlockingAsync(poNumber, propertyId, cancellationToken),
+            SurveyFrozen = await lookup.HasSurveyFreezingAsync(poNumber, propertyId, cancellationToken),
         });
     }
 

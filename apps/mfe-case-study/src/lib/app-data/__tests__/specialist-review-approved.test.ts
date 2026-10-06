@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { CaseStudyFormDraft } from "../case-study-form-model";
+import type { CaseStudyReportDraft } from "../case-study-report-model";
 
 function markSpecialistPartyReviewOnAnswer(
-  draft: CaseStudyFormDraft,
+  draft: CaseStudyReportDraft,
   key: string,
   value: "A" | "B" | null,
-): CaseStudyFormDraft {
-  const next: CaseStudyFormDraft = {
+): CaseStudyReportDraft {
+  const next: CaseStudyReportDraft = {
     ...draft,
     answers: { ...draft.answers, [key]: value },
   };
@@ -21,7 +21,7 @@ function markSpecialistPartyReviewOnAnswer(
 
 describe("specialistReviewApproved", () => {
   it("marks party review approved when specialist sets official answer", () => {
-    const draft: CaseStudyFormDraft = {
+    const draft: CaseStudyReportDraft = {
       taskId: "task-1",
       status: "draft",
       currentStep: 0,
@@ -48,7 +48,7 @@ describe("specialistReviewApproved", () => {
   });
 
   it("does not mark review when answer is cleared", () => {
-    const draft: CaseStudyFormDraft = {
+    const draft: CaseStudyReportDraft = {
       taskId: "task-1",
       status: "draft",
       currentStep: 0,

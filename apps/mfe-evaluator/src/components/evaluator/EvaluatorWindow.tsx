@@ -11,7 +11,7 @@ import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
+import { STUDY_REPORT_NOT_ISSUED_MESSAGE } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import {
@@ -31,6 +31,7 @@ import {
 import { useEvaluatorSubmit } from "./useEvaluatorSubmit";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import { getAuthSession } from "@platform/auth-client";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import type {
   EvaluatorChecklistAnswers,
   EvaluatorReportChoices,
@@ -58,6 +59,7 @@ import {
   visibleEvaluatorTabs,
 } from "./evaluator-window-tabs";
 import { EvaluatorWindowBanners, EvaluatorWindowSubmitBar, EvaluatorWindowTitle } from "./EvaluatorWindowBanners";
+import { InspectorChangedBanner } from "./InspectorChangedBanner";
 import {
   EvaluatorValuationReportOutputTabLazy as EvaluatorValuationReportOutputTab,
   preloadValuationReportOutputTab,
@@ -94,10 +96,6 @@ export function EvaluatorWindow({
   onBack?: () => void;
   embeddedInPropertyChrome?: boolean;
 }) {
-  const gate = useMemo(
-    () => inspectionGateForAppraisal(task, tasks),
-    [task, tasks],
-  );
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const assignedAppraiserName = useMemo(() => {
@@ -129,6 +127,10 @@ export function EvaluatorWindow({
     }),
   );
   const [draftLoading, setDraftLoading] = useState(true);
+  // The party submission carries the flag too — fresher than the queue's task row.
+  const [studyReportIssuedFromServer, setStudyReportIssuedFromServer] = useState<
+    boolean | null
+  >(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] =
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
@@ -162,17 +164,22 @@ export function EvaluatorWindow({
   );
 
   const locked = isEvaluatorFormLocked(draft.status);
-  const formDisabled = locked || !gate.ready;
+  // No start gate: the appraiser drafts from the start; only the submit waits.
+  const formDisabled = locked;
+  // Only the SUBMIT waits for the specialist's study report; the form stays editable.
+  const studyReportPending =
+    task.studyReportIssued !== true && studyReportIssuedFromServer !== true;
 
   const visibleTabs = useMemo(
     () => visibleEvaluatorTabs(navAvail),
-    [navAvail.cost, navAvail.market],
+    [navAvail],
   );
 
-  useEffect(() => {
-    if (visibleTabs.some((t) => t.id === activeTab)) return;
+  // A tab can disappear when an approach is turned off — fall back during render
+  // so the window never paints an empty screen for one frame.
+  if (visibleTabs.length && !visibleTabs.some((t) => t.id === activeTab)) {
     setActiveTab(visibleTabs[0]?.id ?? "basic");
-  }, [activeTab, visibleTabs]);
+  }
 
   const persistDraft = useCallback(
     (
@@ -195,8 +202,6 @@ export function EvaluatorWindow({
         assetDataVarianceNotes: string;
         independenceDeclared: boolean;
         reportWorkers: EvaluatorReportWorker[];
-        depositCode: string;
-        depositCertificateFileName: string | null;
         reportChoices: EvaluatorReportChoices;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
@@ -218,11 +223,21 @@ export function EvaluatorWindow({
     [locked, task.id, showToast],
   );
 
+  const pendingAutosaveRef = useRef<Parameters<typeof persistDraft>[0] | null>(
+    null,
+  );
+
   const scheduleAutosave = useCallback(
     (patch: Parameters<typeof persistDraft>[0]) => {
       editVersionRef.current += 1;
+      pendingAutosaveRef.current = patch;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => persistDraft(patch), 400);
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
+        const pending = pendingAutosaveRef.current;
+        pendingAutosaveRef.current = null;
+        if (pending) persistDraft(pending);
+      }, 400);
     },
     [persistDraft],
   );
@@ -236,6 +251,10 @@ export function EvaluatorWindow({
       assignmentType: task.assignmentType,
     }).then((loaded) => {
       if (!cancelled) {
+        const cachedFlag = getCachedPartySubmission(task.id)?.studyReportIssued;
+        setStudyReportIssuedFromServer(
+          typeof cachedFlag === "boolean" ? cachedFlag : null,
+        );
         const summed = computePropertyTotal(
           loaded.landValue,
           loaded.buildingValue,
@@ -265,13 +284,20 @@ export function EvaluatorWindow({
     return () => {
       cancelled = true;
     };
-  }, [task.id, task.propertyId, task.poNumber]);
+  }, [task.id, task.propertyId, task.poNumber, task.assignmentType]);
 
   useEffect(() => {
+    const flush = persistDraft;
     return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      const pending = pendingAutosaveRef.current;
+      pendingAutosaveRef.current = null;
+      if (pending) flush(pending);
     };
-  }, []);
+  }, [persistDraft]);
 
   // Fetch the report code while the appraiser works on the other tabs, so opening
   // «تقرير التقييم» waits only for its data — the hover preload fired too late to help.
@@ -280,10 +306,9 @@ export function EvaluatorWindow({
     return () => window.clearTimeout(id);
   }, []);
 
-  const { submit, submitBusy } = useEvaluatorSubmit({
+  const { submit, submitBusy, studyReportBlocked } = useEvaluatorSubmit({
     task,
     hostRef,
-    gate,
     locked,
     draft,
     setDraft,
@@ -456,8 +481,16 @@ export function EvaluatorWindow({
             needsSurvey={needsSurvey}
             surveyed={surveyed}
             locked={locked}
-            gateReady={gate.ready}
+            studyReportPending={studyReportPending || studyReportBlocked}
+            finalIssued={task.status === "completed"}
             formError={formError}
+          />
+          <InspectorChangedBanner
+            taskId={task.id}
+            draft={draft}
+            locked={locked}
+            setDraft={setDraft}
+            onError={(message) => showToast(message, "error")}
           />
 
           <div className={cn(formDisabled ? "opacity-75" : undefined)}>
@@ -558,6 +591,9 @@ export function EvaluatorWindow({
             <EvaluatorWindowSubmitBar
               visible={!formDisabled && activeTab === "review"}
               submitBusy={submitBusy}
+              submitBlockedReason={
+                studyReportPending ? STUDY_REPORT_NOT_ISSUED_MESSAGE : null
+              }
               onSubmit={() => void submit()}
             />
           </div>

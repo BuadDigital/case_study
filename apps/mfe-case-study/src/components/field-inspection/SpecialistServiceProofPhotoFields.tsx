@@ -55,6 +55,8 @@ export function SpecialistServiceProofPhotoFields({
 }) {
   const slots = useMemo(
     () => listSpecialistProofServicePhotoSlots(draft),
+    // Only the services drive the slots; the whole draft changes on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft.services],
   );
   const availablePhotos = useMemo(

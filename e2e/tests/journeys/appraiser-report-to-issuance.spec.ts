@@ -1,19 +1,22 @@
 /**
  * Appraiser (abdullah) opens the valuation workspace and saves a draft; the case
- * specialist (osama) then reads the property's «تقييم العقار» tab.
+ * specialist (osama) then reads the property's «تقييم العقار» tab, where the
+ * report draft is prepared once the appraiser hands his package over.
  *
  * UI-driven:  the evaluator workspace — «بدء التقييم» (the first real save,
  *             PUT …/approach-settings), the screen tabs it unlocks
  *             (طريقة المقارنة / طريقة المقاول), the final-opinion screen,
- *             «المراجعة النهائية», and
- *             the specialist's «تقييم العقار» tab with its final-report panel
- *             (stage badge + either the PDF iframe or the documented empty
- *             state).
- * API-driven: building the distributed transaction and completing + accepting
- *             the sibling field inspection — the appraiser cannot start until
- *             the inspection package is specialist-accepted
- *             (WorkflowTaskDto.FieldInspectionAccepted). That package has its
- *             own UI journey in inspector-submit-and-accept.spec.ts.
+ *             «المراجعة النهائية», and the specialist's «تقييم العقار» tab:
+ *             the report-draft panel (waiting for the hand-over) above the
+ *             valuation report as the appraiser sees it.
+ * API-driven: building the distributed transaction and submitting the sibling
+ *             field inspection, the specialist's components (accepting needs
+ *             them) and the guard rails of the report cycle that hold before
+ *             the appraiser hands over (draft, approval, deposit).
+ *             The valuation gates and everything after the hand-over (draft →
+ *             approval → deposit code + certificate → final PDF) are not walked
+ *             here: they need a complete valuation — see the unit / container
+ *             tests and e2e/README.md.
  *
  * Note: the evaluator screen switches are `role="tab"` buttons inside
  * `aria-label="أقسام نافذة التقييم"` — not plain buttons.
@@ -24,21 +27,27 @@ import {
   api,
   apiLogin,
   apiOk,
+  completeSpecialistComponents,
   createDistributedTransaction,
   deleteWorkOrder,
   submitFieldInspection,
+  TINY_PDF_BASE64,
+  today,
   type Transaction,
 } from "../../fixtures/transaction";
 
 test.describe("Appraiser: valuation draft → specialist report panel", () => {
   let osamaToken = "";
+  let abdullahToken = "";
   let tx: Transaction;
 
   test.beforeAll(async () => {
     osamaToken = await apiLogin(RELEASE_USERS.caseSpecialist);
+    abdullahToken = await apiLogin(RELEASE_USERS.appraiser);
     const inspectorToken = await apiLogin(RELEASE_USERS.fieldInspector);
     tx = await createDistributedTransaction(osamaToken);
     await submitFieldInspection(inspectorToken, tx.fieldInspection.id);
+    await completeSpecialistComponents(osamaToken, tx.poNumber, tx.propertyId);
     await apiOk(
       osamaToken,
       "POST",
@@ -122,24 +131,51 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     });
   });
 
-  test("specialist opens the property's «تقييم العقار» tab", async ({ page }) => {
-    test.slow();
-    // PropertyDetailValuationFinalReport resolves the request through
-    // GET /api/valuation-requests/open-by-property/{id}, which is gated by the
-    // ReadValuationQueue capability. The case specialist does not hold it, so
-    // the panel renders its error state instead of the report — see the README.
-    const probe = await api(
+  test("report cycle guard rails hold before the appraiser hands over", async () => {
+    const draft = await apiOk<{
+      valuationRequestId: string;
+      status: string;
+      canPrepare: boolean;
+      reportStage: string;
+    }>(osamaToken, "GET", `/api/valuation-report-drafts/by-property/${tx.propertyId}`);
+    expect(draft.status).toBe("none");
+    expect(draft.canPrepare).toBe(false);
+    expect(draft.reportStage).toBe("draft");
+
+    // The queue labels read this batch; a property with no request is simply absent from it.
+    const states = await apiOk<{ propertyId: string; status: string }[]>(
       osamaToken,
       "GET",
-      `/api/valuation-requests/open-by-property/${tx.propertyId}`,
+      `/api/valuation-report-drafts/states?propertyIds=${tx.propertyId}`,
     );
-    test.skip(
-      probe.status === 403,
-      "the case specialist is denied GET /api/valuation-requests/open-by-property " +
-        "(ReadValuationQueue), so «تقييم العقار» can only render " +
-        "«تعذّر تحميل تقرير التقييم» — product bug, see e2e/README.md",
-    );
+    expect(states).toEqual([{ propertyId: tx.propertyId, status: "none", reportStage: "draft" }]);
 
+    const base = `/api/valuation-requests/${draft.valuationRequestId}`;
+    // The specialist cannot prepare the draft: nothing was handed over.
+    const save = await api(osamaToken, "PUT", `${base}/report-draft/choices`, { choices: {} });
+    expect(save.ok).toBe(false);
+    expect([400, 409]).toContain(save.status);
+    // The appraiser cannot approve a draft nobody sent.
+    const approve = await api(abdullahToken, "POST", `${base}/report-draft/approve`, {
+      reportDate: today(),
+      html: "<p>x</p>",
+    });
+    expect(approve.ok).toBe(false);
+    // Only the assigned appraiser records a deposit; the specialist is refused.
+    const deposit = await api(osamaToken, "POST", `${base}/report-issuance/certificate`, {
+      depositCode: "QYM-1",
+      certificateContentBase64: TINY_PDF_BASE64,
+    });
+    expect([401, 403]).toContain(deposit.status);
+    // There is no final report to download yet.
+    const download = await api(osamaToken, "GET", `${base}/report-draft/final-report`);
+    expect(download.ok).toBe(false);
+  });
+
+  test("specialist opens the property's «تقييم العقار» tab and sees the draft waiting for the hand-over", async ({
+    page,
+  }) => {
+    test.slow();
     await loginAs(page, RELEASE_USERS.caseSpecialist);
     await page.goto(
       `/po/${encodeURIComponent(tx.poNumber)}/property/${tx.propertyId}?tab=appraisal`,
@@ -149,35 +185,17 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
       page.getByRole("tab", { name: "تقييم العقار", exact: true }),
     ).toHaveAttribute("aria-selected", "true", { timeout: 90_000 });
 
-    await expect(page.getByText("التقرير النهائي", { exact: true })).toBeVisible({
+    // The report-draft panel: nothing to prepare until the appraiser hands his package over.
+    await expect(page.getByRole("heading", { name: "مسودة تقرير التقييم" })).toBeVisible({
       timeout: 90_000,
     });
-    // Stage badge — nothing has been issued yet, so it reads «مسودة».
-    await expect(page.getByText("مسودة", { exact: true }).first()).toBeVisible();
+    await expect(page.getByTestId("report-draft-status")).toContainText("لم تبدأ");
+    await expect(
+      page.getByText("تُفتح المسودة بعد أن يسلّم المقيّم تقييمه للأخصائي."),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "إرسال المسودة للمقيّم" })).toHaveCount(0);
 
-    // Either the PDF preview rendered, or the documented "no file yet" state did.
-    // The preview PDF is rendered server-side on demand, so the panel can sit on
-    // its spinner for a while and flip between states while queries settle:
-    // wait for whichever terminal state shows, then branch on it.
-    const pdfFrame = page.locator('iframe[title^="تقرير التقييم — "]');
-    const noFileYet = page.getByText("لا يوجد ملف تقرير بعد");
-    const settled = pdfFrame.first().or(noFileYet);
-    await expect(settled).toBeVisible({ timeout: 90_000 });
-
-    // The empty state can be painted first and then replaced by the PDF once
-    // the preview finishes rendering, so never pin the branch: whichever state
-    // is on screen must be a complete one.
-    if (await pdfFrame.first().isVisible().catch(() => false)) {
-      await expect(pdfFrame.first()).toHaveAttribute("src", /^blob:/, {
-        timeout: 30_000,
-      });
-    } else {
-      const emptyStateSub = page.getByText(
-        "يظهر الملف هنا بعد أن يكمل المقيّم مسودة التقرير أو يصدرها.",
-      );
-      await expect(emptyStateSub.or(pdfFrame.first())).toBeVisible({
-        timeout: 30_000,
-      });
-    }
+    // Below it, the valuation report exactly as the appraiser sees it (read-only).
+    await expect(page.getByText("تقرير تقييم عقار").first()).toBeVisible({ timeout: 90_000 });
   });
 });

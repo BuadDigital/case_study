@@ -4,7 +4,7 @@ public class SystemResetResultDto
 {
     public int WorkOrdersDeleted { get; set; }
     public int WorkflowTasksDeleted { get; set; }
-    public int CaseStudyFormsDeleted { get; set; }
+    public int CaseStudyReportsDeleted { get; set; }
     public int CaseStudyInfoRolesConfigsDeleted { get; set; }
     public int PropertyFailuresDeleted { get; set; }
     public int RegisteredUsersDeleted { get; set; }

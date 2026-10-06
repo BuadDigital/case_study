@@ -18,6 +18,7 @@ import {
   OFFLINE_BACKGROUND_SYNC_TAG,
   OFFLINE_SYNC_EVENT,
   randomUuid,
+  type BuildingInventoryOutboxPayload,
   type OfflineOutboxItem,
   type OfflineSyncState,
   type OutboxKind,
@@ -72,6 +73,12 @@ export type PropertyCourtAccessFn = (input: {
   bodyJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
+export type BuildingInventorySaveFn = (input: {
+  poNumber: string;
+  propertyId: string;
+  bodyJson: string;
+}) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
+
 export type OfflineSyncDeps = {
   uploadAttachment: AttachmentUploadFn;
   saveSubmission: SubmissionSaveFn;
@@ -79,6 +86,7 @@ export type OfflineSyncDeps = {
   patchOperationsTask?: OperationsTaskPatchFn;
   addOperationsTaskComment?: OperationsTaskCommentFn;
   upsertPropertyCourtAccess?: PropertyCourtAccessFn;
+  saveBuildingInventory?: BuildingInventorySaveFn;
   createKeyEnvelope?: KeyEnvelopeCreateFn;
   addKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
   confirmKeyEnvelopeAssignment?: KeyEnvelopeMutationFn;
@@ -159,7 +167,9 @@ function kindOrder(kind: OutboxKind): number {
     kind === "party-submission-save" ||
     kind === "key-envelope-create" ||
     kind === "operations-task-patch" ||
-    kind === "property-court-access"
+    kind === "property-court-access" ||
+    // The inspector's table lands before his submit (order 4) — and so before acceptance.
+    kind === "building-inventory-save"
   ) {
     return 1;
   }
@@ -503,6 +513,25 @@ async function processSave(
   return true;
 }
 
+/**
+ * A waiting «جدول الحصر» write holds back the submit of its inspection (the table has to
+ * land first — the specialist's acceptance needs it). A write that names no task blocks
+ * every submit of the device rather than risk one overtaking it.
+ */
+function inventorySaveBlocksSubmit(
+  other: OfflineOutboxItem,
+  submitTaskId: string,
+): boolean {
+  if (other.kind !== "building-inventory-save") return false;
+  try {
+    const taskId = (JSON.parse(other.payloadJson) as BuildingInventoryOutboxPayload)
+      .taskId;
+    return !taskId || taskId === submitTaskId;
+  } catch {
+    return false;
+  }
+}
+
 async function processSubmit(
   userId: string,
   item: OfflineOutboxItem,
@@ -513,11 +542,12 @@ async function processSubmit(
   const blocking = pending.some(
     (other) =>
       other.id !== item.id &&
-      other.targetId === item.targetId &&
-      (other.kind === "attachment-upload" ||
-        other.kind === "party-submission-save") &&
       other.status !== "done" &&
-      other.status !== "terminal",
+      other.status !== "terminal" &&
+      ((other.targetId === item.targetId &&
+        (other.kind === "attachment-upload" ||
+          other.kind === "party-submission-save")) ||
+        inventorySaveBlocksSubmit(other, item.targetId)),
   );
   if (blocking) {
     await saveOutboxItem({
@@ -673,6 +703,71 @@ async function processPropertyCourtAccess(
       updatedAtUtc: new Date().toISOString(),
     });
     return false;
+  }
+  await deleteOutboxItem(userId, item.id);
+  return true;
+}
+
+/**
+ * Replays the queued «جدول الحصر». The PUT replaces the property's lines wholesale, so a
+ * retry after a lost reply is harmless. A write that arrived while this one was in flight
+ * was folded into the same row: it stays queued; otherwise the row goes. A 4xx the server
+ * will never accept (forbidden, «المعاينة أُرسلت…», validation) is terminal and stays
+ * listed as refused instead of retrying forever.
+ */
+async function processBuildingInventorySave(
+  userId: string,
+  item: OfflineOutboxItem,
+  deps: OfflineSyncDeps,
+): Promise<boolean> {
+  if (!deps.saveBuildingInventory) {
+    await saveOutboxItem({
+      ...item,
+      status: "failed",
+      lastError: "مزامنة جدول الحصر غير مفعّلة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const current = (await getOutboxItem(userId, item.id)) ?? item;
+  let payload: BuildingInventoryOutboxPayload;
+  try {
+    payload = JSON.parse(current.payloadJson) as BuildingInventoryOutboxPayload;
+  } catch {
+    payload = { poNumber: "", propertyId: "", body: {} };
+  }
+  if (!payload.poNumber || !payload.propertyId) {
+    await saveOutboxItem({
+      ...current,
+      status: "terminal",
+      lastError: "بيانات جدول الحصر غير صالحة",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const result = await deps.saveBuildingInventory({
+    poNumber: payload.poNumber,
+    propertyId: payload.propertyId,
+    bodyJson: JSON.stringify(payload.body),
+  });
+  if (!result.ok) {
+    await saveOutboxItem({
+      ...current,
+      status: result.terminal ? "terminal" : "failed",
+      attempts: current.attempts + 1,
+      lastError: result.error,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return false;
+  }
+  const latest = await getOutboxItem(userId, item.id);
+  if (latest && latest.payloadJson !== current.payloadJson) {
+    await saveOutboxItem({
+      ...latest,
+      status: "pending",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return true;
   }
   await deleteOutboxItem(userId, item.id);
   return true;
@@ -925,6 +1020,8 @@ async function runOfflineSyncPass(
           deps,
           attachmentMap,
         );
+      } else if (item.kind === "building-inventory-save") {
+        ok = await processBuildingInventorySave(userId, item, deps);
       } else if (item.kind === "key-envelope-create") {
         ok = await processKeyEnvelopeCreate(userId, item, deps, attachmentMap);
       } else if (item.kind === "key-envelope-assignment-add") {

@@ -20,6 +20,25 @@ public class ValuationIntegrationHandlerTests
   private static readonly Guid AppraisalTaskId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
   [Fact]
+  public async Task ValuationReportSubmitted_leaves_a_task_whose_package_was_never_submitted_open()
+  {
+    await using var db = CreateDb();
+    SeedOpenAppraisalTask(db, packageStatus: PartyTaskSubmissionStatus.Draft);
+
+    var handler = new ValuationReportWorkflowHandler(
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
+      TestInspectorFeeServiceFactory.CreateWorkflow(db),
+      NullLogger<ValuationReportWorkflowHandler>.Instance);
+
+    await handler.HandleAsync(
+      new ValuationReportSubmittedPayload(Guid.NewGuid(), PropertyId.ToString(), "VR-099", "عبدالله الكثيري"),
+      CancellationToken.None);
+
+    var task = await db.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == AppraisalTaskId);
+    Assert.Equal(WorkflowTaskStatus.Open, task.Status);
+  }
+
+  [Fact]
   public async Task ValuationReportSubmitted_completes_open_appraisal_task()
   {
     await using var db = CreateDb();
@@ -100,7 +119,10 @@ public class ValuationIntegrationHandlerTests
     return new CaseStudyDbContext(options);
   }
 
-  private static void SeedOpenAppraisalTask(CaseStudyDbContext db)
+  /// <summary>An appraisal task handed over to the specialist: open, with the package in <paramref name="packageStatus"/>.</summary>
+  private static void SeedOpenAppraisalTask(
+    CaseStudyDbContext db,
+    string packageStatus = PartyTaskSubmissionStatus.Submitted)
   {
     db.WorkflowTasks.Add(WorkflowTask.Create(
       WorkflowTaskKind.PropertyAppraisal,
@@ -110,6 +132,10 @@ public class ValuationIntegrationHandlerTests
       phase: WorkflowTaskPhase.Done,
       id: AppraisalTaskId,
       propertyId: PropertyId));
+    var package = PartyTaskSubmission.CreateDraft(
+      AppraisalTaskId, WorkflowTaskKindValues.PropertyAppraisal, PropertyId, "PO-100", DateTime.UtcNow);
+    package.Status = packageStatus;
+    db.PartyTaskSubmissions.Add(package);
     db.SaveChanges();
   }
 }

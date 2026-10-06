@@ -9,9 +9,9 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
-import { emptyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-model";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
-import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
+import { emptyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-model";
+import { loadPartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-reads";
+import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-commands";
 import {
   declarationPhoneGate,
   hasAnyPartyPhone,
@@ -143,8 +143,8 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       if (locked || viewOnly || !task.id) return;
 
       const partyDraft =
-        (await loadPartyCaseStudyFormDraft(task.id)) ??
-        emptyCaseStudyFormDraft(task.id, {
+        (await loadPartyCaseStudyReportDraft(task.id)) ??
+        emptyCaseStudyReportDraft(task.id, {
           propertyId,
           poNumber: task.poNumber,
         });
@@ -155,7 +155,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       );
       if (!caseStudyAnswersChanged(partyDraft.answers, mergedAnswers)) return;
 
-      const saved = await savePartyCaseStudyFormDraft({
+      const saved = await savePartyCaseStudyReportDraft({
         ...partyDraft,
         answers: mergedAnswers,
       });
@@ -312,8 +312,6 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     documentaryGate,
     role,
     property,
-    property?.contacts,
-    property?.deedNumber,
     propertyId,
     failures,
     task.id,

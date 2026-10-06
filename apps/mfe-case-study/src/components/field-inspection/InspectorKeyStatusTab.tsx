@@ -144,11 +144,13 @@ export function InspectorKeyStatusTab({
   } = availability;
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Server state wins; local only holds the optimistic result of an action here.
   const [local, setLocal] = useState(availability);
-
-  useEffect(() => {
+  const [syncedAvailability, setSyncedAvailability] = useState(availability);
+  if (syncedAvailability !== availability) {
+    setSyncedAvailability(availability);
     setLocal(availability);
-  }, [availability]);
+  }
 
   const handedLabel = keyHandedLabelAr(
     local.keyHandedToInspector || keyHandedToInspector,

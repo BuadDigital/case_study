@@ -1,4 +1,4 @@
-import type { CaseStudyFormAnswer } from "./case-study-form-data";
+import type { CaseStudyReportAnswer } from "./case-study-report-data";
 import type { PartyQuestionContribution } from "./case-study-party-answers";
 
 /**
@@ -6,7 +6,7 @@ import type { PartyQuestionContribution } from "./case-study-party-answers";
  */
 export function inspectorAnswerFromContributions(
   contributions: PartyQuestionContribution[] | undefined,
-): CaseStudyFormAnswer | null {
+): CaseStudyReportAnswer | null {
   if (!contributions?.length) return null;
   const insp = contributions.find((c) => c.partyId === "insp");
   if (!insp) return null;
@@ -16,7 +16,7 @@ export function inspectorAnswerFromContributions(
   return null;
 }
 
-export type SpecialistAnswersMap = Record<string, CaseStudyFormAnswer | null>;
+export type SpecialistAnswersMap = Record<string, CaseStudyReportAnswer | null>;
 
 /**
  * Mirror inspector answers into the specialist form so the matrix stays

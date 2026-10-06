@@ -109,7 +109,7 @@ export function OrganizationDataView() {
     setDirty(true);
   };
 
-  const valuers = org?.valuers ?? [];
+  const valuers = useMemo(() => org?.valuers ?? [], [org]);
   const certOptions = useMemo(() => {
     const rows: { id: string; label: string; evaluator: OrganizationEvaluatorSettings }[] =
       [];

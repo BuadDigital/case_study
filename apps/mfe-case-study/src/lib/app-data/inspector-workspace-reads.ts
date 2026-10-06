@@ -34,22 +34,57 @@ async function migrateInspectorDefaultCoords(
   return migrateInspectorDefaultCoordsIfNeeded(draft, rawCoords);
 }
 
+/** `owner` = the inspector's own workspace (may repair + persist); `readOnly` = the appraiser's view. */
+type InspectorFetchMode = "owner" | "readOnly";
+
 const inFlightWorkspace = new Map<
   string,
   Promise<InspectorWorkspaceDraft | null>
 >();
 
+function fetchDeduped(
+  taskId: string,
+  mode: InspectorFetchMode,
+  run: () => Promise<InspectorWorkspaceDraft | null>,
+): Promise<InspectorWorkspaceDraft | null> {
+  const key = `${mode}:${taskId}`;
+  const pending = inFlightWorkspace.get(key);
+  if (pending) return pending;
+  const started = run();
+  inFlightWorkspace.set(key, started);
+  void started.finally(() => {
+    if (inFlightWorkspace.get(key) === started) inFlightWorkspace.delete(key);
+  });
+  return started;
+}
+
 export function fetchInspectorWorkspace(
   taskId: string,
 ): Promise<InspectorWorkspaceDraft | null> {
-  const pending = inFlightWorkspace.get(taskId);
-  if (pending) return pending;
-  const run = fetchInspectorWorkspaceUncached(taskId);
-  inFlightWorkspace.set(taskId, run);
-  void run.finally(() => {
-    if (inFlightWorkspace.get(taskId) === run) inFlightWorkspace.delete(taskId);
-  });
-  return run;
+  return fetchDeduped(taskId, "owner", () =>
+    fetchInspectorWorkspaceUncached(taskId),
+  );
+}
+
+/**
+ * The appraiser's read of the inspector's package (draft, reopened or submitted). It only reads:
+ * no default-coordinate migration (that PUT would 403 for the appraiser), no local working copy,
+ * no queued-draft fallback and no write into the inspector's workspace cache.
+ */
+export function fetchInspectorWorkspaceReadOnly(
+  taskId: string,
+): Promise<InspectorWorkspaceDraft | null> {
+  return fetchDeduped(taskId, "readOnly", () =>
+    fetchInspectorWorkspaceReadOnlyUncached(taskId),
+  );
+}
+
+async function fetchInspectorWorkspaceReadOnlyUncached(
+  taskId: string,
+): Promise<InspectorWorkspaceDraft | null> {
+  const submission = await fetchPartySubmission(taskId);
+  if (!submission) return null;
+  return payloadToDraft(submission);
 }
 
 async function fetchInspectorWorkspaceUncached(

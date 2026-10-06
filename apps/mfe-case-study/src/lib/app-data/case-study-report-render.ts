@@ -4,11 +4,11 @@ import {
   CASE_STUDY_SECTION_REMARKS_HINT,
   caseStudySignatureImage,
   caseStudyStampImage,
-} from "./case-study-form-data";
+} from "./case-study-report-data";
 import type {
   CaseStudyReportModel,
   CaseStudyReportSection,
-} from "./case-study-report-model";
+} from "./case-study-report-document-model";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 import { getCachedOrganizationBranding } from "@platform/app-shared/organization/organization-settings-cache";
 import {

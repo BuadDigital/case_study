@@ -1,4 +1,5 @@
 import type { RowMoreMenuItem, ToastTone } from "@platform/ui-kit";
+import { confirmAction, promptAction } from "@platform/ui-kit";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import { activeSurveyEntryPath } from "../my-task-routes";
 import {
@@ -16,6 +17,7 @@ import {
   canDeleteTransaction,
   canEditProperty,
   canRedistributeParties,
+  canRevertTaskPhase,
 } from "./po-roles";
 import type { RoleId } from "@platform/types";
 import type { PoIntakeRecord } from "./po-intake-data";
@@ -41,8 +43,7 @@ export type ActiveQueueRowMoreOptions = {
   /** Viewer role — delete is supervisor / admin only. */
   viewerRole?: RoleId;
   /**
-   * In-app confirm (beige AppModal). Required for phase-revert actions —
-   * falls back to `window.confirm` only when omitted.
+   * Override of the in-app confirm (beige AppModal); the shared `confirmAction` is used when omitted.
    */
   confirmAction?: (request: {
     title: string;
@@ -69,13 +70,12 @@ async function runPhaseRevert(
   confirmMessage: string,
   successMessage: string,
 ): Promise<void> {
-  const ok = options.confirmAction
-    ? await options.confirmAction({
-        title,
-        message: confirmMessage,
-        confirmLabel: "تأكيد الإرجاع",
-      })
-    : window.confirm(confirmMessage);
+  const ask = options.confirmAction ?? confirmAction;
+  const ok = await ask({
+    title,
+    message: confirmMessage,
+    confirmLabel: "تأكيد الإرجاع",
+  });
   if (!ok) return;
   const result = await revertTaskToPhase(options.task.id, targetPhase);
   if (!result.ok) {
@@ -91,6 +91,8 @@ function appendPhaseRevertItems(
   options: ActiveQueueRowMoreOptions,
 ): void {
   if (!options.allowPhaseRevert) return;
+  // The server refuses the revert to anyone but the case specialist, the CDO and the section supervisor.
+  if (!options.viewerRole || !canRevertTaskPhase(options.viewerRole)) return;
   const phase = options.task.phase;
 
   if (phase === "distribution") {
@@ -164,20 +166,21 @@ export function buildActiveQueueRowMoreItems(
       danger: true,
       onClick: () => {
         void (async () => {
-          const reason = window.prompt("سبب الحذف (مطلوب):");
-          if (reason == null) return;
-          const trimmed = reason.trim();
-          if (!trimmed) {
-            options.showToast?.("سبب الحذف مطلوب", "error");
-            return;
-          }
-          if (
-            !window.confirm(
-              "حذف هذه المعاملة؟ يبقى العقار في قائمة أمر العمل مع سبب الحذف، ولا يمكن التراجع.",
-            )
-          ) {
-            return;
-          }
+          const trimmed = await promptAction({
+            title: "حذف المعاملة",
+            label: "سبب الحذف",
+            required: true,
+            confirmLabel: "متابعة",
+            danger: true,
+          });
+          if (trimmed == null) return;
+          const ok = await confirmAction({
+            title: "حذف المعاملة",
+            message: "حذف هذه المعاملة؟ يبقى العقار في قائمة أمر العمل مع سبب الحذف، ولا يمكن التراجع.",
+            confirmLabel: "حذف",
+            danger: true,
+          });
+          if (!ok) return;
           const result = await deletePrimaryDataTransaction(
             options.task.id,
             trimmed,

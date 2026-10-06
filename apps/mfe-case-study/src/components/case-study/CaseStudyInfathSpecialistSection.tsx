@@ -7,7 +7,7 @@ import {
   Textarea,
   cn,
 } from "@platform/ui-kit";
-import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
+import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
 import {
   INFATH_FIELD_LABELS,
   INFATH_YES_NO_OPTIONS,
@@ -18,9 +18,9 @@ export function CaseStudyInfathSpecialistSection({
   disabled,
   onPatch,
 }: {
-  draft: CaseStudyFormDraft;
+  draft: CaseStudyReportDraft;
   disabled?: boolean;
-  onPatch: (patch: Partial<CaseStudyFormDraft>) => void;
+  onPatch: (patch: Partial<CaseStudyReportDraft>) => void;
 }) {
   return (
     <section className="overflow-hidden rounded-[10px] border border-border">

@@ -98,6 +98,7 @@ export function PropertyDetailMediaGlance({
     primaryPhoto?.dataUrl,
     handle?.taskId,
     handle?.photoRef,
+    handle?.attachment,
     handle?.attachment.attachmentId,
   ]);
 

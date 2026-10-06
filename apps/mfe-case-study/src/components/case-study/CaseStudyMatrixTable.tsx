@@ -18,10 +18,10 @@ import {
   CASE_STUDY_ANSWER_LABEL_B,
   CASE_STUDY_SECTION_QUESTIONS,
   caseStudyAnswerKey,
-  type CaseStudyFormAnswer,
+  type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
-} from "../../lib/app-data/case-study-form-data";
-import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-form-ux";
+} from "../../lib/app-data/case-study-report-data";
+import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-report-ux";
 import type { PartyQuestionContribution } from "../../lib/app-data/case-study-party-answers";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
@@ -236,8 +236,8 @@ export function CaseStudyMatrixTable({
   sectionTitle?: string;
   sectionIndex?: number;
   sectionTotal?: number;
-  answers: Record<string, CaseStudyFormAnswer | null>;
-  onAnswer: (key: string, value: CaseStudyFormAnswer | null) => void;
+  answers: Record<string, CaseStudyReportAnswer | null>;
+  onAnswer: (key: string, value: CaseStudyReportAnswer | null) => void;
   questions?: readonly string[];
   canEditKey?: (key: string) => boolean;
   visibleKey?: (key: string) => boolean;

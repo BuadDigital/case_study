@@ -11,19 +11,16 @@ public static class InspectorFeeWorkStatuses
     public const string Cancelled = "cancelled";
 }
 
-/// <summary>Wire values for <see cref="CaseStudyForm.Status"/>.</summary>
-public static class CaseStudyFormStatuses
+/// <summary>Wire values for <see cref="CaseStudyReport.Status"/>.</summary>
+public static class CaseStudyReportStatuses
 {
     public const string New = "new";
     public const string Draft = "draft";
-    public const string Submitted = "submitted";
-    public const string Completed = "completed";
-    public const string Done = "done";
+    public const string Issued = "issued";
 
-    public static readonly IReadOnlyList<string> All = [New, Draft, Submitted, Completed, Done];
+    public static readonly IReadOnlyList<string> All = [New, Draft, Issued];
 
-    public static bool IsTerminal(string? status) =>
-        status is Submitted or Completed or Done;
+    public static bool IsTerminal(string? status) => status is Issued;
 }
 
 /// <summary>Wire values for <c>PropertyKeyRecord.WorkflowStatus</c> (Operations context).</summary>

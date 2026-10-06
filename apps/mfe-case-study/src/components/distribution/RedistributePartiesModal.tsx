@@ -84,7 +84,7 @@ export function RedistributePartiesModal({
 }) {
   const { data: staffResult } = useDistributionAssigneesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const loadByAssignee = useMemo(
     () => buildAssigneeOpenLoadMap(workflowTasks),
     [workflowTasks],
@@ -109,16 +109,19 @@ export function RedistributePartiesModal({
     },
   );
 
-  useEffect(() => {
-    if (!open || !task) return;
-    const next = migrateDistribution(task.distribution, staffUsers);
-    setDistribution(next);
-    setSelectedRole("");
-    setReason("");
-    setReasonError(false);
-    setPersonError(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, task?.id]);
+  // Opening the modal (or switching task) seeds a fresh distribution draft.
+  const openedFor = open ? (task?.id ?? "") : "";
+  const [seededFor, setSeededFor] = useState(openedFor);
+  if (seededFor !== openedFor) {
+    setSeededFor(openedFor);
+    if (open && task) {
+      setDistribution(migrateDistribution(task.distribution, staffUsers));
+      setSelectedRole("");
+      setReason("");
+      setReasonError(false);
+      setPersonError(false);
+    }
+  }
 
   const roleOptions = useMemo((): RoleOption[] => {
     if (!distribution) return [];

@@ -42,6 +42,8 @@ export {
 } from "./po-intake-assignment";
 
 export {
+  DEED_STATUS_ACTIVE,
+  DEED_STATUS_INACTIVE,
   DEED_STATUS_OPTIONS,
   type BourseDeedVitality,
   BOURSE_DEED_VITALITY_ACTIVE,

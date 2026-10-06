@@ -11,38 +11,10 @@ import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/app-data/work-orders-api-config";
-import {
-  Button,
-  KpiAlertIcon,
-  KpiBand,
-  KpiCell,
-  KpiCheckIcon,
-  KpiClipboardIcon,
-  KpiClockIcon,
-  MobileKpiStatCards,
-  Note,
-  ReportPageBody,
-  SkeletonTableRows,
-  StatusBadge,
-  SubpageHeader,
-  SubpagePanel,
-  TBody,
-  THead,
-  Table,
-  TableFrame,
-  Td,
-  TdLtr,
-  Th,
-  Tr,
-  cn,
-  opsMobileCard,
-  opsSkeletonCard,
-  useToast,
-} from "@platform/ui-kit";
+import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useToast, promptAction } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
   useSubmitValuationImpedimentMutation,
-  useSubmitValuationReportMutation,
   useValuationRequestsQuery,
 } from "../query/valuation-queries";
 import { useValuationRequestPropertyRowsQuery } from "../query/valuation-request-properties";
@@ -120,7 +92,6 @@ export function ValuationRequestsView() {
   const isApp = role === "real-estate-appraiser";
   const { data: vr = [], isPending } = useValuationRequestsQuery();
   const propertyRowsQuery = useValuationRequestPropertyRowsQuery();
-  const submitReport = useSubmitValuationReportMutation();
   const submitImpediment = useSubmitValuationImpedimentMutation();
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -161,19 +132,14 @@ export function ValuationRequestsView() {
     });
   }, [vr, deferredSearch, status, propertiesById]);
 
-  const handleSubmitReport = async (recordId: string) => {
-    const ok = window.confirm("تأكيد رفع تقرير التقييم وإرساله لدراسة الحالة؟");
-    if (!ok) return;
-    const result = await submitReport.mutateAsync(recordId);
-    if (result.ok) {
-      showToast("تم إرسال تقرير التقييم بنجاح", "success");
-      return;
-    }
-    showToast(result.message, "error");
-  };
-
   const handleImpediment = async (recordId: string) => {
-    const reason = window.prompt("سبب التعذّر (مطلوب):");
+    const reason = await promptAction({
+      title: "تسجيل تعذّر التقييم",
+      label: "سبب التعذّر",
+      required: true,
+      confirmLabel: "تسجيل التعذّر",
+      danger: true,
+    });
     if (reason === null) return;
     const result = await submitImpediment.mutateAsync({ recordId, reason });
     if (result.ok) {
@@ -412,15 +378,6 @@ export function ValuationRequestsView() {
                         <>
                           <Button
                             size="sm"
-                            variant="accent"
-                            loading={submitReport.isPending}
-                            showActionToast={false}
-                            onClick={() => void handleSubmitReport(v.recordId)}
-                          >
-                            رفع التقرير
-                          </Button>
-                          <Button
-                            size="sm"
                             variant="danger"
                             loading={submitImpediment.isPending}
                             showActionToast={false}
@@ -501,16 +458,6 @@ export function ValuationRequestsView() {
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {isApp && v.status === "progress" ? (
                         <>
-                          <Button
-                            size="sm"
-                            variant="accent"
-                            className="min-h-11"
-                            loading={submitReport.isPending}
-                            showActionToast={false}
-                            onClick={() => void handleSubmitReport(v.recordId)}
-                          >
-                            رفع التقرير
-                          </Button>
                           <Button
                             size="sm"
                             variant="danger"

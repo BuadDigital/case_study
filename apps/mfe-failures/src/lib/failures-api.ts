@@ -3,6 +3,7 @@ import {
   createFailure as apiCreateFailure,
   deleteFailuresForPo as apiDeleteFailuresForPo,
   dtoToFailureRecord,
+  liftSurveyFreeze as apiLiftSurveyFreeze,
   listFailures,
   listFailuresPage,
   reportBourseObstruction as apiReportBourseObstruction,
@@ -61,6 +62,38 @@ function mapDto(dto: FailureRecordDto): FailureRecord {
     severity: raw.severity as FailureSeverity,
     status: raw.status as FailureStatus,
   };
+}
+
+export type LiftSurveyFreezeResult =
+  | { ok: true; lifted: number }
+  | { ok: false; error: string };
+
+/**
+ * «رفع تجميد الرفع المساحي» — the specialist only. The caller invalidates the failures queries
+ * (`invalidateFailuresRelated`) so the survey gate, which reads `surveyFreezeLiftedAt`, opens
+ * everywhere without a reload; the change events below refresh the non-query readers.
+ */
+export async function liftSurveyFreezeAsync(input: {
+  poNumber: string;
+  propertyId: string;
+  reason: string;
+}): Promise<LiftSurveyFreezeResult> {
+  const config = failuresApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await apiLiftSurveyFreeze(config, input);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        result.errors,
+        "تعذّر رفع تجميد الرفع المساحي",
+        result.message,
+      ),
+    };
+  }
+  notifyDownstreamChanges();
+  return { ok: true, lifted: result.data.lifted };
 }
 
 function notifyDownstreamChanges(): void {

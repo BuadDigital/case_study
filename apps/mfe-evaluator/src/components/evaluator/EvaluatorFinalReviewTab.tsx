@@ -22,14 +22,11 @@ import {
   invalidControlClass,
   scheduleScrollToFormField,
 } from "@platform/app-shared/form-ux";
-import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
-import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
-import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSpecialistDraft } from "../../lib/evaluator/evaluator-validation";
 import {
   EXTERNAL_SPECIALIST_USED_LABEL,
@@ -39,17 +36,9 @@ import {
   shouldUseDefaultSpecialAssumptions,
   specialAssumptionRows,
 } from "../../lib/evaluator/special-assumption-rows";
-import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
-import {
-  buildValuationPrintAttachmentRows,
-  resolvePrintAttachmentOrder,
-} from "../../lib/evaluator/valuation-report-property-attachments";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
-import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
-import { ValuationReportEsgEditor } from "./ValuationReportEsgEditor";
 
-import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 
 const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
 const ASSUMPTIONS_AUTOSAVE_MS = 500;
@@ -62,7 +51,6 @@ export function EvaluatorFinalReviewTab({
   valuationRequestId: knownValuationRequestId,
   approachSettings: approachSettingsFromShell,
   onDraftPatch,
-  onReportChoicesPatch,
   onSettingsSaved,
   onSpecialistDraftChange,
   fieldErrors,
@@ -81,6 +69,7 @@ export function EvaluatorFinalReviewTab({
     assetDataConfirmed?: boolean;
     assetDataVarianceNotes?: string;
   }) => void;
+  /** @deprecated ESG and the print attachments moved to the case specialist's report draft. */
   onReportChoicesPatch?: (patch: Partial<EvaluatorReportChoices>) => void;
   onSettingsSaved?: (dto: ValuationApproachSettingsDto) => void;
   /** Live specialist choice for submit validation (before autosave settles). */
@@ -88,25 +77,7 @@ export function EvaluatorFinalReviewTab({
   fieldErrors?: Record<string, string>;
 }) {
   const { showToast } = useToast();
-  const choices = draft.reportChoices ?? emptyReportChoices();
 
-  // Valuation lists from the shared query — previously a duplicate GET with final-opinion.
-  const { data: valuationLists } = useValuationListsQuery();
-  const attachmentCatalog = useMemo<
-    { key: string; name: string; isRequired: boolean }[]
-  >(
-    () =>
-      (valuationLists?.lists?.attachments ?? [])
-        .filter((r) => r.isEnabled)
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((r) => ({
-          key: r.key,
-          name: r.name,
-          isRequired: r.isRequired,
-        })),
-    [valuationLists],
-  );
   const [settings, setSettings] = useState<ValuationApproachSettingsDto | null>(
     null,
   );
@@ -150,58 +121,20 @@ export function EvaluatorFinalReviewTab({
   }, [specialistUsed, specialistDetails, onSpecialistDraftChange]);
 
   // Submit / parent validation asked for this field — paint it red and scroll to it.
+  // Submit validation asked for this field — mark it during render, then scroll.
+  const detailsError = fieldErrors?.specialist_details;
+  const [prevDetailsError, setPrevDetailsError] = useState(detailsError);
+  if (prevDetailsError !== detailsError) {
+    setPrevDetailsError(detailsError);
+    if (detailsError) setDetailsInvalid(true);
+  }
+
   useEffect(() => {
-    if (!fieldErrors?.specialist_details) return;
-    setDetailsInvalid(true);
+    if (!detailsError) return;
     scheduleScrollToFormField("val-specialist-details", 80, { retries: 24 });
-  }, [fieldErrors?.specialist_details]);
+  }, [detailsError]);
 
   const propertyId = property?.id ?? draft.propertyId;
-
-  // Report attachment sources need upload/inspection task ids — without them docs are not fetched.
-  const { data: workflowTasks } = useWorkflowTasksQuery();
-  // Single pass over tasks instead of two finds per render (js-combine-iterations).
-  const { surveyTaskId, inspectionTaskId } = useMemo(() => {
-    let surveyId: string | null = null;
-    let inspectionId: string | null = null;
-    for (const t of workflowTasks ?? []) {
-      if (t.propertyId !== propertyId) continue;
-      if (t.kind === "engineering-survey" && surveyId === null) surveyId = t.id;
-      else if (t.kind === "field-inspection" && inspectionId === null)
-        inspectionId = t.id;
-    }
-    return { surveyTaskId: surveyId, inspectionTaskId: inspectionId };
-  }, [workflowTasks, propertyId]);
-  const documentSections = usePropertyDetailDocuments({
-    property: property!,
-    showDecree: true,
-    poNumber: draft.poNumber,
-    surveyTaskId,
-    appraisalTaskId: draft.taskId || null,
-    inspectionTaskId,
-    enabled: Boolean(property?.id),
-  });
-  const propertyDocuments = useMemo(
-    () => documentSections.flatMap((s) => s.documents),
-    [documentSections],
-  );
-  const printRows = useMemo(
-    () =>
-      buildValuationPrintAttachmentRows({
-        catalog: attachmentCatalog,
-        documents: propertyDocuments,
-        selectedKeys: choices.printAttachmentKeys,
-      }),
-    [attachmentCatalog, choices.printAttachmentKeys, propertyDocuments],
-  );
-  const printOrderKeys = useMemo(
-    () =>
-      resolvePrintAttachmentOrder(
-        printRows.filter((row) => row.printable).map((row) => row.key),
-        choices.printAttachmentOrder,
-      ),
-    [printRows, choices.printAttachmentOrder],
-  );
 
   /** Seed assumptions list from settings — shared by standalone and shell modes. */
   const seedAssumptions = useCallback((s: ValuationApproachSettingsDto) => {
@@ -626,38 +559,10 @@ export function EvaluatorFinalReviewTab({
         ) : null}
       </ValCard>
 
-      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG)">
+      <ValCard title="العوامل البيئية والاجتماعية والحوكمة (ESG) ومرفقات التقرير">
         <p className={noteClassName}>
-          يعبّئها المقيّم في المراجعة النهائية وتُطبع في تقرير التقييم.
+          يعبّئها أخصائي دراسة الحالة في مسودة التقرير بعد تسليمك التقييم، وتصلك المسودة لاعتمادها.
         </p>
-        <ValuationReportEsgEditor
-          esgEnv={choices.esgEnv}
-          esgSoc={choices.esgSoc}
-          esgGov={choices.esgGov}
-          disabled={disabled}
-          invalidGroups={
-            err("esg_impact_notes")
-              ? esgGroupsMissingImpactDescription(choices)
-              : undefined
-          }
-          onPatch={(patch) => onReportChoicesPatch?.(patch)}
-        />
-        {err("esg_impact_notes") ? (
-          <p className="mt-2 mb-0 text-[11px] text-danger-text">
-            {err("esg_impact_notes")}
-          </p>
-        ) : null}
-      </ValCard>
-
-      <ValCard title="مرفقات التقرير">
-        {/* Documents come from the property's documents tab — no uploads from the valuer's screen. */}
-        <ValuationReportAttachmentsEditor
-          rows={printRows}
-          selectedKeys={choices.printAttachmentKeys}
-          orderKeys={printOrderKeys}
-          disabled={disabled}
-          onChange={(patch) => onReportChoicesPatch?.(patch)}
-        />
       </ValCard>
     </div>
   );

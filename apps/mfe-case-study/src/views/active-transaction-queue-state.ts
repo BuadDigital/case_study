@@ -34,11 +34,12 @@ import {
 import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
 
 export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
-  { value: "new", label: "جديدة" },
-  { value: "wait_inspection", label: "تراقب تقدم الأطراف" },
-  { value: "ready", label: "جاهزة للتقييم" },
-  { value: "submitted", label: "مُرسَلة للأخصائي" },
-  { value: "closed", label: "مكتملة على النظام" },
+  { value: "drafting", label: "قيد التقييم — بانتظار إصدار الدراسة" },
+  { value: "ready", label: "جاهزة للتسليم" },
+  { value: "submitted", label: "مُسلَّمة — بانتظار مسودة التقرير" },
+  { value: "draft_sent", label: "مسودة بانتظار اعتمادك" },
+  { value: "approved", label: "معتمد — بانتظار رمز الإيداع" },
+  { value: "closed", label: "صدر التقرير النهائي" },
   { value: "reopened", label: "معادة للتصحيح" },
 ];
 
@@ -530,6 +531,8 @@ export function filterAppraisalRowMeta({
   search: string;
   statusFilter: string;
   tasks: WorkflowTask[];
+  /** Changes when the draft-state cache does; the filter reads that cache through the status group. */
+  draftStateVersion?: number;
 }): PrimaryRowMeta[] {
   const q = search.trim();
   const statusValue =

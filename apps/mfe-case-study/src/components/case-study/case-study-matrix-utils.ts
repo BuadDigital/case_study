@@ -1,28 +1,26 @@
-import type { CaseStudyFormAnswer } from "../../lib/app-data/case-study-form-data";
+import type { CaseStudyReportAnswer } from "../../lib/app-data/case-study-report-data";
 import type { PartyQuestionContribution } from "../../lib/app-data/case-study-party-answers";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 export type MatrixYn = "Y" | "N" | "NA";
-export type PartyMatrixKey = "MA" | "EN" | "EV" | "GR";
-export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV", "GR"];
+export type PartyMatrixKey = "MA" | "EN" | "EV";
+export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV"];
 const PARTY_ID_TO_MATRIX: Partial<Record<CaseStudyInfoPartyId, PartyMatrixKey>> =
   {
     insp: "MA",
     eng: "EN",
     val: "EV",
-    gov: "GR",
   };
 
 export const PARTY_MATRIX_SHORT: Record<PartyMatrixKey, string> = {
   MA: "معاين",
   EN: "مكتب",
   EV: "مقيم",
-  GR: "مراجع",
 };
 
 export type MatrixRowStatus = "pending" | "consensus" | "conflict";
 
 export function answerToYn(
-  value: CaseStudyFormAnswer | null | undefined,
+  value: CaseStudyReportAnswer | null | undefined,
 ): MatrixYn | null {
   if (value === "A") return "Y";
   if (value === "B") return "N";
@@ -30,7 +28,7 @@ export function answerToYn(
   return null;
 }
 
-export function ynToAnswer(value: MatrixYn | null): CaseStudyFormAnswer | null {
+export function ynToAnswer(value: MatrixYn | null): CaseStudyReportAnswer | null {
   if (value === "Y") return "A";
   if (value === "N") return "B";
   if (value === "NA") return "NA";

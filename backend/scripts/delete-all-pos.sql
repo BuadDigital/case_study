@@ -3,7 +3,7 @@ BEGIN;
 
 DELETE FROM case_study."InspectorFeeTransitions";
 DELETE FROM case_study."InspectorFeeLedgers";
-DELETE FROM case_study."CaseStudyForms";
+DELETE FROM case_study."CaseStudyReports";
 DELETE FROM case_study."FieldInspectionWorkspaces";
 DELETE FROM case_study."PartyTaskSubmissions";
 DELETE FROM failures."PropertyFailures";

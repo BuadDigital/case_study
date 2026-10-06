@@ -41,9 +41,7 @@ public static class WorkOrderMapper
     public static WorkOrderPropertyDto ToPropertyDto(WorkOrderProperty p)
     {
         var owners = OwnershipTypeRules.ParseOwners(p.DeedOwnersJson);
-        var suggestedOwnership = OwnershipTypeRules.Suggest(owners, p.RestrictionType);
-        var effectiveOwnership = OwnershipTypeRules.Effective(
-            p.OwnershipTypeIsManual, p.OwnershipType, owners, p.RestrictionType);
+        var ownershipType = OwnershipTypeRules.FromOwners(owners);
 
         return new WorkOrderPropertyDto
         {
@@ -64,12 +62,10 @@ public static class WorkOrderMapper
             RealEstateRegDate = p.RealEstateRegDate,
             OwnerName = p.OwnerName,
             Owners = owners
-                .Select(o => new DeedOwnerDto { Name = o.Name, SharePct = o.SharePct })
+                .Select(o => new DeedOwnerDto { Name = o.Name })
                 .ToList(),
-            OwnershipType = effectiveOwnership,
-            OwnershipTypeLabelAr = OwnershipTypes.LabelAr(effectiveOwnership),
-            SuggestedOwnershipType = suggestedOwnership,
-            OwnershipTypeIsManual = p.OwnershipTypeIsManual,
+            OwnershipType = ownershipType,
+            OwnershipTypeLabelAr = OwnershipTypes.LabelAr(ownershipType),
             RestrictionsPresent = p.RestrictionsPresent,
             RestrictionType = p.RestrictionType,
             RestrictionOtherReason = p.RestrictionOtherReason,

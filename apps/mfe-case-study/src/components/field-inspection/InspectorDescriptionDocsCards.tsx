@@ -12,7 +12,7 @@ import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFie
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
-import { PartyCaseStudyFormTab } from "../case-study/PartyCaseStudyFormTab";
+import { PartyCaseStudyReportTab } from "../case-study/PartyCaseStudyReportTab";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
@@ -235,7 +235,7 @@ export function InspectorComparablesAndQuestionsCards({
         step={5}
         subtitle={mobile ? "أسئلة الطرف" : undefined}
       >
-        <PartyCaseStudyFormTab def={def} childTask={task} forceReadOnly={locked} />
+        <PartyCaseStudyReportTab def={def} childTask={task} forceReadOnly={locked} />
       </InspectorCard>
     </>
   );

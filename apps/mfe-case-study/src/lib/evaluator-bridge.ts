@@ -16,6 +16,11 @@ export function evaluatorValuationReportPreview(): EvaluatorRuntimeBridge["Valua
   return tryGetEvaluatorRuntimeBridge()?.ValuationReportPreview ?? null;
 }
 
+/** The specialist's valuation-report draft workspace (ESG, print attachments, send / withdraw). */
+export function evaluatorReportDraftPanel(): EvaluatorRuntimeBridge["ReportDraftPanel"] | null {
+  return tryGetEvaluatorRuntimeBridge()?.ReportDraftPanel ?? null;
+}
+
 export function filterAppraiserListedTasks(
   tasks: WorkflowTask[],
   options?: { showCompleted?: boolean },
@@ -32,7 +37,7 @@ export function appraiserQueueStatusGroup(
 ): string {
   return withEvaluatorBridge(
     (b) => b.appraiserQueueStatusGroup(task, allTasks),
-    task.status === "completed" ? "closed" : "new",
+    task.status === "completed" ? "closed" : "drafting",
   );
 }
 
@@ -120,20 +125,6 @@ export function getCachedEvaluatorReport(
   attachmentId?: string;
 } | null {
   return withEvaluatorBridge((b) => b.getCachedEvaluatorReport(taskId), null);
-}
-
-export function getCachedEvaluatorDepositCertificate(
-  taskId: string,
-): {
-  fileName: string;
-  mimeType?: string;
-  dataUrl?: string;
-  attachmentId?: string;
-} | null {
-  return withEvaluatorBridge(
-    (b) => b.getCachedEvaluatorDepositCertificate(taskId),
-    null,
-  );
 }
 
 export function mergeEvaluatorChecklistFromCaseStudy(

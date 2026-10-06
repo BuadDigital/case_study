@@ -4,6 +4,8 @@ import { memo } from "react";
 import type { ValuationCostApproachDto } from "@platform/api-client";
 
 import { GhostBtn, PrimaryBtn } from "./atoms";
+import { EvaluatorActionNotice } from "../EvaluatorActionNotice";
+import { CostInventoryDriftBanner } from "./CostInventoryDriftBanner";
 import { CostApproachLinesTable } from "./CostApproachLinesTable";
 import {
   CostAgeCard,
@@ -26,6 +28,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   poNumber,
   propertyId,
   inspectionTaskId = null,
+  inspectorChangedGroups = null,
   cost,
   hydrateKey,
   buildingOnly,
@@ -40,6 +43,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   poNumber?: string;
   propertyId: string;
   inspectionTaskId?: string | null;
+  inspectorChangedGroups?: readonly string[] | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
@@ -55,10 +59,12 @@ export const CostApproachSection = memo(function CostApproachSection({
     poNumber,
     propertyId,
     inspectionTaskId,
+    inspectorChangedGroups,
     cost,
     hydrateKey,
     buildingOnly,
     costBasisKey,
+    locked,
     onSavingChange,
     onCostSaved,
   });
@@ -71,6 +77,11 @@ export const CostApproachSection = memo(function CostApproachSection({
     costAlerts,
     seedCostFromInventory,
     saveCost,
+    drift,
+    addNewInventoryLines,
+    updateInventoryAreas,
+    ageNotice,
+    applyInspectorAge,
   } = workflow;
 
   return (
@@ -104,7 +115,29 @@ export const CostApproachSection = memo(function CostApproachSection({
         </div>
       </div>
 
+      <CostInventoryDriftBanner
+        drift={drift}
+        disabled={saving || locked}
+        onAddNew={addNewInventoryLines}
+        onUpdateAreas={updateInventoryAreas}
+      />
+
       <CostApproachLinesTable workflow={workflow} saving={saving} />
+
+      {ageNotice ? (
+        <EvaluatorActionNotice
+          testId="cost-inspector-age-notice"
+          message={`عمر العقار عند المعاين ${ageNotice.inspectorAge} سنة، والمُدخل ${ageNotice.enteredAge || "—"}`}
+          actions={[
+            {
+              label: "طبّق عمر المعاين",
+              onClick: applyInspectorAge,
+              disabled: saving || locked,
+              primary: true,
+            },
+          ]}
+        />
+      ) : null}
 
       <div className="mb-6 grid grid-cols-[1.2fr_1fr] gap-[18px]">
         <CostIndirectCard

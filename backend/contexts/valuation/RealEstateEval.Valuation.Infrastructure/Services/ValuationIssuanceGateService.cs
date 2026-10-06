@@ -46,6 +46,7 @@ public sealed class ValuationIssuanceGateService(
         var propertyId = vr.PropertyId.ToString("D");
         DeedKind deedKind = DeedKind.Traditional;
         string matchOutcome = DeedNatureMatchOutcomes.Unset;
+        bool? studyReportIssued = null;
         var hasStructures = false;
         var propertyType = "";
         string? poNumber = null;
@@ -80,6 +81,7 @@ public sealed class ValuationIssuanceGateService(
                 inspectionRestrictionReason = context.InspectionRestrictionReason;
                 remoteInspectionApproved = context.RemoteInspectionApprovedAtUtc is not null;
                 matchOutcome = context.DeedNatureMatchOutcome ?? "";
+                studyReportIssued = context.StudyReportIssued;
             }
         }
 
@@ -139,6 +141,7 @@ public sealed class ValuationIssuanceGateService(
                     .ToList(),
                 today),
             ValuationIssuanceGateRules.DeedNatureMatch(deedKind, matchOutcome),
+            ValuationIssuanceGateRules.StudyReportIssued(studyReportIssued),
             ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
                 "market",
                 "مقارنات أسلوب السوق",
@@ -294,7 +297,7 @@ public sealed class ValuationIssuanceGateService(
             }).ToList(),
             MethodologyAlertTriggeredCount = ValuationMethodologyAlertRules.TriggeredCount(alerts),
             MethodologyAlertsNoteAr =
-                "تنبيهات منهجية (21): 7 حاجبة · 8 بمبرر نصي إلزامي · 6 بإقرار.",
+                "تنبيهات منهجية (20): 7 حاجبة · 8 بمبرر نصي إلزامي · 5 بإقرار.",
         };
     }
 

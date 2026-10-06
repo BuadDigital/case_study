@@ -12,6 +12,14 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
+    /// <summary>Refusal pointing a case-study parent's reopening at the report's reopen action.</summary>
+    public const string CaseStudyParentReopenViaReportAr =
+        "إعادة فتح دراسة الحالة تتم من تقرير دراسة الحالة — افتح التقرير واختر «إعادة فتح التقرير»";
+
+    /// <summary>Refusal pointing an appraisal task's reopening at the package return / new version.</summary>
+    public const string AppraisalReopenViaPackageAr =
+        "يُعاد تقييم العقار للمقيّم بإرجاع حزمته للتصحيح، وبعد الإصدار النهائي بنسخة جديدة من الأخصائي";
+
     private readonly IWorkflowTaskLifecycleRepository _db;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly IPropertyTimelineService _timeline;
@@ -277,6 +285,16 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
 
         if (entity.Status != WorkflowTaskStatus.Completed)
             return (null, Error("لا يمكن إعادة فتح معاملة غير مكتملة"));
+
+        // A case-study parent completes by issuing its report. Reopening only the task would leave
+        // «task open + report issued» — so that reopening goes through the report's own action.
+        if (entity.Kind == CaseStudyPropertyKind)
+            return (null, Error(CaseStudyParentReopenViaReportAr));
+
+        // The appraiser's task reopens together with its package (return for correction) or as a new
+        // version after the final issuance — reopening only the task would leave a locked package.
+        if (entity.Kind == WorkflowTaskKind.PropertyAppraisal)
+            return (null, Error(AppraisalReopenViaPackageAr));
 
         entity.Reopen(_time.UtcNow());
 

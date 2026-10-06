@@ -11,4 +11,10 @@ public sealed class PartyTaskFailureGate(IFailureLookup failures) : IPartyTaskFa
         string propertyId,
         CancellationToken cancellationToken) =>
         failures.HasActiveAsync(poNumber, propertyId, cancellationToken);
+
+    public Task<bool> HasSurveyFreezingFailureAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken) =>
+        failures.HasSurveyFreezingAsync(poNumber, propertyId, cancellationToken);
 }

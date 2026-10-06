@@ -87,8 +87,10 @@ public sealed class ValuationApproachSettingsService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await ValuationReportFreeze.IsFrozenAsync(db, vr.Id, cancellationToken))
-            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreeze.FrozenMessageAr });
+        var frozenMessage = await ValuationReportFreeze.GetFrozenMessageAsync(
+            db, caseStudy, vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
+            return (null, new Dictionary<string, string> { ["_"] = frozenMessage });
 
         var (hasStructures, assignmentType, effectivePropertyType) =
             await PropertyContextAsync(vr, cancellationToken);

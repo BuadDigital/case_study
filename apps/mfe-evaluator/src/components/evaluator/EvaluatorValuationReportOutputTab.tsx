@@ -9,7 +9,6 @@ import {
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   type OrganizationSettingsDto,
 } from "@platform/api-client";
-import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
 import { loadSpecialistFinishingLevel } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
 import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
@@ -38,6 +37,17 @@ import {
 } from "../../lib/evaluator/valuation-report-comparables-map";
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 import { ReportMissingFieldPrompt } from "./ReportMissingFieldPrompt";
+import { ReportDraftApprovalBar } from "./ReportDraftApprovalBar";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
+import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
+import { useReportDraftByProperty } from "./useReportDraft";
+import {
+  applyReportDraftChoices,
+  overlayFromDraft,
+  depositCodeForPrint,
+  reportDateForPrint,
+  versionedReportNo,
+} from "../../lib/evaluator/report-draft-choices";
 import type { ReportAppraiserTab } from "../../lib/evaluator/valuation-report-missing-fields";
 import {
   EMPTY_INVENTORY_LINES,
@@ -91,6 +101,14 @@ export function EvaluatorValuationReportOutputTab({
   const [printing, setPrinting] = useState(false);
   /** Why the last print copy fell back from Google maps (Static Maps API not enabled on the key). */
   const [mapNotice, setMapNotice] = useState<string | null>(null);
+  // The specialist's report choices (ESG, print attachments) overlay the appraiser's own; once the
+  // appraiser approved, the approved report date is the printed one.
+  const reportDraftQuery = useReportDraftByProperty(property?.id ?? draft.propertyId);
+  const reportDraft = reportDraftQuery.data ?? null;
+  const effectiveDraft = useMemo(
+    () => applyReportDraftChoices(draft, overlayFromDraft(reportDraft)),
+    [draft, reportDraft],
+  );
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
@@ -175,7 +193,10 @@ export function EvaluatorValuationReportOutputTab({
 
   /** Shared report request body for on-screen preview and print — was fully duplicated (~70 lines). */
   const buildReportMeta = useCallback(
-    (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
+    (
+      loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>,
+      reportDateOverride?: string,
+    ) => {
       const ev = loaded?.evaluator ?? {};
       const company = loaded?.company ?? {};
       const practice = certifiedPracticeLicenseFromOrg({ company, evaluator: ev });
@@ -184,13 +205,12 @@ export function EvaluatorValuationReportOutputTab({
         property?.id ?? draft.propertyId,
       );
       return {
-        reportNo: draft.reportNo,
-        reportDate: draft.appraisalDate || draft.reportIssueDate,
-        // Deposit code: draft first, then what the Enfaz deposit screen saved for this property.
-        depositCode:
-          draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
+        reportNo: versionedReportNo(draft.reportNo, reportDraft?.version),
+        reportDate: reportDateOverride?.trim() || reportDateForPrint(draft, reportDraft),
+        // The deposit code is the one recorded with the deposit copy (the issuance is the only source).
+        depositCode: depositCodeForPrint(reportDraft),
         live: buildValuationReportLiveFill({
-          draft,
+          draft: effectiveDraft,
           // Unsaved settings follow the server defaults (same DTO), so the report and the
           // valuation screens agree on which approaches are in play.
           costApproachEnabled: Boolean(
@@ -285,6 +305,8 @@ export function EvaluatorValuationReportOutputTab({
       cost,
       deedSlot,
       draft,
+      effectiveDraft,
+      reportDraft,
       inspector,
       inventoryLines,
       landMarket,
@@ -340,8 +362,8 @@ export function EvaluatorValuationReportOutputTab({
 
   /** Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it. */
   const preparePrintHtml = useCallback(
-    async (loaded: OrganizationSettingsDto | null) => {
-      const baseMeta = buildReportMeta(loaded);
+    async (loaded: OrganizationSettingsDto | null, reportDateOverride?: string) => {
+      const baseMeta = buildReportMeta(loaded, reportDateOverride);
       let live = baseMeta.live;
       if (live) {
         // Print cannot run Google Maps JS — fetch Static Maps images for §18 / §33 instead.
@@ -523,6 +545,21 @@ export function EvaluatorValuationReportOutputTab({
 
   return (
     <div className="min-w-0">
+      {showActions && reportDraft ? (
+        <ReportDraftApprovalBar
+          propertyId={property?.id ?? draft.propertyId}
+          draft={reportDraft}
+          buildApprovedHtml={async (reportDate) => {
+            const loaded = await ensureOrganizationSettingsLoaded({ force: true });
+            if (loaded) setOrg(loaded);
+            const { html } = await preparePrintHtml(loaded, reportDate);
+            // The approved copy is kept and later rendered by the server (no network): letterhead, fonts and
+            // photos must travel inside it, exactly as the browser prints them.
+            const config = apiConfig();
+            return inlinePrintHtmlAssets(html, { token: config?.token, apiBase: config?.baseUrl });
+          }}
+        />
+      ) : null}
       {showActions ? (
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <Button

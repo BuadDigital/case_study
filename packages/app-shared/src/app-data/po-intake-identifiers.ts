@@ -2,7 +2,16 @@
 
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
-export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;
+/** What the bourse save records for «الصك فعال» / «الصك غير فعال» (the latter no longer forces a تعذّر). */
+export const DEED_STATUS_ACTIVE = "فعال";
+export const DEED_STATUS_INACTIVE = "غير فعال";
+
+export const DEED_STATUS_OPTIONS = [
+  DEED_STATUS_ACTIVE,
+  DEED_STATUS_INACTIVE,
+  "موقوف",
+  "قيد التحقق",
+] as const;
 
 /** Bourse data — deed validity before path completion. */
 export type BourseDeedVitality = "active" | "inactive";

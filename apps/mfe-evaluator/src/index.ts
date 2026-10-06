@@ -36,7 +36,6 @@ export {
 } from "@platform/app-shared/app-data/party-task-recall-commands";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
-export * from "./lib/evaluator/evaluator-deposit-attachments";
 export * from "./lib/evaluator/valuation-report-number";
 export * from "./lib/evaluator/valuation-report-org-overlay";
 export * from "./lib/evaluator/evaluator-inspection-gate";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   cn,
   EmptyState,
@@ -116,7 +116,7 @@ export function SuspendedTransactionsView() {
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   // Minute precision is enough for indicators and sort — the per-second timer lives in the timer cell
   // itself, so rows are not rebuilt every second (rerender-defer-reads).
   const nowMinuteMs = useTickingMinute();
@@ -126,12 +126,15 @@ export function SuspendedTransactionsView() {
   const [isOpening, startOpen] = useTransition();
   const [openingId, setOpeningId] = useState<string | null>(null);
 
-  const openItem = (item: { id: string; poNumber: string; propertyId: string }) => {
-    setOpeningId(item.id);
-    startOpen(() => {
-      router.push(poPropertyPath(item.poNumber, item.propertyId));
-    });
-  };
+  const openItem = useCallback(
+    (item: { id: string; poNumber: string; propertyId: string }) => {
+      setOpeningId(item.id);
+      startOpen(() => {
+        router.push(poPropertyPath(item.poNumber, item.propertyId));
+      });
+    },
+    [router, startOpen],
+  );
 
   useEffect(() => {
     if (isOpening || !openingId) return;
@@ -230,7 +233,7 @@ export function SuspendedTransactionsView() {
         loading: openingId === item.id,
       };
     });
-  }, [isDesktopViewport, sortedItems, poByNumber, now, router, openingId]);
+  }, [isDesktopViewport, sortedItems, poByNumber, now, router, openingId, openItem]);
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">

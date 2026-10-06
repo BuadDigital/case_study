@@ -4,76 +4,86 @@
  */
 
 const ACTION_AR: Record<string, string> = {
-  CASE_STUDY_INFO_ROLES_SAVED: "حفظ علاقة المستخدم بالمعلومة",
-  FIELD_DICTIONARY_SAVED: "حفظ قاموس الحقول",
-  DIFFERENCE_FACTOR_CATALOG_SAVED: "حفظ كتالوج عوامل الفرق",
-  ORGANIZATION_SETTINGS_SAVED: "حفظ إعدادات المنشأة",
-  COURT_CATALOG_REPLACED: "استبدال كتالوج المحاكم",
-  COURT_CREATED: "إنشاء محكمة",
-  COURT_UPDATED: "تعديل محكمة",
+  CASE_STUDY_INFO_ROLES_SAVED: "تعديل من يجيب على أسئلة دراسة الحالة",
+  FIELD_DICTIONARY_SAVED: "تعديل أسماء الحقول في النظام",
+  DIFFERENCE_FACTOR_CATALOG_SAVED: "تعديل قائمة عوامل الفروق",
+  ORGANIZATION_SETTINGS_SAVED: "تعديل إعدادات الشركة",
+  COURT_CATALOG_REPLACED: "تحديث قائمة المحاكم كاملة",
+  COURT_CREATED: "إضافة محكمة",
+  COURT_UPDATED: "تعديل بيانات محكمة",
   COURT_ACTIVATED: "تفعيل محكمة",
-  COURT_DEACTIVATED: "تعطيل محكمة",
-  CIRCUIT_CREATED: "إنشاء دائرة",
-  CIRCUIT_UPDATED: "تعديل دائرة",
-  CIRCUIT_ACTIVATED: "تفعيل دائرة",
-  CIRCUIT_DEACTIVATED: "تعطيل دائرة",
-  USER_CREATED: "إنشاء مستخدم",
-  USER_UPDATED: "تعديل مستخدم",
-  USER_DISABLED: "تعطيل مستخدم",
-  USER_REACTIVATED: "إعادة تفعيل مستخدم",
-  USER_UNLOCKED: "إلغاء قفل مستخدم",
-  PRICING_TABLE_CREATED: "إنشاء جدول تسعير",
-  PRICING_TABLE_UPDATED: "تعديل جدول تسعير",
-  PRICING_TABLE_ACTIVATED: "تفعيل جدول تسعير",
-  PRICING_TABLE_DEACTIVATED: "تعطيل جدول تسعير",
-  PRICING_TABLE_REVISED: "مراجعة جدول تسعير",
-  PRICING_TABLE_DELETED: "حذف جدول تسعير",
-  PRICING_ASSIGNMENTS_REPLACED: "استبدال إسناد التسعير",
-  PRICING_ASSIGNMENTS_RELINKED: "إعادة ربط إسناد التسعير",
-  ENFAZ_INVOICE_COLLECTED: "تحصيل فاتورة إنفاذ",
-  BILLING_NEGOTIATION_DEADLINE: "انتهاء مهلة تفاوض الفوترة",
-  FEE_BILLING_TRANSITION: "انتقال حالة فاتورة الأتعاب",
-  PROPERTY_GROUP_LINK_CONFIRMED: "تأكيد ربط مجموعة عقارات",
-  PROPERTY_GROUP_UNLINKED: "فك ربط مجموعة عقارات",
-  "failure.raised": "تسجيل تعذّر",
-  "failure.suspended": "تعليق تعذّر",
-  "failure.resolved": "حل تعذّر",
-  "failure.approved": "اعتماد تعذّر",
-  "failure.returned": "إعادة تعذّر",
-  "case-study.party-submission.submitted": "الطرف أنهى مهمته وسلّمها للمراجعة",
-  "case-study.party-submission.accepted": "المسؤول اعتمد عمل الطرف بعد المراجعة",
-  "case-study.workflow-task.distribution-confirmed": "تأكيد توزيع مهمة",
-  "case-study.workflow-task.reopened": "إعادة فتح مهمة سير العمل",
-  "case-study.post-enfaz-decision.recorded": "تسجيل قرار ما بعد إنفاذ",
-  "inspection.remote-scope.approved": "اعتماد نطاق معاينة عن بُعد",
-  "valuation.alert-overrides.updated": "تعديل تجاوزات تنبيهات التقييم",
+  COURT_DEACTIVATED: "إيقاف محكمة",
+  CIRCUIT_CREATED: "إضافة دائرة قضائية",
+  CIRCUIT_UPDATED: "تعديل دائرة قضائية",
+  CIRCUIT_ACTIVATED: "تفعيل دائرة قضائية",
+  CIRCUIT_DEACTIVATED: "إيقاف دائرة قضائية",
+  USER_CREATED: "إضافة مستخدم",
+  USER_UPDATED: "تعديل بيانات مستخدم",
+  USER_DISABLED: "إيقاف حساب مستخدم",
+  USER_REACTIVATED: "إعادة تفعيل حساب مستخدم",
+  USER_UNLOCKED: "فتح حساب مقفل",
+  PRICING_TABLE_CREATED: "إضافة جدول أسعار",
+  PRICING_TABLE_UPDATED: "تعديل جدول أسعار",
+  PRICING_TABLE_ACTIVATED: "تفعيل جدول أسعار",
+  PRICING_TABLE_DEACTIVATED: "إيقاف جدول أسعار",
+  PRICING_TABLE_REVISED: "إصدار نسخة جديدة من جدول الأسعار",
+  PRICING_TABLE_DELETED: "حذف جدول أسعار",
+  PRICING_ASSIGNMENTS_REPLACED: "تغيير من يُطبَّق عليهم جدول الأسعار",
+  PRICING_ASSIGNMENTS_RELINKED: "إعادة ربط جدول الأسعار بأصحابه",
+  ENFAZ_INVOICE_COLLECTED: "تحصيل فاتورة من إنفاذ",
+  BILLING_NEGOTIATION_DEADLINE: "انتهاء مهلة الاعتراض على الفاتورة",
+  FEE_BILLING_TRANSITION: "تغيّر حالة فاتورة الأتعاب",
+  PROPERTY_GROUP_LINK_CONFIRMED: "ربط عقارات في مجموعة واحدة",
+  PROPERTY_GROUP_UNLINKED: "فك ربط مجموعة العقارات",
+  "failure.raised": "الإبلاغ عن تعذّر",
+  "failure.suspended": "تعليق التعذّر",
+  "failure.resolved": "حل التعذّر",
+  "failure.approved": "اعتماد حل التعذّر",
+  "failure.returned": "إرجاع التعذّر لمن رفعه",
+  "case-study.party-submission.submitted": "تسليم العمل للمراجعة",
+  "case-study.party-submission.accepted": "اعتماد العمل بعد المراجعة",
+  "case-study.workflow-task.distribution-confirmed": "توزيع المهام على الأطراف",
+  "case-study.workflow-task.reopened": "إعادة فتح مهمة",
+  "case-study.post-enfaz-decision.recorded": "تسجيل قرار بعد التسليم لإنفاذ",
+  "case-study.enfaz-handover.cleared": "إلغاء تسليم الملف لإنفاذ",
+  "case-study.report.issued": "إصدار تقرير دراسة الحالة",
+  "case-study.report.reopened": "إعادة فتح تقرير دراسة الحالة",
+  "case-study.party-submission.returned-with-impact": "إرجاع المعاينة للمعاين",
+  "failures.survey-freeze.lifted": "رفع إيقاف الرفع المساحي",
+  "inspection.remote-scope.approved": "الموافقة على معاينة عن بُعد",
+  "valuation.alert-overrides.updated": "تخطّي تنبيهات على التقييم",
   "valuation.report-issuance.reopened": "إعادة فتح إصدار تقرير التقييم",
+  "valuation.report-issuance.code-corrected": "تصحيح رمز إيداع التقرير",
 };
 
 const ENTITY_AR: Record<string, string> = {
-  case_study_info_roles: "علاقة المستخدم بالمعلومة",
-  field_dictionary: "قاموس الحقول",
-  difference_factor_catalog: "كتالوج عوامل الفرق",
-  organization_settings: "إعدادات المنشأة",
-  OrganizationSettings: "إعدادات المنشأة",
+  case_study_info_roles: "أسئلة دراسة الحالة",
+  field_dictionary: "أسماء الحقول",
+  difference_factor_catalog: "عوامل الفروق",
+  organization_settings: "إعدادات الشركة",
+  OrganizationSettings: "إعدادات الشركة",
   court: "محكمة",
-  circuit: "دائرة",
-  court_catalog: "كتالوج المحاكم",
+  circuit: "دائرة قضائية",
+  court_catalog: "قائمة المحاكم",
   user: "مستخدم",
   User: "مستخدم",
-  pricing_table: "جدول تسعير",
-  pricing_assignment: "إسناد تسعير",
+  pricing_table: "جدول أسعار",
+  pricing_assignment: "ربط جدول الأسعار",
   PropertyFailure: "تعذّر",
   property_group: "مجموعة عقارات",
-  WorkflowTask: "مهمة سير العمل",
-  workflow_task: "مهمة سير العمل",
-  PartyTaskSubmission: "مهمة طرف",
-  party_submission: "مهمة طرف",
-  ValuationReconciliation: "تسوية التقييم",
+  WorkflowTask: "مهمة",
+  workflow_task: "مهمة",
+  PartyTaskSubmission: "عمل طرف",
+  party_submission: "عمل طرف",
+  WorkOrderProperty: "عقار",
+  CaseStudyReport: "تقرير دراسة الحالة",
+  ValuationReconciliation: "ترجيح التقييم",
   valuation_report: "تقرير التقييم",
   inspection: "معاينة",
-  PartyFeePricingTable: "جدول تسعير الأطراف",
-  PartyFeePricingAssignment: "إسناد تسعير الأطراف",
+  PartyFeePricingTable: "جدول أتعاب الأطراف",
+  PartyFeePricingAssignment: "ربط أتعاب الأطراف",
+  ValuationReportIssuance: "إصدار تقرير التقييم",
+  inspector_fee_ledger: "سجل أتعاب المعاين",
 };
 
 const KIND_AR: Record<string, string> = {
@@ -120,6 +130,19 @@ const STATUS_AR: Record<string, string> = {
   Resolved: "محلول",
   Approved: "معتمد",
   Returned: "مُعاد",
+  // Failure statuses arrive lowercase from the failures service.
+  review: "قيد المراجعة",
+  returned: "مُعاد لمن رفعه",
+  internal: "مفتوح داخليًا",
+  approved: "معتمد",
+  resolved: "تم الحل",
+  suspended: "معلّق",
+};
+
+/** Failure severity, worded the way the failures screen words it. */
+const SEVERITY_AR: Record<string, string> = {
+  internal: "تعذّر داخلي",
+  suspected: "احتمال تعذّر",
 };
 
 const ORG_SECTION_AR: { label: string; keys: string[] }[] = [
@@ -196,6 +219,11 @@ function statusLabel(status: string | null | undefined): string {
   return STATUS_AR[status] ?? status;
 }
 
+function severityLabel(severity: string | null | undefined): string {
+  if (!severity) return "—";
+  return SEVERITY_AR[severity.trim().toLowerCase()] ?? severity;
+}
+
 function fieldLabel(key: string): string {
   return FIELD_AR[key] ?? key;
 }
@@ -255,7 +283,7 @@ export function auditActionLabel(action: string): string {
   return (
     ACTION_AR[key] ??
     ACTION_AR[key.toUpperCase()] ??
-    `إجراء غير معروف (${key})`
+    `إجراء غير مُعرَّف (${key})`
   );
 }
 
@@ -280,7 +308,7 @@ export function auditActorLabel(
   const normalized = normalizeActorKey(id);
   const byNorm = namesById?.get(normalized)?.trim();
   if (byNorm) return byNorm;
-  return "مستخدم غير معروف في السجل";
+  return "مستخدم غير معروف";
 }
 
 /** Build a lookup that accepts raw and normalized Guid keys. */
@@ -329,7 +357,7 @@ export function auditDetailSummary(
     case "case-study.party-submission.submitted": {
       const kind = kindLabel(readString(afterObj, "kind"));
       return joinParts([
-        `${kind}: الطرف أنهى العمل وسلّمه للمراجعة`,
+        `تسليم ${kind} للمراجعة`,
         poPart(readString(afterObj, "poNumber")),
       ]);
     }
@@ -337,9 +365,9 @@ export function auditDetailSummary(
       const kind = kindLabel(readString(afterObj, "kind"));
       const by = readString(afterObj, "acceptedBy");
       return joinParts([
-        `${kind}: المسؤول راجع العمل واعتمده`,
+        `اعتماد ${kind} بعد المراجعة`,
         poPart(readString(afterObj, "poNumber")),
-        by ? `اعتمده ${by}` : null,
+        by ? `بواسطة ${by}` : null,
       ]);
     }
     case "case-study.workflow-task.distribution-confirmed": {
@@ -356,7 +384,7 @@ export function auditDetailSummary(
             ? `${count} أطراف`
             : null;
       return joinParts([
-        "تأكيد توزيع الأطراف",
+        "توزيع المهام على الأطراف",
         poPart(readString(afterObj, "poNumber")),
         kindsText,
         readString(afterObj, "phase")
@@ -376,30 +404,30 @@ export function auditDetailSummary(
     case "valuation.alert-overrides.updated": {
       const n = countLeaves(after);
       return n > 0
-        ? `تحديث تجاوزات تنبيهات التقييم (${n} بند)`
-        : "مسح تجاوزات تنبيهات التقييم";
+        ? `تخطّي ${n} تنبيه على التقييم`
+        : "إلغاء تخطّي تنبيهات التقييم";
     }
     case "ORGANIZATION_SETTINGS_SAVED": {
       const sections = orgChangedSections(beforeObj, afterObj);
       if (sections.length === 0) {
-        return before == null ? "إنشاء إعدادات المنشأة" : "حفظ إعدادات المنشأة";
+        return before == null ? "إنشاء إعدادات الشركة" : "تعديل إعدادات الشركة";
       }
-      return `حفظ إعدادات المنشأة — تغيّر: ${sections.join("، ")}`;
+      return `تعديل إعدادات الشركة — القسم: ${sections.join("، ")}`;
     }
     case "CASE_STUDY_INFO_ROLES_SAVED": {
       const matrix = asRecord(afterObj?.matrix ?? afterObj);
       const n = matrix ? Object.keys(matrix).length : 0;
       return n > 0
-        ? `حفظ مصفوفة علاقة المستخدم بالمعلومة (${n} سؤال)`
-        : "حفظ مصفوفة علاقة المستخدم بالمعلومة";
+        ? `تعديل من يجيب على أسئلة دراسة الحالة (${n} سؤال)`
+        : "تعديل من يجيب على أسئلة دراسة الحالة";
     }
     case "FIELD_DICTIONARY_SAVED":
-      return "حفظ قاموس الحقول النظامية";
+      return "تعديل أسماء الحقول في النظام";
     case "DIFFERENCE_FACTOR_CATALOG_SAVED": {
       const version = readNumber(afterObj, "version");
       return version != null
-        ? `حفظ كتالوج عوامل الفرق — الإصدار ${version}`
-        : "حفظ كتالوج عوامل الفرق";
+        ? `تعديل قائمة عوامل الفروق — الإصدار ${version}`
+        : "تعديل قائمة عوامل الفروق";
     }
     case "failure.raised":
     case "failure.suspended":
@@ -411,7 +439,7 @@ export function auditDetailSummary(
         actionWord,
         poPart(readString(afterObj, "poNumber") ?? readString(beforeObj, "poNumber")),
         readString(afterObj, "severity")
-          ? `الخطورة: ${readString(afterObj, "severity")}`
+          ? `النوع: ${severityLabel(readString(afterObj, "severity"))}`
           : null,
         readString(beforeObj, "status") && readString(afterObj, "status")
           ? `${statusLabel(readString(beforeObj, "status"))} ← ${statusLabel(readString(afterObj, "status"))}`
@@ -422,7 +450,7 @@ export function auditDetailSummary(
     }
     case "PRICING_TABLE_CREATED":
       return joinParts([
-        "إنشاء جدول تسعير",
+        "إضافة جدول أسعار",
         readString(afterObj, "name") ? `«${readString(afterObj, "name")}»` : null,
         readString(afterObj, "category")
           ? `التصنيف: ${readString(afterObj, "category")}`
@@ -431,25 +459,25 @@ export function auditDetailSummary(
     case "PRICING_TABLE_UPDATED": {
       const keys = changedKeys(beforeObj, afterObj).slice(0, 4);
       return keys.length > 0
-        ? `تعديل جدول تسعير — ${keys.map(fieldLabel).join("، ")}`
-        : "تعديل جدول تسعير";
+        ? `تعديل جدول أسعار — ${keys.map(fieldLabel).join("، ")}`
+        : "تعديل جدول أسعار";
     }
     case "PRICING_TABLE_ACTIVATED":
-      return "تفعيل جدول التسعير ليصبح سارياً";
+      return "تفعيل جدول الأسعار ليصبح سارياً";
     case "PRICING_TABLE_DEACTIVATED":
-      return "تعطيل جدول التسعير";
+      return "إيقاف العمل بجدول الأسعار";
     case "PRICING_TABLE_DELETED":
-      return "حذف جدول التسعير نهائياً";
+      return "حذف جدول الأسعار نهائياً";
     case "PRICING_TABLE_REVISED":
-      return "إصدار مراجعة جديدة لجدول التسعير";
+      return "إصدار نسخة جديدة من جدول الأسعار";
     case "PRICING_ASSIGNMENTS_REPLACED":
-      return "استبدال قائمة المسند إليهم على جدول التسعير";
+      return "تغيير من يُطبَّق عليهم جدول الأسعار";
     case "PRICING_ASSIGNMENTS_RELINKED":
-      return "إعادة ربط إسناد التسعير بعد مراجعة الجدول";
+      return "إعادة ربط جدول الأسعار بأصحابه بعد تحديثه";
     case "USER_CREATED": {
       const name =
         readString(afterObj, "displayName") ?? readString(afterObj, "name");
-      return name ? `إنشاء مستخدم «${name}»` : "إنشاء مستخدم جديد";
+      return name ? `إضافة مستخدم «${name}»` : "إضافة مستخدم جديد";
     }
     case "USER_UPDATED": {
       const keys = changedKeys(beforeObj, afterObj).slice(0, 4);
@@ -457,21 +485,70 @@ export function auditDetailSummary(
       return `تعديل مستخدم — ${keys.map(fieldLabel).join("، ")}`;
     }
     case "USER_DISABLED":
-      return "تعطيل حساب مستخدم";
+      return "إيقاف حساب مستخدم";
     case "USER_REACTIVATED":
       return "إعادة تفعيل حساب مستخدم";
     case "USER_UNLOCKED":
-      return "إلغاء قفل حساب مستخدم";
+      return "فتح حساب مستخدم مقفل";
     case "valuation.report-issuance.reopened":
       return "إعادة فتح إصدار تقرير التقييم";
+    case "valuation.report-issuance.code-corrected": {
+      const from = readString(beforeObj, "depositCode");
+      const to = readString(afterObj, "depositCode");
+      return from && to
+        ? `تصحيح رمز إيداع التقرير: ${from} ← ${to}`
+        : "تصحيح رمز إيداع التقرير";
+    }
     case "inspection.remote-scope.approved":
       return joinParts([
-        "اعتماد نطاق معاينة عن بُعد",
+        "الموافقة على معاينة عن بُعد",
         poPart(readString(afterObj, "poNumber")),
+      ]);
+    case "case-study.enfaz-handover.cleared": {
+      const choices = [
+        afterObj?.reopenedStudy === true ? "تقرير الدراسة" : null,
+        afterObj?.reopenedValuation === true ? "التقييم" : null,
+      ].filter(Boolean);
+      return joinParts([
+        "إلغاء تسليم الملف لإنفاذ",
+        choices.length > 0 ? `أُعيد فتح: ${choices.join("، ")}` : null,
+        readString(afterObj, "reason") ? `السبب: ${readString(afterObj, "reason")}` : null,
+      ]);
+    }
+    case "case-study.report.issued":
+      return joinParts([
+        "إصدار تقرير دراسة الحالة",
+        poPart(readString(afterObj, "poNumber")),
+      ]);
+    case "case-study.report.reopened":
+      return joinParts([
+        "إعادة فتح تقرير دراسة الحالة",
+        poPart(readString(afterObj, "poNumber")),
+        readString(afterObj, "reason") ? `السبب: ${readString(afterObj, "reason")}` : null,
+        afterObj?.enfazHandoverCleared === true ? "وأُلغي تسليم الملف لإنفاذ" : null,
+      ]);
+    case "case-study.party-submission.returned-with-impact": {
+      const sections = asArray(afterObj?.sections).length;
+      const affected = asArray(afterObj?.affected).length;
+      return joinParts([
+        "إرجاع المعاينة للمعاين",
+        poPart(readString(afterObj, "poNumber")),
+        sections > 0 ? `${sections} قسم للتصحيح` : null,
+        affected > 0 ? `${affected} طرف متأثر` : null,
+        readString(afterObj, "returnNote")
+          ? `السبب: ${readString(afterObj, "returnNote")}`
+          : null,
+      ]);
+    }
+    case "failures.survey-freeze.lifted":
+      return joinParts([
+        "رفع إيقاف الرفع المساحي",
+        poPart(readString(afterObj, "poNumber")),
+        readString(afterObj, "reason") ? `السبب: ${readString(afterObj, "reason")}` : null,
       ]);
     case "case-study.post-enfaz-decision.recorded":
       return joinParts([
-        "تسجيل قرار ما بعد إنفاذ",
+        "تسجيل قرار بعد التسليم لإنفاذ",
         poPart(readString(afterObj, "poNumber")),
         readString(afterObj, "decision")
           ? `القرار: ${readString(afterObj, "decision")}`
@@ -502,12 +579,12 @@ export function auditDetailSummary(
 
   const keys = changedKeys(beforeObj, afterObj).slice(0, 4);
   if (keys.length > 0 && beforeObj && afterObj) {
-    return `تغيّر: ${keys.map(fieldLabel).join("، ")}`;
+    return `تعديل: ${keys.map(fieldLabel).join("، ")}`;
   }
 
-  if (before == null && after != null) return "أُنشئ سجل جديد";
-  if (before != null && after == null) return "حُذف السجل";
-  if (before != null && after != null) return "عُدّل السجل";
+  if (before == null && after != null) return "إضافة سجل جديد";
+  if (before != null && after == null) return "حذف السجل";
+  if (before != null && after != null) return "تعديل على السجل";
   return "—";
 }
 

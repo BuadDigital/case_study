@@ -69,10 +69,14 @@ export function ComparablePropertiesView() {
   }, [q]);
 
   // A new search or a toggled «show inactive» is a different result set — page 3
-  // of the old one is not page 3 of the new one.
-  useEffect(() => {
+  // of the old one is not page 3 of the new one. Adjusted during render so the
+  // table never paints the stale page first.
+  const resultSetKey = `${debouncedQ}|${showInactive}`;
+  const [pagedResultSet, setPagedResultSet] = useState(resultSetKey);
+  if (pagedResultSet !== resultSetKey) {
+    setPagedResultSet(resultSetKey);
     setPage(1);
-  }, [debouncedQ, showInactive]);
+  }
 
   /**
    * One server page (pagination-contract §4). The bank used to arrive as a

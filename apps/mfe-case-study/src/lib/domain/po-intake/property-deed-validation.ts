@@ -1,6 +1,5 @@
 import {
   DEFAULT_CLIENT_FIELD_POLICY,
-  isBourseInquiryIdentifier,
   requiresContacts,
   requiresRequestNumberField,
   showsCourtFields,
@@ -58,42 +57,6 @@ export function validatePropertyEnfathFields(
   const needCourt = showsCourtFields(assignmentType);
   const needRequest =
     requiresRequestNumberField(assignmentType) && p.hasRequestNumber !== false;
-
-  if (isBourseInquiryIdentifier(p.identifierType)) {
-    const requiredKeys = [
-      "deedNumber",
-      "assignmentMandateNumber",
-      "assignmentMandateDate",
-      "deedDate",
-      ...(fieldPolicy.requiresOwnerName ? (["ownerName"] as const) : []),
-      ...(needCourt ? (["court", "circuit"] as const) : []),
-      ...(needRequest ? (["requestNumber"] as const) : []),
-    ];
-    const errors = mergeFieldErrors(
-      collectRequiredErrors(
-        {
-          deedNumber: p.deedNumber,
-          requestNumber: p.requestNumber,
-          assignmentMandateNumber: p.assignmentMandateNumber,
-          assignmentMandateDate: p.assignmentMandateDate,
-          deedDate: p.deedDate,
-          ownerName: p.ownerName,
-          court: p.court,
-          circuit: p.circuit,
-        },
-        [...requiredKeys],
-      ),
-    );
-    if (fieldPolicy.requiresAssignmentDoc && p.assignmentDocFileNames.length === 0) {
-      errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
-    }
-    const identifierError = validatePropertyIdentifierNumber(
-      p.identifierType,
-      p.deedNumber,
-    );
-    if (identifierError) errors.deedNumber = identifierError;
-    return errors;
-  }
 
   const requiredKeys = [
     "assignmentMandateNumber",

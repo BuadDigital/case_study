@@ -49,6 +49,10 @@ public interface IWorkflowTaskService
         Guid id,
         RevertWorkflowTaskPhaseRequest request,
         CancellationToken cancellationToken = default);
+    /// <summary>Kind / status / phase of a task for the generic patch guard; null when it does not exist.</summary>
+    Task<WorkflowTaskPatchStateDto?> GetPatchStateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
     Task<WorkflowTaskDto?> PatchAsync(
         Guid id,
         PatchWorkflowTaskRequest request,

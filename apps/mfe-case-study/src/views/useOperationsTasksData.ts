@@ -171,25 +171,37 @@ export function useOperationsTasksData() {
     if (!deepLinkTaskId) return;
     setSelectedId(deepLinkTaskId);
     setDetailId(deepLinkTaskId);
-    setShowAll((prev) => {
-      if (!prev) triggerBlink();
-      return true;
-    });
-  }, [deepLinkTaskId, triggerBlink]);
+    // A deep link may point at a row the current filter hides — open the full list
+    // and blink the control so the switch is visible. `dispatchQuery` is stable,
+    // unlike the `setShowAll` wrapper that closes over the query.
+    if (!showAll) {
+      triggerBlink();
+      dispatchQuery({ type: "showAll", value: true });
+    }
+  }, [deepLinkTaskId, showAll, triggerBlink]);
 
-  useEffect(() => {
-    if (!canCreate) return;
-    if (createFlag !== "1" && createFlag !== "true") return;
-    setCreatePrefill({
-      type: prefillType || "general",
-      scope:
-        prefillScope ||
-        (prefillType === "court_visit" ? "work_order" : prefillPo ? "transaction" : "work_order"),
-      poNumber: prefillPo,
-      deed: prefillDeed,
-    });
-    setCreateOpen(true);
-  }, [canCreate, createFlag, prefillPo, prefillType, prefillScope, prefillDeed]);
+  // `?create=1` with its prefill params opens the create modal.
+  const createRequested =
+    canCreate && (createFlag === "1" || createFlag === "true");
+  const [prevCreateRequested, setPrevCreateRequested] = useState(createRequested);
+  if (prevCreateRequested !== createRequested) {
+    setPrevCreateRequested(createRequested);
+    if (createRequested) {
+      setCreatePrefill({
+        type: prefillType || "general",
+        scope:
+          prefillScope ||
+          (prefillType === "court_visit"
+            ? "work_order"
+            : prefillPo
+              ? "transaction"
+              : "work_order"),
+        poNumber: prefillPo,
+        deed: prefillDeed,
+      });
+      setCreateOpen(true);
+    }
+  }
 
   const queueTasks = useMemo(
     () => queueTasksForViewer(tasks, useIndependentQueue, failures, poRecords),
@@ -222,12 +234,15 @@ export function useOperationsTasksData() {
   );
 
   // Deep-link / stale detail must not keep assignee on a failure-blocked task.
-  useEffect(() => {
-    if (!useIndependentQueue || !detail) return;
-    if (!operationsTaskHiddenByFailure(detail, failures, poRecords)) return;
+  // A task hidden behind a failure closes its panel.
+  if (
+    useIndependentQueue &&
+    detail &&
+    operationsTaskHiddenByFailure(detail, failures, poRecords)
+  ) {
     setDetailId(null);
     setSelectedId(null);
-  }, [useIndependentQueue, detail, failures, poRecords]);
+  }
 
   const reviewerStaff = useMemo(
     () => reviewerStaffForAccount(reviewerAccount, staffUsers),

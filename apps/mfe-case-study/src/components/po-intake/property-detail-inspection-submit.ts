@@ -10,6 +10,7 @@ import {
 import { saveInspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-commands";
 import {
   firstInspectorWorkspaceError,
+  inspectorMustDecideDeedMatch,
   inspectorWorkspaceHasBlockingErrors,
   scheduleInspectorErrorScroll,
   validateInspectorWorkspace,
@@ -21,8 +22,11 @@ import {
 } from "../../lib/app-data/valuation-report-specialist-finishing";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { getBuildingInventory } from "@platform/api-client";
-import { specialistComponentsMissing } from "../../lib/app-data/specialist-components";
-import { isLandInspectionContext } from "../../lib/app-data/inspector-workspace-data";
+import {
+  inspectionHasStructures,
+  SPECIALIST_COMPONENTS_TABLE_REQUIRED,
+  specialistComponentsMissing,
+} from "../../lib/app-data/specialist-components";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import type { IdempotentActionResult } from "@platform/app-shared";
 
@@ -34,12 +38,12 @@ type InspectionSubmitResult =
 async function specialistComponentsMissingFor(
   poNumber: string,
   propertyId: string,
-  isLand: boolean,
+  hasStructures: boolean,
 ): Promise<string | null> {
   const config = workOrdersApiConfig();
   if (!config || !poNumber || !propertyId) return null;
   const res = await getBuildingInventory(config, poNumber, propertyId);
-  return res.ok ? specialistComponentsMissing(res.data, isLand) : null;
+  return res.ok ? specialistComponentsMissing(res.data, hasStructures) : null;
 }
 
 export async function submitPropertyDetailInspection(input: {
@@ -98,23 +102,26 @@ export async function submitPropertyDetailInspection(input: {
         showToast(finishingError, "error");
         return;
       }
-      // «مكونات العقار» report text before accepting — the components table is optional.
-      // The server enforces the same rule (SpecialistComponentsRules).
+      // «مكونات العقار» report text, and the inspector's «جدول الحصر» (≥ 1 line) for anything
+      // with buildings or annexes, before accepting. The server enforces the same rule
+      // (SpecialistComponentsRules).
       const componentsError = await specialistComponentsMissingFor(
         inspectionTask.poNumber,
         property.id,
-        isLandInspectionContext({
-          vacantLand: draft.vacantLand,
+        inspectionHasStructures({
           assetSubject: draft.featureValues.assetSubject,
-          classification: property.classification,
-          propertyType: property.propertyType,
+          landHasValuableStructures: draft.landHasValuableStructures,
         }),
       );
       if (componentsError) {
         setFormError(componentsError);
         showToast(componentsError, "error");
         document
-          .getElementById("specialist-components")
+          .getElementById(
+            componentsError === SPECIALIST_COMPONENTS_TABLE_REQUIRED
+              ? "specialist-components-table"
+              : "specialist-components",
+          )
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
@@ -139,6 +146,11 @@ export async function submitPropertyDetailInspection(input: {
       propertyType: property.propertyType,
       includeRetiredFeatureKeys,
       specialistProofServicesOnly: serviceProofFromTransactionPhotos,
+      // The inspector's own submit only — the specialist's accept path never demands the verdict.
+      requireDeedMatch:
+        mapActor === "inspector" && inspectorMustDecideDeedMatch(property),
+      // Same for «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» (asked of an asset typed land).
+      requireLandStructures: mapActor === "inspector",
     });
     delete errors.inspectionConfirmed;
     if (inspectorWorkspaceHasBlockingErrors(errors)) {

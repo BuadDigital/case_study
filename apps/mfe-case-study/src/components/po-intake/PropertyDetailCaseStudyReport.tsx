@@ -20,17 +20,17 @@ import {
   CaseStudyReportFrame,
   type CaseStudyReportFrameHandle,
 } from "../case-study/CaseStudyReportFrame";
-import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
-import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-model";
+import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
+import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-document-model";
 import {
   CASE_STUDY_SECTION_REMARKS_HINT,
   type CaseStudyQuestionSection,
-} from "../../lib/app-data/case-study-form-data";
+} from "../../lib/app-data/case-study-report-data";
 import {
-  PARTY_CASE_STUDY_FORM_CHANGED_EVENT,
-  type CaseStudyFormDraft,
-} from "../../lib/app-data/case-study-form-model";
-import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
+  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
+  type CaseStudyReportDraft,
+} from "../../lib/app-data/case-study-report-model";
+import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -295,7 +295,7 @@ export function PropertyDetailCaseStudyReport({
 }) {
   const { role } = useAppAccess();
   const { showToast } = useToast();
-  const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
+  const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [partyRevision, setPartyRevision] = useState(0);
   const [openSections, setOpenSections] = useState<
@@ -356,7 +356,7 @@ export function PropertyDetailCaseStudyReport({
       return;
     }
     setLoading(true);
-    const loaded = await loadCaseStudyFormDraft(task.id);
+    const loaded = await loadCaseStudyReportDraft(task.id);
     setDraft(loaded);
     setLoading(false);
   }, [task]);
@@ -367,9 +367,9 @@ export function PropertyDetailCaseStudyReport({
 
   useEffect(() => {
     const bump = () => setPartyRevision((n) => n + 1);
-    window.addEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, bump);
+    window.addEventListener(PARTY_CASE_STUDY_REPORT_CHANGED_EVENT, bump);
     return () =>
-      window.removeEventListener(PARTY_CASE_STUDY_FORM_CHANGED_EVENT, bump);
+      window.removeEventListener(PARTY_CASE_STUDY_REPORT_CHANGED_EVENT, bump);
   }, []);
 
   useEscapeKey(previewOpen, () => setPreviewOpen(false));
@@ -419,7 +419,7 @@ export function PropertyDetailCaseStudyReport({
   if (!task) {
     return (
       <InfoBox variant="amber" icon="ℹ">
-        لم يُبدأ بنموذج دراسة الحالة بعد — افتح مسار دراسة حالة العقارات
+        لم يُبدأ بتقرير دراسة الحالة بعد — افتح مسار دراسة حالة العقارات
         لإكماله.
       </InfoBox>
     );
@@ -434,8 +434,8 @@ export function PropertyDetailCaseStudyReport({
       <>
         <EmptyState
           icon="📋"
-          title="لم يُبدأ النموذج بعد"
-          sub="سيظهر هنا ملخّص نموذج دراسة الحالة مع جميع الأسئلة والإجابات بعد البدء في تعبئته."
+          title="لم يُبدأ التقرير بعد"
+          sub="سيظهر هنا ملخّص تقرير دراسة الحالة مع جميع الأسئلة والإجابات بعد البدء في تعبئته."
         />
         <p className="mt-3">
           {showWorkspaceLink ? (
@@ -459,7 +459,7 @@ export function PropertyDetailCaseStudyReport({
     <>
       <div className="mb-3.5 mt-1.5 flex flex-wrap items-center gap-2.5">
         <span className="text-[13px] font-bold text-heading">
-          ملخّص النموذج المعتمد
+          ملخّص التقرير المعتمد
         </span>
         <span className="flex-1" />
         <button

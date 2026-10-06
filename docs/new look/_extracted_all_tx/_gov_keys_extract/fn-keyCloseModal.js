@@ -1,1 +1,0 @@
-function keyCloseModal(){ var m=document.getElementById('keyModalOverlay'); if(m) m.remove(); }

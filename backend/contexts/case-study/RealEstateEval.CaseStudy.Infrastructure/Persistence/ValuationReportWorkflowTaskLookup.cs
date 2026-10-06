@@ -8,17 +8,24 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 public sealed class ValuationReportWorkflowTaskLookup(CaseStudyDbContext db)
     : IValuationReportWorkflowTaskLookup
 {
-    public async Task<Guid?> FindOpenAppraisalTaskIdAsync(
+    public async Task<OpenAppraisalTaskRef?> FindOpenAppraisalTaskAsync(
         Guid propertyId,
         CancellationToken cancellationToken)
     {
-        var id = await db.WorkflowTasks
+        var task = await db.WorkflowTasks.AsNoTracking()
             .Where(t => t.Kind == WorkflowTaskKind.PropertyAppraisal)
             .Where(t => t.PropertyId == propertyId)
             .Where(t => t.Status != WorkflowTaskStatus.Completed && t.Status != WorkflowTaskStatus.Cancelled)
             .OrderByDescending(t => t.UpdatedAtUtc)
-            .Select(t => (Guid?)t.Id)
+            .Select(t => new { t.Id, t.PoNumber })
             .FirstOrDefaultAsync(cancellationToken);
-        return id;
+        if (task is null)
+            return null;
+
+        var submitted = await db.PartyTaskSubmissions.AsNoTracking()
+            .AnyAsync(
+                s => s.WorkflowTaskId == task.Id && s.Status == PartyTaskSubmissionStatus.Submitted,
+                cancellationToken);
+        return new OpenAppraisalTaskRef(task.Id, task.PoNumber, submitted);
     }
 }

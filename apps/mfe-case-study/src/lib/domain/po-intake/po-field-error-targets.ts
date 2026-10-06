@@ -10,10 +10,7 @@ import {
   scheduleScrollToFormField,
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
-import {
-  isBourseInquiryIdentifier,
-  type PoPropertyIntake,
-} from "../../app-data/po-intake-data";
+import type { PoPropertyIntake } from "../../app-data/po-intake-data";
 
 /** Top→bottom order for property edit / task work forms. */
 export const PO_PROPERTY_ERROR_KEY_ORDER = [
@@ -49,10 +46,8 @@ export const PO_PROPERTY_ERROR_KEY_ORDER = [
 
 export function poPropertyErrorTargetId(
   key: string,
-  prop: Pick<PoPropertyIntake, "id" | "identifierType">,
+  prop: Pick<PoPropertyIntake, "id">,
 ): string | null {
-  const isBourse = isBourseInquiryIdentifier(prop.identifierType);
-
   if (key.startsWith("contact_phone_")) {
     return `po_contact_phone_${key.slice("contact_phone_".length)}`;
   }
@@ -70,17 +65,17 @@ export function poPropertyErrorTargetId(
     case "deedVitality":
       return "deed_vitality";
     case "deedNumber":
-      return isBourse ? "deed_number_bourse" : "deed_number";
+      return "deed_number";
     case "requestNumber":
-      return isBourse ? "request_number_bourse" : "request_number";
+      return "request_number";
     case "deedDate":
-      return isBourse ? "deed_date_bourse" : "deed_date";
+      return "deed_date";
     case "ownerName":
-      return isBourse ? "owner_name_bourse" : "owner_name";
+      return "owner_name";
     case "court":
-      return isBourse ? "court_bourse" : "court";
+      return "court";
     case "circuit":
-      return isBourse ? "circuit_bourse" : "circuit";
+      return "circuit";
     case "realEstateRegNumber":
       return "real_estate_reg_number";
     case "realEstateRegDate":
@@ -88,13 +83,9 @@ export function poPropertyErrorTargetId(
     case "realEstateRegFileName":
       return `real_estate_reg_${prop.id}`;
     case "assignmentMandateNumber":
-      return isBourse
-        ? "assignment_mandate_number_bourse"
-        : "assignment_mandate_number";
+      return "assignment_mandate_number";
     case "assignmentMandateDate":
-      return isBourse
-        ? "assignment_mandate_date_bourse"
-        : "assignment_mandate_date";
+      return "assignment_mandate_date";
     case "delegationLetterFileNames":
       return `delegation_${prop.id}`;
     case "assignmentDocFileNames":
@@ -104,11 +95,11 @@ export function poPropertyErrorTargetId(
     case "bourseDeedImageFileName":
       return `bourse_deed_image_${prop.id}`;
     case "planNumber":
-      return isBourse ? "plan_number_bourse" : "plan_number";
+      return "plan_number";
     case "plotNumber":
-      return isBourse ? "plot_number_bourse" : "plot_number";
+      return "plot_number";
     case "locationMapUrl":
-      return isBourse ? "location_map_url_bourse" : "location_map_url";
+      return "location_map_url";
     case "region":
       return "region";
     case "city":
@@ -134,7 +125,7 @@ export function poPropertyErrorTargetId(
 
 export function firstPoPropertyErrorTarget(
   errors: FieldErrors,
-  prop: Pick<PoPropertyIntake, "id" | "identifierType">,
+  prop: Pick<PoPropertyIntake, "id">,
 ): string | null {
   const targets: FormErrorTarget[] = [];
   for (const key of PO_PROPERTY_ERROR_KEY_ORDER) {
@@ -154,7 +145,7 @@ export function firstPoPropertyErrorTarget(
 
 export function scheduleScrollToFirstPoPropertyError(
   errors: FieldErrors,
-  prop: Pick<PoPropertyIntake, "id" | "identifierType">,
+  prop: Pick<PoPropertyIntake, "id">,
   delayMs = 60,
 ): void {
   scheduleScrollToFormField(firstPoPropertyErrorTarget(errors, prop), delayMs);

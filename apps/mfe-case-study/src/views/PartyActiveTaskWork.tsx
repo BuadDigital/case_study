@@ -13,7 +13,7 @@ import { FieldInspectionMobileShell } from "../components/field-inspection/Field
 import {
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
-import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
+import { PartyCaseStudyReportTab } from "../components/case-study/PartyCaseStudyReportTab";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
 import type { PropertyDetailPartyCard } from "../lib/app-data/property-detail-parties";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
@@ -107,7 +107,7 @@ function PartyWorkTabs({
           )}
           onClick={() => onSelect("case-study")}
         >
-          نموذج الدراسة
+          تقرير دراسة الحالة
         </button>
       </div>
     </nav>
@@ -643,7 +643,7 @@ export function PartyActiveTaskWork({
           />
         </>
       ) : (
-        <PartyCaseStudyFormTab def={def} childTask={task} />
+        <PartyCaseStudyReportTab def={def} childTask={task} />
       )}
     </TaskWorkChrome>
   );

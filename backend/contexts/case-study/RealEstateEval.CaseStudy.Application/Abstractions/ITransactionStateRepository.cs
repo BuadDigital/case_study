@@ -22,6 +22,12 @@ public interface ITransactionStateRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>True when the case-study (non-party) report of the parent task is issued.</summary>
+    Task<bool> IsCaseStudyReportIssuedAsync(Guid parentTaskId, CancellationToken cancellationToken);
+
+    /// <summary>True when the party package of the workflow task is submitted (handed over).</summary>
+    Task<bool> IsPartyPackageSubmittedAsync(Guid workflowTaskId, CancellationToken cancellationToken);
+
     Task<string?> GetPoNumberAsync(Guid workOrderId, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

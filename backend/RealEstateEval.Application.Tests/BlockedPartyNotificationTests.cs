@@ -71,7 +71,7 @@ public sealed class BlockedPartyNotificationTests
     }
 
     [Fact]
-    public async Task Accepting_the_inspection_unblocks_the_appraiser_and_the_survey_office()
+    public async Task Accepting_the_inspection_informs_the_appraiser_and_nudges_the_survey_office()
     {
         var bundle = TestBoundedContexts.Create($"unblock-{Guid.NewGuid():N}");
         var db = bundle.CaseStudy;
@@ -94,7 +94,8 @@ public sealed class BlockedPartyNotificationTests
         Assert.Contains(
             notifications.Sent,
             n => n.SourceEvent == $"field-inspection-accepted-appraiser:{InspectionTaskId}"
-                && n.Title == "اعتُمدت المعاينة — يمكن بدء التقييم"
+                && n.Title == "اعتمد الأخصائي المعاينة"
+                && n.Body?.Contains("الحجب") != true
                 && n.Href!.Contains(AppraisalTaskId.ToString()));
         Assert.Contains(
             notifications.Sent,

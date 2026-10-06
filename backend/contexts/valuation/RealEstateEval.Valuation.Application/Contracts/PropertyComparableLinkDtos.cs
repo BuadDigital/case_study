@@ -17,8 +17,6 @@ public class PropertyComparableLinkListDto
 {
     public Guid PropertyId { get; init; }
     public int LinkedCount { get; init; }
-    public bool MeetsMinimumForAppraisalPrep { get; init; }
-    public int MinimumRequired { get; init; }
     public IReadOnlyList<PropertyComparableLinkItemDto> Items { get; init; } = [];
 }
 

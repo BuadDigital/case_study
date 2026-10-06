@@ -18,6 +18,16 @@ public interface IFailureLookup
         string propertyId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Whether the property carries an active failure whose engineering-survey freeze has not been
+    /// lifted by the case specialist. Narrower than <see cref="HasActiveAsync"/>, which keeps answering
+    /// true while the failure is active (blocking badges, the study-report gate).
+    /// </summary>
+    Task<bool> HasSurveyFreezingAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<string>> ListApprovedPropertyKeysAsync(
         CancellationToken cancellationToken = default);
 

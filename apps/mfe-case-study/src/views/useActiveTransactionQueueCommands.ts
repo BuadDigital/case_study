@@ -79,7 +79,14 @@ export function useActiveTransactionQueueCommands({
   const { confirm, dialog: confirmDialog } = useConfirmActionDialog();
   const [isOpeningTask, startOpenTask] = useTransition();
   const [openingTaskId, setOpeningTaskId] = useState<string | null>(null);
+  // The rail follows the selected row, and `openTask` may open it one tick early
+  // while the URL catches up — mirrored during render instead of in an effect.
   const [panelOpen, setPanelOpen] = useState(() => Boolean(selectedId));
+  const [panelForSelection, setPanelForSelection] = useState(selectedId);
+  if (panelForSelection !== selectedId) {
+    setPanelForSelection(selectedId);
+    setPanelOpen(Boolean(selectedId));
+  }
   const [groupByPo, setGroupByPo] = useState(false);
   const [groupGatherAnim, setGroupGatherAnim] = useState(false);
   const groupGatherTimerRef = useRef<number | null>(null);
@@ -143,7 +150,6 @@ export function useActiveTransactionQueueCommands({
     bump((n) => n + 1);
   }, [
     queryClient,
-    refetchTasks,
     needsInspectionWorkspaces,
     config.allowPhaseRevert,
   ]);
@@ -172,11 +178,6 @@ export function useActiveTransactionQueueCommands({
     refetchTasks,
     refreshPartySubmissions,
   ]);
-
-  useEffect(() => {
-    if (selectedId) setPanelOpen(true);
-    else setPanelOpen(false);
-  }, [selectedId]);
 
   const closePanel = useCallback(() => {
     router.replace(config.getBasePath(), { scroll: false });

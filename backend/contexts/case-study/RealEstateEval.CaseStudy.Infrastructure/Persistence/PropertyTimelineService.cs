@@ -406,24 +406,22 @@ public sealed class PropertyTimelineService : IPropertyTimelineService
                 }
             }
 
-            var caseStudyForm = await _caseStudy.CaseStudyForms
+            var caseStudyReport = await _caseStudy.CaseStudyReports
                 .AsNoTracking()
-                .FirstOrDefaultAsync(f => f.TaskId == parent.Id && !f.IsPartyForm, cancellationToken);
-            if (caseStudyForm is not null &&
-                caseStudyForm.Status is CaseStudyFormStatuses.Submitted
-                    or CaseStudyFormStatuses.Completed
-                    or CaseStudyFormStatuses.Done)
+                .FirstOrDefaultAsync(f => f.TaskId == parent.Id && !f.IsPartyContribution, cancellationToken);
+            if (caseStudyReport is not null &&
+                caseStudyReport.Status is CaseStudyReportStatuses.Issued)
             {
-                var formAt = caseStudyForm.SavedAtUtc ?? caseStudyForm.UpdatedAtUtc;
+                var reportAt = caseStudyReport.SavedAtUtc ?? caseStudyReport.UpdatedAtUtc;
                 AddEvent(
                     events,
                     poNumber,
                     propertyId,
-                    $"case-study-form:{parent.Id}",
-                    "إرسال نموذج دراسة الحالة",
+                    $"case-study-report:{parent.Id}",
+                    "إصدار تقرير دراسة الحالة",
                     null,
                     PropertyTimelineTones.Done,
-                    formAt,
+                    reportAt,
                     recordedAt);
             }
         }

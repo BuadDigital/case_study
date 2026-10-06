@@ -10,12 +10,14 @@ import {
   cn,
   opsContentPanel,
 } from "@platform/ui-kit";
-import { CaseStudyForm } from "../components/case-study/CaseStudyForm";
+import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportEditor";
 import { CaseStudyAppraisalPanel } from "../components/case-study/CaseStudyAppraisalPanel";
 import { CaseStudyWorkspaceStepNav, type CaseStudyWorkspaceTab } from "../components/case-study/CaseStudyWorkspaceStepNav";
 import { PropertyDetailAppraisalTab } from "../components/po-intake/PropertyDetailTabChunks";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
+import { PropertyDetailEnfazHandoverCard } from "../components/po-intake/PropertyDetailEnfazHandoverCard";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
+import { canHandOverToEnfaz } from "../lib/app-data/po-roles";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { activeCaseStudyPath } from "../lib/my-task-routes";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
@@ -62,7 +64,7 @@ function CaseStudyValuationPanel({
   caseStudyTask: WorkflowTask;
 }) {
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
 
   const appraisalTask = useMemo(() => {
     const fromParent = childTasksForCaseStudyParent(
@@ -223,20 +225,19 @@ export function CaseStudyWorkspaceView({
     allTasks: tasks ?? [],
     enabled: Boolean(task && property),
   });
-  const autoOpenedValuationRef = useRef(false);
-  useEffect(() => {
-    if (autoOpenedValuationRef.current) return;
-    const appraisal = partySubmissionsForGate.data?.appraisal;
-    if (!appraisal) return;
-    const status = (appraisal.packageStatus ?? "").toLowerCase();
-    const accepted =
-      typeof appraisal.acceptedAtUtc === "string" &&
-      appraisal.acceptedAtUtc.trim().length > 0;
-    if (status === "submitted" && !accepted) {
-      autoOpenedValuationRef.current = true;
-      setWorkspaceTab("valuation");
-    }
-  }, [partySubmissionsForGate.data?.appraisal]);
+  // A submitted, not yet accepted appraisal opens the valuation tab once.
+  const gateAppraisal = partySubmissionsForGate.data?.appraisal;
+  const awaitingAppraisalReview =
+    (gateAppraisal?.packageStatus ?? "").toLowerCase() === "submitted" &&
+    !(
+      typeof gateAppraisal?.acceptedAtUtc === "string" &&
+      gateAppraisal.acceptedAtUtc.trim().length > 0
+    );
+  const [autoOpenedValuation, setAutoOpenedValuation] = useState(false);
+  if (!autoOpenedValuation && gateAppraisal && awaitingAppraisalReview) {
+    setAutoOpenedValuation(true);
+    setWorkspaceTab("valuation");
+  }
 
   const loading =
     (!tasksFetched && tasksPending) ||
@@ -326,12 +327,13 @@ export function CaseStudyWorkspaceView({
               onSelect={setWorkspaceTab}
             />
             {workspaceTab === "study" ? (
-              <CaseStudyForm
+              <CaseStudyReportEditor
                 taskId={taskId}
                 task={task}
                 property={property}
                 poRecord={record}
                 requestDateSeed={record.receivedFromEnfathAt}
+                workOrderId={record.id}
               />
             ) : workspaceTab === "appraisal" ? (
               <CaseStudyAppraisalPanel
@@ -358,7 +360,15 @@ export function CaseStudyWorkspaceView({
               </div>
             ) : null}
           </div>
-          <PropertyTransactionTimeline record={record} property={property} />
+          <div className="flex min-w-0 flex-col gap-3">
+            {canHandOverToEnfaz(role) ? (
+              <PropertyDetailEnfazHandoverCard
+                workOrderId={record.id}
+                propertyId={property.id}
+              />
+            ) : null}
+            <PropertyTransactionTimeline record={record} property={property} />
+          </div>
         </div>
       </PageShell>
     </div>

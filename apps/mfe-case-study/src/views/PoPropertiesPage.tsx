@@ -198,7 +198,6 @@ export function PoPropertiesPage({
       showEdit,
       showFailureRaise,
       router,
-      bumpMenu,
       buildPropertyRowMoreItems,
       menuRevision,
       openCopyModal,

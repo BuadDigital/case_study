@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { RoleId } from "@platform/types";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
@@ -39,10 +39,13 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
   // local filter pass (the deferred value would fire a request per keystroke).
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  // A new search term restarts at page 1 (the old page may not exist).
-  useEffect(() => {
+  // A new search term restarts at page 1 (the old page may not exist). Adjusted
+  // during render instead of in an effect, so the list never paints the stale page.
+  const [pagedSearch, setPagedSearch] = useState(debouncedSearch);
+  if (pagedSearch !== debouncedSearch) {
+    setPagedSearch(debouncedSearch);
     setPage(1);
-  }, [debouncedSearch]);
+  }
 
   const whole = useFailuresQuery();
   const allItems = whole.data ?? EMPTY;

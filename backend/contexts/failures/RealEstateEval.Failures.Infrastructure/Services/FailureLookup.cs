@@ -31,6 +31,21 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             cancellationToken);
     }
 
+    public Task<bool> HasSurveyFreezingAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var po = poNumber.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
+        return db.PropertyFailures.AsNoTracking().AnyAsync(
+            f => f.PoNumber == po
+                && f.PropertyId == property
+                && PropertyFailureStatus.Active.Contains(f.Status)
+                && f.SurveyFreezeLiftedAtUtc == null,
+            cancellationToken);
+    }
+
     public Task<bool> HasBlockingAsync(
         string poNumber,
         string propertyId,
@@ -142,5 +157,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
         UpdatedAt = entity.UpdatedAtUtc.ToString("O"),
         SuspendedAt = entity.SuspendedAtUtc?.ToString("O"),
         SuspendedByUserId = entity.SuspendedByUserId,
+        SurveyFreezeLiftedAt = entity.SurveyFreezeLiftedAtUtc?.ToString("O"),
+        SurveyFreezeLiftReason = entity.SurveyFreezeLiftReason,
     };
 }

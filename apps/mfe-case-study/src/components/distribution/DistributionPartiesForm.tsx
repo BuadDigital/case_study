@@ -108,7 +108,7 @@ export function DistributionPartiesForm({
 }: Props) {
   const { data: staffResult } = useDistributionAssigneesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const loadError = staffResult?.loadError ?? null;
   const loadByAssignee = useMemo(
     () => buildAssigneeOpenLoadMap(workflowTasks),

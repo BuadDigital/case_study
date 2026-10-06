@@ -7,7 +7,7 @@ import {
 import {
   caseStudySignatureImage,
   caseStudyStampImage,
-} from "./case-study-form-data";
+} from "./case-study-report-data";
 import type { SiteLocationAckLetter } from "./site-location-ack-letter";
 import { orgLetterheadUrl } from "./org-letterhead-slices";
 import {

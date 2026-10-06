@@ -14,7 +14,7 @@ public partial class PartyTaskSubmissionService
         [WorkflowTaskKind.FieldInspection] =
             ("إرسال المعاينة الميدانية", "أرسل المعاين بيانات المعاينة الميدانية للمراجعة"),
         [WorkflowTaskKind.PropertyAppraisal] =
-            ("إرسال تقرير التقييم", "أرسل المقيم تقرير التقييم العقاري للمراجعة"),
+            ("تسليم التقييم للأخصائي", "سلّم المقيم تقييمه العقاري لإعداد مسودة التقرير"),
     };
 
     /// <summary>CDO / super-admin oversight feed — fee accrual is the "financial" milestone.</summary>
@@ -214,9 +214,9 @@ public partial class PartyTaskSubmissionService
     }
 
     /// <summary>
-    /// Acceptance — not submission — is what actually opens the siblings' gates: the appraiser
-    /// starts on <c>FieldInspectionAccepted</c>, and the survey office works from an accepted
-    /// package. Submission already told them work had started; this tells them it is theirs now.
+    /// Acceptance does not gate either sibling: the appraiser and the survey office both start
+    /// once the inspector has SUBMITTED (<c>FieldInspectionCompleted</c>), and submission already
+    /// told them so. This is an informational follow-up that the specialist accepted the package.
     /// </summary>
     private async Task NotifySiblingsInspectionAcceptedAsync(
         WorkflowTask inspectionTask,
@@ -233,9 +233,9 @@ public partial class PartyTaskSubmissionService
         {
             await NotifyPartyAssigneeAsync(
                 appraisal,
-                title: "اعتُمدت المعاينة — يمكن بدء التقييم",
-                body: $"استلم الأخصائي بيانات المعاينة{suffix}. رُفع الحجب عن التقييم.",
-                tone: "success",
+                title: "اعتمد الأخصائي المعاينة",
+                body: $"اعتمد الأخصائي بيانات المعاينة{suffix}.",
+                tone: "info",
                 sourceEvent: $"field-inspection-accepted-appraiser:{inspectionTask.Id}",
                 href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
                 cancellationToken);
@@ -297,8 +297,9 @@ public partial class PartyTaskSubmissionService
     }
 
     /// <summary>
-    /// When the inspector submits field inspection, tell the sibling appraiser
-    /// that valuation can begin (specialist اعتماد of the report is later).
+    /// When the inspector submits field inspection, tell the sibling appraiser the inspector delivered it.
+    /// Informational only (batch 2C): the appraiser already reads the inspector's package from its draft
+    /// and starts whenever he likes — he is asked to review what was delivered, not told he may begin.
     /// </summary>
     private async Task NotifySiblingAppraiserInspectionSubmittedAsync(
         WorkflowTask inspectionTask,
@@ -309,14 +310,14 @@ public partial class PartyTaskSubmissionService
 
         var refLabel = inspectionTask.PoNumber?.Trim();
         var body = string.IsNullOrEmpty(refLabel)
-            ? "اكتملت معاينة العقار. يمكنك الآن بدء التقييم داخل النظام."
-            : $"اكتملت معاينة العقار على {refLabel}. يمكنك الآن بدء التقييم داخل النظام.";
+            ? "سلّم المعاين المعاينة الميدانية. راجع بيانات المعاينة وتأكد من توافقها مع تقييمك."
+            : $"سلّم المعاين المعاينة الميدانية على {refLabel}. راجع بيانات المعاينة وتأكد من توافقها مع تقييمك.";
 
         await NotifyPartyAssigneeAsync(
             appraisal,
-            title: "معاينة مكتملة — يمكن بدء التقييم",
+            title: "سلّم المعاين المعاينة — راجع بياناتها",
             body: body,
-            tone: "success",
+            tone: "info",
             sourceEvent: $"field-inspection-submitted-appraiser:{inspectionTask.Id}",
             href: $"/property-appraisal/{Uri.EscapeDataString(appraisal.Id.ToString())}",
             cancellationToken);

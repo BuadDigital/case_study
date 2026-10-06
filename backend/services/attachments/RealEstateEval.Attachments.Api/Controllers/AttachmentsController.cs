@@ -45,6 +45,20 @@ public class AttachmentsController : ControllerBase
         return Ok(await _attachments.ListAsync(scope, scopeKey, actor, ct));
     }
 
+    /// <summary>What the uploader of a «مستند ذو قيمة» still sees of it: name and status, never the file.</summary>
+    [HttpGet("own-valued-documents")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
+    public async Task<ActionResult<IReadOnlyList<OwnValuedDocumentDto>>> OwnValuedDocuments(
+        [FromQuery] string scopeKey,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(scopeKey))
+            return this.BadRequestProblem("scopeKey is required");
+
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        return Ok(await _attachments.ListOwnValuedDocumentsAsync(scopeKey, actor, ct));
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)

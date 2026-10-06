@@ -5,6 +5,7 @@ import {
 import {
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
+  type ReturnInspectionRequest,
 } from "@platform/api-client";
 import {
   clearLocalWorkingCopy,
@@ -14,8 +15,9 @@ import {
 } from "@platform/app-shared/offline/offline-write";
 import {
   acceptPartySubmission,
-  reopenPartySubmission,
+  returnInspectionWithImpact,
   type PartyWorkMutationResult,
+  type ReturnInspectionMutationResult,
 } from "@platform/app-shared/app-data/party-submission-api";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import {
@@ -367,16 +369,21 @@ export async function submitInspectorWorkspace(
   }
 }
 
-export async function reopenInspectorWorkspace(
+/**
+ * The specialist returns the inspection to the inspector together with the affected parties
+ * (batch 2C): one server transaction reopens / notifies the picked parties and, when the study
+ * report is issued, keeps or reopens it. Refreshes the inspector cache like the old plain reopen.
+ */
+export async function returnInspectorWorkspace(
   taskId: string,
-  returnNote: string,
-): Promise<PartyWorkMutationResult<InspectorWorkspaceDraft>> {
-  const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return { ok: false, error: reopened.error };
-  const next = payloadToDraft(reopened.data);
-  writeCache(next);
+  request: ReturnInspectionRequest,
+  idempotencyKey?: string,
+): Promise<ReturnInspectionMutationResult> {
+  const returned = await returnInspectionWithImpact(taskId, request, idempotencyKey);
+  if (!returned.ok) return returned;
+  writeCache(payloadToDraft(returned.data.inspection));
   notifyChanged();
-  return { ok: true, data: next };
+  return returned;
 }
 
 /** Specialist acceptance — stamps AcceptedAtUtc so data may feed Infath. */

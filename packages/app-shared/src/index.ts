@@ -105,6 +105,7 @@ export {
 export type { OptimisticPatchResult } from "./query/optimistic-list";
 export { usePermissionsQuery } from "./query/permissions-queries";
 export * from "./workflow/task-types";
+export * from "./workflow/task-done";
 export {
   registerEvaluatorRuntimeBridge,
   getEvaluatorRuntimeBridge,

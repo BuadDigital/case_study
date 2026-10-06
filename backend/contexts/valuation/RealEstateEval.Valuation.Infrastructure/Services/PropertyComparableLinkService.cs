@@ -16,7 +16,7 @@ public sealed class PropertyComparableLinkService(
     ValuationDbContext db,
     ICaseStudyLookup caseStudy,
     TimeProvider? time = null)
-    : IPropertyComparableLinkService, IPropertyComparableLinkLookup
+    : IPropertyComparableLinkService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
@@ -125,20 +125,6 @@ public sealed class PropertyComparableLinkService(
         return (true, null);
     }
 
-    public async Task<int> CountLinkedAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken = default)
-    {
-        return await db.PropertyComparableLinks.AsNoTracking()
-            .Where(x => x.PropertyId == propertyId)
-            .Join(
-                db.ComparableProperties.AsNoTracking().Where(c => c.IsActive),
-                link => link.ComparablePropertyId,
-                comp => comp.Id,
-                (link, _) => link.Id)
-            .CountAsync(cancellationToken);
-    }
-
     private static PropertyComparableLinkListDto BuildList(
         Guid propertyId,
         IReadOnlyList<PropertyComparableLinkItemDto> items)
@@ -148,8 +134,6 @@ public sealed class PropertyComparableLinkService(
         {
             PropertyId = propertyId,
             LinkedCount = count,
-            MeetsMinimumForAppraisalPrep = PropertyComparableLinkRules.MeetsMinimum(count),
-            MinimumRequired = PropertyComparableLinkRules.MinimumLinkedForAppraisalPrep,
             Items = items,
         };
     }

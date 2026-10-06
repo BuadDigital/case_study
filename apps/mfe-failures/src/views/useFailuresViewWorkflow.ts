@@ -79,9 +79,16 @@ export function useFailuresViewWorkflow() {
   /** Sync guard — React state alone can miss two clicks in the same frame. */
   const busyLockRef = useRef(false);
 
+  // A highlighted failure opens itself, then the row is scrolled into view.
+  const highlightKey = highlightId && isFetched ? highlightId : "";
+  const [prevHighlightKey, setPrevHighlightKey] = useState(highlightKey);
+  if (prevHighlightKey !== highlightKey) {
+    setPrevHighlightKey(highlightKey);
+    if (highlightKey) setExpandedId(highlightKey);
+  }
+
   useEffect(() => {
     if (!highlightId || !isFetched) return;
-    setExpandedId(highlightId);
     const el = document.getElementById(`failure-${highlightId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });

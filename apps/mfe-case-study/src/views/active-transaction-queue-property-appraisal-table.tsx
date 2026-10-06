@@ -7,6 +7,7 @@
  * status pill. Rows are prebuilt in meta.
  */
 import { memo } from "react";
+import { useReportDraftStateVersion } from "@platform/app-shared/workflow/report-draft-state";
 import {
   SkeletonTableRows,
   StatusPill,
@@ -26,10 +27,7 @@ import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filt
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { assignedCaseStudyParties } from "../lib/app-data/case-study-tracks";
-import {
-  appraiserInspectionDone,
-  appraiserQueueStatusBadge,
-} from "../lib/evaluator-bridge";
+import { appraiserQueueStatusBadge } from "../lib/evaluator-bridge";
 import {
   APPRAISAL_QUEUE_SKELETON_COLS,
   assignedDateLabel,
@@ -87,6 +85,8 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
   openPropertyDetail: OpenPropertyDetail;
 }) {
   const { task, record, property, row } = meta;
+  // The label reads the draft-state cache; this memoised row re-renders when it changes.
+  useReportDraftStateVersion();
   const active = ctx.selectedId === task.id;
   const moreItems = ctx.resolveRowMoreItems(task, property?.id);
   const cityDistrict = joinCityDistrict(row.city, row.district);
@@ -95,7 +95,6 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
     label: "—",
     className: "b-new",
   };
-  const inspected = appraiserInspectionDone(task, tasks);
   const parent = caseStudyParentForQueueTask(task, tasks);
   const typeLabel = propertyTypeLabel(property) || row.propertyType;
   const deedCell = (
@@ -111,7 +110,6 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
       className={queueRowClassName({
         active,
         opening: ctx.isTaskOpening(task.id),
-        dimmed: !inspected,
       })}
       onClick={() => ctx.handleRowClick(task.id)}
     >

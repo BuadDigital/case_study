@@ -8,7 +8,10 @@
  */
 import { cn, formControlClassName, Input, Select, Textarea } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import {
+  effectiveDeedVerdict,
+  type InspectorWorkspaceDraft,
+} from "../../lib/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   BOUNDARY_KEYS,
@@ -16,6 +19,7 @@ import {
   InsBadge,
   InspectorCard,
 } from "./FieldInspectionWorkParts";
+import { InspectorDeedVerdict } from "./InspectorDeedVerdict";
 import {
   MobileFieldLabel,
   MobilePills,
@@ -44,6 +48,8 @@ export function InspectorBoundariesCard({
   mobile: boolean;
   property: PoPropertyIntake;
 }) {
+  // Per-side toggles + notes exist only under «غير مطابق» (explicit, or derived from a legacy payload).
+  const showMatchRows = effectiveDeedVerdict(draft) === "no";
   return (
     <div id="ins-boundaries-section">
     <InspectorCard
@@ -64,10 +70,17 @@ export function InspectorBoundariesCard({
     >
       {mobile ? null : (
         <p className="mb-3 text-[11px] text-text-3">
-          أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
-          علّق بعدم المطابقة. ويطابقها أيضاً المكتب الهندسي.
+          أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أجب: هل حدود الصك
+          مطابقة للطبيعة؟ عند «غير مطابق» أشِر إلى الضلع المخالف واكتب ملاحظته.
         </p>
       )}
+      <InspectorDeedVerdict
+        draft={draft}
+        mobile={mobile}
+        readOnly={locked}
+        errorMessage={fieldErrors.deedMatchesNature}
+        onPatch={persist}
+      />
       {BOUNDARY_KEYS.map((key) => {
         const row = BOUNDARY_ROW_MAP[key];
         const match = draft.boundaryMatches[key];
@@ -151,15 +164,22 @@ export function InspectorBoundariesCard({
                   </option>
                 ))}
               </Select>
-              <MobilePills
-                options={["مطابق", "عدم تطابق"]}
-                value={match.matches ? "مطابق" : "عدم تطابق"}
-                disabled={locked}
-                onChange={(next) =>
-                  persist(boundaryMatchPatch(draft, key, { matches: next === "مطابق" }))
-                }
-              />
-              {!match.matches ? (
+              {showMatchRows ? (
+                <MobilePills
+                  options={["مطابق", "عدم تطابق"]}
+                  value={match.matches === false ? "عدم تطابق" : "مطابق"}
+                  disabled={locked}
+                  onChange={(next) =>
+                    persist(
+                      boundaryMatchPatch(draft, key, {
+                        matches: next === "مطابق",
+                        ...(next === "مطابق" ? { mismatchNote: "" } : {}),
+                      }),
+                    )
+                  }
+                />
+              ) : null}
+              {showMatchRows && match.matches === false ? (
                 <Input
                   placeholder="ملاحظة عدم التطابق"
                   value={match.mismatchNote}
@@ -184,7 +204,12 @@ export function InspectorBoundariesCard({
           <div
             key={key}
             id={`ins-boundary-${key}`}
-            className="grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0 md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
+            className={cn(
+              "grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0",
+              showMatchRows
+                ? "md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
+                : "md:grid-cols-[90px_150px_1fr_90px]",
+            )}
           >
             <span className="text-xs font-semibold text-text-2">
               {row.label}
@@ -241,26 +266,33 @@ export function InspectorBoundariesCard({
                 }
               />
             )}
+            {showMatchRows ? (
             <div>
               <label className="flex min-h-9 cursor-pointer items-center gap-2.5">
                 <input
                   type="checkbox"
                   className="size-4"
-                  checked={match.matches}
+                  checked={match.matches !== false}
+                  disabled={locked}
                   onChange={(e) =>
-                    persist(boundaryMatchPatch(draft, key, { matches: e.target.checked }))
+                    persist(
+                      boundaryMatchPatch(draft, key, {
+                        matches: e.target.checked,
+                        ...(e.target.checked ? { mismatchNote: "" } : {}),
+                      }),
+                    )
                   }
                 />
                 <span
                   className={cn(
                     "text-xs font-bold",
-                    match.matches ? "text-teal-text" : "text-danger-text",
+                    match.matches !== false ? "text-teal-text" : "text-danger-text",
                   )}
                 >
-                  {match.matches ? "مطابق" : "عدم تطابق"}
+                  {match.matches !== false ? "مطابق" : "عدم تطابق"}
                 </span>
               </label>
-              {!match.matches ? (
+              {match.matches === false ? (
                 <Textarea
                   rows={2}
                   placeholder="ملاحظة عدم التطابق..."
@@ -279,6 +311,7 @@ export function InspectorBoundariesCard({
                 />
               ) : null}
             </div>
+            ) : null}
           </div>
         );
       })}

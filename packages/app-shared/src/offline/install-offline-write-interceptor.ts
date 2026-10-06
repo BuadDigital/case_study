@@ -11,6 +11,10 @@ import {
   randomUuid,
   type OfflineDraftRecord,
 } from "@platform/offline-client";
+import {
+  parseBuildingInventoryPath,
+  queueBuildingInventoryWrite,
+} from "./building-inventory-offline";
 import { isOfflineReplayInFlight } from "./offline-replay-flag";
 
 type KeyEnvelopeOutboxWrite =
@@ -35,7 +39,7 @@ type KeyEnvelopeOutboxWrite =
       payload: Record<string, unknown>;
     };
 
-type ClassifiedWrite =
+export type ClassifiedWrite =
   | {
       type: "party-submission-save";
       taskId: string;
@@ -56,6 +60,12 @@ type ClassifiedWrite =
     }
   | {
       type: "property-court-access";
+      body: Record<string, unknown>;
+    }
+  | {
+      type: "building-inventory-save";
+      poNumber: string;
+      propertyId: string;
       body: Record<string, unknown>;
     }
   | KeyEnvelopeOutboxWrite;
@@ -82,11 +92,17 @@ function parseBody(request: ApiWriteRequest): Record<string, unknown> {
   return {};
 }
 
-async function classifyWrite(
+/** Exported for tests only — the interceptor is the single caller. */
+export async function classifyWrite(
   request: ApiWriteRequest,
 ): Promise<ClassifiedWrite | null> {
   const url = requestUrl(request);
   const path = url.replace(/^https?:\/\/[^/]+/i, "");
+
+  const inventory = parseBuildingInventoryPath(path);
+  if (inventory && request.method === "PUT") {
+    return { type: "building-inventory-save", ...inventory, body: parseBody(request) };
+  }
 
   const submitMatch = path.match(
     /\/api\/party-task-submissions\/([^/?#]+)\/submit\/?$/i,
@@ -206,7 +222,8 @@ async function classifyWrite(
   return null;
 }
 
-async function enqueueClassified(
+/** Exported for tests only. */
+export async function enqueueClassified(
   userId: string,
   classified: ClassifiedWrite,
 ): Promise<void> {
@@ -261,6 +278,15 @@ async function enqueueClassified(
       targetId: classified.taskId,
       payloadJson: JSON.stringify(classified.payload),
       idempotencyKey: createIdempotencyKey(),
+    });
+    return;
+  }
+  if (classified.type === "building-inventory-save") {
+    // Same coalescing queue the table's own save path uses (one waiting row per property).
+    await queueBuildingInventoryWrite({
+      poNumber: classified.poNumber,
+      propertyId: classified.propertyId,
+      body: classified.body,
     });
     return;
   }

@@ -22,6 +22,24 @@ public class ValuationRequestDto
     public required string Date { get; init; }
     public decimal? FinalOpinionValue { get; init; }
     public string? IssueDate { get; init; }
+
+    /// <summary>
+    /// Where the report stands: <c>draft</c> | <c>deposit_issued</c> (the appraiser approved — the report is
+    /// frozen, waiting for the Qeema deposit code) | <c>final_issued</c>. Filled on the open-by-property read
+    /// (what Case Study needs to refuse reopening an approved package); null elsewhere.
+    /// </summary>
+    public string? ReportStage { get; init; }
+}
+
+/// <summary>
+/// Wire values of <see cref="ValuationRequestDto.ReportStage"/> — the same strings as the valuation
+/// context's report-issuance stages, stated here for the services that only see the DTO.
+/// </summary>
+public static class ValuationReportStageWire
+{
+    public const string Draft = "draft";
+    public const string DepositIssued = "deposit_issued";
+    public const string FinalIssued = "final_issued";
 }
 
 public class SaveValuationRequestRequest

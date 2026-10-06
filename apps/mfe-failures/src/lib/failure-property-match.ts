@@ -4,6 +4,7 @@ import {
   isActiveFailureStatus,
   isBlockingFailureStatus,
   isHistoricalFailureStatus,
+  isSurveyFreezeLifted,
 } from "@platform/app-shared/failures/failures-types";
 
 export type FailurePropertyRef = {
@@ -79,6 +80,35 @@ export function blockingFailureForProperty(
   ref: FailurePropertyRef,
 ): FailureRecord | null {
   return newestMatchingFailure(failures, ref, isBlockingFailureStatus);
+}
+
+/**
+ * Active failures on the property that still freeze the survey: the specialist's lift
+ * (`surveyFreezeLiftedAt`) releases the freeze while the failure itself stays open.
+ */
+export function surveyFreezingFailuresForProperty(
+  failures: FailureRecord[],
+  ref: FailurePropertyRef,
+): FailureRecord[] {
+  const frozen: FailureRecord[] = [];
+  for (const failure of failures) {
+    if (!isActiveFailureStatus(failure.status)) continue;
+    if (isSurveyFreezeLifted(failure)) continue;
+    if (failureMatchesProperty(failure, ref)) frozen.push(failure);
+  }
+  return frozen;
+}
+
+/** The newest failure that freezes the survey on the property, or null (lifted ones do not count). */
+export function surveyFreezingFailureForProperty(
+  failures: FailureRecord[],
+  ref: FailurePropertyRef,
+): FailureRecord | null {
+  return newestMatchingFailure(
+    failures.filter((failure) => !isSurveyFreezeLifted(failure)),
+    ref,
+    isActiveFailureStatus,
+  );
 }
 
 export function historicalFailuresForProperty(

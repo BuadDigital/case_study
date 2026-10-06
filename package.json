@@ -46,7 +46,8 @@
     "test:e2e:install": "playwright install chromium",
     "test:unit": "vitest run",
     "lint:barrel-imports": "node scripts/check-barrel-imports.mjs",
-    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test"
+    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test",
+    "lint:hooks": "eslint --no-config-lookup --config eslint.config.mjs \"apps/*/src/**/*.ts\" \"apps/*/src/**/*.tsx\" \"packages/*/src/**/*.ts\" \"packages/*/src/**/*.tsx\""
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",

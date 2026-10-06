@@ -30,16 +30,21 @@ import {
   type CostApproachFields,
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
+import { useCostInspectorSync } from "./useCostInspectorSync";
 
 export type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
   poNumber?: string;
   propertyId: string;
   inspectionTaskId?: string | null;
+  /** Inspector-data groups changed since the appraiser last acknowledged (age → «طبّق عمر المعاين»). */
+  inspectorChangedGroups?: readonly string[] | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
   costBasisKey: string;
+  /** The appraiser's package is submitted: the numbers are closed (server-locked). */
+  locked?: boolean;
   onSavingChange: (saving: boolean) => void;
   onCostSaved: (dto: ValuationCostApproachDto) => void;
 };
@@ -54,10 +59,12 @@ export function useCostApproachWorkflow({
   poNumber,
   propertyId,
   inspectionTaskId = null,
+  inspectorChangedGroups = null,
   cost,
   hydrateKey,
   buildingOnly,
   costBasisKey,
+  locked = false,
   onSavingChange,
   onCostSaved,
 }: CostApproachWorkflowArgs) {
@@ -132,6 +139,23 @@ export function useCostApproachWorkflow({
       stopSeed();
     };
   }, [hydrateKey, cost, inspectionTaskId, poNumber, propertyId, showToast]);
+
+  const setActualAge = useCallback(
+    (age: string) => setField("actualAge", age),
+    [setField],
+  );
+  const inspectorSync = useCostInspectorSync({
+    poNumber,
+    propertyId,
+    inspectionTaskId,
+    hydrateKey,
+    costDraft,
+    setCostDraft,
+    fields,
+    setActualAge,
+    inspectorChangedGroups,
+    locked,
+  });
 
   const seedCostFromInventory = useCallback(async () => {
     const config = apiConfig();
@@ -279,6 +303,7 @@ export function useCostApproachWorkflow({
     moveCostLine,
     seedCostFromInventory,
     saveCost,
+    ...inspectorSync,
   };
 }
 

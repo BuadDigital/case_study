@@ -212,7 +212,7 @@ export function ReportMissingFieldPrompt({
         : await notifyIntakeFieldGap(config, po, pid, {
             fieldLabel: cell.label,
             fieldKey,
-            source: cell.source === "inspector" || cell.source === "survey" ? cell.source : "intake",
+            source: cell.source === "inspector" || cell.source === "survey" ? cell.source : "intake", // specialist → intake
           });
     setSending(false);
     if (!res.ok) {

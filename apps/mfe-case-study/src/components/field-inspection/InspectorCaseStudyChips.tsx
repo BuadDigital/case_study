@@ -22,12 +22,12 @@ import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   CASE_STUDY_ANSWER_LABEL_A,
   CASE_STUDY_ANSWER_LABEL_B,
-  type CaseStudyFormAnswer,
+  type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
-} from "../../lib/app-data/case-study-form-data";
-import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
-import { loadPartyCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
-import { savePartyCaseStudyFormDraft } from "../../lib/app-data/case-study-form-commands";
+} from "../../lib/app-data/case-study-report-data";
+import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { loadPartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
+import { savePartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 
@@ -43,7 +43,7 @@ const GROUPS: { title: string; section: CaseStudyQuestionSection }[] = [
 ];
 
 /** Inspector chips: one binary scale for every section (no NA / section-specific wording). */
-const OPTS: Array<Extract<CaseStudyFormAnswer, "A" | "B">> = ["A", "B"];
+const OPTS: Array<Extract<CaseStudyReportAnswer, "A" | "B">> = ["A", "B"];
 const OPT_LABELS: Record<(typeof OPTS)[number], string> = {
   A: CASE_STUDY_ANSWER_LABEL_A,
   B: CASE_STUDY_ANSWER_LABEL_B,
@@ -82,7 +82,7 @@ export function InspectorCaseStudyChips({
   const matrix = (infoRolesData ?? DEFAULT_INFO_ROLES).matrix;
 
   const { showToast } = useToast();
-  const [draft, setDraft] = useState<CaseStudyFormDraft | null>(null);
+  const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const saveGen = useRef(0);
 
@@ -108,7 +108,7 @@ export function InspectorCaseStudyChips({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void loadPartyCaseStudyFormDraft(childTask.id)
+    void loadPartyCaseStudyReportDraft(childTask.id)
       .then((d) => {
         if (!cancelled) setDraft(d);
       })
@@ -161,10 +161,10 @@ export function InspectorCaseStudyChips({
     0,
   );
 
-  async function pick(key: string, value: CaseStudyFormAnswer) {
+  async function pick(key: string, value: CaseStudyReportAnswer) {
     if (forceReadOnly) return;
     const previous = draft;
-    const base: CaseStudyFormDraft =
+    const base: CaseStudyReportDraft =
       draft ??
       ({
         taskId: childTask.id,
@@ -180,15 +180,15 @@ export function InspectorCaseStudyChips({
         occupancyRemarks: "",
         meterType: "",
         meterNumber: "",
-      } as CaseStudyFormDraft);
-    const next: CaseStudyFormDraft = {
+      } as CaseStudyReportDraft);
+    const next: CaseStudyReportDraft = {
       ...base,
       answers: { ...base.answers, [key]: value },
       status: base.status === "new" ? "draft" : base.status,
     };
     const gen = ++saveGen.current;
     setDraft(next);
-    const saved = await savePartyCaseStudyFormDraft(next);
+    const saved = await savePartyCaseStudyReportDraft(next);
     if (gen !== saveGen.current) return;
     if (saved.ok) {
       setDraft(saved.draft);

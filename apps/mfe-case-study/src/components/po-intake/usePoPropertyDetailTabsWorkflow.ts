@@ -114,20 +114,22 @@ export function usePoPropertyDetailTabsWorkflow({
     });
   };
 
-  useEffect(() => {
+  // The URL (or the forced inspector workspace) owns the open tab — read during
+  // render so the first paint is already on the right tab.
+  const tabRequestKey = `${searchParams.toString()}|${workspaceForced}|${inspectorWorkspace?.forceEdit !== false}|${role}`;
+  const [prevTabRequestKey, setPrevTabRequestKey] = useState(tabRequestKey);
+  if (prevTabRequestKey !== tabRequestKey) {
+    setPrevTabRequestKey(tabRequestKey);
     if (workspaceForced) {
       setTab("inspection");
       setInspectEdit(inspectorWorkspace?.forceEdit !== false);
-      return;
+    } else {
+      const nextTab = searchParams.get("tab");
+      if (isAllowedPropertyTab(role, nextTab)) setTab(nextTab);
+      /* Input mode only when ?inspect=edit (from the button) — not merely opening the tab. */
+      setInspectEdit(searchParams.get("inspect") === "edit");
     }
-    const nextTab = searchParams.get("tab");
-    if (isAllowedPropertyTab(role, nextTab)) {
-      setTab(nextTab);
-    }
-    const nextInspect = searchParams.get("inspect");
-    /* Input mode only when ?inspect=edit (from the button) — not merely opening the tab. */
-    setInspectEdit(nextInspect === "edit");
-  }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
+  }
 
   /** Active tab is derived during render — a role change moves the selection immediately without an extra pass. */
   const effectiveTab: TabId =
@@ -149,9 +151,12 @@ export function usePoPropertyDetailTabsWorkflow({
     visitedTabsRef.current.has(id),
   );
 
-  useEffect(() => {
+  // Another property carries its own “seen” marks.
+  const [seenForProperty, setSeenForProperty] = useState(property.id);
+  if (seenForProperty !== property.id) {
+    setSeenForProperty(property.id);
     setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
-  }, [property.id]);
+  }
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),
@@ -293,7 +298,7 @@ export function usePoPropertyDetailTabsWorkflow({
   const fallbackLogEvents = useMemo(
     () =>
       [...buildPropertyDetailTimeline({ record, property, tasks })].reverse(),
-    [record, property, tasks, propertyFailures],
+    [record, property, tasks],
   );
   const logEvents =
     logEventsQuery.data && logEventsQuery.data.length > 0

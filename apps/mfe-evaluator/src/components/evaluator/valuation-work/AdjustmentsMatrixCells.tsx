@@ -256,7 +256,9 @@ function AreaFactorInput({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <label className="mt-1.5 flex items-center gap-[7px]">
@@ -340,7 +342,9 @@ export function JustCell({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   if (!factorKey || !onCommit) {
     return <td className={tdJustClass} />;
@@ -443,7 +447,9 @@ export function CompInput({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <td className={tdCellClass}>
@@ -591,7 +597,9 @@ export function WeightCell({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <td className={tdCellClass}>

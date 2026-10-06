@@ -846,7 +846,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
         Assert.Contains("financing", savedBody);
 
-        // Q-6: Draft — Incomplete, no uploads, no copies generated yet.
+        // Q-6: Draft — Incomplete, nothing issued yet.
         using var stateRequest = AuthorizedGet(
             $"/api/valuation-requests/{valuationRequestId:D}/report-issuance");
         var state = await client.SendAsync(stateRequest);
@@ -855,17 +855,21 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal("draft", stateDoc.RootElement.GetProperty("stage").GetString());
         Assert.False(stateDoc.RootElement.GetProperty("allowsDepositIssue").GetBoolean());
 
+        // The report draft starts empty: nothing was handed over, so the specialist cannot prepare it yet.
+        using var draftRequest = AuthorizedGet(
+            $"/api/valuation-requests/{valuationRequestId:D}/report-draft");
+        var draftResponse = await client.SendAsync(draftRequest);
+        Assert.Equal(HttpStatusCode.OK, draftResponse.StatusCode);
+        using var draftDoc = JsonDocument.Parse(await draftResponse.Content.ReadAsStringAsync());
+        Assert.Equal("none", draftDoc.RootElement.GetProperty("status").GetString());
+        Assert.False(draftDoc.RootElement.GetProperty("canPrepare").GetBoolean());
+
+        // The deposit copy is no longer issued by a direct call: it is the appraiser's approval of the sent draft.
         using var depositRequest = AuthorizedPost(
             $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit",
             new { });
         var deposit = await client.SendAsync(depositRequest);
-        Assert.Equal(HttpStatusCode.BadRequest, deposit.StatusCode);
-        Assert.Equal("application/problem+json", deposit.Content.Headers.ContentType?.MediaType);
-
-        using var pdfRequest = AuthorizedGet(
-            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance/deposit-pdf");
-        var pdf = await client.SendAsync(pdfRequest);
-        Assert.Equal(HttpStatusCode.NotFound, pdf.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deposit.StatusCode);
     }
 
  /// <summary>

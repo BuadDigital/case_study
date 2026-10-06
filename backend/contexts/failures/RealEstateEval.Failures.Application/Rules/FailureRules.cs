@@ -278,6 +278,36 @@ public static class FailureRules
             PropertyTimelineTones.Warn,
             failure.SuspendedAtUtc!.Value);
 
+    public static PropertyTimelineRecordRequest SurveyFreezeLiftedTimelineEntry(
+        PropertyFailure failure,
+        string reason,
+        DateTime nowUtc) =>
+        new(
+            failure.PoNumber,
+            failure.PropertyId,
+            $"failure:{failure.Id}:survey-freeze-lifted",
+            "فك تجميد الرفع المساحي",
+            reason.Trim(),
+            PropertyTimelineTones.Done,
+            nowUtc);
+
+    /// <summary>Tells the survey assignee the freeze a failure put on the property was lifted.</summary>
+    public static CreateUserNotificationRequest SurveyFreezeLiftedNotification(
+        Guid surveyTaskId,
+        string poNumber,
+        string reason) =>
+        new()
+        {
+            Title = "فك تجميد الرفع المساحي",
+            Body = $"فكّ أخصائي دراسة الحالة تجميد الرفع المساحي على أمر العمل {poNumber} — يمكنك المتابعة. السبب: {reason.Trim()}",
+            Tone = "success",
+            Href = $"/case-study/{Uri.EscapeDataString(surveyTaskId.ToString())}",
+            Category = "workflow",
+            EntityType = "task",
+            EntityId = surveyTaskId.ToString(),
+            SourceEvent = $"survey-freeze-lifted:{surveyTaskId}",
+        };
+
     public static CreateUserNotificationRequest SubmittedNotification(PropertyFailure failure) =>
         new()
         {

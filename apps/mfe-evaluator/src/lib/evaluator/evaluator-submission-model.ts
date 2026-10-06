@@ -72,9 +72,6 @@ export function dtoToSubmission(
       : typeof payload.valueBasis === "string" && payload.valueBasis.trim()
         ? payload.valueBasis
         : base.valueBasis,
-    depositCode:
-      typeof payload.depositCode === "string" ? payload.depositCode : base.depositCode,
-    depositCertificateFileName: payload.depositCertificateFileName ?? null,
     appraiserAddress:
       typeof payload.appraiserAddress === "string" &&
       payload.appraiserAddress.trim()
@@ -84,6 +81,12 @@ export function dtoToSubmission(
       typeof payload.appraiserPhone === "string" && payload.appraiserPhone.trim()
         ? payload.appraiserPhone
         : base.appraiserPhone,
+    inspectorDataSeen:
+      typeof payload.inspectorDataSeen === "string" && payload.inspectorDataSeen.trim()
+        ? payload.inspectorDataSeen
+        : undefined,
+    inspectorDataFingerprint: dto.inspectorDataFingerprint,
+    inspectorDataChangedGroups: dto.inspectorDataChangedGroups,
     submittedAtUtc: dto.submittedAtUtc ?? payload.submittedAtUtc ?? null,
     updatedAtUtc: dto.updatedAtUtc ?? payload.updatedAtUtc,
   };
@@ -95,6 +98,9 @@ export function submissionPayload(
   planImageMetadata?: EvaluatorPlanImageMetadata | null,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = { ...submission };
+  // Server-computed fields ride on the DTO, never in the saved payload.
+  delete payload.inspectorDataFingerprint;
+  delete payload.inspectorDataChangedGroups;
   if (reportMetadata) payload.reportMetadata = reportMetadata;
   if (planImageMetadata) payload.planImageMetadata = planImageMetadata;
   return payload;
@@ -113,8 +119,9 @@ export function isVisibleInAppraiserQueue(
   options?: { showSubmitted?: boolean },
 ): boolean {
   if (taskStatus === "completed") return Boolean(options?.showSubmitted);
-  const sub = loadEvaluatorSubmission(taskId);
-  if (sub?.status === "submitted") return Boolean(options?.showSubmitted);
+  void taskId;
+  // A submitted package is a hand-over, not the end: the task stays open until the final issuance
+  // (the appraiser still approves the specialist's draft and deposits it), so it stays in the queue.
   return true;
 }
 

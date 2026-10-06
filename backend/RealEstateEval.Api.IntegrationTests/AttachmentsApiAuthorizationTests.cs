@@ -238,6 +238,12 @@ internal sealed class StubAttachmentService : IAttachmentService
         CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<FileAttachmentMetaDto>>([]);
 
+    public Task<IReadOnlyList<OwnValuedDocumentDto>> ListOwnValuedDocumentsAsync(
+        string scopeKey,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<OwnValuedDocumentDto>>([]);
+
     public Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
         Guid id,
         PermissionsDto? actor,

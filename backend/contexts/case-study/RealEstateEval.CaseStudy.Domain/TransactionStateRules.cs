@@ -8,8 +8,9 @@ namespace RealEstateEval.CaseStudy.Domain;
 /// Foundational stages are sequential: work-order intake from Enfaz ← initial data (deeds)
 /// ← real-estate bourse inquiry ← distribution to parties.
 /// The work phase runs in parallel with dependencies — the inspector is the key node: the engineering
-/// office waits for inspector confirmation (and the site) then submits the survey · the valuer waits
-/// for inspector info and photos then prices · the case-study specialist waits for everyone then finishes.
+/// office waits for inspector confirmation (and the site) then submits the survey · the valuer drafts
+/// from distribution and its submission waits for the specialist's issued case-study report · the
+/// case-study specialist waits for the inspector and the survey (never the valuer) then issues.
 /// Closing has two different steps: Qeema deposit certificate (professional — valuation report alone,
 /// Q-6) then uploading the transaction to Enfaz (full handover).
 /// Overall status is derived from party statuses; the UI shows who is waiting on whom.
@@ -34,7 +35,7 @@ public static class TransactionStateRules
             (BourseInquiry, "الاستعلام من البورصة العقارية"),
             (Distribution, "التوزيع على الأطراف"),
             (PartyWork, "عمل الأطراف (متوازٍ باعتماديات)"),
-            (DepositCertificate, "شهادة الإيداع في قيمة (ق-6)"),
+            (DepositCertificate, "شهادة الإيداع في قيمة"),
             (EnfazHandover, "رفع المعاملة على إنفاذ"),
         ];
     }
@@ -74,7 +75,11 @@ public static class TransactionStateRules
         };
     }
 
-    public sealed record PartyFacts(bool Assigned, bool Completed);
+    /// <param name="Submitted">
+    /// The party handed its package over (appraiser: to the case specialist) but its task is not completed
+    /// yet. Optional so every older call site keeps compiling.
+    /// </param>
+    public sealed record PartyFacts(bool Assigned, bool Completed, bool Submitted = false);
 
     public sealed record Input(
  /// <summary>WorkflowTaskPhaseValues wire string for the parent case study task.</summary>
@@ -86,7 +91,12 @@ public static class TransactionStateRules
         PartyFacts CaseSpecialist,
  /// <summary>Q-6: final version issued with deposit certificate (valuation request closed).</summary>
         bool ValuationReportClosed,
-        bool EnfazHandedOver);
+        bool EnfazHandedOver,
+ /// <summary>
+ /// The specialist issued the case-study report — the fact the appraiser's submission waits on.
+ /// Optional so every older call site keeps compiling; a completed case-study task counts as issued.
+ /// </summary>
+        bool StudyReportIssued = false);
 
     public sealed record PartyState(
         string Key,
@@ -127,17 +137,24 @@ public static class TransactionStateRules
                 waitingOn: input.Inspector.Completed ? [] : [Parties.Inspector]));
         }
 
-        // Valuer waits for inspector info and photos, then prices.
+        // Valuer drafts from distribution on, but its SUBMISSION waits on the specialist's issued
+        // case-study report. (It used to wait on the inspector while the specialist waited on the
+        // valuer — a circular wait; the specialist no longer waits on the valuer.)
+        // Once it submitted, the valuer waits for the specialist again: the specialist drafts the
+        // report from the numbers and the valuer approves and deposits it (task completes at the
+        // final issuance).
+        var studyReportIssued = input.StudyReportIssued || input.CaseSpecialist.Completed;
+        var appraiserHandedOver = input.Appraiser.Submitted && !input.Appraiser.Completed;
         parties.Add(PartyStateFor(
             Parties.Appraiser,
             input.Appraiser,
             distributionDone,
-            waitingOn: input.Inspector.Completed ? [] : [Parties.Inspector]));
+            waitingOn: studyReportIssued && !appraiserHandedOver ? [] : [Parties.CaseSpecialist]));
 
-        // Case-study specialist waits for everyone.
+        // Case-study specialist waits for the field parties whose work the report is built on — the
+        // inspector and the engineering office — never for the valuer.
         var specialistWaits = new List<string>();
         if (!input.Inspector.Completed) specialistWaits.Add(Parties.Inspector);
-        if (!input.Appraiser.Completed) specialistWaits.Add(Parties.Appraiser);
         if (input.EngineeringOffice is { Completed: false })
             specialistWaits.Add(Parties.EngineeringOffice);
         parties.Add(PartyStateFor(
@@ -168,6 +185,7 @@ public static class TransactionStateRules
                 Stages.DepositCertificate => depositDone
                     ? Statuses.Completed
                     : parties.First(p => p.Key == Parties.Appraiser).Status == Statuses.Completed
+                      || input.Appraiser.Submitted
                         ? Statuses.InProgress
                         : Statuses.WaitingOnParty,
                 Stages.EnfazHandover => handoverDone
@@ -189,12 +207,45 @@ public static class TransactionStateRules
         return new Result(stages, parties, overall, WaitingSummary(parties, handoverDone));
     }
 
- /// <summary>Full Enfaz handover is not allowed before the deposit certificate and all parties complete.</summary>
+ /// <summary>
+ /// Full Enfaz handover is not allowed before the case-study report is issued, the valuation
+ /// report is deposited (Q-6) and every party is complete.
+ /// </summary>
     public static bool AllowsEnfazHandover(Input input) =>
-        !input.EnfazHandedOver
-        && input.ValuationReportClosed
-        && Evaluate(input).Stages
-            .First(s => s.Key == Stages.PartyWork).Status == Statuses.Completed;
+        !input.EnfazHandedOver && EnfazHandoverBlockReasonsAr(input).Count == 0;
+
+    public const string AlreadyHandedOverAr = "المعاملة مرفوعة على إنفاذ سلفاً";
+
+    /// <summary>
+    /// Why the handover cannot be recorded right now, in the words the specialist reads: every
+    /// missing condition, not just the first. Empty exactly when <see cref="AllowsEnfazHandover"/>.
+    /// A handed-over transaction reports that single fact.
+    /// </summary>
+    public static IReadOnlyList<string> EnfazHandoverBlockReasonsAr(Input input)
+    {
+        if (input.EnfazHandedOver) return [AlreadyHandedOverAr];
+
+        var reasons = new List<string>();
+        if (!input.StudyReportIssued)
+            reasons.Add("تقرير دراسة الحالة لم يُصدَر بعد");
+        if (!input.ValuationReportClosed)
+            reasons.Add("تقرير التقييم لم يُودَع بعد شهادة الإيداع)");
+
+        var state = Evaluate(input);
+        // The valuer's task completes only with the deposit, so while the deposit reason is listed the
+        // valuer is not repeated as an incomplete party.
+        var incomplete = state.Parties
+            .Where(p => p.Status != Statuses.Completed)
+            .Where(p => input.ValuationReportClosed || p.Key != Parties.Appraiser)
+            .Select(p => p.LabelAr)
+            .ToList();
+        if (incomplete.Count > 0)
+            reasons.Add($"لم يكتمل عمل: {string.Join("، ", incomplete)}");
+        else if (state.Stages.First(s => s.Key == Stages.PartyWork).Status != Statuses.Completed)
+            reasons.Add("مرحلة عمل الأطراف لم تبدأ بعد (لم يتم التوزيع)");
+
+        return reasons;
+    }
 
     /// <summary>R3 post-Enfaz decision is the general manager's prototype role, not the JWT identity role.</summary>
     public static bool AllowsPostEnfazDecision(string? prototypeRole) =>
@@ -254,14 +305,14 @@ public static class TransactionStateRules
         hasSurvey
             ?
             [
-                "تقرير التقييم — النسخة النهائية بشهادة الإيداع (ق-6)",
+                "تقرير التقييم — النسخة النهائية بشهادة الإيداع",
                 "تقرير دراسة الحالة (مخرج مستقل — قرار 22)",
                 "الرفع المساحي",
                 "المستندات والبيانات الأخرى",
             ]
             :
             [
-                "تقرير التقييم — النسخة النهائية بشهادة الإيداع (ق-6)",
+                "تقرير التقييم — النسخة النهائية بشهادة الإيداع",
                 "تقرير دراسة الحالة (مخرج مستقل — قرار 22)",
                 "المستندات والبيانات الأخرى",
             ];

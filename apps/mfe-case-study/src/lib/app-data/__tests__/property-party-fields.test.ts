@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  FIELD_INSPECTION_SECTION,
   PARTY_DATA_SECTIONS,
   applyPartyFieldEdits,
+  partyOptionLabel,
   partyProvenanceFor,
   partyProvenanceLines,
   partyValueText,
@@ -92,5 +94,31 @@ describe("property-party-fields", () => {
       const keys = section.fields.map((f) => f.key);
       expect(new Set(keys).size).toBe(keys.length);
     }
+  });
+
+  it("lists the land-has-valuable-structures answer as a yes/no select", () => {
+    const field = FIELD_INSPECTION_SECTION.fields.find((f) => f.key === "landHasValuableStructures");
+    expect(field).toMatchObject({
+      label: "مبانٍ أو ملاحق تستحق التقييم (أرض)",
+      input: "select",
+      options: ["yes", "no"],
+    });
+    expect(partyOptionLabel("landHasValuableStructures", "yes")).toBe("نعم");
+    expect(partyOptionLabel("landHasValuableStructures", "no")).toBe("لا");
+  });
+
+  it("lists the inspector's deed-match verdict as a yes/no select the specialist can correct", () => {
+    const field = FIELD_INSPECTION_SECTION.fields.find((f) => f.key === "deedMatchesNature");
+    expect(field).toMatchObject({
+      label: "مطابقة الحدود للصك",
+      input: "select",
+      options: ["yes", "no"],
+    });
+    expect(partyOptionLabel("deedMatchesNature", "yes")).toBe("نعم");
+    expect(partyOptionLabel("deedMatchesNature", "no")).toBe("لا");
+    // A correction round-trips through the generic payload edit path.
+    expect(applyPartyFieldEdits({ deedMatchesNature: "yes" }, { deedMatchesNature: "no" })).toEqual({
+      deedMatchesNature: "no",
+    });
   });
 });

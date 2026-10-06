@@ -103,6 +103,41 @@ public class PartyTaskSubmissionsController : ControllerBase
         return ToActionResult(result, errors);
     }
 
+    /// <summary>Who returning the inspection package may affect (<c>?sections=components,area</c>).</summary>
+    [HttpGet("{taskId:guid}/return-impact")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<ReturnImpactDto>> ReturnImpact(
+        Guid taskId,
+        [FromQuery] string? sections,
+        CancellationToken cancellationToken)
+    {
+        var keys = (sections ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var (result, errors) = await _submissions.GetReturnImpactAsync(
+            taskId,
+            keys,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        if (errors is null && result is null) return NotFound();
+        return ToObjectResult(result, errors);
+    }
+
+    /// <summary>Returns the inspection for correction and applies the decision on the affected parties.</summary>
+    [HttpPost("{taskId:guid}/return-inspection")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<ReturnInspectionResultDto>> ReturnInspection(
+        Guid taskId,
+        [FromBody] ReturnInspectionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _submissions.ReturnInspectionAsync(
+            taskId,
+            request,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToObjectResult(result, errors);
+    }
+
     [HttpPost("{taskId:guid}/accept")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Accept(
@@ -119,6 +154,21 @@ public class PartyTaskSubmissionsController : ControllerBase
     private ActionResult<PartyTaskSubmissionDto> ToActionResult(
         PartyTaskSubmissionDto? result,
         Dictionary<string, string>? errors)
+    {
+        if (errors is not null)
+        {
+            if (errors.TryGetValue("_", out var msg)
+                && msg.Contains("صلاحية", StringComparison.Ordinal))
+            {
+                return this.FieldErrorsProblem(errors, StatusCodes.Status403Forbidden, "Forbidden");
+            }
+            return this.FieldErrorsProblem(errors);
+        }
+        return Ok(result);
+    }
+
+    private ActionResult<T> ToObjectResult<T>(T? result, Dictionary<string, string>? errors)
+        where T : class
     {
         if (errors is not null)
         {

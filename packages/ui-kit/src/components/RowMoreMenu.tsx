@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/cn";
+import { useIsHydrated } from "../hooks/use-is-hydrated";
 import { Spinner } from "./Spinner";
 
 export type RowMoreMenuItem = {
@@ -189,12 +190,8 @@ export function RowMoreMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsHydrated();
   const [entered, setEntered] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;
@@ -224,12 +221,16 @@ export function RowMoreMenu({
     };
   }, [open, items.length]);
 
-  useEffect(() => {
+  // Reset placement while closing, during render rather than in an effect, so a
+  // reopen always replays the enter transition without an extra commit.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) {
       setMenuStyle({});
       setEntered(false);
     }
-  }, [open]);
+  }
 
   useEffect(() => {
     if (!open) return;

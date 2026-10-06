@@ -4,7 +4,8 @@ import {
   BOUNDARIES_AVAILABILITY_OPTIONS,
   BOURSE_DEED_VITALITY_ACTIVE,
   BOURSE_DEED_VITALITY_INACTIVE,
-  BOURSE_OBSTRUCTION_LABEL,
+  DEED_STATUS_ACTIVE,
+  DEED_STATUS_INACTIVE,
   DEED_STATUS_OPTIONS,
   RESTRICTIONS_PRESENT_OPTIONS,
   RESTRICTION_TYPE_OPTIONS,
@@ -45,13 +46,10 @@ type Props = {
   ) => void;
   poNumber?: string;
   showIntroNote?: boolean;
-  /** Deed track active / inactive → failed (bourse inquiry and specialist tasks). */
+  /** Deed vitality pick — active / inactive; both continue to distribution (bourse inquiry and specialist tasks). */
   showDeedVitalityFlow?: boolean;
   deedVitality?: BourseDeedVitality | null;
   onDeedVitalityChange?: (value: BourseDeedVitality) => void;
-  obstructionReason?: string;
-  onObstructionReasonChange?: (value: string) => void;
-  obstructionReasonError?: string;
 };
 
 const pillClass = (selected: boolean) =>
@@ -68,15 +66,12 @@ export function PoPropertyBourseForm({
   showDeedVitalityFlow = false,
   deedVitality = null,
   onDeedVitalityChange,
-  obstructionReason = "",
-  onObstructionReasonChange,
-  obstructionReasonError,
 }: Props) {
   const { showToast } = useToast();
   const attachPo = poNumber?.trim() || "";
   const compactRegisteredTitle = propertyHasRegisteredTitle(property);
   const vitalityFlow = showDeedVitalityFlow && !compactRegisteredTitle;
-  const obstructionPath = vitalityFlow && deedVitality === "inactive";
+  const inactiveDeed = vitalityFlow && deedVitality === "inactive";
 
   // Prefer stored classification; for legacy rows infer from the type list.
   const classificationValue =
@@ -120,7 +115,7 @@ export function PoPropertyBourseForm({
               className={pillClass(deedVitality === "active")}
               onClick={() => {
                 onDeedVitalityChange?.("active");
-                onPatch("deedStatus", "فعال");
+                onPatch("deedStatus", DEED_STATUS_ACTIVE);
               }}
             >
               {BOURSE_DEED_VITALITY_ACTIVE}
@@ -128,7 +123,10 @@ export function PoPropertyBourseForm({
             <button
               type="button"
               className={pillClass(deedVitality === "inactive")}
-              onClick={() => onDeedVitalityChange?.("inactive")}
+              onClick={() => {
+                onDeedVitalityChange?.("inactive");
+                onPatch("deedStatus", DEED_STATUS_INACTIVE);
+              }}
             >
               {BOURSE_DEED_VITALITY_INACTIVE}
             </button>
@@ -136,33 +134,14 @@ export function PoPropertyBourseForm({
         </div>
       ) : null}
 
-      {obstructionPath ? (
-        <div className="col-span-full w-full">
-          <Note tone="warn" className="mb-3">
-            الصك غير فعال — سجّل التعذر وسببه ليُراجعه المشرف في{" "}
-            <strong>إدارة التعذرات</strong>.
-          </Note>
-          <div className="mb-3 w-full">
-            <Label className="mb-1 text-[11px]">نوع الإجراء</Label>
-            <div className="flex flex-wrap gap-1.5">
-              <button type="button" className={pillClass(true)}>
-                {BOURSE_OBSTRUCTION_LABEL}
-              </button>
-            </div>
-          </div>
-          <RegField
-            id="obstruction_reason"
-            label="سبب التعذر"
-            required
-            value={obstructionReason}
-            error={obstructionReasonError}
-            onChange={(v) => onObstructionReasonChange?.(v)}
-            placeholder="اذكر سبب عدم إكمال بيانات البورصة…"
-          />
-        </div>
+      {inactiveDeed ? (
+        <Note tone="warn" className="col-span-full mb-3">
+          الصك غير فعال في البورصة — يُسجَّل بحالته ويمكنك إكمال الدراسة والانتقال
+          للتوزيع، أو تسجيل تعذّر إن رأيت ذلك.
+        </Note>
       ) : null}
 
-      {showIntroNote && !obstructionPath ? (
+      {showIntroNote ? (
         <Note tone="info" className="mb-3">
           {compactRegisteredTitle
             ? "بيانات الموقع والمساحة حسب استعلام البورصة."
@@ -170,8 +149,7 @@ export function PoPropertyBourseForm({
         </Note>
       ) : null}
 
-      {!obstructionPath ? (
-        <InfathSection title="الموقع والمساحة" className="mt-3">
+      <InfathSection title="الموقع والمساحة" className="mt-3">
         <FormRow>
           <RegionCitySelects
             property={property}
@@ -232,10 +210,9 @@ export function PoPropertyBourseForm({
             />
           )}
         </FormRow>
-        </InfathSection>
-      ) : null}
+      </InfathSection>
 
-      {!obstructionPath && !compactRegisteredTitle ? (
+      {!compactRegisteredTitle ? (
         <>
           <InfathSection title="صورة الصك" className="mt-3">
           <PropertyFileUploadField

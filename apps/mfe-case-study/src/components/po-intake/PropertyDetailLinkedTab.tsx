@@ -24,7 +24,7 @@ import {
   findPriorDeedFull,
   listPriorDeedsFull,
 } from "../../lib/app-data/po-intake-reads";
-import { loadCaseStudyFormDraft } from "../../lib/app-data/case-study-form-reads";
+import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
@@ -159,7 +159,7 @@ export function PropertyDetailLinkedTab({
               )
             : Promise.resolve([] as PriorDeedRegistrationDto[]),
           caseStudyTask
-            ? loadCaseStudyFormDraft(caseStudyTask.id)
+            ? loadCaseStudyReportDraft(caseStudyTask.id)
             : Promise.resolve(null),
         ]);
 

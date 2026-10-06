@@ -16,10 +16,10 @@ export type {
 } from "../app-data/po-intake-property-model";
 
 export type {
-  CaseStudyFormAnswer,
-  CaseStudyFormDraft,
-  CaseStudyFormStatus,
-} from "../app-data/case-study-form-model";
+  CaseStudyReportAnswer,
+  CaseStudyReportDraft,
+  CaseStudyReportStatus,
+} from "../app-data/case-study-report-model";
 
 export type {
   PropertyDetailDocumentEntry,

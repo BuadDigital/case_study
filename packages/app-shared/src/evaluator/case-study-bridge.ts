@@ -7,9 +7,9 @@
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import type {
-  CaseStudyFormDraft,
-  SaveCaseStudyFormDraftResult,
-} from "../app-data/case-study-form-model";
+  CaseStudyReportDraft,
+  SaveCaseStudyReportDraftResult,
+} from "../app-data/case-study-report-model";
 import type {
   PropertyDetailDocumentEntry,
   PropertyDetailDocumentSection,
@@ -43,12 +43,12 @@ export type EvaluatorCaseStudyBridge = {
     inspectionTaskId: string | null;
     enabled?: boolean;
   }) => PropertyDetailDocumentSection[];
-  loadPartyCaseStudyFormDraft: (
+  loadPartyCaseStudyReportDraft: (
     childTaskId: string,
-  ) => Promise<CaseStudyFormDraft | null>;
-  savePartyCaseStudyFormDraft: (
-    draft: CaseStudyFormDraft,
-  ) => Promise<SaveCaseStudyFormDraftResult>;
+  ) => Promise<CaseStudyReportDraft | null>;
+  savePartyCaseStudyReportDraft: (
+    draft: CaseStudyReportDraft,
+  ) => Promise<SaveCaseStudyReportDraftResult>;
   collectFieldInspectionDocumentsFromSubmission: (
     submission: InspectorWorkspaceDraft,
   ) => PropertyDetailDocumentEntry[];

@@ -27,7 +27,17 @@ export type FailureRecord = {
   specialist: string;
   createdAt: string;
   updatedAt: string;
+  /** The specialist lifted the survey freeze this failure caused (the failure itself stays open). */
+  surveyFreezeLiftedAt?: string | null;
+  surveyFreezeLiftReason?: string | null;
 };
+
+/** The survey freeze of this failure was lifted by the specialist. */
+export function isSurveyFreezeLifted(
+  failure: Pick<FailureRecord, "surveyFreezeLiftedAt">,
+): boolean {
+  return Boolean(failure.surveyFreezeLiftedAt?.trim());
+}
 
 export type CreateFailureInput = {
   poNumber: string;
