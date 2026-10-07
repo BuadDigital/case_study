@@ -20,6 +20,7 @@ import {
   EmptyState,
   InlineLoadingSkeleton,
   PageShell,
+  useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import {
@@ -62,6 +63,12 @@ export function ComparablePropertiesView() {
   const [showInactive, setShowInactive] = useState(false);
   const [tagEditId, setTagEditId] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
+  // Which page / «show inactive» set the rows on screen belong to — set with the
+  // rows, so the swap fade plays when they land (not on reloads, not per keystroke).
+  // Starts at the first set, so the initial load does not fade.
+  const [shownSetKey, setShownSetKey] = useState(`${showInactive}|${page}`);
+  const listRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(listRef, shownSetKey);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 280);
@@ -106,6 +113,7 @@ export function ComparablePropertiesView() {
     }
     setError(null);
     setRows(res.data.items);
+    setShownSetKey(`${showInactive}|${page}`);
     setTotalCount(res.data.totalCount);
     setTotalPages(Math.max(1, res.data.totalPages));
   }, [debouncedQ, showInactive, page]);
@@ -250,118 +258,121 @@ export function ComparablePropertiesView() {
               }
             />
           ) : (
-            <div className={cn(loading && "opacity-60")}>
-              {rows.map((row) => (
-                <div
-                  key={row.id}
-                  className={cn(
-                    "border-b border-border py-3 last:border-b-0",
-                    "[content-visibility:auto] [contain-intrinsic-size:auto_88px]",
-                    !row.isActive && "opacity-60",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[13.5px] font-bold text-heading">
-                          {row.referenceCode} · {row.comparablePropertyType}
-                          {row.usage ? ` (${row.usage})` : ""}
-                        </span>
-                        {row.reliabilityTag !== "normal" ? (
-                          <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
-                            {row.reliabilityTagLabelAr}
+            // The fade sits on a wrapper: the list's own loading dim would snap.
+            <div ref={listRef}>
+              <div className={cn(loading && "opacity-60")}>
+                {rows.map((row) => (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "border-b border-border py-3 last:border-b-0",
+                      "[content-visibility:auto] [contain-intrinsic-size:auto_88px]",
+                      !row.isActive && "opacity-60",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13.5px] font-bold text-heading">
+                            {row.referenceCode} · {row.comparablePropertyType}
+                            {row.usage ? ` (${row.usage})` : ""}
                           </span>
-                        ) : null}
-                        {row.isDuplicateTagged ? (
-                          <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
-                            مكرر
-                          </span>
-                        ) : null}
-                        {row.duplicateSuspect && !row.isDuplicateTagged ? (
-                          <span className="inline-flex items-center rounded-full border border-border-md px-2 py-0.5 text-[10.5px] font-semibold text-text-2">
-                            اشتباه تكرار
-                          </span>
-                        ) : null}
-                        {!row.isActive ? (
-                          <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10.5px] font-semibold text-text-3">
-                            معطّل
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-0.5 text-[11.5px] leading-relaxed text-text-3">
-                        {row.transactionKindLabelAr}
-                        {row.priceDescriptionLabelAr
-                          ? ` / ${row.priceDescriptionLabelAr}`
-                          : ""}{" "}
-                        · {row.district}
-                        {row.city ? ` · ${row.city}` : ""} ·{" "}
-                        {row.transactionDate} · {row.areaSqm} م² ·{" "}
-                        {SAR_FORMAT.format(row.price)} ر.س ·{" "}
-                        {SAR_FORMAT.format(row.pricePerSqm)} ر.س/م²
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-text-3">
-                        المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}
-                        {row.sourceCard.freshnessLabelAr}
-                        {row.sourceCard.fromPriorDeal
-                          ? ` · من معاملة سابقة${
-                              row.sourceCard.sourceWorkOrderNumber
-                                ? ` (${row.sourceCard.sourceWorkOrderNumber})`
-                                : ""
-                            }`
-                          : ""}
-                      </div>
-                      {row.tagRationale ? (
+                          {row.reliabilityTag !== "normal" ? (
+                            <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
+                              {row.reliabilityTagLabelAr}
+                            </span>
+                          ) : null}
+                          {row.isDuplicateTagged ? (
+                            <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
+                              مكرر
+                            </span>
+                          ) : null}
+                          {row.duplicateSuspect && !row.isDuplicateTagged ? (
+                            <span className="inline-flex items-center rounded-full border border-border-md px-2 py-0.5 text-[10.5px] font-semibold text-text-2">
+                              اشتباه تكرار
+                            </span>
+                          ) : null}
+                          {!row.isActive ? (
+                            <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10.5px] font-semibold text-text-3">
+                              معطّل
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-0.5 text-[11.5px] leading-relaxed text-text-3">
+                          {row.transactionKindLabelAr}
+                          {row.priceDescriptionLabelAr
+                            ? ` / ${row.priceDescriptionLabelAr}`
+                            : ""}{" "}
+                          · {row.district}
+                          {row.city ? ` · ${row.city}` : ""} ·{" "}
+                          {row.transactionDate} · {row.areaSqm} م² ·{" "}
+                          {SAR_FORMAT.format(row.price)} ر.س ·{" "}
+                          {SAR_FORMAT.format(row.pricePerSqm)} ر.س/م²
+                        </div>
                         <div className="mt-0.5 text-[11px] text-text-3">
-                          مبرر الوسم: {row.tagRationale}
-                          {row.taggedByUserId
-                            ? ` — بواسطة ${row.taggedByUserId}`
+                          المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}
+                          {row.sourceCard.freshnessLabelAr}
+                          {row.sourceCard.fromPriorDeal
+                            ? ` · من معاملة سابقة${
+                                row.sourceCard.sourceWorkOrderNumber
+                                  ? ` (${row.sourceCard.sourceWorkOrderNumber})`
+                                  : ""
+                              }`
                             : ""}
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        className={opsBtnGhost}
-                        onClick={() =>
-                          setTagEditId((cur) =>
-                            cur === row.id ? null : row.id,
-                          )
-                        }
-                      >
-                        {tagEditId === row.id ? "إغلاق الوسم" : "وسم الجودة"}
-                      </button>
-                      {row.isActive ? (
+                        {row.tagRationale ? (
+                          <div className="mt-0.5 text-[11px] text-text-3">
+                            مبرر الوسم: {row.tagRationale}
+                            {row.taggedByUserId
+                              ? ` — بواسطة ${row.taggedByUserId}`
+                              : ""}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-1.5">
                         <button
                           type="button"
-                          className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:border-[#d9694f]/40 enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => void onDeactivate(row.id)}
+                          className={opsBtnGhost}
+                          onClick={() =>
+                            setTagEditId((cur) =>
+                              cur === row.id ? null : row.id,
+                            )
+                          }
                         >
-                          تعطيل
+                          {tagEditId === row.id ? "إغلاق الوسم" : "وسم الجودة"}
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-gold-d transition-colors enabled:hover:border-gold/40 enabled:hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => void onReactivate(row.id)}
-                        >
-                          تفعيل
-                        </button>
-                      )}
+                        {row.isActive ? (
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:border-[#d9694f]/40 enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => void onDeactivate(row.id)}
+                          >
+                            تعطيل
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-gold-d transition-colors enabled:hover:border-gold/40 enabled:hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => void onReactivate(row.id)}
+                          >
+                            تفعيل
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {tagEditId === row.id ? (
+                      <TagEditorRow
+                        key={row.id}
+                        row={row}
+                        onSaved={() => {
+                          setTagEditId(null);
+                          void reload();
+                        }}
+                      />
+                    ) : null}
                   </div>
-                  {tagEditId === row.id ? (
-                    <TagEditorRow
-                      key={row.id}
-                      row={row}
-                      onSaved={() => {
-                        setTagEditId(null);
-                        void reload();
-                      }}
-                    />
-                  ) : null}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
           {totalCount > 0 && !singlePage ? (

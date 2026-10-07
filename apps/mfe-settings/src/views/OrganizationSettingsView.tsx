@@ -7,7 +7,7 @@
  * the generic card with `OrganizationSettingsForms`.
  */
 
-import dynamic from "next/dynamic";
+import { Suspense, useEffect, useRef } from "react";
 import { Can } from "@platform/app-shared/components/Can";
 import {
   Note,
@@ -23,16 +23,27 @@ import {
   opsLetterTitle,
   opsTfActions,
   opsTfNote,
-  opsTfSeg,
-  opsTfSegActive,
   opsTfSegRow,
+  preloadableLazy,
+  useSwapAnimation,
+  whenIdle,
 } from "@platform/ui-kit";
+import { opsTfSeg, opsTfSegActive } from "../lib/settings-ops-tw";
 import {
   OrganizationCommunicationsForm,
   OrganizationSlaForm,
 } from "./OrganizationSettingsForms";
-import { formatUpdatedAt, TAB_META, TABS, tabLabel } from "./organization-settings-state";
-import { useOrganizationSettingsWorkflow } from "./useOrganizationSettingsWorkflow";
+import {
+  formatUpdatedAt,
+  TAB_META,
+  TABS,
+  tabLabel,
+  type TabId,
+} from "./organization-settings-state";
+import {
+  useOrganizationSettingsWorkflow,
+  type OrganizationSettingsWorkflow,
+} from "./useOrganizationSettingsWorkflow";
 
 const settingsViewFallback = () => (
   <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
@@ -40,25 +51,39 @@ const settingsViewFallback = () => (
   </PageShell>
 );
 
-const BrandIdentityView = dynamic(
-  () => import("./BrandIdentityView").then((m) => m.BrandIdentityView),
-  { ssr: false, loading: settingsViewFallback },
-);
-const OrganizationDataView = dynamic(
-  () => import("./OrganizationDataView").then((m) => m.OrganizationDataView),
-  { ssr: false, loading: settingsViewFallback },
-);
-const ValuersRosterView = dynamic(
-  () => import("./ValuersRosterView").then((m) => m.ValuersRosterView),
-  { ssr: false, loading: settingsViewFallback },
-);
-const ProfessionalValuationReportView = dynamic(
-  () =>
+// The shell mounts this MFE client-only, so plain lazy chunks are safe here.
+// preloadableLazy: once warmed, a section renders without a Suspense flash.
+const delegatedViews = {
+  branding: preloadableLazy(() =>
+    import("./BrandIdentityView").then((m) => m.BrandIdentityView),
+  ),
+  company: preloadableLazy(() =>
+    import("./OrganizationDataView").then((m) => m.OrganizationDataView),
+  ),
+  evaluator: preloadableLazy(() =>
+    import("./ValuersRosterView").then((m) => m.ValuersRosterView),
+  ),
+  report: preloadableLazy(() =>
     import("./ProfessionalValuationReportView").then(
       (m) => m.ProfessionalValuationReportView,
     ),
-  { ssr: false, loading: settingsViewFallback },
-);
+  ),
+} satisfies Partial<Record<TabId, unknown>>;
+
+const BrandIdentityView = delegatedViews.branding.Component;
+const OrganizationDataView = delegatedViews.company.Component;
+const ValuersRosterView = delegatedViews.evaluator.Component;
+const ProfessionalValuationReportView = delegatedViews.report.Component;
+
+function preloadDelegatedView(id: TabId) {
+  if (id in delegatedViews) {
+    void delegatedViews[id as keyof typeof delegatedViews].preload();
+  }
+}
+
+function preloadAllDelegatedViews() {
+  for (const view of Object.values(delegatedViews)) void view.preload();
+}
 
 function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
@@ -80,6 +105,25 @@ function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
 
 export function OrganizationSettingsView() {
   const workflow = useOrganizationSettingsWorkflow();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Sections share one pathname (?tab=), so the shell's page fade never fires here.
+  useSwapAnimation(panelRef, workflow.tab);
+  useEffect(() => whenIdle(preloadAllDelegatedViews), []);
+
+  return (
+    <div ref={panelRef}>
+      <Suspense fallback={settingsViewFallback()}>
+        <OrganizationSettingsSection workflow={workflow} />
+      </Suspense>
+    </div>
+  );
+}
+
+function OrganizationSettingsSection({
+  workflow,
+}: {
+  workflow: OrganizationSettingsWorkflow;
+}) {
   const { canEdit, tab, setTab, draft, loading, saving, loadError, onSave } = workflow;
 
   if (tab === "branding") {
@@ -139,6 +183,8 @@ export function OrganizationSettingsView() {
             aria-selected={tab === item.id}
             className={tab === item.id ? opsTfSegActive : opsTfSeg}
             onClick={() => setTab(item.id)}
+            onPointerEnter={() => preloadDelegatedView(item.id)}
+            onFocus={() => preloadDelegatedView(item.id)}
           >
             {item.label}
           </button>

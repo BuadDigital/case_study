@@ -12,7 +12,7 @@
  * status buckets, copy and totals in `party-individual-fees-state.ts`.
  */
 
-import { Fragment } from "react";
+import { Fragment, useRef } from "react";
 import Link from "next/link";
 import {
   cn,
@@ -29,6 +29,7 @@ import {
   Th,
   THead,
   Tr,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { openPartyBillingAttachment } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -143,6 +144,8 @@ export function PartyIndividualFeesHtmlScreen({
     act,
     showToast,
   } = usePartyIndividualFeesWorkflow(assigneeId, variant);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, tab);
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -203,391 +206,393 @@ export function PartyIndividualFeesHtmlScreen({
         tabs={tabs}
       />
 
-      {!isCourtVisit &&
-      (tab === "action" || tab === "tracking" || tab === "ready") ? (
-        <>
-          <EngFeesSectionTitle
-            title={
-              tab === "action"
-                ? copy.actionTitle
-                : tab === "tracking"
-                  ? copy.trackingTitle
-                  : copy.readyTitle
-            }
-            sub={
-              tab === "action"
-                ? copy.actionSub
-                : tab === "tracking"
-                  ? copy.trackingSub
-                  : copy.readySub
-            }
-          />
+      <div ref={panelRef} className="flex flex-col gap-3.5">
+        {!isCourtVisit &&
+        (tab === "action" || tab === "tracking" || tab === "ready") ? (
+          <>
+            <EngFeesSectionTitle
+              title={
+                tab === "action"
+                  ? copy.actionTitle
+                  : tab === "tracking"
+                    ? copy.trackingTitle
+                    : copy.readyTitle
+              }
+              sub={
+                tab === "action"
+                  ? copy.actionSub
+                  : tab === "tracking"
+                    ? copy.trackingSub
+                    : copy.readySub
+              }
+            />
 
-          <div className={opsToolbar}>
-            <div className={opsFilters}>
-              <div className="relative flex items-center">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="pointer-events-none absolute start-3 text-text-3"
-                  aria-hidden
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="رقم الصك أو المدينة أو الحي…"
-                  aria-label="بحث الأتعاب"
-                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
-                />
+            <div className={opsToolbar}>
+              <div className={opsFilters}>
+                <div className="relative flex items-center">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="pointer-events-none absolute start-3 text-text-3"
+                    aria-hidden
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="رقم الصك أو المدينة أو الحي…"
+                    aria-label="بحث الأتعاب"
+                    className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
+                  />
+                </div>
+                <div className="relative flex items-center">
+                  <select
+                    value={stFilter}
+                    onChange={(e) => setStFilter(e.target.value)}
+                    aria-label="تصفية الحالة"
+                    className={cn(opsFldControl, "cursor-pointer")}
+                  >
+                    <option value="">جميع الحالات</option>
+                    {tab === "action" ? (
+                      <option value="needs_submit">جاهز للرفع</option>
+                    ) : null}
+                    {tab === "tracking" ? (
+                      <>
+                        <option value="draft_work">بانتظار العمل</option>
+                        <option value="returned_to_party">مُعاد إليكم</option>
+                        <option value="inquiry_to_party">استفسار بانتظار ردكم</option>
+                        <option value="sup_review">عند المشرف</option>
+                        <option value="suspended">موقوف</option>
+                      </>
+                    ) : null}
+                    {tab === "ready" ? (
+                      <>
+                        <option value="at_finance">لدى المالية</option>
+                        <option value="listed">في أمر صرف</option>
+                        <option value="paid">مصروف</option>
+                      </>
+                    ) : null}
+                  </select>
+                </div>
+                <span className={opsListCount}>{filteredFees.length} بند</span>
               </div>
-              <div className="relative flex items-center">
-                <select
-                  value={stFilter}
-                  onChange={(e) => setStFilter(e.target.value)}
-                  aria-label="تصفية الحالة"
-                  className={cn(opsFldControl, "cursor-pointer")}
-                >
-                  <option value="">جميع الحالات</option>
-                  {tab === "action" ? (
-                    <option value="needs_submit">جاهز للرفع</option>
-                  ) : null}
-                  {tab === "tracking" ? (
-                    <>
-                      <option value="draft_work">بانتظار العمل</option>
-                      <option value="returned_to_party">مُعاد إليكم</option>
-                      <option value="inquiry_to_party">استفسار بانتظار ردكم</option>
-                      <option value="sup_review">عند المشرف</option>
-                      <option value="suspended">موقوف</option>
-                    </>
-                  ) : null}
-                  {tab === "ready" ? (
-                    <>
-                      <option value="at_finance">لدى المالية</option>
-                      <option value="listed">في أمر صرف</option>
-                      <option value="paid">مصروف</option>
-                    </>
-                  ) : null}
-                </select>
-              </div>
-              <span className={opsListCount}>{filteredFees.length} بند</span>
             </div>
-          </div>
 
-          <TableFrame>
-            <Table className="min-w-[920px]">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>الصك</Th>
-                  <Th>{copy.dateCol}</Th>
-                  <Th>سعر الجدول</Th>
-                  <Th>تعديل / مبرر</Th>
-                  <Th>الصافي</Th>
-                  <Th>الحالة</Th>
-                  <Th>{copy.actionCol}</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {feesPending && filteredFees.length === 0 ? (
-                  <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
-                ) : filteredFees.length === 0 ? (
-                  <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
-                ) : (
-                  filteredFees.map((row) => {
-                    const st = individualFeeUiStatus(row);
-                    const meta = statusMeta(st);
-                    const { deed, region } = deedParts(row);
-                    const ded = row.supervisorDiscountSar > 0;
-                    const busy = busyId === row.workflowTaskId;
-                    return (
-                      <Tr
-                        key={
-                          row.id ||
-                          `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
-                        }
-                      >
-                        <Td>
-                          <div className="flex min-w-0 flex-col gap-0.5">
-                            <span
-                              dir="ltr"
-                              className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
-                            >
-                              {deed}
-                            </span>
-                            <span className="text-[11px] text-text-3">
-                              {region}
-                            </span>
-                          </div>
-                        </Td>
-                        <TdLtr valueClassName="text-[12px] text-text-2">
-                          {formatYmd(
-                            row.workSubmittedAtUtc ??
-                              row.accruedAtUtc ??
-                              row.updatedAtUtc,
-                          )}
-                        </TdLtr>
-                        <TdLtr valueClassName="text-[12.5px] text-text-2">
-                          {fmtSar(row.agreedFeeSar)}
-                        </TdLtr>
-                        <Td>
-                          {ded ? (
-                            <span
-                              className="inline-flex min-w-0 max-w-full items-center gap-1.5"
-                              title={row.discountReason ?? undefined}
-                            >
-                              <span
-                                dir="ltr"
-                                className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
-                              >
-                                − {fmtSar(row.supervisorDiscountSar)}
-                              </span>
-                              <span className="truncate text-[10.5px] text-text-3">
-                                {row.discountReason || ""}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-text-3">
-                              بسعر الجدول
-                            </span>
-                          )}
-                        </Td>
-                        <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                          {fmtSar(row.netFeeSar)}
-                        </TdLtr>
-                        <Td>
-                          <StatusPill label={meta.label} style={meta.style} />
-                        </Td>
-                        <Td className="overflow-visible">
-                          {st === "needs_submit" ? (
-                            <button
-                              type="button"
-                              disabled={busy || !row.canSubmitToSupervisor}
-                              className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
-                              onClick={() =>
-                                void act(row, "submit-to-supervisor")
-                              }
-                            >
-                              رفع للمشرف
-                            </button>
-                          ) : st === "sup_review" ? (
-                            <span className="text-[11px] text-text-3">
-                              بانتظار الاعتماد
-                            </span>
-                          ) : st === "returned_to_party" ||
-                            st === "inquiry_to_party" ? (
-                            <span className="text-[11px] text-text-3">
-                              راجع الملاحظات وأعِد الرفع
-                            </span>
-                          ) : st === "draft_work" ? (
-                            <span className="text-[11px] text-text-3">
-                              بعد إنجاز العمل يظهر للرفع
-                            </span>
-                          ) : st === "at_finance" || st === "listed" ? (
-                            <span className="text-[11px] text-text-3">
-                              المالية تتولى أمر الصرف
-                            </span>
-                          ) : st === "paid" ? (
-                            <span className="text-[11px] font-semibold text-heading">
-                              ✓ مصروف
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-text-3">—</span>
-                          )}
-                        </Td>
-                      </Tr>
-                    );
-                  })
-                )}
-              </TBody>
-            </Table>
-            <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
-              {copy.roleLabel}: {copy.statementsFooter}
-            </div>
-          </TableFrame>
-        </>
-      ) : null}
-
-      {tab === "statements" ? (
-        <>
-          <div className={opsToolbar}>
-            <div className={opsFilters}>
-              <div className="relative flex items-center">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="pointer-events-none absolute start-3 text-text-3"
-                  aria-hidden
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input
-                  type="search"
-                  value={fnSearch}
-                  onChange={(e) => setFnSearch(e.target.value)}
-                  placeholder="رقم أمر الصرف…"
-                  className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
-                />
-              </div>
-              <span className={opsListCount}>{filteredFns.length} مستند</span>
-            </div>
-          </div>
-
-          <TableFrame>
-            <Table className="min-w-[820px]">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>رقم الأمر</Th>
-                  <Th>تاريخ الإصدار</Th>
-                  <Th>المعاملات</Th>
-                  <Th>الإجمالي</Th>
-                  <Th>الحالة</Th>
-                  <Th>الصرف</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {filteredFns.length === 0 ? (
-                  <TableEmptyRow colSpan={6}>
-                    لا توجد مستندات مطابقة.
-                  </TableEmptyRow>
-                ) : (
-                  filteredFns.map((s) => {
-                    const open = openFn === s.referenceNumber;
-                    const meta = statementMeta(s);
-                    return (
-                      <Fragment key={s.id}>
+            <TableFrame>
+              <Table className="min-w-[920px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>الصك</Th>
+                    <Th>{copy.dateCol}</Th>
+                    <Th>سعر الجدول</Th>
+                    <Th>تعديل / مبرر</Th>
+                    <Th>الصافي</Th>
+                    <Th>الحالة</Th>
+                    <Th>{copy.actionCol}</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {feesPending && filteredFees.length === 0 ? (
+                    <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
+                  ) : filteredFees.length === 0 ? (
+                    <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
+                  ) : (
+                    filteredFees.map((row) => {
+                      const st = individualFeeUiStatus(row);
+                      const meta = statusMeta(st);
+                      const { deed, region } = deedParts(row);
+                      const ded = row.supervisorDiscountSar > 0;
+                      const busy = busyId === row.workflowTaskId;
+                      return (
                         <Tr
-                          hoverable={false}
-                          className={cn(
-                            "cursor-pointer [&:hover_td]:bg-row-hover",
-                            open && "[&_td]:bg-row-hover",
-                          )}
-                          onClick={() =>
-                            setOpenFn(open ? null : s.referenceNumber)
+                          key={
+                            row.id ||
+                            `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
                           }
                         >
-                          <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
-                            {s.referenceNumber}
-                          </TdLtr>
-                          <TdLtr valueClassName="text-[12px] text-text-2">
-                            {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                          </TdLtr>
-                          <Td className="text-[12.5px]">
-                            {s.lines.length} معاملات
+                          <Td>
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              <span
+                                dir="ltr"
+                                className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
+                              >
+                                {deed}
+                              </span>
+                              <span className="text-[11px] text-text-3">
+                                {region}
+                              </span>
+                            </div>
                           </Td>
-                          <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                            {fmtSar(s.totalNetSar)}
+                          <TdLtr valueClassName="text-[12px] text-text-2">
+                            {formatYmd(
+                              row.workSubmittedAtUtc ??
+                                row.accruedAtUtc ??
+                                row.updatedAtUtc,
+                            )}
+                          </TdLtr>
+                          <TdLtr valueClassName="text-[12.5px] text-text-2">
+                            {fmtSar(row.agreedFeeSar)}
                           </TdLtr>
                           <Td>
-                            <StatusPill
-                              label={meta.label}
-                              style={meta.style}
-                            />
+                            {ded ? (
+                              <span
+                                className="inline-flex min-w-0 max-w-full items-center gap-1.5"
+                                title={row.discountReason ?? undefined}
+                              >
+                                <span
+                                  dir="ltr"
+                                  className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
+                                >
+                                  − {fmtSar(row.supervisorDiscountSar)}
+                                </span>
+                                <span className="truncate text-[10.5px] text-text-3">
+                                  {row.discountReason || ""}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-text-3">
+                                بسعر الجدول
+                              </span>
+                            )}
                           </Td>
-                          <Td className="text-[11px] text-text-2">
-                            {s.status === "closed" && s.paidAtUtc
-                              ? `صُرف ${formatYmd(s.paidAtUtc)}`
-                              : "بانتظار الصرف"}
+                          <TdLtr valueClassName="text-[13px] font-bold text-heading">
+                            {fmtSar(row.netFeeSar)}
+                          </TdLtr>
+                          <Td>
+                            <StatusPill label={meta.label} style={meta.style} />
+                          </Td>
+                          <Td className="overflow-visible">
+                            {st === "needs_submit" ? (
+                              <button
+                                type="button"
+                                disabled={busy || !row.canSubmitToSupervisor}
+                                className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
+                                onClick={() =>
+                                  void act(row, "submit-to-supervisor")
+                                }
+                              >
+                                رفع للمشرف
+                              </button>
+                            ) : st === "sup_review" ? (
+                              <span className="text-[11px] text-text-3">
+                                بانتظار الاعتماد
+                              </span>
+                            ) : st === "returned_to_party" ||
+                              st === "inquiry_to_party" ? (
+                              <span className="text-[11px] text-text-3">
+                                راجع الملاحظات وأعِد الرفع
+                              </span>
+                            ) : st === "draft_work" ? (
+                              <span className="text-[11px] text-text-3">
+                                بعد إنجاز العمل يظهر للرفع
+                              </span>
+                            ) : st === "at_finance" || st === "listed" ? (
+                              <span className="text-[11px] text-text-3">
+                                المالية تتولى أمر الصرف
+                              </span>
+                            ) : st === "paid" ? (
+                              <span className="text-[11px] font-semibold text-heading">
+                                ✓ مصروف
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-text-3">—</span>
+                            )}
                           </Td>
                         </Tr>
-                        {open ? (
-                          <Tr hoverable={false}>
-                            <Td
-                              colSpan={6}
-                              className="bg-surface-2 !py-3"
-                            >
-                              <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                                بنود {s.referenceNumber}
-                              </div>
-                              <div className="grid gap-1.5">
-                                {s.lines.map((line) => (
-                                  <div
-                                    key={line.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                  >
-                                    <span
-                                      dir="ltr"
-                                      className="font-bold text-gold-d"
-                                    >
-                                      {line.propertyLabel}
-                                    </span>
-                                    <span className="font-bold text-heading">
-                                      {fmtSar(line.netFeeSar)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                              {s.transferReceiptAttachmentId ? (
-                                <button
-                                  type="button"
-                                  className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void openPartyBillingAttachment(
-                                      s.transferReceiptAttachmentId!,
-                                    ).then((r) => {
-                                      if (!r.ok) showToast(r.error, "error");
-                                    });
-                                  }}
-                                >
-                                  عرض إيصال التحويل
-                                </button>
-                              ) : null}
+                      );
+                    })
+                  )}
+                </TBody>
+              </Table>
+              <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+                {copy.roleLabel}: {copy.statementsFooter}
+              </div>
+            </TableFrame>
+          </>
+        ) : null}
+
+        {tab === "statements" ? (
+          <>
+            <div className={opsToolbar}>
+              <div className={opsFilters}>
+                <div className="relative flex items-center">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    className="pointer-events-none absolute start-3 text-text-3"
+                    aria-hidden
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={fnSearch}
+                    onChange={(e) => setFnSearch(e.target.value)}
+                    placeholder="رقم أمر الصرف…"
+                    className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
+                  />
+                </div>
+                <span className={opsListCount}>{filteredFns.length} مستند</span>
+              </div>
+            </div>
+
+            <TableFrame>
+              <Table className="min-w-[820px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>رقم الأمر</Th>
+                    <Th>تاريخ الإصدار</Th>
+                    <Th>المعاملات</Th>
+                    <Th>الإجمالي</Th>
+                    <Th>الحالة</Th>
+                    <Th>الصرف</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {filteredFns.length === 0 ? (
+                    <TableEmptyRow colSpan={6}>
+                      لا توجد مستندات مطابقة.
+                    </TableEmptyRow>
+                  ) : (
+                    filteredFns.map((s) => {
+                      const open = openFn === s.referenceNumber;
+                      const meta = statementMeta(s);
+                      return (
+                        <Fragment key={s.id}>
+                          <Tr
+                            hoverable={false}
+                            className={cn(
+                              "cursor-pointer [&:hover_td]:bg-row-hover",
+                              open && "[&_td]:bg-row-hover",
+                            )}
+                            onClick={() =>
+                              setOpenFn(open ? null : s.referenceNumber)
+                            }
+                          >
+                            <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
+                              {s.referenceNumber}
+                            </TdLtr>
+                            <TdLtr valueClassName="text-[12px] text-text-2">
+                              {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
+                            </TdLtr>
+                            <Td className="text-[12.5px]">
+                              {s.lines.length} معاملات
+                            </Td>
+                            <TdLtr valueClassName="text-[13px] font-bold text-heading">
+                              {fmtSar(s.totalNetSar)}
+                            </TdLtr>
+                            <Td>
+                              <StatusPill
+                                label={meta.label}
+                                style={meta.style}
+                              />
+                            </Td>
+                            <Td className="text-[11px] text-text-2">
+                              {s.status === "closed" && s.paidAtUtc
+                                ? `صُرف ${formatYmd(s.paidAtUtc)}`
+                                : "بانتظار الصرف"}
                             </Td>
                           </Tr>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })
-                )}
-              </TBody>
-            </Table>
-            <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
-              {copy.statementsFooter}
-            </div>
-          </TableFrame>
-        </>
-      ) : null}
+                          {open ? (
+                            <Tr hoverable={false}>
+                              <Td
+                                colSpan={6}
+                                className="bg-surface-2 !py-3"
+                              >
+                                <div className="mb-2 text-[11.5px] font-bold text-text-2">
+                                  بنود {s.referenceNumber}
+                                </div>
+                                <div className="grid gap-1.5">
+                                  {s.lines.map((line) => (
+                                    <div
+                                      key={line.id}
+                                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
+                                    >
+                                      <span
+                                        dir="ltr"
+                                        className="font-bold text-gold-d"
+                                      >
+                                        {line.propertyLabel}
+                                      </span>
+                                      <span className="font-bold text-heading">
+                                        {fmtSar(line.netFeeSar)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {s.transferReceiptAttachmentId ? (
+                                  <button
+                                    type="button"
+                                    className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void openPartyBillingAttachment(
+                                        s.transferReceiptAttachmentId!,
+                                      ).then((r) => {
+                                        if (!r.ok) showToast(r.error, "error");
+                                      });
+                                    }}
+                                  >
+                                    عرض إيصال التحويل
+                                  </button>
+                                ) : null}
+                              </Td>
+                            </Tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })
+                  )}
+                </TBody>
+              </Table>
+              <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+                {copy.statementsFooter}
+              </div>
+            </TableFrame>
+          </>
+        ) : null}
 
-      {tab === "visit-fees" && showVisitKey ? (
-        <CourtVisitFeesPanel creditAssigneeId={assigneeId} />
-      ) : null}
+        {tab === "visit-fees" && showVisitKey ? (
+          <CourtVisitFeesPanel creditAssigneeId={assigneeId} />
+        ) : null}
 
-      {tab === "key-fees" && showVisitKey ? (
-        <>
-          <KeyEnvelopeFeesPanel
-            canCollect={hasCapability("manage-financial")}
-            onOpenEnvelope={(envelopeId: string) => {
-              window.location.assign(
-                `/keys?envelope=${encodeURIComponent(envelopeId)}`,
-              );
-            }}
-          />
-          <QueueTableHint className="mt-3">
-            أتعاب استلام ظرف المفاتيح — التفاصيل من{" "}
-            <Link
-              href="/keys?tab=fees"
-              className="font-semibold text-primary underline underline-offset-2"
-            >
-              إدارة المفاتيح → تقرير الأتعاب
-            </Link>
-            .
-          </QueueTableHint>
-        </>
-      ) : null}
+        {tab === "key-fees" && showVisitKey ? (
+          <>
+            <KeyEnvelopeFeesPanel
+              canCollect={hasCapability("manage-financial")}
+              onOpenEnvelope={(envelopeId: string) => {
+                window.location.assign(
+                  `/keys?envelope=${encodeURIComponent(envelopeId)}`,
+                );
+              }}
+            />
+            <QueueTableHint className="mt-3">
+              أتعاب استلام ظرف المفاتيح — التفاصيل من{" "}
+              <Link
+                href="/keys?tab=fees"
+                className="font-semibold text-primary underline underline-offset-2"
+              >
+                إدارة المفاتيح → تقرير الأتعاب
+              </Link>
+              .
+            </QueueTableHint>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

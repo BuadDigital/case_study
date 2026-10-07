@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   useCallback,
   useMemo,
   useRef,
@@ -53,6 +54,7 @@ import {
   PanelSkeleton,
   cn,
   opsContentPanel,
+  useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -68,6 +70,8 @@ const PARTY_FAILURE_RAISE_KINDS = new Set([
 
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
+const WORK_TAB =
+  "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-[background-color,border-color,color] duration-200 ease-out hover:bg-surface-2 motion-reduce:transition-none";
 
 function PartyWorkTabs({
   workTab,
@@ -87,8 +91,10 @@ function PartyWorkTabs({
       <div className="flex flex-wrap border-b border-border bg-surface">
         <button
           type="button"
+          role="tab"
+          aria-selected={workTab === "task"}
           className={cn(
-            "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-colors",
+            WORK_TAB,
             workTab === "task"
               ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
               : "text-text-2 hover:text-text",
@@ -99,8 +105,10 @@ function PartyWorkTabs({
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={workTab === "case-study"}
           className={cn(
-            "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-colors",
+            WORK_TAB,
             workTab === "case-study"
               ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
               : "text-text-2 hover:text-text",
@@ -203,6 +211,11 @@ export function PartyActiveTaskWork({
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
+  // The case-study tab stays mounted once opened, so coming back skips its reload skeleton.
+  const [caseStudyTabOpened, setCaseStudyTabOpened] = useState(false);
+  if (workTab === "case-study" && !caseStudyTabOpened) setCaseStudyTabOpened(true);
+  const workTabPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(workTabPanelRef, workTab);
 
   const isAppraisal = def.kind === "property-appraisal";
   const isEngineeringSurvey = def.kind === "engineering-survey";
@@ -632,8 +645,8 @@ export function PartyActiveTaskWork({
         onSelect={setWorkTab}
       />
 
-      {workTab === "task" ? (
-        <>
+      <div ref={workTabPanelRef}>
+        <Activity mode={workTab === "task" ? "visible" : "hidden"}>
           <Note tone="info">{def.workIntro}</Note>
           <PartyTaskFailureRaise
             def={def}
@@ -641,10 +654,13 @@ export function PartyActiveTaskWork({
             deedNumber={deedLabel}
             onSubmitted={refresh}
           />
-        </>
-      ) : (
-        <PartyCaseStudyReportTab def={def} childTask={task} />
-      )}
+        </Activity>
+        {caseStudyTabOpened ? (
+          <Activity mode={workTab === "case-study" ? "visible" : "hidden"}>
+            <PartyCaseStudyReportTab def={def} childTask={task} />
+          </Activity>
+        ) : null}
+      </div>
     </TaskWorkChrome>
   );
 }

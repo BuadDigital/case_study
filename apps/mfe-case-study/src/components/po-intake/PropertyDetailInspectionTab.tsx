@@ -15,7 +15,6 @@ import { InspectorDescriptionReference } from "../field-inspection/InspectorDesc
 import {
   approximatePropertyGeo,
   formatDateAr,
-  formatPropertyDeedDisplay,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import {
@@ -23,10 +22,7 @@ import {
   mergeInspectorWorkspacePatch,
 } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import {
-  getOrCreateInspectorWorkspace,
-  updateInspectorWorkspace,
-} from "../../lib/app-data/inspector-workspace-commands";
+import { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import {
   INSPECTOR_SERVICE_OPTIONS,
   INSPECTOR_AMENITY_OPTIONS,
@@ -114,6 +110,7 @@ import {
   ComponentCountWithPhotoField,
 } from "./PropertyDetailInspectionParts";
 import { submitPropertyDetailInspection } from "./property-detail-inspection-submit";
+import { usePropertyDetailInspectionDraftLoad } from "./usePropertyDetailInspectionDraftLoad";
 
 export function PropertyDetailInspectionTab({
   property,
@@ -205,54 +202,13 @@ export function PropertyDetailInspectionTab({
 
   const submitBusy = saving || inspectorSubmitting;
 
-  useEffect(() => {
-    if (!inspectionTask) {
-      setDraft(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-
-    if (editMode) {
-      const propertyDisplayId =
-        formatPropertyDeedDisplay(property) ||
-        `خانة ${inspectionTask.propertyOrdinal}`;
-      void getOrCreateInspectorWorkspace({
-        taskId: inspectionTask.id,
-        propertyId: property.id,
-        poNumber: inspectionTask.poNumber,
-        propertyDisplayId,
-        property,
-      }).then((next) => {
-        if (!cancelled) {
-          setDraft(next);
-          setLoading(false);
-        }
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const load = () => {
-      void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((loaded) => {
-        if (!cancelled) {
-          setDraft(loaded);
-          setLoading(false);
-        }
-      });
-    };
-    load();
-    const onChange = () => load();
-    window.addEventListener(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT, onChange);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(
-        FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-        onChange,
-      );
-    };
-  }, [inspectionTask, editMode, property]);
+  usePropertyDetailInspectionDraftLoad({
+    inspectionTask,
+    editMode,
+    property,
+    setDraft,
+    setLoading,
+  });
 
   useEffect(() => {
     if (!inspectionTask || !editMode) return;

@@ -8,7 +8,6 @@ import {
 } from "@platform/app-shared";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
-  loadPoEnfazBillingForQuery,
   savePoEnfazBillingData,
   issueEnfazInvoice,
   collectEnfazInvoice,
@@ -34,6 +33,7 @@ import {
   useEnfazReadyPosPageQuery,
   useListPageState,
 } from "../query/billing-list-page-queries";
+import { enfazPoBillingOptions } from "../query/enfaz-po-queries";
 
 const EMPTY_READY_SUMMARIES: EnfazReadyPoSummaryDto[] = [];
 
@@ -110,8 +110,7 @@ export function useFinanceEnfazPoBillingWorkflow({
   }
 
   const { data: billing, isPending, isError, error, refetch } = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", selectedPo],
-    queryFn: () => loadPoEnfazBillingForQuery(selectedPo!),
+    ...enfazPoBillingOptions(selectedPo),
     enabled: Boolean(selectedPo),
   });
 

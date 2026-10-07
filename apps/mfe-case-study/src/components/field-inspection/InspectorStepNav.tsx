@@ -59,15 +59,17 @@ export function InspectorStepNav({
             aria-current={active ? "step" : undefined}
             onClick={() => onSelect(step.id)}
             className={cn(
-              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit transition-colors",
+              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit",
+              "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+              "motion-reduce:transition-none motion-reduce:active:scale-100",
               active
                 ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
-                : "border-border border-t-border bg-surface",
+                : "border-border border-t-border bg-surface hover:border-border-md hover:bg-surface-2",
             )}
           >
             <span
               className={cn(
-                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
+                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-200",
                 active
                   ? "bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                   : done
@@ -80,7 +82,7 @@ export function InspectorStepNav({
             <span className="min-w-0 flex-1 text-start">
               <span
                 className={cn(
-                  "block text-[13px] font-bold",
+                  "block text-[13px] font-bold transition-colors duration-200",
                   active ? "text-gold-d" : "text-heading",
                 )}
               >

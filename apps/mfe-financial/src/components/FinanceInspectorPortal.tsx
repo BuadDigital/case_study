@@ -5,7 +5,7 @@
  * Tailwind only (finance-tw) — no CSS/style objects.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dmy } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
@@ -41,6 +41,7 @@ import {
   finStatusStyle,
   opsLetterCard,
   opsTfNote,
+  useSwapAnimation,
   type StatusPillStyle,
 } from "@platform/ui-kit";
 import {
@@ -274,6 +275,9 @@ export function FinanceInspectorPortal({
     : "المعاين";
   const empty = !pending && tracked && partyRows.length === 0;
 
+  const accountRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(accountRef, selectedId);
+
   return (
     <div data-screen-label="بوابة المعاين">
       <p className={cn(opsTfNote, "mb-3.5 leading-[1.8]")}>
@@ -306,113 +310,115 @@ export function FinanceInspectorPortal({
         </label>
       ) : null}
 
-      <div
-        className={cn(
-          opsLetterCard,
-          "mb-3.5 flex flex-wrap items-center gap-3 px-[18px] py-3.5",
-        )}
-      >
-        <span className="text-[14.5px] font-extrabold text-heading">
-          {headerName}
-        </span>
-        <Pill className="bg-[color-mix(in_srgb,#0f766e_13%,transparent)] text-[#0f766e]">
-          المعاين
-        </Pill>
-        <Pill className="border border-border-md bg-surface-2 text-text-2">
-          فرد
-        </Pill>
-        <span className="ms-auto">
-          <Pill
-            className={
-              tracked
-                ? "bg-[color-mix(in_srgb,#3f8f5f_13%,transparent)] text-[#3f8f5f]"
-                : "bg-[color-mix(in_srgb,#8a8d96_13%,transparent)] text-[#8a8d96]"
-            }
-          >
-            {tracked
-              ? "متابعة المستحقات مفعّلة"
-              : "متابعة المستحقات معطّلة"}
-          </Pill>
-        </span>
-      </div>
-
-      {pending ? (
+      <div ref={accountRef}>
         <div
           className={cn(
             opsLetterCard,
-            "py-10 text-center text-[13px] text-text-3",
+            "mb-3.5 flex flex-wrap items-center gap-3 px-[18px] py-3.5",
           )}
         >
-          جاري تحميل المستحقات…
+          <span className="text-[14.5px] font-extrabold text-heading">
+            {headerName}
+          </span>
+          <Pill className="bg-[color-mix(in_srgb,#0f766e_13%,transparent)] text-[#0f766e]">
+            المعاين
+          </Pill>
+          <Pill className="border border-border-md bg-surface-2 text-text-2">
+            فرد
+          </Pill>
+          <span className="ms-auto">
+            <Pill
+              className={
+                tracked
+                  ? "bg-[color-mix(in_srgb,#3f8f5f_13%,transparent)] text-[#3f8f5f]"
+                  : "bg-[color-mix(in_srgb,#8a8d96_13%,transparent)] text-[#8a8d96]"
+              }
+            >
+              {tracked
+                ? "متابعة المستحقات مفعّلة"
+                : "متابعة المستحقات معطّلة"}
+            </Pill>
+          </span>
         </div>
-      ) : !tracked ? (
-        <div className={cn(opsLetterCard, "px-6 py-[26px] text-center")}>
-          <div className="mb-1.5 text-[13.5px] font-bold text-heading">
-            لا مستحقات تُتابع على هذا النظام
+
+        {pending ? (
+          <div
+            className={cn(
+              opsLetterCard,
+              "py-10 text-center text-[13px] text-text-3",
+            )}
+          >
+            جاري تحميل المستحقات…
           </div>
-          <p className="mx-auto max-w-[420px] text-[12px] leading-[1.9] text-text-3">
-            متابعة مستحقات هذا المستخدم معطّلة، فتُدار أتعابه خارج النظام. يظهر
-            حسابه لدى المالية هويةً فقط بلا أرقام.
-          </p>
-        </div>
-      ) : (
-        <TableFrame>
-          <Table>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>المرجع</Th>
-                <Th className="text-center">تاريخ الاستحقاق</Th>
-                <Th className="text-center">المبلغ</Th>
-                <Th className="text-center">الحالة</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {partyRows.map((l) => {
-                const st = COST_ST[l.st];
-                return (
-                  <Tr key={l.id} hoverable={false}>
-                    <Td>
-                      <div className="flex flex-col items-start gap-0.5">
-                        <span
-                          dir="ltr"
-                          className="whitespace-nowrap text-[12.5px] font-bold text-gold-d"
-                        >
-                          {l.ref}
+        ) : !tracked ? (
+          <div className={cn(opsLetterCard, "px-6 py-[26px] text-center")}>
+            <div className="mb-1.5 text-[13.5px] font-bold text-heading">
+              لا مستحقات تُتابع على هذا النظام
+            </div>
+            <p className="mx-auto max-w-[420px] text-[12px] leading-[1.9] text-text-3">
+              متابعة مستحقات هذا المستخدم معطّلة، فتُدار أتعابه خارج النظام. يظهر
+              حسابه لدى المالية هويةً فقط بلا أرقام.
+            </p>
+          </div>
+        ) : (
+          <TableFrame>
+            <Table>
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>المرجع</Th>
+                  <Th className="text-center">تاريخ الاستحقاق</Th>
+                  <Th className="text-center">المبلغ</Th>
+                  <Th className="text-center">الحالة</Th>
+                </Tr>
+              </THead>
+              <TBody>
+                {partyRows.map((l) => {
+                  const st = COST_ST[l.st];
+                  return (
+                    <Tr key={l.id} hoverable={false}>
+                      <Td>
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span
+                            dir="ltr"
+                            className="whitespace-nowrap text-[12.5px] font-bold text-gold-d"
+                          >
+                            {l.ref}
+                          </span>
+                          <span className="text-[11px] text-text-3">
+                            {l.refKind}
+                          </span>
+                        </div>
+                      </Td>
+                      <TdLtr
+                        className="text-center"
+                        valueClassName={cn(finMuted, "whitespace-nowrap")}
+                      >
+                        {dmy(l.atIso)}
+                      </TdLtr>
+                      <Td className="text-center">
+                        <span className={finNum}>
+                          {money(l.amount)}{" "}
+                          <span className="text-[12px] font-semibold text-text-2">
+                            ر.س
+                          </span>
                         </span>
-                        <span className="text-[11px] text-text-3">
-                          {l.refKind}
-                        </span>
-                      </div>
-                    </Td>
-                    <TdLtr
-                      className="text-center"
-                      valueClassName={cn(finMuted, "whitespace-nowrap")}
-                    >
-                      {dmy(l.atIso)}
-                    </TdLtr>
-                    <Td className="text-center">
-                      <span className={finNum}>
-                        {money(l.amount)}{" "}
-                        <span className="text-[12px] font-semibold text-text-2">
-                          ر.س
-                        </span>
-                      </span>
-                    </Td>
-                    <Td className="text-center">
-                      <StatusPill label={st.t} style={st.style} />
-                    </Td>
-                  </Tr>
-                );
-              })}
-              {empty ? (
-                <TableEmptyRow colSpan={4}>
-                  <EmptyState line="لا بنود مستحقة" />
-                </TableEmptyRow>
-              ) : null}
-            </TBody>
-          </Table>
-        </TableFrame>
-      )}
+                      </Td>
+                      <Td className="text-center">
+                        <StatusPill label={st.t} style={st.style} />
+                      </Td>
+                    </Tr>
+                  );
+                })}
+                {empty ? (
+                  <TableEmptyRow colSpan={4}>
+                    <EmptyState line="لا بنود مستحقة" />
+                  </TableEmptyRow>
+                ) : null}
+              </TBody>
+            </Table>
+          </TableFrame>
+        )}
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
@@ -57,6 +58,11 @@ import {
   type TabId,
 } from "./po-property-detail-tabs-state";
 import type { PoPropertyDetailInspectorWorkspace } from "./PoPropertyDetailTabs";
+import {
+  preloadPropertyDetailTabChunks,
+  usePreloadPropertyDetailTabChunks,
+} from "./PropertyDetailTabChunks";
+import { propertyEnfazRevenueQueryOptions } from "./property-detail-finance-query";
 
 /** Tabs that render property documents or photos; opening one starts the attachment load. */
 const PROPERTY_MEDIA_TABS: readonly TabId[] = ["documents", "photos", "enfath-upload"];
@@ -74,8 +80,12 @@ export function usePoPropertyDetailTabsWorkflow({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { role } = useAppAccess();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
+  usePreloadPropertyDetailTabChunks(
+    useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]),
+  );
   const showCaseStudySideRail = canViewPropertyTimelineRail(role);
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
@@ -112,6 +122,19 @@ export function usePoPropertyDetailTabsWorkflow({
     router.replace(poPropertyDetailPath(poNumber, property.id, next), {
       scroll: false,
     });
+  };
+
+  /**
+   * Pointer or keyboard focus reached a tab: fetch its code and, where it reads a
+   * query the page does not already hold, its data — so the click shows content.
+   */
+  const warmTab = (id: TabId) => {
+    preloadPropertyDetailTabChunks([id]);
+    if (id === "finance" && property.id) {
+      void queryClient.prefetchQuery(
+        propertyEnfazRevenueQueryOptions(poNumber, property.id),
+      );
+    }
   };
 
   // The URL (or the forced inspector workspace) owns the open tab — read during
@@ -424,6 +447,7 @@ export function usePoPropertyDetailTabsWorkflow({
     tabMode,
     visitedTabsRef,
     selectTab,
+    warmTab,
     replaceInspectQuery,
     inspectEdit,
     setInspectEdit,

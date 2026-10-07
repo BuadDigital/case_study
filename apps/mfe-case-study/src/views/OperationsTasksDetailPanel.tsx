@@ -6,7 +6,6 @@
  * The action modals are mounted by `OperationsTasksModals` from the view.
  */
 
-import dynamic from "next/dynamic";
 import { cn, Note, PageShell, Spinner, StatusPill } from "@platform/ui-kit";
 import { displayPersonName } from "@platform/app-shared/app-data/person-display-name";
 import { GOVERNMENT_REVIEWER_FAILURE_RAISER } from "@failures/mfe/lib/failure-party-roles";
@@ -65,14 +64,7 @@ import {
 } from "./OperationsTasksViewShared";
 import { CommentThread } from "./OperationsTasksCommentThread";
 import { LetterTable } from "./OperationsTasksLetterTable";
-
-const FailureRaiseModal = dynamic(
-  () =>
-    import("../components/failures/FailureRaiseModal").then(
-      (m) => m.FailureRaiseModal,
-    ),
-  { ssr: false },
-);
+import { FailureRaiseModal } from "./OperationsTasksLazyModals";
 
 export type OperationsTasksDetailPanelProps = Pick<
   OperationsTasksWorkflow,

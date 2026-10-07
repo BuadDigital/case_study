@@ -42,6 +42,7 @@ export type OperationsTasksFiltersBarProps = Pick<
   | "setSearch"
   | "setShowAll"
   | "setStatusFilter"
+  | "prefetchShowAllToggle"
   | "showAll"
   | "showAllEyeBlink"
   | "statusFilter"
@@ -62,6 +63,7 @@ export function OperationsTasksFiltersBar({
   setSearch,
   setShowAll,
   setStatusFilter,
+  prefetchShowAllToggle,
   showAll,
   showAllEyeBlink,
   statusFilter,
@@ -108,8 +110,15 @@ export function OperationsTasksFiltersBar({
         <div className="flex items-center gap-2 max-lg:w-full lg:contents">
           <button
             type="button"
-            className={showAll ? opsShowAllBtnOn : opsShowAllBtn}
+            className={cn(
+              showAll ? opsShowAllBtnOn : opsShowAllBtn,
+              "transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+              "motion-reduce:transition-none motion-reduce:active:scale-100",
+              !showAll && "hover:bg-surface-2",
+            )}
             onClick={() => setShowAll(toggleShowAll)}
+            onPointerEnter={prefetchShowAllToggle}
+            onFocus={prefetchShowAllToggle}
           >
             <TasksShowAllEye open={showAll} blink={showAllEyeBlink} />
             <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>

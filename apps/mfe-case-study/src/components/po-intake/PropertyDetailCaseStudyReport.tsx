@@ -350,13 +350,19 @@ export function PropertyDetailCaseStudyReport({
     void reportFrameRef.current?.print();
   }, []);
 
+  // The tab sits in an <Activity>: showing it again, a refetched task list (new `task`
+  // object) or a party edit re-runs this for a draft already on screen. Then refresh
+  // silently — the skeleton would also unmount and reload the report preview frame.
+  const loadedTaskIdRef = useRef<string | null>(null);
   const refreshDraft = useCallback(async () => {
     if (!task) {
+      loadedTaskIdRef.current = null;
       setDraft(null);
       return;
     }
-    setLoading(true);
+    if (loadedTaskIdRef.current !== task.id) setLoading(true);
     const loaded = await loadCaseStudyReportDraft(task.id);
+    loadedTaskIdRef.current = task.id;
     setDraft(loaded);
     setLoading(false);
   }, [task]);

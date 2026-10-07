@@ -25,6 +25,7 @@ import {
   Tr,
   cn,
   opsTfNote,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
 
@@ -191,13 +192,24 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   const tabMode = (id: ProfileTab) =>
     effectiveTab === id ? "visible" : "hidden";
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, effectiveTab);
+
+  /** The user whose fee rows are on screen — re-opening a fees tab then refreshes in place. */
+  const feesLoadedForRef = useRef<string | null>(null);
+  const feesKey = `${user.id}|${user.distributionAssigneeId ?? ""}`;
+
   useEffect(() => {
     if (effectiveTab !== "activity" && effectiveTab !== "financial") return;
     const token = getAuthSession()?.token;
     if (!token) return;
     let cancelled = false;
-    setFeesLoading(true);
-    setFeesFailed(false);
+    // Same rows already shown: refetch without swapping the table for a spinner.
+    const silent = feesLoadedForRef.current === feesKey;
+    if (!silent) {
+      setFeesLoading(true);
+      setFeesFailed(false);
+    }
     void listInspectorFees(
       { token },
       user.distributionAssigneeId
@@ -206,9 +218,11 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     ).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
+        feesLoadedForRef.current = null;
         setFeesFailed(true);
         setFeeRows([]);
       } else {
+        feesLoadedForRef.current = feesKey;
         const rows = user.distributionAssigneeId
           ? result.data.rows
           : result.data.rows.filter(
@@ -224,7 +238,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     return () => {
       cancelled = true;
     };
-  }, [effectiveTab, user.distributionAssigneeId, user.id]);
+  }, [effectiveTab, feesKey, user.distributionAssigneeId, user.id]);
 
   const activityRows = useMemo(() => completedRows(feeRows), [feeRows]);
 
@@ -283,10 +297,10 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             key={item.id}
             type="button"
             onClick={() => setTab(item.id)}
-            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-[background-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100 ${
               effectiveTab === item.id
                 ? "bg-ink text-white"
-                : "bg-surface-2 text-text-2 hover:border-border-md hover:text-heading"
+                : "bg-surface-2 text-text-2 hover:border-border-md hover:bg-row-hover hover:text-heading"
             }`}
           >
             {item.label}
@@ -294,216 +308,218 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         ))}
       </div>
 
-      {visitedTabsRef.current.has("basic") ? (
-        <Activity mode={tabMode("basic")}>
-          <section>
-            <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
-              البيانات الأساسية
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
-              <ProfileField label="الاسم" value={user.name} />
-              <ProfileField label="الدور / المسمى" value={user.role} />
-              <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
-              {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
-              {user.department ? (
-                <ProfileField
-                  label="الإدارة"
-                  value={supervisingDepartmentLabel(user.department)}
-                />
-              ) : null}
-              {user.phone ? (
-                <ProfileField label="الجوال" value={user.phone} dir="ltr" />
-              ) : null}
-              {user.distributionAssigneeId ? (
-                <ProfileField
-                  label="معرّف التوزيع"
-                  value={user.distributionAssigneeId}
-                  dir="ltr"
-                />
-              ) : null}
-              {showFinancial ? (
-                <>
-                  <ProfileField label="يستحق تعويضاً" value="نعم" />
+      <div ref={panelRef} className="space-y-4 max-lg:space-y-5">
+        {visitedTabsRef.current.has("basic") ? (
+          <Activity mode={tabMode("basic")}>
+            <section>
+              <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
+                البيانات الأساسية
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
+                <ProfileField label="الاسم" value={user.name} />
+                <ProfileField label="الدور / المسمى" value={user.role} />
+                <ProfileField label="نوع العقد" value={typeLabel(user.type)} />
+                {user.city ? <ProfileField label="المدينة" value={user.city} /> : null}
+                {user.department ? (
                   <ProfileField
-                    label="قيمة الأتعاب (ر.س)"
-                    value={
-                      user.feeValueSar != null ? String(user.feeValueSar) : "—"
-                    }
+                    label="الإدارة"
+                    value={supervisingDepartmentLabel(user.department)}
+                  />
+                ) : null}
+                {user.phone ? (
+                  <ProfileField label="الجوال" value={user.phone} dir="ltr" />
+                ) : null}
+                {user.distributionAssigneeId ? (
+                  <ProfileField
+                    label="معرّف التوزيع"
+                    value={user.distributionAssigneeId}
                     dir="ltr"
                   />
-                </>
-              ) : null}
-            </div>
-            {user.reviewerCityCoverage && user.reviewerCityCoverage.length > 0 ? (
-              <div className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-                <div className="text-[11px] font-medium text-text-3">
-                  نطاق المدن (مراجع حكومي)
+                ) : null}
+                {showFinancial ? (
+                  <>
+                    <ProfileField label="يستحق تعويضاً" value="نعم" />
+                    <ProfileField
+                      label="قيمة الأتعاب (ر.س)"
+                      value={
+                        user.feeValueSar != null ? String(user.feeValueSar) : "—"
+                      }
+                      dir="ltr"
+                    />
+                  </>
+                ) : null}
+              </div>
+              {user.reviewerCityCoverage && user.reviewerCityCoverage.length > 0 ? (
+                <div className="mt-3 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+                  <div className="text-[11px] font-medium text-text-3">
+                    نطاق المدن (مراجع حكومي)
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {user.reviewerCityCoverage.map((city) => (
+                      <Badge key={city} tone="info">
+                        {city}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {user.reviewerCityCoverage.map((city) => (
-                    <Badge key={city} tone="info">
-                      {city}
-                    </Badge>
+              ) : null}
+            </section>
+
+            {detailSections.map(([section, fields]) => (
+              <section key={section}>
+                <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">{section}</h3>
+                <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
+                  {fields.map((field) => (
+                    <ProfileField
+                      key={`${section}-${field.label}`}
+                      label={field.label}
+                      value={field.value}
+                      dir={
+                        LTR_FIELD_LABEL_RE.test(field.label) ? "ltr" : undefined
+                      }
+                    />
                   ))}
                 </div>
-              </div>
-            ) : null}
+              </section>
+            ))}
+          </Activity>
+        ) : null}
+
+        {visitedTabsRef.current.has("login") ? (
+          <Activity mode={tabMode("login")}>
+          <section className="grid gap-3 sm:grid-cols-2">
+            <ProfileField label="الحالة" value={statusLabel(user.status)} />
+            <ProfileField
+              label="آخر دخول"
+              value={formatAt(user.lastLoginAtUtc)}
+              dir="ltr"
+            />
+            <ProfileField
+              label="اسم الدخول"
+              value={user.userName || "—"}
+              dir="ltr"
+            />
           </section>
+          </Activity>
+        ) : null}
 
-          {detailSections.map(([section, fields]) => (
-            <section key={section}>
-              <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">{section}</h3>
-              <div className="grid gap-3 sm:grid-cols-2 max-lg:gap-2.5">
-                {fields.map((field) => (
-                  <ProfileField
-                    key={`${section}-${field.label}`}
-                    label={field.label}
-                    value={field.value}
-                    dir={
-                      LTR_FIELD_LABEL_RE.test(field.label) ? "ltr" : undefined
-                    }
-                  />
-                ))}
+        {visitedTabsRef.current.has("activity") ? (
+          <Activity mode={tabMode("activity")}>
+          <section>
+            {feesLoading ? (
+              <div className="flex justify-center py-10">
+                <Spinner />
               </div>
-            </section>
-          ))}
-        </Activity>
-      ) : null}
-
-      {visitedTabsRef.current.has("login") ? (
-        <Activity mode={tabMode("login")}>
-        <section className="grid gap-3 sm:grid-cols-2">
-          <ProfileField label="الحالة" value={statusLabel(user.status)} />
-          <ProfileField
-            label="آخر دخول"
-            value={formatAt(user.lastLoginAtUtc)}
-            dir="ltr"
-          />
-          <ProfileField
-            label="اسم الدخول"
-            value={user.userName || "—"}
-            dir="ltr"
-          />
-        </section>
-        </Activity>
-      ) : null}
-
-      {visitedTabsRef.current.has("activity") ? (
-        <Activity mode={tabMode("activity")}>
-        <section>
-          {feesLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner />
-            </div>
-          ) : feesFailed ? (
-            <p className="text-[12px] text-danger">تعذّر تحميل سجل الأعمال.</p>
-          ) : activityRows.length === 0 ? (
-            <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
-          ) : (
-            <Table framed className="min-w-[560px]">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>أمر العمل</Th>
-                  <Th>تاريخ الإنجاز</Th>
-                  <Th>نوع المهمة</Th>
-                  <Th>الحالة</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {activityRows.map((row) => (
-                  <Tr key={row.workflowTaskId}>
-                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
-                    <TdLtr bare>
-                      {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
-                    </TdLtr>
-                    <Td>{row.taskKind || "—"}</Td>
-                    <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
+            ) : feesFailed ? (
+              <p className="text-[12px] text-danger">تعذّر تحميل سجل الأعمال.</p>
+            ) : activityRows.length === 0 ? (
+              <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
+            ) : (
+              <Table framed className="min-w-[560px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>أمر العمل</Th>
+                    <Th>تاريخ الإنجاز</Th>
+                    <Th>نوع المهمة</Th>
+                    <Th>الحالة</Th>
                   </Tr>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </section>
-        </Activity>
-      ) : null}
+                </THead>
+                <TBody>
+                  {activityRows.map((row) => (
+                    <Tr key={row.workflowTaskId}>
+                      <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                      <TdLtr bare>
+                        {formatAt(row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc)}
+                      </TdLtr>
+                      <Td>{row.taskKind || "—"}</Td>
+                      <Td>{row.workStatusLabel || row.billingStatusLabel}</Td>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </section>
+          </Activity>
+        ) : null}
 
-      {visitedTabsRef.current.has("eng_statements") && showEngStatements ? (
-        <Activity mode={tabMode("eng_statements")}>
-        <section className="space-y-3">
-          <PartyOfficeBillingStatementsPanel
-            assigneeId={user.distributionAssigneeId || undefined}
-            issuedOrLaterOnly
-          />
-        </section>
-        </Activity>
-      ) : null}
+        {visitedTabsRef.current.has("eng_statements") && showEngStatements ? (
+          <Activity mode={tabMode("eng_statements")}>
+          <section className="space-y-3">
+            <PartyOfficeBillingStatementsPanel
+              assigneeId={user.distributionAssigneeId || undefined}
+              issuedOrLaterOnly
+            />
+          </section>
+          </Activity>
+        ) : null}
 
-      {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
-        <Activity mode={tabMode("inspector_dues")}>
-        <section className="space-y-3">
-          <p className={cn(opsTfNote, "m-0")}>
-            مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
-            مورّد لمعاين الميدان.
-          </p>
-          <ProfileInspectorDuesPanel user={user} />
-        </section>
-        </Activity>
-      ) : null}
+        {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
+          <Activity mode={tabMode("inspector_dues")}>
+          <section className="space-y-3">
+            <p className={cn(opsTfNote, "m-0")}>
+              مستحقاتكم كفرد — جاهزة للصرف أو ضمن أمر صرف أو مدفوعة. لا فاتورة
+              مورّد لمعاين الميدان.
+            </p>
+            <ProfileInspectorDuesPanel user={user} />
+          </section>
+          </Activity>
+        ) : null}
 
-      {visitedTabsRef.current.has("financial") && showFinancial ? (
-        <Activity mode={tabMode("financial")}>
-        <section className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-4">
-            <ProfileField
-              label="المستحق"
-              value={`${financialSummary.due.toLocaleString("ar-SA")} ر.س`}
-            />
-            <ProfileField
-              label="المدفوع"
-              value={`${financialSummary.paid.toLocaleString("ar-SA")} ر.س`}
-            />
-            <ProfileField
-              label="المتبقي"
-              value={`${financialSummary.remaining.toLocaleString("ar-SA")} ر.س`}
-            />
-            <ProfileField
-              label="موقوف"
-              value={`${financialSummary.suspended.toLocaleString("ar-SA")} ر.س`}
-            />
-          </div>
-          {feesLoading ? (
-            <div className="flex justify-center py-8">
-              <Spinner />
+        {visitedTabsRef.current.has("financial") && showFinancial ? (
+          <Activity mode={tabMode("financial")}>
+          <section className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <ProfileField
+                label="المستحق"
+                value={`${financialSummary.due.toLocaleString("ar-SA")} ر.س`}
+              />
+              <ProfileField
+                label="المدفوع"
+                value={`${financialSummary.paid.toLocaleString("ar-SA")} ر.س`}
+              />
+              <ProfileField
+                label="المتبقي"
+                value={`${financialSummary.remaining.toLocaleString("ar-SA")} ر.س`}
+              />
+              <ProfileField
+                label="موقوف"
+                value={`${financialSummary.suspended.toLocaleString("ar-SA")} ر.س`}
+              />
             </div>
-          ) : feeRows.length === 0 ? (
-            <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
-          ) : (
-            <Table framed className="min-w-[640px]">
-              <THead>
-                <Tr hoverable={false}>
-                  <Th>أمر العمل</Th>
-                  <Th>الصافي</Th>
-                  <Th>المدفوع</Th>
-                  <Th>الحالة</Th>
-                  <Th>آخر تحديث</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {feeRows.map((row) => (
-                  <Tr key={row.workflowTaskId}>
-                    <TdLtr bare>{row.poNumber || "—"}</TdLtr>
-                    <TdLtr bare>{row.netFeeSar.toLocaleString("ar-SA")}</TdLtr>
-                    <TdLtr bare>{row.paidAmountSar.toLocaleString("ar-SA")}</TdLtr>
-                    <Td>{row.billingStatusLabel}</Td>
-                    <TdLtr bare>{formatAt(row.updatedAtUtc)}</TdLtr>
+            {feesLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner />
+              </div>
+            ) : feeRows.length === 0 ? (
+              <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
+            ) : (
+              <Table framed className="min-w-[640px]">
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>أمر العمل</Th>
+                    <Th>الصافي</Th>
+                    <Th>المدفوع</Th>
+                    <Th>الحالة</Th>
+                    <Th>آخر تحديث</Th>
                   </Tr>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </section>
-        </Activity>
-      ) : null}
+                </THead>
+                <TBody>
+                  {feeRows.map((row) => (
+                    <Tr key={row.workflowTaskId}>
+                      <TdLtr bare>{row.poNumber || "—"}</TdLtr>
+                      <TdLtr bare>{row.netFeeSar.toLocaleString("ar-SA")}</TdLtr>
+                      <TdLtr bare>{row.paidAmountSar.toLocaleString("ar-SA")}</TdLtr>
+                      <Td>{row.billingStatusLabel}</Td>
+                      <TdLtr bare>{formatAt(row.updatedAtUtc)}</TdLtr>
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </section>
+          </Activity>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -70,13 +70,18 @@ export function EngFeesHtmlTabs({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(tab.id)}
-            className={on ? opsTfSegActive : opsTfSeg}
+            className={cn(
+              on ? opsTfSegActive : opsTfSeg,
+              // Segments, not pills: hover + eased colour change, no press scale.
+              "transition-[background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none",
+              !on && "hover:bg-row-hover hover:text-heading",
+            )}
           >
             {tab.label}
             {typeof count === "number" ? (
               <span
                 className={cn(
-                  "ms-1.5 text-[11px] tabular-nums",
+                  "ms-1.5 text-[11px] tabular-nums transition-colors duration-200",
                   warn ? "text-[#ffc9bc]" : on ? "text-white/80" : "text-text-3",
                 )}
               >

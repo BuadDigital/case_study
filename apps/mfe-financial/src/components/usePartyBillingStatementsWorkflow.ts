@@ -23,11 +23,12 @@ import { pushNotification } from "@platform/app-shared/notifications/notificatio
 
 import {
   partyBillingSections,
-  statementStatusesForMode,
   type PartyBillingMode,
 } from "../lib/party-billing-statements-state";
 import {
   FINANCE_LIST_PAGE_SIZE,
+  partyBillingDuesPageRequest,
+  partyBillingStatementsPageRequest,
   useListPageState,
   usePartyBillingReadyLinesPageQuery,
   usePartyBillingStatementQuery,
@@ -96,14 +97,7 @@ export function usePartyBillingStatementsWorkflow({
   const duesQ = deferredDuesSearch.trim();
   const [duesPage, setDuesPage] = useListPageState(`${assigneeId ?? ""}|${duesQ}`);
   const readyQuery = usePartyBillingReadyLinesPageQuery(
-    {
-      assigneeId: assigneeId ?? undefined,
-      q: duesQ || undefined,
-      sort: "accrued",
-      dir: "asc",
-      page: duesPage,
-      pageSize: FINANCE_LIST_PAGE_SIZE,
-    },
+    partyBillingDuesPageRequest({ assigneeId, q: duesQ, page: duesPage }),
     showDues,
   );
 
@@ -113,12 +107,11 @@ export function usePartyBillingStatementsWorkflow({
     `${assigneeId ?? ""}|${mode}`,
   );
   const statementsQuery = usePartyBillingStatementsPageQuery(
-    {
-      assigneeId: assigneeId ?? undefined,
-      status: statementStatusesForMode(mode),
+    partyBillingStatementsPageRequest({
+      assigneeId,
+      mode,
       page: statementsPage,
-      pageSize: FINANCE_LIST_PAGE_SIZE,
-    },
+    }),
     showStatements,
   );
 

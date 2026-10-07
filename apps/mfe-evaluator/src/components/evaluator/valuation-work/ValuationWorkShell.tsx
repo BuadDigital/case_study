@@ -3,7 +3,6 @@
 import {
   Activity,
   Suspense,
-  lazy,
   useCallback,
   useEffect,
   useRef,
@@ -44,6 +43,12 @@ import { useValuationWorkCommands } from "./useValuationWorkCommands";
 import { ValuationWorkErrorsProvider } from "./ValuationWorkErrors";
 import { ValuationWorkLoadingSkeleton } from "./ValuationWorkLoadingSkeleton";
 import { ValuationWorkReviewScreen } from "./ValuationWorkReviewScreen";
+import {
+  AdjustmentsMatrix,
+  CostApproachSection,
+  FinalOpinionSection,
+  usePreloadLaterWorkScreens,
+} from "./lazy-work-screens";
 import type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
 
 export type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
@@ -56,20 +61,6 @@ import type {
   ValuationWorkNavAvailability,
   ValuationWorkPropertyHint,
 } from "./lib/shell-state";
-
-const AdjustmentsMatrix = lazy(() =>
-  import("./AdjustmentsMatrix").then((m) => ({ default: m.AdjustmentsMatrix })),
-);
-const CostApproachSection = lazy(() =>
-  import("./CostApproachSection").then((m) => ({
-    default: m.CostApproachSection,
-  })),
-);
-const FinalOpinionSection = lazy(() =>
-  import("./FinalOpinionSection").then((m) => ({
-    default: m.FinalOpinionSection,
-  })),
-);
 
 /**
  * Appraiser valuation work shell — matches the sales-comparison valuation design docs.
@@ -227,6 +218,8 @@ export function ValuationWorkShell({
   visitedScreensRef.current.add(effectiveScreen);
   const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
+
+  usePreloadLaterWorkScreens(!loading);
 
   useEffect(() => {
     if (!screenControlled) return;

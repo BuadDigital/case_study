@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { cn, EmptyState, InlineLoadingSkeleton, PageShell, Spinner, useToast, confirmAction } from "@platform/ui-kit";
+import { cn, EmptyState, InlineLoadingSkeleton, PageShell, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -103,6 +103,8 @@ export function CaseStudyInfoRolesView() {
     CASE_STUDY_QUESTION_CATALOG[0]?.key ?? null,
   );
   const [activeSec, setActiveSec] = useState(CASE_STUDY_INFO_SECTIONS[0]?.id);
+  const sectionCardRef = useRef<HTMLElement>(null);
+  useSwapAnimation(sectionCardRef, activeSec);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const saveQueueRef = useRef(Promise.resolve());
@@ -339,7 +341,7 @@ export function CaseStudyInfoRolesView() {
         </div>
       </div>
 
-      <section className={opsLetterCard}>
+      <section ref={sectionCardRef} className={opsLetterCard}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
             <span className={opsIconBoxGold}>

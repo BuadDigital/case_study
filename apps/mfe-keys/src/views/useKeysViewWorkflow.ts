@@ -61,9 +61,16 @@ export function useKeysViewWorkflow() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showOut, setShowOut] = useState(false);
   const { blink: eyeBlink, toggleOpen } = useShowAllEyeBlink();
-  const [listTab, setListTab] = useState<ListTab>("envelopes");
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // Seeded from the URL so deep links (?envelope=, ?tab=fees, ?register=1) open on first load.
+  const [listTab, setListTab] = useState<ListTab>(() =>
+    listTabFromParam(searchParams.get("tab")),
+  );
+  const [registerOpen, setRegisterOpen] = useState(
+    () => searchParams.get("register") === "1" && canRegisterEnvelope,
+  );
+  const [detailId, setDetailId] = useState<string | null>(
+    () => searchParams.get("envelope")?.trim() || null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<KeyEnvelopeRow | null>(
     null,

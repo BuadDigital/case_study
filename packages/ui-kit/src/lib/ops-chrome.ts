@@ -160,9 +160,9 @@ export const opsLetterSub = "text-[12px] leading-relaxed text-text-3";
 
 export const opsLetterMeta = "text-[12px] font-semibold text-text-3";
 
-const opsTfSegBase = "cursor-pointer border px-[15px] py-[9px] font-[inherit] text-[12.5px] font-semibold transition-[background,color,border-color] duration-[130ms] first:rounded-s-[9px] last:rounded-e-[9px] not-first:border-s-0";
+const opsTfSegBase = "cursor-pointer border px-[15px] py-[9px] font-[inherit] text-[12.5px] font-semibold transition-[background-color,color,border-color] duration-200 ease-out motion-reduce:transition-none first:rounded-s-[9px] last:rounded-e-[9px] not-first:border-s-0";
 
-export const opsTfSeg = `${opsTfSegBase} border-border-md bg-surface-2 text-text-2`;
+export const opsTfSeg = `${opsTfSegBase} border-border-md bg-surface-2 text-text-2 hover:bg-row-hover hover:text-heading`;
 
 export const opsTfSegActive = `${opsTfSegBase} border-ink bg-ink text-white`;
 

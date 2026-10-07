@@ -6,9 +6,9 @@
  * component only decides which cards apply (land vs building, boundaries
  * availability, desktop vs mobile chrome) and wires the shared state through.
  */
-import { type ReactNode, type RefObject } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 
-import { cn, InlineLoadingSkeleton, Note } from "@platform/ui-kit";
+import { cn, InlineLoadingSkeleton, Note, useSwapAnimation } from "@platform/ui-kit";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import {
@@ -88,6 +88,8 @@ export function FieldInspectionWorkBody({
     showToast,
     workLocked,
   } = workflow;
+  const stepPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(stepPanelRef, activeStep);
 
   if (!draft) {
     return <InlineLoadingSkeleton />;
@@ -132,155 +134,158 @@ export function FieldInspectionWorkBody({
         className={cn(mobile && "mx-4")}
       />
 
-      <fieldset
-        disabled={workLocked}
-        className={cn(
-          "m-0 min-w-0 border-0 p-0 [&_*]:min-w-0",
-          workLocked &&
-            "pointer-events-none select-none rounded-[10px] bg-surface-2 p-3 opacity-70 grayscale-[0.35]",
-        )}
-      >
-        <InspectorLocationCard
-          {...workflow}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-        />
-
-        <InspectorFeaturesSection
-          activeStep={activeStep}
-          cardLayout={layout}
-          draft={draft}
-          featureFields={featureFields}
-          fieldErrors={fieldErrors}
-          isLandInspection={isLandInspection}
-          layout={layout}
-          locked={locked}
-          mobile={mobile}
-          persist={persist}
-          photoStamp={photoStamp}
-          property={property}
-          role={role}
-        />
-
-        <InspectorAccessPhotosCards
-          {...workflow}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-        />
-
-        {!isLandInspection ? (
-        <InspectorComponentsSection
-          activeStep={activeStep}
-          cardLayout={layout}
-          draft={draft}
-          fieldErrors={fieldErrors}
-          isShopInspection={isShopInspection}
-          layout={layout}
-          locked={locked}
-          mobile={mobile}
-          persist={persist}
-          photoStamp={photoStamp}
-          property={property}
-          role={role}
-        />
-        ) : null}
-
-        <InspectorBuildingAreasCard
-          {...workflow}
-          draft={draft}
-          isLandInspection={isLandInspection}
-          layout={layout}
-          mobile={mobile}
-          poNumber={task.poNumber}
-          property={property}
-        />
-
-        <InspectorInventoryCard activeStep={activeStep} draft={draft} fieldErrors={fieldErrors} layout={layout} mobile={mobile} persist={persist} poNumber={task.poNumber} propertyId={propertyId} taskId={task.id} workLocked={workLocked} />
-
-        {!boundariesUnavailable && property ? (
-          <InspectorBoundariesCard
+      {/* Fade wrapper outside the fieldset: a locked fieldset sets its own opacity. */}
+      <div ref={stepPanelRef}>
+        <fieldset
+          disabled={workLocked}
+          className={cn(
+            "m-0 min-w-0 border-0 p-0 [&_*]:min-w-0",
+            workLocked &&
+              "pointer-events-none select-none rounded-[10px] bg-surface-2 p-3 opacity-70 grayscale-[0.35]",
+          )}
+        >
+          <InspectorLocationCard
             {...workflow}
             draft={draft}
             layout={layout}
             mobile={mobile}
+          />
+
+          <InspectorFeaturesSection
+            activeStep={activeStep}
+            cardLayout={layout}
+            draft={draft}
+            featureFields={featureFields}
+            fieldErrors={fieldErrors}
+            isLandInspection={isLandInspection}
+            layout={layout}
+            locked={locked}
+            mobile={mobile}
+            persist={persist}
+            photoStamp={photoStamp}
+            property={property}
+            role={role}
+          />
+
+          <InspectorAccessPhotosCards
+            {...workflow}
+            draft={draft}
+            layout={layout}
+            mobile={mobile}
+          />
+
+          {!isLandInspection ? (
+          <InspectorComponentsSection
+            activeStep={activeStep}
+            cardLayout={layout}
+            draft={draft}
+            fieldErrors={fieldErrors}
+            isShopInspection={isShopInspection}
+            layout={layout}
+            locked={locked}
+            mobile={mobile}
+            persist={persist}
+            photoStamp={photoStamp}
+            property={property}
+            role={role}
+          />
+          ) : null}
+
+          <InspectorBuildingAreasCard
+            {...workflow}
+            draft={draft}
+            isLandInspection={isLandInspection}
+            layout={layout}
+            mobile={mobile}
+            poNumber={task.poNumber}
             property={property}
           />
-        ) : null}
 
-        <InspectorServicesCards
-          {...workflow}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-        />
+          <InspectorInventoryCard activeStep={activeStep} draft={draft} fieldErrors={fieldErrors} layout={layout} mobile={mobile} persist={persist} poNumber={task.poNumber} propertyId={propertyId} taskId={task.id} workLocked={workLocked} />
 
-        <InspectorDescriptionCard
-          {...workflow}
-          deedNumber={property?.deedNumber ?? ""}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-        />
+          {!boundariesUnavailable && property ? (
+            <InspectorBoundariesCard
+              {...workflow}
+              draft={draft}
+              layout={layout}
+              mobile={mobile}
+              property={property}
+            />
+          ) : null}
 
-        <InspectorDefinedPhotosCard
-          {...workflow}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-          photoCoverage={photoCoverage}
-        />
-
-        <InspectorObservationsSection
-          activeStep={activeStep}
-          cardLayout={layout}
-          draft={draft}
-          fieldErrors={fieldErrors}
-          keyAvailability={keyAvailability}
-          layout={layout}
-          locked={locked}
-          mobile={mobile}
-          onRegisterFailure={onRegisterFailure}
-          persist={persist}
-          photoStamp={photoStamp}
-          property={property}
-          role={role}
-          showToast={showToast}
-        />
-
-        <InspectorComparablesAndQuestionsCards
-          {...workflow}
-          def={def}
-          draft={draft}
-          layout={layout}
-          mobile={mobile}
-          task={task}
-        />
-
-        {beforeSubmitFooter}
-
-        {!mobile && !locked ? (
-          <InspectorDesktopActionBar
-            onRegisterFailure={onRegisterFailure}
-            onSaveDraft={saveDraftFromHost}
-            onSubmit={submitFromHost}
-            submitting={submitting}
-            workLocked={workLocked}
+          <InspectorServicesCards
+            {...workflow}
+            draft={draft}
+            layout={layout}
+            mobile={mobile}
           />
-        ) : null}
 
-        {!hideSubmitFooter ? (
-          <InspectorSubmitFooter
-            disabled={workLocked}
-            saving={submitting}
-            locked={workLocked}
-            onRegisterFailure={onRegisterFailure}
-            onSaveDraft={saveDraftFromHost}
-            onSubmit={submitFromHost}
+          <InspectorDescriptionCard
+            {...workflow}
+            deedNumber={property?.deedNumber ?? ""}
+            draft={draft}
+            layout={layout}
+            mobile={mobile}
           />
-        ) : null}
-      </fieldset>
+
+          <InspectorDefinedPhotosCard
+            {...workflow}
+            draft={draft}
+            layout={layout}
+            mobile={mobile}
+            photoCoverage={photoCoverage}
+          />
+
+          <InspectorObservationsSection
+            activeStep={activeStep}
+            cardLayout={layout}
+            draft={draft}
+            fieldErrors={fieldErrors}
+            keyAvailability={keyAvailability}
+            layout={layout}
+            locked={locked}
+            mobile={mobile}
+            onRegisterFailure={onRegisterFailure}
+            persist={persist}
+            photoStamp={photoStamp}
+            property={property}
+            role={role}
+            showToast={showToast}
+          />
+
+          <InspectorComparablesAndQuestionsCards
+            {...workflow}
+            def={def}
+            draft={draft}
+            layout={layout}
+            mobile={mobile}
+            task={task}
+          />
+
+          {beforeSubmitFooter}
+
+          {!mobile && !locked ? (
+            <InspectorDesktopActionBar
+              onRegisterFailure={onRegisterFailure}
+              onSaveDraft={saveDraftFromHost}
+              onSubmit={submitFromHost}
+              submitting={submitting}
+              workLocked={workLocked}
+            />
+          ) : null}
+
+          {!hideSubmitFooter ? (
+            <InspectorSubmitFooter
+              disabled={workLocked}
+              saving={submitting}
+              locked={workLocked}
+              onRegisterFailure={onRegisterFailure}
+              onSaveDraft={saveDraftFromHost}
+              onSubmit={submitFromHost}
+            />
+          ) : null}
+        </fieldset>
+      </div>
       <InspectorMapMoveModal
         open={Boolean(pendingMapMove)}
         onCancel={cancelPendingMapMove}

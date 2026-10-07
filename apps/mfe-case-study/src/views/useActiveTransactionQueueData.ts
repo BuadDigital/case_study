@@ -148,16 +148,21 @@ export function useActiveTransactionQueueData({
   // The search box now drives a server request on a paged queue — debounce it
   // instead of deferring a local pass, or every keystroke would be a GET.
   const debouncedSearch = useDebouncedValue(search, 300);
-  const queueServerQuery = useMemo(
-    () =>
+  // Also built for the other «show completed» position, so hovering the toggle can warm it.
+  const serverQueryFor = useCallback(
+    (completed: boolean) =>
       buildQueueServerQuery({
         config,
         role,
-        showCompleted,
+        showCompleted: completed,
         narrow: !needsSiblingTasks,
         search: paged ? debouncedSearch : undefined,
       }),
-    [config, role, showCompleted, needsSiblingTasks, paged, debouncedSearch],
+    [config, role, needsSiblingTasks, paged, debouncedSearch],
+  );
+  const queueServerQuery = useMemo(
+    () => serverQueryFor(showCompleted),
+    [serverQueryFor, showCompleted],
   );
   const queuePageQuery = useMemo(
     () => buildQueuePageQuery({ filters: queueServerQuery, page }),
@@ -183,6 +188,7 @@ export function useActiveTransactionQueueData({
     data: tasks,
     refetch: refetchTasks,
     isFetched: tasksFetched,
+    isPlaceholderData: tasksPlaceholder,
     isError: tasksError,
     error: tasksQueryError,
   } = paged
@@ -190,6 +196,7 @@ export function useActiveTransactionQueueData({
         data: pageQuery.data?.rows,
         refetch: pageQuery.refetch,
         isFetched: pageQuery.isFetched,
+        isPlaceholderData: pageQuery.isPlaceholderData,
         isError: pageQuery.isError,
         error: pageQuery.error,
       }
@@ -201,6 +208,11 @@ export function useActiveTransactionQueueData({
   );
   const queueReady = tasksFetched && poRecordsFetched && !queueLoadError;
   const queuePending = !tasksFetched || !poRecordsFetched;
+  // `isFetched` is per key, so a filter / page / search change drops `queueReady`
+  // while the previous rows stay on screen (keepPreviousData). The toolbar, the
+  // rail and the empty state read this instead, so they do not blink out.
+  const queueShowsRows =
+    (tasksFetched || tasksPlaceholder) && poRecordsFetched && !queueLoadError;
 
   const retryQueueLoad = useCallback(() => {
     void refetchPoRecords();
@@ -444,6 +456,9 @@ export function useActiveTransactionQueueData({
     page,
     setPage,
     isPagePlaceholder: paged && pageQuery.isPlaceholderData,
+    tasksPlaceholder,
+    serverQueryFor,
+    queueShowsRows,
     queueLoadError,
     queueErrorMessage,
     queueReady,

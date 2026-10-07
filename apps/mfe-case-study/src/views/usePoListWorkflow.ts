@@ -27,6 +27,7 @@ import {
 } from "../lib/app-data/po-list-search";
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
+  prefetchPoRecord,
   usePoListRowsPageQuery,
   usePropertyListItemsQuery,
   useWorkflowTasksQuery,
@@ -369,6 +370,8 @@ export function usePoListWorkflow() {
     handleCancelPo,
     handleStopPo,
     handleDeletePo,
+    /** Row hover: both screens a row opens read this PO's record — fetch it before the click. */
+    warmPo: (poNumber: string) => prefetchPoRecord(queryClient, poNumber),
     onIntakeComplete: (poNumber: string) => {
       setIntakeOpen(false);
       router.push(poPropertiesPath(poNumber));

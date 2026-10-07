@@ -403,10 +403,23 @@ export function useValuationWorkData({
   });
 
   // Initial + property identity — avoid re-running when parent passes a new callback each render.
+  // The shell sits in an <Activity>: coming back from «تقرير التقييم» re-runs this effect for
+  // the same property. Then refresh silently — a full load showed the skeleton and re-seeded
+  // every section's drafts on each return.
+  const fullLoadRef = useRef<{ propertyId: string; done: boolean } | null>(null);
   useEffect(() => {
+    const last = fullLoadRef.current;
+    if (last?.propertyId === propertyId) {
+      if (last.done) void reloadRef.current({ silent: true });
+      return;
+    }
+    const current = { propertyId, done: false };
+    fullLoadRef.current = current;
     valuationRequestIdRef.current = null;
     subjectAreaSyncedRef.current = null;
-    void reloadRef.current();
+    void reloadRef.current().finally(() => {
+      current.done = true;
+    });
   }, [propertyId]);
 
   const { settingsSaved, marketEnabled, costEnabled } =

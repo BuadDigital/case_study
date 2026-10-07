@@ -156,10 +156,13 @@ export function ValTabBar({
   tabs,
   active,
   onChange,
+  onTabIntent,
 }: {
   tabs: { id: string; label: string; hint?: string }[];
   active: string;
   onChange: (id: string) => void;
+  /** Pointer or keyboard focus reached a tab — warm what it needs before the click. */
+  onTabIntent?: (id: string) => void;
 }) {
   return (
     <div
@@ -177,16 +180,20 @@ export function ValTabBar({
             aria-label={tab.label}
             aria-selected={selected}
             onClick={() => onChange(tab.id)}
+            onPointerEnter={onTabIntent ? () => onTabIntent(tab.id) : undefined}
+            onFocus={onTabIntent ? () => onTabIntent(tab.id) : undefined}
             className={cn(
-              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit transition-colors",
+              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit",
+              "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+              "motion-reduce:transition-none motion-reduce:active:scale-100",
               selected
-                ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
-                : "border-border border-t-border bg-surface",
+                ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))] shadow-[0_6px_18px_-12px_color-mix(in_srgb,var(--gold)_70%,transparent)]"
+                : "border-border border-t-border bg-surface hover:border-border-md hover:border-t-[color-mix(in_srgb,var(--gold)_45%,var(--border))] hover:bg-surface-2",
             )}
           >
             <span
               className={cn(
-                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
+                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-200",
                 selected ? "bg-ink text-white" : "bg-surface-2 text-text-3",
               )}
             >
@@ -195,7 +202,7 @@ export function ValTabBar({
             <span className="min-w-0 flex-1 text-start">
               <span
                 className={cn(
-                  "block text-[13px] font-bold",
+                  "block text-[13px] font-bold transition-colors duration-200",
                   selected ? "text-gold-d" : "text-heading",
                 )}
               >

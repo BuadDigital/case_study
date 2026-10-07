@@ -7,7 +7,7 @@
  * `po-property-detail-tabs-state.ts`; lazy bodies in `PropertyDetailTabChunks`.
  */
 
-import { Activity } from "react";
+import { Activity, useRef } from "react";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
@@ -17,6 +17,7 @@ import {
   TabPanel,
   cn,
   opsContentPanel,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { DetailBadge, EmptyState, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailBasicTab } from "./PropertyDetailBasicTab";
@@ -88,6 +89,7 @@ export function PoPropertyDetailTabs({
     tabMode,
     visitedTabsRef,
     selectTab,
+    warmTab,
     replaceInspectQuery,
     inspectEdit,
     setInspectEdit,
@@ -119,6 +121,12 @@ export function PoPropertyDetailTabs({
     showDecree,
     inspectorWorkspace,
   });
+  // Wrapper, not the TabPanel: its padding changes per tab and must not animate.
+  const panelBodyRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelBodyRef, effectiveTab);
+  // Skeleton only until the first answer: a refetch (a party change, the tasks event,
+  // a tab shown again) keeps the submissions on screen instead of blanking them.
+  const partiesLoading = partySubmissionsQuery.isLoading;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -151,6 +159,7 @@ export function PoPropertyDetailTabs({
           <TabBar
             className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
             aria-label="أقسام تفاصيل العقار"
+            indicator={false}
           >
             {visibleTabs.map((t) => {
               const active = effectiveTab === t.id;
@@ -163,6 +172,8 @@ export function PoPropertyDetailTabs({
                 <Tab
                   key={t.id}
                   active={active}
+                  onPointerEnter={() => warmTab(t.id)}
+                  onFocus={() => warmTab(t.id)}
                   onClick={() => {
                     selectTab(t.id);
                     if (workspaceForced) return;
@@ -197,6 +208,7 @@ export function PoPropertyDetailTabs({
               effectiveTab === "appraisal" && "pt-0",
             )}
           >
+          <div ref={panelBodyRef}>
           {visitedTabsRef.current.has("basic") ? (
             <Activity mode={tabMode("basic")}>
               <PropertyDetailBasicTab
@@ -319,10 +331,7 @@ export function PoPropertyDetailTabs({
                 <PartyRoleDetailPanel
                   card={surveyCard}
                   submission={partySubmissionsQuery.data?.survey ?? null}
-                  loading={
-                    partySubmissionsQuery.isLoading ||
-                    partySubmissionsQuery.isFetching
-                  }
+                  loading={partiesLoading}
                 />
               </>
             ) : (
@@ -471,10 +480,7 @@ export function PoPropertyDetailTabs({
               task={task ?? null}
               parties={partySubmissionsQuery.data}
               documentSections={propertyDocumentSections}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
+              loading={partiesLoading}
             />
             </Activity>
           ) : null}
@@ -493,13 +499,11 @@ export function PoPropertyDetailTabs({
             <Activity mode={tabMode("survey-notes")}>
               <PropertyDetailSurveyNotesTab
                 sections={partyRemarksSections}
-                loading={
-                  partySubmissionsQuery.isLoading ||
-                  partySubmissionsQuery.isFetching
-                }
+                loading={partiesLoading}
               />
             </Activity>
           ) : null}
+          </div>
           </TabPanel>
         </div>
 

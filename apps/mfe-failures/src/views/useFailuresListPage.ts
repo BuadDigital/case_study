@@ -82,6 +82,15 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
   );
 
   const source = partyScoped ? whole : pageQuery;
+  // `isFetched` belongs to the new key's query, so it read false while the
+  // previous page was still on screen as placeholder — every page or search
+  // change blanked the table to skeleton rows despite `keepPreviousData`.
+  const ready = source.isFetched || source.isPlaceholderData;
+
+  // The page whose rows are on screen: follows `page` once its own rows land,
+  // so the swap fade plays on the new rows, not on the placeholder ones.
+  const [rowsPage, setRowsPage] = useState(page);
+  if (!source.isPlaceholderData && rowsPage !== page) setRowsPage(page);
   const refetchWhole = whole.refetch;
   const refetchPage = pageQuery.refetch;
   const refetch = useCallback(async () => {
@@ -101,7 +110,8 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
       rangeStart: cut.rangeStart,
       rangeEnd: cut.rangeEnd,
     },
-    isFetched: source.isFetched,
+    rowsPage,
+    isFetched: ready,
     isError: source.isError,
     error: source.error,
     refetch,

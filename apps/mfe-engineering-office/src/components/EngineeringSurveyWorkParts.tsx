@@ -2,8 +2,12 @@
 
 /** Survey work-panel parts — module-level types and helpers, moved literally (SRP). */
 
-import dynamic from "next/dynamic";
-import { InlineLoadingSkeleton } from "@platform/ui-kit";
+import { Suspense, type ComponentProps } from "react";
+import {
+  InlineLoadingSkeleton,
+  preloadableLazy,
+  whenIdle,
+} from "@platform/ui-kit";
 import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data";
 import type { EngineeringSurveyFieldErrors } from "../lib/engineering-survey-validation";
 
@@ -11,27 +15,53 @@ export type WorkTab = "property" | "survey" | "fees" | "notes" | "failures";
 
 export const EMPTY_FIELD_ERRORS: EngineeringSurveyFieldErrors = {};
 
-export const EngineeringSurveyMap = dynamic(
-  () => import("./EngineeringSurveyMap").then((m) => m.EngineeringSurveyMap),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[280px] items-center justify-center rounded-DEFAULT border border-border bg-surface-2 text-xs text-text-3">
-        جاري تحميل الخريطة…
-      </div>
-    ),
-  },
+// Preloadable instead of next/dynamic: dynamic re-showed its loading box on every
+// return to a tab even with the chunk cached; these render directly once loaded.
+const surveyMapChunk = preloadableLazy(() =>
+  import("./EngineeringSurveyMap").then((m) => m.EngineeringSurveyMap),
 );
-export const FailureRaisePanel = dynamic(
-  () =>
-    import("@failures/mfe/components/failures/FailureRaisePanel").then(
-      (m) => m.FailureRaisePanel,
-    ),
-  {
-    ssr: false,
-    loading: () => <InlineLoadingSkeleton className="my-2" />,
-  },
+const failureRaisePanelChunk = preloadableLazy(() =>
+  import("@failures/mfe/components/failures/FailureRaisePanel").then(
+    (m) => m.FailureRaisePanel,
+  ),
 );
+
+export function EngineeringSurveyMap(
+  props: ComponentProps<typeof surveyMapChunk.Component>,
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[280px] items-center justify-center rounded-DEFAULT border border-border bg-surface-2 text-xs text-text-3">
+          جاري تحميل الخريطة…
+        </div>
+      }
+    >
+      <surveyMapChunk.Component {...props} />
+    </Suspense>
+  );
+}
+
+export function FailureRaisePanel(
+  props: ComponentProps<typeof failureRaisePanelChunk.Component>,
+) {
+  return (
+    <Suspense fallback={<InlineLoadingSkeleton className="my-2" />}>
+      <failureRaisePanelChunk.Component {...props} />
+    </Suspense>
+  );
+}
+
+export const preloadFailureRaisePanel = () =>
+  void failureRaisePanelChunk.preload();
+
+/** Pull the map and failures-panel code once the work panel has painted. */
+export function preloadSurveyWorkChunksWhenIdle(): () => void {
+  return whenIdle(() => {
+    void surveyMapChunk.preload();
+    void failureRaisePanelChunk.preload();
+  });
+}
 
 export type LocalTextFields = {
   latitude: string;

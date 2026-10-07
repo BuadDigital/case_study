@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { listWorkflowTasks } from "@platform/api-client";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -11,7 +11,7 @@ import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/app-data/work-orders-api-config";
-import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useToast, promptAction } from "@platform/ui-kit";
+import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useSwapAnimation, useToast, promptAction } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
   useSubmitValuationImpedimentMutation,
@@ -100,6 +100,9 @@ export function ValuationRequestsView() {
   const deferredSearch = useDeferredValue(search);
   // After hydration mount only one tree (table or cards) — both used to build together.
   const isDesktopViewport = useViewportDesktop();
+  // The status filter swaps the whole result list — fade it in (search stays instant).
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(resultsRef, status);
 
   const propertiesById = useMemo(
     () => valuationRequestPropertiesById(propertyRowsQuery.data ?? []),
@@ -308,6 +311,7 @@ export function ValuationRequestsView() {
           </div>
         </div>
 
+        <div ref={resultsRef}>
         {/* After hydration mount only one tree (table or cards) — both used to build together. */}
         {isDesktopViewport === false ? null : (
         <TableFrame className="hidden lg:block">
@@ -488,6 +492,7 @@ export function ValuationRequestsView() {
           )}
         </div>
         )}
+        </div>
       </SubpagePanel>
     </ReportPageBody>
   );

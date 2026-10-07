@@ -3,9 +3,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatSar } from "./FinancePartyBillingParts";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
-import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
@@ -25,6 +22,10 @@ import {
   opsTfNote,
 } from "@platform/ui-kit";
 import { finGroupHead, finGroupTitle, finMuted } from "../lib/finance-tw";
+import {
+  financeExcludedFeesOptions,
+  financeExcludedStatementsOptions,
+} from "../query/costs-account-queries";
 
 /**
  * Excluded: written-off/excluded lines before entitlement + cancelled payrolls (log).
@@ -38,15 +39,8 @@ export function FinanceExcludedCosts({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
 
-  const feesQuery = useQuery({
-    queryKey: [...appDataKeys.all, "inspector-fees", "finance-excluded"],
-    queryFn: () => loadInspectorFeesSummary({ submittedOnly: false }),
-  });
-
-  const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "statements", "excluded"],
-    queryFn: () => loadPartyBillingStatements(),
-  });
+  const feesQuery = useQuery(financeExcludedFeesOptions());
+  const statementsQuery = useQuery(financeExcludedStatementsOptions());
 
   const excludedLines = useMemo(
     () =>

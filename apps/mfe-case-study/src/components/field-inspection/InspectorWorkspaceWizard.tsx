@@ -7,8 +7,8 @@
  * sibling components; pure rules live in `inspector-wizard-state.ts`.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, cn } from "@platform/ui-kit";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Button, cn, useSwapAnimation } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -114,6 +114,8 @@ export function InspectorWorkspaceWizard({
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
+  const stepPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(stepPanelRef, flat ? 0 : activeStep);
   const initialAssetSubject =
     property.propertyType?.trim() || property.classification?.trim() || "";
   const roleOwnedAssetSubject = resolvedInspectorAssetSubject({
@@ -183,212 +185,214 @@ export function InspectorWorkspaceWizard({
         />
       ) : null}
 
-      {showStep(1) ? (
-        <>
-          <InspectorWizardLocationStep
-            property={property}
-            draft={draft}
-            editable={editable}
-            fieldErrors={fieldErrors}
-            featureFields={featureFields}
-            serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
-            onPatch={onPatch}
-            onMapMove={onMapMove}
-            mapPinned={mapPinned}
-            onPin={onPin}
-            onUnpin={onUnpin}
-            mapPinEpoch={mapPinEpoch}
-            mapActor={mapActor}
-            canRestoreInspectorMap={canRestoreInspectorMap}
-            onRestoreInspectorMap={onRestoreInspectorMap}
-            canAdoptEngineeringMap={canAdoptEngineeringMap}
-            onAdoptEngineeringMap={onAdoptEngineeringMap}
-            engineeringMapPin={engineeringMapPin}
-          />
-
-          {editable && !flat ? (
-            <StepContinue onContinue={advance} />
-          ) : null}
-        </>
-      ) : null}
-
-      {showStep(2) ? (
-        <>
-          {specialistComponents ? (
-            <InsCard title="وصف العقار ومكوناته">{specialistComponents}</InsCard>
-          ) : (
-          <InsCard title="وصف العقار">
-            <InsEditTextarea
-              id="ins-desc"
-              label="وصف العقار"
-              hint="نص يصف العقار، أو صورة لتفاصيل المكونات — أحدهما على الأقل"
-              value={draft.propertyDescription}
-              onChange={(v) => onPatch({ propertyDescription: v })}
-              disabled={!editable}
-              invalid={Boolean(fieldErrors.propertyDescription)}
-              errorMessage={fieldErrors.propertyDescription}
+      <div ref={stepPanelRef}>
+        {showStep(1) ? (
+          <>
+            <InspectorWizardLocationStep
+              property={property}
+              draft={draft}
+              editable={editable}
+              fieldErrors={fieldErrors}
+              featureFields={featureFields}
+              serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+              onPatch={onPatch}
+              onMapMove={onMapMove}
+              mapPinned={mapPinned}
+              onPin={onPin}
+              onUnpin={onUnpin}
+              mapPinEpoch={mapPinEpoch}
+              mapActor={mapActor}
+              canRestoreInspectorMap={canRestoreInspectorMap}
+              onRestoreInspectorMap={onRestoreInspectorMap}
+              canAdoptEngineeringMap={canAdoptEngineeringMap}
+              onAdoptEngineeringMap={onAdoptEngineeringMap}
+              engineeringMapPin={engineeringMapPin}
             />
-            <InspectorDescriptionPhoto
+
+            {editable && !flat ? (
+              <StepContinue onContinue={advance} />
+            ) : null}
+          </>
+        ) : null}
+
+        {showStep(2) ? (
+          <>
+            {specialistComponents ? (
+              <InsCard title="وصف العقار ومكوناته">{specialistComponents}</InsCard>
+            ) : (
+            <InsCard title="وصف العقار">
+              <InsEditTextarea
+                id="ins-desc"
+                label="وصف العقار"
+                hint="نص يصف العقار، أو صورة لتفاصيل المكونات — أحدهما على الأقل"
+                value={draft.propertyDescription}
+                onChange={(v) => onPatch({ propertyDescription: v })}
+                disabled={!editable}
+                invalid={Boolean(fieldErrors.propertyDescription)}
+                errorMessage={fieldErrors.propertyDescription}
+              />
+              <InspectorDescriptionPhoto
+                deedNumber={property.deedNumber}
+                draft={draft}
+                editable={editable}
+                invalid={Boolean(fieldErrors.propertyDescription)}
+                onPatch={onPatch}
+              />
+            </InsCard>
+            )}
+
+            {inspectedAssetIsLand(draft.featureValues.assetSubject) ? (
+              <InsCard title="مبانٍ أو ملاحق على الأرض">
+                <InspectorLandStructuresQuestion
+                  value={draft.landHasValuableStructures}
+                  mobile={false}
+                  disabled={!editable}
+                  errorMessage={fieldErrors.landHasValuableStructures}
+                  onChange={(next) => onPatch({ landHasValuableStructures: next })}
+                />
+              </InsCard>
+            ) : null}
+
+            <InspectorWizardComponentsCards
               deedNumber={property.deedNumber}
               draft={draft}
               editable={editable}
-              invalid={Boolean(fieldErrors.propertyDescription)}
+              locked={locked}
+              isLand={isLand}
+              isShop={isShop}
+              missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
+              missingComponentPhotoKey={fieldErrors.missingComponentPhotoKey}
               onPatch={onPatch}
             />
-          </InsCard>
-          )}
 
-          {inspectedAssetIsLand(draft.featureValues.assetSubject) ? (
-            <InsCard title="مبانٍ أو ملاحق على الأرض">
-              <InspectorLandStructuresQuestion
-                value={draft.landHasValuableStructures}
-                mobile={false}
-                disabled={!editable}
-                errorMessage={fieldErrors.landHasValuableStructures}
-                onChange={(next) => onPatch({ landHasValuableStructures: next })}
-              />
-            </InsCard>
-          ) : null}
-
-          <InspectorWizardComponentsCards
-            deedNumber={property.deedNumber}
-            draft={draft}
-            editable={editable}
-            locked={locked}
-            isLand={isLand}
-            isShop={isShop}
-            missingFeaturePhotoKey={fieldErrors.missingFeaturePhotoKey}
-            missingComponentPhotoKey={fieldErrors.missingComponentPhotoKey}
-            onPatch={onPatch}
-          />
-
-          {/* Same «جدول الحصر» the phone shell shows — the inspector fills it on either device.
-              Hidden for the case specialist, whose own section already carries the table. */}
-          {!specialistComponents &&
-          property.id &&
-          inspectorInventoryVisible({
-            assetSubject: draft.featureValues.assetSubject,
-            landHasValuableStructures: draft.landHasValuableStructures,
-          }) ? (
-            <InsCard title="جدول الحصر">
-              <InspectorInventoryEditor
-                draft={draft}
-                mobile={false}
-                poNumber={inspectionTask.poNumber}
-                propertyId={property.id}
-                taskId={inspectionTask.id}
-                workLocked={!editable}
-              />
-            </InsCard>
-          ) : null}
-
-          <InspectorBoundaryMatchTable
-            property={property}
-            draft={draft}
-            editable={editable}
-            mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
-            onPatch={onPatch}
-          />
-
-          <InspectorWizardServicesCard
-            draft={draft}
-            editable={editable}
-            fieldErrors={fieldErrors}
-            serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
-            transactionPhotos={transactionPhotos}
-            onPatch={onPatch}
-          />
-
-          {editable && !flat ? <StepContinue onContinue={advance} /> : null}
-        </>
-      ) : null}
-
-      {showStep(3) ? (
-        <>
-          <InsCard title="العقارات المقارنة">
-            <FieldComparableCaptureSection
-              latitude={draft.mapLatitude}
-              longitude={draft.mapLongitude}
-              city={property.city}
-              district={property.district}
-              propertyType={property.propertyType}
-              poNumber={inspectionTask.poNumber}
-              propertyId={property.id}
-              disabled={!editable}
-            />
-          </InsCard>
-
-          {editable ? (
-            <InsCard title="مستندات ذات قيمة">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="m-0 min-w-0 flex-1 basis-64 text-[11.5px] leading-relaxed text-text-3">
-                  مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
-                  دراسة الحالة ويقرر المقيّم أثره.
-                </p>
-                <ValuedDocumentUploadButton
+            {/* Same «جدول الحصر» the phone shell shows — the inspector fills it on either device.
+                Hidden for the case specialist, whose own section already carries the table. */}
+            {!specialistComponents &&
+            property.id &&
+            inspectorInventoryVisible({
+              assetSubject: draft.featureValues.assetSubject,
+              landHasValuableStructures: draft.landHasValuableStructures,
+            }) ? (
+              <InsCard title="جدول الحصر">
+                <InspectorInventoryEditor
+                  draft={draft}
+                  mobile={false}
                   poNumber={inspectionTask.poNumber}
                   propertyId={property.id}
-                  canReview={canReviewValuedDocuments(role)}
+                  taskId={inspectionTask.id}
+                  workLocked={!editable}
                 />
-              </div>
-            </InsCard>
-          ) : null}
+              </InsCard>
+            ) : null}
 
-          {serviceProofFromTransactionPhotos ? (
-            <InsCard
-              title="الوصف والملاحظات"
-              badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
-            >
-              <InsEditTextarea
-                label="الإيجابيات والعيوب الظاهرة على الحي"
-                value={draft.districtProsCons}
-                onChange={(v) => onPatch({ districtProsCons: v })}
+            <InspectorBoundaryMatchTable
+              property={property}
+              draft={draft}
+              editable={editable}
+              mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
+              onPatch={onPatch}
+            />
+
+            <InspectorWizardServicesCard
+              draft={draft}
+              editable={editable}
+              fieldErrors={fieldErrors}
+              serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+              transactionPhotos={transactionPhotos}
+              onPatch={onPatch}
+            />
+
+            {editable && !flat ? <StepContinue onContinue={advance} /> : null}
+          </>
+        ) : null}
+
+        {showStep(3) ? (
+          <>
+            <InsCard title="العقارات المقارنة">
+              <FieldComparableCaptureSection
+                latitude={draft.mapLatitude}
+                longitude={draft.mapLongitude}
+                city={property.city}
+                district={property.district}
+                propertyType={property.propertyType}
+                poNumber={inspectionTask.poNumber}
+                propertyId={property.id}
                 disabled={!editable}
               />
-              <div className="mt-3">
+            </InsCard>
+
+            {editable ? (
+              <InsCard title="مستندات ذات قيمة">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="m-0 min-w-0 flex-1 basis-64 text-[11.5px] leading-relaxed text-text-3">
+                    مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
+                    دراسة الحالة ويقرر المقيّم أثره.
+                  </p>
+                  <ValuedDocumentUploadButton
+                    poNumber={inspectionTask.poNumber}
+                    propertyId={property.id}
+                    canReview={canReviewValuedDocuments(role)}
+                  />
+                </div>
+              </InsCard>
+            ) : null}
+
+            {serviceProofFromTransactionPhotos ? (
+              <InsCard
+                title="الوصف والملاحظات"
+                badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
+              >
                 <InsEditTextarea
-                  label="ملاحظات على الأصل"
-                  value={draft.assetNotes}
-                  onChange={(v) => onPatch({ assetNotes: v })}
+                  label="الإيجابيات والعيوب الظاهرة على الحي"
+                  value={draft.districtProsCons}
+                  onChange={(v) => onPatch({ districtProsCons: v })}
                   disabled={!editable}
                 />
-              </div>
-            </InsCard>
-          ) : null}
+                <div className="mt-3">
+                  <InsEditTextarea
+                    label="ملاحظات على الأصل"
+                    value={draft.assetNotes}
+                    onChange={(v) => onPatch({ assetNotes: v })}
+                    disabled={!editable}
+                  />
+                </div>
+              </InsCard>
+            ) : null}
 
-          <InspectorFieldObservationsCard
-            deedNumber={property.deedNumber}
-            draft={draft}
-            editable={editable}
-            serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
-            transactionPhotos={transactionPhotos}
-            missingObservationId={fieldErrors.missingObservationId}
-            onPatch={onPatch}
-          />
-
-          {caseStudyDef ? (
-            <InsCard title="أسئلة دراسة الحالة — المعاين">
-              <InspectorCaseStudyChips
-                def={caseStudyDef}
-                childTask={inspectionTask}
-                // Specialist review edits inspection facts, not the inspector's party answers.
-                forceReadOnly={!editable || serviceProofFromTransactionPhotos}
-              />
-            </InsCard>
-          ) : null}
-
-          {editable && !hideSubmitFooter ? (
-            <InspectorWorkspaceSubmitFooter
+            <InspectorFieldObservationsCard
+              deedNumber={property.deedNumber}
               draft={draft}
-              saving={saving}
-              confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
+              editable={editable}
+              serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+              transactionPhotos={transactionPhotos}
+              missingObservationId={fieldErrors.missingObservationId}
               onPatch={onPatch}
-              onSubmit={onSubmit}
-              onCancel={onCancel}
             />
-          ) : null}
-        </>
-      ) : null}
+
+            {caseStudyDef ? (
+              <InsCard title="أسئلة دراسة الحالة — المعاين">
+                <InspectorCaseStudyChips
+                  def={caseStudyDef}
+                  childTask={inspectionTask}
+                  // Specialist review edits inspection facts, not the inspector's party answers.
+                  forceReadOnly={!editable || serviceProofFromTransactionPhotos}
+                />
+              </InsCard>
+            ) : null}
+
+            {editable && !hideSubmitFooter ? (
+              <InspectorWorkspaceSubmitFooter
+                draft={draft}
+                saving={saving}
+                confirmInvalid={Boolean(fieldErrors.inspectionConfirmed)}
+                onPatch={onPatch}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

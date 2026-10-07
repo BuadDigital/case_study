@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import dynamic from "next/dynamic";
+import { Suspense, useCallback, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
@@ -25,6 +24,7 @@ import {
   GentleBusy,
   opsLetterCard,
   opsPanelCard,
+  preloadableLazy,
 } from "@platform/ui-kit";
 import {
   buildFinanceMyTasks,
@@ -33,27 +33,27 @@ import {
 } from "../lib/finance-my-tasks";
 import { buildFinanceHref } from "../lib/finance-nav";
 
-const FinanceDisbursementCloseModal = dynamic(
-  () =>
-    import("./FinanceDisbursementCloseModal").then(
-      (m) => m.FinanceDisbursementCloseModal,
-    ),
-  { ssr: false },
+// preloadableLazy: a modal whose chunk was preloaded opens at once instead of
+// waiting out React's suspense throttle.
+const disbursementCloseModal = preloadableLazy(() =>
+  import("./FinanceDisbursementCloseModal").then(
+    (m) => m.FinanceDisbursementCloseModal,
+  ),
 );
-const FinanceVendorInvoiceMatchModal = dynamic(
-  () =>
-    import("./FinanceVendorInvoiceMatchModal").then(
-      (m) => m.FinanceVendorInvoiceMatchModal,
-    ),
-  { ssr: false },
+const vendorInvoiceMatchModal = preloadableLazy(() =>
+  import("./FinanceVendorInvoiceMatchModal").then(
+    (m) => m.FinanceVendorInvoiceMatchModal,
+  ),
 );
+const FinanceDisbursementCloseModal = disbursementCloseModal.Component;
+const FinanceVendorInvoiceMatchModal = vendorInvoiceMatchModal.Component;
 
 // Bundle is fetched on hover/focus of the open button instead of waiting for click
 // (bundle-preload).
 const preloadDisbursementCloseModal = () =>
-  void import("./FinanceDisbursementCloseModal");
+  void disbursementCloseModal.preload();
 const preloadVendorInvoiceMatchModal = () =>
-  void import("./FinanceVendorInvoiceMatchModal");
+  void vendorInvoiceMatchModal.preload();
 
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
@@ -479,23 +479,25 @@ export function FinanceMyTasks() {
 
       {/* Conditional mount — always mounting fetched both modal chunks on screen open
           despite code-splitting (bundle-conditional). */}
-      {matchStatementId ? (
-        <FinanceVendorInvoiceMatchModal
-          open={Boolean(matchStatementId)}
-          statement={matchStatement}
-          onClose={closeMatchModal}
-          onDone={invalidateBilling}
-          onMatched={goToCostsAfterMatch}
-        />
-      ) : null}
-      {closeStatementId ? (
-        <FinanceDisbursementCloseModal
-          open={Boolean(closeStatementId)}
-          statement={closeStatement}
-          onClose={closeCloseModal}
-          onDone={invalidateBilling}
-        />
-      ) : null}
+      <Suspense fallback={null}>
+        {matchStatementId ? (
+          <FinanceVendorInvoiceMatchModal
+            open={Boolean(matchStatementId)}
+            statement={matchStatement}
+            onClose={closeMatchModal}
+            onDone={invalidateBilling}
+            onMatched={goToCostsAfterMatch}
+          />
+        ) : null}
+        {closeStatementId ? (
+          <FinanceDisbursementCloseModal
+            open={Boolean(closeStatementId)}
+            statement={closeStatement}
+            onClose={closeCloseModal}
+            onDone={invalidateBilling}
+          />
+        ) : null}
+      </Suspense>
     </div>
   );
 }

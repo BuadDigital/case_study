@@ -37,10 +37,13 @@ const CASE_STUDY_WORKSPACE_STEPS: {
 export function CaseStudyWorkspaceStepNav({
   active,
   onSelect,
+  onIntent,
   className,
 }: {
   active: CaseStudyWorkspaceTab;
   onSelect: (tab: CaseStudyWorkspaceTab) => void;
+  /** Pointer or keyboard focus reached a tab — warm what it needs before the click. */
+  onIntent?: (tab: CaseStudyWorkspaceTab) => void;
   className?: string;
 }) {
   return (
@@ -61,16 +64,20 @@ export function CaseStudyWorkspaceStepNav({
             role="tab"
             aria-selected={selected}
             onClick={() => onSelect(step.id)}
+            onPointerEnter={onIntent ? () => onIntent(step.id) : undefined}
+            onFocus={onIntent ? () => onIntent(step.id) : undefined}
             className={cn(
-              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit transition-colors",
+              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit",
+              "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+              "motion-reduce:transition-none motion-reduce:active:scale-100",
               selected
                 ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
-                : "border-border border-t-border bg-surface",
+                : "border-border border-t-border bg-surface hover:border-border-md hover:bg-surface-2",
             )}
           >
             <span
               className={cn(
-                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
+                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-200",
                 selected
                   ? "bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                   : "bg-surface-2 text-text-3",
@@ -81,7 +88,7 @@ export function CaseStudyWorkspaceStepNav({
             <span className="min-w-0 flex-1 text-start">
               <span
                 className={cn(
-                  "block text-[13px] font-bold",
+                  "block text-[13px] font-bold transition-colors duration-200",
                   selected ? "text-gold-d" : "text-heading",
                 )}
               >

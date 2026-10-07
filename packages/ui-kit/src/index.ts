@@ -87,6 +87,8 @@ export {
   GENTLE_LOADING_DELAY_MS,
 } from "./hooks/use-deferred-visible";
 export { useIsHydrated } from "./hooks/use-is-hydrated";
+export { useSwapAnimation, SWAP_ANIMATION_MS } from "./hooks/use-swap-animation";
+export { preloadableLazy, whenIdle } from "./lib/preloadable-lazy";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
 export { Input, type InputProps } from "./components/Input";

@@ -94,11 +94,15 @@ export function FinancePartyBillingStatementsSection({
       />
       ) : (
         <div
-          className={
-            mode === "all"
-              ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
-              : undefined
-          }
+          // keepPreviousData holds the last page/tab on screen while the next
+          // loads — dim it so it does not read as the new tab's rows.
+          className={cn(
+            mode === "all" &&
+              "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]",
+            "transition-opacity duration-200 motion-reduce:transition-none",
+            statementsQuery.isPlaceholderData && "opacity-60",
+          )}
+          aria-busy={statementsQuery.isPlaceholderData || undefined}
         >
           <div className="min-w-0">
           <TableFrame>

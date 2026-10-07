@@ -41,6 +41,9 @@ const KIND_LABELS: Record<string, string> = {
 export function FieldSyncSupervisorView() {
   const [rows, setRows] = useState<FieldSyncStatusDto[]>([]);
   const [loading, setLoading] = useState(true);
+  // After the first good load the minute poll and «تحديث» keep the table on
+  // screen (dimmed) instead of swapping it for the loading hint each time.
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -63,6 +66,7 @@ export function FieldSyncSupervisorView() {
       return;
     }
     setRows(result.data);
+    setLoadedOnce(true);
     setLoading(false);
   }, []);
 
@@ -90,7 +94,7 @@ export function FieldSyncSupervisorView() {
           فشل شبكة).
         </Note>
 
-        {loading ? (
+        {loading && !loadedOnce ? (
           <PageLoadingHint />
         ) : error ? (
           <Note tone="danger">{error}</Note>
@@ -99,7 +103,7 @@ export function FieldSyncSupervisorView() {
             لا عناصر معلّقة — المزامنة الميدانية سليمة
           </div>
         ) : (
-          <Table framed className="min-w-[40rem] text-sm">
+          <Table framed className="min-w-[40rem] text-sm" pending={loading}>
             <THead>
               <Tr hoverable={false}>
                 <Th>المستخدم</Th>

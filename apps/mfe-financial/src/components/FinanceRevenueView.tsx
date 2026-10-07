@@ -5,9 +5,11 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type SyntheticEvent,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmt } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
@@ -20,6 +22,7 @@ import {
   opsFilters,
   opsLetterCard,
   opsSearchInput,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { REVENUE_STAGES, type RevenueStage } from "../lib/finance-nav";
 import {
@@ -41,6 +44,10 @@ import {
 import { FinanceStagePills } from "./FinanceStagePills";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinanceEnfazFollowupsPanel } from "./FinanceEnfazFollowupsPanel";
+import {
+  enfazFollowupsOptions,
+  enfazPoBillingOptions,
+} from "../query/enfaz-po-queries";
 import {
   EMPTY_TRACKING_ROWS,
   filterRows,
@@ -183,6 +190,27 @@ export function FinanceRevenueView({
     onStageChange(id);
   };
 
+  // Stage, city and period swap the table in place — fade it (not on search keystrokes).
+  const stagePanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(stagePanelRef, `${viewStage}|${city}|${period}`);
+
+  // Pointer/focus on a «open PO» button loads that work order's billing sheet
+  // (and follow-ups where the panel shows them) before the click opens it.
+  const queryClient = useQueryClient();
+  const warmedPoRef = useRef<string | null>(null);
+  const warmPo = (e: SyntheticEvent) => {
+    const target = e.target as Element | null;
+    const po = target
+      ?.closest?.("[data-po-intent]")
+      ?.getAttribute("data-po-intent");
+    if (!po || warmedPoRef.current === po) return;
+    warmedPoRef.current = po;
+    void queryClient.prefetchQuery(enfazPoBillingOptions(po));
+    if (viewStage === "stopped" || viewStage === "awaiting_collection") {
+      void queryClient.prefetchQuery(enfazFollowupsOptions(po));
+    }
+  };
+
   return (
     <div>
       <FinanceStagePills
@@ -241,126 +269,129 @@ export function FinanceRevenueView({
         </div>
       </div>
 
-      {viewStage === "billing_assistant" ? (
-        <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            className={cn(
-              opsBtnGhost,
-              "h-auto px-3.5 py-2 text-xs",
-              stageRows.length === 0 && "pointer-events-none opacity-50",
-            )}
-            onClick={selectAll}
-          >
-            {allSelected
-              ? "إلغاء التحديد"
-              : `تحديد الكل (${stageRows.length})`}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              opsBtnPrimary,
-              "px-4 py-2 text-[12.5px]",
-              selectedRows.length === 0 && "pointer-events-none opacity-50",
-            )}
-            onClick={onInvoiceSelected}
-          >
-            تسجيل فاتورة للمحدد
-            {selectedRows.length
-              ? ` (${selectedRows.length} — ${fmt(selectedTotal, 2)} ر.س)`
-              : ""}
-          </button>
-          <span className="text-[11px] text-text-3">
-            اختر المعاملات الجاهزة وأضفها لفاتورة واحدة — التجميع تحت أمر العمل
-            للعرض فقط.
-          </span>
-        </div>
-      ) : null}
-
-      {showWorkPanel ? (
-        <div className={finWork}>
-          <div className={finWorkHead}>
-            <h3 className={finWorkTitle}>
-              {viewStage === "stopped"
-                ? "استدعاء ومتابعة — "
-                : viewStage === "awaiting_collection"
-                  ? followMode
-                    ? "متابعة التحصيل — "
-                    : "تسجيل التحويل — "
-                  : viewStage === "billing_assistant"
-                    ? "تسجيل الفاتورة — "
-                    : "تحديث حالة إنفاذ / مطابقة — "}
-              <span className={finPo} dir="ltr">
-                {focusPo}
-              </span>
-            </h3>
+      <div ref={stagePanelRef} onPointerOver={warmPo} onFocus={warmPo}>
+        {viewStage === "billing_assistant" ? (
+          <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              className={opsBtnGhost}
-              onClick={() => {
-                onFocusPo(null, viewStage);
-                setFollowMode(false);
-              }}
+              className={cn(
+                opsBtnGhost,
+                "h-auto px-3.5 py-2 text-xs",
+                stageRows.length === 0 && "pointer-events-none opacity-50",
+              )}
+              onClick={selectAll}
             >
-              إغلاق
+              {allSelected
+                ? "إلغاء التحديد"
+                : `تحديد الكل (${stageRows.length})`}
             </button>
+            <button
+              type="button"
+              className={cn(
+                opsBtnPrimary,
+                "px-4 py-2 text-[12.5px]",
+                selectedRows.length === 0 && "pointer-events-none opacity-50",
+              )}
+              data-po-intent={selectedRows[0]?.poNumber}
+              onClick={onInvoiceSelected}
+            >
+              تسجيل فاتورة للمحدد
+              {selectedRows.length
+                ? ` (${selectedRows.length} — ${fmt(selectedTotal, 2)} ر.س)`
+                : ""}
+            </button>
+            <span className="text-[11px] text-text-3">
+              اختر المعاملات الجاهزة وأضفها لفاتورة واحدة — التجميع تحت أمر العمل
+              للعرض فقط.
+            </span>
           </div>
-          {viewStage === "stopped" ? (
-            <p className="mb-3 text-[12.5px] leading-[1.6] text-text-2">
-              الفاتورة متأخرة عن موعد التحصيل، أو المعاملة جاهزة ولم تُرفع منذ
-              30 يوماً. سجّل التحويل عند الاستلام أو وثّق المتابعة مع مركز
-              التصفية.
-            </p>
-          ) : null}
-          {viewStage !== "stopped" || !followMode ? (
-            <FinanceEnfazPoBilling initialPo={focusPo} compact />
-          ) : null}
-          {(viewStage === "stopped" ||
-            (viewStage === "awaiting_collection" && followMode)) &&
-          focusPo ? (
-            <FinanceEnfazFollowupsPanel poNumber={focusPo} />
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
 
-      {trackingQuery.isPending ? (
-        <div className={opsLetterCard}>
-          <EmptyState panel line="جاري التحميل…" />
-        </div>
-      ) : stageRows.length === 0 ? (
-        <RevenueStageEmpty stage={viewStage} />
-      ) : viewStage === "under_study" ? (
-        <StudyTable
-          rows={stageRows}
-          allRows={allRows}
-          collapsed={collapsed}
-          onToggleGroup={toggleGroup}
-        />
-      ) : viewStage === "eligible" ? (
-        <EligibleTable rows={stageRows} onOpenPo={(po) => openPo(po)} />
-      ) : viewStage === "billing_assistant" ? (
-        <BillingAssistantTable
-          rows={stageRows}
-          selected={selected}
-          onToggle={toggleSelect}
-          collapsed={collapsed}
-          onToggleGroup={toggleGroup}
-        />
-      ) : viewStage === "awaiting_collection" ? (
-        <CollectionTable
-          rows={stageRows}
-          collapsed={collapsed}
-          onToggleGroup={toggleGroup}
-          onCollect={(po) => openPo(po, false)}
-          onFollow={(po) => openPo(po, true)}
-        />
-      ) : viewStage === "collected" ? (
-        <CollectedTable rows={stageRows} />
-      ) : viewStage === "excluded" ? (
-        <StoppedTable rows={stageRows} mode="excluded" />
-      ) : (
-        <StoppedTable rows={stageRows} onRecall={(po) => openPo(po)} />
-      )}
+        {showWorkPanel ? (
+          <div className={finWork}>
+            <div className={finWorkHead}>
+              <h3 className={finWorkTitle}>
+                {viewStage === "stopped"
+                  ? "استدعاء ومتابعة — "
+                  : viewStage === "awaiting_collection"
+                    ? followMode
+                      ? "متابعة التحصيل — "
+                      : "تسجيل التحويل — "
+                    : viewStage === "billing_assistant"
+                      ? "تسجيل الفاتورة — "
+                      : "تحديث حالة إنفاذ / مطابقة — "}
+                <span className={finPo} dir="ltr">
+                  {focusPo}
+                </span>
+              </h3>
+              <button
+                type="button"
+                className={opsBtnGhost}
+                onClick={() => {
+                  onFocusPo(null, viewStage);
+                  setFollowMode(false);
+                }}
+              >
+                إغلاق
+              </button>
+            </div>
+            {viewStage === "stopped" ? (
+              <p className="mb-3 text-[12.5px] leading-[1.6] text-text-2">
+                الفاتورة متأخرة عن موعد التحصيل، أو المعاملة جاهزة ولم تُرفع منذ
+                30 يوماً. سجّل التحويل عند الاستلام أو وثّق المتابعة مع مركز
+                التصفية.
+              </p>
+            ) : null}
+            {viewStage !== "stopped" || !followMode ? (
+              <FinanceEnfazPoBilling initialPo={focusPo} compact />
+            ) : null}
+            {(viewStage === "stopped" ||
+              (viewStage === "awaiting_collection" && followMode)) &&
+            focusPo ? (
+              <FinanceEnfazFollowupsPanel poNumber={focusPo} />
+            ) : null}
+          </div>
+        ) : null}
+
+        {trackingQuery.isPending ? (
+          <div className={opsLetterCard}>
+            <EmptyState panel line="جاري التحميل…" />
+          </div>
+        ) : stageRows.length === 0 ? (
+          <RevenueStageEmpty stage={viewStage} />
+        ) : viewStage === "under_study" ? (
+          <StudyTable
+            rows={stageRows}
+            allRows={allRows}
+            collapsed={collapsed}
+            onToggleGroup={toggleGroup}
+          />
+        ) : viewStage === "eligible" ? (
+          <EligibleTable rows={stageRows} onOpenPo={(po) => openPo(po)} />
+        ) : viewStage === "billing_assistant" ? (
+          <BillingAssistantTable
+            rows={stageRows}
+            selected={selected}
+            onToggle={toggleSelect}
+            collapsed={collapsed}
+            onToggleGroup={toggleGroup}
+          />
+        ) : viewStage === "awaiting_collection" ? (
+          <CollectionTable
+            rows={stageRows}
+            collapsed={collapsed}
+            onToggleGroup={toggleGroup}
+            onCollect={(po) => openPo(po, false)}
+            onFollow={(po) => openPo(po, true)}
+          />
+        ) : viewStage === "collected" ? (
+          <CollectedTable rows={stageRows} />
+        ) : viewStage === "excluded" ? (
+          <StoppedTable rows={stageRows} mode="excluded" />
+        ) : (
+          <StoppedTable rows={stageRows} onRecall={(po) => openPo(po)} />
+        )}
+      </div>
     </div>
   );
 }

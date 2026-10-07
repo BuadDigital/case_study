@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { listKeyEnvelopeFeeReport } from "@platform/api-client";
-import { QueueTableHint } from "@platform/ui-kit";
+import { QueueTableHint, useSwapAnimation } from "@platform/ui-kit";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
@@ -145,6 +145,10 @@ export function PartyFeesWorkspace({
     staleTime: 30_000,
   });
 
+  // Supervisor tab bodies fade in on switch (the party lanes fade in their own screens).
+  const supPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(supPanelRef, tab);
+
   /*
    * One fees module, three party slots — never mix lanes:
    *   engineering-survey  → vendor (accept/dispute + invoice)
@@ -200,166 +204,168 @@ export function PartyFeesWorkspace({
           ]}
         />
 
-        {supTab === "financial" ? (
-          <div className="flex flex-col gap-3.5">
-            <section className={opsLetterCard}>
-              <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                <EngFeesSectionTitle
-                  className="mb-3 mt-3"
-                  title="قبول مخرجات الرفع المساحي"
-                  sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
-                />
-                <SupervisorEngSurveyFeeAcceptPanel />
-              </div>
-            </section>
-
-            {supReviewRows.length > 0 ? (
+        <div ref={supPanelRef} className="flex flex-col gap-3.5">
+          {supTab === "financial" ? (
+            <div className="flex flex-col gap-3.5">
               <section className={opsLetterCard}>
                 <div className="px-4 pb-4 pt-1 sm:px-[18px]">
                   <EngFeesSectionTitle
                     className="mb-3 mt-3"
-                    title="الواردة للاعتماد"
-                    sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
-                    count={supReviewRows.length}
+                    title="قبول مخرجات الرفع المساحي"
+                    sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
                   />
-                  <PartyFeeWorkflowTable
-                    rows={supReviewRows}
-                    role="supervisor"
-                  />
+                  <SupervisorEngSurveyFeeAcceptPanel />
                 </div>
               </section>
-            ) : (
+
+              {supReviewRows.length > 0 ? (
+                <section className={opsLetterCard}>
+                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                    <EngFeesSectionTitle
+                      className="mb-3 mt-3"
+                      title="الواردة للاعتماد"
+                      sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                      count={supReviewRows.length}
+                    />
+                    <PartyFeeWorkflowTable
+                      rows={supReviewRows}
+                      role="supervisor"
+                    />
+                  </div>
+                </section>
+              ) : (
+                <section className={opsLetterCard}>
+                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                    <EngFeesSectionTitle
+                      className="mb-3 mt-3"
+                      title="الواردة للاعتماد"
+                      sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                    />
+                    <QueueTableHint className="mt-1">
+                      لا بنود واردة للاعتماد حالياً.
+                    </QueueTableHint>
+                  </div>
+                </section>
+              )}
+
+              {disputedRows.length > 0 ? (
+                <section className={opsLetterCard}>
+                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                    <EngFeesSectionTitle
+                      className="mb-3 mt-3"
+                      title="خلاف تسعير (مكتب هندسي)"
+                      sub="تحفّظات المكتب قيد المعالجة."
+                      count={disputedRows.length}
+                    />
+                    <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
+                  </div>
+                </section>
+              ) : null}
+
+              {suspendedRows.length > 0 ? (
+                <section className={opsLetterCard}>
+                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                    <EngFeesSectionTitle
+                      className="mb-3 mt-3"
+                      title="الموقوفة"
+                      sub="بنود معلّقة بقرار المشرف."
+                      count={suspendedRows.length}
+                    />
+                    <PartyFeeWorkflowTable
+                      rows={suspendedRows}
+                      role="supervisor"
+                    />
+                  </div>
+                </section>
+              ) : null}
+
+              {returnedToSup.length > 0 ? (
+                <section className={opsLetterCard}>
+                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                    <EngFeesSectionTitle
+                      className="mb-3 mt-3"
+                      title="المُعاد من المالية"
+                      sub="بنود أعادتها المالية للمعالجة."
+                      count={returnedToSup.length}
+                    />
+                    <PartyFeeWorkflowTable
+                      rows={returnedToSup}
+                      role="supervisor"
+                    />
+                  </div>
+                </section>
+              ) : null}
+
               <section className={opsLetterCard}>
                 <div className="px-4 pb-4 pt-1 sm:px-[18px]">
                   <EngFeesSectionTitle
                     className="mb-3 mt-3"
-                    title="الواردة للاعتماد"
-                    sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                    title="متابعة فوترة إنفاذ"
+                    sub="حالة أوامر العمل لدى إنفاذ."
                   />
-                  <QueueTableHint className="mt-1">
-                    لا بنود واردة للاعتماد حالياً.
-                  </QueueTableHint>
+                  <SupervisorEnfazTracking />
                 </div>
               </section>
-            )}
-
-            {disputedRows.length > 0 ? (
-              <section className={opsLetterCard}>
-                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                  <EngFeesSectionTitle
-                    className="mb-3 mt-3"
-                    title="خلاف تسعير (مكتب هندسي)"
-                    sub="تحفّظات المكتب قيد المعالجة."
-                    count={disputedRows.length}
-                  />
-                  <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
-                </div>
-              </section>
-            ) : null}
-
-            {suspendedRows.length > 0 ? (
-              <section className={opsLetterCard}>
-                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                  <EngFeesSectionTitle
-                    className="mb-3 mt-3"
-                    title="الموقوفة"
-                    sub="بنود معلّقة بقرار المشرف."
-                    count={suspendedRows.length}
-                  />
-                  <PartyFeeWorkflowTable
-                    rows={suspendedRows}
-                    role="supervisor"
-                  />
-                </div>
-              </section>
-            ) : null}
-
-            {returnedToSup.length > 0 ? (
-              <section className={opsLetterCard}>
-                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                  <EngFeesSectionTitle
-                    className="mb-3 mt-3"
-                    title="المُعاد من المالية"
-                    sub="بنود أعادتها المالية للمعالجة."
-                    count={returnedToSup.length}
-                  />
-                  <PartyFeeWorkflowTable
-                    rows={returnedToSup}
-                    role="supervisor"
-                  />
-                </div>
-              </section>
-            ) : null}
-
-            <section className={opsLetterCard}>
-              <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                <EngFeesSectionTitle
-                  className="mb-3 mt-3"
-                  title="متابعة فوترة إنفاذ"
-                  sub="حالة أوامر العمل لدى إنفاذ."
-                />
-                <SupervisorEnfazTracking />
-              </div>
-            </section>
-          </div>
-        ) : null}
-
-        {supTab === "fees" ? (
-          <section className={opsLetterCard}>
-            <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-              <EngFeesSectionTitle
-                className="mb-3 mt-3"
-                title="الحسم والمراجعة"
-                sub="الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية."
-              />
-              <div className="hidden lg:block">
-                <InspectorFeesBillingTable
-                  rows={rows}
-                  mode="supervisor"
-                  pending={isLoading && !isFetched}
-                />
-              </div>
-              <div className="lg:hidden">
-                <PartyFeeWorkflowTable
-                  rows={rows}
-                  role="supervisor"
-                  pending={isLoading && !isFetched}
-                />
-              </div>
             </div>
-          </section>
-        ) : null}
+          ) : null}
 
-        {supTab === "statements" ? (
-          <PartyOfficeBillingStatementsPanel issuedOrLaterOnly />
-        ) : null}
+          {supTab === "fees" ? (
+            <section className={opsLetterCard}>
+              <div className="px-4 pb-4 pt-1 sm:px-[18px]">
+                <EngFeesSectionTitle
+                  className="mb-3 mt-3"
+                  title="الحسم والمراجعة"
+                  sub="الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية."
+                />
+                <div className="hidden lg:block">
+                  <InspectorFeesBillingTable
+                    rows={rows}
+                    mode="supervisor"
+                    pending={isLoading && !isFetched}
+                  />
+                </div>
+                <div className="lg:hidden">
+                  <PartyFeeWorkflowTable
+                    rows={rows}
+                    role="supervisor"
+                    pending={isLoading && !isFetched}
+                  />
+                </div>
+              </div>
+            </section>
+          ) : null}
 
-        {supTab === "visit-fees" ? (
-          <CourtVisitFeesPanel creditAssigneeId={undefined} />
-        ) : null}
+          {supTab === "statements" ? (
+            <PartyOfficeBillingStatementsPanel issuedOrLaterOnly />
+          ) : null}
 
-        {supTab === "key-fees" ? (
-          <>
-            <KeyEnvelopeFeesPanel
-              canCollect={hasCapability("manage-financial")}
-              onOpenEnvelope={(envelopeId) => {
-                window.location.assign(
-                  `/keys?envelope=${encodeURIComponent(envelopeId)}`,
-                );
-              }}
-            />
-            <QueueTableHint className="mt-3">
-              أتعاب استلام ظرف المفاتيح (سيناريو المحكمة + صورة). التفاصيل من{" "}
-              <Link
-                href="/keys?tab=fees"
-                className="font-semibold text-primary underline underline-offset-2"
-              >
-                إدارة المفاتيح → تقرير الأتعاب
-              </Link>
-              .
-            </QueueTableHint>
-          </>
-        ) : null}
+          {supTab === "visit-fees" ? (
+            <CourtVisitFeesPanel creditAssigneeId={undefined} />
+          ) : null}
+
+          {supTab === "key-fees" ? (
+            <>
+              <KeyEnvelopeFeesPanel
+                canCollect={hasCapability("manage-financial")}
+                onOpenEnvelope={(envelopeId) => {
+                  window.location.assign(
+                    `/keys?envelope=${encodeURIComponent(envelopeId)}`,
+                  );
+                }}
+              />
+              <QueueTableHint className="mt-3">
+                أتعاب استلام ظرف المفاتيح (سيناريو المحكمة + صورة). التفاصيل من{" "}
+                <Link
+                  href="/keys?tab=fees"
+                  className="font-semibold text-primary underline underline-offset-2"
+                >
+                  إدارة المفاتيح → تقرير الأتعاب
+                </Link>
+                .
+              </QueueTableHint>
+            </>
+          ) : null}
+        </div>
       </div>
     );
   }

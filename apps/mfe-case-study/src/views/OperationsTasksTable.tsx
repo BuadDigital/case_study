@@ -24,6 +24,7 @@ export type OperationsTasksTableProps = Pick<
   | "allVisibleActiveChecked"
   | "canRemind"
   | "isDesktopViewport"
+  | "isPlaceholderData"
   | "openTask"
   | "openTaskDetail"
   | "remindTask"
@@ -41,6 +42,7 @@ export function OperationsTasksTable({
   allVisibleActiveChecked,
   canRemind,
   isDesktopViewport,
+  isPlaceholderData,
   openTask,
   openTaskDetail,
   remindTask,
@@ -57,7 +59,8 @@ export function OperationsTasksTable({
   if (isDesktopViewport === false) return null;
   return (
     <TableFrame className="hidden lg:block">
-      <Table wrapClassName="min-w-[900px]">
+      {/* Previous rows stay, dimmed, while a new filter / search slice loads. */}
+      <Table wrapClassName="min-w-[900px]" pending={isPlaceholderData}>
         <THead>
           <Tr hoverable={false}>
             <ThAction aria-label="تحديد الكل" className="w-10">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import {
   Button,
   Card,
@@ -29,6 +30,7 @@ import {
   THead,
   Tr,
   cn,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 
 import {
@@ -79,6 +81,8 @@ export function ValuationListsView() {
     persistOrg,
     persistCatalog,
   } = useValuationListsWorkflow();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, tab);
 
   if (loading) {
     return (
@@ -103,9 +107,11 @@ export function ValuationListsView() {
                 onClick={() => setTab(item.id)}
                 className={cn(
                   "cursor-pointer rounded-lg px-3 py-2.5 text-start font-[inherit] text-[13px]",
+                  "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+                  "motion-reduce:transition-none motion-reduce:active:scale-100",
                   active
                     ? "border border-gold border-s-[3px] bg-gold-soft font-bold text-gold-d"
-                    : "border border-border bg-surface font-medium text-text-2 hover:bg-row-hover",
+                    : "border border-border bg-surface font-medium text-text-2 hover:border-border-md hover:bg-row-hover",
                 )}
               >
                 {item.label}
@@ -114,7 +120,7 @@ export function ValuationListsView() {
           })}
         </nav>
 
-        <div className="min-w-0 flex-1">
+        <div ref={panelRef} className="min-w-0 flex-1">
           {meta.kind === "ivs" && catalog ? (
             <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-3.5">
               <div className="flex min-w-[16rem] flex-col">

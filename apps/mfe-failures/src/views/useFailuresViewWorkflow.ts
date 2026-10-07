@@ -57,7 +57,7 @@ export function useFailuresViewWorkflow() {
   const caseEditor = isCaseEditor(role);
   const supervisor = isSupervisor(role);
   // Server-paged rows (pagination-contract §5); `kpiItems` is the whole set the KPI band still needs.
-  const { rows, kpiItems, search, setSearch, setPage, pager, isFetched, isError, error, refetch } =
+  const { rows, rowsPage, kpiItems, search, setSearch, setPage, pager, isFetched, isError, error, refetch } =
     useFailuresListPage(role, highlightId);
   const { data: poRecords = [] } = usePoRecordsViaBridge();
   const specialistByPo = useMemo(
@@ -271,6 +271,7 @@ export function useFailuresViewWorkflow() {
     highlightId,
     isDesktopViewport,
     rows,
+    rowsPage,
     search,
     setSearch,
     setPage,

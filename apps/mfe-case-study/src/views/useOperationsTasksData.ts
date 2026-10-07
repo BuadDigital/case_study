@@ -16,6 +16,8 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useShowAllEyeBlink } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
@@ -28,6 +30,7 @@ import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
+import { loadOperationsTasks } from "../lib/app-data/operations-tasks-reads";
 import {
   useOperationsTasksFilteredQuery,
   useOperationsTaskStatusCounts,
@@ -127,20 +130,51 @@ export function useOperationsTasksData() {
   // The search box drives a server request now — debounce it instead of
   // deferring a local pass, so typing does not fire one GET per keystroke.
   const debouncedSearch = useDebouncedValue(search, 300);
-  const serverQuery = useMemo(
-    () =>
-      toOperationsTaskListQuery(query, {
+  const serverQueryFor = useCallback(
+    (state: typeof query) =>
+      toOperationsTaskListQuery(state, {
         assigneeId: assigneeScopeId,
         // The pause-reason half of the hidden-by-failure rule is a column the
         // endpoint can answer; the rest stays in `queueTasksForViewer`.
         excludeFailurePaused: useIndependentQueue,
         search: debouncedSearch,
       }),
-    [query, assigneeScopeId, useIndependentQueue, debouncedSearch],
+    [assigneeScopeId, useIndependentQueue, debouncedSearch],
+  );
+  const serverQuery = useMemo(
+    () => serverQueryFor(query),
+    [serverQueryFor, query],
   );
 
-  const { data: tasks = [], isFetched, refetch, isFetching } =
-    useOperationsTasksFilteredQuery(serverQuery, { live: true });
+  const {
+    data: tasks = [],
+    isPending,
+    isPlaceholderData,
+    refetch,
+    isFetching,
+  } = useOperationsTasksFilteredQuery(serverQuery, { live: true });
+
+  // Pointer on «إظهار جميع المهام» — warm the other slice (same key as the list query).
+  const queryClient = useQueryClient();
+  const prefetchShowAllToggle = useCallback(() => {
+    const next = serverQueryFor({ ...query, showAll: !query.showAll });
+    void queryClient.prefetchQuery({
+      queryKey: appDataKeys.operationsTasksFiltered(next),
+      queryFn: () => loadOperationsTasks(next),
+      staleTime: 30_000,
+    });
+  }, [queryClient, serverQueryFor, query]);
+
+  /*
+   * Swap-fade key for the list, held while the previous rows stand in for a new
+   * server slice so the fade plays when the new rows land. Search is left out —
+   * typing must not pulse the table.
+   */
+  const listFilterKey = `${query.statusFilter}|${query.scopeFilter}|${query.showAll}`;
+  const [listSwapKey, setListSwapKey] = useState(listFilterKey);
+  if (!isPlaceholderData && listSwapKey !== listFilterKey) {
+    setListSwapKey(listFilterKey);
+  }
   /*
    * The auto-resume sweep needs the paused rows, which the queue's own filters
    * hide (`activeOnly`, `excludeFailurePaused`) — pagination-contract §3,
@@ -370,9 +404,12 @@ export function useOperationsTasksData() {
     showAllEyeBlink,
     toggleShowAll,
     tasks,
-    isFetched,
+    isPending,
+    isPlaceholderData,
     isFetching,
     refetch,
+    prefetchShowAllToggle,
+    listSwapKey,
     pausedTasks,
     refetchPaused,
     failures,

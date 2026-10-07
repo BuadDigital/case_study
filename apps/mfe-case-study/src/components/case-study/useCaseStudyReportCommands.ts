@@ -28,6 +28,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     draft,
     setDraft,
     hydrated,
+    resyncingRef,
     parentFormSubmitted,
     saving,
     setSaving,
@@ -53,6 +54,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
 
   const persist = useCallback(
     (next: CaseStudyReportDraft) => {
+      if (resyncingRef.current) return;
       setDraft(next);
       if (!isParty && next.status === "issued" && draft.status === "issued") {
         return;
@@ -73,6 +75,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     },
     [
       persistToServer,
+      resyncingRef,
       isParty,
       draft.status,
       parentFormSubmitted,
@@ -83,7 +86,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
 
   const setAnswer = useCallback(
     (key: string, value: CaseStudyReportAnswer | null) => {
-      if (!canEditKey(key)) return;
+      if (!canEditKey(key) || resyncingRef.current) return;
 
       setMissingAnswerKeys((prev) => {
         if (!prev.has(key)) return prev;
@@ -145,6 +148,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
       draft,
       isParty,
       partyChildTaskId,
+      resyncingRef,
       setDraft,
       setMissingAnswerKeys,
       showToast,
@@ -153,7 +157,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
 
   const setAnswerNote = useCallback(
     (key: string, note: string) => {
-      if (!canEditKey(key)) return;
+      if (!canEditKey(key) || resyncingRef.current) return;
       const nextNotes = { ...(draft.answerNotes ?? {}) };
       if (note.trim()) nextNotes[key] = note;
       else delete nextNotes[key];
@@ -194,7 +198,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
           });
       }
     },
-    [canEditKey, draft, isParty, partyChildTaskId, setDraft, showToast],
+    [canEditKey, draft, isParty, partyChildTaskId, resyncingRef, setDraft, showToast],
   );
 
   const goStep = useCallback((n: number) => {
@@ -215,14 +219,15 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     if (!visibleStepIndices.includes(draft.currentStep)) {
       goStep(visibleStepIndices[0]);
     }
-  }, [hydrated, visibleStepIndices, draft.currentStep, goStep]);
+    // Keyed on the draft, not just its step: a fix skipped during a re-show reload retries on the fresh draft.
+  }, [hydrated, visibleStepIndices, draft, goStep]);
 
   const patch = <K extends keyof CaseStudyReportDraft>(
     key: K,
     value: CaseStudyReportDraft[K],
   ) => {
     const current = draftRef.current;
-    if (isParty || current.status === "issued") return;
+    if (isParty || current.status === "issued" || resyncingRef.current) return;
     if (
       key === "deedRemarks" ||
       key === "deedNatureMatchOutcome" ||
@@ -262,6 +267,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
   };
 
   const saveDraft = () => {
+    if (resyncingRef.current) return;
     if (!isParty && draft.status === "issued") return;
     void withSaveFeedback(
       "حفظ مسودة",
@@ -271,6 +277,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
   };
 
   const submitForm = async () => {
+    if (resyncingRef.current) return;
     if (!isParty && draft.status === "issued") return;
     if (isParty && (draft.status === "issued" || parentFormSubmitted)) return;
     if (saving || submittingForm) return;

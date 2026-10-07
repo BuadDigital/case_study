@@ -4,6 +4,7 @@ import {
   InlineLoadingSkeleton,
   cn,
   opsWorkspaceCard,
+  useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
@@ -62,10 +63,11 @@ import { EvaluatorWindowBanners, EvaluatorWindowSubmitBar, EvaluatorWindowTitle 
 import { InspectorChangedBanner } from "./InspectorChangedBanner";
 import {
   EvaluatorValuationReportOutputTabLazy as EvaluatorValuationReportOutputTab,
+  prefetchValuationReportOutputTab,
   preloadValuationReportOutputTab,
 } from "./EvaluatorWindowOutputTab";
 import {
-  invalidateEvaluatorReportOutput,
+  refreshEvaluatorReportOutputOnOpen,
   scheduleInvalidateEvaluatorReportOutput,
 } from "../../lib/evaluator/evaluator-report-output-cache";
 import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -321,15 +323,49 @@ export function EvaluatorWindow({
     showToast,
   });
 
+  /** What the report tab reads — the same inputs it is rendered with below. */
+  const reportOutputInput = useMemo(
+    () => ({
+      property: propertySummary?.property ?? null,
+      poNumber: draft.poNumber,
+      inspectionTaskId: propertySummary?.inspectionTaskId ?? null,
+      surveyTaskId: propertySummary?.surveyTaskId ?? null,
+    }),
+    [
+      propertySummary?.property,
+      propertySummary?.inspectionTaskId,
+      propertySummary?.surveyTaskId,
+      draft.poNumber,
+    ],
+  );
+
   const onTabChange = useCallback((id: string) => {
     const next = id as EvaluatorWindowTab;
     setActiveTab(next);
     // Pull a fresh report bundle when opening «تقرير التقييم» (same idea as ESG:
-    // never leave the appraiser staring at a cached fill after they just saved).
+    // never leave the appraiser staring at a cached fill after they just saved) —
+    // unless the hover prefetch just fetched it.
     if (next === "output") {
-      invalidateEvaluatorReportOutput(queryClient);
+      refreshEvaluatorReportOutputOnOpen(queryClient, {
+        propertyId: reportOutputInput.property?.id,
+        poNumber: reportOutputInput.poNumber,
+        inspectionTaskId: reportOutputInput.inspectionTaskId,
+        surveyTaskId: reportOutputInput.surveyTaskId,
+      });
     }
-  }, [queryClient]);
+  }, [queryClient, reportOutputInput]);
+
+  const onTabIntent = useCallback(
+    (id: string) => {
+      if (id === "output") {
+        prefetchValuationReportOutputTab(queryClient, reportOutputInput);
+      }
+    },
+    [queryClient, reportOutputInput],
+  );
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, activeTab);
 
   // Property / inspection edits outside this window should refresh the report fill.
   useEffect(() => {
@@ -473,6 +509,7 @@ export function EvaluatorWindow({
             tabs={visibleTabs}
             active={activeTab}
             onChange={onTabChange}
+            onTabIntent={onTabIntent}
           />
         </div>
 
@@ -493,109 +530,113 @@ export function EvaluatorWindow({
             onError={(message) => showToast(message, "error")}
           />
 
-          <div className={cn(formDisabled ? "opacity-75" : undefined)}>
-            {workVisited || isWorkScreen(activeTab) ? (
-              <Activity
-                mode={activeTab !== "output" ? "visible" : "hidden"}
-              >
-                <div className="flex flex-col">
-                  {workScreen === "basic" && property ? (
-                    <div className="order-1">
-                      <EvaluatorBasicDocumentsCard
-                        property={property}
-                        poNumber={draft.poNumber}
-                        surveyTaskId={summary.surveyTaskId ?? null}
-                        inspectionTaskId={summary.inspectionTaskId ?? null}
-                        appraisalTaskId={task.id}
-                      />
-                    </div>
-                  ) : null}
-                  <div
-                    className={cn(
-                      "mb-5",
-                      // «البيانات الأساسية»: documents + type, then approaches, then maps + property info.
-                      workScreen === "basic" ? "order-3 mt-3.5" : "order-1",
-                    )}
-                  >
-                    <EvaluatorValuationReportTab
-                      draft={draft}
-                      disabled={formDisabled}
-                      property={summary.property}
-                      inspectionTaskId={summary.inspectionTaskId}
-                      surveyTaskId={summary.surveyTaskId}
-                      appraisalTaskId={task.id}
-                      assignmentType={task.assignmentType}
-                      fieldErrors={fieldErrors}
-                      onChange={onReportChoicesChange}
-                      onDraftPatch={onDraftPatch}
-                      showPropertyMedia={workScreen === "basic"}
-                    />
-                  </div>
-                  <div className="order-2">
-                    {property?.id ? (
-                      <ValuationWorkShell
-                        propertyId={property.id}
-                        poNumber={draft.poNumber}
-                        assignmentType={task.assignmentType ?? undefined}
-                        districtHint={property.district}
-                        property={{
-                          area: property.area,
-                          district: property.district,
-                          city: property.city,
-                          deedNumber: property.deedNumber,
-                          propertyType: property.propertyType,
-                          classification: property.classification,
-                        }}
-                        intakeProperty={property}
-                        onFinalOpinionChange={syncFinalOpinion}
+          {/* The swap fade lives on its own wrapper: animating the locked form's
+              element would end by snapping from full opacity back to 75%. */}
+          <div ref={panelRef}>
+            <div className={cn(formDisabled ? "opacity-75" : undefined)}>
+              {workVisited || isWorkScreen(activeTab) ? (
+                <Activity
+                  mode={activeTab !== "output" ? "visible" : "hidden"}
+                >
+                  <div className="flex flex-col">
+                    {workScreen === "basic" && property ? (
+                      <div className="order-1">
+                        <EvaluatorBasicDocumentsCard
+                          property={property}
+                          poNumber={draft.poNumber}
+                          surveyTaskId={summary.surveyTaskId ?? null}
+                          inspectionTaskId={summary.inspectionTaskId ?? null}
+                          appraisalTaskId={task.id}
+                        />
+                      </div>
+                    ) : null}
+                    <div
+                      className={cn(
+                        "mb-5",
+                        // «البيانات الأساسية»: documents + type, then approaches, then maps + property info.
+                        workScreen === "basic" ? "order-3 mt-3.5" : "order-1",
+                      )}
+                    >
+                      <EvaluatorValuationReportTab
                         draft={draft}
                         disabled={formDisabled}
+                        property={summary.property}
+                        inspectionTaskId={summary.inspectionTaskId}
+                        surveyTaskId={summary.surveyTaskId}
+                        appraisalTaskId={task.id}
+                        assignmentType={task.assignmentType}
                         fieldErrors={fieldErrors}
+                        onChange={onReportChoicesChange}
                         onDraftPatch={onDraftPatch}
-                        onReportChoicesPatch={onReportChoicesPatch}
-                        onSubmit={() => void submit()}
-                        submitting={submitBusy}
-                        showSubmit={false}
-                        screen={workScreen}
-                        onScreenChange={onWorkScreenChange}
-                        embeddedInTopTabs
-                        onNavAvailabilityChange={onNavAvailabilityChange}
-                        onRetrospectiveDraftChange={onRetrospectiveDraftChange}
-                        onSpecialistDraftChange={onSpecialistDraftChange}
+                        showPropertyMedia={workScreen === "basic"}
                       />
-                    ) : (
-                      <p className="text-[13px] text-text-3">
-                        لا يتوفر عقار مرتبط لهذه المهمة.
-                      </p>
-                    )}
+                    </div>
+                    <div className="order-2">
+                      {property?.id ? (
+                        <ValuationWorkShell
+                          propertyId={property.id}
+                          poNumber={draft.poNumber}
+                          assignmentType={task.assignmentType ?? undefined}
+                          districtHint={property.district}
+                          property={{
+                            area: property.area,
+                            district: property.district,
+                            city: property.city,
+                            deedNumber: property.deedNumber,
+                            propertyType: property.propertyType,
+                            classification: property.classification,
+                          }}
+                          intakeProperty={property}
+                          onFinalOpinionChange={syncFinalOpinion}
+                          draft={draft}
+                          disabled={formDisabled}
+                          fieldErrors={fieldErrors}
+                          onDraftPatch={onDraftPatch}
+                          onReportChoicesPatch={onReportChoicesPatch}
+                          onSubmit={() => void submit()}
+                          submitting={submitBusy}
+                          showSubmit={false}
+                          screen={workScreen}
+                          onScreenChange={onWorkScreenChange}
+                          embeddedInTopTabs
+                          onNavAvailabilityChange={onNavAvailabilityChange}
+                          onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+                          onSpecialistDraftChange={onSpecialistDraftChange}
+                        />
+                      ) : (
+                        <p className="text-[13px] text-text-3">
+                          لا يتوفر عقار مرتبط لهذه المهمة.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Activity>
-            ) : null}
+                </Activity>
+              ) : null}
 
-            {visitedTabsRef.current.has("output") ? (
-              <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
-                <EvaluatorValuationReportOutputTab
-                  draft={draft}
-                  property={summary.property}
-                  inspectionTaskId={summary.inspectionTaskId}
-                  surveyTaskId={summary.surveyTaskId}
-                  assignedAppraiserName={assignedAppraiserName}
-                  assignedAppraiserId={task.assigneeId}
-                  onReportChoicesPatch={onReportChoicesPatch}
-                  onNavigateTab={onTabChange}
-                />
-              </Activity>
-            ) : null}
+              {visitedTabsRef.current.has("output") ? (
+                <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
+                  <EvaluatorValuationReportOutputTab
+                    draft={draft}
+                    property={summary.property}
+                    inspectionTaskId={summary.inspectionTaskId}
+                    surveyTaskId={summary.surveyTaskId}
+                    assignedAppraiserName={assignedAppraiserName}
+                    assignedAppraiserId={task.assigneeId}
+                    onReportChoicesPatch={onReportChoicesPatch}
+                    onNavigateTab={onTabChange}
+                  />
+                </Activity>
+              ) : null}
 
-            <EvaluatorWindowSubmitBar
-              visible={!formDisabled && activeTab === "review"}
-              submitBusy={submitBusy}
-              submitBlockedReason={
-                studyReportPending ? STUDY_REPORT_NOT_ISSUED_MESSAGE : null
-              }
-              onSubmit={() => void submit()}
-            />
+              <EvaluatorWindowSubmitBar
+                visible={!formDisabled && activeTab === "review"}
+                submitBusy={submitBusy}
+                submitBlockedReason={
+                  studyReportPending ? STUDY_REPORT_NOT_ISSUED_MESSAGE : null
+                }
+                onSubmit={() => void submit()}
+              />
+            </div>
           </div>
         </div>
       </div>

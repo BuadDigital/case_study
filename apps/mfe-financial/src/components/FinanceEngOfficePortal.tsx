@@ -7,7 +7,11 @@
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -104,6 +108,9 @@ export function FinanceEngOfficePortal({
         assigneeId: officeFilter,
       }),
     staleTime: 15_000,
+    // Switching the office keeps the last list (dimmed) instead of blanking to
+    // «جاري تحميل المسيرات…» while the next office loads.
+    placeholderData: keepPreviousData,
   });
 
   const engStatements = useMemo(
@@ -303,7 +310,14 @@ export function FinanceEngOfficePortal({
       ) : null}
 
       {ready && portalRuns.length > 0 ? (
-        <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-4 transition-opacity duration-200 motion-reduce:transition-none",
+            statementsQuery.isPlaceholderData &&
+              "pointer-events-none opacity-60",
+          )}
+          aria-busy={statementsQuery.isPlaceholderData || undefined}
+        >
           {portalRuns.map((s) => {
             const total = statementDisplayTotal(s);
             const payee = resolvePartyName(s.assigneeId, staffUsers);

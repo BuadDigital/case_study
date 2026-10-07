@@ -5,8 +5,36 @@ import type {
   HTMLAttributes,
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { cn } from "../lib/cn";
+
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Moves the bar's underline under the selected tab (also across wrapped rows).
+ * The first placement jumps; later ones slide. Until it is placed the selected
+ * tab keeps its own border, so server HTML and no-JS still show the selection.
+ */
+function placeIndicator(root: HTMLElement, bar: HTMLElement) {
+  const active = root.querySelector<HTMLElement>(
+    '[role="tab"][aria-selected="true"]',
+  );
+  if (!active || active.offsetParent !== root) {
+    bar.style.opacity = "0";
+    return;
+  }
+  const y = active.offsetTop + active.offsetHeight - 2;
+  bar.style.width = `${active.offsetWidth}px`;
+  bar.style.transform = `translate(${active.offsetLeft}px, ${y}px)`;
+  bar.style.opacity = "1";
+  if (root.dataset.indicator !== "ready") {
+    // Next frame: the jump to the first tab must not animate in from the corner.
+    requestAnimationFrame(() => {
+      root.dataset.indicator = "ready";
+    });
+  }
+}
 
 /** Exactly one enabled `[role="tab"]` stays in the normal Tab order; the rest drop to `-1`. */
 function syncRovingTabIndex(root: HTMLElement) {
@@ -20,7 +48,10 @@ function syncRovingTabIndex(root: HTMLElement) {
   }
 }
 
-export type TabBarProps = HTMLAttributes<HTMLDivElement>;
+export type TabBarProps = HTMLAttributes<HTMLDivElement> & {
+  /** Sliding underline under the selected tab — turn off for filled/pill tab styles. */
+  indicator?: boolean;
+};
 
 /**
  * Tab strip (`role="tablist"`) — roving tabindex; arrow keys move focus
@@ -28,11 +59,31 @@ export type TabBarProps = HTMLAttributes<HTMLDivElement>;
  * physical direction), Home/End jump to the first/last. Compose with `Tab`
  * (pass `aria-controls` pointing at its `TabPanel`'s `id`) and `TabPanel`.
  */
-export function TabBar({ className, onKeyDown, ...props }: TabBarProps) {
+export function TabBar({
+  className,
+  onKeyDown,
+  children,
+  indicator = true,
+  ...props
+}: TabBarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (rootRef.current) syncRovingTabIndex(rootRef.current);
+  });
+
+  useIsomorphicLayoutEffect(() => {
+    const root = rootRef.current;
+    const bar = indicatorRef.current;
+    if (!root || !bar) return;
+    const place = () => placeIndicator(root, bar);
+    place();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(place);
+    observer.observe(root);
+    for (const tab of root.querySelectorAll('[role="tab"]')) observer.observe(tab);
+    return () => observer.disconnect();
   });
 
   function handleKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
@@ -70,13 +121,26 @@ export function TabBar({ className, onKeyDown, ...props }: TabBarProps) {
     <div
       ref={rootRef}
       className={cn(
-        "flex shrink-0 gap-0 overflow-x-auto overscroll-x-contain border-b border-border/50 bg-surface px-4 sm:px-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:h-0",
+        "group/tabbar relative flex shrink-0 gap-0 overflow-x-auto overscroll-x-contain border-b border-border/50 bg-surface px-4 sm:px-6 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:h-0",
         className,
       )}
       role="tablist"
       onKeyDown={handleKeyDown}
       {...props}
-    />
+    >
+      {children}
+      {indicator ? (
+        <span
+          ref={indicatorRef}
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute left-0 top-0 h-0.5 rounded-full bg-primary opacity-0",
+            "group-data-[indicator=ready]/tabbar:transition-[transform,width] group-data-[indicator=ready]/tabbar:duration-300 group-data-[indicator=ready]/tabbar:ease-[cubic-bezier(0.2,0,0,1)]",
+            "motion-reduce:!transition-none",
+          )}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -93,11 +157,13 @@ export function Tab({ className, active, type = "button", ...props }: TabProps) 
       aria-selected={active}
       data-no-action-toast
       className={cn(
-        "mb-[-1px] flex items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 py-2.5 text-xs text-text-2 whitespace-nowrap outline-none transition-colors cursor-pointer font-[inherit]",
+        "mb-[-1px] flex items-center gap-1.5 rounded-t-md border-b-2 border-transparent bg-transparent px-3.5 py-2.5 text-xs text-text-2 whitespace-nowrap outline-none cursor-pointer font-[inherit]",
+        "transition-[color,background-color,border-color] duration-200 ease-out hover:bg-surface-2/60 active:bg-surface-2",
         "max-lg:min-h-11 max-lg:px-3 max-lg:text-[12.5px]",
         "hover:text-text",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-text-2",
-        active && "border-b-primary font-medium text-primary",
+        active &&
+          "border-b-primary font-medium text-primary group-data-[indicator=ready]/tabbar:border-b-transparent",
         className,
       )}
       {...props}

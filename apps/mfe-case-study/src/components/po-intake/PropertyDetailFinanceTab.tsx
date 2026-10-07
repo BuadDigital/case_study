@@ -1,24 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Badge,
   InlineLoadingSkeleton,
   Tab,
   TabBar,
   TabPanel,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import {
   inspectorFeeStatusLabel,
   inspectorFeeWorkStatusTone,
 } from "@platform/api-client";
-import { loadPropertyEnfazRevenue } from "@platform/app-shared/app-data/enfaz-billing-api";
 import { useQuery } from "@tanstack/react-query";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { EmptyState, InfoBox, SectionHeader } from "./PropertyDetailFields";
 import { PartyFeeWorkflowTable } from "../fees/PartyFeeWorkflowTable";
 import { InspectorFeesBillingTable } from "../field-inspection/InspectorFeesBillingTable";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
+import { propertyEnfazRevenueQueryOptions } from "./property-detail-finance-query";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -42,6 +42,8 @@ export function PropertyDetailFinanceTab({
   const isSupervisor = hasCapability("manage-operations");
   const isFinance = hasCapability("manage-financial");
   const [sub, setSub] = useState<"out" | "in">("out");
+  const subPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(subPanelRef, sub);
 
   const feeTasks = useMemo(
     () =>
@@ -70,11 +72,9 @@ export function PropertyDetailFinanceTab({
     [summary?.rows, feeTaskIds],
   );
 
-  const { data: enfazRevenue } = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", poNumber, property.id],
-    queryFn: () => loadPropertyEnfazRevenue(poNumber, property.id),
-    enabled: Boolean(property.id),
-  });
+  const { data: enfazRevenue } = useQuery(
+    propertyEnfazRevenueQueryOptions(poNumber, property.id),
+  );
 
   const enfazIn = enfazRevenue?.hasEnfazRevenue
     ? {
@@ -151,6 +151,7 @@ export function PropertyDetailFinanceTab({
       </TabBar>
 
       <TabPanel className="max-lg:!px-0 max-lg:!py-0">
+        <div ref={subPanelRef}>
         {sub === "out" ? (
           isSupervisor ? (
             <>
@@ -197,6 +198,7 @@ export function PropertyDetailFinanceTab({
             ذلك يبقى «—» ولا يُحسب هامش.
           </InfoBox>
         )}
+        </div>
       </TabPanel>
 
       {rows.some((r) => r.workStatus) ? (

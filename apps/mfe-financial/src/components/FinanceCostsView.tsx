@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   StatusPill,
   cn,
   finStatusStyle,
   opsPanelCard,
   opsTfNote,
+  useSwapAnimation,
 } from "@platform/ui-kit";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
@@ -28,6 +29,7 @@ import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
+import { prefetchCostsAccountTab } from "../query/costs-account-queries";
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
@@ -232,6 +234,10 @@ export function FinanceCostsView({
     } as Partial<Record<CostsSection, number>>;
   }, [partyKey, readyQuery.data, statementsQuery.data, excludedCount]);
 
+  const queryClient = useQueryClient();
+  const tabPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(tabPanelRef, accountSection);
+
   const partyName =
     activeParty?.name ??
     (focusPartyId ? resolvePartyName(focusPartyId, staffUsers) : "");
@@ -277,45 +283,50 @@ export function FinanceCostsView({
           onSectionChange(id);
           if (id !== "statements" && id !== "dues") onFocusStatement(null);
         }}
+        onTabIntent={(id) =>
+          prefetchCostsAccountTab(queryClient, id, focusPartyId)
+        }
         counts={partyCounts}
       />
 
-      {accountSection === "dues" ||
-      accountSection === "statements" ||
-      accountSection === "paid" ? (
-        <>
-          {accountSection === "statements" || accountSection === "paid" ? (
-            <p className={cn(opsTfNote, "mb-3.5")}>
-              {accountSection === "paid"
-                ? headerParty.payeeType === "individual"
-                  ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
-                  : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
-                : headerParty.payeeType === "individual"
-                  ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
-                  : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
-            </p>
-          ) : null}
-          <FinancePartyBillingStatements
-            mode={
-              accountSection === "dues"
-                ? "dues"
-                : accountSection === "paid"
-                  ? "paid"
-                  : "statements"
-            }
-            assigneeId={focusPartyId}
-            focusStatementId={focusStatementId}
-            onFocusStatement={(id, partyId) =>
-              onFocusStatement(id, partyId ?? focusPartyId)
-            }
-            onCreatedStatement={() => onSectionChange("statements")}
-          />
-        </>
-      ) : null}
+      <div ref={tabPanelRef}>
+        {accountSection === "dues" ||
+        accountSection === "statements" ||
+        accountSection === "paid" ? (
+          <>
+            {accountSection === "statements" || accountSection === "paid" ? (
+              <p className={cn(opsTfNote, "mb-3.5")}>
+                {accountSection === "paid"
+                  ? headerParty.payeeType === "individual"
+                    ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
+                    : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
+                  : headerParty.payeeType === "individual"
+                    ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
+                    : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
+              </p>
+            ) : null}
+            <FinancePartyBillingStatements
+              mode={
+                accountSection === "dues"
+                  ? "dues"
+                  : accountSection === "paid"
+                    ? "paid"
+                    : "statements"
+              }
+              assigneeId={focusPartyId}
+              focusStatementId={focusStatementId}
+              onFocusStatement={(id, partyId) =>
+                onFocusStatement(id, partyId ?? focusPartyId)
+              }
+              onCreatedStatement={() => onSectionChange("statements")}
+            />
+          </>
+        ) : null}
 
-      {accountSection === "excluded" ? (
-        <FinanceExcludedCosts assigneeId={focusPartyId} />
-      ) : null}
+        {accountSection === "excluded" ? (
+          <FinanceExcludedCosts assigneeId={focusPartyId} />
+        ) : null}
+      </div>
     </div>
   );
 }

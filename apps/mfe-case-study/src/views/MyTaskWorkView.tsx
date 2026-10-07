@@ -7,11 +7,14 @@
  * `MyTaskWorkScreens`, the step cards from `MyTaskWorkSteps`, and the pure
  * step/screen decisions sit in `my-task-work-state`.
  */
-import { Button, Note } from "@platform/ui-kit";
+import { useEffect, useRef } from "react";
+import { Button, Note, useSwapAnimation, whenIdle } from "@platform/ui-kit";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import {
   FailureRaiseModal,
+  preloadDistributionPartiesForm,
   preloadFailureRaiseModal,
+  preloadPoPropertyBourseForm,
 } from "./MyTaskWorkLazyForms";
 import { MyTaskWorkTerminalScreen } from "./MyTaskWorkScreens";
 import {
@@ -19,7 +22,11 @@ import {
   MyTaskWorkDistributionStep,
   MyTaskWorkEnfathStep,
 } from "./MyTaskWorkSteps";
-import { canRaiseFailure, taskWorkChromeTitle } from "./my-task-work-state";
+import {
+  activeTaskWorkStep,
+  canRaiseFailure,
+  taskWorkChromeTitle,
+} from "./my-task-work-state";
 import {
   useMyTaskWorkWorkflow,
   type CaseStudyTaskWorkProps,
@@ -57,6 +64,21 @@ export function CaseStudyTaskWork({
     failureSpecialist,
     failureRaisedByRole,
   } = workflow;
+  const activeStep = activeTaskWorkStep(steps);
+  const stepPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(stepPanelRef, activeStep);
+  // Fetch the next step's form code while this one is filled in.
+  useEffect(() => {
+    if (screen !== "work") return;
+    const preloadNext =
+      activeStep === "enfath"
+        ? preloadPoPropertyBourseForm
+        : activeStep === "bourse"
+          ? preloadDistributionPartiesForm
+          : null;
+    if (!preloadNext) return;
+    return whenIdle(preloadNext);
+  }, [screen, activeStep]);
 
   if (screen !== "work") {
     return <MyTaskWorkTerminalScreen {...workflow} screen={screen} />;
@@ -95,11 +117,13 @@ export function CaseStudyTaskWork({
         </Note>
       ) : null}
 
-      {steps.showEnfathStep ? <MyTaskWorkEnfathStep {...workflow} /> : null}
-      {steps.showBourseStep ? <MyTaskWorkBourseStep {...workflow} /> : null}
-      {steps.showDistribution ? (
-        <MyTaskWorkDistributionStep {...workflow} />
-      ) : null}
+      <div ref={stepPanelRef}>
+        {steps.showEnfathStep ? <MyTaskWorkEnfathStep {...workflow} /> : null}
+        {steps.showBourseStep ? <MyTaskWorkBourseStep {...workflow} /> : null}
+        {steps.showDistribution ? (
+          <MyTaskWorkDistributionStep {...workflow} />
+        ) : null}
+      </div>
 
       {task.propertyId && failureModalOpen ? (
         <FailureRaiseModal

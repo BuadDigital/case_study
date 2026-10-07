@@ -15,6 +15,9 @@ import {
   useShowAllEyeBlink,
 } from "@platform/ui-kit";
 
+/** Same press / hover motion as the tab strips; the colours stay as they were. */
+const TOGGLE_BUTTON_MOTION =
+  "transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100";
 const TOGGLE_BUTTON_ON = "border-ink bg-ink text-white";
 const TOGGLE_BUTTON_OFF =
   "border-border-md bg-surface text-text-2 hover:bg-surface-2";
@@ -101,6 +104,7 @@ export function QueueFiltersToolbar({
   assignmentTypes,
   showCompleted,
   onToggleShowCompleted,
+  onShowCompletedIntent,
   groupByPo,
   groupGatherAnim,
   onToggleGroupByPo,
@@ -121,6 +125,8 @@ export function QueueFiltersToolbar({
   assignmentTypes: string[];
   showCompleted: boolean;
   onToggleShowCompleted: () => void;
+  /** Pointer / focus reached the toggle — warm the other slice before the click. */
+  onShowCompletedIntent?: () => void;
   groupByPo: boolean;
   groupGatherAnim: boolean;
   onToggleGroupByPo: () => void;
@@ -195,8 +201,11 @@ export function QueueFiltersToolbar({
                 if (!showCompleted) triggerBlink();
                 onToggleShowCompleted();
               }}
+              onPointerEnter={onShowCompletedIntent}
+              onFocus={onShowCompletedIntent}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors max-lg:justify-center",
+                "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold max-lg:justify-center",
+                TOGGLE_BUTTON_MOTION,
                 showCompleted ? TOGGLE_BUTTON_ON : TOGGLE_BUTTON_OFF,
               )}
               aria-pressed={showCompleted}
@@ -233,7 +242,8 @@ export function QueueFiltersToolbar({
             type="button"
             onClick={onToggleGroupByPo}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold transition-colors max-lg:w-full max-lg:justify-center",
+              "inline-flex items-center gap-1.5 rounded-lg border px-[13px] py-2 text-[12.5px] font-bold max-lg:w-full max-lg:justify-center",
+              TOGGLE_BUTTON_MOTION,
               groupByPo ? TOGGLE_BUTTON_ON : TOGGLE_BUTTON_OFF,
             )}
             aria-pressed={groupByPo}

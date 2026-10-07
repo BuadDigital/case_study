@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSeg, opsTfSegActive, opsTfSegRow } from "@platform/ui-kit";
+import { useMemo, useRef, useState } from "react";
+import { PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, useSwapAnimation } from "@platform/ui-kit";
+import { opsTfSeg, opsTfSegActive } from "../../lib/settings-ops-tw";
 import {
   FIELD_DICTIONARY_STAGES,
   fieldsForDictionaryStage,
@@ -30,6 +31,9 @@ function DictionaryIcon() {
 export function FieldDictionaryTab() {
   const [stageId, setStageId] = useState<FieldDictionaryStageId>("primary");
   const [query, setQuery] = useState("");
+  // Keyed on the stage only — typing in the search box must not replay the fade.
+  const listRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(listRef, stageId);
 
   const stage = FIELD_DICTIONARY_STAGES.find((item) => item.id === stageId);
   const totalInStage = fieldsForDictionaryStage(stageId).length;
@@ -100,33 +104,35 @@ export function FieldDictionaryTab() {
             </span>
           </div>
 
-          {fields.length === 0 ? (
-            <p className="py-10 text-center text-xs text-text-3">
-              لا توجد حقول في هذا القسم
-            </p>
-          ) : (
-            <ol className="m-0 list-none divide-y divide-border rounded-[10px] border border-border-md p-0">
-              {fields.map((field, index) => (
-                <li
-                  key={`${field.key}-${index}`}
-                  className="flex items-baseline gap-3 px-3.5 py-2.5"
-                >
-                  <span className="w-7 shrink-0 text-end text-[11px] tabular-nums text-text-3">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 text-[13px] font-medium text-text">
-                    {field.label}
-                  </span>
-                  <span
-                    dir="ltr"
-                    className="hidden shrink-0 font-mono text-[10px] text-text-3 sm:inline"
+          <div ref={listRef}>
+            {fields.length === 0 ? (
+              <p className="py-10 text-center text-xs text-text-3">
+                لا توجد حقول في هذا القسم
+              </p>
+            ) : (
+              <ol className="m-0 list-none divide-y divide-border rounded-[10px] border border-border-md p-0">
+                {fields.map((field, index) => (
+                  <li
+                    key={`${field.key}-${index}`}
+                    className="flex items-baseline gap-3 px-3.5 py-2.5"
                   >
-                    {field.key}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
+                    <span className="w-7 shrink-0 text-end text-[11px] tabular-nums text-text-3">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 text-[13px] font-medium text-text">
+                      {field.label}
+                    </span>
+                    <span
+                      dir="ltr"
+                      className="hidden shrink-0 font-mono text-[10px] text-text-3 sm:inline"
+                    >
+                      {field.key}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </div>
       </section>
     </PageShell>

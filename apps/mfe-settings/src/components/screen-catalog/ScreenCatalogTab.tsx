@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Badge, Input, PageShellHeader, cn, pageGutterClassName } from "@platform/ui-kit";
+import { useMemo, useRef, useState } from "react";
+import { Badge, Input, PageShellHeader, cn, pageGutterClassName, useSwapAnimation } from "@platform/ui-kit";
 import {
   SCREEN_CATALOG_KIND_LABELS,
   SCREEN_CATALOG_STATUS_LABELS,
@@ -47,6 +47,9 @@ export function ScreenCatalogTab() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
+  // Keyed on the clicked row only: search / filters moving the fallback selection stay still.
+  const detailRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(detailRef, selectedId);
 
   const facetOptions = useMemo(
     () => ({
@@ -235,7 +238,10 @@ export function ScreenCatalogTab() {
           </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible">
+        <div
+          ref={detailRef}
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface max-lg:overflow-visible"
+        >
           {selectedScreen ? (
             <ScreenCatalogDetailPanel screen={selectedScreen} />
           ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getPropertyGroup,
   type PriorDeedRegistrationDto,
@@ -138,12 +138,20 @@ export function PropertyDetailLinkedTab({
   const [loading, setLoading] = useState(true);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
+  // The tab sits in an <Activity>: showing it again (or a refetched task list) re-runs
+  // the lookup for links already on screen — refresh them without the «جاري البحث» line.
+  const loadedKeyRef = useRef<string | null>(null);
+  const loadKey = `${property.id}|${deedNumber}|${poNumber}|${caseStudyTask?.id ?? ""}`;
+
   useEffect(() => {
     let cancelled = false;
+    const silent = loadedKeyRef.current === loadKey;
 
     async function load() {
-      setLoading(true);
-      setLookupError(null);
+      if (!silent) {
+        setLoading(true);
+        setLookupError(null);
+      }
       try {
         const [history, draft] = await Promise.all([
           deedNumber
@@ -171,6 +179,7 @@ export function PropertyDetailLinkedTab({
           propertyId: priorPropertyId(hit),
         }));
         setPriors(priorRows);
+        setLookupError(null);
 
         const linkedYes = draft?.infathLinkedAssets === "yes";
         const declaredDeeds = linkedYes
@@ -229,7 +238,10 @@ export function PropertyDetailLinkedTab({
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          loadedKeyRef.current = loadKey;
+        }
       }
     }
 
@@ -237,7 +249,7 @@ export function PropertyDetailLinkedTab({
     return () => {
       cancelled = true;
     };
-  }, [deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
+  }, [loadKey, deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
 
   // Decision 20 — grouped property: human-confirmed links show here too, not only on
   // the bourse screen. Fetched independently so a failure there does not drop the other links.

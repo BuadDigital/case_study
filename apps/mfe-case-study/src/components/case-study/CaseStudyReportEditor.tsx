@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Button,
   FormGroup,
@@ -11,6 +11,7 @@ import {
   Tab,
   TabBar,
   cn,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { RegField } from "@platform/app-shared/registration/FormFields";
@@ -104,6 +105,8 @@ export function CaseStudyReportEditor({
     forceReadOnly,
   });
   const commands = useCaseStudyReportCommands(data);
+  const stepPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(stepPanelRef, data.draft.currentStep);
   const { role } = useAppAccess();
   const [reopenOpen, setReopenOpen] = useState(false);
   const canReopen = canReopenCaseStudyReport(role);
@@ -286,6 +289,8 @@ export function CaseStudyReportEditor({
             <TabBar
               className="z-10 mb-0 min-w-0 flex-1 flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-0 bg-transparent px-3.5 sm:px-3.5"
               aria-label="خطوات تقرير دراسة الحالة"
+              // The active step is an ink pill — an underline would run along its bottom edge.
+              indicator={false}
             >
               {navSteps.map((i) => {
                 const s = CASE_STUDY_REPORT_STEPS[i];
@@ -338,199 +343,212 @@ export function CaseStudyReportEditor({
           />
         ) : null}
 
-        {step === 0 && sectionHasVisibleQuestions("deed") ? (
-          <div className="flex flex-col gap-3.5">
-            <CaseStudyMatrixTable
-              section="deed"
-              sectionTitle="بيانات الصك والعقار"
-              questions={sectionQuestions.deed}
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-              footer={
-                !isParty ? (
-                  <RemarksBlock
-                    id="cs-deed-remarks"
-                    label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                    value={draft.deedRemarks}
-                    disabled={isFormReadOnly}
-                    invalid={Boolean(formFieldErrors.deedRemarks)}
-                    onChange={(v) => patch("deedRemarks", v)}
-                  />
-                ) : undefined
-              }
-            />
-            {!isParty && isLastVisibleStep ? (
-              <SpecialistClosingCards reportModel={reportModel} />
-            ) : null}
-          </div>
-        ) : null}
-
-        {step === 1 && sectionHasVisibleQuestions("survey") ? (
-          <div className="flex flex-col gap-3.5">
-            <CaseStudyMatrixTable
-              section="survey"
-              sectionTitle="الرفع المساحي والطبيعة"
-              questions={sectionQuestions.survey}
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-              footer={
-                !isParty ? (
-                  <RemarksBlock
-                    label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
-                    value={draft.surveyRemarks}
-                    disabled={isFormReadOnly}
-                    onChange={(v) => patch("surveyRemarks", v)}
-                  />
-                ) : undefined
-              }
-            />
-            {!isParty && isLastVisibleStep ? (
-              <SpecialistClosingCards reportModel={reportModel} />
-            ) : null}
-          </div>
-        ) : null}
-
-        {step === 2 && sectionHasVisibleQuestions("comp") ? (
-          <div className="flex flex-col gap-3.5">
-            <CaseStudyMatrixTable
-              section="comp"
-              sectionTitle="مكونات العقار"
-              questions={sectionQuestions.comp}
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-              footer={
-                !isParty ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-text">
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-text-2">
-                        <span className="whitespace-nowrap">عداد الكهرباء رقم</span>
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                          <span aria-hidden="true">(</span>
-                          <Input
-                            className="w-[5.5rem] rounded-none border-0 border-b border-border-md bg-transparent px-0.5 shadow-none focus:ring-0"
-                            placeholder="رقم"
-                            aria-label="رقم العداد"
-                            value={draft.meterNumber}
-                            disabled={isFormReadOnly}
-                            onChange={(e) => patch("meterNumber", e.target.value)}
-                          />
-                          <span aria-hidden="true">)</span>
-                        </span>
-                      </span>
-                      <span className="inline-flex flex-wrap items-center gap-2">
-                        {(
-                          [
-                            ["electronic", "إلكتروني"],
-                            ["analog", "مؤرشف"],
-                            ["none", "لا يوجد"],
-                          ] as const
-                        ).map(([val, label]) => {
-                          const on = draft.meterType === val;
-                          return (
-                            <label
-                              key={val}
-                              className={cn(
-                                "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors",
-                                on
-                                  ? "border-ink bg-ink text-white"
-                                  : "border-border-md bg-surface text-text-2 hover:text-heading",
-                                isFormReadOnly && "cursor-not-allowed opacity-50",
-                              )}
-                            >
-                              <input
-                                type="radio"
-                                name={`meter-${taskId}`}
-                                className="sr-only"
-                                checked={on}
-                                disabled={isFormReadOnly}
-                                onChange={() => {
-                                  patch("meterType", val as CaseStudyMeterType);
-                                  if (val === "none") patch("meterNumber", "");
-                                }}
-                              />
-                              {label}
-                            </label>
-                          );
-                        })}
-                      </span>
-                    </div>
-                    <RemarksBlock
-                      label="ملاحظات"
-                      value={draft.componentsRemarks}
-                      disabled={isFormReadOnly}
-                      onChange={(v) => patch("componentsRemarks", v)}
-                      rows={2}
-                    />
-                  </div>
-                ) : undefined
-              }
-            />
-            {!isParty && isLastVisibleStep ? (
-              <SpecialistClosingCards reportModel={reportModel} />
-            ) : null}
-          </div>
-        ) : null}
-
-        {step === 3 && sectionHasVisibleQuestions("occ") ? (
-          <div className="flex flex-col gap-3.5">
-            <CaseStudyMatrixTable
-              section="occ"
-              sectionTitle="الإشغال والإيجار"
-              questions={sectionQuestions.occ}
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-              footer={
-                !isParty ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-wrap items-end gap-2">
-                      <RegField
-                        id="cs-hoa"
-                        label="قيمة اشتراك اتحاد الملاك"
-                        type="number"
-                        placeholder="القيمة"
-                        value={draft.hoaFee}
-                        onChange={(v) => patch("hoaFee", v)}
-                        className="inline-block max-w-[200px]"
+        {/* Only the step body fades on a step change; the step tabs and actions stay put.
+            The outer dim covers the draft re-read on returning to the tab (input waits for
+            it — see useCaseStudyReportData); it sits outside the fade so that never snaps. */}
+        <div
+          aria-busy={data.resyncing || undefined}
+          className={cn(
+            "transition-opacity duration-200",
+            data.resyncing && "pointer-events-none opacity-70",
+          )}
+        >
+          <div ref={stepPanelRef} className="flex flex-col gap-3.5">
+            {step === 0 && sectionHasVisibleQuestions("deed") ? (
+              <div className="flex flex-col gap-3.5">
+                <CaseStudyMatrixTable
+                  section="deed"
+                  sectionTitle="بيانات الصك والعقار"
+                  questions={sectionQuestions.deed}
+                  answers={draft.answers}
+                  onAnswer={setAnswer}
+                  {...matrixTableProps}
+                  footer={
+                    !isParty ? (
+                      <RemarksBlock
+                        id="cs-deed-remarks"
+                        label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+                        value={draft.deedRemarks}
+                        disabled={isFormReadOnly}
+                        invalid={Boolean(formFieldErrors.deedRemarks)}
+                        onChange={(v) => patch("deedRemarks", v)}
                       />
-                      <span className="pb-2 text-xs text-text-2">ريال سعودي</span>
-                    </div>
-                    <RemarksBlock
-                      label="ملاحظات"
-                      value={draft.occupancyRemarks}
-                      disabled={isFormReadOnly}
-                      onChange={(v) => patch("occupancyRemarks", v)}
-                      rows={2}
-                    />
-                  </div>
-                ) : undefined
-              }
-            />
-            {!isParty && isLastVisibleStep ? (
-              <SpecialistClosingCards reportModel={reportModel} />
+                    ) : undefined
+                  }
+                />
+                {!isParty && isLastVisibleStep ? (
+                  <SpecialistClosingCards reportModel={reportModel} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {step === 1 && sectionHasVisibleQuestions("survey") ? (
+              <div className="flex flex-col gap-3.5">
+                <CaseStudyMatrixTable
+                  section="survey"
+                  sectionTitle="الرفع المساحي والطبيعة"
+                  questions={sectionQuestions.survey}
+                  answers={draft.answers}
+                  onAnswer={setAnswer}
+                  {...matrixTableProps}
+                  footer={
+                    !isParty ? (
+                      <RemarksBlock
+                        label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
+                        value={draft.surveyRemarks}
+                        disabled={isFormReadOnly}
+                        onChange={(v) => patch("surveyRemarks", v)}
+                      />
+                    ) : undefined
+                  }
+                />
+                {!isParty && isLastVisibleStep ? (
+                  <SpecialistClosingCards reportModel={reportModel} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {step === 2 && sectionHasVisibleQuestions("comp") ? (
+              <div className="flex flex-col gap-3.5">
+                <CaseStudyMatrixTable
+                  section="comp"
+                  sectionTitle="مكونات العقار"
+                  questions={sectionQuestions.comp}
+                  answers={draft.answers}
+                  onAnswer={setAnswer}
+                  {...matrixTableProps}
+                  footer={
+                    !isParty ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-text">
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-text-2">
+                            <span className="whitespace-nowrap">عداد الكهرباء رقم</span>
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                              <span aria-hidden="true">(</span>
+                              <Input
+                                className="w-[5.5rem] rounded-none border-0 border-b border-border-md bg-transparent px-0.5 shadow-none focus:ring-0"
+                                placeholder="رقم"
+                                aria-label="رقم العداد"
+                                value={draft.meterNumber}
+                                disabled={isFormReadOnly}
+                                onChange={(e) => patch("meterNumber", e.target.value)}
+                              />
+                              <span aria-hidden="true">)</span>
+                            </span>
+                          </span>
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            {(
+                              [
+                                ["electronic", "إلكتروني"],
+                                ["analog", "مؤرشف"],
+                                ["none", "لا يوجد"],
+                              ] as const
+                            ).map(([val, label]) => {
+                              const on = draft.meterType === val;
+                              return (
+                                <label
+                                  key={val}
+                                  className={cn(
+                                    "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors",
+                                    on
+                                      ? "border-ink bg-ink text-white"
+                                      : "border-border-md bg-surface text-text-2 hover:text-heading",
+                                    isFormReadOnly && "cursor-not-allowed opacity-50",
+                                  )}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`meter-${taskId}`}
+                                    className="sr-only"
+                                    checked={on}
+                                    disabled={isFormReadOnly}
+                                    onChange={() => {
+                                      patch("meterType", val as CaseStudyMeterType);
+                                      if (val === "none") patch("meterNumber", "");
+                                    }}
+                                  />
+                                  {label}
+                                </label>
+                              );
+                            })}
+                          </span>
+                        </div>
+                        <RemarksBlock
+                          label="ملاحظات"
+                          value={draft.componentsRemarks}
+                          disabled={isFormReadOnly}
+                          onChange={(v) => patch("componentsRemarks", v)}
+                          rows={2}
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                />
+                {!isParty && isLastVisibleStep ? (
+                  <SpecialistClosingCards reportModel={reportModel} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {step === 3 && sectionHasVisibleQuestions("occ") ? (
+              <div className="flex flex-col gap-3.5">
+                <CaseStudyMatrixTable
+                  section="occ"
+                  sectionTitle="الإشغال والإيجار"
+                  questions={sectionQuestions.occ}
+                  answers={draft.answers}
+                  onAnswer={setAnswer}
+                  {...matrixTableProps}
+                  footer={
+                    !isParty ? (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-end gap-2">
+                          <RegField
+                            id="cs-hoa"
+                            label="قيمة اشتراك اتحاد الملاك"
+                            type="number"
+                            placeholder="القيمة"
+                            value={draft.hoaFee}
+                            onChange={(v) => patch("hoaFee", v)}
+                            className="inline-block max-w-[200px]"
+                          />
+                          <span className="pb-2 text-xs text-text-2">ريال سعودي</span>
+                        </div>
+                        <RemarksBlock
+                          label="ملاحظات"
+                          value={draft.occupancyRemarks}
+                          disabled={isFormReadOnly}
+                          onChange={(v) => patch("occupancyRemarks", v)}
+                          rows={2}
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                />
+                {!isParty && isLastVisibleStep ? (
+                  <SpecialistClosingCards reportModel={reportModel} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {step === 4 && sectionHasVisibleQuestions("extra") ? (
+              <div className="flex flex-col gap-3.5">
+                <CaseStudyMatrixTable
+                  section="extra"
+                  sectionTitle="ملاحظات إضافية"
+                  questions={sectionQuestions.extra}
+                  answers={draft.answers}
+                  onAnswer={setAnswer}
+                  {...matrixTableProps}
+                />
+
+                {!isParty && isLastVisibleStep ? (
+                  <SpecialistClosingCards reportModel={reportModel} />
+                ) : null}
+              </div>
             ) : null}
           </div>
-        ) : null}
-
-        {step === 4 && sectionHasVisibleQuestions("extra") ? (
-          <div className="flex flex-col gap-3.5">
-            <CaseStudyMatrixTable
-              section="extra"
-              sectionTitle="ملاحظات إضافية"
-              questions={sectionQuestions.extra}
-              answers={draft.answers}
-              onAnswer={setAnswer}
-              {...matrixTableProps}
-            />
-
-            {!isParty && isLastVisibleStep ? (
-              <SpecialistClosingCards reportModel={reportModel} />
-            ) : null}
-          </div>
-        ) : null}
+        </div>
 
         {!isParty ? (
           <CaseStudyInfathSpecialistSection

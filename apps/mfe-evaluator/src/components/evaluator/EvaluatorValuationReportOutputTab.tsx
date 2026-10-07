@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 import { Button } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
@@ -41,6 +41,7 @@ import { ReportDraftApprovalBar } from "./ReportDraftApprovalBar";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
 import { useReportDraftByProperty } from "./useReportDraft";
+import { evaluatorReportOutputQueryKey } from "../../lib/evaluator/evaluator-report-output-cache";
 import {
   applyReportDraftChoices,
   overlayFromDraft,
@@ -59,6 +60,35 @@ import {
   finishingTextForReport,
   loadReportOutputBundle,
 } from "./evaluator-report-output-helpers";
+
+type ReportOutputInput = Parameters<typeof loadReportOutputBundle>[0];
+
+function reportOutputQueryOptions(input: ReportOutputInput) {
+  return queryOptions({
+    queryKey: evaluatorReportOutputQueryKey({
+      propertyId: input.property?.id,
+      poNumber: input.poNumber,
+      inspectionTaskId: input.inspectionTaskId,
+      surveyTaskId: input.surveyTaskId,
+    }),
+    queryFn: () => loadReportOutputBundle(input),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+}
+
+/**
+ * Start everything the report tab waits on — data bundle, template, organization
+ * settings — so a click right after hovering the tab opens on a filled report.
+ */
+export function prefetchValuationReportOutput(
+  queryClient: QueryClient,
+  input: ReportOutputInput,
+): void {
+  prefetchValuationReportTemplate();
+  void ensureOrganizationSettingsLoaded().catch(() => null);
+  void queryClient.prefetchQuery(reportOutputQueryOptions(input));
+}
 
 export function EvaluatorValuationReportOutputTab({
   draft,
@@ -113,24 +143,14 @@ export function EvaluatorValuationReportOutputTab({
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
 
-  const outputQuery = useQuery({
-    queryKey: [
-      "evaluator-report-output",
-      property?.id ?? "",
-      draft.poNumber,
-      inspectionTaskId ?? "",
-      surveyTaskId ?? "",
-    ],
-    queryFn: () =>
-      loadReportOutputBundle({
-        property,
-        poNumber: draft.poNumber,
-        inspectionTaskId: inspectionTaskId ?? null,
-        surveyTaskId: surveyTaskId ?? null,
-      }),
-    staleTime: 60_000,
-    gcTime: 10 * 60_000,
-  });
+  const outputQuery = useQuery(
+    reportOutputQueryOptions({
+      property,
+      poNumber: draft.poNumber,
+      inspectionTaskId: inspectionTaskId ?? null,
+      surveyTaskId: surveyTaskId ?? null,
+    }),
+  );
   const outputBundle = outputQuery.data;
 
   // Derive directly from the bundle — previously 12 state mirrors from one effect, and a new

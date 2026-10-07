@@ -6,7 +6,14 @@
  * the `KeyEnvelope*Dialog` files render the modals, and this file draws the
  * header and wires the pieces together.
  */
-import { cn, GentleBusy, opsBtnPrimary, opsPpHeadCard } from "@platform/ui-kit";
+import { useRef } from "react";
+import {
+  cn,
+  GentleBusy,
+  opsBtnPrimary,
+  opsPpHeadCard,
+  useSwapAnimation,
+} from "@platform/ui-kit";
 import {
   envelopeDisplayRef,
   envelopeStatusColor,
@@ -76,6 +83,8 @@ export function KeyEnvelopeDetailPage({
     handleCourtAccessSaved,
     handleHandoffDone,
   } = useKeyEnvelopeDetailWorkflow({ envelopeId, onBack, onChanged });
+  const tabPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(tabPanelRef, tab);
 
   const stColor = env ? envelopeStatusColor(env.status) : "#8a8d96";
   const scColor = env ? scenarioColor(env.receiveScenario) : "#8a8d96";
@@ -243,32 +252,34 @@ export function KeyEnvelopeDetailPage({
             onChange={(id) => setTab(id as DetailTab)}
           />
 
-          {tab === "assign" ? (
-            <AssignmentsPanel
-              env={env}
-              rows={sortedAssignments}
-              canEdit={canEdit}
-              busy={commandBusy}
-              onMatch={(a) => setMatchTarget(a)}
-            />
-          ) : null}
-          {tab === "custody" ? (
-            <CustodyPanel
-              env={env}
-              canEdit={canEdit}
-              busy={commandBusy}
-              onConfirm={(id) => void handleConfirmHandoff(id)}
-            />
-          ) : null}
-          {tab === "timeline" ? <TimelinePanel env={env} /> : null}
-          {tab === "court" ? (
-            <CourtAccessPanel
-              env={env}
-              rows={courtAccess}
-              canEdit={canEdit}
-              onEdit={(p) => setCourtEditTarget(p)}
-            />
-          ) : null}
+          <div ref={tabPanelRef}>
+            {tab === "assign" ? (
+              <AssignmentsPanel
+                env={env}
+                rows={sortedAssignments}
+                canEdit={canEdit}
+                busy={commandBusy}
+                onMatch={(a) => setMatchTarget(a)}
+              />
+            ) : null}
+            {tab === "custody" ? (
+              <CustodyPanel
+                env={env}
+                canEdit={canEdit}
+                busy={commandBusy}
+                onConfirm={(id) => void handleConfirmHandoff(id)}
+              />
+            ) : null}
+            {tab === "timeline" ? <TimelinePanel env={env} /> : null}
+            {tab === "court" ? (
+              <CourtAccessPanel
+                env={env}
+                rows={courtAccess}
+                canEdit={canEdit}
+                onEdit={(p) => setCourtEditTarget(p)}
+              />
+            ) : null}
+          </div>
         </>
       )}
 

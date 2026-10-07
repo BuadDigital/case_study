@@ -149,6 +149,17 @@ export function useCaseStudyReportData({
   const mirroringRef = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  /**
+   * The workspace keeps this form in an <Activity>: showing it again re-runs the
+   * load for the same draft. That reload is silent (no skeleton), so until it lands
+   * the local copy may be stale (e.g. the deed match saved from «مدخلات المعاين») —
+   * nothing may write from it meanwhile (the commands check `resyncingRef` too).
+   */
+  const hydratedForRef = useRef<string | null>(null);
+  const resyncingRef = useRef(false);
+  // Same flag as state, so the form can show it is briefly busy instead of silently ignoring input.
+  const [resyncing, setResyncing] = useState(false);
+  const mirrorSkippedRef = useRef(false);
 
   useEffect(() => {
     if (isParty || !hydrated || !infoRolesReady) return;
@@ -182,6 +193,10 @@ export function useCaseStudyReportData({
     if (isParty || !hydrated || forceReadOnly) return;
     if (Object.keys(partyAnswersByKey).length === 0) return;
     if (mirroringRef.current) return;
+    if (resyncingRef.current) {
+      mirrorSkippedRef.current = true;
+      return;
+    }
 
     const current = draftRef.current;
     if (current.status === "issued") return;
@@ -312,6 +327,17 @@ export function useCaseStudyReportData({
 
   useEffect(() => {
     let cancelled = false;
+    const loadKey = [storageTaskId, referenceTaskId, Boolean(isParty), reloadKey, seedKey].join("\0");
+    const reShow = hydratedForRef.current === loadKey;
+    resyncingRef.current = reShow;
+    setResyncing(reShow);
+    mirrorSkippedRef.current = false;
+    const endResync = () => {
+      resyncingRef.current = false;
+      setResyncing(false);
+      // Inspector answers that arrived mid-reload mirror onto the fresh draft now.
+      if (mirrorSkippedRef.current) setPartyRevision((n) => n + 1);
+    };
     setLoadError(null);
     (async () => {
       try {
@@ -329,11 +355,14 @@ export function useCaseStudyReportData({
           storageTaskId,
           isParty: Boolean(isParty),
         });
+        hydratedForRef.current = loadKey;
         setParentFormSubmitted(hydratedDraft.parentSubmitted);
         setDraft(hydratedDraft.draft);
         setHydrated(true);
+        endResync();
       } catch (error) {
         if (cancelled) return;
+        endResync();
         setLoadError(
           error instanceof Error
             ? error.message
@@ -422,6 +451,8 @@ export function useCaseStudyReportData({
     loadError,
     setLoadError,
     setReloadKey,
+    resyncingRef,
+    resyncing,
     parentFormSubmitted,
     saving,
     setSaving,

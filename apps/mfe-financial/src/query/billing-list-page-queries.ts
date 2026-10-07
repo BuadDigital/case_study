@@ -14,6 +14,10 @@ import type {
   PartyBillingReadyLineListQuery,
   PartyBillingStatementListQuery,
 } from "@platform/api-client";
+import {
+  statementStatusesForMode,
+  type PartyBillingMode,
+} from "../lib/party-billing-statements-state";
 
 /** Rows per page on every finance list — the same window the PO list uses. */
 export const FINANCE_LIST_PAGE_SIZE = 10;
@@ -43,16 +47,78 @@ export function useListPageState(resetKey: string) {
   return [page, setPage] as const;
 }
 
+/**
+ * The statements page a party-billing mode reads. Built in one place so the
+ * list and the hover prefetch of its tab ask for the same query key.
+ */
+export function partyBillingStatementsPageRequest({
+  assigneeId,
+  mode,
+  page,
+}: {
+  assigneeId: string | null;
+  mode: PartyBillingMode;
+  page: number;
+}): PartyBillingStatementListQuery {
+  return {
+    assigneeId: assigneeId ?? undefined,
+    status: statementStatusesForMode(mode),
+    page,
+    pageSize: FINANCE_LIST_PAGE_SIZE,
+  };
+}
+
+/** The dues page (oldest accrual first) — shared with the tab prefetch like the statements page. */
+export function partyBillingDuesPageRequest({
+  assigneeId,
+  q,
+  page,
+}: {
+  assigneeId: string | null;
+  q: string;
+  page: number;
+}): PartyBillingReadyLineListQuery {
+  return {
+    assigneeId: assigneeId ?? undefined,
+    q: q || undefined,
+    sort: "accrued",
+    dir: "asc",
+    page,
+    pageSize: FINANCE_LIST_PAGE_SIZE,
+  };
+}
+
+export function partyBillingStatementsPageOptions(
+  query: PartyBillingStatementListQuery,
+) {
+  return {
+    queryKey: appDataKeys.partyBillingStatementsPage(query),
+    queryFn: () => loadPartyBillingStatementsPage(query),
+    staleTime: listPageDefaults.staleTime,
+    gcTime: listPageDefaults.gcTime,
+  };
+}
+
+export function partyBillingReadyLinesPageOptions(
+  query: PartyBillingReadyLineListQuery,
+) {
+  return {
+    queryKey: appDataKeys.partyBillingReadyLinesPage(query),
+    queryFn: () => loadPartyBillingReadyLinesPage(query),
+    staleTime: listPageDefaults.staleTime,
+    gcTime: listPageDefaults.gcTime,
+  };
+}
+
 /** One server page of statements — pagination-contract §9.1. */
 export function usePartyBillingStatementsPageQuery(
   query: PartyBillingStatementListQuery,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: appDataKeys.partyBillingStatementsPage(query),
-    queryFn: () => loadPartyBillingStatementsPage(query),
+    ...partyBillingStatementsPageOptions(query),
     enabled,
-    ...listPageDefaults,
+    placeholderData: listPageDefaults.placeholderData,
   });
 }
 
@@ -62,10 +128,9 @@ export function usePartyBillingReadyLinesPageQuery(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: appDataKeys.partyBillingReadyLinesPage(query),
-    queryFn: () => loadPartyBillingReadyLinesPage(query),
+    ...partyBillingReadyLinesPageOptions(query),
     enabled,
-    ...listPageDefaults,
+    placeholderData: listPageDefaults.placeholderData,
   });
 }
 

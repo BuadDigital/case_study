@@ -1,19 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Activity, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
+  InlineLoadingSkeleton,
   Note,
   PageShell,
   PanelSkeleton,
   cn,
   opsContentPanel,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportEditor";
 import { CaseStudyAppraisalPanel } from "../components/case-study/CaseStudyAppraisalPanel";
 import { CaseStudyWorkspaceStepNav, type CaseStudyWorkspaceTab } from "../components/case-study/CaseStudyWorkspaceStepNav";
-import { PropertyDetailAppraisalTab } from "../components/po-intake/PropertyDetailTabChunks";
+import {
+  PropertyDetailAppraisalTab,
+  preloadValuationPanel,
+  usePreloadWorkspacePanels,
+} from "../components/case-study/lazy-workspace-panels";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyDetailEnfazHandoverCard } from "../components/po-intake/PropertyDetailEnfazHandoverCard";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
@@ -125,16 +131,18 @@ function CaseStudyValuationPanel({
         يصل التقرير هنا بعد إرسال المقيّم. اعتمد التقرير لإتمام مسار التقييم، أو
         أعده للتصحيح. الاعتماد لا يقفل المعاملة نهائيًا — يمكن إعادة فتحها لاحقًا.
       </p>
-      <PropertyDetailAppraisalTab
-        property={property}
-        appraisalTask={appraisalTask}
-        tasks={tasks}
-        appraisalCard={appraisalCard}
-        submission={partySubmissionsQuery.data?.appraisal ?? null}
-        onReviewChanged={() => {
-          void partySubmissionsQuery.refetch();
-        }}
-      />
+      <Suspense fallback={<InlineLoadingSkeleton className="my-2" />}>
+        <PropertyDetailAppraisalTab
+          property={property}
+          appraisalTask={appraisalTask}
+          tasks={tasks}
+          appraisalCard={appraisalCard}
+          submission={partySubmissionsQuery.data?.appraisal ?? null}
+          onReviewChanged={() => {
+            void partySubmissionsQuery.refetch();
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -176,10 +184,18 @@ export function CaseStudyWorkspaceView({
    * Documents and photos load only once a tab that shows them has been opened —
    * the study form never triggers the attachment fan-out. A visited tab stays
    * recorded, so the gate never flips back (same pattern as the property tabs).
+   * Visited tabs also stay mounted (hidden in an <Activity>), so switching back
+   * keeps their step, open sections and input instead of reloading.
    */
-  const visitedTabsRef = useRef<Set<CaseStudyWorkspaceTab>>(new Set());
-  visitedTabsRef.current.add(workspaceTab);
-  const propertyMediaVisited = visitedTabsRef.current.has("appraisal");
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<CaseStudyWorkspaceTab>>(
+    () => new Set([workspaceTab]),
+  );
+  if (!visitedTabs.has(workspaceTab)) {
+    setVisitedTabs(new Set(visitedTabs).add(workspaceTab));
+  }
+  const propertyMediaVisited = visitedTabs.has("appraisal");
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, workspaceTab);
   const router = useRouter();
   const { role } = useAppAccess();
   const {
@@ -267,6 +283,8 @@ export function CaseStudyWorkspaceView({
       !property ||
       propertyIndex < 0);
 
+  usePreloadWorkspacePanels(!waitingForWorkspace);
+
   useEffect(() => {
     if (!shouldRedirect) return;
     router.replace(caseStudyWorkspaceFallbackPath(task));
@@ -325,31 +343,44 @@ export function CaseStudyWorkspaceView({
             <CaseStudyWorkspaceStepNav
               active={workspaceTab}
               onSelect={setWorkspaceTab}
+              onIntent={(tab) => {
+                if (tab === "valuation") preloadValuationPanel();
+              }}
             />
-            {workspaceTab === "study" ? (
-              <CaseStudyReportEditor
-                taskId={taskId}
-                task={task}
-                property={property}
-                poRecord={record}
-                requestDateSeed={record.receivedFromEnfathAt}
-                workOrderId={record.id}
-              />
-            ) : workspaceTab === "appraisal" ? (
-              <CaseStudyAppraisalPanel
-                property={property}
-                poNumber={record.poNumber}
-                tasks={tasks ?? []}
-                caseStudyTask={task}
-                documentsEnabled={propertyMediaVisited}
-              />
-            ) : (
-              <CaseStudyValuationPanel
-                property={property}
-                tasks={tasks ?? []}
-                caseStudyTask={task}
-              />
-            )}
+            <div ref={panelRef}>
+              {visitedTabs.has("study") ? (
+                <Activity mode={workspaceTab === "study" ? "visible" : "hidden"}>
+                  <CaseStudyReportEditor
+                    taskId={taskId}
+                    task={task}
+                    property={property}
+                    poRecord={record}
+                    requestDateSeed={record.receivedFromEnfathAt}
+                    workOrderId={record.id}
+                  />
+                </Activity>
+              ) : null}
+              {visitedTabs.has("appraisal") ? (
+                <Activity mode={workspaceTab === "appraisal" ? "visible" : "hidden"}>
+                  <CaseStudyAppraisalPanel
+                    property={property}
+                    poNumber={record.poNumber}
+                    tasks={tasks ?? []}
+                    caseStudyTask={task}
+                    documentsEnabled={propertyMediaVisited}
+                  />
+                </Activity>
+              ) : null}
+              {visitedTabs.has("valuation") ? (
+                <Activity mode={workspaceTab === "valuation" ? "visible" : "hidden"}>
+                  <CaseStudyValuationPanel
+                    property={property}
+                    tasks={tasks ?? []}
+                    caseStudyTask={task}
+                  />
+                </Activity>
+              ) : null}
+            </div>
             {renderPartiesExtras ? (
               <div className="mt-4 border-t border-border pt-4">
                 {renderPartiesExtras({

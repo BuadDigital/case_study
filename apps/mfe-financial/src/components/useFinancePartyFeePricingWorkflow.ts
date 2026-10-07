@@ -132,8 +132,14 @@ export function useFinancePartyFeePricingWorkflow() {
     Boolean(draft.id) &&
     (draft.category === selectedCategory || !draft.category);
 
-  /** Keep previous panel while the next category loads — no layout flash. */
-  const holdingPrevious = loading && Boolean(draft.id);
+  /**
+   * Keep previous panel while the next category loads — no layout flash. That
+   * includes the beat after the category's tables arrive and before its table
+   * is picked and applied (`loading` is false then, the draft still the old one).
+   */
+  const holdingPrevious =
+    Boolean(draft.id) &&
+    (loading || (!draftMatchesCategory && tables.length > 0));
   const isInitialLoad = loading && !draft.id;
 
   const invalidateTables = (category: PartyFeePricingCategory) =>
@@ -186,6 +192,27 @@ export function useFinancePartyFeePricingWorkflow() {
     preferTableIdRef.current = undefined;
     setSelectedId("");
     setSelectedCategory(category);
+  };
+
+  /** Hover/focus on a category: load its tables and default table so the click shows them at once. */
+  const prefetchCategory = (category: PartyFeePricingCategory) => {
+    if (category === selectedCategory) return;
+    void queryClient
+      .fetchQuery({
+        queryKey: partyFeePricingTablesQueryKey(category),
+        queryFn: () => loadPartyFeePricingTables(category),
+        staleTime: PRICING_STALE_MS,
+      })
+      .then((list) => {
+        const id = pickTableId(list);
+        if (!id) return;
+        return queryClient.prefetchQuery({
+          queryKey: partyFeePricingTableQueryKey(id),
+          queryFn: () => loadPartyFeePricingById(id),
+          staleTime: PRICING_STALE_MS,
+        });
+      })
+      .catch(() => undefined);
   };
 
   const selectTable = async (id: string) => {
@@ -437,6 +464,7 @@ export function useFinancePartyFeePricingWorkflow() {
     showEmpty,
     selectValue,
     selectCategory,
+    prefetchCategory,
     selectTable,
     save,
     createTable,

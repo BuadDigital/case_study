@@ -96,6 +96,7 @@ export function PoListView() {
     handleCancelPo,
     handleStopPo,
     handleDeletePo,
+    warmPo,
     onIntakeComplete,
   } = usePoListWorkflow();
 
@@ -335,6 +336,7 @@ export function PoListView() {
                             propertyDeedView && "bg-[color-mix(in_srgb,var(--info-bg)_22%,var(--surface))]",
                           )}
                           onClick={() => router.push(target)}
+                          onPointerEnter={() => warmPo(p.id)}
                         >
                           <Td className="overflow-visible">
                             {projectTip ? (

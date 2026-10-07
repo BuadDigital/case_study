@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   createEnfazFollowup,
-  loadEnfazFollowups,
   markEnfazFinanceFlag,
   unmarkEnfazFinanceFlag,
 } from "@platform/app-shared/app-data/enfaz-billing-api";
@@ -20,6 +19,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { finFldLbl, finMuted, finScrollY } from "../lib/finance-tw";
+import { enfazFollowupsOptions } from "../query/enfaz-po-queries";
 
 export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
   const queryClient = useQueryClient();
@@ -32,8 +32,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
   const [busy, setBusy] = useState(false);
 
   const followupsQuery = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", "followups", poNumber],
-    queryFn: () => loadEnfazFollowups(poNumber),
+    ...enfazFollowupsOptions(poNumber),
     enabled: Boolean(poNumber.trim()),
   });
 
