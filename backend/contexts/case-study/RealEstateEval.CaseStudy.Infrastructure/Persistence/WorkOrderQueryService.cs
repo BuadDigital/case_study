@@ -302,8 +302,11 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         PermissionsDto? actor = null,
         CancellationToken cancellationToken = default)
     {
+        // The client is part of the detail DTO (`ClientNameAr`): without the include the map and any other
+        // reader of this list saw the client id but never its name.
         IQueryable<WorkOrder> query = _db.WorkOrders
             .AsNoTracking()
+            .Include(w => w.Client)
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts)
             .OrderByDescending(w => w.CreatedAtUtc);
