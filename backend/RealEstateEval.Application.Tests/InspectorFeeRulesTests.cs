@@ -117,6 +117,9 @@ public class InspectorFeeRulesTests
     [Theory]
     [InlineData("1200", true, 1200)]
     [InlineData("1,250.5", true, 1250.5)]
+    [InlineData("١٬٢٥٠ م²", true, 1250)]
+    [InlineData("12,5", true, 12.5)]
+    [InlineData("1,2,3", false, 0)]
     [InlineData("", false, 0)]
     [InlineData("0", false, 0)]
     public void Parses_property_area(string raw, bool ok, decimal expected)

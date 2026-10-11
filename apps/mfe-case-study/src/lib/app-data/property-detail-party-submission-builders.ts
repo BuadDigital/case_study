@@ -1,4 +1,4 @@
-import { fmtSar } from "@platform/app-shared/format/number";
+import { fmtSar, parseLocaleNumber } from "@platform/app-shared/format/number";
 import {
   CASE_STUDY_REPORT_STEPS,
   CASE_STUDY_TABLE_HEADERS,
@@ -476,7 +476,7 @@ export function buildFromEngineeringSurvey(
 }
 
 function formatPriceDisplay(raw: string): string {
-  const n = Number.parseFloat(raw.replace(/,/g, ""));
+  const n = parseLocaleNumber(raw);
   if (!Number.isFinite(n) || n <= 0) return "";
   return fmtSar(n, { trim: true });
 }

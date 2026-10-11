@@ -9,6 +9,7 @@
  */
 import type { BuildingInventoryDto, BuildingInventoryLineDto } from "@platform/api-client";
 import { textLooksLikeVacantLand } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import {
   COST_GROUP1_KEYS,
   COST_ITEM_OPTIONS,
@@ -140,7 +141,7 @@ export function specialistComponentsMissing(
 }
 
 function num(value: string | null | undefined): number {
-  const n = Number.parseFloat(String(value ?? "").replace(/,/g, ""));
+  const n = parseLocaleNumber(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 

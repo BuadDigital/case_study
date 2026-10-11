@@ -17,6 +17,26 @@ function fieldValue(
 describe("Infath sheet — report data the appraiser no longer types", () => {
   const base = { record, property: emptyProperty(), parties: null, documentSections: [] as PropertyDetailDocumentSection[] };
 
+  it("reads typed areas by the shared number rule («12,5» is 12.5, not 125)", () => {
+    const inspection = {
+      roleKey: "inspection",
+      hasData: true,
+      acceptedAtUtc: "2026-10-01T10:00:00Z",
+      fields: [{ label: "المساحة الفعلية", value: "12.5" }],
+      answers: [],
+      remarks: [],
+    } as unknown as NonNullable<Parameters<typeof buildInfathUploadModel>[0]["parties"]>[string];
+    const model = (area: string) =>
+      buildInfathUploadModel({
+        ...base,
+        property: { ...emptyProperty(), area },
+        parties: { inspection },
+      });
+    expect(fieldValue(model("12,5"), "survey-conditional", "area-diff")).toBe("لا");
+    expect(fieldValue(model("١٢٫٥"), "survey-conditional", "area-diff")).toBe("لا");
+    expect(fieldValue(model("125"), "survey-conditional", "area-diff")).toBe("نعم");
+  });
+
   it("is empty without a source", () => {
     const model = buildInfathUploadModel(base);
     expect(fieldValue(model, "workers", "worker-name")).toBe("");

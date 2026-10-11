@@ -27,6 +27,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
     private readonly IWorkflowTaskSlotSynchronizer _slots;
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
+    private readonly IWorkflowTaskPatchNotifier _patchNotifier;
     private readonly IAuditLogWriter _audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
@@ -52,6 +53,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         _slots = slots;
         _notifications = notifications;
         _recipients = recipients;
+        _patchNotifier = new WorkflowTaskPatchNotifier(notifications, recipients);
         _audit = audit;
         _auditLog = auditLog;
     }
@@ -196,56 +198,19 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         var entity = await _db.GetTaskForUpdateAsync(id, cancellationToken);
         if (entity is null) return null;
 
-        var wasCaseStudyCompleted = WorkflowTaskLifecycleRules.IsCompletedCaseStudy(entity);
-        var wasBlocked = entity.Status == WorkflowTaskStatus.Blocked;
-        var previousAssigneeId = entity.AssigneeId;
-
-        entity.ApplyShellPatch(
-            phase: WorkflowTaskPhaseValues.ParseOptional(request.Phase),
-            status: request.Status is null ? null : WorkflowTaskStatusValues.Parse(request.Status),
-            title: request.Title,
-            assigneeRole: request.AssigneeRole,
-            assigneeName: request.AssigneeName,
-            assigneeId: request.AssigneeId,
-            assigneeIdProvided: request.AssigneeId is not null,
-            propertyId: string.IsNullOrWhiteSpace(request.PropertyId)
-                ? null
-                : Guid.Parse(request.PropertyId),
-            propertyIdProvided: request.PropertyId is not null,
-            obstructionReason: string.IsNullOrWhiteSpace(request.ObstructionReason)
-                ? null
-                : request.ObstructionReason,
-            obstructionReasonProvided: request.ObstructionReason is not null,
-            obstructionPriorPhase: WorkflowTaskPhaseValues.ParseOptional(request.ObstructionPriorPhase),
-            obstructionPriorPhaseProvided: request.ObstructionPriorPhase is not null,
-            distributionJson: request.Distribution is null
-                ? null
-                : WorkflowTaskMapper.SerializeDistribution(
-                    WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution)),
-            nowUtc: _time.UtcNow());
+        var before = WorkflowTaskShellPatch.Apply(entity, request, _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (!wasCaseStudyCompleted
+        // Fee accrual on completion is the lifecycle path's own side effect — the stream
+        // shell patcher never completes a case study.
+        if (!before.WasCompletedCaseStudy
             && WorkflowTaskLifecycleRules.IsCompletedCaseStudy(entity)
             && entity.PropertyId is Guid feePropertyId)
         {
             await _inspectorFees.EnsureLedgersForPropertyAsync(feePropertyId, cancellationToken);
         }
 
-        // Supervisor resolved an obstruction and handed the transaction back to
-        // the specialist (or re-targeted it to a new one) — they had no way to
-        // know it moved without a manual refresh before this.
-        if (WorkflowTaskLifecycleRules.ShouldNotifySpecialistReturned(entity, wasBlocked, previousAssigneeId))
-        {
-            await NotifyAssigneeAsync(
-                entity.Id,
-                entity.AssigneeId,
-                "معاملة أُعيدت إليك",
-                "أُعيدت المعاملة إليك بعد معالجة التعذّر — تابع دراسة الحالة.",
-                "info",
-                $"case-study-returned:{entity.Id}:{entity.UpdatedAtUtc:O}",
-                cancellationToken);
-        }
+        await _patchNotifier.NotifyAfterPatchAsync(entity, before, cancellationToken);
 
         return WorkflowTaskMapper.ToDto(entity);
     }

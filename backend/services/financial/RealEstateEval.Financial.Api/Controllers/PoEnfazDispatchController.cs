@@ -94,7 +94,9 @@ public sealed class PoEnfazDispatchController(
         [FromBody] SavePoEnfazBillingRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await billing.SavePoBillingAsync(poNumber, request, cancellationToken);
+        var (dto, error) = await billing.SavePoBillingAsync(poNumber, request, cancellationToken);
+        if (error is not null)
+            return this.BadRequestProblem(error);
         return dto is null
             ? this.BadRequestProblem("تعذّر حفظ أتعاب إنفاذ.")
             : Ok(dto);

@@ -1,7 +1,7 @@
 import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
   boundariesMarkedUnavailable,
-  isRegisteredTitleDeedKind,
+  propertyDeedKindIsRegisteredTitle,
   propertyHasRegisteredTitle,
 } from "@platform/app-shared/app-data/po-intake-identifiers";
 import {
@@ -25,6 +25,11 @@ import {
   isOccupied,
   inspectorDescriptionMissing,
   listInspectorPhotoValidationIssues,
+  findInspectorPhotoNotUploaded,
+  INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE,
+  MOVABLES_FEATURE_KEY,
+  MOVABLES_PHOTOS_SLOT_ID,
+  PROPERTY_DESCRIPTION_PHOTO_KEY,
   sanitizeInspectorDraftForLand,
   textLooksLikeVacantLand,
   isInspectorPresenceToggleField,
@@ -268,11 +273,7 @@ export function inspectorMustDecideDeedMatch(property: {
   boundariesAvailability: string;
 }): boolean {
   if (boundariesMarkedUnavailable(property.boundariesAvailability)) return false;
-  const kind = (property.deedKind ?? "").trim();
-  const registered = kind
-    ? isRegisteredTitleDeedKind(kind)
-    : propertyHasRegisteredTitle(property);
-  return !registered;
+  return !propertyDeedKindIsRegisteredTitle(property);
 }
 
 export function validateInspectorWorkspace(
@@ -468,7 +469,6 @@ export function validateInspectorWorkspace(
     const definedIssue = photoIssues.find(
       (issue) =>
         issue.includes("بانتظار الاعتماد") ||
-        issue.includes("الخادم") ||
         issue.includes("خدمة") ||
         issue.includes("مرفق"),
     );
@@ -479,7 +479,56 @@ export function validateInspectorWorkspace(
     }
   }
 
+  routePhotoNotUploadedError(errors, submission);
+
   return errors;
+}
+
+/**
+ * «يجب رفع الصور إلى الخادم» — the server checks every photo place
+ * (FieldInspectionPayloadAttachments.HasPhotosWithoutServerAttachment); point the inspector at the
+ * place holding the first photo saved on the device but not uploaded. Never overwrites an error
+ * already set for that place.
+ */
+function routePhotoNotUploadedError(
+  errors: InspectorWorkspaceFieldErrors,
+  submission: InspectorWorkspaceDraft,
+): void {
+  const where = findInspectorPhotoNotUploaded(submission);
+  if (!where) return;
+  const message = INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE;
+  const featurePhoto = (key: string) => {
+    errors.featurePhotos ||= message;
+    errors.missingFeaturePhotoKey ||= key;
+  };
+  switch (where.kind) {
+    case "feature":
+      if (where.key === PROPERTY_DESCRIPTION_PHOTO_KEY) {
+        errors.propertyDescription ||= message;
+      } else {
+        featurePhoto(where.key);
+      }
+      return;
+    case "component":
+      errors.componentPhotos ||= message;
+      errors.missingComponentPhotoKey ||= where.key as InspectorComponentPhotoKey;
+      return;
+    case "defined":
+      if (where.slotId === MOVABLES_PHOTOS_SLOT_ID) {
+        featurePhoto(MOVABLES_FEATURE_KEY);
+      } else {
+        errors.definedPhotos ||= message;
+        errors.missingDefinedPhotoSlotId ||= where.slotId;
+      }
+      return;
+    case "free":
+      errors.freePhotos ||= message;
+      return;
+    case "observation":
+      errors.observations ||= message;
+      errors.missingObservationId ||= where.observationId;
+      return;
+  }
 }
 
 const INSPECTOR_ERROR_KEYS = [

@@ -36,6 +36,9 @@ public class MarketOpinionAndCostApproachRulesTests
     [Theory]
     [InlineData("120.5", true, 120.5)]
     [InlineData("120,5", true, 120.5)]
+    [InlineData("1,250", true, 1250)]
+    [InlineData("١٢٠٫٥ م²", true, 120.5)]
+    [InlineData("-5", false, 0)]
     [InlineData("abc", false, 0)]
     public void TryParseArea(string text, bool ok, decimal expected)
     {

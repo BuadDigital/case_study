@@ -37,6 +37,7 @@ import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   firstEngineeringSurveyError,
   firstEngineeringSurveyErrorTarget,
+  normalizeEngineeringSurveyNumbers,
   validateEngineeringSurveySubmission,
   isPlattedPropertyWithPlot,
 } from "../lib/engineering-survey-validation";
@@ -240,8 +241,9 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       return false;
     }
 
-    // Ensure latest local text is on the server before finalize.
-    await updateEngineeringSurveyDraft(task.id, localFields);
+    // Ensure latest local text is on the server before finalize — numbers in Latin digits
+    // (Arabic digits, «٫» and grouping pass validation here but not the server's parser).
+    await updateEngineeringSurveyDraft(task.id, normalizeEngineeringSurveyNumbers(localFields));
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);

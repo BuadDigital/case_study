@@ -52,11 +52,14 @@ public static class WorkOrderPropertyWriteRules
             .GroupBy(kv => kv.Key)
             .ToDictionary(g => g.Key, g => g.First().Value);
 
-    /// <summary>The duplicate-deed probe both property validators need, over the loaded order.</summary>
+    /// <summary>
+    /// The duplicate-deed probe both property validators need, over the loaded order. Deeds are
+    /// compared normalised (DeedNumberRules): "123456", "123-456" and "١٢٣٤٥٦" are one deed.
+    /// </summary>
     public static Func<string, Guid?, bool> DeedTakenProbe(WorkOrder workOrder) =>
         (deed, excludeId) => workOrder.Properties.Any(p =>
             !p.IsRemoved
-            && p.DeedNumber.Trim() == deed.Trim()
+            && DeedNumberRules.EqualsNormalized(p.DeedNumber, deed)
             && (excludeId is null || p.Id != excludeId));
 
     /// <summary>Removal always needs a short, stated reason.</summary>

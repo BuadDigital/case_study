@@ -341,7 +341,7 @@ public sealed class ValuationRequestService : IValuationRequestService
         Date = row.RequestDate.ToString("yyyy-MM-dd"),
         FinalOpinionValue = overlay.FinalOpinionValue,
         IssueDate = overlay.IssueAtUtc is { } at
-            ? DateOnly.FromDateTime(at).ToString("yyyy-MM-dd")
+            ? RiyadhClock.DateOf(at).ToString("yyyy-MM-dd")
             : null,
         ReportStage = overlay.ReportStage,
     };

@@ -24,6 +24,7 @@ import {
   INFAZ_UPLOAD_UNRESOLVED_POINTS,
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import { infathBuildingAreasFromComponents } from "./specialist-components";
 import { fmt } from "@platform/app-shared/format/number";
@@ -131,8 +132,9 @@ function file(
   return txt(id, label, value, role, "file");
 }
 
+/** Typed text → number by the shared rule («12,5» → 12.5, «١٢٥٠» → 1250, units dropped). */
 function parseNumber(raw: string): number | null {
-  const n = Number.parseFloat(raw.replace(/[^\d.-]/g, ""));
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) ? n : null;
 }
 

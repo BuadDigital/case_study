@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Lifecycle of the valuation-report draft the case specialist prepares for the appraiser.</summary>
@@ -181,16 +183,25 @@ public class ValuationReportDraft
     public const string ReportDateNotTodayAr =
         "تاريخ جهازك لا يطابق تاريخ اليوم — حدّث الصفحة وتأكد من ضبط تاريخ الجهاز ثم اعتمد";
 
-    /// <summary>Saudi Arabia keeps UTC+3 all year (no daylight saving).</summary>
-    public static DateOnly RiyadhToday(DateTime nowUtc) => DateOnly.FromDateTime(nowUtc.AddHours(3));
-
     /// <summary>
     /// The report date is the approval date. The printed report is built in the browser before the server sees
     /// it, so the browser's date is sent and accepted only within a day of the server's (Riyadh) date.
     /// </summary>
     public static bool IsApprovalDate(string? reportDate, DateTime nowUtc) =>
         DateOnly.TryParseExact(reportDate?.Trim(), "yyyy-MM-dd", out var date)
-        && Math.Abs(date.DayNumber - RiyadhToday(nowUtc).DayNumber) <= 1;
+        && Math.Abs(date.DayNumber - RiyadhClock.Today(nowUtc).DayNumber) <= 1;
+    /// <summary>The report date fixed on an approved draft (yyyy-MM-dd), or null before approval.</summary>
+    public static DateOnly? ApprovedDateOf(string? status, string? reportDate) =>
+        status == ReportDraftStatuses.Approved
+        && DateOnly.TryParseExact(
+            reportDate?.Trim(),
+            "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out var date)
+            ? date
+            : null;
+
     public const string SnapshotRequiredAr = "نسخة التقرير المطبوعة مطلوبة للاعتماد";
 
     private static string? Clean(string? value)

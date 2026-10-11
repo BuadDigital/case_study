@@ -1,4 +1,5 @@
 import type { EnfazTrackingRowDto } from "@platform/api-client";
+import { sumSar, toHalalas, vatSar } from "@platform/app-shared/format/money";
 import type { RevenueStage } from "./finance-nav";
 
 /** Days before a transaction is treated as «stopped» (overdue invoice or ready but not uploaded). */
@@ -164,9 +165,9 @@ function computeEnfazLineTotals(input: {
   keyFeeSar: number;
 }): { taxable: number; vat: number; key: number; total: number } {
   const taxable = taxableFeesSar(input);
-  const vat = Math.round(taxable * 0.15 * 100) / 100;
+  const vat = vatSar(taxable);
   const key = input.keyFeeSar || 0;
-  return { taxable, vat, key, total: taxable + vat + key };
+  return { taxable, vat, key, total: sumSar(taxable, vat, key) };
 }
 
 /** Break down fee lines + tax — matches logic-reference calculation. */
@@ -191,8 +192,38 @@ export function revenueAmountsFromRow(row: {
     taxable,
     vat,
     key,
-    withVat: taxable + vat,
+    withVat: sumSar(taxable, vat),
     total,
+  };
+}
+
+type RevenueRowsTotals = { taxable: number; vat: number; key: number; total: number };
+
+/**
+ * Totals of several rows as the invoices charge them: VAT is rounded once on each work
+ * order's (valuation+survey) total, not per line and summed (PoEnfazBillingDtoBuilder) —
+ * two lines of 100.5 carry 30.15 VAT, not 30.16.
+ */
+export function revenueTotalsForRows(rows: readonly EnfazTrackingRowDto[]): RevenueRowsTotals {
+  const taxableByPo = new Map<string, number>();
+  let keyHalalas = 0;
+  for (const row of rows) {
+    const { taxable, key } = revenueAmountsFromRow(row);
+    const po = row.poNumber || "";
+    taxableByPo.set(po, (taxableByPo.get(po) ?? 0) + toHalalas(taxable));
+    keyHalalas += toHalalas(key);
+  }
+  let taxableHalalas = 0;
+  let vatHalalas = 0;
+  for (const halalas of taxableByPo.values()) {
+    taxableHalalas += halalas;
+    vatHalalas += toHalalas(vatSar(halalas / 100));
+  }
+  return {
+    taxable: taxableHalalas / 100,
+    vat: vatHalalas / 100,
+    key: keyHalalas / 100,
+    total: (taxableHalalas + vatHalalas + keyHalalas) / 100,
   };
 }
 

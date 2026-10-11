@@ -24,6 +24,23 @@ public class DeedNumberRulesTests
         Assert.True(DeedNumberRules.EqualsNormalized("١٢٣", "123"));
         Assert.False(DeedNumberRules.EqualsNormalized("123", "124"));
     }
+
+    [Theory]
+    [InlineData("123-456")]
+    [InlineData("١٢٣٤٥٦")]
+    [InlineData("۱۲۳/۴۵۶")]
+    [InlineData(" 123 456 ")]
+    public void Same_deed_typed_differently_is_equal(string typed)
+    {
+        Assert.True(DeedNumberRules.EqualsNormalized("123456", typed));
+    }
+
+    [Fact]
+    public void Blank_deeds_never_match()
+    {
+        Assert.False(DeedNumberRules.EqualsNormalized("", ""));
+        Assert.False(DeedNumberRules.EqualsNormalized("-", "/"));
+    }
 }
 
 public class PropertyListRowBuilderPriorSurveyTests

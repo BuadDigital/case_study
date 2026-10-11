@@ -9,9 +9,11 @@ import type {
   ValuationValueDocumentAdditionDto,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { roundHalfAwayFromZero } from "@platform/app-shared/format/money";
 import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import { fmt } from "./shell-utils";
+import { weightsSumTo100 } from "./weights";
 
 type FinalOpinionInputs = {
   reconMethods: ValuationReconciliationMethodDto[];
@@ -48,7 +50,7 @@ export function finalOpinionComputed({
     const reconWeightsBad =
       reconMethods.length >= 2
       && included.length > 0
-      && Math.round(weightSumLocal) !== 100;
+      && !weightsSumTo100(weightSumLocal);
     // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
     // A sole method is always the full indicator (server forces weight 100 / included).
     const weightedLocal =
@@ -77,9 +79,11 @@ export function finalOpinionComputed({
           ? costComplete
           : hasAdoptedMarket;
     const isLiquidation = basisOfValueKey === "liquidation";
-    const discountPctNum = isLiquidation
+    // Server ShouldApplyLiquidationDiscount: only a positive % applies, clamped to 0–100.
+    const discountPctRaw = isLiquidation
       ? parseLocaleNumber(liquidationDiscountPct) || 0
       : 0;
+    const discountPctNum = discountPctRaw > 0 ? Math.min(discountPctRaw, 100) : 0;
     const forcedCut = (weightedLocal * discountPctNum) / 100;
     const decNum = Math.min(
       Math.max(Number.parseInt(finalRoundDecimals, 10) || 0, 0),
@@ -90,8 +94,12 @@ export function finalOpinionComputed({
     // are, and the total is rounded once.
     const propertyAfterDiscount = weightedLocal - forcedCut;
     const additionsTotal = additions.reduce((s, a) => s + (a.value || 0), 0);
-    const finalLocal =
-      Math.round((propertyAfterDiscount + additionsTotal) / roundPow) * roundPow;
+    // Server RoundFinal: decimal math, half away from zero — float noise (1365849.999…) is
+    // cleaned before rounding so the preview equals the saved value.
+    const finalLocal = roundHalfAwayFromZero(
+      propertyAfterDiscount + additionsTotal,
+      -decNum,
+    );
     const roundNote =
       decNum === 0
         ? "بلا تقريب — أقرب ريال"

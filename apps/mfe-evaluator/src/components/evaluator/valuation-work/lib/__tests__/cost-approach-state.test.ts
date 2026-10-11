@@ -214,6 +214,17 @@ describe("costLinesFromInventory", () => {
     expect(fence).toMatchObject({ itemKey: "fence", unit: "lm", unitLabelAr: "م.ط", areaSqm: 80 });
   });
 
+  it("seeds the built-up ratio only on m² area lines — the only lines it counts on", () => {
+    const [fence, lumpFloor, floor] = costLinesFromInventory([
+      { id: "a", structureKind: "fence", label: "السور", areaSqm: "80", itemKey: "fence", unit: "lm", buildRatioPct: 60 },
+      { id: "b", structureKind: "floor", label: "الأرضي", areaSqm: "1", itemKey: "ground_floor", unit: "lump", buildRatioPct: 60 },
+      { id: "c", structureKind: "floor", label: "الأرضي", areaSqm: "200", itemKey: "ground_floor", unit: "sqm", buildRatioPct: 60 },
+    ]);
+    expect(fence!.buildRatioPct).toBeNull();
+    expect(lumpFloor!.buildRatioPct).toBeNull();
+    expect(floor!.buildRatioPct).toBe(60);
+  });
+
   it("guesses the item for legacy rows without one", () => {
     const [annex, other] = costLinesFromInventory([
       { structureKind: "annex", label: "ملحق علوي", areaSqm: "40" },

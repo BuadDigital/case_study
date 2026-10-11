@@ -59,6 +59,7 @@ public static class CaseStudyDependencyInjection
         // Q-9: derived transaction-state machine + comprehensive Enfaz upload.
         services.AddScoped<ITransactionStateRepository, TransactionStateRepository>();
         services.AddScoped<ITransactionStateService, TransactionStateService>();
+        services.AddScoped<IWorkflowTaskPatchNotifier, WorkflowTaskPatchNotifier>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         return services;

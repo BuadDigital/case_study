@@ -53,7 +53,7 @@ public sealed partial class ValuationComparableSelectionService(
         var compIds = rows.Select(r => r.ComparablePropertyId).Distinct().ToList();
         var comps = await repo.GetComparablesAsync(compIds, cancellationToken);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         var header = await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken);
         var factorRationales = await repo.ListFactorRationalesAsync(
             valuationRequestId, context, cancellationToken);
@@ -282,7 +282,7 @@ public sealed partial class ValuationComparableSelectionService(
             request,
             all,
             comps,
-            DateOnly.FromDateTime(_time.UtcNow()),
+            RiyadhClock.Today(_time),
             await repo.GetMarketApproachAsync(row.ValuationRequestId, cancellationToken),
             row.SelectionContext,
             factorRationales: []);

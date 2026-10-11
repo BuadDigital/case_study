@@ -20,6 +20,7 @@ using RealEstateEval.Identity.Infrastructure.Services;
 using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
+using RealEstateEval.CaseStudy.Application.Services;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -99,7 +100,7 @@ internal static class TestBoundedContexts
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(bundle.Failures));
         notifications ??= new NullNotificationService();
         recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
-        tasks ??= new WorkflowTaskShellPatcher(cs);
+        tasks ??= new WorkflowTaskShellPatcher(cs, new WorkflowTaskPatchNotifier(notifications, recipients));
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
             new FailureRepository(bundle.Failures),
@@ -126,7 +127,7 @@ internal static class TestBoundedContexts
         timeline ??= new PropertyTimelineService(cs, new FailureLookup(failures));
         notifications ??= new NullNotificationService();
         recipients ??= TestNotificationRecipients.ForContexts(cs, identity);
-        tasks ??= new WorkflowTaskShellPatcher(cs);
+        tasks ??= new WorkflowTaskShellPatcher(cs, new WorkflowTaskPatchNotifier(notifications, recipients));
         labels ??= new UserLabelLookup(identity);
         return new FailureService(
             new FailureRepository(failures),

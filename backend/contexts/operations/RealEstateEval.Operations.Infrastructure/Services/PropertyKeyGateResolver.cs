@@ -88,10 +88,13 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
 
         if (envelope is null && resolvedDeed.Length > 0)
         {
+            // The deed as typed plus its normalised Latin / Arabic-Indic forms (DeedNumberRules), so an
+            // envelope saved as "١٢٣٤٥٦" is found for "123456"; the SQL filter stays index-friendly.
+            var deedForms = DeedNumberRules.MatchCandidates(resolvedDeed);
             var assignment = await _ops.KeyEnvelopeAssignments.AsNoTracking()
                 .Include(a => a.Envelope)
                 .Where(a =>
-                    a.DeedNumber == resolvedDeed
+                    deedForms.Contains(a.DeedNumber)
                     || (resolvedPropertyId != null && a.PropertyId == resolvedPropertyId))
                 .OrderByDescending(a => a.Envelope!.CreatedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -110,7 +113,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
             var assignment = envelope.Assignments.FirstOrDefault(a =>
                 (resolvedPropertyId != null && a.PropertyId == resolvedPropertyId)
                 || (resolvedDeed.Length > 0
-                    && string.Equals(a.DeedNumber, resolvedDeed, StringComparison.OrdinalIgnoreCase)));
+                    && DeedNumberRules.EqualsNormalized(a.DeedNumber, resolvedDeed)));
 
             var pendingHandoff = envelope.Handoffs
                 .Where(h => h.Kind == KeyHandoffKinds.Internal

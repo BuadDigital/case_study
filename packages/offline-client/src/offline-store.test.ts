@@ -112,5 +112,5 @@ describe("offline write interceptor classification", () => {
       "@platform/app-shared/offline/install-offline-write-interceptor"
     );
     expect(typeof installOfflineWriteInterceptor).toBe("function");
-  });
+  }, 30_000); // first import of the whole interceptor graph — seconds under a parallel run
 });

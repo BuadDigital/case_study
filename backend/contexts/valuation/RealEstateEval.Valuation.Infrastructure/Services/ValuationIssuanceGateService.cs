@@ -36,7 +36,7 @@ public sealed class ValuationIssuanceGateService(
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return null;
 
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var today = RiyadhClock.Today(clock);
         var org = await organizationSettings.GetInternalAsync(cancellationToken);
         var eval = org.Evaluator;
         var firmLicenseExpiresAt = ValuerCredentialRules.FirstFilled(

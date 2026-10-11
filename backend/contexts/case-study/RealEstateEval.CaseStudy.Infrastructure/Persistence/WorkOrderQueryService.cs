@@ -137,7 +137,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         var filtered = FilteredWorkOrders(query, visiblePos);
         var active = NotTerminal(filtered);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         var dueSoonUpper = WorkOrderListQueryRules.DueSoonUpperBound(today);
 
         return new WorkOrderListCountsDto

@@ -1,4 +1,5 @@
-import { fmtSar } from "@platform/app-shared/format/number";
+import { fmtSar, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { roundSar, sumSar, toHalalas, vatSar } from "@platform/app-shared/format/money";
 import type {
   PoEnfazBillingDto,
   PoEnfazRevenueLineDto,
@@ -25,12 +26,21 @@ export type LineDraft = {
 
 export type LineDraftMap = Record<string, LineDraft>;
 
+/**
+ * A typed fee as the server keeps it: negatives clamp to 0 (PoEnfazRevenueRules) and the
+ * amount rounds to 2 decimals half away from zero (numeric(12,2)) — so screen = saved.
+ */
+export function draftFeeSar(raw: string | undefined): number {
+  const n = parseLocaleNumber(raw);
+  return n > 0 ? roundSar(n) : 0;
+}
+
 export function lineTotal(d: LineDraft | undefined): number {
   if (!d) return 0;
-  return (
-    (Number(d.caseStudyFee) || 0) +
-    (Number(d.surveyFee) || 0) +
-    (Number(d.keyFee) || 0)
+  return sumSar(
+    draftFeeSar(d.caseStudyFee),
+    draftFeeSar(d.surveyFee),
+    draftFeeSar(d.keyFee),
   );
 }
 
@@ -113,19 +123,22 @@ export function billingTotals(
   draft: LineDraftMap,
 ): BillingTotals {
   if (!lines) return EMPTY_BILLING_TOTALS;
-  let taxable = 0;
-  let key = 0;
+  let taxableHalalas = 0;
+  let keyHalalas = 0;
   let billable = 0;
   for (const line of lines) {
     const d = draft[line.propertyId];
     if (!d?.inc || line.workStatus !== "done") continue;
     billable += 1;
-    taxable += (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
-    key += Number(d.keyFee) || 0;
+    taxableHalalas += toHalalas(draftFeeSar(d.caseStudyFee)) + toHalalas(draftFeeSar(d.surveyFee));
+    keyHalalas += toHalalas(draftFeeSar(d.keyFee));
   }
-  // 15% VAT on (valuation+survey) only — keys fees are VAT-inclusive
-  const vat = Math.round(taxable * 0.15 * 100) / 100;
-  return { taxable, key, vat, total: taxable + vat + key, billable, sub: taxable };
+  const taxable = taxableHalalas / 100;
+  const key = keyHalalas / 100;
+  // 15% VAT once on the work order's (valuation+survey) total — keys fees are VAT-inclusive
+  // (PoEnfazBillingDtoBuilder: Math.Round(taxable × 0.15, 2, AwayFromZero)).
+  const vat = vatSar(taxable);
+  return { taxable, key, vat, total: sumSar(taxable, vat, key), billable, sub: taxable };
 }
 
 /** The save request built from the draft — a missing draft line saves as zero fees, included. */
@@ -138,9 +151,9 @@ export function saveLinesRequest(
       const d = draft[line.propertyId];
       return {
         propertyId: line.propertyId,
-        caseStudyFeeSar: Number(d?.caseStudyFee) || 0,
-        surveyFeeSar: Number(d?.surveyFee) || 0,
-        keyFeeSar: Number(d?.keyFee) || 0,
+        caseStudyFeeSar: draftFeeSar(d?.caseStudyFee),
+        surveyFeeSar: draftFeeSar(d?.surveyFee),
+        keyFeeSar: draftFeeSar(d?.keyFee),
         keyEntitlementEnvelopeId: line.keyEntitlementEnvelopeId,
         includedInBilling: d?.inc ?? true,
       };

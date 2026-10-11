@@ -28,7 +28,7 @@ import {
 } from "@platform/ui-kit";
 import { REVENUE_STAGES, type RevenueStage } from "../lib/finance-nav";
 import {
-  revenueAmountsFromRow,
+  revenueTotalsForRows,
   uniqueCities,
   bucketRevenueRows,
 } from "../lib/finance-revenue-stages";
@@ -150,13 +150,9 @@ export function FinanceRevenueView({
     setSelected((prev) => ({ ...prev, [propertyId]: !prev[propertyId] }));
   }, []);
 
-  const selectedRows: EnfazTrackingRowDto[] = [];
-  let selectedTotal = 0;
-  for (const r of stageRows) {
-    if (!selected[r.propertyId]) continue;
-    selectedRows.push(r);
-    selectedTotal += revenueAmountsFromRow(r).total;
-  }
+  const selectedRows = stageRows.filter((r) => selected[r.propertyId]);
+  // VAT once per work order, as invoiced — not rounded per line and summed.
+  const selectedTotal = revenueTotalsForRows(selectedRows).total;
   const allSelected =
     stageRows.length > 0 && selectedRows.length === stageRows.length;
 

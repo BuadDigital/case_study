@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Financial.Domain;
 
 /// <summary>
@@ -15,7 +17,6 @@ public static class BillingNegotiationDeadlines
     public const string StageReminderDeadlineDay = "reminder-0d";
     public const string StageEscalation = "escalation";
 
-    private static readonly TimeSpan RiyadhOffset = TimeSpan.FromHours(3);
  // End of the working day 17:00 — the same as the delivery deadline specified in my-task-row.
     private static readonly TimeSpan EndOfBusinessDay = TimeSpan.FromHours(17);
     private static readonly TimeSpan MorningReminderTime = TimeSpan.FromHours(9);
@@ -47,13 +48,10 @@ public static class BillingNegotiationDeadlines
         return current;
     }
 
-    private static DateOnly ToRiyadhDate(DateTime utc) =>
-        DateOnly.FromDateTime(utc.Add(RiyadhOffset));
+    private static DateOnly ToRiyadhDate(DateTime utc) => RiyadhClock.DateOf(utc);
 
     private static DateTime RiyadhToUtc(DateOnly date, TimeSpan timeOfDay) =>
-        DateTime.SpecifyKind(
-            date.ToDateTime(TimeOnly.MinValue).Add(timeOfDay).Subtract(RiyadhOffset),
-            DateTimeKind.Utc);
+        RiyadhClock.ToUtc(date, timeOfDay);
 
  /// <summary>Deadline: Ten working days from the day of entry, ending at 17:00 Riyadh time.</summary>
     public static DateTime DeadlineFromUtc(DateTime enteredDisputedUtc) =>

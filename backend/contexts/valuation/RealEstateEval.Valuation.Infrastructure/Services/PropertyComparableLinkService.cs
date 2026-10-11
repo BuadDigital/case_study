@@ -29,7 +29,7 @@ public sealed class PropertyComparableLinkService(
             .OrderBy(x => x.LinkedAtUtc)
             .ToListAsync(cancellationToken);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         var items = rows
             .Where(r => r.ComparableProperty is not null && r.ComparableProperty.IsActive)
             .Select(r => ToItem(r, today))

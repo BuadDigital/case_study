@@ -158,6 +158,21 @@ describe("sumRevenueAmounts", () => {
     expect(sums).toEqual({ base: 400, vat: 60, key: 30, gross: 490 });
   });
 
+  it("rounds VAT once per work order total, like the invoice", () => {
+    const sums = sumRevenueAmounts([
+      row("a", { caseStudyFeeSar: 100.5 }),
+      row("b", { caseStudyFeeSar: 100.5 }),
+    ]);
+    expect(sums).toEqual({ base: 201, vat: 30.15, key: 0, gross: 231.15 });
+    // Different work orders are separate invoices — each rounds its own VAT.
+    const twoPos = sumRevenueAmounts([
+      row("a", { caseStudyFeeSar: 100.5 }),
+      row("b", { poNumber: "PO-2", caseStudyFeeSar: 100.5 }),
+    ]);
+    expect(twoPos.vat).toBe(30.16);
+    expect(knownFeesTotal([row("a", { caseStudyFeeSar: 3500.5 })]).feesSum).toBe(4025.58);
+  });
+
   it("is all zeros for an empty group", () => {
     expect(sumRevenueAmounts([])).toEqual({ base: 0, vat: 0, key: 0, gross: 0 });
   });

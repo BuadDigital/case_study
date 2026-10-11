@@ -15,6 +15,7 @@ import {
   getGovernmentAuditors,
   type DistributionAssignee,
 } from "@case-study/mfe/lib/distribution-assignees";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 export const PRICING_STALE_MS = 60_000;
 
@@ -83,8 +84,9 @@ export function emptyDraft(
   };
 }
 
+/** A typed fee/area → number (Arabic digits, «١٬٢٥٠», units accepted); blank, bad or negative → 0. */
 export function num(value: string): number {
-  const n = Number(value.replace(/,/g, ""));
+  const n = parseLocaleNumber(value);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 

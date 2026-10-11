@@ -72,7 +72,9 @@ public class EnfazBillingController : ControllerBase
         [FromBody] SavePoEnfazBillingRequest request,
         CancellationToken ct)
     {
-        var dto = await _billing.SavePoBillingAsync(poNumber, request, ct);
+        var (dto, error) = await _billing.SavePoBillingAsync(poNumber, request, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
         return dto is null
             ? this.BadRequestProblem("تعذّر حفظ أتعاب إنفاذ.")
             : Ok(dto);

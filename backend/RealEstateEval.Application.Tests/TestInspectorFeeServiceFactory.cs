@@ -140,8 +140,14 @@ internal static class TestInspectorFeeServiceFactory
     public static PropertyTimelineService CreateTimeline(DbContext db, FailuresDbContext failures) =>
         new(ShareCaseStudy(db), new FailureLookup(failures));
 
-    public static WorkflowTaskShellPatcher CreateShellPatcher(DbContext db) =>
-        new(ShareCaseStudy(db));
+    public static WorkflowTaskShellPatcher CreateShellPatcher(
+        DbContext db,
+        INotificationService? notifications = null) =>
+        new(
+            ShareCaseStudy(db),
+            new WorkflowTaskPatchNotifier(
+                notifications ?? new NullNotificationService(),
+                CreateRecipients(db)));
 
     public static UserLabelLookup CreateLabels(DbContext db) =>
         new(ShareIdentity(db));

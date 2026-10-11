@@ -21,7 +21,7 @@ public static class ReferenceNumbering
     public const int MaxYearlySequence = 99_999;
 
  /// <summary>Gregorian year, Riyadh time — year boundaries follow the local business calendar.</summary>
-    public static int RiyadhYear(DateTime utcNow) => utcNow.AddHours(3).Year;
+    public static int RiyadhYear(DateTime utcNow) => RiyadhClock.Year(utcNow);
 
     public static string Format(string prefix, int year, int sequence) =>
         $"{prefix}-{year:D4}-{sequence:D5}";

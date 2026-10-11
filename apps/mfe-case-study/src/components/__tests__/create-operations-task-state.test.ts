@@ -225,6 +225,17 @@ describe("buildCreateOperationsTaskSubmission", () => {
     expect(result.body.letterRows).toHaveLength(1);
   });
 
+  it("reads a visit fee typed in Arabic digits or with a unit", () => {
+    for (const [typed, amount] of [["١٥٠", 150], ["١٬٣٥٠", 1350], ["150 ريال", 150]] as const) {
+      const result = buildCreateOperationsTaskSubmission(
+        form({ type: "court_visit", visitFeeAmountSar: typed }),
+        { ...opts, needsVisitFee: true },
+      );
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.body.visitFeeAmountSar).toBe(amount);
+    }
+  });
+
   it("a general work order links every live deed; multi picks the first matching work order", () => {
     const general = buildCreateOperationsTaskSubmission(form({ description: "" }), opts);
     expect(general.ok && general.body).toMatchObject({ deeds: ["111", "222"], letterRows: undefined, description: undefined });

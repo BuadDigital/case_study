@@ -80,7 +80,7 @@ public sealed class ValuationReportFieldInjectionService(
         var org = await organizationSettings.GetAsync(cancellationToken);
         var printable = await attachments.ListPrintableAsync(propertyId, cancellationToken);
 
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var today = RiyadhClock.Today(clock);
         var bag = BuildValueBag(
             vr,
             prop,
@@ -337,11 +337,7 @@ public sealed class ValuationReportFieldInjectionService(
                 .OrderBy(l => l.SortOrder)
                 .Select(l =>
                 {
-                    decimal.TryParse(
-                        l.AreaSqm,
-                        System.Globalization.NumberStyles.Number,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out var area);
+                    LocaleNumber.TryParse(l.AreaSqm, out var area);
                     return new ValuationReportFieldCostLineLite(
                         l.StructureKind,
                         l.Label,

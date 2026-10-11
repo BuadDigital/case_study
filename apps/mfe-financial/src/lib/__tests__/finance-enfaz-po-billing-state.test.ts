@@ -47,6 +47,12 @@ describe("lineTotal", () => {
       lineTotal({ caseStudyFee: "100", surveyFee: "50.5", keyFee: "20", inc: false }),
     ).toBe(170.5);
   });
+
+  it("clamps negatives to 0 and keeps 2 decimals, as the server saves them", () => {
+    expect(
+      lineTotal({ caseStudyFee: "-100", surveyFee: "10.005", keyFee: "١٠", inc: true }),
+    ).toBe(20.01);
+  });
 });
 
 describe("invoiceStatusLabel", () => {
@@ -123,6 +129,31 @@ describe("billingTotals", () => {
       billable: 1,
       sub: 200,
     });
+  });
+
+  it("rounds VAT once on the work order total, half away from zero (= the invoice)", () => {
+    const lines = [line("a"), line("b")];
+    // 3500.5 × 15% = 525.075 → 525.08 (Math.round gave 525.07).
+    expect(
+      billingTotals([line("a")], {
+        a: { caseStudyFee: "3000.5", surveyFee: "500", keyFee: "", inc: true },
+      }),
+    ).toMatchObject({ taxable: 3500.5, vat: 525.08, total: 4025.58 });
+    // Two lines of 100.5: VAT on 201 = 30.15, not 15.08 + 15.08 = 30.16.
+    expect(
+      billingTotals(lines, {
+        a: { caseStudyFee: "100.5", surveyFee: "", keyFee: "", inc: true },
+        b: { caseStudyFee: "100.5", surveyFee: "", keyFee: "", inc: true },
+      }),
+    ).toMatchObject({ taxable: 201, vat: 30.15, total: 231.15 });
+  });
+
+  it("clamps a typed negative fee to 0 and rounds 3+ decimals like the server", () => {
+    expect(
+      billingTotals([line("a")], {
+        a: { caseStudyFee: "-100", surveyFee: "200.555", keyFee: "-5", inc: true },
+      }),
+    ).toMatchObject({ taxable: 200.56, key: 0, vat: 30.08, total: 230.64 });
   });
 });
 

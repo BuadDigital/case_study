@@ -137,12 +137,14 @@ public partial class WorkOrderService : IWorkOrderService
 
         var promulgation = DateOnly.Parse(request.PromulgationDate);
 
-        var seenDeeds = new HashSet<string>(StringComparer.Ordinal);
+        var seenDeeds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var prop in request.Properties)
         {
             var deed = prop.DeedNumber.Trim();
             if (string.IsNullOrEmpty(deed)) continue;
-            if (!seenDeeds.Add(deed))
+            // "123456", "123-456" and "١٢٣٤٥٦" are one deed.
+            var deedKey = DeedNumberRules.Normalize(deed);
+            if (deedKey.Length > 0 && !seenDeeds.Add(deedKey))
             {
                 return (null, new Dictionary<string, string>
                 {

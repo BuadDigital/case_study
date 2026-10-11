@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
@@ -74,22 +76,9 @@ public static class EngineeringSurveyFeeRules
 
     public static bool TryParseAreaM2(string? raw, out decimal areaM2)
     {
+        // The one typed-number rule (LocaleNumber — same as the screens); an area must be > 0.
         areaM2 = 0m;
-        if (string.IsNullOrWhiteSpace(raw)) return false;
-        var cleaned = raw.Trim()
-            .Replace(",", "")
-            .Replace("م²", "", StringComparison.Ordinal)
-            .Replace("م2", "", StringComparison.Ordinal)
-            .Replace(" ", "");
-        if (!decimal.TryParse(
-                cleaned,
-                System.Globalization.NumberStyles.Number,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var parsed))
-        {
-            return false;
-        }
-
+        if (!LocaleNumber.TryParse(raw, out var parsed)) return false;
         if (parsed <= 0m) return false;
         areaM2 = parsed;
         return true;

@@ -15,6 +15,7 @@ import {
   SEQUENTIAL_SET,
   factorDescriptor,
 } from "./factor-registry";
+import { weightsSumTo100 } from "./weights";
 
 export type MatrixAlert = { kind: "error" | "ok"; title: string; body: string };
 
@@ -140,7 +141,7 @@ export function buildMatrixAlerts(
     (s, i) => s + (i.market?.effectiveWeightPct ?? 0),
     0,
   );
-  if (Math.round(weightsSum) !== 100) {
+  if (!weightsSumTo100(weightsSum)) {
     alerts.push({
       kind: "error",
       title: `مجموع الأوزان النسبية ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,

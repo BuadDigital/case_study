@@ -10,6 +10,7 @@ import {
   coordsFromLocationMapUrl,
 } from "@platform/app-shared/domain/property-geo";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-property-model";
 import type {
   MapComparableRecord,
@@ -145,7 +146,7 @@ function workflowForProperty(
 }
 
 function areaNumber(raw: string): number | null {
-  const n = Number.parseFloat(raw.replace(/,/g, "").trim());
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 

@@ -113,20 +113,27 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
             _time.UtcNow());
     }
 
-    public async Task<PoEnfazBillingDto?> SavePoBillingAsync(
+    public async Task<(PoEnfazBillingDto? Billing, string? Error)> SavePoBillingAsync(
         string poNumber,
         SavePoEnfazBillingRequest request,
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
+
+        // The screen only disables the inputs; the server is the lock. There is no reopen /
+        // cancel-invoice path, so an issued invoice freezes its lines for good.
+        var lockedError = PoEnfazInvoiceRules.LinesLockedError(
+            await _db.FindInvoiceAsync(normalized, track: false, cancellationToken));
+        if (lockedError is not null) return (null, lockedError);
+
         var order = await _lookup.GetWorkOrderForBillingAsync(normalized, cancellationToken);
-        if (order is null) return null;
+        if (order is null) return (null, null);
 
         var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([normalized], cancellationToken))
             .Select(s => s.ToWorkflowTask())
             .ToList();
         if (!PoEnfazWorkStatusRules.IsPoReadyForEnfazBilling(order.Properties, tasks))
-            return null;
+            return (null, null);
 
         var validPropertyIds = order.Properties.Select(p => p.Id).ToHashSet();
         var now = _time.UtcNow();
@@ -161,7 +168,7 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
         PoEnfazRevenueRules.LinkMissingEnvelopes(existingRows.Values, entitlements);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return await GetPoBillingAsync(normalized, cancellationToken);
+        return (await GetPoBillingAsync(normalized, cancellationToken), null);
     }
 
     public async Task<PropertyEnfazRevenueDto?> GetPropertyRevenueAsync(

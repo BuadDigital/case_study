@@ -9,6 +9,7 @@ import {
   type SectionQuestions,
 } from "../case-study-report-state";
 import type { PoPropertyIntake } from "../../../lib/app-data/po-intake-data";
+import { CASE_STUDY_DEED_NATURE_MATCH_ID } from "../../../lib/app-data/case-study-report-ux";
 
 const sections: SectionQuestions = {
   deed: ["سؤال الصك"],
@@ -105,6 +106,45 @@ describe("firstCaseStudyReportScrollTarget", () => {
         sectionQuestions: sections,
         isQuestionVisible: () => true,
         property: registeredProperty,
+        isParty: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps the gate for a traditional deed that also carries a registration number (server reads the deed kind only)", () => {
+    const draft = emptyCaseStudyReportDraft("t1");
+    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
+    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
+    const hit = firstCaseStudyReportScrollTarget({
+      draft,
+      sectionQuestions: sections,
+      isQuestionVisible: () => true,
+      property: {
+        realEstateRegNumber: "123",
+        identifierType: "deed",
+        deedKind: "traditional",
+      } as PoPropertyIntake,
+      isParty: false,
+    });
+    expect(hit?.targetId).toBe(CASE_STUDY_DEED_NATURE_MATCH_ID);
+    expect(hit?.blocking).toBe(true);
+    expect(hit?.invalidDeedNature).toBe(true);
+  });
+
+  it("skips the gate when the deed kind itself is a registered title", () => {
+    const draft = emptyCaseStudyReportDraft("t1");
+    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
+    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
+    expect(
+      firstCaseStudyReportScrollTarget({
+        draft,
+        sectionQuestions: sections,
+        isQuestionVisible: () => true,
+        property: {
+          realEstateRegNumber: "",
+          identifierType: "deed",
+          deedKind: "registered_title",
+        } as PoPropertyIntake,
         isParty: false,
       }),
     ).toBeNull();

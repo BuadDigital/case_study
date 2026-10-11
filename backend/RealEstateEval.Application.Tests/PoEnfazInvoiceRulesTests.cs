@@ -38,6 +38,18 @@ public class PoEnfazInvoiceRulesTests
         };
 
     [Fact]
+    public void Fee_lines_lock_once_the_invoice_has_a_number()
+    {
+        Assert.Null(PoEnfazInvoiceRules.LinesLockedError(null));
+        Assert.Null(PoEnfazInvoiceRules.LinesLockedError(new PoEnfazInvoice { PoNumber = "PO-1" }));
+        Assert.Equal(
+            "لا يمكن تعديل بنود الفوترة بعد إصدار الفاتورة.",
+            PoEnfazInvoiceRules.LinesLockedError(Invoice()));
+        Assert.NotNull(PoEnfazInvoiceRules.LinesLockedError(
+            Invoice(collected: 1150m, status: PoEnfazInvoiceStatus.Collected)));
+    }
+
+    [Fact]
     public void Invoice_number_carries_the_po_and_the_issue_second()
     {
         Assert.Equal(

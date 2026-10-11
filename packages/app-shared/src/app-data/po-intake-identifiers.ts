@@ -118,6 +118,22 @@ export function propertyHasRegisteredTitle(property: {
   );
 }
 
+/**
+ * The deed's own kind is a registered title — the server's `DeedKindRules` reads only the stored
+ * deed kind (decisions log 8 and 18: each deed by its own kind), so a traditional deed that also
+ * carries a registration number is still traditional. The explicit kind wins; the registration
+ * number / identifier heuristics apply only while the deed kind is empty.
+ */
+export function propertyDeedKindIsRegisteredTitle(property: {
+  realEstateRegNumber: string;
+  identifierType: PropertyIdentifierType;
+  deedKind?: string | null;
+  suggestedDeedKind?: string | null;
+}): boolean {
+  const kind = (property.deedKind ?? "").trim();
+  return kind ? isRegisteredTitleDeedKind(kind) : propertyHasRegisteredTitle(property);
+}
+
 /** Approved subdivision: plan number and plot number are both present. */
 export function propertyHasApprovedOrganizationalPlan(property: {
   planNumber?: string | null;

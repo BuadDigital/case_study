@@ -84,7 +84,7 @@ public sealed class ComparablePropertyService(
  // Q-3/2: system suggests suspicion (two records at same location) and neither blocks nor merges automatically.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         return rows
             .Select(r => ComparablePropertyMapping.ToDto(
                 r, today, duplicateSuspect: suspectCoords.Contains((r.Latitude, r.Longitude))))
@@ -106,7 +106,7 @@ public sealed class ComparablePropertyService(
         var row = await repo.GetAsync(id, cancellationToken);
         if (row is null) return null;
         var getAnomaly = await ComputeAnomalyNoteAsync(row, cancellationToken);
-        return ComparablePropertyMapping.ToDto(row, DateOnly.FromDateTime(_time.UtcNow()), getAnomaly);
+        return ComparablePropertyMapping.ToDto(row, RiyadhClock.Today(_time), getAnomaly);
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
@@ -145,7 +145,7 @@ public sealed class ComparablePropertyService(
         }
         await repo.SaveChangesAsync(cancellationToken);
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
-        return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(now), anomaly), null);
+        return (ComparablePropertyMapping.ToDto(entity, RiyadhClock.Today(now), anomaly), null);
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> UpdateAsync(
@@ -164,7 +164,7 @@ public sealed class ComparablePropertyService(
         entity.UpdatedAtUtc = _time.UtcNow();
         await repo.SaveChangesAsync(cancellationToken);
         var updateAnomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
-        return (ComparablePropertyMapping.ToDto(entity, DateOnly.FromDateTime(_time.UtcNow()), updateAnomaly), null);
+        return (ComparablePropertyMapping.ToDto(entity, RiyadhClock.Today(_time), updateAnomaly), null);
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
@@ -191,7 +191,7 @@ public sealed class ComparablePropertyService(
         var anomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
         return (
             ComparablePropertyMapping.ToDto(
-                entity, DateOnly.FromDateTime(_time.UtcNow()), anomaly),
+                entity, RiyadhClock.Today(_time), anomaly),
             null);
     }
 
@@ -244,7 +244,7 @@ public sealed class ComparablePropertyService(
             ProximityPoolSize,
             cancellationToken);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         var ranked = ComparableProximityRules.RankByDistance(
             lat.Value,
             lon.Value,

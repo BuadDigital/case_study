@@ -13,23 +13,18 @@ public static class OperationsTaskReminderCalculator
     public const int WorkEndHour = 17;
     public const int NoonHour = 12;
 
-    private static readonly TimeZoneInfo RiyadhTz = TimeZoneInfo.FindSystemTimeZoneById(
-        OperatingSystem.IsWindows() ? "Arab Standard Time" : "Asia/Riyadh");
-
  /// <summary>Next reminder instant (UTC) after <paramref name="fromUtc"/> for the given priority.</summary>
     public static DateTime NextReminderUtc(OperationsTaskPriority priority, DateTime fromUtc)
     {
         var utc = DateTime.SpecifyKind(fromUtc.ToUniversalTime(), DateTimeKind.Utc);
-        var local = TimeZoneInfo.ConvertTimeFromUtc(utc, RiyadhTz);
+        var local = RiyadhClock.ToRiyadh(utc);
         var nextLocal = priority switch
         {
             OperationsTaskPriority.High => NextWorkHour(local),
             OperationsTaskPriority.Low => NextWorkDayNoon(local),
             _ => NextCheckpoint(local),
         };
-        return TimeZoneInfo.ConvertTimeToUtc(
-            DateTime.SpecifyKind(nextLocal, DateTimeKind.Unspecified),
-            RiyadhTz);
+        return RiyadhClock.ToUtc(nextLocal);
     }
 
     public static bool IsWorkDay(DateTime d) =>
@@ -86,11 +81,9 @@ public static class OperationsTaskReminderCalculator
     public static DateTime PauseLimitDeadlineUtc(DateTime pausedAtUtc)
     {
         var utc = DateTime.SpecifyKind(pausedAtUtc.ToUniversalTime(), DateTimeKind.Utc);
-        var local = TimeZoneInfo.ConvertTimeFromUtc(utc, RiyadhTz);
+        var local = RiyadhClock.ToRiyadh(utc);
         var nextLocal = NextWorkDaySameTime(local);
-        return TimeZoneInfo.ConvertTimeToUtc(
-            DateTime.SpecifyKind(nextLocal, DateTimeKind.Unspecified),
-            RiyadhTz);
+        return RiyadhClock.ToUtc(nextLocal);
     }
 
  /// <summary>Same clock time on the next Saudi workday.</summary>

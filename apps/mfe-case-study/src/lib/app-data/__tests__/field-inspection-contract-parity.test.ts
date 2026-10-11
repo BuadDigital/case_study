@@ -8,6 +8,9 @@ import {
   listInspectorPhotoValidationIssues,
   inspectorFeatureRequiresPhoto,
   serviceAmenityPhotoSlotId,
+  isCommercialShopInspectionContext,
+  INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE,
+  mapPinPatchForActor,
 } from "../inspector-workspace-data";
 import {
   inspectorMustDecideDeedMatch,
@@ -659,5 +662,110 @@ describe("«وصف العقار» — text or components photo", () => {
       propertyDescription: { fileName: "desc.jpg", mimeType: "image/jpeg", attachmentId: "att-desc" },
     };
     expect(validateInspectorWorkspace(draft).propertyDescription).toBeUndefined();
+  });
+});
+
+describe("server parity — shop context, attached photos, photos not uploaded", () => {
+  it("reads the inspector's asset answer for the shop context: a villa on a shop PO needs the well photo", () => {
+    const draft = completeDraft();
+    draft.featureValues = fillRequiredFeatureValues(draft.featureValues);
+    draft.featureValues.assetSubject = "فيلا";
+    draft.wellCount = "1";
+    const errors = validateInspectorWorkspace(draft, {
+      classification: "محل تجاري",
+      propertyType: "محل تجاري",
+    });
+    expect(errors.componentPhotos).toBe("يجب إرفاق صورة البئر");
+    expect(errors.missingComponentPhotoKey).toBe("well");
+  });
+
+  it("seeds the shop context from the PO only until the inspector answers", () => {
+    expect(isCommercialShopInspectionContext({ classification: "محل تجاري" })).toBe(true);
+    expect(
+      isCommercialShopInspectionContext({ classification: "محل تجاري", assetSubject: "فيلا" }),
+    ).toBe(false);
+    expect(isCommercialShopInspectionContext({ assetSubject: "محل تجاري" })).toBe(true);
+  });
+
+  it("counts a photo as attached only with both a file name and an attachment id", () => {
+    const draft = completeDraft();
+    draft.wellCount = "1";
+    draft.componentPhotoAttachments.well = {
+      fileName: "",
+      mimeType: "image/jpeg",
+      attachmentId: "att-well",
+    };
+    expect(listInspectorPhotoValidationIssues(draft)).toContain("يجب إرفاق صورة البئر");
+    draft.componentPhotoAttachments.well = {
+      fileName: "well.jpg",
+      mimeType: "image/jpeg",
+      attachmentId: "att-well",
+    };
+    expect(listInspectorPhotoValidationIssues(draft)).not.toContain("يجب إرفاق صورة البئر");
+
+    draft.propertyDescription = "";
+    draft.featurePhotoAttachments = {
+      propertyDescription: { fileName: "", mimeType: "image/jpeg", attachmentId: "att-desc" },
+    };
+    expect(validateInspectorWorkspace(draft).propertyDescription).toBeTruthy();
+  });
+
+  it("stores typed coordinates as Latin text the server's GPS check can read", () => {
+    const patch = mapPinPatchForActor(completeDraft(), "٢١٫٤٨١", " ٣٩٫١٨٦ ", "inspector");
+    expect(patch.mapLatitude).toBe("21.481");
+    expect(patch.mapLongitude).toBe("39.186");
+    expect(patch.inspectorMapLatitude).toBe("21.481");
+  });
+
+  const local = { fileName: "local.jpg", mimeType: "image/jpeg" };
+
+  it("flags a feature proof photo saved but not uploaded and points at it", () => {
+    const draft = completeDraft();
+    draft.featurePhotoAttachments = { kitchen: { ...local } };
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.featurePhotos).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
+    expect(errors.missingFeaturePhotoKey).toBe("kitchen");
+    expect(firstInspectorWorkspaceErrorTarget({ missingFeaturePhotoKey: "kitchen" })).toBe(
+      "ins-feature-photo-kitchen",
+    );
+  });
+
+  it("flags a component photo saved but not uploaded", () => {
+    const draft = completeDraft();
+    draft.componentPhotoAttachments.showroom = { ...local };
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.componentPhotos).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
+    expect(errors.missingComponentPhotoKey).toBe("showroom");
+  });
+
+  it("flags a free photo saved but not uploaded", () => {
+    const draft = completeDraft();
+    draft.freePhotos = [{ id: 7, category: null, approved: true, ...local }];
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.freePhotos).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
+    expect(inspectorWorkspaceHasBlockingErrors({ freePhotos: errors.freePhotos })).toBe(true);
+  });
+
+  it("flags an observation photo saved but not uploaded", () => {
+    const draft = completeDraft();
+    draft.observations = [{ id: "obs-1", category: "", text: "تشقق في الجدار", photo: { ...local } }];
+    const errors = validateInspectorWorkspace(draft);
+    expect(errors.observations).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
+    expect(errors.missingObservationId).toBe("obs-1");
+  });
+
+  it("flags a defined-slot photo saved but not uploaded and the «وصف العقار» photo", () => {
+    const draft = completeDraft();
+    const serviceSlot = serviceAmenityPhotoSlotId("service", "كهرباء");
+    draft.definedPhotos[serviceSlot].photos[0].attachmentId = undefined;
+    let errors = validateInspectorWorkspace(draft);
+    expect(errors.definedPhotos).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
+    expect(errors.missingDefinedPhotoSlotId).toBe(serviceSlot);
+
+    const second = completeDraft();
+    second.propertyDescription = "فيلا";
+    second.featurePhotoAttachments = { propertyDescription: { ...local } };
+    errors = validateInspectorWorkspace(second);
+    expect(errors.propertyDescription).toBe(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
   });
 });

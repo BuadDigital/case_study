@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
   reopenReportIssuance,
@@ -16,7 +16,7 @@ import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lis
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import { findSiblingInspectionTask } from "../../lib/evaluator/evaluator-inspection-gate";
 import { findSiblingSurveyTask } from "../../lib/evaluator/evaluator-readiness";
-import { fetchEvaluatorSubmission } from "../../lib/evaluator/evaluator-submission-reads";
+import { useEvaluatorSubmissionQuery } from "../../query/evaluator-submission-query";
 import { normalizeReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import {
   overlayFromDraft,
@@ -67,11 +67,7 @@ export function ReportDraftPanel({
   const setDraft = useSetReportDraft(propertyId);
   const draft = draftQuery.data ?? null;
 
-  const submissionQuery = useQuery({
-    queryKey: ["evaluator-submission-preview", appraisalTask.id],
-    staleTime: 30_000,
-    queryFn: () => fetchEvaluatorSubmission(appraisalTask.id),
-  });
+  const submissionQuery = useEvaluatorSubmissionQuery(appraisalTask.id);
 
   const editable =
     canEdit && draft != null && (draft.status === "preparing" || (draft.status === "none" && draft.canPrepare));

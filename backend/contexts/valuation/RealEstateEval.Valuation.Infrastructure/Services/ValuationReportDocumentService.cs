@@ -113,7 +113,8 @@ public sealed class ValuationReportDocumentService(
             costUsed,
             incomeUsed);
 
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        // Report date = approval date (fixed on the approved draft), else today in Riyadh; validity counts from it.
+        var today = await ApprovedReportDateAsync(vr.Id, cancellationToken) ?? RiyadhClock.Today(clock);
         var reservedDate = vr.RequestDate;
         var sections = visible.Select(def =>
         {
@@ -355,7 +356,7 @@ public sealed class ValuationReportDocumentService(
                 ReportSectionNumber = section.Value,
                 IsImage = isImage,
                 CapturedAtDisplay = a.PhotoMetadata?.CapturedAtUtc is { } capUtc
-                    ? ValuationReportDisplayRules.FormatGregorianDate(DateOnly.FromDateTime(capUtc))
+                    ? ValuationReportDisplayRules.FormatGregorianDate(RiyadhClock.DateOf(capUtc))
                     : null,
             };
 
@@ -378,5 +379,17 @@ public sealed class ValuationReportDocumentService(
         }
 
         return (siteMaps, photos, survey, deed);
+    }
+
+    /// <summary>The current cycle's (newest non-superseded) draft's approved report date, else null.</summary>
+    private async Task<DateOnly?> ApprovedReportDateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var draft = await valuation.ValuationReportDrafts.AsNoTracking()
+            .Where(x => x.ValuationRequestId == id && !valuation.ValuationReportIssuances.Any(i =>
+                i.ValuationRequestId == id && i.Version == x.Version && i.SupersededAtUtc != null))
+            .OrderByDescending(x => x.Version)
+            .Select(x => new { x.Status, x.ReportDate })
+            .FirstOrDefaultAsync(cancellationToken);
+        return ValuationReportDraft.ApprovedDateOf(draft?.Status, draft?.ReportDate);
     }
 }

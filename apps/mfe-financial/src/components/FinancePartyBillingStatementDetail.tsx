@@ -24,6 +24,7 @@ import {
 import type { PartyBillingStatementDto } from "@platform/api-client";
 
 import {
+  costTaxSar,
   partyBillingWorkflowLabel,
   partyBillingWorkflowTone,
   statementDisplayTotal,
@@ -168,8 +169,7 @@ export function FinancePartyBillingStatementDetail({
               ["صافي الأتعاب", selectedStatement.totalNetSar, false],
               [
                 "ضريبة القيمة المضافة (15٪)",
-                Math.round(selectedStatement.totalNetSar * 0.15 * 100) /
-                  100,
+                costTaxSar(selectedStatement.totalNetSar, "vendor"),
                 false,
               ],
               [

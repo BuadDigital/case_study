@@ -118,13 +118,36 @@ export const OCCUPANCY_DESCRIPTION_KEY = "occupancyDescription";
 /** `featurePhotoAttachments` slot for the «وصف العقار» alternative photo (components' details). */
 export const PROPERTY_DESCRIPTION_PHOTO_KEY = "propertyDescription";
 
+type InspectorPhotoRef =
+  | { fileName?: string | null; attachmentId?: string | null }
+  | null
+  | undefined;
+
+/**
+ * A photo counts as attached only with both a file name and a server attachment id — the
+ * server's `FieldInspectionSubmissionValidator.HasBoundAttachment`.
+ */
+export function isInspectorPhotoBound(photo: InspectorPhotoRef): boolean {
+  return Boolean(photo?.fileName?.trim()) && Boolean(photo?.attachmentId?.trim());
+}
+
+/**
+ * Saved on the device (has a file name) but never uploaded (no attachment id) — the server's
+ * `FieldInspectionPayloadAttachments.IsUnboundPhoto`.
+ */
+function isInspectorPhotoNotUploaded(photo: InspectorPhotoRef): boolean {
+  return Boolean(photo?.fileName?.trim()) && !photo?.attachmentId?.trim();
+}
+
 /** «وصف العقار» needs a written description or the components photo — at least one. */
 export function inspectorDescriptionMissing(draft: {
   propertyDescription: string;
-  featurePhotoAttachments: Record<string, { attachmentId?: string } | null>;
+  featurePhotoAttachments: Record<string, InspectorPhotoRef>;
 }): boolean {
   if ((draft.propertyDescription ?? "").trim()) return false;
-  return !draft.featurePhotoAttachments?.[PROPERTY_DESCRIPTION_PHOTO_KEY]?.attachmentId;
+  return !isInspectorPhotoBound(
+    draft.featurePhotoAttachments?.[PROPERTY_DESCRIPTION_PHOTO_KEY],
+  );
 }
 export const OCCUPANCY_DESCRIPTION_LABEL = "سبب الإشغال";
 
@@ -596,7 +619,12 @@ const SHOP_HIDDEN_COMPONENT_KEY_SET = new Set<string>(
   SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS,
 );
 
-/** Commercial shop: PO type/classification or subject-asset shop. Land wins. */
+/**
+ * Commercial shop. Land wins. Like land, the inspector's «الأصل محل التقييم» wins once chosen —
+ * the server (`FieldInspectionSubmissionValidator.IsCommercialShopInspection`) reads only that
+ * answer, so a PO typed «محل تجاري» recorded as a villa is not a shop. PO type/classification
+ * only seed the form before the inspector answers.
+ */
 export function isCommercialShopInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -604,7 +632,10 @@ export function isCommercialShopInspectionContext(input: {
   vacantLand?: boolean;
 }): boolean {
   if (isLandInspectionContext(input)) return false;
-  return [input.assetSubject, input.classification, input.propertyType].some(
+  const origin = (input.assetSubject ?? "").trim();
+  // Server: subject contains «محل» and «تجار».
+  if (origin) return origin.includes("محل") && origin.includes("تجار");
+  return [input.classification, input.propertyType].some(
     (value) => Boolean(value && SHOP_SUBJECT_RE.test(value)),
   );
 }
@@ -1493,8 +1524,10 @@ export function mapPinPatchForActor(
     | "inspectorMapLongitude"
   >
 > {
-  const lat = nextLat.trim();
-  const lng = nextLng.trim();
+  // Typed coordinates go to the server as Latin text: its GPS check (invariant-culture parse)
+  // rejects «٢١٫٤٨» that the screen's parser accepts.
+  const lat = latinCoordinateText(nextLat);
+  const lng = latinCoordinateText(nextLng);
   const patch: Partial<
     Pick<
       InspectorWorkspaceDraft,
@@ -1512,6 +1545,10 @@ export function mapPinPatchForActor(
     patch.inspectorMapLongitude = lng;
   }
   return patch;
+}
+
+function latinCoordinateText(value: string): string {
+  return toLatinDigits(value).replace(/٫/g, ".").replace(/−/g, "-").trim();
 }
 
 export function restoreInspectorOriginalMapPin(
@@ -1643,8 +1680,54 @@ function hasMovablesSlotPhoto(
   draft: Pick<InspectorWorkspaceDraft, "definedPhotos">,
 ): boolean {
   return (draft.definedPhotos[MOVABLES_PHOTOS_SLOT_ID]?.photos ?? []).some(
-    (photo) => Boolean(photo.fileName?.trim()) && Boolean(photo.attachmentId),
+    isInspectorPhotoBound,
   );
+}
+
+export const INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE =
+  "يجب رفع الصور إلى الخادم قبل الإرسال";
+
+/** Where the first photo saved on the device but not uploaded sits. */
+export type InspectorPhotoNotUploadedLocation =
+  | { kind: "feature"; key: string }
+  | { kind: "component"; key: string }
+  | { kind: "defined"; slotId: string }
+  | { kind: "free"; photoId: number }
+  | { kind: "observation"; observationId: string };
+
+/**
+ * First photo saved but not uploaded, in every place the server checks
+ * (`FieldInspectionPayloadAttachments.HasPhotosWithoutServerAttachment`): feature proof photos,
+ * component photos, defined slots, free photos and observation photos.
+ */
+export function findInspectorPhotoNotUploaded(
+  draft: Pick<
+    InspectorWorkspaceDraft,
+    | "featurePhotoAttachments"
+    | "componentPhotoAttachments"
+    | "definedPhotos"
+    | "freePhotos"
+    | "observations"
+  >,
+): InspectorPhotoNotUploadedLocation | null {
+  for (const [key, photo] of Object.entries(draft.featurePhotoAttachments ?? {})) {
+    if (isInspectorPhotoNotUploaded(photo)) return { kind: "feature", key };
+  }
+  for (const [key, photo] of Object.entries(draft.componentPhotoAttachments ?? {})) {
+    if (isInspectorPhotoNotUploaded(photo)) return { kind: "component", key };
+  }
+  for (const [slotId, slot] of Object.entries(draft.definedPhotos ?? {})) {
+    if ((slot?.photos ?? []).some(isInspectorPhotoNotUploaded)) {
+      return { kind: "defined", slotId };
+    }
+  }
+  const free = (draft.freePhotos ?? []).find(isInspectorPhotoNotUploaded);
+  if (free) return { kind: "free", photoId: free.id };
+  const observation = (draft.observations ?? []).find((o) =>
+    isInspectorPhotoNotUploaded(o.photo),
+  );
+  if (observation) return { kind: "observation", observationId: observation.id };
+  return null;
 }
 
 export function listInspectorPhotoValidationIssues(
@@ -1682,7 +1765,7 @@ export function listInspectorPhotoValidationIssues(
     const value = draft.featureValues[field.key] ?? "";
     if (
       inspectorFeatureRequiresPhoto(field, value) &&
-      !draft.featurePhotoAttachments[field.key]?.attachmentId &&
+      !isInspectorPhotoBound(draft.featurePhotoAttachments[field.key]) &&
       !(field.key === MOVABLES_FEATURE_KEY && hasMovablesSlotPhoto(draft))
     ) {
       issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
@@ -1692,7 +1775,7 @@ export function listInspectorPhotoValidationIssues(
   if (
     !isLand &&
     parseInspectorCount(draft.showroomCount) > 0 &&
-    !draft.componentPhotoAttachments.showroom?.attachmentId
+    !isInspectorPhotoBound(draft.componentPhotoAttachments.showroom)
   ) {
     issues.push("يجب إرفاق صورة المعرض");
   }
@@ -1701,7 +1784,7 @@ export function listInspectorPhotoValidationIssues(
     !isLand &&
     !isShop &&
     parseInspectorCount(draft.wellCount) > 0 &&
-    !draft.componentPhotoAttachments.well?.attachmentId
+    !isInspectorPhotoBound(draft.componentPhotoAttachments.well)
   ) {
     issues.push("يجب إرفاق صورة البئر");
   }
@@ -1725,11 +1808,8 @@ export function listInspectorPhotoValidationIssues(
   // Unapproved extras in a complete slot are also not a submit blocker —
   // slot completeness already requires an approved photo (or «غير متوفر»).
 
-  const hasLocalOnly = Object.values(draft.definedPhotos).some((slot) =>
-    slot.photos.some((p) => p.fileName && !p.attachmentId),
-  );
-  if (hasLocalOnly) {
-    issues.push("يجب رفع الصور إلى الخادم قبل الإرسال");
+  if (findInspectorPhotoNotUploaded(draft)) {
+    issues.push(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
   }
 
   return issues;

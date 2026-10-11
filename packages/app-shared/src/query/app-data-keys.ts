@@ -65,6 +65,9 @@ export const appDataKeys = {
     [...appDataKeys.all, "distribution-assignees"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...appDataKeys.all, "property-detail-party-submissions", parentTaskId] as const,
+  /** The appraiser's saved submission for one appraisal task (`null` = none saved yet). */
+  evaluatorSubmission: (appraisalTaskId: string) =>
+    [...appDataKeys.all, "evaluator-submission", appraisalTaskId] as const,
   propertyTimeline: (poNumber: string, propertyId: string) =>
     [...appDataKeys.all, "property-timeline", poNumber, propertyId] as const,
   inspectorFees: (query: {

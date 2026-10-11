@@ -4,6 +4,8 @@ import {
   resolveFirstErrorTarget,
   type FormErrorTarget,
 } from "@platform/app-shared/form-ux";
+import { parseCoordinate } from "@platform/app-shared/domain/geo";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { normalizeEngineeringSurveyChecklist } from "./engineering-survey-data";
 
@@ -55,18 +57,55 @@ export function isPlattedPropertyWithPlot(property?: {
   return Boolean(property?.planNumber?.trim() && property?.plotNumber?.trim());
 }
 
+/** An area typed but not a number above 0 — the server's TryParseAreaM2 rejects 0 too. */
+function isBadArea(raw: string | null | undefined): boolean {
+  if (!raw?.trim()) return false;
+  const n = parseLocaleNumber(raw);
+  return !(Number.isFinite(n) && n > 0);
+}
+
+/** A readable number as plain Latin text («١٬٢٥٠ م²» → "1250"); unreadable text stays as typed. */
+function latinNumberText(raw: string, parse: (text: string) => number | null): string {
+  if (!raw.trim()) return raw;
+  const n = parse(raw);
+  return n == null || !Number.isFinite(n) ? raw : String(n);
+}
+
+type SurveyNumberFields = {
+  latitude: string;
+  longitude: string;
+  onSiteAreaSqm: string;
+  natureOnSiteAreaSqm?: string;
+};
+
+/**
+ * The typed coordinates and areas as the server reads them — Latin digits, "." decimal, no
+ * grouping or units — so what passed validation here is what the server parses.
+ */
+export function normalizeEngineeringSurveyNumbers<T extends SurveyNumberFields>(fields: T): T {
+  const area = (text: string) => parseLocaleNumber(text);
+  const next: T = {
+    ...fields,
+    latitude: latinNumberText(fields.latitude, (t) => parseCoordinate(t, "lat")),
+    longitude: latinNumberText(fields.longitude, (t) => parseCoordinate(t, "lng")),
+    onSiteAreaSqm: latinNumberText(fields.onSiteAreaSqm, area),
+  };
+  if (fields.natureOnSiteAreaSqm != null) {
+    next.natureOnSiteAreaSqm = latinNumberText(fields.natureOnSiteAreaSqm, area);
+  }
+  return next;
+}
+
 export function validateEngineeringSurveySubmission(
   submission: EngineeringSurveySubmission,
   options?: { siteLetterRequired?: boolean },
 ): EngineeringSurveyFieldErrors {
   const errors: EngineeringSurveyFieldErrors = {};
 
-  const lat = submission.latitude.trim();
-  const lng = submission.longitude.trim();
-  if (!lat || Number.isNaN(Number(lat))) {
+  if (parseCoordinate(submission.latitude, "lat") == null) {
     errors.latitude = "أدخل خط العرض بصيغة رقمية صحيحة";
   }
-  if (!lng || Number.isNaN(Number(lng))) {
+  if (parseCoordinate(submission.longitude, "lng") == null) {
     errors.longitude = "أدخل خط الطول بصيغة رقمية صحيحة";
   }
 
@@ -74,22 +113,13 @@ export function validateEngineeringSurveySubmission(
     errors.deed_matches_nature = "حدد هل الصك مطابق للطبيعة";
   }
 
-  const onSite = submission.onSiteAreaSqm.replace(/,/g, "").trim();
-  if (onSite && (Number.isNaN(Number(onSite)) || Number(onSite) < 0)) {
-    errors.on_site_area = "المساحة الإجمالية (حسب الصك) يجب أن تكون رقماً صحيحاً (≥ 0).";
+  if (isBadArea(submission.onSiteAreaSqm)) {
+    errors.on_site_area = "المساحة الإجمالية (حسب الصك) يجب أن تكون رقماً أكبر من صفر.";
   }
 
-  if (submission.deedMatchesNature === "no") {
-    const natureArea = (submission.natureOnSiteAreaSqm ?? "")
-      .replace(/,/g, "")
-      .trim();
-    if (
-      natureArea &&
-      (Number.isNaN(Number(natureArea)) || Number(natureArea) < 0)
-    ) {
-      errors.nature_on_site_area =
-        "المساحة الإجمالية (حسب الطبيعة) يجب أن تكون رقماً صحيحاً (≥ 0).";
-    }
+  if (submission.deedMatchesNature === "no" && isBadArea(submission.natureOnSiteAreaSqm)) {
+    errors.nature_on_site_area =
+      "المساحة الإجمالية (حسب الطبيعة) يجب أن تكون رقماً أكبر من صفر.";
   }
 
   if (!submission.surveyReportFileName.trim()) {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
-import { propertyHasRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
@@ -140,7 +140,9 @@ export function CaseStudyDeedNatureMatchReview({
     [caseStudyTaskId, draft, locked, showToast],
   );
 
-  if (propertyHasRegisteredTitle(property)) {
+  // The deed's own kind (the issue gate's rule) â€” a traditional deed with a registration number
+  // still needs the match verdict, so the control must stay reachable.
+  if (propertyDeedKindIsRegisteredTitle(property)) {
     return (
       <Note tone="info" className="mb-6">
         سجل عيني — لا بوابة مطابقة مساحية. بيانات الصك قطعية.

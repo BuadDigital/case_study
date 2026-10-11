@@ -7,10 +7,8 @@ import { CASE_STUDY_DEED_NATURE_MATCH_ID,
 import { deedNatureMatchAllowsDownstreamWork, deedNatureMatchRequiresNotes, isDeedNatureMatchChosen,
   normalizeDeedNatureMatchOutcome,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
-import {
-  propertyHasRegisteredTitle,
-  type PoPropertyIntake,
-} from "../../lib/app-data/po-intake-data";
+import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
@@ -178,8 +176,10 @@ export function firstCaseStudyReportScrollTarget(args: {
   const { draft, sectionQuestions, isQuestionVisible, property, isParty } = args;
 
   if (!isParty) {
+    // Same rule as the server (DeedKindRules.AllowsCaseStudyReport): only the deed's own kind
+    // skips the gate â€” a registration number on a traditional deed does not.
     const skipMatch =
-      property != null && propertyHasRegisteredTitle(property);
+      property != null && propertyDeedKindIsRegisteredTitle(property);
     if (!skipMatch) {
       // Submit gate uses IsChosen (not IsKnown) — empty is draft-ok on the API.
       const outcome = normalizeDeedNatureMatchOutcome(

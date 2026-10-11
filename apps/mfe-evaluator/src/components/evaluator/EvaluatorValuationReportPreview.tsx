@@ -1,15 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ValuationReportLoading } from "./ValuationReportLoading";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { EvaluatorValuationReportPreviewProps } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { findSiblingInspectionTask } from "../../lib/evaluator/evaluator-inspection-gate";
 import { findSiblingSurveyTask } from "../../lib/evaluator/evaluator-readiness";
-import { fetchEvaluatorSubmission } from "../../lib/evaluator/evaluator-submission-reads";
 import { createEvaluatorDraft } from "../../lib/evaluator/evaluator-window-data";
+import { useEvaluatorSubmissionQuery } from "../../query/evaluator-submission-query";
 import { EvaluatorValuationReportOutputTab } from "./EvaluatorValuationReportOutputTab";
 
 /**
@@ -32,27 +31,37 @@ export function EvaluatorValuationReportPreview({
     [appraisalTask.assigneeName, appraisalTask.assigneeId, staffResult?.users],
   );
 
-  const draftQuery = useQuery({
-    queryKey: ["evaluator-submission-preview", appraisalTask.id],
-    staleTime: 30_000,
-    queryFn: async () =>
-      (await fetchEvaluatorSubmission(appraisalTask.id)) ??
-      createEvaluatorDraft({
-        taskId: appraisalTask.id,
-        propertyId: appraisalTask.propertyId ?? property.id,
-        poNumber: appraisalTask.poNumber,
-        assignmentType: appraisalTask.assignmentType,
-      }),
-  });
+  const submissionQuery = useEvaluatorSubmissionQuery(appraisalTask.id);
+  const submission = submissionQuery.data;
+  // No submission saved yet (`null`): show the empty report — an in-memory draft, never saved.
+  const draft = useMemo(
+    () =>
+      submission === null
+        ? createEvaluatorDraft({
+            taskId: appraisalTask.id,
+            propertyId: appraisalTask.propertyId ?? property.id,
+            poNumber: appraisalTask.poNumber,
+            assignmentType: appraisalTask.assignmentType,
+          })
+        : submission,
+    [
+      submission,
+      appraisalTask.id,
+      appraisalTask.propertyId,
+      property.id,
+      appraisalTask.poNumber,
+      appraisalTask.assignmentType,
+    ],
+  );
 
-  if (draftQuery.isError) {
+  if (submissionQuery.isError) {
     return (
       <p className="m-0 text-[13px] text-danger-text">
         تعذّر تحميل تقرير التقييم — أعد المحاولة.
       </p>
     );
   }
-  if (!draftQuery.data) return <ValuationReportLoading />;
+  if (!draft) return <ValuationReportLoading />;
 
   const inspectionTaskId =
     appraisalTask.fieldInspectionTaskId?.trim() ||
@@ -62,7 +71,7 @@ export function EvaluatorValuationReportPreview({
 
   return (
     <EvaluatorValuationReportOutputTab
-      draft={draftQuery.data}
+      draft={draft}
       property={property}
       inspectionTaskId={inspectionTaskId}
       surveyTaskId={surveyTaskId}

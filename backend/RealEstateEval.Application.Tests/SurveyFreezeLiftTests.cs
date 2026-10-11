@@ -549,7 +549,11 @@ public sealed class SurveyFreezeLiftTests
             new CaseStudyLookup(db),
             new CaseStudyFailureCommands(
                 db,
-                new WorkflowTaskShellPatcher(db),
+                new WorkflowTaskShellPatcher(
+                    db,
+                    new WorkflowTaskPatchNotifier(
+                        new RecordingNotifications(),
+                        TestNotificationRecipients.ForContexts(db, identity))),
                 new PropertyTimelineService(db, new FailureLookup(bundle.Failures))),
             notifications,
             TestNotificationRecipients.ForContexts(db, identity),

@@ -89,6 +89,15 @@ describe("map-live-records", () => {
     expect(mapped[0]!.workflowStatus).toBe("in_progress");
   });
 
+  it("reads a deed area typed in Arabic digits or with a decimal comma", () => {
+    const [arabic] = sampleRecord();
+    arabic!.properties[0]!.area = "٤٥٠";
+    expect(mapPoRecordsToMapProperties([arabic!])[0]!.area).toBe(450);
+    const [comma] = sampleRecord();
+    comma!.properties[0]!.area = "12,5";
+    expect(mapPoRecordsToMapProperties([comma!])[0]!.area).toBe(12.5);
+  });
+
   it("wires inspector pin and issued valuation onto the map card", () => {
     const workspaces: FieldInspectionWorkspaceListItemDto[] = [
       {

@@ -343,7 +343,7 @@ public sealed class ValuationCostApproachService(
                 var effectiveUnitCost = CostApproachRules.InheritedUnitCost(
                     l.ItemKey, l.UnitCostSar, firstFloorUnitCost);
                 var effectiveQty = CostApproachRules.EffectiveQuantity(
-                    l.AreaSqm, l.Unit, l.BuildRatioPct);
+                    l.AreaSqm, l.Unit, l.BuildRatioPct, l.ItemKey, l.StructureKind);
                 return (Line: l,
                     EffectiveUnitCost: effectiveUnitCost,
                     Inherited: effectiveUnitCost != Math.Max(0m, l.UnitCostSar),

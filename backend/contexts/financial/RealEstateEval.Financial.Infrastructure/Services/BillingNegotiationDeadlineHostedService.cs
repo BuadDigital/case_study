@@ -194,7 +194,7 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
             var title = isEscalation
                 ? "انقضت مهلة التفاوض على التسعيرة"
                 : "تذكير بمهلة التفاوض على التسعيرة";
-            var deadlineRiyadh = deadlineUtc.AddHours(3);
+            var deadlineRiyadh = RiyadhClock.ToRiyadh(deadlineUtc);
             var body = isEscalation
                 ? $"بند أمر العمل {ledger.PoNumber} ما زال معترَضاً بعد انقضاء المهلة"
                   + $" ({deadlineRiyadh:yyyy-MM-dd HH:mm} بتوقيت الرياض) — يلزم حسم الخلاف."
@@ -234,7 +234,7 @@ public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
                     Title = "حسم خلاف تسعيرة منقضي المهلة",
                     Description =
                         $"انقضت مهلة التفاوض على بند أمر العمل {ledger.PoNumber}"
-                        + $" ({deadlineUtc.AddHours(3):yyyy-MM-dd HH:mm} بتوقيت الرياض)."
+                        + $" ({RiyadhClock.ToRiyadh(deadlineUtc):yyyy-MM-dd HH:mm} بتوقيت الرياض)."
                         + " أنهِ التفاوض أو ارفع الخلاف للمشرف لحسمه.",
                     Scope = "work_order",
                     PoNumber = ledger.PoNumber.Trim(),

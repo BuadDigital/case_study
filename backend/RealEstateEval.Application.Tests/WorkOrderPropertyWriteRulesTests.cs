@@ -65,6 +65,20 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.False(probe("D-2", null));
     }
 
+    [Theory]
+    [InlineData("123456")]
+    [InlineData("123-456")]
+    [InlineData("١٢٣٤٥٦")]
+    public void Deed_probe_counts_the_same_deed_typed_differently_as_taken(string typed)
+    {
+        var kept = new WorkOrderProperty { Id = Guid.NewGuid(), DeedNumber = "123-456" };
+        var probe = WorkOrderPropertyWriteRules.DeedTakenProbe(OrderWith(kept));
+
+        Assert.True(probe(typed, null));
+        Assert.False(probe(typed, kept.Id));
+        Assert.False(probe("123457", null));
+    }
+
     [Fact]
     public void Merge_errors_keeps_the_first_message_per_field()
     {

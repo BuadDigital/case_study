@@ -120,4 +120,13 @@ describe("specialist components", () => {
       buildingsTotal: "950",
     });
   });
+
+  it("reads areas typed in Arabic digits or with a decimal comma", () => {
+    const areas = infathBuildingAreasFromComponents([
+      line("ground_floor", "٢٠٠"),
+      line("basement", "12,5"),
+    ]);
+    expect(areas.builtArea).toBe("200");
+    expect(areas.basementTotal).toBe("12.5");
+  });
 });

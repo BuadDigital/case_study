@@ -15,6 +15,7 @@ import {
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
   INDIRECT_COST_ITEMS,
+  buildRatioApplies,
   costGroupOf,
   costLineComputed,
 } from "./cost-line-math";
@@ -211,7 +212,10 @@ export function costLinesFromInventory(
     itemLabelAr: "",
     unit,
     unitLabelAr: COST_UNIT_OPTIONS.find((u) => u.key === unit)?.label ?? "م²",
-    buildRatioPct: l.buildRatioPct ?? null,
+    // The built-up ratio only counts on m² area lines — never seed it elsewhere.
+    buildRatioPct: buildRatioApplies({ itemKey, structureKind: l.structureKind || "other", unit })
+      ? (l.buildRatioPct ?? null)
+      : null,
     repeatedFloorCount: l.repeatedFloorCount ?? null,
     label: l.label,
     areaSqm: parseLocaleNumber(l.areaSqm) || 0,
@@ -780,7 +784,7 @@ export function costSaveRequest(
       label: l.label,
       areaSqm: l.areaSqm,
       unit: l.unit || null,
-      buildRatioPct: l.buildRatioPct ?? null,
+      buildRatioPct: buildRatioApplies(l) ? (l.buildRatioPct ?? null) : null,
       repeatedFloorCount: l.repeatedFloorCount ?? null,
       unitCostSar: l.unitCostSar,
       rationale: l.rationale,

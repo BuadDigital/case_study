@@ -286,14 +286,14 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         if (po.Length == 0 || deed.Length == 0)
             return null;
 
-        var property = await caseStudy.WorkOrderProperties.AsNoTracking()
+        // Bounded by the PO (one order's properties); the deed is matched normalised in memory so
+        // "123-456" / "١٢٣٤٥٦" find the property saved as "123456". Exact id/deed wins first.
+        var rows = await caseStudy.WorkOrderProperties.AsNoTracking()
             .Include(p => p.WorkOrder)
-            .FirstOrDefaultAsync(
-                p => !p.IsRemoved
-                     && p.WorkOrder != null
-                     && p.WorkOrder.PoNumber == po
-                     && (p.DeedNumber == deed || p.Id.ToString() == deed),
-                cancellationToken);
+            .Where(p => !p.IsRemoved && p.WorkOrder != null && p.WorkOrder.PoNumber == po)
+            .ToListAsync(cancellationToken);
+        var property = rows.FirstOrDefault(p => p.DeedNumber == deed || p.Id.ToString() == deed)
+            ?? rows.FirstOrDefault(p => DeedNumberRules.EqualsNormalized(p.DeedNumber, deed));
         return property is null ? null : ToSnapshot(property);
     }
 

@@ -60,7 +60,7 @@ public class ValuationRequest
     public static DateOnly ParseRequestDate(string? text, DateTime nowUtc) =>
         DateOnly.TryParseExact(text?.Trim(), "yyyy-MM-dd", out var parsed)
             ? parsed
-            : DateOnly.FromDateTime(nowUtc);
+            : RiyadhClock.Today(nowUtc);
 
  /// <summary>The appraiser delivered the report — the request closes and releases the property.</summary>
     public ValuationRequestTransition SubmitReport(DateTime nowUtc)

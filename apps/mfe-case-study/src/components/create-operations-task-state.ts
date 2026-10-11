@@ -10,6 +10,7 @@ import type {
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { pad2 } from "@platform/app-shared/format/date";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { DistributionAssignee } from "../lib/app-data/distribution-parties";
 import { assigneesForOperationsTaskType } from "../lib/app-data/operations-task-assignees";
 import { OPERATIONS_TASK_TYPE_LABELS } from "../lib/app-data/operations-task-display";
@@ -380,7 +381,8 @@ export function buildCreateOperationsTaskSubmission(
   let parsedVisitFee: number | undefined;
   if (needsVisitFee) {
     const raw = form.visitFeeAmountSar.trim();
-    const amount = Number(raw.replace(/,/g, ""));
+    // «١٥٠» / «1,250» / «150 ريال» read the same as the server reads typed numbers.
+    const amount = parseLocaleNumber(raw);
     if (!raw || !Number.isFinite(amount) || amount <= 0) {
       return invalid("مبلغ أتعاب الزيارة مطلوب للمتعاون");
     }
