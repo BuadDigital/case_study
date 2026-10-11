@@ -16,9 +16,6 @@ import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { OfflineSyncCoordinator, OfflineSyncProvider } from "@/components/OfflineSyncCoordinator";
 import {
-  EngineeringSurveyTopbarActions,
-} from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
-import {
   parseFinanceNavArea,
   showFinancialNavGroup,
 } from "@platform/app-shared/app-data/financial-nav";
@@ -271,9 +268,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OfflineSyncCoordinator />
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />
-            {onActiveSurveyPropertyDetail ? (
-              <EngineeringSurveyTopbarActions />
-            ) : null}
             <ProfileMenu
               chipName={chipName}
               initials={chipInitials}

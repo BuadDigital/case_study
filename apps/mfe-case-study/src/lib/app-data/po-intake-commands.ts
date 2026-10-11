@@ -303,7 +303,7 @@ export async function deletePoRecord(
   if (!failuresDeleted) {
     return {
       ok: false,
-      error: "تم حذف أمر العمل لكن تعذّر حذف سجلات التعذرات المرتبطة",
+      error: "تم حذف أمر العمل لكن تعذّر حذف سجلات التعذّرات المرتبطة",
     };
   }
   notifyWorkOrdersChanged();
@@ -383,6 +383,22 @@ export async function updatePoRecord(
   return { ok: true, data: saved };
 }
 
+function hasClonedNames(names: {
+  assignmentDocFileNames: string[];
+  delegationLetterFileNames: string[];
+  otherDocumentFileNames: string[];
+  realEstateRegFileName: string;
+  deedOwnershipFileName: string;
+  bourseDeedImageFileName: string;
+}): boolean {
+  return (
+    names.assignmentDocFileNames.length > 0 ||
+    names.delegationLetterFileNames.length > 0 ||
+    names.otherDocumentFileNames.length > 0 ||
+    Boolean(names.realEstateRegFileName || names.deedOwnershipFileName || names.bourseDeedImageFileName)
+  );
+}
+
 export async function addPropertyToPo(
   poNumber: string,
   property: PoPropertyIntake,
@@ -407,18 +423,17 @@ export async function addPropertyToPo(
 
   let prop = dtoToProperty(result.data, poNumber);
 
-  // Re-clone prior PDFs under the real server property id when auto-fill ran first.
+  // The server gives the property its own id, so every file uploaded in the form under the client-side id
+  // is copied onto it (prior PDFs from auto-fill first, then whatever the user attached by hand).
   if (provisionalId && provisionalId !== prop.id) {
     try {
-      const { completePendingPriorDocumentClone } = await import(
+      const { clonePropertyDocumentsFromPrior, completePendingPriorDocumentClone } = await import(
         "./assignment-doc-attachments"
       );
-      const recloned = await completePendingPriorDocumentClone(
-        provisionalId,
-        poNumber,
-        prop.id,
-      );
-      if (recloned) {
+      const recloned =
+        (await completePendingPriorDocumentClone(provisionalId, poNumber, prop.id)) ??
+        (await clonePropertyDocumentsFromPrior(poNumber, provisionalId, poNumber, prop.id));
+      if (recloned && hasClonedNames(recloned)) {
         prop = {
           ...prop,
           assignmentDocFileNames:

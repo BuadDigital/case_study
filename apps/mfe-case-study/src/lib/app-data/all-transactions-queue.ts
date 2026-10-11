@@ -21,7 +21,7 @@ import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/dom
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (isPartyTaskDone(task)) return "مكتمل";
-  if (isTaskFailureObstructed(task)) return "تعذر";
+  if (isTaskFailureObstructed(task)) return "تعذّر";
   if (task.kind === "government-review") return "المراجعة الحكومية";
   if (task.kind === "field-inspection") return "معاينة العقار";
   if (task.kind === "property-appraisal") return "تقييم العقار";
@@ -30,7 +30,7 @@ export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (task.phase === "bourse") return "البورصة";
   if (task.phase === "distribution") return "التوزيع";
   if (task.phase === "case-study") return "دراسة الحالة";
-  if (task.phase === "obstruction") return "تعذر";
+  if (task.phase === "obstruction") return "تعذّر";
   return taskKindLabel(task.kind);
 }
 
@@ -39,7 +39,7 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
   if (label === "مكتمل") {
     return { base: "var(--success)", fg: "var(--success-text)" };
   }
-  if (label === "البورصة" || label === "تعذر") {
+  if (label === "البورصة" || label === "تعذّر") {
     return { base: "var(--amber)", fg: "var(--amber-text)" };
   }
   if (label === "البيانات الأولية") {
@@ -50,7 +50,7 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
 }
 
 /** Deed cell: `Deed {n}` as in Case Study.html. */
-export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
+function formatAllTransactionsDeedCell(deedOrSlot: string): string {
   const v = deedOrSlot.trim();
   if (!v || v === "—") return "—";
   if (v.startsWith("صك ")) return v;
@@ -82,7 +82,7 @@ export type AllTransactionsQueueRowMeta = {
 };
 
 /** Groups sibling workflow tasks that belong to the same property / slot. */
-export function allTransactionsPropertyGroupKey(
+function allTransactionsPropertyGroupKey(
   row: Pick<
     AllTransactionsQueueRowMeta,
     "poNumber" | "propertyId" | "deed" | "task"
@@ -99,7 +99,7 @@ export function allTransactionsPropertyGroupKey(
  * Relative progress along the case-study pipeline (higher = farther along).
  * Used to keep one row per property showing the latest stage reached.
  */
-export function allTransactionsStageProgress(task: WorkflowTask): number {
+function allTransactionsStageProgress(task: WorkflowTask): number {
   const completed = isPartyTaskDone(task);
 
   if (task.kind === "field-inspection") return completed ? 51 : 50.5;

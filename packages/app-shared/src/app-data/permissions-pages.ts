@@ -1,13 +1,11 @@
 import type { PageId } from "@platform/types";
 import { ALL_PROTOTYPE_PAGES } from "@platform/app-shared/app-data/constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "@platform/app-shared/app-data/system-fields-nav";
-import { ORPHAN_SCREENS_PAGE_IDS } from "@platform/app-shared/app-data/orphan-screens-nav";
 import { defaultLandingPage } from "./page-access";
 
 const ALL_PAGE_SET = new Set<string>([
   ...ALL_PROTOTYPE_PAGES,
   ...SYSTEM_FIELDS_PAGE_IDS,
-  ...ORPHAN_SCREENS_PAGE_IDS,
 ]);
 
 /** Nav row `all-transactions` — CDO plus the case specialist (not party roles). */
@@ -29,12 +27,6 @@ export function pagesFromPermissions(
   }
 
   const role = options?.prototypeRole?.trim().toLowerCase();
-  // Legacy draft screens removed from nav — strip if still granted by API.
-  if (role !== "cdo") {
-    for (const pageId of ORPHAN_SCREENS_PAGE_IDS) {
-      merged.delete(pageId);
-    }
-  }
   // "All transactions" — CDO and the case specialist.
   if (!roleSeesAllTransactionsPage(role)) {
     merged.delete("all-transactions");

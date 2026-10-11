@@ -247,7 +247,7 @@ export function GoogleMapPin({
           return;
         }
         setError(
-          "تعذر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.",
+          "تعذّر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.",
         );
       });
 

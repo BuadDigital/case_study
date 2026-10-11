@@ -32,6 +32,15 @@ public sealed partial class ValuationReportDraftService
             return (null, Error(NotApprovedYetAr));
 
         var (result, errors) = await issuance.RegisterCertificateAsync(valuationRequestId, request, actor.UserId, cancellationToken);
+        if (errors is null)
+        {
+            await RecordTimelineAsync(
+                vr.PropertyId,
+                po => ValuationTimelineTexts.Deposit(
+                    po, vr.PropertyId, vr.Id, actor.DisplayName, result?.DepositCode, _time.GetUtcNow().UtcDateTime),
+                cancellationToken);
+        }
+
         if (errors is not null || finalReports is null) return (result, errors);
 
         // The final PDF (report + the code + the certificate page) is made now, and again after a code correction.
@@ -91,7 +100,10 @@ public sealed partial class ValuationReportDraftService
         if (!PoRoleMatrixRules.CanReopenValuationReport(actor.PrototypeRole))
             return (null, Forbidden(ReopenForbiddenAr));
 
-        return await issuance.ReopenAfterDepositAsync(valuationRequestId, request, actor.UserId, cancellationToken);
+        var reopened = await issuance.ReopenAfterDepositAsync(valuationRequestId, request, actor.UserId, cancellationToken);
+        if (reopened.Errors is null)
+            await RecordNewVersionAsync(valuationRequestId, request.Reason, actor, cancellationToken);
+        return reopened;
     }
 
     public async Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)> ReopenNewVersionByPropertyAsync(
@@ -112,6 +124,27 @@ public sealed partial class ValuationReportDraftService
             .FirstOrDefaultAsync(cancellationToken);
         if (requestId is not { } id) return (null, Error(NoDepositedRequestAr));
 
-        return await issuance.ReopenAfterDepositAsync(id, request, actor.UserId, cancellationToken);
+        var reopened = await issuance.ReopenAfterDepositAsync(id, request, actor.UserId, cancellationToken);
+        if (reopened.Errors is null)
+            await RecordNewVersionAsync(id, request.Reason, actor, cancellationToken);
+        return reopened;
+    }
+
+    private async Task RecordNewVersionAsync(
+        Guid valuationRequestId,
+        string? reason,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken)
+    {
+        var propertyId = await db.ValuationRequests.AsNoTracking()
+            .Where(x => x.Id == valuationRequestId)
+            .Select(x => (Guid?)x.PropertyId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (propertyId is not { } property) return;
+        await RecordTimelineAsync(
+            property,
+            po => ValuationTimelineTexts.NewVersion(
+                po, property, valuationRequestId, actor.DisplayName, reason, _time.GetUtcNow().UtcDateTime),
+            cancellationToken);
     }
 }

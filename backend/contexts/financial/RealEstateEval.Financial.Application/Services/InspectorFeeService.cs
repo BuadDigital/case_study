@@ -378,15 +378,6 @@ public class InspectorFeeService : IInspectorFeeService
         };
     }
 
-    public Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
-        CreateDisbursementBatchRequest request,
-        string actorUserId,
-        string? actorAssigneeId,
-        CancellationToken cancellationToken = default)
-    {
- //new disbursement batches are retired — use party billing statements.
-        return Task.FromResult(InspectorFeeAccrualRules.RetiredDisbursementBatchResponse());
-    }
 
     public async Task DeleteForWorkflowTaskIdsAsync(
         IEnumerable<Guid> workflowTaskIds,

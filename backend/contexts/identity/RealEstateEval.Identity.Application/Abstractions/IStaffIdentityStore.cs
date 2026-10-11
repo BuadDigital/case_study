@@ -42,9 +42,6 @@ public sealed record StaffIdentityWrite(
 /// </remarks>
 public interface IStaffIdentityStore
 {
-    /// <summary>How long an activation ticket stays redeemable.</summary>
-    TimeSpan ActivationTokenLifespan { get; }
-
     Task<StaffIdentityUser?> FindByIdAsync(string userId, CancellationToken cancellationToken);
 
     Task<StaffIdentityUser?> FindByEmailAsync(string email, CancellationToken cancellationToken);
@@ -88,13 +85,4 @@ public interface IStaffIdentityStore
 
     /// <summary>Locks the account out with no end date — the soft-disable half.</summary>
     Task LockOutIndefinitelyAsync(string userId, CancellationToken cancellationToken);
-
-    Task<string?> GenerateActivationTokenAsync(string userId, CancellationToken cancellationToken);
-
-    /// <summary>Redeems an activation ticket and sets the account password.</summary>
-    Task<IReadOnlyList<StaffIdentityError>> ResetPasswordAsync(
-        string userId,
-        string token,
-        string newPassword,
-        CancellationToken cancellationToken);
 }

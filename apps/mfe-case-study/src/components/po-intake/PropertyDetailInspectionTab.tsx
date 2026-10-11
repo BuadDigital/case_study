@@ -20,6 +20,9 @@ import {
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   mergeInspectorWorkspacePatch,
+  resolveInspectorWorkspacePatch,
+  type InspectorWorkspacePatch,
+  type InspectorWorkspacePatchInput,
 } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
@@ -249,12 +252,10 @@ export function PropertyDetailInspectionTab({
   }
 
   const mapGeo = useMemo(() => {
-    const lat = Number(draft?.mapLatitude);
-    const lng = Number(draft?.mapLongitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat && lng) {
-      return { lat, lng };
-    }
-    return approximatePropertyGeo(property);
+    return (
+      parsePlacedMapPin(draft?.mapLatitude, draft?.mapLongitude) ??
+      approximatePropertyGeo(property)
+    );
   }, [draft, property]);
 
   const locked = Boolean(
@@ -301,10 +302,10 @@ export function PropertyDetailInspectionTab({
         continueInstructions: "متابعة المعاملة بعد توحيد الإحداثيات",
       });
       if (result.ok) {
-        showToast("تم إغلاق تعذر اختلاف الموقع", "success");
+        showToast("تم إغلاق تعذّر اختلاف الموقع", "success");
       } else {
         showToast(
-          result.error || "تعذّر إغلاق تعذر اختلاف الموقع تلقائياً",
+          result.error || "تعذّر إغلاق تعذّر اختلاف الموقع تلقائياً",
           "error",
         );
       }
@@ -339,25 +340,28 @@ export function PropertyDetailInspectionTab({
     };
   }, [mapActor, surveyTask?.id, surveyTask?.propertyId, surveyTask?.poNumber]);
 
-  function patchDraft(patch: Parameters<typeof updateInspectorWorkspace>[1]) {
+  function patchDraft(input: InspectorWorkspacePatchInput) {
     if (!inspectionTask || locked) return;
-    const safePatch =
-      serviceProofFromTransactionPhotos && draft && patch.featureValues
+    // Built from the latest draft each time it is applied (see InspectorWorkspacePatchInput).
+    const apply = (current: InspectorWorkspaceDraft): InspectorWorkspacePatch => {
+      const patch = resolveInspectorWorkspacePatch(current, input);
+      return serviceProofFromTransactionPhotos && patch.featureValues
         ? {
             ...patch,
             featureValues: preserveInspectorOwnedFeatureValues(
-              draft.featureValues,
+              current.featureValues,
               patch.featureValues,
             ),
           }
         : patch;
+    };
     setFieldErrors({});
     setFormError(null);
     // Update the controlled inputs immediately — network save is debounced.
     setDraft((prev) =>
-      prev ? mergeInspectorWorkspacePatch(prev, safePatch) : prev,
+      prev ? mergeInspectorWorkspacePatch(prev, apply(prev)) : prev,
     );
-    void updateInspectorWorkspace(inspectionTask.id, safePatch, {
+    void updateInspectorWorkspace(inspectionTask.id, apply, {
       allowWhenSubmitted:
         serviceProofFromTransactionPhotos && !locked,
     })

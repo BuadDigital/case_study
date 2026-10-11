@@ -11,8 +11,8 @@ import {
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PropertyTimelineTones } from "@platform/api-client";
 import {
-  buildPropertyDetailTimeline,
   formatTimelineDate,
+  type PropertyTimelineEvent,
   type PropertyTimelineTone,
 } from "../../lib/app-data/property-detail-timeline";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
@@ -29,6 +29,8 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
+
+const EMPTY_EVENTS: PropertyTimelineEvent[] = [];
 
 function toneToDotClass(tone: PropertyTimelineTone): string {
   if (tone === PropertyTimelineTones.Done) return "bg-ink";
@@ -237,14 +239,7 @@ export function PropertyTransactionTimeline({
     [task, tasks, staffUsers, inspectionSubmitted, appraisalPackageSubmitted, property.id, draftStateVersion],
   );
 
-  const displayEvents = useMemo(() => {
-    const fromApi = timelineQuery.data ?? [];
-    const events =
-      fromApi.length > 0
-        ? fromApi
-        : buildPropertyDetailTimeline({ record, property, tasks });
-    return [...events].reverse();
-  }, [timelineQuery.data, record, property, tasks]);
+  const displayEvents = timelineQuery.data ?? EMPTY_EVENTS;
 
   return (
     <aside
@@ -340,7 +335,7 @@ export function PropertyTransactionTimeline({
                     {event.title}
                   </div>
                   {event.detail?.trim() ? (
-                    <div className="truncate text-[10.5px] leading-snug text-text-2">
+                    <div className="line-clamp-3 text-[10.5px] leading-snug text-text-2">
                       {event.detail.trim()}
                     </div>
                   ) : null}

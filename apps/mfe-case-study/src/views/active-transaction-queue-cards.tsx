@@ -26,7 +26,7 @@ import type {
   QueueLayoutFlags,
 } from "./active-transaction-queue-state";
 
-export type QueueMobileCardArgs = {
+type QueueMobileCardArgs = {
   flags: QueueLayoutFlags;
   disableRowOpen: boolean;
   filteredAllTxMeta: AllTransactionsRowMeta[];

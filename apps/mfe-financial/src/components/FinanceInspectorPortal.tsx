@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { dmy } from "@platform/app-shared/format/date";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   buildAssigneeStaffIndex,
   resolvePartyName,
@@ -27,6 +28,7 @@ import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { getFieldInspectors } from "@case-study/mfe/lib/distribution-assignees";
 import {
   EmptyState,
+  QueryErrorState,
   StatusPill,
   TBody,
   THead,
@@ -223,6 +225,7 @@ export function FinanceInspectorPortal({
   });
 
   const pending = readyQuery.isPending || statementsQuery.isPending;
+  const failedQueries = [readyQuery, statementsQuery].filter(queryLoadFailed);
 
   const allRows = useMemo(
     () =>
@@ -349,6 +352,18 @@ export function FinanceInspectorPortal({
             )}
           >
             جاري تحميل المستحقات…
+          </div>
+        ) : failedQueries.length ? (
+          <div className={opsLetterCard}>
+            <QueryErrorState
+              panel
+              line="تعذّر تحميل المستحقات"
+              error={failedQueries[0]!.error}
+              onRetry={() => {
+                for (const q of failedQueries) void q.refetch();
+              }}
+              retrying={failedQueries.some((q) => q.isFetching)}
+            />
           </div>
         ) : !tracked ? (
           <div className={cn(opsLetterCard, "px-6 py-[26px] text-center")}>

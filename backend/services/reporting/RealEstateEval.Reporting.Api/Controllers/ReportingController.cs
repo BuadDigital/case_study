@@ -320,7 +320,7 @@ public class ReportingController : ControllerBase
         kind switch
         {
             WorkflowTaskKindValues.FieldInspection => "معاين — ميداني",
-            WorkflowTaskKindValues.PropertyAppraisal => "مقيم — ميداني",
+            WorkflowTaskKindValues.PropertyAppraisal => "مقيّم — ميداني",
             WorkflowTaskKindValues.EngineeringSurvey => "مكتب هندسي — رفع مساحي",
             _ => title,
         };

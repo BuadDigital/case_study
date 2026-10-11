@@ -3,6 +3,7 @@ import {
   persistPartySubmissionPayload,
   submitPartySubmission,
 } from "@platform/app-shared/app-data/party-submission-api";
+import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queue";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   dispatchWorkflowSubmitted,
@@ -26,7 +27,26 @@ import {
   type EvaluatorReportMetadata,
 } from "./evaluator-submission-model";
 
-export async function hydrateEvaluatorSubmission(input: {
+/**
+ * Every evaluator draft write reads the cached submission, folds its change in
+ * and PUTs the whole payload — so the read-modify-write runs inside this queue,
+ * one per task, or an autosave and a banner/submit save in flight together
+ * would each erase the other's fields. `saveEvaluatorSubmission` itself is the
+ * raw write used inside queued work and is not queued.
+ */
+const draftWrites = createKeyedWriteQueue();
+
+
+export function hydrateEvaluatorSubmission(input: {
+  taskId: string;
+  propertyId: string;
+  poNumber: string;
+  assignmentType?: string;
+}): Promise<EvaluatorSubmission> {
+  return draftWrites.enqueue(input.taskId, () => hydrateNow(input));
+}
+
+async function hydrateNow(input: {
   taskId: string;
   propertyId: string;
   poNumber: string;
@@ -77,9 +97,18 @@ async function stampReservedReportNumber(
   }
 }
 
-export async function syncEvaluatorChecklistFromPartyCaseStudy(
+export function syncEvaluatorChecklistFromPartyCaseStudy(
   appraisalTaskId: string,
   options: { overwriteLinked?: boolean } = {},
+): Promise<EvaluatorSubmission | null> {
+  return draftWrites.enqueue(appraisalTaskId, () =>
+    syncChecklistNow(appraisalTaskId, options),
+  );
+}
+
+async function syncChecklistNow(
+  appraisalTaskId: string,
+  options: { overwriteLinked?: boolean },
 ): Promise<EvaluatorSubmission | null> {
   const current = loadEvaluatorSubmission(appraisalTaskId);
   if (!current) return null;
@@ -128,7 +157,26 @@ type EvaluatorDraftPatch = Partial<
   >
 >;
 
-export async function updateEvaluatorDraft(
+/** Folds a later patch onto an earlier one — later fields win (a checklist patch carries every answer). */
+export function mergeEvaluatorDraftPatches(
+  earlier: EvaluatorDraftPatch | null,
+  later: EvaluatorDraftPatch,
+): EvaluatorDraftPatch {
+  return earlier ? { ...earlier, ...later } : later;
+}
+
+export function updateEvaluatorDraft(
+  taskId: string,
+  patch: EvaluatorDraftPatch,
+  reportMetadata?: EvaluatorReportMetadata | null,
+  planImageMetadata?: EvaluatorPlanImageMetadata | null,
+): Promise<EvaluatorSubmission | null> {
+  return draftWrites.enqueue(taskId, () =>
+    updateDraftNow(taskId, patch, reportMetadata, planImageMetadata),
+  );
+}
+
+async function updateDraftNow(
   taskId: string,
   patch: EvaluatorDraftPatch,
   reportMetadata?: EvaluatorReportMetadata | null,
@@ -152,13 +200,21 @@ export async function updateEvaluatorDraft(
   return saveEvaluatorSubmission(next, reportMetadata, planImageMetadata);
 }
 
-export async function submitEvaluatorSubmission(
+type SubmitEvaluatorResult =
+  | { ok: true; submission: EvaluatorSubmission }
+  | { ok: false; message: string };
+
+export function submitEvaluatorSubmission(
   taskId: string,
   idempotencyKey?: string,
-): Promise<
-  | { ok: true; submission: EvaluatorSubmission }
-  | { ok: false; message: string }
-> {
+): Promise<SubmitEvaluatorResult> {
+  return draftWrites.enqueue(taskId, () => submitNow(taskId, idempotencyKey));
+}
+
+async function submitNow(
+  taskId: string,
+  idempotencyKey?: string,
+): Promise<SubmitEvaluatorResult> {
   const current = loadEvaluatorSubmission(taskId);
   if (!current) {
     return { ok: false, message: "لا توجد مسودة للإرسال" };

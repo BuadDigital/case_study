@@ -322,7 +322,7 @@ export function RowMoreMenu({
         ref={btnRef}
         type="button"
         className={cn(moreBtnClass(open), buttonClassName)}
-        aria-label={busy ? "جاري التحميل" : ariaLabel}
+        aria-label={busy ? "جاري التحميل…" : ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-busy={busy || undefined}

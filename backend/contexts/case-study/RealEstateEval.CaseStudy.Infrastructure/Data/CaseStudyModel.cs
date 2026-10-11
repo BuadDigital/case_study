@@ -117,6 +117,7 @@ public static class CaseStudyModel
             e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
             e.Property(x => x.DeedOwnersJson).HasColumnType("jsonb");
+            e.Property(x => x.BourseCompletedByName).HasMaxLength(128);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlanName).HasMaxLength(256);
             e.Property(x => x.PlotNumber).HasMaxLength(128);

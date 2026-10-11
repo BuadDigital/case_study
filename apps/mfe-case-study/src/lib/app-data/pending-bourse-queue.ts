@@ -7,7 +7,7 @@ type BourseFailureRef = {
 };
 
 /** Deed awaiting bourse completion — excludes active failure (same logic as the bourse-inquiry list). */
-export function isPendingBourseActionable(
+function isPendingBourseActionable(
   item: Pick<PendingBoursePropertyDto, "poNumber" | "propertyId">,
   failures: readonly BourseFailureRef[],
 ): boolean {
@@ -31,7 +31,7 @@ type BourseSortFields = Pick<
 >;
 
 /** Newest first — same idea as primary data (latest PO creation first). */
-export function comparePendingBourseNewestFirst(
+function comparePendingBourseNewestFirst(
   a: BourseSortFields,
   b: BourseSortFields,
 ): number {

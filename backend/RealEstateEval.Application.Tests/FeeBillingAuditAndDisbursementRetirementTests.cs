@@ -79,33 +79,6 @@ public class FeeBillingAuditAndDisbursementRetirementTests
         Assert.Empty(db.Financial.AuditLogs);
     }
 
-    [Fact]
-    public async Task Create_disbursement_batch_is_always_rejected_without_writing_rows()
-    {
-        await using var db = CreateDb();
-        var taskId = SeedLedger(db, InspectorFeeBillingStatus.AtFinance);
-        await db.CaseStudy.SaveChangesAsync();
-        await db.Financial.SaveChangesAsync();
-
-        var result = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).CreateDisbursementBatchAsync(
-            new CreateDisbursementBatchRequest
-            {
-                WorkflowTaskIds = [taskId.ToString()],
-            },
-            "party-1",
-            "office-1");
-
-        Assert.Empty(result.Rows);
-        Assert.NotEmpty(result.Failed);
-        Assert.Contains("كشف الأطراف", result.Failed[0].Error);
-        Assert.Empty(db.Financial.DisbursementBatches);
-        Assert.Empty(db.Financial.AuditLogs);
-
-        var ledger = await db.Financial.InspectorFeeLedgers.AsNoTracking()
-            .SingleAsync(l => l.WorkflowTaskId == taskId);
-        Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.BillingStatus);
-        Assert.Null(ledger.DisbursementBatchId);
-    }
 
     private static Guid SeedLedger(TestDatabases.ContextSet db, string status)
     {

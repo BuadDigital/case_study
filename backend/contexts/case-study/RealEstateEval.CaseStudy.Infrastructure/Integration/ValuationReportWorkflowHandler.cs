@@ -104,7 +104,7 @@ public sealed class ValuationReportWorkflowHandler
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
-                $"appraisal:{task.TaskId}:final-issued",
+                $"appraisal:{task.TaskId}:final-issued:{_time.GetUtcNow().UtcDateTime.Ticks}",
                 WorkflowTaskKindLabels.AppraisalCompletedTitleAr,
                 $"صدر التقرير النهائي ({payload.DisplayId}) — اكتمل تقييم العقار",
                 "done",

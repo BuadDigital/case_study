@@ -7,7 +7,7 @@ import {
 } from "../EvaluatorActionNotice";
 
 /** What the drift banner says, e.g. «2 بند جديد — 1 بند تغيّرت مساحته». Empty when nothing drifted. */
-export function costInventoryDriftMessage(drift: CostInventoryDrift): string {
+function costInventoryDriftMessage(drift: CostInventoryDrift): string {
   const parts: string[] = [];
   if (drift.added.length > 0) parts.push(`${drift.added.length} بند جديد`);
   if (drift.changedArea.length > 0) {

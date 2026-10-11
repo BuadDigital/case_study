@@ -7,10 +7,10 @@ import type {
 } from "./evaluator-window-data";
 import { checklistAnswerLabel } from "./evaluator-window-data";
 
-export const APPRAISER_PARTY_ID = "val" as const;
+const APPRAISER_PARTY_ID = "val" as const;
 
 /** Appraiser checklist ↔ case-study form answer keys (appraiser party). */
-export type EvaluatorChecklistCaseStudyLink = {
+type EvaluatorChecklistCaseStudyLink = {
   checklistKey: keyof Pick<
     EvaluatorChecklistAnswers,
     | "q_plan_match"
@@ -32,7 +32,7 @@ export type EvaluatorChecklistCaseStudyLink = {
   caseStudyKey: string;
 };
 
-export const EVALUATOR_CHECKLIST_CASE_STUDY_LINKS: EvaluatorChecklistCaseStudyLink[] =
+const EVALUATOR_CHECKLIST_CASE_STUDY_LINKS: EvaluatorChecklistCaseStudyLink[] =
   [
     { checklistKey: "q_plan_match", caseStudyKey: "deed_2" },
     { checklistKey: "q_excess_zoning", caseStudyKey: "deed_3" },
@@ -52,12 +52,12 @@ export const EVALUATOR_CHECKLIST_CASE_STUDY_LINKS: EvaluatorChecklistCaseStudyLi
   ];
 
 /** Case-study form questions assigned to the appraiser without a q_* key in the legacy checklist. */
-export type AppraiserOnlyCaseStudyChecklistItem = {
+type AppraiserOnlyCaseStudyChecklistItem = {
   caseStudyKey: string;
   label: string;
 };
 
-export const APPRAISER_ONLY_CASE_STUDY_CHECKLIST: AppraiserOnlyCaseStudyChecklistItem[] =
+const APPRAISER_ONLY_CASE_STUDY_CHECKLIST: AppraiserOnlyCaseStudyChecklistItem[] =
   [];
 
 const LEGACY_MAPPED_CASE_STUDY_KEYS = new Set(
@@ -131,12 +131,12 @@ function sharedDeedScopeFromCaseStudy(
   return null;
 }
 
-export type CaseStudyChecklistRemarks = {
+type CaseStudyChecklistRemarks = {
   deedRemarks?: string;
   componentsRemarks?: string;
 };
 
-export type MergeEvaluatorChecklistOptions = {
+type MergeEvaluatorChecklistOptions = {
   /** Replaces linked q_* keys with case-study form answers when available. */
   overwriteLinked?: boolean;
 };

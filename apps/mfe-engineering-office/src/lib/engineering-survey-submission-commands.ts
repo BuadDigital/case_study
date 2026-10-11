@@ -101,7 +101,7 @@ export function updateEngineeringSurveyDraft(
   );
 }
 
-export type EngineeringSurveyDraftPatch = Parameters<
+type EngineeringSurveyDraftPatch = Parameters<
   typeof writeEngineeringSurveyDraft
 >[1];
 

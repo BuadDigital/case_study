@@ -17,8 +17,6 @@ import {
   comparableLocationPinned,
   comparablePlaceLine,
   computedPricePerSqm,
-  parseComparableCoords,
-  parseCoordinatePair,
   contactNumbers,
   formatContactNumbersInput,
   type ComparableEntryDraft,
@@ -26,6 +24,7 @@ import {
   type ComparableKind,
   type ComparableSubjectPin,
 } from "../../lib/comparable-entry";
+import { parseCoordinatePair, parseLatLng } from "@platform/app-shared/domain/geo";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 const FIELD_LABEL = "mb-1.5 text-[12px] font-semibold text-text-2";
@@ -123,7 +122,7 @@ export function ComparablePropertyEntryFields({
     value: ComparableEntryDraft[K],
   ) => onChange({ ...draft, [key]: value });
 
-  const comparablePin = parseComparableCoords(draft.latitude, draft.longitude);
+  const comparablePin = parseLatLng(draft.latitude, draft.longitude);
   const fieldsLocked = Boolean(disabled || !mapPinned);
   const mapInteractive = !disabled && !mapPinned;
   const placeLine = comparablePlaceLine(draft);
@@ -178,7 +177,7 @@ export function ComparablePropertyEntryFields({
     district?: string;
   }) {
     const current = draftRef.current;
-    const pin = parseComparableCoords(current.latitude, current.longitude);
+    const pin = parseLatLng(current.latitude, current.longitude);
     if (
       pin &&
       (Math.abs(pin.lat - detail.lat) > 0.0002 ||

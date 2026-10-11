@@ -25,8 +25,6 @@ public static partial class DepositCertificateRules
     /// </summary>
     public static (byte[]? Content, Dictionary<string, string>? Errors) Read(
         string? contentBase64,
-        string? contentType,
-        string? fileName,
         bool alreadyHasCertificate)
     {
         if (string.IsNullOrWhiteSpace(contentBase64))
@@ -42,12 +40,12 @@ public static partial class DepositCertificateRules
             return (null, Error(InvalidBase64Ar));
         }
 
-        var error = Validate(bytes, contentType, fileName);
+        var error = Validate(bytes);
         return error is null ? (bytes, null) : (null, Error(error));
     }
 
     /// <summary>The Arabic refusal for an unusable certificate, or null.</summary>
-    public static string? Validate(byte[] bytes, string? contentType, string? fileName)
+    public static string? Validate(byte[] bytes)
     {
         if (bytes.Length == 0) return RequiredAr;
         if (bytes.Length > MaxBytes) return TooLargeAr;

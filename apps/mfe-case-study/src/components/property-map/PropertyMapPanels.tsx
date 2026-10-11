@@ -1,10 +1,10 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import type { ReactNode } from "react";
 import { Button, cn, opsFloatPanel } from "@platform/ui-kit";
 
 import {
-  fmtMoney,
   type MapComparableRecord,
   type groupForMap,
 } from "../../lib/app-data/map-locations-logic";
@@ -352,7 +352,7 @@ export function DetailCard({
                     {item.comparableType} — {item.district}
                   </span>
                   <span className="shrink-0 text-[11px] text-gold-d">
-                    {distanceKm.toFixed(1)} كم · {item.operationType} · {fmtMoney(item.price)}
+                    {distanceKm.toFixed(1)} كم · {item.operationType} · {fmtSar(item.price, { trim: true })}
                   </span>
                 </button>
               ))}

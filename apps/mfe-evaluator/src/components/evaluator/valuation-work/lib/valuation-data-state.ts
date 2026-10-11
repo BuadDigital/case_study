@@ -16,6 +16,7 @@ import {
   type fetchBankCandidates,
 } from "./bank-ranking";
 import { parseDecimal, type ValuationWorkPropertyHint } from "./shell-state";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 
 export type SubjectCoords = { lat: number; lng: number };
 export type BankFetchOptions = Parameters<typeof fetchBankCandidates>[1];
@@ -41,7 +42,7 @@ export function approachAvailability(
   };
 }
 
-export type ApproachKind = "market" | "cost";
+type ApproachKind = "market" | "cost";
 
 /** Saved comparable/cost work — used to warn before hiding an approach tab. */
 export function approachWorkPresence(opts: {
@@ -111,7 +112,7 @@ export function initialApproachToggles(
 export function openFailureMessage(kind: string): string {
   if (kind === "auth") return "يلزم تسجيل الدخول";
   if (kind === "network") return "تعذّر الاتصال بخدمة التقييم";
-  return "تعذّر فتح طلب التقييم — يُنشأ عند توزيع المعاملة على المقيم.";
+  return "تعذّر فتح طلب التقييم — يُنشأ عند توزيع المعاملة على المقيّم.";
 }
 
 /** Body for ensure-open: the district hint wins over the property district here. */
@@ -147,11 +148,7 @@ export function subjectIdentity({
 export function inspectorPinOf(
   inspector: { mapLatitude?: string | null; mapLongitude?: string | null } | null,
 ): SubjectCoords | null {
-  const lat = Number(inspector?.mapLatitude);
-  const lng = Number(inspector?.mapLongitude);
-  const placed =
-    Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
-  return placed ? { lat, lng } : null;
+  return parseLatLng(inspector?.mapLatitude, inspector?.mapLongitude);
 }
 
 /** Bank query for the subject — property hints first, intake fallbacks, inspector pin when placed. */
@@ -258,7 +255,7 @@ export function hasPositiveFinalOpinion(value: unknown): value is number {
 }
 
 /** Liquidation extras copied from reconciliation into the evaluator submit draft. */
-export type FinalOpinionDraftSyncExtras = {
+type FinalOpinionDraftSyncExtras = {
   liquidationDiscountPct: number;
   liquidationDiscountApplied: boolean;
 };

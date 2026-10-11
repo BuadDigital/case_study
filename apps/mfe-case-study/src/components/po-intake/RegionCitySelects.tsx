@@ -83,7 +83,7 @@ export function RegionCitySelects({
     if (!config) {
       setRegions([]);
       setRegionsLoading(false);
-      setCatalogError("يجب تسجيل الدخول لتحميل المناطق والمدن");
+      setCatalogError("يلزم تسجيل الدخول لتحميل المناطق والمدن");
       return;
     }
 
@@ -95,7 +95,7 @@ export function RegionCitySelects({
         setRegions([]);
         setCatalogError(
           result.kind === "auth"
-            ? "يجب تسجيل الدخول لتحميل المناطق والمدن"
+            ? "يلزم تسجيل الدخول لتحميل المناطق والمدن"
             : "تعذّر تحميل المناطق — تحقق من تشغيل الـ API",
         );
         return;
@@ -268,7 +268,7 @@ export function RegionCitySelects({
   ) => {
     const config = regionsApiConfig();
     if (!config) {
-      setSuggestError("يجب تسجيل الدخول لإضافة مسمّى");
+      setSuggestError("يلزم تسجيل الدخول لإضافة مسمّى");
       return;
     }
     if (kind === "city" && !selectedRegionId) {
@@ -295,7 +295,7 @@ export function RegionCitySelects({
       setSuggestError(
         result.message ??
           (result.kind === "auth"
-            ? "يجب تسجيل الدخول"
+            ? "يلزم تسجيل الدخول"
             : "تعذّر إضافة المسمّى — حاول مرة أخرى"),
       );
       setSuggestPrompt(null);

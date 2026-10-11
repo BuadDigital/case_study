@@ -53,16 +53,6 @@ public sealed partial class RegionsService : IRegionsService
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SelectableCityDto>> ListAllSelectableCitiesAsync(
-        CancellationToken cancellationToken = default)
-    {
-        await EnsureSeededAsync(cancellationToken);
-        return await _cache.GetOrCreateAsync(
-            CacheKeys.CitiesCatalog,
-            CacheDurations.RegionsCatalog,
-            _repo.ListSelectableCitiesAsync,
-            cancellationToken);
-    }
 
     public async Task<IReadOnlyList<SelectableCityDto>> SearchCitiesAsync(
         Guid regionId,
@@ -237,6 +227,5 @@ public sealed partial class RegionsService : IRegionsService
     private async Task InvalidateCatalogCache(CancellationToken cancellationToken)
     {
         await _cache.RemoveAsync(CacheKeys.RegionsCatalog, cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CitiesCatalog, cancellationToken);
     }
 }

@@ -20,10 +20,6 @@ function indexByPo(): Map<string, FailureRecord[]> {
   return map;
 }
 
-export function getCachedFailuresList(): FailureRecord[] {
-  return listCache;
-}
-
 export function setCachedFailuresList(list: FailureRecord[]): void {
   listCache = list;
   byPoIndex = null;

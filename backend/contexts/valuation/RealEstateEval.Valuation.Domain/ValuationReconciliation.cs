@@ -13,7 +13,7 @@ public static class ValuationApproachKinds
     public static string LabelAr(string kind) =>
         string.Equals(kind, Cost, StringComparison.OrdinalIgnoreCase)
             ? "أسلوب التكلفة"
-            : "أسلوب المقارنة (السوق)";
+            : "أسلوب السوق";
 }
 
 /// <summary>8 bases.</summary>

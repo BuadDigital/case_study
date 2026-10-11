@@ -1,22 +1,7 @@
-/** Normalize Arabic-Indic / Persian digits to ASCII. */
-export function normalizeDateDigits(raw: string): string {
-  let out = "";
-  for (const ch of raw) {
-    if (ch >= "٠" && ch <= "٩") {
-      out += String.fromCharCode("0".charCodeAt(0) + (ch.charCodeAt(0) - "٠".charCodeAt(0)));
-      continue;
-    }
-    if (ch >= "۰" && ch <= "۹") {
-      out += String.fromCharCode("0".charCodeAt(0) + (ch.charCodeAt(0) - "۰".charCodeAt(0)));
-      continue;
-    }
-    out += ch;
-  }
-  return out;
-}
+import { toLatinDigits } from "./arabic-digits";
 
 /** Excel often pastes the first cell only — strip trailing columns / rows. */
-export function firstPasteCell(text: string): string {
+function firstPasteCell(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return "";
   const firstLine = trimmed.split(/\r?\n/)[0] ?? trimmed;
@@ -75,7 +60,7 @@ function parseExcelSerial(raw: string): string | null {
  * for `<input type="date">`. Returns null when unrecognized.
  */
 export function parsePastedDate(text: string): string | null {
-  const cell = firstPasteCell(normalizeDateDigits(text));
+  const cell = firstPasteCell(toLatinDigits(text));
   if (!cell) return null;
 
   const datePart = (cell.split(/\s+/)[0] ?? cell).trim();

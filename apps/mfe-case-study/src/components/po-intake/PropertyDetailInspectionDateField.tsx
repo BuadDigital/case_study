@@ -88,7 +88,9 @@ export function InsDualCalendarDateField({
 }) {
   const gridCentered = useInsFieldsGridCentered();
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [text, setText] = useState("");
+  const [editing, setEditing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const ignoreNextOutsideClickRef = useRef(false);
   const [open, setOpen] = useState(false);
@@ -167,28 +169,48 @@ export function InsDualCalendarDateField({
       <div className={insFieldLabelRowClass(gridCentered)}>
         <span className={insFieldLabelClass(gridCentered)}>{label}</span>
       </div>
-      <div className="relative">
-        <button
-          ref={triggerRef}
+      <div className="relative" ref={triggerRef}>
+        {/* Typed or pasted text is read as day/month/year (م) or with «هـ» for Hijri; the picker stays on the icon. */}
+        <input
           id={id}
-          type="button"
+          type="text"
+          dir="ltr"
+          inputMode="numeric"
+          autoComplete="off"
           className={cn(
             EDIT_CONTROL_CLASS,
-            "flex cursor-pointer items-center justify-between gap-2 text-left [direction:ltr] [unicode-bidi:isolate]",
+            "pe-10 text-left [unicode-bidi:isolate]",
             gridCentered && "text-center",
           )}
+          placeholder="dd/mm/yyyy"
+          aria-label={displayText ? `${label}: ${displayText}` : label}
+          value={editing ? text : displayText}
+          onFocus={() => {
+            setText(displayText);
+            setEditing(true);
+          }}
+          onChange={(event) => {
+            setText(event.target.value);
+            const typed = parseDualCalendarDate(event.target.value);
+            if (typed) onChange(formatDualCalendarDate(typed));
+          }}
+          onBlur={() => {
+            setEditing(false);
+            if (!text.trim() && value) onChange("");
+          }}
+        />
+        <button
+          type="button"
+          className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-md border-0 bg-transparent p-0"
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={displayText ? `${label}: ${displayText}` : label}
+          aria-label={`فتح التقويم — ${label}`}
           onClick={(event) => {
             event.stopPropagation();
             ignoreNextOutsideClickRef.current = true;
             setOpen((wasOpen) => !wasOpen);
           }}
         >
-          <span className={cn("min-w-0 flex-1 truncate", !displayText && "font-normal text-text-3")}>
-            {displayText || "mm/dd/yyyy"}
-          </span>
           <InsCalendarIcon className="shrink-0 text-text-3" />
         </button>
         {open

@@ -101,20 +101,6 @@ public class AdminCourtsController : ControllerBase
         return Ok(court);
     }
 
-    [HttpPatch("{id:guid}/status")]
-    public async Task<ActionResult<object>> SetStatus(
-        Guid id,
-        [FromBody] SetActiveStatusRequest request,
-        CancellationToken cancellationToken)
-    {
-        var (court, error) = await _courts.SetCourtStatusAsync(
-            id,
-            request.IsActive,
-            ActorClaims.Id(User),
-            cancellationToken);
-        if (error is not null) return this.BadRequestProblem(error);
-        return Ok(new { id = court!.Id, isActive = court.IsActive });
-    }
 
     [HttpPost("{courtId:guid}/circuits")]
     public async Task<ActionResult<CourtCircuitDto>> CreateCircuit(

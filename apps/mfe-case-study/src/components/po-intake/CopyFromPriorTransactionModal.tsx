@@ -374,7 +374,7 @@ function CopyFromPriorTransactionForm({
             </div>
           </div>
         ) : searched && !error ? (
-          <Note tone="warn">لا توجد نتيجة</Note>
+          <Note tone="warn">لا توجد نتائج مطابقة</Note>
         ) : null}
       </div>
     </AppModal>

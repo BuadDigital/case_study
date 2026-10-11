@@ -197,7 +197,7 @@ export function AuditLogView() {
         <InlineLoadingSkeleton />
       ) : failed ? (
         <section className={opsLetterCard}>
-          <EmptyState line="تعذر تحميل سجل التدقيق. حاول التحديث مرة أخرى." />
+          <EmptyState line="تعذّر تحميل سجل التدقيق. حاول التحديث مرة أخرى." />
         </section>
       ) : entries.length === 0 ? (
         <section className={opsLetterCard}>

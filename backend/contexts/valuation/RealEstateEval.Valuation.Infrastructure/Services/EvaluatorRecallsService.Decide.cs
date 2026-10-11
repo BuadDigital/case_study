@@ -3,6 +3,7 @@ using RealEstateEval.Shared.Contracts;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
@@ -95,6 +96,10 @@ public sealed partial class EvaluatorRecallsService
             cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            ValuationTimelineTexts.RecallDecided(
+                row.PoNumber, row.PropertyId, row.TaskId, approved: true, row.Reason, row.ResolvedAtUtc ?? _time.UtcNow()),
+            cancellationToken);
 
         return (ToDto(row), null);
     }
@@ -118,6 +123,10 @@ public sealed partial class EvaluatorRecallsService
             cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            ValuationTimelineTexts.RecallDecided(
+                row.PoNumber, row.PropertyId, row.TaskId, approved: false, row.SpecialistNote, row.ResolvedAtUtc ?? _time.UtcNow()),
+            cancellationToken);
 
         return ToDto(row);
     }

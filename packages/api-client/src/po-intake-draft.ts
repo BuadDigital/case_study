@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 
@@ -18,13 +18,6 @@ export type PoIntakeDraftDto = {
   updatedAtUtc?: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 function baseUrl(config: PrototypeModulesApiConfig): string {
   return config.baseUrl ?? getApiBase();
 }
@@ -34,7 +27,7 @@ export async function getPoIntakeDraft(
 ): Promise<PrototypeModulesResult<PoIntakeDraftDto | null>> {
   try {
     const res = await fetch(`${baseUrl(config)}/api/po-intake-draft/mine`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -91,7 +84,7 @@ export async function savePoIntakeDraft(
   try {
     const res = await fetch(`${baseUrl(config)}/api/po-intake-draft`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({
         step: draft.step,
         poNumber: draft.poNumber,
@@ -123,7 +116,7 @@ export async function deletePoIntakeDraft(
   try {
     const res = await fetch(`${baseUrl(config)}/api/po-intake-draft/mine`, {
       method: "DELETE",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };

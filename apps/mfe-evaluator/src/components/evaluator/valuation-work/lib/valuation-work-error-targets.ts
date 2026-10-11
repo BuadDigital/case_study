@@ -14,7 +14,7 @@
 
 import type { ValuationWorkScreenId } from "./shell-state";
 
-export type ValuationWorkErrorTarget = {
+type ValuationWorkErrorTarget = {
   /**
    * Server field key. An indexed key is written with an empty subscript
    * (`lines[].unitCostSar`) and matches any index.
@@ -28,7 +28,7 @@ export type ValuationWorkErrorTarget = {
   screen: ValuationWorkScreenId;
 };
 
-export type ResolvedValuationWorkError = {
+type ResolvedValuationWorkError = {
   key: string;
   message: string;
   targetId: string;
@@ -277,13 +277,3 @@ export function valuationWorkErrorMessage(
   }
   return null;
 }
-
-export const VALUATION_WORK_SCREEN_LABELS: Readonly<
-  Record<ValuationWorkScreenId, string>
-> = {
-  basic: "البيانات الأساسية",
-  market: "طريقة المقارنة",
-  cost: "طريقة المقاول",
-  final: "رأي القيمة النهائي",
-  review: "المراجعة النهائية",
-};

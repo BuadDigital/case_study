@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.Domain;
@@ -75,6 +77,48 @@ public class ValuationReportDraftServiceTests
         var notice = Assert.Single(NoticePayloads(rig));
         Assert.Equal(ValuationNoticeAudiences.Appraiser, notice.GetProperty("Audience").GetString());
         Assert.Contains("راجع قسم المقارنات", notice.GetProperty("Body").GetString());
+    }
+
+    [Fact]
+    public async Task Sending_and_withdrawing_the_draft_land_on_the_property_timeline()
+    {
+        var recorder = new CapturingTimelineRecorder();
+        var writer = new ValuationTimelineWriter(recorder, new FixedPoLookup("PO-D"));
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted, writer);
+
+        await rig.Service.SendAsync(
+            rig.RequestId,
+            new SendReportDraftRequest { ConformityConfirmed = true, Note = "راجع المقارنات" },
+            Specialist);
+        await rig.Service.WithdrawAsync(
+            rig.RequestId, new WithdrawReportDraftRequest { Note = "تعديل" }, Specialist);
+
+        Assert.Collection(
+            recorder.Requests,
+            sent =>
+            {
+                Assert.Equal("PO-D", sent.PoNumber);
+                Assert.Equal(ValuationTimelineTexts.DraftSentTitleAr, sent.Title);
+                Assert.Equal("الأخصائي — راجع المقارنات", sent.Detail);
+            },
+            withdrawn => Assert.Equal(ValuationTimelineTexts.DraftWithdrawnTitleAr, withdrawn.Title));
+    }
+
+    private sealed class CapturingTimelineRecorder : IPropertyTimelineRecorder
+    {
+        public List<PropertyTimelineRecordRequest> Requests { get; } = [];
+
+        public Task RecordAsync(PropertyTimelineRecordRequest request, CancellationToken cancellationToken = default)
+        {
+            Requests.Add(request);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FixedPoLookup(string po) : IPropertyPoNumberLookup
+    {
+        public Task<string> ResolveForPropertyAsync(string propertyId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(po);
     }
 
     [Theory]
@@ -172,7 +216,6 @@ public class ValuationReportDraftServiceTests
         Assert.Equal("2026-10-05", approved.ReportDate);
         Assert.True(approved.HasSnapshot);
         Assert.Equal(64, approved.SnapshotSha256!.Length);
-        Assert.Equal(Html, await rig.Service.GetApprovedSnapshotHtmlAsync(rig.RequestId));
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
 
         Assert.Contains(
@@ -327,7 +370,7 @@ public class ValuationReportDraftServiceTests
         return rig;
     }
 
-    private static Rig Arrange(string packageStatus)
+    private static Rig Arrange(string packageStatus, ValuationTimelineWriter? timeline = null)
     {
         var contexts = TestDatabases.Create("report-draft");
         var propertyId = Guid.NewGuid();
@@ -353,7 +396,8 @@ public class ValuationReportDraftServiceTests
             contexts.Valuation, new StubGates(), new StubDocuments(), events: events, caseStudy: lookup);
         return new Rig(
             contexts, requestId,
-            new ValuationReportDraftService(contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow)));
+            new ValuationReportDraftService(
+                contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow), timeline: timeline));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

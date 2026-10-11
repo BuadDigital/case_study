@@ -14,7 +14,7 @@ public partial class PartyTaskSubmissionService
         [WorkflowTaskKind.FieldInspection] =
             ("إرسال المعاينة الميدانية", "أرسل المعاين بيانات المعاينة الميدانية للمراجعة"),
         [WorkflowTaskKind.PropertyAppraisal] =
-            ("تسليم التقييم للأخصائي", "سلّم المقيم تقييمه العقاري لإعداد مسودة التقرير"),
+            ("تسليم التقييم للأخصائي", "سلّم المقيّم تقييمه العقاري لإعداد مسودة التقرير"),
     };
 
     /// <summary>CDO / super-admin oversight feed — fee accrual is the "financial" milestone.</summary>

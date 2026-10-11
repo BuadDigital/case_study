@@ -7,11 +7,13 @@ import {
   finStatusStyle,
   opsPanelCard,
   opsTfNote,
+  QueryErrorState,
   useSwapAnimation,
 } from "@platform/ui-kit";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
@@ -34,10 +36,6 @@ import { prefetchCostsAccountTab } from "../query/costs-account-queries";
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 // SAR suffix without forced fractional zeros — keep local to preserve the same display.
-function fmtSar(n: number) {
-  return `${fmtMax(n)} ر.س`;
-}
-
 function AccountHeader({ party }: { party: FinanceCostParty }) {
   const isVendor = party.payeeType === "vendor";
   const dueScaled = applyCostTax(party.dueSar, party.payeeType);
@@ -65,7 +63,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(dueScaled)}
+            {fmtSar(dueScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مستحق — لم يُسجَّل</span>
         </div>
@@ -74,7 +72,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(inStScaled)}
+            {fmtSar(inStScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">
             {isVendor ? "في مسيرات صرف" : "في أوامر صرف"}
@@ -85,7 +83,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(paidScaled)}
+            {fmtSar(paidScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مدفوع سابقاً</span>
         </div>
@@ -94,7 +92,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-base font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(party.balanceSar)}
+            {fmtSar(party.balanceSar, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مستحق له الآن</span>
         </div>
@@ -234,6 +232,9 @@ export function FinanceCostsView({
     } as Partial<Record<CostsSection, number>>;
   }, [partyKey, readyQuery.data, statementsQuery.data, excludedCount]);
 
+  /** Ledger failed to load — header sums and badges would read 0. */
+  const ledgerFailed = [readyQuery, statementsQuery].filter(queryLoadFailed);
+
   const queryClient = useQueryClient();
   const tabPanelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(tabPanelRef, accountSection);
@@ -273,7 +274,19 @@ export function FinanceCostsView({
 
   return (
     <div>
-      <AccountHeader party={headerParty} />
+      {ledgerFailed.length ? (
+        <QueryErrorState
+          className="mb-3.5"
+          line="تعذّر تحميل حساب المستحق"
+          error={ledgerFailed[0]!.error}
+          onRetry={() => {
+            for (const q of ledgerFailed) void q.refetch();
+          }}
+          retrying={ledgerFailed.some((q) => q.isFetching)}
+        />
+      ) : (
+        <AccountHeader party={headerParty} />
+      )}
 
       <FinanceStagePills
         items={partyTabs}
@@ -286,7 +299,7 @@ export function FinanceCostsView({
         onTabIntent={(id) =>
           prefetchCostsAccountTab(queryClient, id, focusPartyId)
         }
-        counts={partyCounts}
+        counts={ledgerFailed.length ? undefined : partyCounts}
       />
 
       <div ref={tabPanelRef}>

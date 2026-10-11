@@ -289,7 +289,6 @@ public static class ValuationApproachSettingsRules
         string? externalSpecialistDetails = null,
         string? valuationDateMode = null,
         DateOnly? retrospectiveDate = null,
-        string? retrospectiveRationale = null,
         IReadOnlySet<string>? allowedPurposeKeys = null,
         string? costScopeKey = null,
         DateOnly? retrospectiveDateEnd = null)

@@ -32,9 +32,9 @@ public sealed class HttpCaseStudyCommands(
             Setting,
             cancellationToken);
         if (errors is { Count: > 0 })
-            return (null, errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "تعذر إنشاء المرجع.");
+            return (null, errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "تعذّر إنشاء المرجع.");
         var reference = body?.Reference?.Trim();
-        return string.IsNullOrWhiteSpace(reference) ? (null, "تعذر إنشاء المرجع.") : (reference, null);
+        return string.IsNullOrWhiteSpace(reference) ? (null, "تعذّر إنشاء المرجع.") : (reference, null);
     }
 
     public Task BackfillPropertyAreaIfEmptyAsync(

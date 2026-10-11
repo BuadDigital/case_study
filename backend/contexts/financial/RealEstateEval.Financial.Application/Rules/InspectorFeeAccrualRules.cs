@@ -366,15 +366,6 @@ public static class InspectorFeeAccrualRules
     public static InspectorFeeTransitionErrorDto TransitionError(string workflowTaskId, string error) =>
         new() { WorkflowTaskId = workflowTaskId, Error = error };
 
-    /// <summary>Disbursement batches are retired — ready lines bill through party statements.</summary>
-    public static CreateDisbursementBatchResponseDto RetiredDisbursementBatchResponse() =>
-        new()
-        {
-            Failed =
-            [
-                TransitionError("", "إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف."),
-            ],
-        };
 
     // ---- notifications ----
 
@@ -391,9 +382,9 @@ public static class InspectorFeeAccrualRules
         var net = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
         return new CreateUserNotificationRequest
         {
-            Title = "خصم على أتعابك",
+            Title = "حسم من أتعابك",
             Body =
-                $"طُبّق خصم {ledger.SupervisorDiscountSar:N0} ر.س على أمر العمل {ledger.PoNumber}."
+                $"طُبّق حسم {ledger.SupervisorDiscountSar:N0} ر.س على أمر العمل {ledger.PoNumber}."
                 + $" الصافي {net:N0} ر.س — البند جاهز للفوترة.",
             Tone = "warning",
             Href = "/party-fees",

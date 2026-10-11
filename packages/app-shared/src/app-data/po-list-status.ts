@@ -13,7 +13,7 @@ export const PO_LIST_STATUS_OPTIONS: { value: PoListStatus | ""; label: string }
   { value: "", label: "جميع الحالات" },
   { value: "new", label: "جديد" },
   { value: "under_study", label: "قيد الدراسة" },
-  { value: "cancelled", label: "ملغي" },
+  { value: "cancelled", label: "ملغى" },
   { value: "stopped", label: "متوقف" },
   { value: "completed", label: "مكتمل" },
   { value: "partially_billed", label: "مفوتر جزئي" },
@@ -26,7 +26,7 @@ const PO_LIST_STATUS_META: Record<
 > = {
   new: { tone: "default", label: "جديد" },
   under_study: { tone: "info", label: "قيد الدراسة" },
-  cancelled: { tone: "danger", label: "ملغي" },
+  cancelled: { tone: "danger", label: "ملغى" },
   stopped: { tone: "warning", label: "متوقف" },
   completed: { tone: "success", label: "مكتمل" },
   partially_billed: { tone: "primary", label: "مفوتر جزئي" },

@@ -16,7 +16,7 @@ import {
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 
-export type InspectorSaveChipSection = "location" | "access" | "photos";
+type InspectorSaveChipSection = "location" | "access" | "photos";
 
 /** Which step-1 save chip a draft field belongs to. */
 export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection> = {

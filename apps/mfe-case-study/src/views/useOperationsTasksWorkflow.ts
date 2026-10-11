@@ -102,6 +102,8 @@ export function useOperationsTasksWorkflow() {
     isPending: data.isPending,
     isPlaceholderData: data.isPlaceholderData,
     kpis: data.kpis,
+    listLoadError: data.listLoadError,
+    listLoadFailed: data.listLoadFailed,
     listSwapKey: data.listSwapKey,
     now: data.now,
     openCloseModal,

@@ -126,7 +126,7 @@ export const QUEUE_DEFAULT_STATUSES = ["open", "blocked"] as const;
  * server grew in pagination-contract §2 — the queue no longer has to load the
  * PO records to order by a deed number or a city.
  */
-export type QueueSortMode =
+type QueueSortMode =
   | "oldest-first"
   | "newest-first"
   | "distributed-newest-first"
@@ -324,7 +324,7 @@ export type AllTransactionsRowMeta = ReturnType<
   typeof buildAllTransactionsQueueRowMeta
 >[number];
 export type PrimaryRowMeta = ReturnType<typeof buildPrimaryQueueRowMeta>[number];
-export type DistributionRowMeta = ReturnType<
+type DistributionRowMeta = ReturnType<
   typeof buildDistributionQueueRowMeta
 >[number];
 

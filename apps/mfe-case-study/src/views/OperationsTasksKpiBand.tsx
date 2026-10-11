@@ -12,6 +12,7 @@ import {
 import type { OperationsTaskKpis } from "./operations-tasks-view-state";
 
 export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
+  const v = (n: number) => (kpis.failed ? "—" : n);
   return (
     <>
       {/* Desktop: connected KPI band */}
@@ -21,7 +22,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
           icon={<TasksKpiActiveIcon />}
           iconClass="bg-gold-soft text-gold-d"
           label="مهام نشطة"
-          value={kpis.active}
+          value={v(kpis.active)}
           sub="قيد الإسناد والتنفيذ"
           dot
         />
@@ -29,14 +30,14 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
           icon={<TasksKpiCreatedIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading"
           label="منشأة"
-          value={kpis.created}
+          value={v(kpis.created)}
           sub="بانتظار البدء"
         />
         <KpiCell
           icon={<TasksKpiInProgressIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
           label="قيد التنفيذ"
-          value={kpis.inProgress}
+          value={v(kpis.inProgress)}
           sub="جارية الآن"
         />
         <KpiCell
@@ -44,7 +45,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
           icon={<TasksKpiCompletedIcon />}
           iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-heading"
           label="مكتملة"
-          value={kpis.completed}
+          value={v(kpis.completed)}
           sub="أُنجزت مؤخراً"
         />
       </KpiBand>
@@ -57,7 +58,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             key: "active",
             label: "مهام نشطة",
             sub: "قيد الإسناد والتنفيذ",
-            value: kpis.active,
+            value: v(kpis.active),
             icon: <TasksKpiActiveIcon />,
             iconClass: "bg-gold-soft text-gold-d",
             tone: "gold",
@@ -67,7 +68,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             key: "created",
             label: "منشأة",
             sub: "بانتظار البدء",
-            value: kpis.created,
+            value: v(kpis.created),
             icon: <TasksKpiCreatedIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
@@ -77,7 +78,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             key: "inProgress",
             label: "قيد التنفيذ",
             sub: "جارية الآن",
-            value: kpis.inProgress,
+            value: v(kpis.inProgress),
             icon: <TasksKpiInProgressIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
@@ -88,7 +89,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
             key: "completed",
             label: "مكتملة",
             sub: "أُنجزت مؤخراً",
-            value: kpis.completed,
+            value: v(kpis.completed),
             icon: <TasksKpiCompletedIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",

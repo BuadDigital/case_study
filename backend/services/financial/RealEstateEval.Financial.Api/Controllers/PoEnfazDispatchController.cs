@@ -96,7 +96,7 @@ public sealed class PoEnfazDispatchController(
     {
         var dto = await billing.SavePoBillingAsync(poNumber, request, cancellationToken);
         return dto is null
-            ? this.BadRequestProblem("تعذر حفظ أتعاب إنفاذ.")
+            ? this.BadRequestProblem("تعذّر حفظ أتعاب إنفاذ.")
             : Ok(dto);
     }
 
@@ -116,7 +116,7 @@ public sealed class PoEnfazDispatchController(
         var dto = await billing.IssueInvoiceAsync(poNumber, cancellationToken);
         return dto is null
             ? this.BadRequestProblem(
-                "تعذر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
+                "تعذّر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
             : Ok(dto);
     }
 
@@ -158,7 +158,7 @@ public sealed class PoEnfazDispatchController(
             poNumber, request.Followup, request.ActorUserId, cancellationToken);
         if (error is not null)
             return this.BadRequestProblem(error);
-        return dto is null ? this.BadRequestProblem("تعذر حفظ المتابعة.") : Ok(dto);
+        return dto is null ? this.BadRequestProblem("تعذّر حفظ المتابعة.") : Ok(dto);
     }
 
     [HttpPost("{poNumber}/finance-flag")]
@@ -169,7 +169,7 @@ public sealed class PoEnfazDispatchController(
     {
         var (ok, error) = await billing.SetFinanceFlagAsync(
             poNumber, request.Flag, request.ActorUserId, cancellationToken);
-        return ok ? NoContent() : this.BadRequestProblem(error ?? "تعذر تعيين العلامة.");
+        return ok ? NoContent() : this.BadRequestProblem(error ?? "تعذّر تعيين العلامة.");
     }
 
     [HttpDelete("{poNumber}/finance-flag")]
@@ -179,6 +179,6 @@ public sealed class PoEnfazDispatchController(
         CancellationToken cancellationToken)
     {
         var (ok, error) = await billing.ClearFinanceFlagAsync(poNumber, propertyId, cancellationToken);
-        return ok ? NoContent() : this.BadRequestProblem(error ?? "تعذر مسح العلامة.");
+        return ok ? NoContent() : this.BadRequestProblem(error ?? "تعذّر مسح العلامة.");
     }
 }

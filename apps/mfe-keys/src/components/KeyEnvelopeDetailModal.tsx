@@ -244,7 +244,7 @@ export function KeyEnvelopeDetailPage({
               },
               {
                 id: "court",
-                label: "التمكين / محظر الإخلاء",
+                label: "التمكين / محضر الإخلاء",
                 count: env.linkedProperties.length,
               },
             ]}

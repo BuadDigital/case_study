@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Button,
   InlineLoadingSkeleton,
   cn,
   opsWorkspaceCard,
@@ -8,6 +9,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
@@ -22,6 +24,7 @@ import {
 } from "../../lib/evaluator/evaluator-submission-model";
 import {
   hydrateEvaluatorSubmission,
+  mergeEvaluatorDraftPatches,
   updateEvaluatorDraft,
 } from "../../lib/evaluator/evaluator-submission-commands";
 import {
@@ -129,6 +132,8 @@ export function EvaluatorWindow({
     }),
   );
   const [draftLoading, setDraftLoading] = useState(true);
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+  const [draftLoadAttempt, setDraftLoadAttempt] = useState(0);
   // The party submission carries the flag too — fresher than the queue's task row.
   const [studyReportIssuedFromServer, setStudyReportIssuedFromServer] = useState<
     boolean | null
@@ -232,7 +237,12 @@ export function EvaluatorWindow({
   const scheduleAutosave = useCallback(
     (patch: Parameters<typeof persistDraft>[0]) => {
       editVersionRef.current += 1;
-      pendingAutosaveRef.current = patch;
+      // Fold, don't replace: notes typed then a report choice within the debounce
+      // would otherwise send only the choice, and its response would wipe the notes.
+      pendingAutosaveRef.current = mergeEvaluatorDraftPatches(
+        pendingAutosaveRef.current,
+        patch,
+      );
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
         saveTimer.current = null;
@@ -243,6 +253,17 @@ export function EvaluatorWindow({
     },
     [persistDraft],
   );
+
+  /** Sends a debounced patch now — queued ahead of whatever write comes next. */
+  const flushPendingAutosave = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const pending = pendingAutosaveRef.current;
+    pendingAutosaveRef.current = null;
+    if (pending) persistDraft(pending);
+  }, [persistDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,9 +282,7 @@ export function EvaluatorWindow({
           loaded.landValue,
           loaded.buildingValue,
         );
-        const currentTotal = Number.parseFloat(
-          (loaded.evaluatorPrice || "0").replace(/,/g, ""),
-        );
+        const currentTotal = parseLocaleNumber(loaded.evaluatorPrice || "0");
         const reconciled =
           summed > 0 &&
           (!Number.isFinite(currentTotal) || currentTotal === 0)
@@ -282,24 +301,24 @@ export function EvaluatorWindow({
         }
         setDraftLoading(false);
       }
-    });
+    })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Without this the skeleton never clears; the form stays locked to edits
+        // it could not save (no cached draft), so say so instead of failing silently.
+        setDraftLoading(false);
+        setDraftLoadError(
+          err instanceof Error && err.message
+            ? err.message
+            : "تعذّر تحميل مسودة التقييم — تحقق من الاتصال وحاول مجدداً.",
+        );
+      });
     return () => {
       cancelled = true;
     };
-  }, [task.id, task.propertyId, task.poNumber, task.assignmentType]);
+  }, [task.id, task.propertyId, task.poNumber, task.assignmentType, draftLoadAttempt]);
 
-  useEffect(() => {
-    const flush = persistDraft;
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        saveTimer.current = null;
-      }
-      const pending = pendingAutosaveRef.current;
-      pendingAutosaveRef.current = null;
-      if (pending) flush(pending);
-    };
-  }, [persistDraft]);
+  useEffect(() => flushPendingAutosave, [flushPendingAutosave]);
 
   // Fetch the report code while the appraiser works on the other tabs, so opening
   // «تقرير التقييم» waits only for its data — the hover preload fired too late to help.
@@ -314,7 +333,7 @@ export function EvaluatorWindow({
     locked,
     draft,
     setDraft,
-    saveTimer,
+    flushPendingAutosave,
     retrospectiveRef,
     specialistRef,
     setFormError,
@@ -452,6 +471,24 @@ export function EvaluatorWindow({
     return (
       <div className="flex flex-col gap-3.5">
         <InlineLoadingSkeleton className="my-2" />
+      </div>
+    );
+  }
+
+  if (draftLoadError) {
+    return (
+      <div className="flex flex-col items-start gap-2.5 py-4" role="alert">
+        <p className="text-[13px] text-danger-text">{draftLoadError}</p>
+        <Button
+          size="sm"
+          onClick={() => {
+            setDraftLoadError(null);
+            setDraftLoading(true);
+            setDraftLoadAttempt((n) => n + 1);
+          }}
+        >
+          إعادة المحاولة
+        </Button>
       </div>
     );
   }

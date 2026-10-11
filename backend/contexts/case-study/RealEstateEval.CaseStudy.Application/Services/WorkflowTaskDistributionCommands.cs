@@ -95,7 +95,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             propertyIdText,
             cancellationToken);
         if (hasBlockingFailure)
-            return (null, Error("لا يمكن توزيع المعاملة ما دام عليها تعذر نشط"));
+            return (null, Error("لا يمكن توزيع المعاملة ما دام عليها تعذّر نشط"));
 
         var distribution = WorkflowTaskDistributionRules.ApplyConfirmDefaults(
             WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution),
@@ -262,7 +262,7 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
                     parent.PoNumber,
                     propertyId,
                     $"party:{child.Id}:redistributed:{now.Ticks}",
-                    $"إعادة إسناد — {WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind)}",
+                    $"إعادة إسناد — {WorkflowTaskKindLabels.RoleAr(child.Kind)}",
                     WorkflowTaskDistributionRules.RedistributionDetail(actorName, newName, reason),
                     PropertyTimelineTones.Active,
                     now));

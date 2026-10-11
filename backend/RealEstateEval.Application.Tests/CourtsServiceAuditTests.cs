@@ -86,34 +86,6 @@ public class CourtsServiceAuditTests
         Assert.False(after.RootElement.TryGetProperty("city", out _));
     }
 
-    [Fact]
-    public async Task SetCourtStatusAsync_writes_activated_and_deactivated()
-    {
-        await using var db = CreateDb();
-        var service = CreateService(db);
-        var (created, _) = await service.CreateAsync(
-            new CreateCourtRequest
-            {
-                Name = "محكمة اختبار الحالة",
-                Region = "منطقة الاختبار",
-                City = "مدينة الحالة",
-                IsActive = true,
-            },
-            "actor-1");
-
-        db.AuditLogs.RemoveRange(db.AuditLogs);
-        await db.SaveChangesAsync();
-
-        await service.SetCourtStatusAsync(created!.Id, false, "actor-2");
-        await service.SetCourtStatusAsync(created.Id, true, "actor-3");
-
-        var audits = db.AuditLogs.OrderBy(a => a.CreatedAtUtc).ToList();
-        Assert.Equal(2, audits.Count);
-        Assert.Equal(CourtAuditActions.CourtDeactivated, audits[0].Action);
-        Assert.Equal(CourtAuditActions.CourtActivated, audits[1].Action);
-        Assert.Equal("actor-2", audits[0].ActorId);
-        Assert.Equal("actor-3", audits[1].ActorId);
-    }
 
     [Fact]
     public async Task Circuit_create_update_status_write_audit_events()

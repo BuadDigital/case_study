@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@platform/ui-kit";
 import {
   opsIconBoxGold,
-  opsLetterCard,
-  opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
   opsPpBadge,
@@ -127,49 +125,5 @@ export function EngFeesSectionTitle({
         <span className={opsPpBadge}>{count}</span>
       ) : null}
     </div>
-  );
-}
-
-/** Letter card shell for fee tables / panels. */
-export function EngFeesLetterCard({
-  title,
-  sub,
-  count,
-  children,
-  className,
-  toolbar,
-}: {
-  title?: string;
-  sub?: ReactNode;
-  count?: number;
-  children: ReactNode;
-  className?: string;
-  toolbar?: ReactNode;
-}) {
-  return (
-    <section className={cn(opsLetterCard, className)}>
-      {title ? (
-        <div className={opsLetterHead}>
-          <div className="flex min-w-0 items-center gap-[11px]">
-            <span className={opsIconBoxGold}>
-              <OpsIcon path={FOLDER_ICON} />
-            </span>
-            <div className="min-w-0">
-              <div className={opsLetterTitle}>{title}</div>
-              {sub ? <div className={opsLetterSub}>{sub}</div> : null}
-            </div>
-          </div>
-          {typeof count === "number" ? (
-            <span className={opsPpBadge}>{count}</span>
-          ) : null}
-        </div>
-      ) : null}
-      {toolbar ? (
-        <div className="border-b border-border px-4 py-3 sm:px-[18px]">
-          {toolbar}
-        </div>
-      ) : null}
-      <div className={title || toolbar ? undefined : "contents"}>{children}</div>
-    </section>
   );
 }

@@ -1,6 +1,6 @@
 import type { PageId } from "@platform/types";
 
-export type SettingsNavItem = {
+type SettingsNavItem = {
   id: PageId;
   label: string;
   icon: string;
@@ -55,5 +55,3 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
 ];
 
 export const SETTINGS_GROUP = "الإعدادات";
-
-export const SETTINGS_PAGE_IDS: PageId[] = SETTINGS_NAV.map((n) => n.id);

@@ -52,7 +52,7 @@ export function resolveTaskWorkSteps(
   };
 }
 
-export type TaskWorkStep = "enfath" | "bourse" | "distribution";
+type TaskWorkStep = "enfath" | "bourse" | "distribution";
 
 /** The step the primary save button acts on — first visible card wins. */
 export function activeTaskWorkStep(steps: TaskWorkSteps): TaskWorkStep | null {
@@ -160,7 +160,7 @@ export function canRaiseFailure(
   return Boolean(task.propertyId) && (steps.showBourseStep || steps.showDistribution);
 }
 
-export type TaskWorkTitles = {
+type TaskWorkTitles = {
   deedTitle: string;
   panelDeedBadge: string;
   workSubtitle: string;

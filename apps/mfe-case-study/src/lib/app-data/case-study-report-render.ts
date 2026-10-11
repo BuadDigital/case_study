@@ -168,7 +168,7 @@ function renderApproval(
   </div>`;
 }
 
-export function caseStudyReportPrintCss(): string {
+function caseStudyReportPrintCss(): string {
   return `
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {

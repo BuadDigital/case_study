@@ -13,7 +13,7 @@ import {
 import type { PoPropertyIntake } from "../../app-data/po-intake-data";
 
 /** Top→bottom order for property edit / task work forms. */
-export const PO_PROPERTY_ERROR_KEY_ORDER = [
+const PO_PROPERTY_ERROR_KEY_ORDER = [
   "deedVitality",
   "deedNumber",
   "realEstateRegNumber",
@@ -152,7 +152,7 @@ export function scheduleScrollToFirstPoPropertyError(
 }
 
 /** PO header — modal intake uses `*_modal` ids; header edit uses `*_edit`. */
-export type PoHeaderFieldIdMap = {
+type PoHeaderFieldIdMap = {
   poNumber?: string;
   promulgationDate: string;
   assignmentType: string;
@@ -195,7 +195,7 @@ const HEADER_KEY_ORDER = [
   "expectedPropertyCount",
 ] as const;
 
-export function firstPoHeaderErrorTarget(
+function firstPoHeaderErrorTarget(
   errors: FieldErrors,
   ids: PoHeaderFieldIdMap,
 ): string | null {

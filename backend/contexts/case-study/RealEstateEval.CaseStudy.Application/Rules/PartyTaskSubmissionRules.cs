@@ -66,10 +66,28 @@ public static class PartyTaskSubmissionRules
 
     public static string AcceptedTimelineTitle(WorkflowTaskKind kind) => kind switch
     {
-        WorkflowTaskKind.FieldInspection => "استلام بيانات المعاينة",
-        WorkflowTaskKind.PropertyAppraisal => "اعتماد تقرير التقييم",
+        WorkflowTaskKind.FieldInspection => "قبول الأخصائي لمخرجات المعاينة",
+        // The specialist only acknowledges the hand-over; the APPRAISER approves the report (draft cycle).
+        WorkflowTaskKind.PropertyAppraisal => "اطلاع الأخصائي على التقييم",
         _ => "قبول مخرجات الرفع المساحي",
     };
+
+    /// <summary>The specialist sent a handed-over package back to its party for correction.</summary>
+    public static string ReturnedForCorrectionTitle(WorkflowTaskKind kind) => kind switch
+    {
+        WorkflowTaskKind.FieldInspection => "إعادة المعاينة للتصحيح",
+        WorkflowTaskKind.PropertyAppraisal => "إعادة التقييم للتصحيح",
+        WorkflowTaskKind.EngineeringSurvey => "إعادة الرفع المساحي للتصحيح",
+        _ => "إعادة المخرجات للتصحيح",
+    };
+
+    /// <summary>«الاسم — ملاحظة الإرجاع» (either part may be missing).</summary>
+    public static string? ReturnedForCorrectionDetail(string? actorName, string? returnNote)
+    {
+        var parts = new[] { actorName?.Trim(), returnNote?.Trim() }.Where(p => !string.IsNullOrEmpty(p));
+        var joined = string.Join(" — ", parts);
+        return joined.Length == 0 ? null : joined;
+    }
 
     /// <summary>Who the «submitted» timeline row names: the submitter, else the task assignee.</summary>
     public static string? SubmittedActorLabel(PartyTaskSubmission entity, WorkflowTask task) =>

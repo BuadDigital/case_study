@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -14,15 +13,8 @@ namespace RealEstateEval.Identity.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserRegistrationService _users;
-    private readonly IWebHostEnvironment _env;
 
-    public UsersController(
-        IUserRegistrationService users,
-        IWebHostEnvironment env)
-    {
-        _users = users;
-        _env = env;
-    }
+    public UsersController(IUserRegistrationService users) => _users = users;
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List(
@@ -90,22 +82,12 @@ public class UsersController : ControllerBase
         if (!ok)
             return this.FieldErrorsProblem(new Dictionary<string, string>
             {
-                ["_form"] = error ?? "تعذر فك قفل الحساب.",
+                ["_form"] = error ?? "تعذّر فك قفل الحساب.",
             });
 
         return NoContent();
     }
 
-    [HttpDelete("registered")]
-    public async Task<ActionResult<DeleteRegisteredUsersResponseDto>> DeleteAllRegistered(
-        CancellationToken cancellationToken)
-    {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
-        var deleted = await _users.DeleteAllRegisteredAsync(cancellationToken);
-        return Ok(new DeleteRegisteredUsersResponseDto { DeletedCount = deleted });
-    }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(
@@ -122,7 +104,7 @@ public class UsersController : ControllerBase
         if (!ok)
             return this.FieldErrorsProblem(new Dictionary<string, string>
             {
-                ["_form"] = error ?? "تعذر تعطيل المستخدم.",
+                ["_form"] = error ?? "تعذّر تعطيل المستخدم.",
             });
 
         return NoContent();

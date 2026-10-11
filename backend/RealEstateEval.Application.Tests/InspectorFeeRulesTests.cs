@@ -233,12 +233,12 @@ public class InspectorFeeRulesTests
         Assert.Null(okError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(401m, "سبب", 400m, out var overError));
-        Assert.Equal("الخصم لا يتجاوز الأتعاب المتفق عليها.", overError);
+        Assert.Equal("الحسم لا يتجاوز الأتعاب المتفق عليها.", overError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(-1m, "سبب", 400m, out var negativeError));
-        Assert.Equal("الخصم لا يكون سالباً.", negativeError);
+        Assert.Equal("الحسم لا يكون سالباً.", negativeError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(10m, "  ", 400m, out var reasonError));
-        Assert.Equal("يجب إدخال سبب الحسم عند تطبيق خصم.", reasonError);
+        Assert.Equal("يجب إدخال سبب الحسم عند تطبيق حسم.", reasonError);
     }
 }

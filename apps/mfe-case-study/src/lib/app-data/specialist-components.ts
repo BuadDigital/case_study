@@ -12,7 +12,6 @@ import { textLooksLikeVacantLand } from "@platform/app-shared/app-data/inspector
 import {
   COST_GROUP1_KEYS,
   COST_ITEM_OPTIONS,
-  costItemLabel,
   structureKindForCostItem,
 } from "@platform/app-shared/domain/cost-items";
 
@@ -59,7 +58,7 @@ export function componentLineForItem(
 }
 
 /** Catalog item whose Arabic name the specialist typed (ignores spacing / alef-hamza variants). */
-export function catalogItemForTypedName(text: string) {
+function catalogItemForTypedName(text: string) {
   const norm = (v: string) => v.replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
   const typed = norm(text);
   if (!typed) return undefined;
@@ -138,12 +137,6 @@ export function specialistComponentsMissing(
   if (!(inventory.componentsText ?? "").trim()) return SPECIALIST_COMPONENTS_TEXT_REQUIRED;
   if (hasStructures && inventory.lines.length === 0) return SPECIALIST_COMPONENTS_TABLE_REQUIRED;
   return null;
-}
-
-/** Display name of a line: catalog label, the custom text, or the legacy free label. */
-export function componentLineName(line: BuildingInventoryLineDto): string {
-  if (line.itemKey && line.itemKey !== "custom") return costItemLabel(line.itemKey) || line.label;
-  return line.label;
 }
 
 function num(value: string | null | undefined): number {

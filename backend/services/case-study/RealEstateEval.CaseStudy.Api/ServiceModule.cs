@@ -28,7 +28,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddCaseStudyPersistence(builder.Configuration, connectionString!);
-        builder.Services.AddMessagingPersistence(builder.Configuration, connectionString!);
+        builder.Services.AddMessagingPersistence(builder.Configuration);
         builder.Services.Configure<OutboxDispatcherOptions>(o => o.ContextType = typeof(MessagingDbContext));
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);

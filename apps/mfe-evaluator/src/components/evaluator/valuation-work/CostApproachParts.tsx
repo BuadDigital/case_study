@@ -290,7 +290,7 @@ const AGE_ROWS: {
     justification: "functionalObsRationale",
   },
   {
-    label: "التقدم الاقتصادي (الخارجي)",
+    label: "التقادم الخارجي (٪)",
     value: "externalObs",
     justification: "externalObsRationale",
   },
@@ -415,7 +415,7 @@ export function CostResultsCard({
           >
             {perSqm(netValueLocal)}
           </div>
-          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">ريال / م²</div>
+          <div className="mt-[7px] text-[11.5px] font-normal text-text-3">ر.س/م²</div>
           <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
             قبل الإهلاك: <span dir="ltr">{perSqm(totalCostLocal)}</span> ر.س/م²
           </div>
@@ -443,7 +443,7 @@ export function CostResultsCard({
             )}
           </div>
           <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
-            بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
+            بلا تقريب هنا — التقريب مرة واحدة بعد الترجيح النهائي
           </div>
         </div>
       </div>

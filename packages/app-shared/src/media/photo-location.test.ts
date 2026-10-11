@@ -3,7 +3,6 @@ import {
   PHOTO_LOCATION_FLAGS,
   PHOTO_LOCATION_MAX_MATCH_M,
   evaluatePhotoLocation,
-  haversineMeters,
   parsePlacedMapPin,
   pinsExceedMatchMeters,
 } from "./photo-location";
@@ -43,12 +42,6 @@ describe("photo-location", () => {
     });
     expect(result.flag).toBe(PHOTO_LOCATION_FLAGS.outside_property);
     expect(result.distanceM!).toBeGreaterThan(PHOTO_LOCATION_MAX_MATCH_M);
-  });
-
-  it("haversine is symmetric", () => {
-    const a = haversineMeters(21.48, 39.19, 21.49, 39.2);
-    const b = haversineMeters(21.49, 39.2, 21.48, 39.19);
-    expect(Math.abs(a - b)).toBeLessThan(0.01);
   });
 
   it("parsePlacedMapPin rejects unset (0,0)", () => {

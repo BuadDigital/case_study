@@ -148,7 +148,7 @@ export function ValuedDocumentUploadButton({
                   disabled={busy}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {file ? "استبدال الملف" : "اختيار ملف"}
+                  {file ? "استبدال" : "اختيار ملف"}
                 </Button>
                 <span className="min-w-0 truncate text-[12px] text-text-2">
                   {file ? file.name : "PDF أو صورة JPG / PNG / WebP"}

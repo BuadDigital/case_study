@@ -16,7 +16,7 @@ import { PropertyListRowStatuses } from "@platform/api-client";
  * (`_professional-ui-design - property-details2/Case Study.html`).
  */
 
-export const PP_FOOTER_HINT = "اضغط الصف لمعاينة تفاصيل العقار.";
+const PP_FOOTER_HINT = "اضغط الصف لمعاينة تفاصيل العقار.";
 
 /** HTML `typeTone` */
 export function assignmentTypeTone(type: string): string {
@@ -36,7 +36,7 @@ export function propertyWorkflowStatusStyle(
     case PropertyListRowStatuses.Fail:
     case "removed":
       return {
-        label: status === "removed" ? "محذوف" : "متعذر",
+        label: status === "removed" ? "محذوف" : "متعذّر",
         base: "#d9694f",
         fg: "#c0553d",
       };

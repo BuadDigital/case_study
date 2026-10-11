@@ -455,14 +455,6 @@ public class InspectorFeeAccrualRulesTests
         Assert.Equal("V-1", line.DisbursementVoucher);
     }
 
-    [Fact]
-    public void Disbursement_batches_are_retired()
-    {
-        var response = InspectorFeeAccrualRules.RetiredDisbursementBatchResponse();
-        var failure = Assert.Single(response.Failed);
-        Assert.Equal("", failure.WorkflowTaskId);
-        Assert.Contains("كشف الأطراف", failure.Error);
-    }
 
     // ---- notifications ----
 
@@ -486,7 +478,7 @@ public class InspectorFeeAccrualRulesTests
         var ledger = Ledger(fee: 1000m, discount: 250m);
         var notification = InspectorFeeAccrualRules.EmployeeDiscountNotification(ledger);
 
-        Assert.Equal("خصم على أتعابك", notification.Title);
+        Assert.Equal("حسم من أتعابك", notification.Title);
         Assert.Contains("PO-1", notification.Body);
         Assert.Contains("750", notification.Body);
         Assert.Equal($"fee-discount-notified:{ledger.WorkflowTaskId:N}", notification.SourceEvent);

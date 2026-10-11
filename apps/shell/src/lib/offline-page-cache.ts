@@ -10,7 +10,7 @@ const REWARM_AFTER_MS = 30 * 60_000;
 let lastWarm: { signature: string; at: number } | null = null;
 let lastPlan: OfflinePagePlan | null = null;
 
-export type OfflinePagePlan = { urls: string[]; landing: string | null };
+type OfflinePagePlan = { urls: string[]; landing: string | null };
 
 /** Delete previous SW caches only after the new worker has a warmed profile. */
 export function shouldDeletePreviousServiceWorkerCaches(

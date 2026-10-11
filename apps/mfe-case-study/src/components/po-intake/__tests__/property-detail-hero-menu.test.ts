@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildPropertyDetailHeroMenuItems } from "../property-detail-hero-menu";
 
 describe("buildPropertyDetailHeroMenuItems", () => {
-  it("puts دراسة العقار above تسجيل تعذر", () => {
+  it("puts دراسة العقار above تسجيل تعذّر", () => {
     const onNavigate = vi.fn();
     const onOpenFailure = vi.fn();
     const items = buildPropertyDetailHeroMenuItems({
@@ -15,7 +15,7 @@ describe("buildPropertyDetailHeroMenuItems", () => {
 
     expect(items.map((item) => item.label)).toEqual([
       "دراسة العقار",
-      "تسجيل تعذر",
+      "تسجيل تعذّر",
     ]);
     items[0]?.onClick();
     expect(onNavigate).toHaveBeenCalledWith("/case-study/t1");
@@ -59,6 +59,6 @@ describe("buildPropertyDetailHeroMenuItems", () => {
       onOpenFailure: vi.fn(),
     });
 
-    expect(items.map((item) => item.label)).toEqual(["تسجيل تعذر"]);
+    expect(items.map((item) => item.label)).toEqual(["تسجيل تعذّر"]);
   });
 });

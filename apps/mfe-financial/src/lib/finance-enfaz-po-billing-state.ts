@@ -1,8 +1,14 @@
+import { fmtSar } from "@platform/app-shared/format/number";
 import type {
   PoEnfazBillingDto,
   PoEnfazRevenueLineDto,
   SavePoEnfazBillingRequest,
 } from "@platform/api-client";
+import {
+  enfazInvoiceStatusLabel,
+  enfazInvoiceStatusTone,
+  type EnfazInvoiceStatusTone,
+} from "@platform/app-shared/fees/enfaz-invoice-status";
 
 /**
  * Pure decisions behind the Enfaz work-order billing screen
@@ -28,18 +34,8 @@ export function lineTotal(d: LineDraft | undefined): number {
   );
 }
 
-export function invoiceStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case "collected":
-      return "محصّلة";
-    case "partially_collected":
-      return "تحصيل جزئي";
-    case "issued":
-      return "صادرة";
-    default:
-      return "مُفوتَرة";
-  }
-}
+/** Shared with the supervisor tracking table — kept under this name for existing callers. */
+export const invoiceStatusLabel = enfazInvoiceStatusLabel;
 
 /** Editable copy of the saved lines — zero fees show as empty inputs. */
 export function draftFromBillingLines(
@@ -157,9 +153,10 @@ export function collectAmountDiffers(amount: number, remaining: number): boolean
   return remaining > 0 && Math.abs(amount - remaining) > 0.009;
 }
 
-export type InvoiceHeaderPill = {
+type InvoiceHeaderPill = {
   label: string;
-  tone: "danger" | "success" | "warning" | "default";
+  /** finStatusStyle draws "info" (an issued, uncollected invoice) like "default". */
+  tone: EnfazInvoiceStatusTone;
 };
 
 /** The pill beside the work-order number: invoice status, or the save / issue readiness. */
@@ -172,13 +169,7 @@ export function invoiceHeaderPill(
   if (billing.invoiceNumber) {
     return {
       label: `${invoiceStatusLabel(billing.invoiceStatus)}${billing.isOverdue ? " · متأخر" : ""} · ${billing.invoiceNumber}`,
-      tone: billing.isOverdue
-        ? "danger"
-        : billing.invoiceStatus === "collected"
-          ? "success"
-          : billing.invoiceStatus === "partially_collected"
-            ? "warning"
-            : "default",
+      tone: enfazInvoiceStatusTone(billing.invoiceStatus, billing.isOverdue),
     };
   }
   if (billing.poReadyForBilling) return { label: "جاهز للإصدار", tone: "default" };
@@ -197,12 +188,7 @@ export function billingActionHint(args: {
   return "احفظ ثم أصدر الفاتورة.";
 }
 
-/** «1,234.5 ر.س» with en-US grouping — the screen's amount format. */
-export function sarEn(n: number): string {
-  return `${n.toLocaleString("en-US")} ر.س`;
-}
-
 /** The confirm prompt when the entered collect amount differs from the balance. */
 export function collectMismatchPrompt(amount: number, remaining: number): string {
-  return `مبلغ التحويل (${amount.toLocaleString("en-US")} ر.س) يختلف عن المتبقي (${remaining.toLocaleString("en-US")} ر.س). المتابعة؟`;
+  return `مبلغ التحويل (${fmtSar(amount, { digits: 3, trim: true })}) يختلف عن المتبقي (${fmtSar(remaining, { digits: 3, trim: true })}). المتابعة؟`;
 }

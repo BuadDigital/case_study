@@ -31,16 +31,14 @@ function menuIds(phase: string, viewerRole?: RoleId) {
 }
 
 describe("active queue row menu — phase revert", () => {
-  it("offers the revert to the section supervisor only", () => {
-    expect(menuIds("distribution", "section-supervisor")).toContain(
-      "revert-bourse",
-    );
-    expect(menuIds("bourse", "section-supervisor")).toContain("revert-enfath");
-
-    for (const role of ["case-specialist", "general-manager", "cdo"] as const) {
-      expect(menuIds("distribution", role)).not.toContain("revert-bourse");
-      expect(menuIds("bourse", role)).not.toContain("revert-enfath");
+  it("offers the revert to the case specialist, the CDO and the section supervisor", () => {
+    for (const role of ["section-supervisor", "case-specialist", "cdo"] as const) {
+      expect(menuIds("distribution", role)).toContain("revert-bourse");
+      expect(menuIds("bourse", role)).toContain("revert-enfath");
     }
+
+    expect(menuIds("distribution", "general-manager")).not.toContain("revert-bourse");
+    expect(menuIds("bourse", "general-manager")).not.toContain("revert-enfath");
     expect(menuIds("bourse")).not.toContain("revert-enfath");
   });
 });

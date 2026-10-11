@@ -12,7 +12,7 @@ import {
   type DistributionAssignee,
 } from "../distribution-assignees";
 
-export type DistributionPartyAccount = {
+type DistributionPartyAccount = {
   assigneeId: string;
   name: string;
   subtitle: string;

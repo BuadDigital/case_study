@@ -53,12 +53,6 @@ public sealed class InspectorFeeBatchTransitionDispatchRequest
     public bool CanManageAllDepartments { get; set; }
 }
 
-public sealed class InspectorFeeDisbursementDispatchRequest
-{
-    public CreateDisbursementBatchRequest Request { get; set; } = new();
-    public string ActorUserId { get; set; } = "";
-    public string? ActorAssigneeId { get; set; }
-}
 
 public sealed class AccrueEngineeringSurveyFeeDispatchRequest
 {

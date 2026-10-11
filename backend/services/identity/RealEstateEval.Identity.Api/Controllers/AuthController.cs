@@ -47,20 +47,10 @@ public class AuthController : ControllerBase
         // Same message for missing/disabled users — do not confirm usernames.
         var session = await _sessions.IssueForUsernameAsync(username, cancellationToken);
         return session is null
-            ? this.UnauthorizedProblem("تعذر تسجيل الدخول")
+            ? this.UnauthorizedProblem("تعذّر تسجيل الدخول")
             : Ok(session);
     }
 
-    [HttpGet("dev-login-users")]
-    [AllowAnonymous]
-    public async Task<ActionResult<IReadOnlyList<DevLoginUserDto>>> DevLoginUsers(
-        CancellationToken cancellationToken)
-    {
-        if (!IsPasswordlessLoginEnabled())
-            return NotFound();
-
-        return Ok(await _users.ListDevLoginUsersAsync(cancellationToken));
-    }
 
     /// <summary>
     /// Exchanges a refresh token for a fresh access token, re-reading roles and

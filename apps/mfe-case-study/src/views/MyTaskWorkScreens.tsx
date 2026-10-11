@@ -74,7 +74,7 @@ export function MyTaskWorkTerminalScreen(props: ScreenProps) {
     return (
       <TaskWorkChrome
         layout={layout}
-        title={`تعذر — ${deedTitle}`}
+        title={`تعذّر — ${deedTitle}`}
         subtitle={workSubtitle}
         deedBadge={panelDeedBadge}
         onClose={exit}
@@ -166,9 +166,9 @@ function ObstructionCard({
   reviewFailures,
 }: Pick<ScreenProps, "task" | "isSupervisor" | "resolveObstruction" | "reviewFailures">) {
   return (
-    <RegistrationFormCard title="تعذر — بانتظار المشرف">
+    <RegistrationFormCard title="تعذّر — بانتظار المشرف">
       <Note tone="warn" className="mb-3">
-        {task.obstructionReason || "تم تسجيل تعذر على هذا العقار."}
+        {task.obstructionReason || "تم تسجيل تعذّر على هذا العقار."}
       </Note>
       {isSupervisor ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -176,12 +176,12 @@ function ObstructionCard({
             إعادة للأخصائي
           </Button>
           <Button type="button" variant="default" onClick={reviewFailures}>
-            مراجعة التعذرات
+            مراجعة التعذّرات
           </Button>
         </div>
       ) : (
         <p className="m-0 text-[13px] text-text-3">
-          المهمة لدى المشرف حتى يُبت في التعذر.
+          المهمة لدى المشرف حتى يُبت في التعذّر.
         </p>
       )}
     </RegistrationFormCard>

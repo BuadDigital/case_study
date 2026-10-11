@@ -71,6 +71,11 @@ public sealed partial class ValuationReportDraftService
             NotificationContract.Tones.Success,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            vr.PropertyId,
+            po => ValuationTimelineTexts.Approved(
+                po, vr.PropertyId, vr.Id, actor.DisplayName, request.ReportDate, _time.GetUtcNow().UtcDateTime),
+            cancellationToken);
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
@@ -106,8 +111,20 @@ public sealed partial class ValuationReportDraftService
             NotificationContract.Tones.Warn,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            vr.PropertyId,
+            po => ValuationTimelineTexts.ApprovalWithdrawn(
+                po, vr.PropertyId, vr.Id, actor.DisplayName, draft.AppraiserNote, _time.GetUtcNow().UtcDateTime),
+            cancellationToken);
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
+
+    /// <summary>A report-cycle milestone on the property timeline — best effort, never fails the step.</summary>
+    private Task RecordTimelineAsync(
+        Guid propertyId,
+        Func<string, RealEstateEval.Application.Contracts.PropertyTimelineRecordRequest> build,
+        CancellationToken cancellationToken) =>
+        timeline is null ? Task.CompletedTask : timeline.WriteAsync(propertyId, build, cancellationToken);
 
     /// <summary>
     /// The appraiser's package status from Case Study: none | draft | submitted | reopened, or

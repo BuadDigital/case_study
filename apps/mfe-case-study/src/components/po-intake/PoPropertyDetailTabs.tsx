@@ -244,7 +244,7 @@ export function PoPropertyDetailTabs({
             <Activity mode={tabMode("failures")}>
             {propertyFailures.length > 0 ? (
               <>
-                <SectionHeader>التعذرات المسجلة</SectionHeader>
+                <SectionHeader>التعذّرات المسجلة</SectionHeader>
                 {propertyFailures.map((failure: FailureRecord) => (
                   <div
                     key={failure.id}
@@ -293,11 +293,11 @@ export function PoPropertyDetailTabs({
               </>
             ) : (
               <>
-                <SectionHeader>التعذرات المسجلة</SectionHeader>
+                <SectionHeader>التعذّرات المسجلة</SectionHeader>
                 <EmptyState
                   icon="⚠"
-                  title="لا توجد تعذرات"
-                  sub="لم يُسجَّل أي تعذر لهذا العقار."
+                  title="لا توجد تعذّرات"
+                  sub="لم يُسجَّل أي تعذّر لهذا العقار."
                 />
               </>
             )}
@@ -411,6 +411,7 @@ export function PoPropertyDetailTabs({
               tasks={tasks}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
+              showReportDraft={false}
               onReviewChanged={() => {
                 void partySubmissionsQuery.refetch();
               }}

@@ -21,7 +21,7 @@ const ACTION_AR: Record<string, string> = {
   USER_UPDATED: "تعديل بيانات مستخدم",
   USER_DISABLED: "إيقاف حساب مستخدم",
   USER_REACTIVATED: "إعادة تفعيل حساب مستخدم",
-  USER_UNLOCKED: "فتح حساب مقفل",
+  USER_UNLOCKED: "فك قفل الحساب",
   PRICING_TABLE_CREATED: "إضافة جدول أسعار",
   PRICING_TABLE_UPDATED: "تعديل جدول أسعار",
   PRICING_TABLE_ACTIVATED: "تفعيل جدول أسعار",
@@ -77,7 +77,7 @@ const ENTITY_AR: Record<string, string> = {
   party_submission: "عمل طرف",
   WorkOrderProperty: "عقار",
   CaseStudyReport: "تقرير دراسة الحالة",
-  ValuationReconciliation: "ترجيح التقييم",
+  ValuationReconciliation: "الترجيح",
   valuation_report: "تقرير التقييم",
   inspection: "معاينة",
   PartyFeePricingTable: "جدول أتعاب الأطراف",
@@ -111,8 +111,8 @@ const PHASE_AR: Record<string, string> = {
   distribution: "توزيع",
   CaseStudy: "دراسة حالة",
   "case-study": "دراسة حالة",
-  Obstruction: "عائق",
-  obstruction: "عائق",
+  Obstruction: "تعذّر",
+  obstruction: "تعذّر",
   Done: "مكتمل",
   done: "مكتمل",
 };
@@ -489,7 +489,7 @@ export function auditDetailSummary(
     case "USER_REACTIVATED":
       return "إعادة تفعيل حساب مستخدم";
     case "USER_UNLOCKED":
-      return "فتح حساب مستخدم مقفل";
+      return "فك قفل حساب مستخدم";
     case "valuation.report-issuance.reopened":
       return "إعادة فتح إصدار تقرير التقييم";
     case "valuation.report-issuance.code-corrected": {

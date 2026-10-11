@@ -4,8 +4,6 @@ namespace RealEstateEval.Identity.Application.Abstractions;
 
 public interface IUserRegistrationService
 {
-    Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
-        CancellationToken cancellationToken = default);
 
     Task<UserInfoDto?> GetIdentityUserAsync(
         string userId,

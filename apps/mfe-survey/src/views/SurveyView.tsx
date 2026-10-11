@@ -12,6 +12,7 @@ import {
   MobileKpiStatCards,
   OperationalPanel,
   PageShell,
+  QueryErrorState,
   SkeletonTableRows,
   TBody,
   THead,
@@ -23,6 +24,7 @@ import {
   opsMobileCard,
   opsSkeletonCard,
 } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   useSurveyOfficesQuery,
   useSurveyRequestStatsQuery,
@@ -40,9 +42,21 @@ const mobileLoadingSkeleton = (
 );
 
 export function SurveyView() {
-  const { data: offices = [], isPending: officesPending } = useSurveyOfficesQuery();
-  const { data: stats, isPending: statsPending } = useSurveyRequestStatsQuery();
+  const officesQuery = useSurveyOfficesQuery();
+  const statsQuery = useSurveyRequestStatsQuery();
+  const { data: offices = [], isPending: officesPending } = officesQuery;
+  const { data: stats, isPending: statsPending } = statsQuery;
   const ready = !officesPending && !statsPending;
+  /** KPI tiles read «—» (not 0) when the stats failed to load. */
+  const kpiReady = ready && stats !== undefined;
+  const officesError = queryLoadFailed(officesQuery) ? (
+    <QueryErrorState
+      line="تعذّر تحميل المكاتب الهندسية"
+      error={officesQuery.error}
+      onRetry={() => void officesQuery.refetch()}
+      retrying={officesQuery.isFetching}
+    />
+  ) : null;
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
@@ -52,7 +66,7 @@ export function SurveyView() {
           icon={<KpiClipboardIcon />}
           iconClass="bg-info-bg text-info-text"
           label="إجمالي طلبات الرفع"
-          value={ready ? stats?.total ?? 0 : "—"}
+          value={kpiReady ? stats?.total ?? 0 : "—"}
           sub="عبر جميع المكاتب"
           dot
         />
@@ -60,7 +74,7 @@ export function SurveyView() {
           icon={<KpiCheckIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
           label="مكتملة"
-          value={ready ? stats?.completed ?? 0 : "—"}
+          value={kpiReady ? stats?.completed ?? 0 : "—"}
           valueClass="!text-success-text"
           sub="طلبات منتهية"
         />
@@ -68,7 +82,7 @@ export function SurveyView() {
           icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
           label="قيد التنفيذ"
-          value={ready ? stats?.inProgress ?? 0 : "—"}
+          value={kpiReady ? stats?.inProgress ?? 0 : "—"}
           sub="جاري الرفع المساحي"
         />
         <KpiCell
@@ -76,7 +90,7 @@ export function SurveyView() {
           icon={<KpiAlertIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
           label="لم تُسند"
-          value={ready ? stats?.unassigned ?? 0 : "—"}
+          value={kpiReady ? stats?.unassigned ?? 0 : "—"}
           valueClass="!text-red"
           sub="بانتظار الإسناد لمكتب"
         />
@@ -89,7 +103,7 @@ export function SurveyView() {
             key: "total",
             label: "إجمالي طلبات الرفع",
             sub: "عبر جميع المكاتب",
-            value: ready ? (stats?.total ?? 0) : "—",
+            value: kpiReady ? (stats?.total ?? 0) : "—",
             icon: <KpiClipboardIcon />,
             iconClass: "bg-info-bg text-info-text",
             tone: "ink",
@@ -98,7 +112,7 @@ export function SurveyView() {
             key: "completed",
             label: "مكتملة",
             sub: "طلبات منتهية",
-            value: ready ? (stats?.completed ?? 0) : "—",
+            value: kpiReady ? (stats?.completed ?? 0) : "—",
             icon: <KpiCheckIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
@@ -109,7 +123,7 @@ export function SurveyView() {
             key: "inProgress",
             label: "قيد التنفيذ",
             sub: "جاري الرفع المساحي",
-            value: ready ? (stats?.inProgress ?? 0) : "—",
+            value: kpiReady ? (stats?.inProgress ?? 0) : "—",
             icon: <KpiClockIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
@@ -119,7 +133,7 @@ export function SurveyView() {
             key: "unassigned",
             label: "لم تُسند",
             sub: "بانتظار الإسناد لمكتب",
-            value: ready ? (stats?.unassigned ?? 0) : "—",
+            value: kpiReady ? (stats?.unassigned ?? 0) : "—",
             icon: <KpiAlertIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
@@ -145,6 +159,10 @@ export function SurveyView() {
             <TBody>
               {!ready ? (
                 <SkeletonTableRows rows={4} cols={6} />
+              ) : officesError ? (
+                <Tr hoverable={false}>
+                  <Td colSpan={6}>{officesError}</Td>
+                </Tr>
               ) : offices.length === 0 ? (
                 <Tr hoverable={false}>
                   <Td colSpan={6}>
@@ -184,6 +202,8 @@ export function SurveyView() {
         <div className="lg:hidden">
           {!ready ? (
             mobileLoadingSkeleton
+          ) : officesError ? (
+            officesError
           ) : offices.length === 0 ? (
             <EmptyState line="لا توجد مكاتب مسجّلة" />
           ) : (

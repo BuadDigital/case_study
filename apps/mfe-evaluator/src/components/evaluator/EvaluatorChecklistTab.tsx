@@ -94,7 +94,7 @@ export function EvaluatorChecklistTab({
 
   return (
     <div>
-      <EngSection>قائمة فحص المقيم — {rows.length} بنداً</EngSection>
+      <EngSection>قائمة فحص المقيّم — {rows.length} بنداً</EngSection>
       {error ? (
         <p className="mb-2 m-0 text-[12px] text-danger-text" role="alert">
           {error}
@@ -314,8 +314,8 @@ export function EvaluatorCopyField({
           title={`نسخ ${label}`}
           onClick={() => {
             void navigator.clipboard.writeText(value).then(
-              () => showToast(`نُسخ: ${value}`, "success"),
-              () => showToast("تعذر النسخ التلقائي.", "error"),
+              () => showToast(`تم النسخ: ${value}`, "success"),
+              () => showToast("تعذّر النسخ.", "error"),
             );
           }}
         >

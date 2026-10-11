@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { failureStatusErrorToast } from "../failure-status-toast";
 
-const APPROVE = "تعذّر اعتماد التعذر — حاول مرة أخرى";
+const APPROVE = "تعذّر اعتماد التعذّر — حاول مرة أخرى";
 
 describe("failureStatusErrorToast", () => {
   it("leads with the action copy and appends the server detail", () => {

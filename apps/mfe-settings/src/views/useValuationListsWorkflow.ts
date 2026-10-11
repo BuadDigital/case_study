@@ -235,5 +235,3 @@ export function useValuationListsWorkflow() {
     persistCatalog,
   };
 }
-
-export type ValuationListsWorkflow = ReturnType<typeof useValuationListsWorkflow>;

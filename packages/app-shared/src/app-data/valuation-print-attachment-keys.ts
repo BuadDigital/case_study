@@ -1,6 +1,6 @@
 /** Map a property-document entry onto a report attachment key (valuation list `attachments`). */
 
-export type PrintAttachmentDocRef = {
+type PrintAttachmentDocRef = {
   id: string;
   name: string;
   fileName: string;

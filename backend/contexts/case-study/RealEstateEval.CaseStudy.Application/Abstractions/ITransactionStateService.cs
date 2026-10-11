@@ -28,16 +28,4 @@ public interface ITransactionStateService
         ReturnFromEnfazRequest request,
         CaseStudyReportActor actor,
         CancellationToken cancellationToken = default);
-
- /// <summary>
- /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and his reason exclusively;
- /// It does not open anything (actual retrieval from Enfaz passes R2 in evaluation).
- /// </summary>
-    Task<string?> RecordPostEnfazDecisionAsync(
-        Guid workOrderId,
-        Guid propertyId,
-        PostEnfazDecisionRequest request,
-        string? actorId,
-        string? actorRole,
-        CancellationToken cancellationToken = default);
 }

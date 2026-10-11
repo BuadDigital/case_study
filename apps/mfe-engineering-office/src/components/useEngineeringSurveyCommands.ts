@@ -115,7 +115,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     }
     if (blockingFailure) {
       showToast(
-        `لا يمكن بدء الرفع المساحي — يوجد تعذر نشط: ${failureRecordTitle(blockingFailure)}`,
+        `لا يمكن بدء الرفع المساحي — يوجد تعذّر نشط: ${failureRecordTitle(blockingFailure)}`,
         "error",
       );
       setWorkTab("failures");
@@ -285,12 +285,12 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
               `pin-mismatch:${propertyId}`,
             );
             showToast(
-              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذر داخلي للمراجعة.",
+              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذّر داخلي للمراجعة.",
               "error",
             );
           } catch {
             showToast(
-              "تم الإرسال، لكن تعذّر تسجيل تعذر اختلاف الموقع تلقائياً.",
+              "تم الإرسال، لكن تعذّر تسجيل تعذّر اختلاف الموقع تلقائياً.",
               "error",
             );
           }
@@ -299,7 +299,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    const message = "تعذر إرسال الرفع المساحي — حاول مرة أخرى";
+    const message = "تعذّر إرسال الرفع المساحي — حاول مرة أخرى";
     setFormError(message);
     showToast(message, "error");
     return false;
@@ -409,7 +409,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
   };
 }
 
-export type EngineeringSurveyCommands = ReturnType<
+type EngineeringSurveyCommands = ReturnType<
   typeof useEngineeringSurveyCommands
 >;
 

@@ -191,7 +191,7 @@ export function canDeleteUser(
 export const STAFF_ROLE_CHANGE_SELF = "لا يمكن تغيير دورك بنفسك.";
 export const STAFF_ROLE_CHANGE_LAST_ADMIN = "لا يمكن إزالة آخر مسؤول نظام.";
 
-export function isPrivilegedStaffRole(roleId: string | null | undefined): boolean {
+function isPrivilegedStaffRole(roleId: string | null | undefined): boolean {
   const id = (roleId ?? "").trim().toLowerCase();
   return id === "cdo" || id === "admin";
 }
@@ -273,7 +273,7 @@ export function emptyUsersMessage(totalUsers: number): string {
 /* ---------- dialog copy & API error mapping ---------- */
 
 export const PROTECTED_ACCOUNT_TOAST = "لا يمكن تعطيل هذا الحساب.";
-const NETWORK_MESSAGE = "تعذر الاتصال بالخادم.";
+const NETWORK_MESSAGE = "تعذّر الاتصال بالخادم.";
 
 export function disableUserConfirmCopy(name: string) {
   return {
@@ -286,37 +286,37 @@ export function disableUserConfirmCopy(name: string) {
 type FailedResult = { kind: string; message?: string; errors?: FieldErrors };
 
 export function createUserErrorMessage(result: FailedResult): string {
-  return result.kind === "network" ? NETWORK_MESSAGE : "تعذر إنشاء المستخدم.";
+  return result.kind === "network" ? NETWORK_MESSAGE : "تعذّر إنشاء المستخدم.";
 }
 
 export function deleteUserErrorMessage(result: FailedResult): string {
   return result.kind === "validation"
-    ? (result.message ?? "تعذر تعطيل المستخدم.")
+    ? (result.message ?? "تعذّر تعطيل المستخدم.")
     : result.kind === "network"
       ? NETWORK_MESSAGE
-      : "تعذر تعطيل المستخدم.";
+      : "تعذّر تعطيل المستخدم.";
 }
 
 /** Field errors the edit modal renders when an update fails. */
 export function saveEditErrors(result: FailedResult): FieldErrors {
   if (result.kind === "validation" && result.errors) return result.errors;
   return {
-    _form: result.kind === "network" ? NETWORK_MESSAGE : "تعذر حفظ التعديلات.",
+    _form: result.kind === "network" ? NETWORK_MESSAGE : "تعذّر حفظ التعديلات.",
   };
 }
 
 export function reactivateErrorMessage(result: FailedResult): string {
   return result.kind === "validation"
-    ? (result.errors?._form ?? result.errors?.status ?? "تعذر تفعيل المستخدم.")
+    ? (result.errors?._form ?? result.errors?.status ?? "تعذّر تفعيل المستخدم.")
     : result.kind === "network"
       ? NETWORK_MESSAGE
-      : "تعذر تفعيل المستخدم.";
+      : "تعذّر تفعيل المستخدم.";
 }
 
 export function unlockErrorMessage(result: FailedResult): string {
   return result.kind === "network"
     ? NETWORK_MESSAGE
-    : (result.message ?? "تعذر فك قفل الحساب.");
+    : (result.message ?? "تعذّر فك قفل الحساب.");
 }
 
 export const USER_TOASTS = {
@@ -329,7 +329,7 @@ export const USER_TOASTS = {
     "تم حفظ الحساب، وتعذّر مزامنته مع سجل المقيّمين. أكمل الربط من شاشة المقيّمون.",
 } as const;
 
-export const APPRAISER_ROLE_ID = "real-estate-appraiser";
+const APPRAISER_ROLE_ID = "real-estate-appraiser";
 
 /** Linked roster row stays active for every non-disabled appraiser account. */
 export function staffValuerSyncMode(

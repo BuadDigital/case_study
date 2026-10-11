@@ -38,7 +38,7 @@ export function normalizeProperty(prop: PoPropertyIntake): PoPropertyIntake {
   };
 }
 
-export function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
+function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
   const receivedFromEnfathTime = record.receivedFromEnfathTime ?? "";
   const valuation = resolveAssignmentValuationKeys(record.assignmentType, {
     purposeKey: record.valuationPurposeKey,
@@ -146,6 +146,8 @@ export function dtoToProperty(
     finishingType: dto.finishingType ?? "",
     finishingStructure: dto.finishingStructure ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
+    bourseCompletedByName: dto.bourseCompletedByName?.trim() ?? "",
+    bourseCompletedAtUtc: dto.bourseCompletedAtUtc?.trim() ?? "",
     isRemoved: Boolean(dto.isRemoved),
     removalReason: dto.removalReason ?? "",
     removedAtUtc: dto.removedAtUtc ?? "",

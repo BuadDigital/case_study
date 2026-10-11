@@ -73,7 +73,7 @@ type CircuitModalState = {
 function resultMessage(result: CourtsAdminResult<unknown>): string {
   if (result.ok) return "";
   if (result.message) return result.message;
-  if (result.kind === "auth") return "يجب تسجيل الدخول أولاً";
+  if (result.kind === "auth") return "يلزم تسجيل الدخول";
   if (result.kind === "forbidden") return "لا تملك صلاحية إدارة المحاكم";
   if (result.kind === "network") return "تعذّر الاتصال بالخادم";
   if (result.kind === "not_found") return "السجل غير موجود";

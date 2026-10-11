@@ -111,7 +111,7 @@ export function MobileChips({
 
 const FEATURE_SUGGESTIONS: Record<string, readonly string[]> = {
   assetSubject: ["فيلا", "شقة", "أرض"],
-  propertyUsage: ["سكني", "تجاري"],
+  propertyUsage: ["مبنى مفرد", "أرض"],
   facade: ["شمالية", "شرقية"],
 };
 
@@ -244,7 +244,7 @@ export function MobileSearchSelect({
             ))}
             {filtered.length === 0 ? (
               <div className="p-3.5 text-center text-[13px] text-text-3">
-                لا نتائج مطابقة
+                لا توجد نتائج مطابقة
               </div>
             ) : null}
           </div>

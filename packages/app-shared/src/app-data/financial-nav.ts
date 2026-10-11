@@ -12,7 +12,7 @@ export const FINANCIAL_GROUP_ICON =
 /**
  * Finance.html party-portals nav-group — for impact demo (label in PARTY_PORTALS_GROUP).
  */
-export const PARTY_PORTALS_GROUP = "بوابات الأطراف — لتجربة الأثر";
+const PARTY_PORTALS_GROUP = "بوابات الأطراف — لتجربة الأثر";
 
 export type FinanceNavArea =
   | "tasks"
@@ -21,7 +21,7 @@ export type FinanceNavArea =
   | "eng_portal"
   | "inspector_portal";
 
-export type FinanceNavLeaf = {
+type FinanceNavLeaf = {
   area: FinanceNavArea;
   label: string;
   icon: string;
@@ -53,11 +53,8 @@ export const FINANCIAL_NAV_LEAVES: FinanceNavLeaf[] = [
   },
 ];
 
-/** Party portals removed from the sidebar — content lives in office/inspector profile */
-export const PARTY_PORTAL_NAV_LEAVES: FinanceNavLeaf[] = [];
-
 /** Legacy leaf — URL `/financial?area=eng_portal` if needed */
-export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
+const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
   area: "eng_portal",
   label: "المكتب الهندسي",
   icon: "M4 4v16h16M4 20 20 4M8 20v-3M12 20v-3M16 20v-3",
@@ -66,7 +63,7 @@ export const ENG_OFFICE_PORTAL_LEAF: FinanceNavLeaf = {
 };
 
 /** Legacy leaf — URL `/financial?area=inspector_portal` if needed */
-export const INSPECTOR_PORTAL_LEAF: FinanceNavLeaf = {
+const INSPECTOR_PORTAL_LEAF: FinanceNavLeaf = {
   area: "inspector_portal",
   label: "المعاين",
   icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.46 12C3.73 7.94 7.52 5 12 5s8.27 2.94 9.54 7c-1.27 4.06-5.06 7-9.54 7s-8.27-2.94-9.54-7z",
@@ -86,19 +83,6 @@ export function parseFinanceNavArea(
   )
     return raw;
   return "tasks";
-}
-
-export function isPartyPortalArea(area: FinanceNavArea): boolean {
-  return area === "eng_portal" || area === "inspector_portal";
-}
-
-/** Legacy URL path for eng_portal */
-export function isEngOfficePortalArea(area: FinanceNavArea): boolean {
-  return area === "eng_portal";
-}
-
-export function isInspectorPortalArea(area: FinanceNavArea): boolean {
-  return area === "inspector_portal";
 }
 
 export function isFinanceCoreArea(area: FinanceNavArea): boolean {
@@ -124,9 +108,4 @@ export function isInFinancialSection(page: PageId): boolean {
 
 export function showFinancialNavGroup(rolePages: PageId[]): boolean {
   return rolePages.includes("financial");
-}
-
-/** Party portals group removed from the sidebar */
-export function showPartyPortalsNavGroup(_rolePages: PageId[]): boolean {
-  return false;
 }

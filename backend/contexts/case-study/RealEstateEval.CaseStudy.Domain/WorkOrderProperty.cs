@@ -91,6 +91,8 @@ public class WorkOrderProperty : ITrackUpdatedAt
     public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
+ /// <summary>Who completed the bourse inquiry (display name) - the source note of the values it answered.</summary>
+    public string? BourseCompletedByName { get; set; }
  /// <summary>Plan number — initial data.</summary>
     public string? PlanNumber { get; set; }
  /// <summary>Plan name — seed field property_plan_name.</summary>

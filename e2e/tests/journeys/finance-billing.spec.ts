@@ -160,7 +160,7 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
     test.skip(
       !(await surveyPricingConfigured(adminToken)),
       "engineering-survey party-fee pricing has no area tiers in this environment — " +
-        "acceptance fails with «تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.» " +
+        "acceptance fails with «تعذّر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.» " +
         "and no dues row can be accrued",
     );
 

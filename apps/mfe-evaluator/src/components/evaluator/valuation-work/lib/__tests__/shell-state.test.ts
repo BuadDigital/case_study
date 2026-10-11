@@ -7,6 +7,7 @@ import {
   buildAutoNarrative,
   buildFactorCatalog,
   isSeedMarketAnalysisNotes,
+  parseDecimal,
   SEED_MARKET_ANALYSIS_NOTES,
 } from "../shell-state";
 
@@ -32,6 +33,24 @@ const FACTOR_ROWS = [
   { factorKey: "type", labelAr: "تسوية نوع المقارن" },
   { factorKey: "financing", labelAr: "تسوية شروط التمويل" },
 ];
+
+describe("parseDecimal", () => {
+  it("uses the shared locale rule — thousands comma, decimal comma, Arabic digits, units", () => {
+    expect(parseDecimal("1,250")).toBe(1250);
+    expect(parseDecimal("12,5")).toBe(12.5);
+    expect(parseDecimal("1,25")).toBe(1.25);
+    expect(parseDecimal("١٬٢٥٠")).toBe(1250);
+    expect(parseDecimal("300 م²")).toBe(300);
+    expect(parseDecimal(42)).toBe(42);
+  });
+
+  it("keeps blank as 0 and junk as NaN", () => {
+    expect(parseDecimal("")).toBe(0);
+    expect(parseDecimal("  ")).toBe(0);
+    expect(parseDecimal("abc")).toBeNaN();
+    expect(parseDecimal("1,2,3")).toBeNaN();
+  });
+});
 
 describe("isSeedMarketAnalysisNotes", () => {
   it("detects the demo seed filler", () => {

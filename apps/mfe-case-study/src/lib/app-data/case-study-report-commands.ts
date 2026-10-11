@@ -62,7 +62,7 @@ export async function saveCaseStudyReportDraft(
   return { ok: true, draft: caseStudyReportDtoToDraft(result.data) };
 }
 
-export type IssueCaseStudyReportDraftResult =
+type IssueCaseStudyReportDraftResult =
   | { ok: true; draft: CaseStudyReportDraft }
   | ({ ok: false; error: string } & CaseStudyIssueErrors);
 

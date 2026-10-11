@@ -13,7 +13,7 @@ import { canLiftSurveyFreeze } from "./po-roles";
 export const SURVEY_FREEZE_LIFT_REASON_MIN_LENGTH = 10;
 
 /** What the failure row shows: the lift button, the «lifted» line, or nothing. */
-export type SurveyFreezeLiftView = "lift" | "lifted" | "none";
+type SurveyFreezeLiftView = "lift" | "lifted" | "none";
 
 export function surveyFreezeLiftView(
   role: RoleId,

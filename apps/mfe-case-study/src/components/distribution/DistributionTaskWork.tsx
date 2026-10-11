@@ -187,7 +187,7 @@ export function DistributionTaskWork({
   async function confirmDistribution() {
     setFormError(null);
     if (activeFailure) {
-      const message = "لا يمكن توزيع المعاملة ما دام عليها تعذر نشط.";
+      const message = "لا يمكن توزيع المعاملة ما دام عليها تعذّر نشط.";
       setFormError(message);
       showToast(message, "error");
       return;
@@ -303,7 +303,7 @@ export function DistributionTaskWork({
         showFooter={false}
       >
         <Note tone="warn">
-          لا يمكن توزيع هذه المعاملة لأن عليها تعذرًا نشطًا. عالج التعذر أولًا ثم
+          لا يمكن توزيع هذه المعاملة لأن عليها تعذّرًا نشطًا. عالج التعذّر أولًا ثم
           أعد فتح التوزيع ({deedTitle} · {formatPoDisplay(task.poNumber)}).
         </Note>
       </TaskWorkChrome>
@@ -326,7 +326,7 @@ export function DistributionTaskWork({
             size="sm"
             onClick={() => setFailureModalOpen(true)}
           >
-            تسجيل تعذر
+            تسجيل تعذّر
           </Button>
         ) : null
       }

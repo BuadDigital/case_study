@@ -5,9 +5,10 @@
  * This module is the pure client side of that: what the banner shows and what an acknowledgement
  * writes. Nothing here acknowledges anything on its own.
  */
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 /** Group keys the server sends in `inspectorDataChangedGroups`. */
-export type InspectorDataGroup =
+type InspectorDataGroup =
   | "assetType"
   | "components"
   | "area"
@@ -18,7 +19,7 @@ export type InspectorDataGroup =
   | "narrative"
   | "services";
 
-export const INSPECTOR_DATA_GROUP_LABELS: Record<InspectorDataGroup, string> = {
+const INSPECTOR_DATA_GROUP_LABELS: Record<InspectorDataGroup, string> = {
   assetType: "نوع الأصل",
   components: "المكونات",
   area: "المساحات",
@@ -98,15 +99,13 @@ export function inspectorAgeNeedsApply(input: {
 }
 
 function parseYears(value: string | null | undefined): number | null {
-  const text = (value ?? "").replace(/,/g, "").trim();
-  if (!text) return null;
-  const n = Number(text);
+  const n = parseLocaleNumber(value);
   return Number.isFinite(n) ? n : null;
 }
 
 /* ─── Which inspector data is on screen (label + last sync) ─── */
 
-export const INSPECTOR_DRAFT_DATA_LABEL = "بيانات المعاين (مسودة)";
+const INSPECTOR_DRAFT_DATA_LABEL = "بيانات المعاين (مسودة)";
 
 /**
  * The inspector's package is stable once the inspector submitted it (`submitted`) or the
@@ -120,7 +119,7 @@ export function isInspectorDataFinal(input: {
   return input.status === "submitted" || input.status === "accepted";
 }
 
-export type InspectorDataSyncInfo = {
+type InspectorDataSyncInfo = {
   /** «بيانات المعاين (مسودة)» while the package is not submitted/accepted, else null. */
   draftLabel: string | null;
   /** «آخر مزامنة للمعاين: …», or null when the server gave no timestamp. */
@@ -157,7 +156,7 @@ export function describeInspectorDataSync(
 
 /* ─── Merging a fresh read into the open draft ─── */
 
-export type InspectorDataMeta = {
+type InspectorDataMeta = {
   inspectorDataSeen?: string;
   inspectorDataFingerprint?: string;
   inspectorDataChangedGroups?: string[];

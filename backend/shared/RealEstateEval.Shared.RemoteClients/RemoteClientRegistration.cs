@@ -119,6 +119,20 @@ public static class RemoteClientRegistration
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<ICaseStudyLookup, HttpCaseStudyLookup>();
         services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
+        services.AddRemotePropertyTimelineRecorder(configuration);
+        return services;
+    }
+
+    /// <summary>
+    /// Milestones onto a property's timeline via the Case Study HTTP API (best effort, never throws).
+    /// Do not combine with Case Study persistence on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemotePropertyTimelineRecorder(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IPropertyTimelineRecorder, HttpPropertyTimelineRecorder>();
         return services;
     }
 

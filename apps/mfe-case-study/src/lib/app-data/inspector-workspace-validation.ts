@@ -38,18 +38,18 @@ import {
 } from "./inspector-workspace-data";
 
 /** Mirrors FieldInspectionSubmissionValidator — text or components photo, at least one. */
-export const PROPERTY_DESCRIPTION_REQUIRED =
+const PROPERTY_DESCRIPTION_REQUIRED =
   "أدخل وصف العقار أو أرفق صورة لتفاصيل المكونات";
 
 /** Mirrors InspectorDeedNatureMatchRules messages. */
-export const DEED_MATCH_VERDICT_REQUIRED = "اختر هل حدود الصك مطابقة للطبيعة أم لا";
-export const DEED_MATCH_NEEDS_A_SIDE =
+const DEED_MATCH_VERDICT_REQUIRED = "اختر هل حدود الصك مطابقة للطبيعة أم لا";
+const DEED_MATCH_NEEDS_A_SIDE =
   "حدّدت أن الحدود غير مطابقة — أشِر إلى الضلع غير المطابق";
-export const DEED_MATCH_YES_CONTRADICTS_SIDES =
+const DEED_MATCH_YES_CONTRADICTS_SIDES =
   "اخترت «مطابق» بينما أُشير إلى ضلع غير مطابق";
 
 /** Mirrors SpecialistComponentsRules.LandHasValuableStructuresRequired. */
-export const LAND_STRUCTURES_REQUIRED = "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم";
+const LAND_STRUCTURES_REQUIRED = "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم";
 
 export type InspectorWorkspaceFieldErrors = Partial<
   Record<
@@ -95,7 +95,7 @@ export type InspectorWorkspaceFieldErrors = Partial<
 };
 
 /** DOM ids used by the inspection form for auto-scroll. */
-export function inspectorFieldTargetId(
+function inspectorFieldTargetId(
   field:
     | keyof InspectorWorkspaceFieldErrors
     | `feature:${string}`
@@ -517,7 +517,7 @@ export function inspectorWorkspaceHasBlockingErrors(
   });
 }
 
-export type InspectorWizardStepId = 1 | 2 | 3;
+type InspectorWizardStepId = 1 | 2 | 3;
 
 const WIZARD_STEP_ERROR_KEYS: Record<
   InspectorWizardStepId,

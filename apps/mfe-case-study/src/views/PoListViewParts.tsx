@@ -126,7 +126,7 @@ export function HoverPortalCard({
   );
 }
 
-export type TeamStackMember = string | { name: string; role?: string };
+type TeamStackMember = string | { name: string; role?: string };
 
 function teamMemberName(member: TeamStackMember): string {
   return typeof member === "string" ? member : member.name;

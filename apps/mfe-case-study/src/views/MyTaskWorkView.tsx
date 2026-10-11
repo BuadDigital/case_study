@@ -105,7 +105,7 @@ export function CaseStudyTaskWork({
               onMouseEnter={preloadFailureRaiseModal}
               onFocus={preloadFailureRaiseModal}
             >
-              تسجيل تعذر
+              تسجيل تعذّر
             </Button>
           ) : null}
         </>

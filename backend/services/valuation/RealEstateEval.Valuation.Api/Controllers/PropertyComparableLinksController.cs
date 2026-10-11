@@ -24,43 +24,4 @@ public class PropertyComparableLinksController(IPropertyComparableLinkService li
             return this.BadRequestProblem("معرّف العقار مطلوب");
         return Ok(await links.ListAsync(propertyId, ct));
     }
-
-    [HttpPost]
-    [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
-    public async Task<ActionResult<PropertyComparableLinkListDto>> Link(
-        [FromBody] LinkPropertyComparableRequest request,
-        CancellationToken ct)
-    {
-        var (result, errors) = await links.LinkAsync(request, ActorClaims.Id(User), ct);
-        if (errors is not null)
-            return this.FieldErrorsProblem(errors);
-        return Ok(result);
-    }
-
-    [HttpPatch("{propertyId:guid}/{comparablePropertyId:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
-    public async Task<ActionResult<PropertyComparableLinkItemDto>> PatchDescription(
-        Guid propertyId,
-        Guid comparablePropertyId,
-        [FromBody] PatchPropertyComparableLinkRequest request,
-        CancellationToken ct)
-    {
-        var (result, errors) = await links.PatchDescriptionAsync(
-            propertyId, comparablePropertyId, request, ct);
-        if (errors is not null)
-            return this.FieldErrorsProblem(errors);
-        return Ok(result);
-    }
-
-    [HttpDelete("{propertyId:guid}/{comparablePropertyId:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
-    public async Task<IActionResult> Unlink(
-        Guid propertyId,
-        Guid comparablePropertyId,
-        CancellationToken ct)
-    {
-        var (ok, error) = await links.UnlinkAsync(propertyId, comparablePropertyId, ct);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر فك الربط.");
-        return NoContent();
-    }
 }

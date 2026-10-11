@@ -26,7 +26,7 @@ import {
 } from "./operations-tasks-view-state";
 import type { OperationsTasksWorkflow } from "./OperationsTasksViewShared";
 
-export type OperationsTasksMobileCardsProps = Pick<
+type OperationsTasksMobileCardsProps = Pick<
   OperationsTasksWorkflow,
   | "isDesktopViewport"
   | "now"

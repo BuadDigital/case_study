@@ -1,5 +1,7 @@
 /** Photo vs property location flags. Never blocks upload. */
 
+import { haversineMeters, parseLatLng } from "../domain/geo";
+
 export const PHOTO_LOCATION_MAX_MATCH_M = 500;
 
 export const PHOTO_LOCATION_FLAGS = {
@@ -8,7 +10,7 @@ export const PHOTO_LOCATION_FLAGS = {
   location_unavailable: "location_unavailable",
 } as const;
 
-export type PhotoLocationFlag =
+type PhotoLocationFlag =
   (typeof PHOTO_LOCATION_FLAGS)[keyof typeof PHOTO_LOCATION_FLAGS];
 
 export function photoLocationFlagLabel(flag: string | null | undefined): string {
@@ -22,26 +24,6 @@ export function photoLocationFlagLabel(flag: string | null | undefined): string 
     default:
       return "";
   }
-}
-
-export function haversineMeters(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const earthRadiusM = 6_371_000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusM * c;
 }
 
 export function evaluatePhotoLocation(input: {
@@ -71,10 +53,8 @@ export function evaluatePhotoLocation(input: {
   const distanceM =
     Math.round(
       haversineMeters(
-        photoLatitude,
-        photoLongitude,
-        propertyLatitude,
-        propertyLongitude,
+        { lat: photoLatitude, lng: photoLongitude },
+        { lat: propertyLatitude, lng: propertyLongitude },
       ) * 10,
     ) / 10;
   return {
@@ -86,23 +66,8 @@ export function evaluatePhotoLocation(input: {
   };
 }
 
-export function parseCoord(value: string | number | null | undefined): number | null {
-  if (value == null || value === "") return null;
-  const n = typeof value === "number" ? value : Number(String(value).trim());
-  return Number.isFinite(n) ? n : null;
-}
-
-/** Placed map pin — rejects empty / non-numeric / (0,0) unset defaults. */
-export function parsePlacedMapPin(
-  latitude?: string | number | null,
-  longitude?: string | number | null,
-): { lat: number; lng: number } | null {
-  const lat = parseCoord(latitude);
-  const lng = parseCoord(longitude);
-  if (lat == null || lng == null) return null;
-  if (lat === 0 && lng === 0) return null;
-  return { lat, lng };
-}
+/** Placed map pin — rejects empty / non-numeric / out-of-range / (0,0) unset defaults. */
+export const parsePlacedMapPin = parseLatLng;
 
 /** True when two pins are farther apart than the photo/property match radius (500 m). */
 export function pinsExceedMatchMeters(
@@ -110,12 +75,12 @@ export function pinsExceedMatchMeters(
   b: { lat: number; lng: number },
   maxMeters: number = PHOTO_LOCATION_MAX_MATCH_M,
 ): boolean {
-  return haversineMeters(a.lat, a.lng, b.lat, b.lng) > maxMeters;
+  return haversineMeters(a, b) > maxMeters;
 }
 
 export function pinDistanceMeters(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number },
 ): number {
-  return Math.round(haversineMeters(a.lat, a.lng, b.lat, b.lng) * 10) / 10;
+  return Math.round(haversineMeters(a, b) * 10) / 10;
 }

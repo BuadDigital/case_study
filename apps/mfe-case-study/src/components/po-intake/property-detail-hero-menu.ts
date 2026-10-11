@@ -2,7 +2,7 @@ import type { RowMoreMenuItem } from "@platform/ui-kit";
 
 export const CASE_STUDY_OPEN_PROGRESS_MESSAGE = "جاري فتح دراسة العقار…";
 
-export type PropertyDetailHeroMenuInput = {
+type PropertyDetailHeroMenuInput = {
   hideOpenCaseStudy: boolean;
   /** Full case-study workspace, preferred when the viewer can open it. */
   caseStudyWorkspaceHref: string | null;
@@ -33,7 +33,7 @@ export function buildPropertyDetailHeroMenuItems(
   if (input.onOpenFailure) {
     items.push({
       id: "failure",
-      label: "تسجيل تعذر",
+      label: "تسجيل تعذّر",
       danger: true,
       disabled: Boolean(input.caseStudyBusy),
       onClick: input.onOpenFailure,

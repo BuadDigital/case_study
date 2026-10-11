@@ -14,6 +14,7 @@ import {
   OperationalPanel,
   PageShell,
   PanelSkeleton,
+  QueryErrorState,
   useSwapAnimation,
 } from "@platform/ui-kit";
 import {
@@ -47,6 +48,8 @@ export function OperationsTasksView() {
     isFetching,
     isPending,
     kpis,
+    listLoadError,
+    listLoadFailed,
     listSwapKey,
     poRecords,
     reassignTask,
@@ -106,10 +109,19 @@ export function OperationsTasksView() {
         {error ? <Note tone="danger">{error}</Note> : null}
 
         <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
-          <div ref={listSwapRef}>
-            <OperationsTasksTable {...workflow} />
-            <OperationsTasksMobileCards {...workflow} />
-          </div>
+          {listLoadFailed ? (
+            <QueryErrorState
+              line="تعذّر تحميل المهام"
+              error={listLoadError}
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          ) : (
+            <div ref={listSwapRef}>
+              <OperationsTasksTable {...workflow} />
+              <OperationsTasksMobileCards {...workflow} />
+            </div>
+          )}
           <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>
         </OperationalPanel>
 

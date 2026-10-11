@@ -29,7 +29,7 @@ function LoadingMark({ className }: { className?: string }) {
  */
 function LoadingBox({
   className,
-  title = "جاري التحميل",
+  title = "جاري التحميل…",
   hint = "نجهّز الصفحة…",
   compact = false,
 }: {

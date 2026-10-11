@@ -33,7 +33,7 @@ export const TAB_META: Record<TabId, { icon: string; sub: string }> = {
   },
   evaluator: {
     icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
-    sub: "المقيم المعتمد لبوابات الإصدار + قائمة المشاركين في التقرير",
+    sub: "المقيّم المعتمد لبوابات الإصدار + قائمة المشاركين في التقرير",
   },
   branding: {
     icon: "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z",
@@ -140,7 +140,7 @@ export function buildSettingsSavePayload(draft: OrganizationSettingsDto) {
   };
 }
 
-export const LOGIN_REQUIRED_MESSAGE = "يجب تسجيل الدخول أولاً";
+export const LOGIN_REQUIRED_MESSAGE = "يلزم تسجيل الدخول";
 
 export function loadErrorMessage(kind: string): string {
   if (kind === "forbidden") return "لا تملك صلاحية عرض إعدادات المنشأة";

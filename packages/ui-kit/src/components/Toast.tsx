@@ -54,8 +54,7 @@ function actionToastErrorMessage(error: unknown): string {
   const message = error.message.trim();
   if (
     message === "save-failed" ||
-    message.startsWith("createFailure failed:") ||
-    message.startsWith("reportBourseObstruction failed:")
+    message.startsWith("createFailure failed:")
   ) {
     return GENERIC_ACTION_ERROR;
   }

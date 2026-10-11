@@ -19,7 +19,6 @@ export { SystemScreenCatalogView } from "./views/SystemScreenCatalogView";
 
 export * from "./lib/settings-api-config";
 export * from "./lib/users-api";
-export * from "./lib/app-data/courts-catalog";
 export * from "./lib/app-data/case-study-info-roles-data";
 export * from "./lib/app-data/case-study-info-roles-model";
 export * from "./lib/app-data/case-study-info-roles-reads";

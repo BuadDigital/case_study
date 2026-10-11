@@ -46,7 +46,7 @@ const PARTY_PAGE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.pageId),
 );
 
-export type ActiveTransactionPageSituation = {
+type ActiveTransactionPageSituation = {
   cards: PageSituationCardDef[];
   values: PageSituationValues;
   ready: boolean;

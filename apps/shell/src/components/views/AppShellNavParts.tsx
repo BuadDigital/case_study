@@ -378,7 +378,7 @@ export function ActiveTransactionsNavDropdown({
   );
 }
 
-export function SystemSettingsNavDropdown({
+function SystemSettingsNavDropdown({
   tree,
   currentPage,
   search,

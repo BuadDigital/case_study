@@ -5,8 +5,8 @@ import {
   googleMapsApiKey,
   googleMapsSearchUrl,
   loadGoogleMapsApi,
-  parseCoord,
 } from "../lib/google-maps-loader";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import {
   Button,
   Skeleton,
@@ -41,9 +41,10 @@ export function EngineeringSurveyMap({
   const [mapReady, setMapReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const lat = parseCoord(latitude);
-  const lng = parseCoord(longitude);
-  const hasPin = lat !== null && lng !== null;
+  const pin = parseLatLng(latitude, longitude);
+  const lat = pin?.lat ?? null;
+  const lng = pin?.lng ?? null;
+  const hasPin = pin !== null;
 
   useEffect(() => {
     if (!googleMapsApiKey()) {
@@ -104,7 +105,7 @@ export function EngineeringSurveyMap({
       })
       .catch(() => {
         if (!cancelled) {
-          setMapError("تعذر تحميل خريطة Google — تحقق من مفتاح API والاتصال.");
+          setMapError("تعذّر تحميل خريطة Google — تحقق من مفتاح API والاتصال.");
         }
       });
 

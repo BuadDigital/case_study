@@ -12,7 +12,7 @@ import {
   type ValuationReportLiveFill,
 } from "./valuation-report-fill-model";
 
-export type ReportFieldSource =
+type ReportFieldSource =
   | "intake"
   | "specialist"
   | "inspector"
@@ -35,7 +35,7 @@ export const REPORT_FIELD_SOURCES: Record<ReportFieldSource, { label: string }> 
   org: { label: "إعدادات المنشأة" },
 };
 
-export const REPORT_APPRAISER_TAB_LABELS: Record<ReportAppraiserTab, string> = {
+const REPORT_APPRAISER_TAB_LABELS: Record<ReportAppraiserTab, string> = {
   basic: "البيانات الأساسية",
   market: "طريقة المقارنة",
   cost: "طريقة المقاول",
@@ -225,7 +225,7 @@ function isEmptyValue(cell: Element): boolean {
   return !t || t === "—" || t === "-";
 }
 
-export function missingCellTitle(cell: ReportMissingCell): string {
+function missingCellTitle(cell: ReportMissingCell): string {
   if (cell.source === "appraiser" && cell.tab) {
     return `ناقص — اضغط للانتقال إلى «${REPORT_APPRAISER_TAB_LABELS[cell.tab]}»`;
   }
@@ -373,7 +373,7 @@ function markRecon(sec: Element, mark: MarkCell) {
 
 function markParticipants(sec: Element, mark: MarkCell) {
   const heading = [...sec.querySelectorAll("h2")].find((h) =>
-    text(h).includes("إعتماد"),
+    /[إا]عتماد/.test(text(h)),
   );
   const approval =
     heading?.nextElementSibling?.tagName === "TABLE"
@@ -517,7 +517,7 @@ export function readMissingCell(target: EventTarget | null): {
 }
 
 /** Marked cells grouped by source + label, first cell as target. */
-export function reportMissingFieldsFromRoot(root: ParentNode): ReportMissingField[] {
+function reportMissingFieldsFromRoot(root: ParentNode): ReportMissingField[] {
   const byKey = new Map<string, ReportMissingField>();
   root.querySelectorAll(MISSING_SELECTOR).forEach((el) => {
     const read = readMissingCell(el);

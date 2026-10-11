@@ -1,6 +1,5 @@
 import {
   ensureOpenValuationRequestByProperty,
-  getValuationReportDocument,
   type ValuationRequestLiteDto,
 } from "@platform/api-client";
 import { apiConfig } from "./api-config";
@@ -9,13 +8,13 @@ import { reservedValuationReportNumber } from "./valuation-report-number";
 function openFailureMessage(
   kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict",
 ): string {
-  if (kind === "auth") return "تعذّر فتح طلب التقييم — تحقق من تسجيل الدخول.";
+  if (kind === "auth") return "تعذّر فتح طلب التقييم — يلزم تسجيل الدخول.";
   if (kind === "network") return "تعذّر الاتصال بخدمة التقييم.";
   if (kind === "conflict") return "طلب التقييم متعارض مع تحديث آخر — أعد المحاولة.";
   return "تعذّر فتح طلب التقييم لهذه المعاملة.";
 }
 
-export type EnsureValuationRequestInput = {
+type EnsureValuationRequestInput = {
   propertyId: string;
   area?: string;
   propertyType?: string;
@@ -28,7 +27,7 @@ export async function ensureOpenValuationRequest(
   const config = apiConfig();
   const propertyId = input.propertyId.trim();
   if (!config || !propertyId) {
-    throw new Error("تعذّر فتح طلب التقييم — تحقق من تسجيل الدخول.");
+    throw new Error("تعذّر فتح طلب التقييم — يلزم تسجيل الدخول.");
   }
   const open = await ensureOpenValuationRequestByProperty(config, {
     propId: propertyId,
@@ -46,44 +45,4 @@ export function reservedNumberFromValuationRequest(
   request: ValuationRequestLiteDto,
 ): string {
   return reservedValuationReportNumber(request.displayId, request.date);
-}
-
-export type IssuedReportExtras = {
-  reportNumber?: string | null;
-  depositCode?: string | null;
-};
-
-export async function previewGeneratedValuationReport(input: {
-  propertyId: string;
-  extras?: IssuedReportExtras;
-  area?: string;
-  propertyType?: string;
-  appraiserName?: string;
-}): Promise<void> {
-  // Cheap session check before a call that opens a valuation request on the server (async-cheap-condition-before-await).
-  const config = apiConfig();
-  if (!config) {
-    throw new Error("تعذّر فتح استعراض تقرير التقييم — تحقق من تسجيل الدخول.");
-  }
-  const open = await ensureOpenValuationRequest({
-    propertyId: input.propertyId,
-    area: input.area,
-    propertyType: input.propertyType,
-    appraiserName: input.appraiserName,
-  });
-  const res = await getValuationReportDocument(config, open.id);
-  if (!res.ok) {
-    throw new Error("تعذّر تحميل مستند التقرير.");
-  }
-  const reportNumber =
-    input.extras?.reportNumber?.trim() ||
-    reservedNumberFromValuationRequest(open);
-  // Conditional load — preview builder fetched on first preview, not with eager list bundles.
-  const { openValuationReportPreview } = await import(
-    "./valuation-report-preview"
-  );
-  await openValuationReportPreview(res.data, {
-    ...input.extras,
-    reportNumber,
-  });
 }

@@ -80,7 +80,7 @@ export function CreateTaskTypeField({
       </select>
       {type === "general" ? (
         <span className={HINT}>
-          تكليف تشغيلي لأي طرف منفّذ: معاين، مقيم، مكتب هندسي، أو مراجع.
+          تكليف تشغيلي لأي طرف منفّذ: معاين، مقيّم، مكتب هندسي، أو مراجع.
         </span>
       ) : type === "court_visit" ? (
         <span className={HINT}>
@@ -157,7 +157,7 @@ export function CreateTaskAssigneeField({
       </select>
       {staffLoading ? (
         <span className="mt-1 block text-[11px] text-text-3">
-          جاري جلب قائمة المعاينين والمقيمين والمكاتب والمراجعين…
+          جاري جلب قائمة المعاينين والمقيّمين والمكاتب والمراجعين…
         </span>
       ) : assignees.length === 0 ? (
         <span className="text-[11px] text-text-3">

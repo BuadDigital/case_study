@@ -144,7 +144,7 @@ export function AllAssignedTransactionsView() {
         const className =
           label === "مكتمل"
             ? "b-done"
-            : label === "البورصة" || label === "تعذر"
+            : label === "البورصة" || label === "تعذّر"
               ? "b-fail"
               : label === "البيانات الأولية"
                 ? "b-new"

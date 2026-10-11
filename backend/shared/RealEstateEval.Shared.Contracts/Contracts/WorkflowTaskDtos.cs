@@ -34,6 +34,14 @@ public class WorkflowTaskDto
     public string? ParentTaskId { get; set; }
     public string Status { get; set; } = "";
     public TaskDistributionDraftDto? Distribution { get; set; }
+
+ /// <summary>
+ /// Party child tasks: display name of the case specialist named in <see cref="Distribution"/>,
+ /// read from the family parent (its assignee). Parties cannot see the parent row nor list staff,
+ /// so their parties rail would otherwise show the specialist as unassigned. Null when no
+ /// specialist is named or the parent is assigned to someone else.
+ /// </summary>
+    public string? CaseSpecialistName { get; set; }
     public string? ObstructionReason { get; set; }
     public string? ObstructionPriorPhase { get; set; }
     public string? AssignmentType { get; set; }

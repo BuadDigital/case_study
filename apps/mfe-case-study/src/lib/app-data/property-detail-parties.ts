@@ -27,7 +27,7 @@ export type PropertyDetailPartyCard = {
   enabled: boolean;
 };
 
-export type PropertyDetailPartyStatusRow = {
+type PropertyDetailPartyStatusRow = {
   key: string;
   /** Display name of the assigned person/office (not the role title). */
   label: string;
@@ -61,7 +61,7 @@ function appraisalHandOverBadge(
 ): { badge: string; badgeClass: PropertyDetailPartyStatusRow["badgeClass"] } | null {
   if (!appraisal) return null;
   const stage = appraisalStageLabel(appraisal.draft);
-  if (stage?.group === "approved") return { badge: "معتمد — بانتظار الإيداع", badgeClass: "pd-badge-amber" };
+  if (stage?.group === "approved") return { badge: "معتمد — بانتظار رمز الإيداع", badgeClass: "pd-badge-amber" };
   if (stage?.group === "draft_sent") return { badge: "بانتظار اعتماد المقيّم", badgeClass: "pd-badge-amber" };
   if (appraisal.packageSubmitted) return { badge: "بانتظار المسودة", badgeClass: "pd-badge-amber" };
   return null;
@@ -166,10 +166,14 @@ function timelineSpecialistRow(input: {
     };
   }
 
-  // Parent hidden from this viewer: the child still carries the distribution.
-  const name = assigneeLabel(
-    getCaseSpecialists(staffUsers),
-    migrateDistribution(task.distribution).caseSpecialistId,
+  // Parent hidden from this viewer: the server copies the specialist's name onto the child
+  // (parties cannot list staff); the staff lookup covers roles that can.
+  const name = (
+    task.caseSpecialistName ??
+    assigneeLabel(
+      getCaseSpecialists(staffUsers),
+      migrateDistribution(task.distribution).caseSpecialistId,
+    )
   ).trim();
   if (!name) return unassigned;
   return {

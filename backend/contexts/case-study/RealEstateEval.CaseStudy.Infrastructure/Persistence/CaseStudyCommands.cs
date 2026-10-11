@@ -375,6 +375,7 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
 
         property.BourseDataCompleted = false;
         property.BourseCompletedAtUtc = null;
+        property.BourseCompletedByName = null;
         await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 }

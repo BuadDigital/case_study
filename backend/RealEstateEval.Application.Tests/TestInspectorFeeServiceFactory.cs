@@ -55,9 +55,6 @@ internal static class TestInspectorFeeServiceFactory
 
         public PartyFeePricingService Pricing() => TestPricing.Create(Fin);
 
-        public IncentiveSuspensionService IncentiveSuspensions() => new(Fin, new IdentityDirectory(Identity));
-
-        public DiscountFlagService DiscountFlags() => new(Fin, new CaseStudyLookup(CaseStudy));
 
         public InspectorFeeService Fees(
             INotificationService? notifications = null,

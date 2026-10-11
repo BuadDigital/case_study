@@ -1,4 +1,4 @@
-export type CsvColumn<T> = {
+type CsvColumn<T> = {
   header: string;
   value: (row: T) => string;
 };

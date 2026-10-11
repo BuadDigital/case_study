@@ -24,7 +24,7 @@ export function FailuresViewKpiBand({
     ? "—"
     : stats.open > 0
       ? "تحتاج معالجة"
-      : "لا تعذرات مفتوحة";
+      : "لا تعذّرات مفتوحة";
   return (
     <>
       <KpiBand className="mb-0 hidden lg:flex">
@@ -32,7 +32,7 @@ export function FailuresViewKpiBand({
           first
           icon={<KpiAlertIcon />}
           iconClass="bg-[var(--gold-soft)] text-[var(--gold-d)]"
-          label="تعذرات مفتوحة"
+          label="تعذّرات مفتوحة"
           value={!isFetched ? "—" : stats.open}
           sub={openSub}
           dot
@@ -40,7 +40,7 @@ export function FailuresViewKpiBand({
         <KpiCell
           icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
-          label="عند مشرف دراسة الحالة"
+          label="قيد المراجعة"
           value={!isFetched ? "—" : stats.review}
           sub="بانتظار الاعتماد"
         />
@@ -57,7 +57,7 @@ export function FailuresViewKpiBand({
           iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
           label="الإجمالي"
           value={!isFetched ? "—" : stats.total}
-          sub="سجلات التعذر"
+          sub="سجلات التعذّر"
         />
       </KpiBand>
 
@@ -66,7 +66,7 @@ export function FailuresViewKpiBand({
         items={[
           {
             key: "open",
-            label: "تعذرات مفتوحة",
+            label: "تعذّرات مفتوحة",
             sub: openSub,
             value: !isFetched ? "—" : stats.open,
             icon: <KpiAlertIcon />,
@@ -76,7 +76,7 @@ export function FailuresViewKpiBand({
           },
           {
             key: "review",
-            label: "عند مشرف دراسة الحالة",
+            label: "قيد المراجعة",
             sub: "بانتظار الاعتماد",
             value: !isFetched ? "—" : stats.review,
             icon: <KpiClockIcon />,
@@ -99,7 +99,7 @@ export function FailuresViewKpiBand({
           {
             key: "total",
             label: "الإجمالي",
-            sub: "سجلات التعذر",
+            sub: "سجلات التعذّر",
             value: !isFetched ? "—" : stats.total,
             icon: <KpiClipboardIcon />,
             iconClass:

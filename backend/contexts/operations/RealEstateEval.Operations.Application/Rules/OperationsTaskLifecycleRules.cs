@@ -147,7 +147,7 @@ public static class OperationsTaskLifecycleRules
                 ? $"{actor} استأنف المهمة"
                 : $"{actor} أكّد الاستلام",
             OperationsTaskStatus.Created when from == OperationsTaskStatus.Paused =>
-                $"{actor} أعاد فتح المهمة من جديد بعد رفع التعذر",
+                $"{actor} أعاد فتح المهمة من جديد بعد رفع التعذّر",
             OperationsTaskStatus.Completed => $"{actor} أكمل المهمة",
             OperationsTaskStatus.Paused => string.IsNullOrWhiteSpace(pauseReason)
                 ? $"{actor} أوقف المهمة مؤقتاً"

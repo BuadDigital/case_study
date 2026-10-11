@@ -52,7 +52,7 @@ export type RegisterFormState = Record<RegisterTextField, string> &
     formError: string;
   };
 
-export type RegisterFormAction =
+type RegisterFormAction =
   | { type: "set-text"; field: RegisterTextField; value: string }
   | { type: "set-source"; source: SourceKind }
   | { type: "set-keys-count"; value: string }
@@ -209,7 +209,7 @@ export function registerSuccessMessage(
   }`;
 }
 
-export type FeeNoticePresentation = {
+type FeeNoticePresentation = {
   ok: boolean;
   background: string;
   color: string;
@@ -246,7 +246,7 @@ export function feeNoticePresentation(
 }
 
 /** The slice of a work-order DTO the suggestion index reads. */
-export type SuggestionSourceOrder = {
+type SuggestionSourceOrder = {
   properties?:
     | {
         isRemoved?: boolean | null;

@@ -181,12 +181,12 @@ export function DistributionPartiesForm({
           />
           <RegSelect
             id="dist_val_appraiser"
-            label="المقيم العقاري"
+            label="المقيّم العقاري"
             required
             disabled={readOnly}
             options={toOptions(valuators, loadByAssignee)}
             value={distribution.valuatorId}
-            placeholder="اختر المقيم…"
+            placeholder="اختر المقيّم…"
             onChange={(v) =>
               onPatch({ valuationDepartment: true, valuatorId: v })
             }

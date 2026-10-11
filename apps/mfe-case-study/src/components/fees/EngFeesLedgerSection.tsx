@@ -5,6 +5,7 @@
  * toolbar filters and the ledger table with the accept / dispute actions.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   cn,
   StatusPill,
@@ -27,7 +28,6 @@ import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import {
   deedParts,
-  fmtSar,
   statusMeta,
   type TabId,
 } from "./eng-fees-state";
@@ -187,7 +187,7 @@ export function EngFeesLedgerSection({
                     )}
                   </TdLtr>
                   <TdLtr valueClassName="text-[12.5px] text-text-2">
-                    {fmtSar(row.agreedFeeSar)}
+                    {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
                   </TdLtr>
                   <Td>
                     {ded ? (
@@ -199,7 +199,7 @@ export function EngFeesLedgerSection({
                           dir="ltr"
                           className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
                         >
-                          − {fmtSar(row.supervisorDiscountSar)}
+                          − {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
                         </span>
                         <span className="truncate text-[10.5px] text-text-3">
                           {row.discountReason || ""}
@@ -212,7 +212,7 @@ export function EngFeesLedgerSection({
                     )}
                   </Td>
                   <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                    {fmtSar(row.netFeeSar)}
+                    {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
                   </TdLtr>
                   <Td>
                     <StatusPill label={meta.label} style={meta.style} />

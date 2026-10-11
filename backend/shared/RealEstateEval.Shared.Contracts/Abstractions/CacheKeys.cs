@@ -7,7 +7,7 @@ public static class CacheKeys
     public const string SurveyOfficesList = "operations:survey-offices:v1";
     public const string CourtsCatalog = "platform:courts:v1";
     public const string RegionsCatalog = "platform:regions:v1";
-    public const string CitiesCatalog = "platform:cities:v1";
+
 }
 
 public static class CacheDurations

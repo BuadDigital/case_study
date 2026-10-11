@@ -57,7 +57,7 @@ const accentClasses = {
   gray: "border-t-text-3",
 } as const;
 
-export type StatAccent = keyof typeof accentClasses;
+type StatAccent = keyof typeof accentClasses;
 
 export function StatGrid({
   className,

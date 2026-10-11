@@ -200,7 +200,7 @@ export function DistributionQueueTable({
             <>
               <Th className="w-[7.5rem] min-w-[7.5rem]">المكتب الهندسي</Th>
               <Th className="w-[7.5rem] min-w-[7.5rem]">المعاين</Th>
-              <Th className="w-[7.5rem] min-w-[7.5rem]">المقيم</Th>
+              <Th className="w-[7.5rem] min-w-[7.5rem]">المقيّم</Th>
             </>
           ) : null}
           <ThAction aria-label="المزيد" />

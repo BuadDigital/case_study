@@ -2,7 +2,6 @@ import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
 import type { WorkflowTask } from "../workflow/task-types";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
-import { isInOrphanScreensSection } from "./orphan-screens-nav";
 
 /** Sidebar items under Active Transactions. */
 export type ActiveTransactionNavItem = {
@@ -15,7 +14,7 @@ export type ActiveTransactionNavItem = {
 };
 
 /** Case study — Active Transactions (ready routes owned by @case-study/mfe). */
-export const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
+const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   ...CASE_STUDY_READY_NAV.map((item) => ({
     id: item.id,
     label: item.label,
@@ -36,7 +35,7 @@ export const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   },
 ];
 
-export function taskMatchesCaseStudy(task: WorkflowTask): boolean {
+function taskMatchesCaseStudy(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
   return task.phase === "case-study" || task.phase === "done";
 }
@@ -48,7 +47,7 @@ export function filterTasksForCaseStudy(
 }
 
 /** Properties ready for packing/upload on the system (Enfath handoff). */
-export function taskMatchesSystemUpload(task: WorkflowTask): boolean {
+function taskMatchesSystemUpload(task: WorkflowTask): boolean {
   // Only properties whose case-study form was completed/accepted — not open studies.
   if (task.kind !== "case-study-property") return false;
   return task.status === "completed";
@@ -61,7 +60,7 @@ export function filterTasksForSystemUpload(
 }
 
 /** Party fee billing — under Active Transactions for party roles and supervisor. */
-export const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
+const ENGINEERING_FEES_ACTIVE_NAV_ITEM: ActiveTransactionNavItem = {
   id: "party-fees",
   label: "فوترة الأتعاب",
   icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
@@ -101,10 +100,6 @@ export function activeTransactionNavForRole(
   });
 }
 
-export function isActiveTransactionPlaceholder(page: PageId): boolean {
-  return ACTIVE_TRANSACTIONS_NAV.some((n) => n.id === page && n.placeholder);
-}
-
 export const ACTIVE_TRANSACTIONS_GROUP = "المعاملات النشطة";
 
 export const ACTIVE_TRANSACTIONS_GROUP_ICON =
@@ -115,18 +110,16 @@ export function isInActiveTransactionsSection(
   onTaskWork: boolean,
   role?: RoleId,
 ): boolean {
-  // Legacy list routes (removed from sidebar) stay out of active-tx chrome.
-  if (isInOrphanScreensSection(page)) return false;
   if (page === "party-fees") {
     return isPartyFeesUnderActiveTransactions(role);
   }
   return onTaskWork || isActiveTransactionPage(page);
 }
 
-export function activeTransactionPages(): PageId[] {
+function activeTransactionPages(): PageId[] {
   return ACTIVE_TRANSACTIONS_NAV.map((n) => n.id);
 }
 
-export function isActiveTransactionPage(page: PageId): boolean {
+function isActiveTransactionPage(page: PageId): boolean {
   return activeTransactionPages().includes(page);
 }

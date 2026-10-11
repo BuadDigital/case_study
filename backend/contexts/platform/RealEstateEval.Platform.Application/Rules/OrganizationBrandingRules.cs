@@ -62,7 +62,7 @@ public static partial class OrganizationBrandingRules
         Image(b.LogoColorUrl, nameof(b.LogoColorUrl), "الشعار الملون", LogoMaxBytes);
         Image(b.LogoWhiteUrl, nameof(b.LogoWhiteUrl), "الشعار الأبيض", LogoMaxBytes);
         Image(b.StampUrl, nameof(b.StampUrl), "ختم المنشأة", StampMaxBytes);
-        Image(b.SignatureUrl, nameof(b.SignatureUrl), "توقيع المقيم المعتمد", SignatureMaxBytes);
+        Image(b.SignatureUrl, nameof(b.SignatureUrl), "توقيع المقيّم المعتمد", SignatureMaxBytes);
         Image(b.LetterheadUrl, nameof(b.LetterheadUrl), "كليشة التقرير", LetterheadMaxBytes);
         Image(b.HeaderUrl, nameof(b.HeaderUrl), "ترويسة التقرير", StampMaxBytes);
     }

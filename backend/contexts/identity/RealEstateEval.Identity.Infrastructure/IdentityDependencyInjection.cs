@@ -71,7 +71,7 @@ public static class IdentityDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<IdentityDbContext>(configuration, connectionString);
+        return services.AddBoundedContextPersistence<IdentityDbContext>(configuration);
     }
 
  /// <summary>

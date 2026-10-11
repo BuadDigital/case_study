@@ -29,7 +29,7 @@ import { isOfflineFieldSession } from "./offline-access-cache";
 import { currentOfflineUserId, isBrowserOffline } from "./offline-write";
 import { readPrefetchedJson, savePrefetchedJson } from "./prefetch-read";
 
-export const BUILDING_INVENTORY_PREFETCH_ID = (userId: string, propertyId: string) =>
+const BUILDING_INVENTORY_PREFETCH_ID = (userId: string, propertyId: string) =>
   `building-inventory:${userId}:${propertyId.trim()}`;
 
 /** `/api/work-orders/{po}/properties/{id}/building-inventory` → its two ids (else null). */
@@ -51,7 +51,7 @@ export function parseBuildingInventoryPath(
 }
 
 /** What the table looks like on the device right after a write was queued (ids stay as typed). */
-export function inventoryDtoFromBody(
+function inventoryDtoFromBody(
   propertyId: string,
   body: Record<string, unknown>,
   previous?: BuildingInventoryDto | null,
@@ -80,7 +80,7 @@ async function cachedInventory(
 }
 
 /** Keep the device copy in step with what the server (or the queue) now holds. */
-export async function rememberBuildingInventory(
+async function rememberBuildingInventory(
   propertyId: string,
   dto: BuildingInventoryDto,
 ): Promise<void> {
@@ -140,7 +140,7 @@ export async function queueBuildingInventoryWrite(input: {
   return true;
 }
 
-export type BuildingInventoryRead = ApiOk<BuildingInventoryDto> & {
+type BuildingInventoryRead = ApiOk<BuildingInventoryDto> & {
   /** Served from the device (queued edits or the downloaded copy), not the server. */
   fromDevice?: boolean;
 };
@@ -186,7 +186,7 @@ export async function loadBuildingInventoryWithOffline(
     : { ok: false, kind: "network" };
 }
 
-export type BuildingInventorySaveResult =
+type BuildingInventorySaveResult =
   | (ApiOk<BuildingInventoryDto> & { queued: boolean })
   | ApiErr;
 

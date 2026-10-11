@@ -89,8 +89,8 @@ public class PartyTaskSubmissionRulesTests
     }
 
     [Theory]
-    [InlineData(WorkflowTaskKind.FieldInspection, "استلام بيانات المعاينة")]
-    [InlineData(WorkflowTaskKind.PropertyAppraisal, "اعتماد تقرير التقييم")]
+    [InlineData(WorkflowTaskKind.FieldInspection, "قبول الأخصائي لمخرجات المعاينة")]
+    [InlineData(WorkflowTaskKind.PropertyAppraisal, "اطلاع الأخصائي على التقييم")]
     [InlineData(WorkflowTaskKind.EngineeringSurvey, "قبول مخرجات الرفع المساحي")]
     public void Accepted_timeline_title_follows_the_kind(WorkflowTaskKind kind, string expected)
     {

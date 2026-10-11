@@ -1,4 +1,4 @@
-export type PartySubmissionChangedDetail = {
+type PartySubmissionChangedDetail = {
   workflowNotify?: boolean;
 };
 

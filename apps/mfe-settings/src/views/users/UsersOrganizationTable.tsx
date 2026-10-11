@@ -35,9 +35,9 @@ import type { UsersOrganizationWorkflow } from "./useUsersOrganizationWorkflow";
 
 // Prefetch on hover/focus — without it the user waits for the bundle after click
 // (bundle-preload). Row buttons are usually hovered before click.
-export const preloadEditStaffUserModal = () =>
+const preloadEditStaffUserModal = () =>
   void import("../../components/EditStaffUserModal");
-export const preloadUserProfileModal = () =>
+const preloadUserProfileModal = () =>
   void import("../../components/UserProfileModal");
 
 export function UsersOrganizationToolbar({

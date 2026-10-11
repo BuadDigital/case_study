@@ -80,8 +80,6 @@ const FIN_STATUS_STYLES = {
   }) satisfies StatusPillStyle,
 } as const;
 
-export type FinStatusTone = keyof typeof FIN_STATUS_STYLES;
-
 /** Finance chip tones → StatusPillStyle (replaces finStatus* class strings). */
 export function finStatusStyle(status: string): StatusPillStyle {
   switch (status) {
@@ -123,7 +121,7 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
   new: ["جديد", "info"],
   progress: ["قيد التنفيذ", "warning"],
   done: ["مكتمل", "success"],
-  fail: ["متعذر", "danger"],
+  fail: ["متعذّر", "danger"],
   incomplete: ["ناقص", "warning"],
   review: ["قيد المراجعة", "warning"],
   approved: ["معتمد", "success"],

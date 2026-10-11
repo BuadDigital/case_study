@@ -1,20 +1,13 @@
 import type {
   UserListItem,
 } from "@platform/types";
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 export type UsersApiConfig = {
   baseUrl?: string;
   token: string;
 };
-
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 export type ListUsersResult =
   | { ok: true; users: UserListItem[] }
@@ -26,7 +19,7 @@ export async function listUsers(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/users`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (!res.ok) {
       return { ok: false, kind: "server" };
@@ -44,7 +37,7 @@ export async function listDistributionAssignees(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/users/distribution-assignees`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (!res.ok) {
       return { ok: false, kind: "server" };
@@ -92,7 +85,7 @@ export async function createStaffUser(
   try {
     const res = await fetch(`${base}/api/users`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 400) {
@@ -147,7 +140,7 @@ export async function updateStaffUser(
   try {
     const res = await fetch(`${base}/api/users/${encodeURIComponent(userId)}`, {
       method: "PATCH",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 400) {
@@ -173,14 +166,14 @@ export async function unlockStaffUser(
   try {
     const res = await fetch(
       `${base}/api/users/${encodeURIComponent(userId)}/unlock`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 400) {
       const payload = (await res.json()) as { errors?: Record<string, string> };
       return {
         ok: false,
         kind: "validation",
-        message: payload.errors?._form ?? "تعذر فك قفل الحساب.",
+        message: payload.errors?._form ?? "تعذّر فك قفل الحساب.",
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };
@@ -202,14 +195,14 @@ export async function deleteStaffUser(
   try {
     const res = await fetch(`${base}/api/users/${encodeURIComponent(userId)}`, {
       method: "DELETE",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 400) {
       const payload = (await res.json()) as { errors?: Record<string, string> };
       return {
         ok: false,
         kind: "validation",
-        message: payload.errors?._form ?? "تعذر حذف المستخدم.",
+        message: payload.errors?._form ?? "تعذّر حذف المستخدم.",
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };

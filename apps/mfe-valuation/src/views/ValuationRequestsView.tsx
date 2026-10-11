@@ -5,13 +5,14 @@ import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { listWorkflowTasks } from "@platform/api-client";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import { loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/app-data/work-orders-api-config";
-import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useSwapAnimation, useToast, promptAction } from "@platform/ui-kit";
+import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, QueryErrorState, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useSwapAnimation, useToast, promptAction } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
   useSubmitValuationImpedimentMutation,
@@ -90,7 +91,9 @@ export function ValuationRequestsView() {
   const { showToast } = useToast();
   const mgr = isValuationMgr(role);
   const isApp = role === "real-estate-appraiser";
-  const { data: vr = [], isPending } = useValuationRequestsQuery();
+  const vrQuery = useValuationRequestsQuery();
+  const { data: vr = [], isPending } = vrQuery;
+  const loadFailed = queryLoadFailed(vrQuery);
   const propertyRowsQuery = useValuationRequestPropertyRowsQuery();
   const submitImpediment = useSubmitValuationImpedimentMutation();
   const [openingPropId, setOpeningPropId] = useState<string | null>(null);
@@ -122,7 +125,16 @@ export function ValuationRequestsView() {
     }
     return { done, prog, failed };
   }, [vr]);
-  const ready = !isPending;
+  /** Loaded with data — a failed load keeps KPIs at «—», not 0. */
+  const ready = !isPending && !loadFailed;
+  const loadError = loadFailed ? (
+    <QueryErrorState
+      line="تعذّر تحميل طلبات التقييم"
+      error={vrQuery.error}
+      onRetry={() => void vrQuery.refetch()}
+      retrying={vrQuery.isFetching}
+    />
+  ) : null;
 
   const rows = useMemo(() => {
     const q = deferredSearch.trim();
@@ -208,13 +220,13 @@ export function ValuationRequestsView() {
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]"
           label="قيد التنفيذ"
           value={ready ? prog : "—"}
-          sub="بانتظار المقيم"
+          sub="بانتظار المقيّم"
         />
         <KpiCell
           last
           icon={<KpiAlertIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
-          label="متعذرة"
+          label="متعذّرة"
           value={ready ? failed : "—"}
           valueClass="!text-red"
           sub="تحتاج معالجة"
@@ -247,7 +259,7 @@ export function ValuationRequestsView() {
           {
             key: "prog",
             label: "قيد التنفيذ",
-            sub: "بانتظار المقيم",
+            sub: "بانتظار المقيّم",
             value: ready ? prog : "—",
             icon: <KpiClockIcon />,
             iconClass:
@@ -256,7 +268,7 @@ export function ValuationRequestsView() {
           },
           {
             key: "failed",
-            label: "متعذرة",
+            label: "متعذّرة",
             sub: "تحتاج معالجة",
             value: ready ? failed : "—",
             icon: <KpiAlertIcon />,
@@ -305,7 +317,7 @@ export function ValuationRequestsView() {
                 <option value="all">جميع الحالات</option>
                 <option value="progress">قيد التنفيذ</option>
                 <option value="done">مكتمل</option>
-                <option value="fail">متعذر</option>
+                <option value="fail">متعذّر</option>
               </select>
             </div>
           </div>
@@ -315,21 +327,25 @@ export function ValuationRequestsView() {
         {/* After hydration mount only one tree (table or cards) — both used to build together. */}
         {isDesktopViewport === false ? null : (
         <TableFrame className="hidden lg:block">
-        <Table pending={!ready}>
+        <Table pending={isPending}>
           <THead>
             <Tr hoverable={false}>
               <Th>رقم الطلب</Th>
               <Th>العقار</Th>
               <Th>المنطقة</Th>
               <Th>النوع</Th>
-              <Th>المقيم المُسند</Th>
+              <Th>المقيّم المُسند</Th>
               <Th>الحالة</Th>
               <Th>التاريخ</Th>
               <Th>إجراء</Th>
             </Tr>
           </THead>
           <TBody>
-            {!ready ? (
+            {loadError ? (
+              <Tr hoverable={false}>
+                <Td colSpan={8}>{loadError}</Td>
+              </Tr>
+            ) : !ready ? (
               <SkeletonTableRows rows={5} cols={8} />
             ) : rows.length === 0 ? (
               <Tr hoverable={false}>
@@ -413,7 +429,9 @@ export function ValuationRequestsView() {
 
         {isDesktopViewport === true ? null : (
         <div className="p-3 lg:hidden">
-          {!ready ? (
+          {loadError ? (
+            loadError
+          ) : !ready ? (
             mobileLoadingSkeleton
           ) : rows.length === 0 ? (
             <div className="py-10 text-center text-[13px] text-text-3">
@@ -457,7 +475,7 @@ export function ValuationRequestsView() {
                     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
                       <span>{v.area || "—"}</span>
                       <span>{valuationRequestTypeLabel(v.type, property)}</span>
-                      <span>{v.appraiser || "بدون مقيم"}</span>
+                      <span>{v.appraiser || "بدون مقيّم"}</span>
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {isApp && v.status === "progress" ? (

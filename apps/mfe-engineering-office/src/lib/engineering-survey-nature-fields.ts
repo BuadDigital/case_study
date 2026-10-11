@@ -3,7 +3,7 @@
  * Manual entry only — no PDF length extraction.
  */
 
-export type NatureBoundaryPatch = {
+type NatureBoundaryPatch = {
   natureNorthBoundary?: string;
   natureNorthBoundaryLengthM?: string;
   natureSouthBoundary?: string;

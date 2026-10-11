@@ -166,7 +166,7 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     if (!response) {
       const complaints = (await page.locator("body").innerText())
         .split("\n")
-        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذر/.test(line))
+        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذّ?ر/.test(line))
         .join(" | ")
         .replace(/\s+/g, " ")
         .trim();
@@ -187,7 +187,7 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     test.skip(
       !(await surveyPricingConfigured(adminToken)),
       "engineering-survey party-fee pricing has no area tiers in this environment — " +
-        "acceptance would fail with «تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.»",
+        "acceptance would fail with «تعذّر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.»",
     );
 
     await loginAs(page, RELEASE_USERS.caseSpecialist);

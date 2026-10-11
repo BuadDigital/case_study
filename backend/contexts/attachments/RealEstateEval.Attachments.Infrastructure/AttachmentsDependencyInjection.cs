@@ -25,6 +25,7 @@ public static class AttachmentsDependencyInjection
     {
         services.AddAttachmentsPersistence(configuration, connectionString);
         services.AddRemotePlatformCatalogs(configuration);
+        services.AddRemotePropertyTimelineRecorder(configuration);
         services.Configure<BlobStorageOptions>(configuration.GetSection("BlobStorage"));
         services.AddSingleton<IBlobStorage, LocalFileBlobStorage>();
         services.AddScoped<IAttachmentLookup, AttachmentLookup>();
@@ -40,12 +41,6 @@ public static class AttachmentsDependencyInjection
         string connectionString)
     {
  // Block body (not expression-bodied): architecture fan-out scans method braces.
-        var attachmentsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Attachments,
-            connectionString);
-        return services.AddBoundedContextPersistence<AttachmentsDbContext>(
-            configuration,
-            attachmentsConnection);
+        return services.AddBoundedContextPersistence<AttachmentsDbContext>(configuration);
     }
 }

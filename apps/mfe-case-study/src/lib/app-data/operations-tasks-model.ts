@@ -42,7 +42,7 @@ export type OperationsTaskCommentFile = {
   contentType?: string | null;
 };
 
-export const OPERATIONS_TASKS_CHANGED_EVENT = "eval-operations-tasks-changed";
+const OPERATIONS_TASKS_CHANGED_EVENT = "eval-operations-tasks-changed";
 
 export function notifyOperationsTasksChanged(): void {
   if (typeof window === "undefined") return;
@@ -106,8 +106,4 @@ export function filterPrefetchedOpsTasks(
 
 export function isActiveOperationsTask(task: OperationsTask): boolean {
   return task.status === "created" || task.status === "in_progress";
-}
-
-export function isTerminalOperationsTask(task: OperationsTask): boolean {
-  return task.status === "completed" || task.status === "cancelled";
 }

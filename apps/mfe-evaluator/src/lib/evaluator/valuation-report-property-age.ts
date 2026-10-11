@@ -3,76 +3,19 @@
  * Does not write back to the inspector workspace — print/preview cells only.
  */
 
+import {
+  hijriToGregorian,
+  isValidGregorianDate,
+} from "@platform/app-shared/format/hijri";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+
 const LICENSE_AGE_OFFSET_YEARS = 2;
-
-function normalizeDigits(raw: string): string {
-  let out = "";
-  for (const ch of raw) {
-    if (ch >= "٠" && ch <= "٩") {
-      out += String.fromCharCode(48 + (ch.charCodeAt(0) - "٠".charCodeAt(0)));
-      continue;
-    }
-    if (ch >= "۰" && ch <= "۹") {
-      out += String.fromCharCode(48 + (ch.charCodeAt(0) - "۰".charCodeAt(0)));
-      continue;
-    }
-    out += ch;
-  }
-  return out;
-}
-
-function pad2(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
-}
-
-function hijriPartsFromGregorian(date: Date): {
-  year: number;
-  month: number;
-  day: number;
-} | null {
-  if (Number.isNaN(date.getTime())) return null;
-  try {
-    const parts = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    }).formatToParts(date);
-    const year = Number(parts.find((p) => p.type === "year")?.value);
-    const month = Number(parts.find((p) => p.type === "month")?.value);
-    const day = Number(parts.find((p) => p.type === "day")?.value);
-    if (!year || !month || !day) return null;
-    return { year, month, day };
-  } catch {
-    return null;
-  }
-}
-
-function hijriToGregorianIso(year: number, month: number, day: number): string | null {
-  if (year < 1300 || year > 1600 || month < 1 || month > 12 || day < 1 || day > 30) {
-    return null;
-  }
-  const approxGregorianYear = Math.floor((year - 1) * 0.970_224 + 622.539);
-  const start = new Date(approxGregorianYear - 1, 0, 1);
-  const end = new Date(approxGregorianYear + 1, 11, 31);
-  for (let t = start.getTime(); t <= end.getTime(); t += 86_400_000) {
-    const candidate = new Date(t);
-    const hijri = hijriPartsFromGregorian(candidate);
-    if (
-      hijri?.year === year &&
-      hijri.month === month &&
-      hijri.day === day
-    ) {
-      return `${candidate.getFullYear()}-${pad2(candidate.getMonth() + 1)}-${pad2(candidate.getDate())}`;
-    }
-  }
-  return null;
-}
 
 /** Parse inspector license date (Hijri or Gregorian) to a local noon Date. */
 export function parseLicenseDateForAge(
   raw: string | null | undefined,
 ): Date | null {
-  const trimmed = normalizeDigits((raw ?? "").trim());
+  const trimmed = toLatinDigits((raw ?? "").trim());
   if (!trimmed) return null;
 
   const hijriMarked =
@@ -122,12 +65,12 @@ export function parseLicenseDateForAge(
     hijriMarked || (!gregorianMarked && year >= 1300 && year < 1600);
 
   if (isHijri) {
-    const gIso = hijriToGregorianIso(year, month, day);
-    if (!gIso) return null;
-    const [gy, gm, gd] = gIso.split("-").map(Number);
-    return new Date(gy!, gm! - 1, gd!, 12, 0, 0, 0);
+    const g = hijriToGregorian(year, month, day);
+    if (!g) return null;
+    return new Date(g.year, g.month - 1, g.day, 12, 0, 0, 0);
   }
 
+  if (!isValidGregorianDate(year, month, day)) return null;
   return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 

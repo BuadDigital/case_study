@@ -287,7 +287,7 @@ export function ValuationWorkShell({
             ...(marketAdopted > 0
               ? [
                   {
-                    label: "مجموع الأوزان",
+                    label: "مجموع الأوزان النسبية",
                     value: selection?.weightsSumTo100 ? "100٪" : "≠ 100٪",
                     tone: selection?.weightsSumTo100 ? ("heading" as const) : ("danger" as const),
                   },
@@ -413,7 +413,7 @@ export function ValuationWorkShell({
               تقدير قيمة الأرض فضاءً
             </div>
             <div className="mt-0.5 text-[11.5px] font-normal text-gold-d">
-              مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل التوفيق بين
+              مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين
               الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
             </div>
           </div>

@@ -290,6 +290,7 @@ public partial class FailureService : IFailureService
         if (!entity.TrySubmitForReview(_time.UtcNow())) return null;
 
         await _failures.SaveChangesAsync(cancellationToken);
+        await RecordSubmittedAsync(entity, cancellationToken);
         await EscalateTaskObstructionAsync(
             entity,
             FailureRules.ObstructionReason(entity),
@@ -346,6 +347,7 @@ public partial class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusActive, cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
+        await RecordResolvedAsync(entity, request.ResolutionReason, cancellationToken);
 
         await AppendFailureAuditAsync(
             actorUserId,
@@ -376,6 +378,7 @@ public partial class FailureService : IFailureService
 
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusSuspended, cancellationToken);
         await BlockPropertyTasksForApprovedFailureAsync(entity, cancellationToken);
+        await RecordApprovedAsync(entity, finalNote, cancellationToken);
         await NotifyPoSpecialistsAsync(
             entity.PoNumber,
             FailureRules.ApprovedNotification(entity),
@@ -407,6 +410,7 @@ public partial class FailureService : IFailureService
         await SetPropertyDeedStatusAsync(entity, FailureRecordRules.DeedStatusActive, cancellationToken);
         await ResolveTaskObstructionAsync(entity, cancellationToken);
 
+        await RecordReturnedAsync(entity, finalNote, cancellationToken);
         // Submit and approve both notify the PO specialists; a return is the third outcome of
         // the same record and used to be the only silent one.
         await NotifyPoSpecialistsAsync(
@@ -458,36 +462,6 @@ public partial class FailureService : IFailureService
             FailureRecordRules.InternalObstructionReason(entity),
             cancellationToken);
     }
-
-    private Task EscalateTaskObstructionAsync(
-        PropertyFailure failure,
-        string reason,
-        CancellationToken cancellationToken) =>
-        _caseStudy.EscalateObstructionAsync(
-            FailureRules.EscalateRequest(failure, reason),
-            cancellationToken);
-
-    private Task ResolveTaskObstructionAsync(
-        PropertyFailure failure,
-        CancellationToken cancellationToken) =>
-        _caseStudy.ResolveObstructionAsync(
-            FailureRules.ResolveObstructionRequest(failure),
-            cancellationToken);
-
-    private Task BlockPropertyTasksForApprovedFailureAsync(
-        PropertyFailure failure,
-        CancellationToken cancellationToken) =>
-        _caseStudy.BlockPropertyTasksForFailureAsync(
-            FailureRules.BlockTasksRequest(failure),
-            cancellationToken);
-
-    private Task SetPropertyDeedStatusAsync(
-        PropertyFailure failure,
-        string deedStatus,
-        CancellationToken cancellationToken) =>
-        _caseStudy.SetFailureDeedStatusAsync(
-            FailureRules.DeedStatusRequest(failure, deedStatus),
-            cancellationToken);
 
     private async Task<PropertyFailure?> FindActiveForPropertyAsync(
         string poNumber,

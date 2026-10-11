@@ -36,7 +36,7 @@ export function FailureReportForm({
           className={opsPpHeadCard}
         >
           <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold leading-tight text-heading">
-            <span>تسجيل تعذر</span>
+            <span>تسجيل تعذّر</span>
             {deedNumber ? (
               <span className="text-[14px] font-bold text-gold-d [direction:ltr]">
                 صك {deedNumber}

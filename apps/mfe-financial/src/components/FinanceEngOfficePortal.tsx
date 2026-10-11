@@ -12,7 +12,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { fmtMax, fmtSar } from "@platform/app-shared/format/number";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
@@ -510,7 +510,7 @@ export function FinanceEngOfficePortal({
                     dir="ltr"
                     className="rounded-[9px] border border-border bg-gold-soft px-3 py-2.5 text-[14px] font-extrabold text-heading"
                   >
-                    {money(statementDisplayTotal(modalRun))} ر.س
+                    {fmtSar(statementDisplayTotal(modalRun), { digits: 3, trim: true })}
                   </div>
                 </div>
 

@@ -1,4 +1,3 @@
-import { todayIso } from "@platform/app-shared/format/date";
 import { BRAND_IDENTITY_DEFAULTS, customBrandLogoUrl } from "@platform/api-client";
 /** Question banks for the case-study form — labels from the field dictionary (API) with local defaults. */
 
@@ -49,30 +48,20 @@ export function caseStudySignatureImage(): string {
 export function caseStudyStampImage(): string {
   return getCachedOrganizationBranding()?.stampUrl || DEFAULT_STAMP;
 }
-/**
- * Uploaded white logo for the navy header block (الهوية البصرية), or null to keep the
- * built-in EJADAH wordmark.
- */
-export function caseStudyHeaderLogoImage(): string | null {
-  return customBrandLogoUrl(
-    getCachedOrganizationBranding()?.logoWhiteUrl,
-    BRAND_IDENTITY_DEFAULTS.logoWhiteUrl,
-  );
-}
 
 /** Fixed text under deed and survey tables — matches the paper form. */
 export const CASE_STUDY_SECTION_REMARKS_HINT =
   "في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه";
 
-export const CASE_STUDY_DEED_QUESTIONS =
+const CASE_STUDY_DEED_QUESTIONS =
   DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.deed;
-export const CASE_STUDY_SURVEY_QUESTIONS =
+const CASE_STUDY_SURVEY_QUESTIONS =
   DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.survey;
-export const CASE_STUDY_COMPONENTS_QUESTIONS =
+const CASE_STUDY_COMPONENTS_QUESTIONS =
   DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.comp;
-export const CASE_STUDY_OCCUPANCY_QUESTIONS =
+const CASE_STUDY_OCCUPANCY_QUESTIONS =
   DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.occ;
-export const CASE_STUDY_EXTRA_QUESTIONS =
+const CASE_STUDY_EXTRA_QUESTIONS =
   DEFAULT_CASE_STUDY_QUESTION_CATALOG.sectionQuestions.extra;
 
 export const CASE_STUDY_ANSWER_LABEL_A = "فعال / مطابق / نعم";
@@ -114,7 +103,7 @@ export {
   caseStudyAnswerKey,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 
-export function caseStudyTotalQuestions(): number {
+function caseStudyTotalQuestions(): number {
   return (
     CASE_STUDY_DEED_QUESTIONS.length +
     CASE_STUDY_SURVEY_QUESTIONS.length +
@@ -137,8 +126,4 @@ export function caseStudyReportSummary(answers: Record<string, CaseStudyReportAn
   const pending = total - answered;
   const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
   return { total, answered, pending, pct };
-}
-
-export function todayIsoDate(): string {
-  return todayIso();
 }

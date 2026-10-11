@@ -1,5 +1,4 @@
 import type { EnfazTrackingRowDto } from "@platform/api-client";
-import { fmt } from "@platform/app-shared/format/number";
 import {
   groupRowsByPo,
   revenueAmountsFromRow,
@@ -12,12 +11,7 @@ import {
  * filtering, grouping, sorting, sums and the cell labels. No React, no DOM.
  */
 
-export type RevenuePeriod = "all" | "30" | "90";
-
-// Whole amounts without decimals; fractional with two — differs from shared fmtSar which always fixes decimals.
-export function fmtSar(n: number): string {
-  return `${fmt(n, n % 1 === 0 ? 0 : 2)} ر.س`;
-}
+type RevenuePeriod = "all" | "30" | "90";
 
 export function filterRows(
   rows: EnfazTrackingRowDto[],
@@ -88,7 +82,7 @@ export function knownFeesTotal(rows: EnfazTrackingRowDto[]): {
   return { feesSum, feesKnown };
 }
 
-export type RevenueGroupSums = {
+type RevenueGroupSums = {
   base: number;
   vat: number;
   key: number;
@@ -108,7 +102,7 @@ export function sumRevenueAmounts(rows: EnfazTrackingRowDto[]): RevenueGroupSums
   return sums;
 }
 
-export type StudyRowStatus = { label: string; tone: "warning" | "default" };
+type StudyRowStatus = { label: string; tone: "warning" | "default" };
 
 /** Status pill under the fees of an under-study row. */
 export function studyRowStatus(row: EnfazTrackingRowDto): StudyRowStatus {

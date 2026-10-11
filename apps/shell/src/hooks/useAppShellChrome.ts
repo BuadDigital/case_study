@@ -31,7 +31,7 @@ import {
   type PageChrome,
 } from "@/components/views/app-shell-chrome-state";
 
-export type AppShellChrome = PageChrome & {
+type AppShellChrome = PageChrome & {
   poChrome: ReturnType<typeof resolvePoChrome>;
   /** True while inside a task — highlights the active-transactions dropdown. */
   onTaskWork: boolean;

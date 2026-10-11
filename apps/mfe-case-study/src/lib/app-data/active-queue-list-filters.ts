@@ -37,7 +37,7 @@ export function resolveQueueTaskStatusBadge(
   return options.getTaskStatusBadge?.(task) ?? null;
 }
 
-export function resolveQueueTaskStatusFilterLabel(
+function resolveQueueTaskStatusFilterLabel(
   badge: QueueTaskStatusBadge | null,
   remainingTime: RemainingTimeState,
 ): string {
@@ -133,7 +133,7 @@ export function filterPrimaryQueueRowMeta(
   });
 }
 
-export type DistributionQueueRowMeta = {
+type DistributionQueueRowMeta = {
   task: WorkflowTask;
   deed: string;
   poNumber: string;

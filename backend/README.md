@@ -232,7 +232,7 @@ JWT signing keys live only in `appsettings.Development.json` (and Compose env
 for local Docker). Base `appsettings.json` files carry Issuer/Audience only —
 Production must supply `JWT_SIGNING_KEY` / `Jwt:SigningKey` explicitly.
 
-Username-picker login (`/api/auth/dev-login-users`, `/api/auth/login-username`)
+Passwordless username login (`POST /api/auth/login`)
 requires **both** `ASPNETCORE_ENVIRONMENT=Development` **and**
 `Auth:EnableDevLogin=true`. Otherwise those endpoints return 404. Prefer
 `POST /api/auth/login` accepts email (preferred by the UI) or username plus password.
@@ -308,7 +308,7 @@ Authentication endpoints draw on a much smaller budget than the rest of the API.
 | `RateLimiting:Global:QueueLimit` | `0` | `0` | Queued requests; `0` rejects immediately |
 | `RateLimiting:Auth:PermitLimit` | `1000` | `10` | Budget for `AuthPathPrefixes` |
 | `RateLimiting:Auth:WindowSeconds` / `QueueLimit` | `60` / `0` | `60` / `0` | As above |
-| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/refresh`, `/api/auth/dev-login-users` | same | Strict-budget paths |
+| `RateLimiting:AuthPathPrefixes` | `/api/auth/login`, `/api/auth/refresh` | same | Strict-budget paths |
 | `RateLimiting:ExemptPathPrefixes` | `/health`, `/ready` | same | Never throttled, so healthchecks and post-deploy smoke checks cannot trip limits |
 | `RateLimiting:ClientAddressHeaderName` | `X-Real-IP` | same | Caller address published by the ingress proxy |
 | `RateLimiting:TrustForwardedForHeader` | `true` | same | Fall back to the right-most `X-Forwarded-For` entry |

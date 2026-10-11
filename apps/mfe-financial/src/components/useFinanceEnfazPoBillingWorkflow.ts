@@ -274,7 +274,3 @@ export function useFinanceEnfazPoBillingWorkflow({
     showReadyEmptyState,
   };
 }
-
-export type FinanceEnfazPoBillingWorkflow = ReturnType<
-  typeof useFinanceEnfazPoBillingWorkflow
->;

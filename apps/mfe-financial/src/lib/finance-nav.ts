@@ -28,7 +28,7 @@ export const REVENUE_STAGES: {
   label: string;
   actionOnly?: boolean;
 }[] = [
-  { id: "under_study", label: "تحت الدراسة" },
+  { id: "under_study", label: "قيد الدراسة" },
   { id: "eligible", label: "مؤهلة للفوترة", actionOnly: true },
   { id: "billing_assistant", label: "مساعد الفوترة", actionOnly: true },
   { id: "awaiting_collection", label: "بانتظار التحصيل", actionOnly: true },
@@ -55,7 +55,7 @@ export const COSTS_ACCOUNT_TABS: {
 ];
 
 /** Backward compatibility */
-export const COSTS_SECTIONS: {
+const COSTS_SECTIONS: {
   id: CostsSection;
   label: string;
   actionOnly?: boolean;

@@ -99,7 +99,7 @@ export function FinanceEnfazPoBilling({
       {!wf.selectedPo || wf.isPending ? (
         <EmptyState panel line="اختر أمر عمل من القائمة." />
       ) : !wf.billing ? (
-        <EmptyState panel line="تعذر تحميل بيانات الفوترة." />
+        <EmptyState panel line="تعذّر تحميل بيانات الفوترة." />
       ) : (
         <div className="flex flex-col gap-3">
           <BillingHeader poNumber={wf.selectedPo} billing={wf.billing} />

@@ -4,7 +4,7 @@ const AUTH_EXPIRED_EVENT = "auth-expired";
 /** Fired whenever the stored session is written, cleared, or changed in another tab. */
 export const AUTH_CHANGED_EVENT = "auth-changed";
 
-export type AuthUser = {
+type AuthUser = {
   id: string;
   displayName: string;
   /** Staff job title from profile — optional on older stored sessions. */

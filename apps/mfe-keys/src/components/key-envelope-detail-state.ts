@@ -138,7 +138,7 @@ export const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
 export const COURT_ACCESS_OPTIONS = [
   { id: "none" as const, label: "لا يوجد" },
   { id: "enabling" as const, label: "تمكين" },
-  { id: "eviction" as const, label: "محظر إخلاء" },
+  { id: "eviction" as const, label: "محضر إخلاء" },
 ] as const;
 
 /** Pending matches float to the top of the assignment table. */
@@ -181,7 +181,7 @@ export function envelopeHasAttachments(env: KeyEnvelopeRow | null): boolean {
   );
 }
 
-export type CustodyChainItem = {
+type CustodyChainItem = {
   key: string;
   title: string;
   color: string;
@@ -246,7 +246,7 @@ export type DeliverHandoffBody = {
   notes: null;
 };
 
-export type DeliverHandoffDraft = {
+type DeliverHandoffDraft = {
   kind: string;
   toUserId: string;
   partyName: string;

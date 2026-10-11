@@ -66,7 +66,7 @@ export function BrandIdentityView() {
       <ConfirmActionModal modal={modal} titleId="brand-modal-title" onClose={closeModal} />
 
       <Can capability="manage-system-config">
-        <span className="sr-only">{busy ? "جاري الحفظ" : ""}</span>
+        <span className="sr-only">{busy ? "جاري الحفظ…" : ""}</span>
       </Can>
     </PageShell>
   );

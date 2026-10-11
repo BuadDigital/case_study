@@ -48,7 +48,7 @@ td.v{text-align:center}
 <body><section class="page">
 <div class="slice head"></div><div class="slice foot"></div><div class="slice start"></div><div class="slice end"></div>
 <div class="content">
-<h1>27 — إعتماد التقرير</h1>
+<h1>27 — اعتماد التقرير</h1>
 <table>
 <tr><td class="k">المقيّم المعتمد</td><td class="v">—</td></tr>
 <tr><td class="k">التوقيع</td><td class="v"><img class="sig" src="${signature}" alt="التوقيع"></td></tr>

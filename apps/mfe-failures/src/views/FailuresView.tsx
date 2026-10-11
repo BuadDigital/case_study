@@ -34,7 +34,7 @@ export function FailuresView() {
         <Note tone="warn" className="mb-0">
           {wf.error instanceof Error
             ? wf.error.message
-            : "تعذّر تحميل التعذرات — حاول مرة أخرى"}
+            : "تعذّر تحميل التعذّرات — حاول مرة أخرى"}
           <div className="mt-2">
             <Button
               type="button"
@@ -63,8 +63,8 @@ export function FailuresView() {
       <ListPager ready={wf.isFetched} {...wf.pager} onPageChange={wf.setPage} />
 
       <QueueTableHint className="hidden lg:block">
-        اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذراً جديداً من شاشة العقار
-        (⋮ → إبلاغ عن تعذر).
+        اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذّراً جديداً من شاشة العقار
+        (⋮ → إبلاغ عن تعذّر).
       </QueueTableHint>
     </PageShell>
   );

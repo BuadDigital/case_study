@@ -8,6 +8,7 @@ import type {
   ValuationCostLineDto,
 } from "@platform/api-client";
 import { createClientId } from "@platform/app-shared/lib/create-client-id";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
 import {
@@ -19,7 +20,7 @@ import {
 } from "./cost-line-math";
 
 /** Per-item indirect draft: percentages stay strings so typing is lossless. */
-export type IndirectDraft = Record<string, { pct: string; rationale: string }>;
+type IndirectDraft = Record<string, { pct: string; rationale: string }>;
 
 export type CostApproachAlert = {
   kind: "error" | "warn" | "ok";
@@ -52,13 +53,13 @@ export type CostApproachFields = {
   costAnalysisNotes: string;
 };
 
-/** Arabic decimal comma is accepted everywhere a number is typed. */
+/** Typed number via the shared locale rule; blank or junk → 0. */
 export function costNum(raw: string): number {
-  return Number(String(raw).replace(",", ".")) || 0;
+  return parseLocaleNumber(raw) || 0;
 }
 
 /** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
-export const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
+const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
   design_supervision: "3",
   licensing_fees: "3",
   project_management: "3",
@@ -67,12 +68,12 @@ export const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
   developer_profit: "15",
 };
 
-export const DEFAULT_FINANCING_RATE = "5";
-export const DEFAULT_FINANCING_MONTHS = "18";
-export const DEFAULT_ACTUAL_AGE_YEARS = "10";
-export const DEFAULT_ECONOMIC_AGE_YEARS = "40";
+const DEFAULT_FINANCING_RATE = "5";
+const DEFAULT_FINANCING_MONTHS = "18";
+const DEFAULT_ACTUAL_AGE_YEARS = "10";
+const DEFAULT_ECONOMIC_AGE_YEARS = "40";
 
-export function defaultIndirectDraft(): IndirectDraft {
+function defaultIndirectDraft(): IndirectDraft {
   const draft: IndirectDraft = {};
   for (const item of INDIRECT_COST_ITEMS) {
     draft[item.key] = {
@@ -213,7 +214,7 @@ export function costLinesFromInventory(
     buildRatioPct: l.buildRatioPct ?? null,
     repeatedFloorCount: l.repeatedFloorCount ?? null,
     label: l.label,
-    areaSqm: Number(String(l.areaSqm ?? "0").replace(",", ".")) || 0,
+    areaSqm: parseLocaleNumber(l.areaSqm) || 0,
     unitCostSar: 0,
     lineTotal: 0,
     rationale: "",
@@ -226,12 +227,12 @@ export function costLinesFromInventory(
 /* ─── Early seeds: the cost table follows the specialist's components table ─── */
 
 function inventoryAreaSqm(l: CostSeedInventoryLine): number {
-  return Number(String(l.areaSqm ?? "0").replace(",", ".")) || 0;
+  return parseLocaleNumber(l.areaSqm) || 0;
 }
 
 const AREA_EPSILON = 0.005;
 
-export type CostInventoryAreaChange = {
+type CostInventoryAreaChange = {
   lineId: string;
   inventoryLineId: string;
   label: string;
@@ -384,7 +385,7 @@ export function blankCostLine(
   };
 }
 
-export type CostLineTotals = {
+type CostLineTotals = {
   firstFloorLine: ValuationCostLineDto | null;
   computedLines: ReturnType<typeof costLineComputed>[];
   directTotal: number;
@@ -690,7 +691,7 @@ export function buildCostNarrative(
 ): string {
   const restrictionJust = fields.useRestrictionRationale.trim();
   return [
-    `طريقة التكلفة: ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
+    `طريقة تكلفة ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
     restrictionJust
       ? `خصم تقييد الاستخدام: ${fields.useRestrictionPct}٪ — ${restrictionJust}.`
       : null,

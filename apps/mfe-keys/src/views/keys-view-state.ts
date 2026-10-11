@@ -38,7 +38,7 @@ export function listTabFromParam(tab: string | null): ListTab {
   return tab === "fees" ? "fees" : "envelopes";
 }
 
-export type KeysViewPermissions = {
+type KeysViewPermissions = {
   viewOnly: boolean;
   canEditEnvelope: boolean;
   canRegisterEnvelope: boolean;

@@ -40,9 +40,6 @@ public interface ILocationCatalogRepository
     Task<IReadOnlyList<SelectableRegionDto>> ListSelectableRegionsAsync(
         CancellationToken cancellationToken);
 
-    /// <summary>Every selectable city of every active region, governorates and capitals first.</summary>
-    Task<IReadOnlyList<SelectableCityDto>> ListSelectableCitiesAsync(
-        CancellationToken cancellationToken);
 
     Task<ActiveRegionSummary?> FindActiveRegionSummaryAsync(
         Guid regionId,

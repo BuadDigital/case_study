@@ -32,31 +32,6 @@ export function ValCard({
   );
 }
 
-/** Field-inspection `InsField` language — label above value, no boxed background. */
-export function ValField({
-  label,
-  value,
-  ltr,
-}: {
-  label: string;
-  value?: ReactNode;
-  ltr?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className="mb-1 text-[11px] font-semibold text-text-2">{label}</div>
-      <div
-        className={cn(
-          "text-[13px] font-semibold text-heading",
-          ltr && "[direction:ltr] text-start",
-        )}
-      >
-        {value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
 export function ValFieldsGrid({
   children,
   min = 150,
@@ -144,14 +119,6 @@ export function ValStatusPill({
   return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
-export const VAL_STATUS_COLORS = {
-  draft: "var(--gold)",
-  submitted: "#3f8f5f",
-  reopened: "#d9a441",
-  completed: "#3f8f5f",
-  gated: "#8a8d96",
-} as const;
-
 export function ValTabBar({
   tabs,
   active,
@@ -218,58 +185,5 @@ export function ValTabBar({
         );
       })}
     </div>
-  );
-}
-
-export function ValDepChip({
-  label,
-  ok,
-  title,
-}: {
-  label: string;
-  ok: boolean;
-  title?: string;
-}) {
-  return (
-    <span
-      title={title}
-      className={cn(
-        "inline-flex items-center gap-[7px] rounded-lg border px-[11px] py-1.5 text-[11px] font-bold",
-        ok
-          ? "border-[color-mix(in_srgb,#3f8f5f_30%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_8%,transparent)] text-[#2f7a4d]"
-          : "border-border-md bg-surface-2 text-text-3",
-      )}
-    >
-      {ok ? (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="m5 13 4 4L19 7" />
-        </svg>
-      ) : (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          aria-hidden
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
-        </svg>
-      )}
-      {label}
-    </span>
   );
 }

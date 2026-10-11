@@ -343,7 +343,8 @@ public sealed partial class ValuationComparableSelectionService(
         if (!added) return true;
 
         await EnsureMarketApproachHeaderAsync(request.Id, cancellationToken);
-        await repo.SaveChangesAsync(cancellationToken);
+        // The reconciliation read and the selections read both open a fresh request at once.
+        await repo.TrySaveSeedAsync(cancellationToken);
         return true;
     }
 }

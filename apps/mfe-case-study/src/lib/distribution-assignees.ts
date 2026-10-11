@@ -80,7 +80,7 @@ export function partyRoleForStaffUser(user: StaffUser): RoleId | null {
   return null;
 }
 
-export function staffUsersForPartyRole(
+function staffUsersForPartyRole(
   users: StaffUser[],
   roleId: RoleId,
 ): DistributionAssignee[] {

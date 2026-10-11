@@ -1,3 +1,4 @@
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   CASE_STUDY_REPORT_STEPS,
   CASE_STUDY_TABLE_HEADERS,
@@ -79,13 +80,13 @@ const ROLE_CHILD_KIND: Partial<
   appraisal: "property-appraisal",
 };
 
-export function formStatusLabel(status: CaseStudyReportStatus): string {
+function formStatusLabel(status: CaseStudyReportStatus): string {
   if (status === "issued") return "صادر";
   if (status === "draft") return "مسودة";
   return "جديد";
 }
 
-export function workflowStatusLabel(
+function workflowStatusLabel(
   status: WorkflowTaskStatus,
   failureObstructed = false,
 ): string {
@@ -95,7 +96,7 @@ export function workflowStatusLabel(
   return "قيد التنفيذ";
 }
 
-export function answerDisplay(
+function answerDisplay(
   section: CaseStudyQuestionSection,
   value: CaseStudyReportAnswer,
 ): string {
@@ -103,7 +104,7 @@ export function answerDisplay(
   return value === "A" ? headers.colA : headers.colB;
 }
 
-export function questionLabelFromKey(key: string): string | null {
+function questionLabelFromKey(key: string): string | null {
   const label = questionLabelFromCatalog(
     DEFAULT_CASE_STUDY_QUESTION_CATALOG,
     key,
@@ -138,7 +139,7 @@ export function answeredRows(
   return rows;
 }
 
-export function nonEmptyRemarks(draft: CaseStudyReportDraft): { label: string; value: string }[] {
+function nonEmptyRemarks(draft: CaseStudyReportDraft): { label: string; value: string }[] {
   const defs = [
     { label: "ملاحظات الصك", value: draft.deedRemarks },
     { label: "ملاحظات الرفع المساحي", value: draft.surveyRemarks },
@@ -187,7 +188,7 @@ export function engineeringSurveyStatusLabel(
   return "قيد العمل";
 }
 
-export function engineeringSurveyAnswerLabel(
+function engineeringSurveyAnswerLabel(
   value: EngineeringSurveyChecklistAnswer,
 ): string {
   if (value === "yes") return "نعم";
@@ -201,7 +202,7 @@ export function checklistAnswerLabel(value: boolean | null): string {
   return "—";
 }
 
-export function evaluatorChecklistRows(
+function evaluatorChecklistRows(
   checklist: EvaluatorChecklist,
   matrix?: CaseStudyInfoRolesMatrix,
   caseStudyAnswers?: Record<string, CaseStudyReportAnswer | null | undefined>,
@@ -292,7 +293,7 @@ export function evaluatorChecklistRows(
   return rows;
 }
 
-export function engineeringSurveyChecklistRows(
+function engineeringSurveyChecklistRows(
   checklist: EngineeringSurveyChecklistRow[],
 ): PartyAnswerRow[] {
   const rows: PartyAnswerRow[] = [];
@@ -309,7 +310,7 @@ export function engineeringSurveyChecklistRows(
   return rows;
 }
 
-export function engineeringSurveyChecklistRemarks(
+function engineeringSurveyChecklistRemarks(
   checklist: EngineeringSurveyChecklistRow[],
 ): { label: string; value: string }[] {
   const remarks: { label: string; value: string }[] = [];
@@ -323,7 +324,7 @@ export function engineeringSurveyChecklistRemarks(
   return remarks;
 }
 
-export function formatCoordsDisplay(lat: string, lng: string): string {
+function formatCoordsDisplay(lat: string, lng: string): string {
   const latTrim = lat.trim();
   const lngTrim = lng.trim();
   if (!latTrim && !lngTrim) return "";
@@ -474,14 +475,10 @@ export function buildFromEngineeringSurvey(
   };
 }
 
-export function formatPriceDisplay(raw: string): string {
+function formatPriceDisplay(raw: string): string {
   const n = Number.parseFloat(raw.replace(/,/g, ""));
   if (!Number.isFinite(n) || n <= 0) return "";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: 2,
-  }).format(n);
+  return fmtSar(n, { trim: true });
 }
 
 export function buildFromFormDraft(
@@ -675,7 +672,7 @@ export function buildFromEvaluator(
         : null,
     ].filter(Boolean);
     fields.push({
-      label: "عامل على التقرير",
+      label: "المشارك في إعداد التقرير",
       value: bits.join(" · "),
     });
   }

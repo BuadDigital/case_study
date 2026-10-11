@@ -26,19 +26,19 @@ public static class InspectorFeeBillingRules
     {
         if (discount < 0m)
         {
-            error = "الخصم لا يكون سالباً.";
+            error = "الحسم لا يكون سالباً.";
             return false;
         }
 
         if (agreedFeeSar is { } fee && discount > fee)
         {
-            error = "الخصم لا يتجاوز الأتعاب المتفق عليها.";
+            error = "الحسم لا يتجاوز الأتعاب المتفق عليها.";
             return false;
         }
 
         if (discount > 0 && string.IsNullOrWhiteSpace(reason))
         {
-            error = "يجب إدخال سبب الحسم عند تطبيق خصم.";
+            error = "يجب إدخال سبب الحسم عند تطبيق حسم.";
             return false;
         }
 

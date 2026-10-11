@@ -64,13 +64,10 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
+        IConfiguration configuration)
         where TContext : DbContext
     {
-        var resolvedConnection = BoundedContextConnections.ForContext<TContext>(
-            configuration,
-            connectionString);
+        var resolvedConnection = BoundedContextConnections.ForContext<TContext>(configuration);
         var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
             ?? new DatabaseOptions();
         var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(
@@ -189,15 +186,9 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddMessagingPersistence(
         this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
+        IConfiguration configuration)
     {
-        var messagingConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Messaging);
-        services.AddBoundedContextPersistence<MessagingDbContext>(
-            configuration,
-            messagingConnection);
+        services.AddBoundedContextPersistence<MessagingDbContext>(configuration);
         // Durable Idempotency-Key replay across instances (ADR 0008).
         services.RemoveAll<ICommandIdempotencyStore>();
         services.AddScoped<ICommandIdempotencyStore, EfCommandIdempotencyStore>();

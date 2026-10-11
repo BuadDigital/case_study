@@ -105,7 +105,7 @@ public sealed class InspectorFeeDispatchController(
             request.ActorDepartment,
             request.CanManageAllDepartments);
         return row is null
-            ? this.BadRequestProblem("تعذر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
+            ? this.BadRequestProblem("تعذّر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
             : Ok(row);
     }
 
@@ -144,15 +144,6 @@ public sealed class InspectorFeeDispatchController(
             request.ActorDepartment,
             request.CanManageAllDepartments));
 
-    [HttpPost("disbursement-batch")]
-    public async Task<ActionResult<CreateDisbursementBatchResponseDto>> DisbursementBatch(
-        [FromBody] InspectorFeeDisbursementDispatchRequest request,
-        CancellationToken cancellationToken) =>
-        Ok(await fees.CreateDisbursementBatchAsync(
-            request.Request,
-            request.ActorUserId,
-            request.ActorAssigneeId,
-            cancellationToken));
 
     [HttpPost("delete-for-tasks")]
     public async Task<IActionResult> DeleteForTasks(

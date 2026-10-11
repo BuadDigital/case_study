@@ -224,7 +224,7 @@ export async function flushPropertyFieldAutosave(
   await persistKey(key);
 }
 
-export async function flushAllPropertyFieldAutosaves(): Promise<void> {
+async function flushAllPropertyFieldAutosaves(): Promise<void> {
   const keys = [...new Set([...drafts.keys(), ...timers.keys(), ...inFlight.keys()])];
   await Promise.all(
     keys.map(async (key) => {

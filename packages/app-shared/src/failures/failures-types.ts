@@ -57,14 +57,6 @@ export type ResolveFailureInput = {
   continueInstructions: string;
 };
 
-export type BourseObstructionInput = {
-  poNumber: string;
-  propertyId: string;
-  deedNumber: string;
-  reason: string;
-  specialist: string;
-};
-
 export function isActiveFailureStatus(status: FailureStatus): boolean {
   return status !== "resolved" && status !== "suspended";
 }

@@ -7,8 +7,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dmy } from "@platform/app-shared/format/date";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
@@ -20,6 +21,7 @@ import type {
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   Badge,
+  QueryErrorState,
   Spinner,
   Table,
   TBody,
@@ -40,11 +42,6 @@ type DueLine = {
   amount: number;
   st: DueSt;
 };
-
-// Default toLocaleString = up to 3 decimals without forced zeros — keep the same display.
-function money(n: number) {
-  return fmtMax(Number(n || 0), 3);
-}
 
 function isFieldInspectionLine(taskKind: string | null | undefined) {
   return !taskKind || taskKind === "field-inspection";
@@ -209,6 +206,20 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
     );
   }
 
+  const failedQueries = [readyQuery, statementsQuery].filter(queryLoadFailed);
+  if (failedQueries.length) {
+    return (
+      <QueryErrorState
+        line="تعذّر تحميل المستحقات"
+        error={failedQueries[0]!.error}
+        onRetry={() => {
+          for (const q of failedQueries) void q.refetch();
+        }}
+        retrying={failedQueries.some((q) => q.isFetching)}
+      />
+    );
+  }
+
   if (!tracked) {
     return (
       <div className="rounded-lg border border-border bg-surface-2 px-4 py-6 text-center">
@@ -255,7 +266,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
             </Td>
             <TdLtr bare>{dmy(row.atIso)}</TdLtr>
             <TdLtr bare valueClassName="font-extrabold tabular-nums">
-              {money(row.amount)} ر.س
+              {fmtSar(row.amount, { digits: 3, trim: true })}
             </TdLtr>
             <Td>
               <Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>

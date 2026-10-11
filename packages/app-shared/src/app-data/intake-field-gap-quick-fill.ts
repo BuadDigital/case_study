@@ -54,7 +54,7 @@ export function poNumberFromNotificationHref(href: string | null | undefined): s
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export type IntakeQuickFillInput = {
+type IntakeQuickFillInput = {
   key: IntakeQuickFillFieldKey;
   label: string;
   type: "text" | "date";
@@ -66,7 +66,7 @@ export type IntakeQuickFillField = {
 };
 
 /** Keyed by the exact report cell label — the same string the notification's fieldKey carries. */
-export const INTAKE_QUICK_FILL_FIELDS: Record<string, IntakeQuickFillField> = {
+const INTAKE_QUICK_FILL_FIELDS: Record<string, IntakeQuickFillField> = {
   "رقم الطلب": {
     label: "رقم الطلب",
     inputs: [{ key: "requestNumber", label: "رقم الطلب", type: "text" }],

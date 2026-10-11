@@ -77,7 +77,7 @@ public partial class PartyBillingStatementService
                 assigneeId);
             return new CreatePartyBillingStatementResponseDto
             {
-                Error = "تعذر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
+                Error = "تعذّر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
             };
         }
 
@@ -227,7 +227,7 @@ public partial class PartyBillingStatementService
                 assigneeId);
             return new CreatePartyBillingStatementResponseDto
             {
-                Error = "تعذر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
+                Error = "تعذّر إنشاء كشف الفوترة. حاول مرة أخرى، وإذا تكرر الخطأ راجع الدعم الفني.",
             };
         }
 

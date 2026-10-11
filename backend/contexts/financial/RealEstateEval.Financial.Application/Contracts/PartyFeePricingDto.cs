@@ -62,24 +62,6 @@ public sealed class CreatePartyFeePricingTableRequest
     public Guid? CopyFromTableId { get; set; }
 }
 
-public sealed class IncentiveSuspensionDto
-{
-    public string Id { get; set; } = "";
-    public string UserId { get; set; } = "";
-    public string AssigneeId { get; set; } = "";
-    public string TransactionKey { get; set; } = "";
-    public string Reason { get; set; } = "";
-    public bool IsActive { get; set; }
-    public DateTime CreatedAtUtc { get; set; }
-    public DateTime? LiftedAtUtc { get; set; }
-}
-
-public sealed class CreateIncentiveSuspensionRequest
-{
-    public required string AssigneeId { get; init; }
-    public required string TransactionKey { get; init; }
-    public required string Reason { get; init; }
-}
 
 public sealed class SetPartyFeePricingAssignmentsRequest
 {

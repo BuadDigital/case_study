@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Shared.Contracts;
@@ -28,19 +29,22 @@ public sealed partial class EvaluatorRecallsService : IEvaluatorRecallsService
     private readonly TimeProvider _time;
     private readonly IValuationEventPublisher? _events;
     private readonly IValuationReportIssuanceService? _issuance;
+    private readonly ValuationTimelineWriter? _timeline;
 
     public EvaluatorRecallsService(
         ValuationDbContext db,
         ICaseStudyRecallCommands caseStudy,
         TimeProvider? time = null,
         IValuationEventPublisher? events = null,
-        IValuationReportIssuanceService? issuance = null)
+        IValuationReportIssuanceService? issuance = null,
+        ValuationTimelineWriter? timeline = null)
     {
         _db = db;
         _caseStudy = caseStudy;
         _time = time ?? TimeProvider.System;
         _events = events;
         _issuance = issuance;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<EvaluatorRecallDto>> ListAsync(
@@ -114,6 +118,10 @@ public sealed partial class EvaluatorRecallsService : IEvaluatorRecallsService
             cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            ValuationTimelineTexts.RecallRequested(
+                existing.PoNumber, existing.PropertyId, existing.TaskId, existing.Reason, existing.RequestedAtUtc),
+            cancellationToken);
 
         return (ToDto(existing), null);
     }
@@ -123,6 +131,13 @@ public sealed partial class EvaluatorRecallsService : IEvaluatorRecallsService
     /// audience to the property's open assignees. The publisher only stages the outbox row, so
     /// this runs before the save that commits the recall: both land together or not at all.
     /// </summary>
+    private Task RecordTimelineAsync(
+        RealEstateEval.Application.Contracts.PropertyTimelineRecordRequest request,
+        CancellationToken cancellationToken) =>
+        _timeline is null || string.IsNullOrWhiteSpace(request.PoNumber)
+            ? Task.CompletedTask
+            : _timeline.WriteKnownAsync(request, cancellationToken);
+
     private async Task NotifyAsync(
         Guid propertyId,
         string audience,

@@ -402,7 +402,7 @@ export function PoPropertyBourseForm({
               <div className="mt-3">
                 <RegField
                   id="boundaries_external"
-                  label="اسم المستند الخارجي (اختياري)"
+                  label="اسم مستند الحدود (اختياري)"
                   value={property.boundariesExternalDocName}
                   error={fieldErrors.boundariesExternalDocName}
                   onChange={(v) => onPatch("boundariesExternalDocName", v)}

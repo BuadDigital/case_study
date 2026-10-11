@@ -5,6 +5,7 @@
  * invoice upload form while the statement is issued, and the payment record.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   cn,
   ModalBody,
@@ -20,7 +21,7 @@ import type { PartyBillingStatementDto } from "@platform/api-client";
 import { openPartyBillingAttachment } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
-import { fmtSar, statementMeta } from "./eng-fees-state";
+import { statementMeta } from "./eng-fees-state";
 
 export function EngFeesInvoiceModal({
   openStatement,
@@ -102,7 +103,7 @@ export function EngFeesInvoiceModal({
                     {openStatement.lines.length} معاملات
                   </span>
                   <span className="rounded-full bg-surface px-2.5 py-0.5 font-bold tabular-nums text-heading">
-                    {fmtSar(openStatement.totalNetSar)}
+                    {fmtSar(openStatement.totalNetSar, { digits: 3, trim: true })}
                   </span>
                 </div>
               </div>
@@ -156,7 +157,7 @@ export function EngFeesInvoiceModal({
                           الصافي
                         </div>
                         <div className="text-[13px] font-extrabold tabular-nums text-heading">
-                          {fmtSar(line.netFeeSar)}
+                          {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
                         </div>
                       </div>
                     </div>
@@ -170,7 +171,7 @@ export function EngFeesInvoiceModal({
                   <div className="text-center text-[12.5px] font-semibold text-heading">
                     رفع فاتورة مطابقة للمسير
                     <span className="mt-0.5 block text-[11px] font-normal text-text-3">
-                      القيمة مقفلة {fmtSar(openStatement.totalNetSar)}
+                      القيمة مقفلة {fmtSar(openStatement.totalNetSar, { digits: 3, trim: true })}
                     </span>
                   </div>
                   <label className="text-[12px] text-text-2">

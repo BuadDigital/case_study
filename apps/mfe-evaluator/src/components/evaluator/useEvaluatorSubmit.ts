@@ -38,7 +38,7 @@ export function useEvaluatorSubmit({
   locked,
   draft,
   setDraft,
-  saveTimer,
+  flushPendingAutosave,
   retrospectiveRef,
   specialistRef,
   setFormError,
@@ -51,7 +51,8 @@ export function useEvaluatorSubmit({
   locked: boolean;
   draft: EvaluatorSubmission;
   setDraft: Dispatch<SetStateAction<EvaluatorSubmission>>;
-  saveTimer: RefObject<ReturnType<typeof setTimeout> | null>;
+  /** Sends the debounced autosave now, so edits from the last 400ms reach the server before the submit. */
+  flushPendingAutosave: () => void;
   retrospectiveRef: RefObject<EvaluatorRetrospectiveDraft | null>;
   specialistRef: RefObject<EvaluatorSpecialistDraft | null>;
   setFormError: (message: string | null) => void;
@@ -136,10 +137,17 @@ export function useEvaluatorSubmit({
       return false;
     }
 
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
+    flushPendingAutosave();
+
+    // Everything checkable up front has passed — a host with a sending dialog opens it now.
+    const dialogHost = Boolean(hostRef.current?.onSubmitStarted);
+    hostRef.current?.onSubmitStarted?.();
+    const refuse = (message: string) => {
+      setFormError(message);
+      showToast(message, "error");
+      hostRef.current?.onSubmitFailed?.();
+      return false;
+    };
 
     setSubmitting(true);
     hostRef.current?.onSavingChange?.(true);
@@ -165,29 +173,33 @@ export function useEvaluatorSubmit({
         if (updated) setDraft(updated);
       } catch (err: unknown) {
         if (err instanceof Error) console.warn("[evaluator] submit save failed:", err);
-        const message = "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
-        setFormError(message);
-        showToast(message, "error");
-        return false;
+        return refuse("تعذّر حفظ مسودة التقييم — حاول مرة أخرى");
       }
 
       const outcome = await executeAppraiserSubmit();
-      if (outcome.status === "skipped") return false;
+      if (outcome.status === "skipped") {
+        hostRef.current?.onSubmitFailed?.();
+        return false;
+      }
 
       const result = outcome.value;
       if (result.ok) {
         setDraft(result.submission);
-        showToast(
-          "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة.",
-          "success",
-        );
+        if (!dialogHost) {
+          showToast(
+            "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة.",
+            "success",
+          );
+        }
         hostRef.current?.onSubmitted?.();
         return true;
       }
       if (isStudyReportBlockMessage(result.message)) setStudyReportBlocked(true);
-      setFormError(result.message);
-      showToast(result.message, "error");
-      return false;
+      return refuse(result.message);
+    } catch (err: unknown) {
+      // The dialog must not stay up on an unexpected error; the error itself is still thrown.
+      hostRef.current?.onSubmitFailed?.();
+      throw err;
     } finally {
       setSubmitting(false);
       hostRef.current?.onSavingChange?.(false);
@@ -212,7 +224,7 @@ export function useEvaluatorSubmit({
     executeAppraiserSubmit,
     retrospectiveRef,
     specialistRef,
-    saveTimer,
+    flushPendingAutosave,
     setDraft,
     setFormError,
     setFieldErrors,

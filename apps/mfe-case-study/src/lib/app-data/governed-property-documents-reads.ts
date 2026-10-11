@@ -13,7 +13,7 @@ import {
 } from "@platform/app-shared/domain/property-documents/property-document-types";
 
 /** Source label of rows uploaded from the documents tab itself. */
-export const GOVERNED_DOCUMENTS_SOURCE = "مستندات العقار";
+const GOVERNED_DOCUMENTS_SOURCE = "مستندات العقار";
 
 /** The intake «other documents» field — unlisted documents that can be re-typed from the tab. */
 const OTHER_DOCUMENTS_SCOPE = "property-other";

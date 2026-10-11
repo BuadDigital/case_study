@@ -16,6 +16,8 @@ import {
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
 import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionParts";
+import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 const PHOTO_REF = `feature:${PROPERTY_DESCRIPTION_PHOTO_KEY}`;
 
@@ -30,7 +32,7 @@ export function InspectorDescriptionPhoto({
   draft: InspectorWorkspaceDraft;
   editable: boolean;
   invalid?: boolean;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const attachment = draft.featurePhotoAttachments[PROPERTY_DESCRIPTION_PHOTO_KEY] ?? null;
   if (!editable && !attachment?.attachmentId) return null;
@@ -57,12 +59,7 @@ export function InspectorDescriptionPhoto({
             ? undefined
             : () => {
                 clearInspectorPhotoDataUrl(draft.taskId, PHOTO_REF);
-                onPatch({
-                  featurePhotoAttachments: {
-                    ...draft.featurePhotoAttachments,
-                    [PROPERTY_DESCRIPTION_PHOTO_KEY]: null,
-                  },
-                });
+                onPatch(featurePhotoPatch(PROPERTY_DESCRIPTION_PHOTO_KEY, null));
               }
         }
         onUpload={async (file) => {
@@ -71,12 +68,7 @@ export function InspectorDescriptionPhoto({
             deedNumber,
           });
           if (!result.ok) throw new Error(result.error);
-          onPatch({
-            featurePhotoAttachments: {
-              ...draft.featurePhotoAttachments,
-              [PROPERTY_DESCRIPTION_PHOTO_KEY]: result.attachment,
-            },
-          });
+          onPatch(featurePhotoPatch(PROPERTY_DESCRIPTION_PHOTO_KEY, result.attachment));
           return true;
         }}
       />

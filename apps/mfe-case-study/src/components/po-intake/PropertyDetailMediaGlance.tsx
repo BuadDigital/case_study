@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 
 const goldSoft = "rounded border border-border bg-surface-2";
 
-export type PropertyGlanceFact = {
+type PropertyGlanceFact = {
   label: string;
   value: string;
 };
@@ -119,7 +119,7 @@ export function PropertyDetailMediaGlance({
       ? { label: "الغرض من التقييم", value: valuationPurposeLabel.trim() }
       : null,
     reportUsersLabel?.trim()
-      ? { label: "مستخدمو التقرير", value: reportUsersLabel.trim() }
+      ? { label: "مستخدم التقرير", value: reportUsersLabel.trim() }
       : null,
   ].filter((f): f is PropertyGlanceFact => Boolean(f));
 

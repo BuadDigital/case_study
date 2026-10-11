@@ -30,14 +30,6 @@ public class ValuationReportDraftsController(
         return dto is null ? NotFound() : Ok(dto);
     }
 
-    /// <summary>The approved printed report exactly as the appraiser approved it.</summary>
-    [HttpGet("snapshot")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
-    public async Task<IActionResult> GetSnapshot(Guid valuationRequestId, CancellationToken ct)
-    {
-        var html = await drafts.GetApprovedSnapshotHtmlAsync(valuationRequestId, ct);
-        return html is null ? NotFound() : Content(html, "text/html; charset=utf-8");
-    }
 
     [HttpPut("choices")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

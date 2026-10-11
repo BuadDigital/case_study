@@ -69,7 +69,7 @@ export function KeysViewKpiBand({
             ready ? (
               <>
                 <span className="size-1.5 rounded-full bg-gold" />
-                {kpis.delivered} مسلَّمة · المتبقي في العهدة{" "}
+                {kpis.delivered} مُسلَّمة · المتبقي في العهدة{" "}
                 <b className="text-[12.5px] text-gold-d">{kpis.inCustody}</b>
               </>
             ) : (
@@ -108,7 +108,7 @@ export function KeysViewKpiBand({
             key: "total",
             label: "إجمالي الأظرف",
             sub: ready
-              ? `${kpis.delivered} مسلَّمة · عهدة ${kpis.inCustody}`
+              ? `${kpis.delivered} مُسلَّمة · عهدة ${kpis.inCustody}`
               : "—",
             value: ready ? kpis.total : "—",
             icon: <KpiEnvIcon />,

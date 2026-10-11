@@ -21,7 +21,7 @@ import {
 import type { OperationsTasksWorkflow } from "./OperationsTasksViewShared";
 import { ReassignOperationsTaskModal } from "./OperationsTasksLazyModals";
 
-export type OperationsTasksModalsProps = Pick<
+type OperationsTasksModalsProps = Pick<
   OperationsTasksWorkflow,
   | "applyPrioDueFromOffset"
   | "applyPriority"

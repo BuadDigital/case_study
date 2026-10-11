@@ -55,7 +55,7 @@ export function useFailuresPageQuery(
 }
 
 /** One patch touches the whole set and every cached page that holds the row. */
-export type FailuresOptimisticSnapshot = {
+type FailuresOptimisticSnapshot = {
   list: OptimisticPatchResult<FailureRecord>;
   pages: { queryKey: QueryKey; snapshot: OptimisticPatchResult<FailureRecord> }[];
 };

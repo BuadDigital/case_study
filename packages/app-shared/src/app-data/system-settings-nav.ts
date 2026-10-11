@@ -4,7 +4,6 @@ import {
   SYSTEM_FIELDS_GROUP_ICON,
   SYSTEM_FIELDS_NAV,
   type SystemFieldsNavItem,
-  systemFieldsNavForRole,
 } from "./system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "./system-fields-catalog-nav";
 import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "./system-screen-catalog-nav";
@@ -61,7 +60,7 @@ const BRAND_ICON =
   "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z";
 
 /** Settings tree v2 — sourced from the system-settings v2.dc.html TREE. */
-export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
+const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
   {
     type: "group",
     id: "fields",
@@ -144,7 +143,7 @@ function treeLeaves(nodes: SettingsNavTreeNode[]): SystemSettingsNavItem[] {
   return out;
 }
 
-export const SYSTEM_SETTINGS_PRIMARY_NAV: SystemSettingsNavItem[] = treeLeaves(
+const SYSTEM_SETTINGS_PRIMARY_NAV: SystemSettingsNavItem[] = treeLeaves(
   SYSTEM_SETTINGS_TREE,
 );
 
@@ -192,34 +191,11 @@ export function settingsNavTreeForRole(
   return out;
 }
 
-/** @deprecated flattened tree — use settingsNavTreeForRole */
-export function systemSettingsPrimaryNavForRole(
-  rolePages: PageId[],
-  role?: RoleId,
-): SystemSettingsNavItem[] {
-  return treeLeaves(settingsNavTreeForRole(rolePages, role));
-}
-
-export function systemSettingsFieldsNavForRole(
-  rolePages: PageId[],
-): SystemFieldsNavItem[] {
-  return systemFieldsNavForRole(rolePages).filter((item) => item.available);
-}
-
 export function isInSystemSettingsSection(
   page: PageId,
   _role?: RoleId,
 ): boolean {
   return SYSTEM_SETTINGS_PRIMARY_PAGE_IDS.includes(page);
-}
-
-export function showSystemSettingsGroup(
-  rolePages: PageId[],
-  role?: RoleId,
-): boolean {
-  return settingsNavTreeForRole(rolePages, role).some(
-    (node) => node.type !== "divider",
-  );
 }
 
 export function isSettingsNavItemActive(

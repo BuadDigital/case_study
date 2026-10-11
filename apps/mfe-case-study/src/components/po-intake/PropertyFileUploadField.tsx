@@ -116,7 +116,7 @@ export function PropertyFileUploadField({
   }
 
   const pickerTitle = hasFiles && !multiple
-    ? "استبدال الملف"
+    ? "استبدال"
     : hasFiles && multiple
       ? "إضافة ملفات"
       : "ارفع المستند";

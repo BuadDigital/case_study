@@ -98,48 +98,6 @@ export function buildValuationPrintAttachmentRows(input: {
   return rows;
 }
 
-/** Default selection when appraiser has not chosen yet. */
-export function defaultPrintAttachmentKeys(
-  rows: ValuationPrintAttachmentRow[],
-): string[] {
-  return rows.filter((r) => r.available && r.isRequired).map((r) => r.key);
-}
-
-/** HTML v3 attachment slot ids used in the final-review editor. */
-export const REPORT_PHOTO_SLOT_IDS = Array.from(
-  { length: 12 },
-  (_, i) => `photo-${i + 1}`,
-) as string[];
-
-export const REPORT_SURVEY_SLOT_ID = "survey-report";
-export const REPORT_DEED_SLOT_ID = "deed";
-
-export const REPORT_PHOTO_SLOT_PLACEHOLDERS: Record<string, string> = {
-  "photo-1": "واجهة أمامية",
-  "photo-2": "واجهة خلفية",
-  "photo-3": "جانبية يمنى",
-  "photo-4": "جانبية يسرى",
-  "photo-5": "مجلس",
-  "photo-6": "صالة",
-  "photo-7": "مطبخ",
-  "photo-8": "غرفة نوم رئيسية",
-  "photo-9": "دورة مياه",
-  "photo-10": "ملحق علوي",
-  "photo-11": "السور والمدخل",
-  "photo-12": "الحوش",
-};
-
-export function reportPhotoSlotCount(isLand: boolean): number {
-  return isLand ? 6 : 12;
-}
-
-export function printDocSelectionValue(doc: {
-  id: string;
-  attachmentId?: string;
-}): string {
-  return (doc.attachmentId ?? doc.id).trim();
-}
-
 /** Reorder a key within a print-attachment order list (↑ / ↓). */
 export function movePrintAttachmentKey(
   keys: string[],
@@ -196,68 +154,4 @@ export function isPrintAttachmentIncluded(
   const keys = printAttachmentKeys ?? [];
   if (keys.length === 0) return true;
   return keys.includes(key);
-}
-
-export type ReportSlotCandidate = {
-  id: string;
-  name: string;
-  fileName: string;
-  source: string;
-  kind: "pdf" | "file" | "image";
-  dataUrl?: string;
-  attachmentId?: string;
-};
-
-function toCandidate(doc: PropertyDetailDocumentEntry): ReportSlotCandidate | null {
-  const id = printDocSelectionValue(doc);
-  if (!id) return null;
-  return {
-    id,
-    name: doc.name,
-    fileName: doc.fileName,
-    source: doc.source,
-    kind: doc.kind,
-    dataUrl: doc.dataUrl,
-    attachmentId: doc.attachmentId,
-  };
-}
-
-/** Candidates allowed into a given HTML report slot. */
-export function candidatesForReportSlot(
-  slotId: string,
-  documents: PropertyDetailDocumentEntry[],
-): ReportSlotCandidate[] {
-  const out: ReportSlotCandidate[] = [];
-  const seen = new Set<string>();
-  for (const doc of documents) {
-    const printKey = printKeyForPropertyDocument(doc);
-    const isPhotoSlot = slotId.startsWith("photo-");
-    let ok = false;
-    if (slotId === REPORT_DEED_SLOT_ID) ok = printKey === "deed";
-    else if (slotId === REPORT_SURVEY_SLOT_ID) ok = printKey === "survey";
-    else if (isPhotoSlot) {
-      ok =
-        doc.kind === "image" ||
-        Boolean(doc.inspectionPhoto) ||
-        /photo|صورة|معاينة/i.test(`${doc.name} ${doc.source}`);
-    }
-    if (!ok) continue;
-    const cand = toCandidate(doc);
-    if (!cand || seen.has(cand.id)) continue;
-    seen.add(cand.id);
-    out.push(cand);
-  }
-  return out;
-}
-
-export function findReportSlotCandidate(
-  documents: PropertyDetailDocumentEntry[],
-  assignmentId: string | null | undefined,
-): ReportSlotCandidate | null {
-  const id = (assignmentId ?? "").trim();
-  if (!id) return null;
-  for (const doc of documents) {
-    if (printDocSelectionValue(doc) === id) return toCandidate(doc);
-  }
-  return null;
 }

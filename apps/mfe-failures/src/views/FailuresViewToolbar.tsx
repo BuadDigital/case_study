@@ -21,7 +21,7 @@ export function FailuresViewToolbar({
             placeholder="بحث…"
             value={wf.search}
             onChange={(e) => wf.setSearch(e.target.value)}
-            aria-label="بحث التعذرات"
+            aria-label="بحث التعذّرات"
           />
         </div>
       </PageToolbar>

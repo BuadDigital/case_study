@@ -24,9 +24,9 @@ const OUTCOME_HINTS: Record<string, string> = {
   matched:
     "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
   differences:
-    "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذر).",
+    "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
   impediment:
-    "المطابقة غير ممكنة أو الحالة مرشحة لتعذر — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذر).",
+    "المطابقة غير ممكنة أو الحالة مرشحة لتعذّر — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
 };
 
 export function CaseStudyDeedNatureMatchSection({
@@ -74,7 +74,7 @@ export function CaseStudyDeedNatureMatchSection({
       <div className="grid gap-3.5 px-4 py-3.5">
         <Note tone="info">
           المعاين يقترح، وأنت تختار نتيجة المراجعة. الاختيار يُحفظ مباشرة ويحدد هل
-          يستمر التقييم ودراسة الحالة أو يتحول لمسار تعذر.
+          يستمر التقييم ودراسة الحالة أو يتحول لمسار تعذّر.
         </Note>
 
         {sourceLabelAr ? (
@@ -166,11 +166,11 @@ export function CaseStudyDeedNatureMatchSection({
               htmlFor="deed-nature-match-notes"
               className="text-[11px] text-text-2"
             >
-              ملاحظات الفروق / التعذر{" "}
+              ملاحظات الفروق / التعذّر{" "}
               <span className="text-danger-text">*</span>
             </Label>
             <p className="mb-1.5 mt-0 text-[11px] text-text-3">
-              إلزامية عند «فروق» أو «مرشح تعذر» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
+              إلزامية عند «فروق» أو «مرشح تعذّر» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
             </p>
             <Textarea
               id="deed-nature-match-notes"
@@ -182,7 +182,7 @@ export function CaseStudyDeedNatureMatchSection({
                 onPatch({ deedNatureMatchNotes: e.target.value })
               }
               className={cn(notesInvalid && invalidControlClass)}
-              placeholder="صف الفرق أو سبب ترشيح التعذر…"
+              placeholder="صف الفرق أو سبب ترشيح التعذّر…"
             />
           </FormGroup>
         ) : null}

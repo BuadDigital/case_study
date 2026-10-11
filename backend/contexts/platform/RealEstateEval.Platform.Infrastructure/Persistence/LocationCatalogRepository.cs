@@ -63,30 +63,6 @@ public sealed class LocationCatalogRepository(PlatformDbContext db) : ILocationC
             })
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<SelectableCityDto>> ListSelectableCitiesAsync(
-        CancellationToken cancellationToken) =>
-        await db.Cities.AsNoTracking()
-            .Where(c =>
-                c.IsActive
-                && c.Status != LocationCatalogStatuses.Merged
-                && c.Region != null
-                && c.Region.IsActive)
-            .OrderByDescending(c => c.IsGovernorate)
-            .ThenByDescending(c => c.IsCapital)
-            .ThenBy(c => c.NameAr)
-            .Select(c => new SelectableCityDto
-            {
-                Id = c.Id,
-                OfficialId = c.OfficialId,
-                RegionId = c.RegionId,
-                NameAr = c.NameAr,
-                NameEn = c.NameEn,
-                IsCapital = c.IsCapital,
-                IsGovernorate = c.IsGovernorate,
-                Status = c.Status,
-                RegionNameAr = c.Region!.NameAr,
-            })
-            .ToListAsync(cancellationToken);
 
     public Task<ActiveRegionSummary?> FindActiveRegionSummaryAsync(
         Guid regionId,

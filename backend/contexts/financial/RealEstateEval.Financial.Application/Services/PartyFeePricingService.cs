@@ -144,7 +144,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             await _db.AnyAssignmentsForTableAsync(id, cancellationToken));
         var before = PartyFeePricingSnapshots.Snapshot(table);
 
-        table.Name = PartyFeePricingRules.NormalizeName(request.Name, table.Category);
+        table.Name = PartyFeePricingRules.NormalizeName(request.Name);
         table.UpdatedAtUtc = _time.UtcNow();
         await ApplyRatesFromRequestAsync(table, request, cancellationToken);
 

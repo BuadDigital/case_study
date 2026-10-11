@@ -113,10 +113,6 @@ public sealed class RecordingTransactionState : ITransactionStateService
             NextReturnErrors is null ? (State(), null) : (null, NextReturnErrors));
     }
 
-    public Task<string?> RecordPostEnfazDecisionAsync(
-        Guid workOrderId, Guid propertyId, PostEnfazDecisionRequest request, string? actorId, string? actorRole,
-        CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
 
     private static TransactionStateDto State() =>
         new() { OverallStatus = "in_progress", OverallStatusLabelAr = "قيد العمل" };

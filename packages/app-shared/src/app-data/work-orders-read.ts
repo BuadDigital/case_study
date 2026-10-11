@@ -103,7 +103,7 @@ export async function loadPoListRows(): Promise<PoRow[]> {
   );
 }
 
-export type PoListRowsPage = {
+type PoListRowsPage = {
   rows: PoRow[];
   totalCount: number;
   page: number;

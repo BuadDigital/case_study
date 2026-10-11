@@ -19,6 +19,7 @@ import {
   type AuthSession,
 } from "@platform/auth-client";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
+import { clearAttachmentBlobCache } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { cn, useToast } from "@platform/ui-kit";
 import { BrandLogo } from "@/components/views/BrandLogo";
 import {
@@ -181,8 +182,8 @@ export default function LoginPage() {
         timedOut
           ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
           : typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
-            ? "تعذر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
-            : "تعذر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).",
+            ? "تعذّر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
+            : "تعذّر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).",
       );
       return null;
     } finally {
@@ -281,6 +282,9 @@ export default function LoginPage() {
       );
       const path = from ?? (await resolvePostLoginPath(session.token));
       setLandingPath(path);
+      // An expired session lands here by client navigation, not a reload: drop the
+      // previous user's in-memory attachment bytes before the new user signs in.
+      clearAttachmentBlobCache();
       setAuthSession(session);
       showToast("تم تسجيل الدخول !", "success");
       router.replace(path);

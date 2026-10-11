@@ -23,7 +23,7 @@ import {
 export const RECALL_DECISION_REFUSED_FALLBACK =
   "تعذّر تنفيذ القرار — إن كان المقيّم قد أودع تقريره فلا يُستردّ الآن، وتُتاح نسخة جديدة في مرحلة لاحقة";
 
-export const RECALL_DECISION_FORBIDDEN =
+const RECALL_DECISION_FORBIDDEN =
   "القرار في طلبات الاسترجاع للأخصائي وحده";
 
 export async function requestPartyTaskRecall(input: {

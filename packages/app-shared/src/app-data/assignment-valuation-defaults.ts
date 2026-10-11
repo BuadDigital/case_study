@@ -1,8 +1,6 @@
 /** Valuation purpose and basis of value — same backend keys (ValuationPurposeKeys / BasisOfValueKeys). */
 
-import { NABR_SEED_CLIENT_ID } from "@platform/api-client";
-
-export type ValuationSelectOption = { value: string; label: string };
+type ValuationSelectOption = { value: string; label: string };
 
 export const VALUATION_PURPOSE_OPTIONS: ValuationSelectOption[] = [
   { value: "auction_liquidation", label: "البيع بالمزاد العلني لغرض التصفية" },
@@ -36,20 +34,16 @@ export const VALUE_PREMISE_OPTIONS: ValuationSelectOption[] = [
   { value: "forced", label: "البيع القسري" },
 ];
 
-export function isPrivateAssignment(type: string | null | undefined): boolean {
+function isPrivateAssignment(type: string | null | undefined): boolean {
   const t = (type ?? "").trim();
   return t === "قطاع خاص" || t === "خاص";
-}
-
-export function isNabrClientId(id: string | null | undefined): boolean {
-  return (id ?? "").trim().toLowerCase() === NABR_SEED_CLIENT_ID;
 }
 
 /**
  * Private: sale / market value (including Enfath + Nabr).
  * Execution / estates: liquidation auction / liquidation value.
  */
-export function usesNabrSaleMarketDefaults(
+function usesNabrSaleMarketDefaults(
   assignmentType: string | null | undefined,
   _subClientId?: string | null,
 ): boolean {

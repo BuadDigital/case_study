@@ -160,7 +160,7 @@ public sealed class NotificationIntegrationEventHandler
         var request = new CreateUserNotificationRequest
         {
             Title = "صدر التقرير النهائي",
-            Body = $"صدر التقرير النهائي للعقار {payload.DisplayId} بإيداع المقيم {payload.Appraiser} — اكتمل التقييم.",
+            Body = $"صدر التقرير النهائي للعقار {payload.DisplayId} بإيداع المقيّم {payload.Appraiser} — اكتمل التقييم.",
             Tone = "success",
             Href = "/property-appraisal",
             Category = "workflow",

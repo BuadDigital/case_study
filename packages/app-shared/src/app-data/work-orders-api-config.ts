@@ -57,7 +57,7 @@ export function apiErrorMessage(
   kind: string,
   fallback = "تعذّر الاتصال بالخادم",
 ): string {
-  if (kind === "auth") return "يجب تسجيل الدخول أولاً";
+  if (kind === "auth") return "يلزم تسجيل الدخول";
   if (kind === "forbidden") return "ليس لديك صلاحية لهذا الإجراء";
   if (kind === "network") return "تعذّر الاتصال بالخادم — تحقق من تشغيل API";
   if (kind === "validation") return "يرجى مراجعة الحقول المطلوبة";

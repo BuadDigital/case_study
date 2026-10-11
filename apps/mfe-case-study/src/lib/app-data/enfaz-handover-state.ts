@@ -6,7 +6,7 @@ import type { TransactionStateDto } from "@platform/api-client";
 
 export const ENFAZ_RETURN_REASON_MIN_LENGTH = 10;
 
-export type EnfazCardState = {
+type EnfazCardState = {
   /** The handover stamp is set. */
   handedOver: boolean;
   handedOverAtUtc: string | null;
@@ -36,7 +36,7 @@ export function enfazCardState(
   };
 }
 
-export type EnfazReturnPlan =
+type EnfazReturnPlan =
   | { ok: false; field: "reason" | "choice"; error: string }
   | {
       ok: true;
@@ -77,7 +77,7 @@ export function planEnfazReturn(args: {
   };
 }
 
-export type EnfazStageTone = "teal" | "amber" | "gray";
+type EnfazStageTone = "teal" | "amber" | "gray";
 
 /** Badge tone of one stage row of the grid (status keys: not_started / in_progress / waiting_on_party / completed). */
 export function enfazStageTone(status: string): EnfazStageTone {

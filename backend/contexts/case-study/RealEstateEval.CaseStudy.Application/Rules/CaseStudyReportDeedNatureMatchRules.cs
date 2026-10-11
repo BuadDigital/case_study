@@ -10,7 +10,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 public static class CaseStudyReportDeedNatureMatchRules
 {
     public const string SubmitBlockedAr =
-        "بوابة المطابقة: لا يُرفع تقرير دراسة الحالة لصك تقليدي إلا بعد مخرج مطابق — الفروق والتعذر مسار تعذر.";
+        "بوابة المطابقة: لا يُرفع تقرير دراسة الحالة لصك تقليدي إلا بعد مخرج مطابق — الفروق والتعذّر مسار تعذّر.";
 
     public static Dictionary<string, string>? ValidateForSave(
         string? outcome,
@@ -31,7 +31,7 @@ public static class CaseStudyReportDeedNatureMatchRules
         {
             return new Dictionary<string, string>
             {
-                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر»",
+                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر»",
             };
         }
 

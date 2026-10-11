@@ -112,7 +112,7 @@ public class ComparablePropertiesController : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
     {
         var (ok, error) = await _bank.DeactivateAsync(id, ct);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -121,7 +121,7 @@ public class ComparablePropertiesController : ControllerBase
     public async Task<IActionResult> Reactivate(Guid id, CancellationToken ct)
     {
         var (ok, error) = await _bank.ReactivateAsync(id, ct);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 }

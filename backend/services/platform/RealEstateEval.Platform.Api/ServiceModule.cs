@@ -29,7 +29,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString!);
         // A8: Platform boundary validators moved out of the globally scanned assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateCourtRequestValidator>();
-        builder.Services.AddMessagingPersistence(builder.Configuration, connectionString!);
+        builder.Services.AddMessagingPersistence(builder.Configuration);
         builder.Services.AddRemoteIdentityDirectory(builder.Configuration);
         builder.Services.AddRemoteWorkflowAssignees(builder.Configuration);
         builder.Services.AddPlatformNotificationInfrastructure(builder.Configuration, builder.Environment);

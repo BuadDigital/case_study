@@ -19,7 +19,7 @@ import {
 } from "./operations-tasks-view-state";
 import type { OperationsTasksWorkflow } from "./OperationsTasksViewShared";
 
-export type OperationsTasksTableProps = Pick<
+type OperationsTasksTableProps = Pick<
   OperationsTasksWorkflow,
   | "allVisibleActiveChecked"
   | "canRemind"

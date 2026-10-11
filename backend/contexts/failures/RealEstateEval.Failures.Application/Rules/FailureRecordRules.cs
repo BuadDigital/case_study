@@ -24,7 +24,7 @@ public static class FailureRecordRules
     /// <summary>A bourse obstruction is only filed with a reason.</summary>
     public static Dictionary<string, string>? ValidateBourseObstruction(BourseObstructionRequest request) =>
         string.IsNullOrWhiteSpace(request.Reason)
-            ? new Dictionary<string, string> { ["reason"] = "سبب التعذر مطلوب" }
+            ? new Dictionary<string, string> { ["reason"] = "سبب التعذّر مطلوب" }
             : null;
 
     /// <summary>The shortest reason (trimmed) a survey-freeze lift is recorded with.</summary>
@@ -39,9 +39,9 @@ public static class FailureRecordRules
         if (string.IsNullOrWhiteSpace(request.PoNumber))
             errors["poNumber"] = "رقم أمر العمل مطلوب";
         if (string.IsNullOrWhiteSpace(request.PropertyId))
-            errors["propertyId"] = "معرف العقار مطلوب";
+            errors["propertyId"] = "معرّف العقار مطلوب";
         else if (!FailureRules.TryParsePropertyId(request.PropertyId, out _))
-            errors["propertyId"] = "معرف العقار غير صالح";
+            errors["propertyId"] = "معرّف العقار غير صالح";
         if ((request.Reason ?? "").Trim().Length < MinSurveyFreezeLiftReasonLength)
             errors["reason"] = "اكتب سبب فك التجميد (10 أحرف على الأقل)";
         return errors;
@@ -57,7 +57,7 @@ public static class FailureRecordRules
         if (properties.Count == 0)
             return new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" };
         if (properties[0].IsRemoved)
-            return new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" };
+            return new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذّر على عقار محذوف" };
         return null;
     }
 

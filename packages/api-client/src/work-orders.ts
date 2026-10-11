@@ -1,6 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import {
   buildListQueryString,
@@ -15,14 +14,6 @@ export type WorkOrdersApiConfig = {
   token: string;
 };
 
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
-
 export type PropertyContactDto = {
   name: string;
   role: string;
@@ -30,7 +21,7 @@ export type PropertyContactDto = {
   nationalId?: string;
 };
 
-export type DeedOwnerDto = {
+type DeedOwnerDto = {
   name: string;
 };
 
@@ -103,6 +94,9 @@ export type WorkOrderPropertyDto = {
   deedOwnershipFileName?: string;
   bourseDeedImageFileName?: string;
   bourseDataCompleted?: boolean;
+  /** Read-only: who completed the bourse inquiry and when — the source note of what it answered. */
+  bourseCompletedByName?: string | null;
+  bourseCompletedAtUtc?: string | null;
   planNumber?: string;
   planName?: string;
   plotNumber?: string;
@@ -479,7 +473,7 @@ export async function getWorkOrderListCounts(
   });
   try {
     const res = await fetch(`${base}/api/work-orders/counts${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -496,7 +490,7 @@ export async function listWorkOrdersWithDetails(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/details`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -533,7 +527,7 @@ export async function listPropertyListItems(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/property-rows`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -550,7 +544,7 @@ export async function listPendingBourseProperties(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/properties/pending-bourse`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -569,7 +563,7 @@ export async function getWorkOrder(
   const encoded = encodeURIComponent(poNumber.trim());
   try {
     const res = await fetch(`${base}/api/work-orders/${encoded}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -591,7 +585,7 @@ export async function getPropertyTimeline(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${po}/properties/${prop}/timeline`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -611,7 +605,7 @@ export async function workOrderExists(
   try {
     const res = await fetch(
       `${base}/api/work-orders/exists?poNumber=${encodeURIComponent(poNumber.trim())}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -635,7 +629,7 @@ export async function findPriorDeed(
   }
   try {
     const res = await fetch(`${base}/api/work-orders/deeds/prior?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
@@ -668,7 +662,7 @@ export async function listPriorDeeds(
   try {
     const res = await fetch(
       `${base}/api/work-orders/deeds/prior/history?${params}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
@@ -693,7 +687,7 @@ export async function createWorkOrder(
   try {
     const res = await fetch(`${base}/api/work-orders`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify(payload),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -723,7 +717,7 @@ export async function updateWorkOrderHeader(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -751,7 +745,7 @@ export async function deleteWorkOrder(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}`,
-      { method: "DELETE", headers: headers(config.token) },
+      { method: "DELETE", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {
@@ -776,7 +770,7 @@ async function postWorkOrderLifecycleAction(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/${action}`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {
@@ -818,7 +812,7 @@ export async function addWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -852,7 +846,7 @@ export async function updateWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}${draftQs}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(property),
       },
     );
@@ -884,7 +878,7 @@ export async function updateSpecialistReportExtras(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/specialist-report-extras`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -950,7 +944,7 @@ export async function getWorkOrderFieldSources(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/field-sources`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -983,7 +977,7 @@ export async function notifyIntakeFieldGap(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/notify-intake-gap`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -1026,7 +1020,7 @@ export async function completePropertyBourseData(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/bourse`,
       {
         method: "PUT",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(body),
       },
     );
@@ -1058,7 +1052,7 @@ export async function deleteWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ reason }),
       },
     );
@@ -1169,7 +1163,7 @@ export async function getTransactionState(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -1195,7 +1189,7 @@ export async function recordEnfazHandover(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return transactionStateFailure(res);
@@ -1227,7 +1221,7 @@ export async function returnFromEnfaz(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-return`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(request),
       },
     );

@@ -13,7 +13,14 @@ import {
 import { dashLine } from "../../lib/dashboard-tw";
 import { cn, opsDashCard } from "@platform/ui-kit";
 
-export function DashDueSoonOrders({ orders }: { orders: PoRow[] }) {
+export function DashDueSoonOrders({
+  orders,
+  failed = false,
+}: {
+  orders: PoRow[];
+  /** Load failed — say so instead of «لا توجد أوامر». */
+  failed?: boolean;
+}) {
   const router = useRouter();
   const today = startOfLocalDay();
   const dueSoon = [...orders]
@@ -35,7 +42,11 @@ export function DashDueSoonOrders({ orders }: { orders: PoRow[] }) {
           أوامر العمل
         </Link>
       </div>
-      {dueSoon.length === 0 ? (
+      {failed ? (
+        <div role="alert" className="py-2 text-[12.5px] font-bold text-danger-text">
+          تعذّر تحميل أوامر العمل.
+        </div>
+      ) : dueSoon.length === 0 ? (
         <div className="py-2 text-[12.5px] text-text-3">
           لا توجد أوامر قريبة من المهلة.
         </div>

@@ -1,5 +1,4 @@
 using RealEstateEval.Valuation.Application.Services;
-using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -92,29 +91,4 @@ public class ReportLinkTokenTests
     [Fact]
     public void Oversized_token_is_rejected_before_parsing() =>
         Assert.Null(ReportLinkToken.Verify([Secret], new string('a', 300), "a.pdf", Now));
-}
-
-public class ValuationReportPdfRulesTests
-{
-    [Theory]
-    [InlineData("051421", "VR-1", "051421.pdf")]
-    [InlineData("051421,617499,660002182618", "VR-1", "051421,617499,660002182618.pdf")]
-    [InlineData("  VR-453 / 2026  ", "VR-1", "VR-453-2026.pdf")]
-    [InlineData("تقرير ٤٥٣", "VR-7", "VR-7.pdf")]
-    [InlineData("", "VR-7", "VR-7.pdf")]
-    [InlineData(null, null, "valuation-report.pdf")]
-    [InlineData("../../etc/passwd", "x", "etc-passwd.pdf")]
-    public void File_name_is_url_safe_ascii_from_report_number(
-        string? reportNumber,
-        string? displayId,
-        string expected) =>
-        Assert.Equal(expected, ValuationReportPdfRules.BuildFileName(reportNumber, displayId));
-
-    [Fact]
-    public void File_name_is_capped()
-    {
-        var name = ValuationReportPdfRules.BuildFileName(new string('9', 500), "x");
-        Assert.EndsWith(".pdf", name);
-        Assert.True(name.Length <= 100, name.Length.ToString());
-    }
 }

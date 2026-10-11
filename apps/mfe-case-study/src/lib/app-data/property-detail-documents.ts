@@ -58,7 +58,7 @@ export function inspectorFeaturePhotoLabel(key: string): string {
   return key.trim() || "حقل";
 }
 
-export function inspectorComponentPhotoLabel(key: string): string {
+function inspectorComponentPhotoLabel(key: string): string {
   const known = COMPONENT_PHOTO_LABEL_BY_KEY[key]?.trim();
   if (known) return known;
   return key.trim() || "صورة مكوّن";
@@ -271,7 +271,7 @@ export function collectIntakeDocuments(input: {
     pushEntry(docs, {
       id: `intake-other-${i}`,
       documentTypeKey: "unlisted",
-      name: "مستند إضافي",
+      name: "مستند غير معرّف",
       fileName: trimmed,
       source,
       kind: fileKind(trimmed, cached?.mimeType),
@@ -301,7 +301,7 @@ function mapEngineeringDoc(
   };
 }
 
-export function collectEngineeringDocuments(
+function collectEngineeringDocuments(
   surveyTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!surveyTaskId) return [];
@@ -310,7 +310,7 @@ export function collectEngineeringDocuments(
   );
 }
 
-export function collectAppraisalDocuments(
+function collectAppraisalDocuments(
   appraisalTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!appraisalTaskId) return [];
@@ -333,7 +333,7 @@ export function collectAppraisalDocuments(
   return docs;
 }
 
-export function collectFieldInspectionDocuments(
+function collectFieldInspectionDocuments(
   inspectionTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!inspectionTaskId) return [];
@@ -481,7 +481,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
 }
 
 /** Display order for property documents — one section per upload source. */
-export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
+const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   id: string;
   title: string;
 }[] = [
@@ -491,7 +491,7 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   { id: "inspection", title: "المعاين الميداني" },
 ];
 
-export const GOVERNED_DOCUMENTS_SECTION = {
+const GOVERNED_DOCUMENTS_SECTION = {
   id: "governed",
   title: "مستندات العقار",
 } as const;

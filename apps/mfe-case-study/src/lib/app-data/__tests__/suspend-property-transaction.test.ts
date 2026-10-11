@@ -68,7 +68,7 @@ describe("suspendPropertyTransaction", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("تم تعليق التعذر");
+      expect(result.error).toContain("تم تعليق التعذّر");
     }
     expect(notifySuspendedTransactionsChanged).not.toHaveBeenCalled();
   });

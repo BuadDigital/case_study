@@ -11,10 +11,9 @@ import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useIdempotentAction } from "@platform/app-shared";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
-import {
-  boundariesMarkedUnavailable,
-  formatPropertyDeedDisplay,
-} from "../../lib/app-data/po-intake-data";
+import { useInspectorWorkspaceLoad } from "./useInspectorWorkspaceLoad";
+import { inspectorKeySubmitGate } from "../../lib/app-data/inspector-key-gate";
+import { boundariesMarkedUnavailable } from "../../lib/app-data/po-intake-data";
 import {
   declarationPhoneGate,
   hasAnyPartyPhone,
@@ -24,20 +23,25 @@ import { useFacadeOptions } from "../../query/use-facade-options";
 import { type InspectorStepId } from "./InspectorStepNav";
 import { useInspectorSaveState } from "./InspectorSaveChip";
 import {
-  ensureInspectorOriginalMapOnSubmit,
   isInspectorWorkspaceLocked,
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { flushInspectorInventorySave } from "./inspector-inventory-flush";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
-import { mergeInspectorWorkspacePatch, setCache } from "../../lib/app-data/inspector-workspace-model";
+import { sendInspectorSubmission } from "./inspector-submit-send";
+import {
+  inspectorPatchKeys,
+  mergeInspectorWorkspacePatch,
+  resolveInspectorWorkspacePatch,
+  setCache,
+  type InspectorWorkspacePatchInput,
+} from "../../lib/app-data/inspector-workspace-model";
 import {
   OFFLINE_ATTACHMENT_MAP_EVENT,
   rewriteLocalAttachmentIds,
 } from "@platform/offline-client";
 import {
-  getOrCreateInspectorWorkspace,
   saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
 } from "../../lib/app-data/inspector-workspace-commands";
@@ -84,6 +88,10 @@ export function useFieldInspectionWorkflow({
   });
 
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
+  const draftRef = useRef<InspectorWorkspaceDraft | null>(null);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
   const [fieldErrors, setFieldErrors] = useState<InspectorWorkspaceFieldErrors>(
     {},
   );
@@ -104,34 +112,14 @@ export function useFieldInspectionWorkflow({
   mapPinnedRef.current = mapPinned;
   const sessionPinMigratedRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!propertyId) return;
-    let cancelled = false;
-    void getOrCreateInspectorWorkspace({
-      taskId: task.id,
-      propertyId,
-      poNumber: task.poNumber,
-      propertyDisplayId:
-        property != null
-          ? formatPropertyDeedDisplay(property)
-          : `خانة ${task.propertyOrdinal}`,
-      property: property ?? null,
-    }).then(
-      (next) => {
-        if (!cancelled && next) setDraft(next);
-      },
-      (err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : "تعذّر تحميل مسودة المعاينة";
-        showToast(message, "error");
-        setFormError(message);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [task.id, task.poNumber, task.propertyOrdinal, propertyId, property, showToast]);
+  const onLoadError = useCallback(
+    (message: string) => {
+      showToast(message, "error");
+      setFormError(message);
+    },
+    [showToast, setFormError],
+  );
+  useInspectorWorkspaceLoad({ task, propertyId, property, setDraft, onError: onLoadError });
 
   useEffect(() => {
     const onMap = (event: Event) => {
@@ -180,20 +168,23 @@ export function useFieldInspectionWorkflow({
   );
 
   const persist = useCallback(
-    (patch: Parameters<typeof updateInspectorWorkspace>[1]) => {
+    (input: InspectorWorkspacePatchInput) => {
       if (!task.id || workLocked) return;
       setFieldErrors({});
       setFormError(null);
       // Design: each step-1 section shows its own مسودة/محفوظ chip.
-      for (const key of Object.keys(patch)) {
+      for (const key of inspectorPatchKeys(draftRef.current, input)) {
         const section = SAVE_CHIP_SECTION_BY_FIELD[key];
         if (section) markDirty(section);
       }
-      // Update controlled inputs immediately — network save is debounced.
+      // Update controlled inputs immediately — network save is debounced. Built from the latest draft, so two
+      // photo uploads that finish close together both survive.
       setDraft((prev) =>
-        prev ? mergeInspectorWorkspacePatch(prev, patch) : prev,
+        prev
+          ? mergeInspectorWorkspacePatch(prev, resolveInspectorWorkspacePatch(prev, input))
+          : prev,
       );
-      void updateInspectorWorkspace(task.id, patch)
+      void updateInspectorWorkspace(task.id, input)
         .then((next) => {
           if (!next) return;
           setDraft((prev) => newerInspectorDraft(prev, next));
@@ -205,7 +196,7 @@ export function useFieldInspectionWorkflow({
           );
         });
     },
-    [task.id, workLocked, showToast, markDirty],
+    [task.id, workLocked, showToast, markDirty, setDraft, setFieldErrors, setFormError],
   );
 
   // One-time migrate: old builds only stored pin in sessionStorage.
@@ -262,7 +253,7 @@ export function useFieldInspectionWorkflow({
       });
       return "pending";
     },
-    [draft, persist],
+    [draft, persist, setPendingMapMove],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -270,7 +261,7 @@ export function useFieldInspectionWorkflow({
     hostRef.current?.onSavingChange?.(true);
     try {
       const next = await saveInspectorWorkspaceDraft(draft);
-      setDraft(next);
+      setDraft((prev) => newerInspectorDraft(prev, next));
       setFormError(null);
       showToast("تم حفظ مسودة المعاينة.", "success");
       return true;
@@ -283,7 +274,7 @@ export function useFieldInspectionWorkflow({
     } finally {
       hostRef.current?.onSavingChange?.(false);
     }
-  }, [draft, locked, hostRef, showToast]);
+  }, [draft, locked, hostRef, showToast, setDraft, setFormError]);
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
@@ -297,6 +288,13 @@ export function useFieldInspectionWorkflow({
     if (draft.clientDeclarationSigned && !phoneGate.ready) {
       setFormError(phoneGate.reason);
       showToast(phoneGate.reason, "error");
+      return false;
+    }
+    // The key status is sent with the inspection — never a guessed «no key» while it is unknown.
+    const keyGate = inspectorKeySubmitGate(keyAvailability);
+    if (!keyGate.ok) {
+      setFormError(keyGate.reason);
+      showToast(keyGate.reason, "error");
       return false;
     }
 
@@ -321,52 +319,21 @@ export function useFieldInspectionWorkflow({
       return false;
     }
 
-    hostRef.current?.onSavingChange?.(true);
-    setFormError(null);
-    try {
-      const toSave = ensureInspectorOriginalMapOnSubmit(draft);
-      const saved = await saveInspectorWorkspaceDraft(toSave);
-      setDraft(saved);
-      const patched = await updateInspectorWorkspace(task.id, {
-        vacantLand: draft.vacantLand,
-        keyAvailable: keyAvailability.keyAvailable,
-        clientDeclarationSigned: draft.clientDeclarationSigned,
-        declarationPhoneSatisfied:
-          draft.declarationPhoneSatisfied ||
-          (draft.clientDeclarationSigned && hasPhone),
-      });
-      if (patched) setDraft(patched);
-      const outcome = await executeInspectorSubmit();
-
-      if (outcome.status === "skipped") return false;
-
-      const result = outcome.value;
-      if (result.ok) {
-        setDraft(result.draft);
-        showToast("تم حفظ بيانات المعاينة وإرسالها.", "success");
-        if (!result.queued) hostRef.current?.onSubmitted?.();
-        return true;
-      }
-
-      if (result.errors) {
-        const nextErrors = result.errors as InspectorWorkspaceFieldErrors;
-        setFieldErrors(nextErrors);
-        const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
-        if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
-        scheduleInspectorErrorScroll(nextErrors);
-      }
-      setFormError(result.message);
-      showToast(result.message, "error");
-      return false;
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "تعذّر حفظ المعاينة قبل الإرسال";
-      setFormError(message);
-      showToast(message, "error");
-      return false;
-    } finally {
-      hostRef.current?.onSavingChange?.(false);
-    }
+    // Everything the form can check itself has passed — a host with a sending dialog opens it now.
+    hostRef.current?.onSubmitStarted?.();
+    return sendInspectorSubmission({
+      draft,
+      taskId: task.id,
+      keyAvailable: keyGate.keyAvailable,
+      hasPhone,
+      execute: executeInspectorSubmit,
+      hostRef,
+      setDraft,
+      setFieldErrors,
+      setFormError,
+      setActiveStep,
+      showToast,
+    });
   }, [
     draft,
     locked,
@@ -375,9 +342,13 @@ export function useFieldInspectionWorkflow({
     showToast,
     role,
     property,
-    keyAvailability.keyAvailable,
+    keyAvailability,
     boundariesUnavailable,
     executeInspectorSubmit,
+    setDraft,
+    setFieldErrors,
+    setFormError,
+    setActiveStep,
   ]);
 
   useEffect(() => {
@@ -416,7 +387,7 @@ export function useFieldInspectionWorkflow({
   const scrollToErrorTarget = useCallback((targetId: string) => {
     setActiveStep(inspectorWizardStepForErrorTarget(targetId));
     scheduleScrollToFormField(targetId, 80);
-  }, []);
+  }, [setActiveStep]);
 
   const errorLinks = inspectorErrorLinks(fieldErrors);
 

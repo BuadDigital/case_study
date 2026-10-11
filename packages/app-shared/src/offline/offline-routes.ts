@@ -7,7 +7,7 @@ import { pageIdFromPathname } from "../app-data/page-access";
  * the inspection queue and form, the operations tasks and the keys/envelopes forms.
  * The service worker keeps exactly these pages (`OFFLINE_PAGE_PREFIXES` in sw.js).
  */
-export const OFFLINE_FORM_PAGE_IDS: readonly PageId[] = [
+const OFFLINE_FORM_PAGE_IDS: readonly PageId[] = [
   "active-inspection",
   "operations-tasks",
   "keys",

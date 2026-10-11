@@ -13,7 +13,7 @@ export const FAILURES_PAGE_SIZE = 10;
  * Every persisted status except `suspended`: suspended failures live on the
  * suspended-transactions screen, so the queue never listed them.
  */
-export const FAILURES_LISTED_STATUSES: readonly string[] = [
+const FAILURES_LISTED_STATUSES: readonly string[] = [
   "internal",
   "review",
   "approved",
@@ -69,7 +69,7 @@ export function failuresServerPagination(input: {
 }
 
 /** The local search the queue ran before the server took `q` — kept for the party window. */
-export function matchesFailureSearch(f: FailureRecord, search: string): boolean {
+function matchesFailureSearch(f: FailureRecord, search: string): boolean {
   const q = search.trim().toLowerCase();
   if (!q) return true;
   const hay = [

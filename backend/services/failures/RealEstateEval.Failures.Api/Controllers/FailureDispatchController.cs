@@ -83,7 +83,7 @@ public sealed class FailureDispatchController(
             request.Note,
             request.Specialist,
             cancellationToken);
-        return dto is null ? this.BadRequestProblem("لا يمكن إنشاء التعذر الداخلي") : Ok(dto);
+        return dto is null ? this.BadRequestProblem("لا يمكن إنشاء التعذّر الداخلي") : Ok(dto);
     }
 
     [HttpPost("{id:guid}/resolve")]
@@ -97,7 +97,7 @@ public sealed class FailureDispatchController(
             request,
             actorUserId: null,
             cancellationToken);
-        return dto is null ? this.BadRequestProblem("لا يمكن حل هذا التعذر") : Ok(dto);
+        return dto is null ? this.BadRequestProblem("لا يمكن حل هذا التعذّر") : Ok(dto);
     }
 
     [HttpPost("eviction-hold")]

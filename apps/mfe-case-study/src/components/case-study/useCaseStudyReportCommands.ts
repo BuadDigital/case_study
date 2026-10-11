@@ -305,5 +305,3 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     reopenReport,
   };
 }
-
-export type CaseStudyReportCommands = ReturnType<typeof useCaseStudyReportCommands>;

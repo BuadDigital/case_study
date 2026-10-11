@@ -1,8 +1,7 @@
 /**
  * Party billing statements (payroll sheet / payment order) — vendor invoice match + individual pay.
  */
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import {
   fetchListPage,
   type ListPageQuery,
@@ -105,20 +104,6 @@ export type CreatePartyBillingStatementResponseDto = {
   error?: string | null;
 };
 
-/** @deprecated Use CreatePartyBillingStatementResponseDto */
-export type CreatePartyBillingStatementResult = CreatePartyBillingStatementResponseDto;
-
-export type CreateMonthPartyBillingStatementsResponseDto = {
-  created: PartyBillingStatementDto[];
-  assigneesCovered: number;
-  linesIncluded: number;
-  error?: string | null;
-};
-
-/** @deprecated Use CreateMonthPartyBillingStatementsResponseDto */
-export type CreateMonthPartyBillingStatementsResult =
-  CreateMonthPartyBillingStatementsResponseDto;
-
 export type ClosePartyBillingStatementRequest = {
   disbursementVoucher: string;
   transferReference: string;
@@ -142,26 +127,6 @@ export type RejectVendorInvoiceRequest = {
 export type CancelPartyBillingStatementRequest = {
   reason: string;
 };
-
-export type DeferPartyBillingLinesRequest = {
-  workflowTaskIds: string[];
-};
-
-export type DeferPartyBillingLinesResponseDto = {
-  deferred: PartyBillingReadyLineDto[];
-  failed: { workflowTaskId: string; error: string }[];
-};
-
-/** @deprecated Use DeferPartyBillingLinesResponseDto */
-export type DeferPartyBillingLinesResult = DeferPartyBillingLinesResponseDto;
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 function asRecord(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -334,7 +299,7 @@ export async function listPartyBillingReadyLines(
       ? `?assigneeId=${encodeURIComponent(assigneeId)}`
       : "";
     const res = await fetch(`${base}/api/party-billing-statements/ready-lines${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (!res.ok) return httpErr(res);
     const raw = (await res.json()) as unknown[];
@@ -359,7 +324,7 @@ export async function listPartyBillingStatements(
   try {
     const res = await fetch(
       `${base}/api/party-billing-statements${queryString(query)}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (!res.ok) return httpErr(res);
     const raw = (await res.json()) as unknown[];
@@ -477,7 +442,7 @@ export async function getPartyBillingStatement(
   try {
     const res = await fetch(
       `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (!res.ok) return httpErr(res);
     return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
@@ -494,7 +459,7 @@ export async function createPartyBillingStatement(
   try {
     const res = await fetch(`${base}/api/party-billing-statements`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     const raw = asRecord(await res.json().catch(() => ({})));
@@ -521,40 +486,6 @@ export async function createPartyBillingStatement(
   }
 }
 
-export async function createMonthVendorStatements(
-  config: PartyBillingStatementsApiConfig,
-): Promise<ApiOk<CreateMonthPartyBillingStatementsResponseDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/party-billing-statements/auto-month-vendor`,
-      { method: "POST", headers: headers(config.token) },
-    );
-    const raw = asRecord(await res.json().catch(() => ({})));
-    if (!res.ok) {
-      return httpErr(
-        res,
-        String(raw.error ?? raw.Error ?? `HTTP ${res.status}`),
-      );
-    }
-    return {
-      ok: true,
-      data: {
-        created: ((raw.created ?? raw.Created ?? []) as unknown[]).map((r) =>
-          normalizeStatement(asRecord(r)),
-        ),
-        assigneesCovered: Number(
-          raw.assigneesCovered ?? raw.AssigneesCovered ?? 0,
-        ),
-        linesIncluded: Number(raw.linesIncluded ?? raw.LinesIncluded ?? 0),
-        error: (raw.error ?? raw.Error ?? null) as string | null,
-      },
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 async function postStatementAction(
   config: PartyBillingStatementsApiConfig,
   statementId: string,
@@ -568,7 +499,7 @@ async function postStatementAction(
       `${base}/api/party-billing-statements/${encodeURIComponent(statementId)}/${action}`,
       {
         method: "POST",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: body === undefined ? undefined : JSON.stringify(body),
       },
     );
@@ -624,39 +555,4 @@ export async function closePartyBillingStatement(
   idempotencyKey?: string,
 ): Promise<ApiOk<PartyBillingStatementDto> | ApiErr> {
   return postStatementAction(config, statementId, "close", body, idempotencyKey);
-}
-
-export async function deferPartyBillingLines(
-  config: PartyBillingStatementsApiConfig,
-  body: DeferPartyBillingLinesRequest,
-): Promise<ApiOk<DeferPartyBillingLinesResponseDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/party-billing-statements/defer-lines`, {
-      method: "POST",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return httpErr(res);
-    const raw = asRecord(await res.json());
-    return {
-      ok: true,
-      data: {
-        deferred: ((raw.deferred ?? raw.Deferred ?? []) as unknown[]).map((r) =>
-          normalizeReadyLine(asRecord(r)),
-        ),
-        failed: ((raw.failed ?? raw.Failed ?? []) as unknown[]).map((f) => {
-          const row = asRecord(f);
-          return {
-            workflowTaskId: String(
-              row.workflowTaskId ?? row.WorkflowTaskId ?? "",
-            ),
-            error: String(row.error ?? row.Error ?? ""),
-          };
-        }),
-      },
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
 }

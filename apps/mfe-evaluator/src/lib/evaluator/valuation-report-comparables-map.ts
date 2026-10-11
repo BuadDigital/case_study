@@ -1,5 +1,6 @@
 /** Client-side map for §18 — subject + adopted comparables (Google Maps or SVG fallback). */
 
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { escHtml } from "./html-escape";
 
 export type ComparablesMapPin = {
@@ -14,16 +15,6 @@ export const LAND_COMPARABLES_MAP_HOST_ID = "ejada-land-comps-map-host";
 export const SATELLITE_MAP_HOST_ID = "ejada-satellite-map-host";
 export const CLOSEUP_MAP_HOST_ID = "ejada-closeup-map-host";
 
-function parseCoord(value: string | number | null | undefined): number | null {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  const t = (value ?? "").trim().replace(",", ".");
-  if (!t) return null;
-  const n = Number.parseFloat(t);
-  return Number.isFinite(n) ? n : null;
-}
-
 /** Subject property pin: inspector coords first, then optional city fallback. */
 export function resolveSubjectMapCoords(input: {
   subjectLat?: string | number | null;
@@ -32,12 +23,8 @@ export function resolveSubjectMapCoords(input: {
   fallbackLat?: number | null;
   fallbackLng?: number | null;
 }): { lat: number; lng: number } | null {
-  const lat = parseCoord(input.subjectLat);
-  const lng = parseCoord(input.subjectLng);
-
-  if (lat != null && lng != null && !(lat === 0 && lng === 0)) {
-    return { lat, lng };
-  }
+  const subject = parseLatLng(input.subjectLat, input.subjectLng);
+  if (subject) return subject;
 
   const fbLat = input.fallbackLat;
   const fbLng = input.fallbackLng;
@@ -80,12 +67,11 @@ export function collectComparablesMapPins(input: {
     });
   }
   (input.comps ?? []).forEach((c, i) => {
-    const lat = parseCoord(c.latitude);
-    const lng = parseCoord(c.longitude);
-    if (lat == null || lng == null || (lat === 0 && lng === 0)) return;
+    const pin = parseLatLng(c.latitude, c.longitude);
+    if (!pin) return;
     pins.push({
-      lat,
-      lng,
+      lat: pin.lat,
+      lng: pin.lng,
       label: (c.label ?? "").trim() || String(i + 1),
       kind: "comp",
     });
@@ -105,10 +91,10 @@ export function subjectOnlyMapPins(
     : [];
 }
 
-export type StaticMapType = "hybrid" | "satellite" | "roadmap" | "terrain";
+type StaticMapType = "hybrid" | "satellite" | "roadmap" | "terrain";
 
 /** Fixed view for single-subject maps (§33). Omit to let Static Maps fit all markers (§18). */
-export type StaticMapView = {
+type StaticMapView = {
   zoom?: number;
   centerLat?: number;
   centerLng?: number;
@@ -127,7 +113,7 @@ export const PRINT_MAP_SIZES = {
 } as const;
 
 /** §33 views mirror the on-screen Google map (ComparablesGoogleMap / fillLocationMapsSlots). */
-export const PRINT_MAP_VIEWS = {
+const PRINT_MAP_VIEWS = {
   satellite: { zoom: 15, maptype: "hybrid" as StaticMapType },
   closeup: { zoom: 18, maptype: "satellite" as StaticMapType },
 } as const;
@@ -177,7 +163,7 @@ function mapsApiKeyFromEnv(): string {
   return process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 }
 
-export type StaticMapOptions = {
+type StaticMapOptions = {
   apiKey?: string | null;
   maptype?: StaticMapType;
   size?: { w: number; h: number };
@@ -223,7 +209,7 @@ export function resolveComparablesMapImage(
 }
 
 /** Where the print map image came from. */
-export type MaterializedMapSource =
+type MaterializedMapSource =
   /** Static Maps fetched and embedded as a data URL (self-contained print HTML). */
   | "google-static"
   /** Static Maps reachable by <img> but not by fetch (CORS/offline fetch) — direct URL. */
@@ -232,9 +218,9 @@ export type MaterializedMapSource =
   | "svg";
 
 /** Why Static Maps could not be embedded: refused by Google / unreachable / not an image. */
-export type StaticMapFailureKind = "denied" | "network" | "invalid";
+type StaticMapFailureKind = "denied" | "network" | "invalid";
 
-export type MaterializedMapImage = {
+type MaterializedMapImage = {
   url: string;
   contentType: string;
   fileName: string;
@@ -253,7 +239,7 @@ type StaticMapFetchResult =
  * Print runs these fetches before the print tab opens; the click's transient user
  * activation lasts ~5 s, so a black-holed Google must fail fast, not hang.
  */
-export const STATIC_MAP_FETCH_TIMEOUT_MS = 4000;
+const STATIC_MAP_FETCH_TIMEOUT_MS = 4000;
 
 function timeoutSignal(ms: number): AbortSignal | undefined {
   if (typeof AbortSignal === "undefined") return undefined;
@@ -319,7 +305,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /** `<img>` does not need CORS — used when fetch() is blocked but the API itself works. */
-export function probeImageLoads(url: string, timeoutMs = 1500): Promise<boolean> {
+function probeImageLoads(url: string, timeoutMs = 1500): Promise<boolean> {
   if (typeof Image === "undefined") return Promise.resolve(false);
   return new Promise((resolve) => {
     let settled = false;
@@ -398,9 +384,9 @@ type PrintMapSlot = {
   isImage: boolean;
 };
 
-export const GENERATED_COMPS_MAP_ID = "generated-comps-map";
-export const GENERATED_SATELLITE_MAP_ID = "generated-satellite-map";
-export const GENERATED_CLOSEUP_MAP_ID = "generated-closeup-map";
+const GENERATED_COMPS_MAP_ID = "generated-comps-map";
+const GENERATED_SATELLITE_MAP_ID = "generated-satellite-map";
+const GENERATED_CLOSEUP_MAP_ID = "generated-closeup-map";
 
 function isGeneratedMapSlot(slot: PrintMapSlot | null | undefined): boolean {
   const id = slot?.attachmentId ?? "";
@@ -413,7 +399,7 @@ function isGeneratedMapSlot(slot: PrintMapSlot | null | undefined): boolean {
 }
 
 /** Google Static Maps availability observed while preparing the print copy. */
-export type PrintMapsDiagnostics = {
+type PrintMapsDiagnostics = {
   /** True when at least one Google map image was produced (data URL or direct URL). */
   googleAvailable: boolean;
   /** False when no API key is configured at all (nothing was attempted). */
@@ -687,83 +673,4 @@ export function buildComparablesMapSvgDataUrl(
     `</svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
-/**
- * Self-contained Google Maps bootstrap for standalone report HTML
- * (print tab / blob). Hosts must already exist with data-pins / data-lat.
- */
-export function buildGoogleMapsHtmlBootstrap(apiKey: string): string {
-  const key = apiKey.trim();
-  if (!key) return "";
-  return `<script>
-(function(){
-  var KEY=${JSON.stringify(key)};
-  function mount(g){
-    var hosts=[].slice.call(document.querySelectorAll("[data-ejada-gmap]"));
-    hosts.forEach(function(el){
-      var target=el.querySelector(".ejada-gmap-mount")||el;
-      var pins=[];
-      try{pins=JSON.parse(el.getAttribute("data-pins")||"[]");}catch(e){}
-      if(!pins.length) return;
-      var lat=Number(el.getAttribute("data-lat"));
-      var lng=Number(el.getAttribute("data-lng"));
-      var subject=pins.find(function(p){return p.kind==="subject";})||pins[0];
-      var center={
-        lat:isFinite(lat)?lat:Number(subject.lat),
-        lng:isFinite(lng)?lng:Number(subject.lng)
-      };
-      if(!isFinite(center.lat)||!isFinite(center.lng)) return;
-      var zoomAttr=el.getAttribute("data-zoom");
-      var zoom=zoomAttr!=null&&zoomAttr!==""?Number(zoomAttr):null;
-      var mapType=el.getAttribute("data-map-type")||"hybrid";
-      var typeId=mapType==="satellite"?g.maps.MapTypeId.SATELLITE:
-        mapType==="roadmap"?g.maps.MapTypeId.ROADMAP:
-        mapType==="terrain"?g.maps.MapTypeId.TERRAIN:g.maps.MapTypeId.HYBRID;
-      var bounds=new g.maps.LatLngBounds();
-      pins.forEach(function(p){bounds.extend({lat:Number(p.lat),lng:Number(p.lng)});});
-      var map=new g.maps.Map(target,{
-        center:center,
-        zoom:(zoom!=null&&isFinite(zoom))?zoom:(pins.length===1?16:14),
-        mapTypeId:typeId,
-        mapTypeControl:true,
-        streetViewControl:false,
-        fullscreenControl:true,
-        zoomControl:true,
-        gestureHandling:"cooperative"
-      });
-      if(zoom==null&&pins.length>1) map.fitBounds(bounds,48);
-      else { map.setCenter(center); if(zoom!=null) map.setZoom(zoom); }
-      pins.forEach(function(p){
-        var isSubject=p.kind==="subject";
-        new g.maps.Marker({
-          map:map,
-          position:{lat:Number(p.lat),lng:Number(p.lng)},
-          title:p.label||"",
-          label:isSubject?undefined:{text:String(p.label||"").slice(0,2),color:"#fff",fontWeight:"700",fontSize:"11px"},
-          icon:isSubject?{
-            path:g.maps.SymbolPath.CIRCLE,scale:10,fillColor:"#12284C",fillOpacity:1,strokeColor:"#fff",strokeWeight:2
-          }:{
-            path:g.maps.SymbolPath.CIRCLE,scale:9,fillColor:"#C8B591",fillOpacity:1,strokeColor:"#12284C",strokeWeight:1.5
-          },
-          zIndex:isSubject?1000:100
-        });
-      });
-      setTimeout(function(){
-        g.maps.event.trigger(map,"resize");
-        map.setCenter(center);
-      },50);
-    });
-  }
-  window.__ejadaReportMapsInit=function(){
-    if(window.google&&window.google.maps) mount(window.google);
-  };
-  if(window.google&&window.google.maps){mount(window.google);return;}
-  var s=document.createElement("script");
-  s.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(KEY)+"&loading=async&callback=__ejadaReportMapsInit";
-  s.async=true;
-  s.defer=true;
-  document.head.appendChild(s);
-})();
-</script>`;
 }

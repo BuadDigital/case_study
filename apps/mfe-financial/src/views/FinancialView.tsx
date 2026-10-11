@@ -14,7 +14,7 @@ export function FinancialView() {
         {isError ? (
           <EmptyState
             panel
-            line="تعذر تحميل التقارير المالية."
+            line="تعذّر تحميل التقارير المالية."
             hint="تحقق من أن خادم المالية يعمل ثم أعد المحاولة."
           />
         ) : (

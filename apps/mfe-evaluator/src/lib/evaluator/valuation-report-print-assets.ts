@@ -4,7 +4,7 @@
  * a data URL, and the <base> that resolved them is dropped.
  */
 
-export type InlinePrintAssetsOptions = {
+type InlinePrintAssetsOptions = {
   /** Resolves relative URLs; defaults to the document's <base href> or the page origin. */
   baseHref?: string;
   /** Bearer token for same-API resources such as `/api/attachments/{id}`. */

@@ -24,7 +24,7 @@ import {
   type OutboxKind,
 } from "./types";
 
-export type AttachmentUploadFn = (input: {
+type AttachmentUploadFn = (input: {
   scope: string;
   scopeKey: string;
   fileName: string;
@@ -34,17 +34,17 @@ export type AttachmentUploadFn = (input: {
   extras?: Record<string, unknown>;
 }) => Promise<{ ok: true; attachmentId: string } | { ok: false; error: string; terminal?: boolean }>;
 
-export type SubmissionSaveFn = (input: {
+type SubmissionSaveFn = (input: {
   taskId: string;
   payloadJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type SubmissionSubmitFn = (input: {
+type SubmissionSubmitFn = (input: {
   taskId: string;
   idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type KeyEnvelopeCreateFn = (input: {
+type KeyEnvelopeCreateFn = (input: {
   bodyJson: string;
   idempotencyKey?: string;
 }) => Promise<
@@ -52,28 +52,28 @@ export type KeyEnvelopeCreateFn = (input: {
   | { ok: false; error: string; terminal?: boolean }
 >;
 
-export type KeyEnvelopeMutationFn = (input: {
+type KeyEnvelopeMutationFn = (input: {
   envelopeId: string;
   payloadJson: string;
   idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type OperationsTaskPatchFn = (input: {
+type OperationsTaskPatchFn = (input: {
   taskId: string;
   bodyJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type OperationsTaskCommentFn = (input: {
+type OperationsTaskCommentFn = (input: {
   taskId: string;
   payloadJson: string;
   idempotencyKey?: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type PropertyCourtAccessFn = (input: {
+type PropertyCourtAccessFn = (input: {
   bodyJson: string;
 }) => Promise<{ ok: true } | { ok: false; error: string; terminal?: boolean }>;
 
-export type BuildingInventorySaveFn = (input: {
+type BuildingInventorySaveFn = (input: {
   poNumber: string;
   propertyId: string;
   bodyJson: string;

@@ -25,16 +25,19 @@ public sealed partial class AttachmentService : IAttachmentService
     private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
     private readonly TimeProvider _time;
+    private readonly IPropertyTimelineRecorder? _timeline;
 
     public AttachmentService(
         AttachmentsDbContext db,
         IBlobStorage blobs,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IPropertyTimelineRecorder? timeline = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _blobs = blobs;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
@@ -199,6 +202,14 @@ public sealed partial class AttachmentService : IAttachmentService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        if (row.ValueDocStatus == ValueDocumentStatuses.Pending)
+        {
+            await RecordTimelineAsync(
+                ValuedDocumentTimelineRules.Uploaded(
+                    row.ScopeKey, row.Id, ValuedDocumentName(row), row.CreatedAtUtc),
+                cancellationToken);
+        }
+
         return (ToMeta(row), null);
     }
 

@@ -15,9 +15,7 @@ import {
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import type { CaseStudyReportDraft } from "./case-study-report-model";
 import {
-  loadCaseStudyReportDraft,
   loadCaseStudyReportDraftsForParents,
-  loadPartyCaseStudyReportDraft,
   type CaseStudyReportDraftsForParent,
 } from "./case-study-report-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
@@ -38,7 +36,7 @@ const CHILD_KIND_PARTY: Partial<
   "engineering-survey": "eng",
 };
 
-export type PartyCaseStudyProgress = {
+type PartyCaseStudyProgress = {
   partyId: CaseStudyInfoPartyId;
   name: string;
   color: string;
@@ -47,13 +45,13 @@ export type PartyCaseStudyProgress = {
   pct: number;
 };
 
-export type ComputePartyCaseStudyProgressOptions = {
+type ComputePartyCaseStudyProgressOptions = {
   /** Count the specialist's official answer when a party has not answered. */
   includeSpecialistAnswers?: boolean;
 };
 
 /** RTL row: first → right (specialist), last → left (engineering office). */
-export const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
+const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
   "specA",
   "insp",
   "val",
@@ -61,7 +59,7 @@ export const PARTY_PROGRESS_DISPLAY_ORDER: CaseStudyInfoPartyId[] = [
   "sup",
 ];
 
-export function sortPartyCaseStudyProgress(
+function sortPartyCaseStudyProgress(
   rows: PartyCaseStudyProgress[],
 ): PartyCaseStudyProgress[] {
   const order = new Map(
@@ -132,7 +130,7 @@ export function computePartyCaseStudyProgress(
   return sortPartyCaseStudyProgress(rows);
 }
 
-export type PartyCaseStudyAnswersByParty = Partial<
+type PartyCaseStudyAnswersByParty = Partial<
   Record<
     CaseStudyInfoPartyId,
     Record<string, CaseStudyReportAnswer | null | undefined>
@@ -173,28 +171,6 @@ function foldPartyAnswers(
   }
 
   return byParty;
-}
-
-/** Single-parent read: `1 + N` requests. Prefer the batch variants for lists. */
-export async function loadPartyCaseStudyAnswersByParty(
-  parentTask: WorkflowTask,
-  tasks: WorkflowTask[],
-): Promise<PartyCaseStudyAnswersByParty> {
-  const children = partyChildrenOf(parentTask, tasks);
-  const [parentDraft, ...childDrafts] = await Promise.all([
-    loadCaseStudyReportDraft(parentTask.id),
-    ...children.map(({ child, partyId }) =>
-      partyId && partyId !== "specA"
-        ? loadPartyCaseStudyReportDraft(child.id)
-        : null,
-    ),
-  ]);
-  const draftByChildId = new Map(
-    children.map(({ child }, index) => [child.id, childDrafts[index]]),
-  );
-  return foldPartyAnswers(parentDraft, children, (child) =>
-    draftByChildId.get(child.id),
-  );
 }
 
 /**

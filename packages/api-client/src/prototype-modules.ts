@@ -1,5 +1,5 @@
-import { getApiBase } from "./api-base";
-import { mergeHeaderRecords, withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
+import { mergeHeaderRecords } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { parseJson } from "./parse-json";
@@ -18,18 +18,10 @@ export type PrototypeModulesResult<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
-
 
 // --- Field dictionary ---
 
-export type FieldDictionaryAssignmentDto = {
+type FieldDictionaryAssignmentDto = {
   role: string;
   screens: string[];
   mode: string;
@@ -63,7 +55,7 @@ export async function getFieldDictionary(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/field-dictionary`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -101,7 +93,7 @@ export async function getFailureTypesCatalog(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/failure-types-catalog`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -119,7 +111,7 @@ export async function saveFailureTypesCatalog(
   try {
     const res = await fetch(`${base}/api/failure-types-catalog`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -149,7 +141,7 @@ export async function listSurveyOffices(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/survey-offices`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -182,7 +174,7 @@ async function fetchValuationRequestList(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}${path}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -207,25 +199,6 @@ export async function listValuationRequestMapOverlay(
   return fetchValuationRequestList(config, "/api/valuation-requests/map-overlay");
 }
 
-export async function submitValuationReport(
-  config: PrototypeModulesApiConfig,
-  id: string,
-): Promise<PrototypeModulesResult<ValuationRequestDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/valuation-requests/${id}/submit-report`, {
-      method: "POST",
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationRequestDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function submitValuationImpediment(
   config: PrototypeModulesApiConfig,
   id: string,
@@ -235,7 +208,7 @@ export async function submitValuationImpediment(
   try {
     const res = await fetch(`${base}/api/valuation-requests/${id}/impediment`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({ reason }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -455,7 +428,7 @@ async function keyEnvelopeMutation(
     const res = await fetch(`${base}${path}`, {
       ...init,
       headers: mergeHeaderRecords(
-        headers(config.token, idempotencyKey),
+        authHeaders(config.token, { idempotencyKey }),
         init?.headers,
       ),
     });
@@ -488,7 +461,7 @@ export async function listKeyEnvelopes(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/key-envelopes`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -514,7 +487,7 @@ export async function deleteKeyEnvelope(
   try {
     const res = await fetch(`${base}/api/key-envelopes/${id}`, {
       method: "DELETE",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -535,7 +508,7 @@ export async function listKeyEnvelopeLinkedProperties(
   try {
     const res = await fetch(
       `${base}/api/key-envelopes/linked-properties?${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 400) {
@@ -559,7 +532,7 @@ export async function listKeyEnvelopeFeeReport(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/key-envelopes/fee-report`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -587,7 +560,7 @@ export async function getPropertyKeyGate(
   if (params.requestNumber) qs.set("requestNumber", params.requestNumber);
   try {
     const res = await fetch(`${base}/api/key-envelopes/gate?${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -608,7 +581,7 @@ export async function markKeyReceiptFeeCollected(
       `${base}/api/key-envelopes/${envelopeId}/fee-collected`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body ?? {}),
       },
     );
@@ -645,7 +618,7 @@ export async function listPropertyCourtAccess(
     : "";
   try {
     const res = await fetch(`${base}/api/key-envelopes/court-access${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -737,7 +710,7 @@ export async function upsertPropertyCourtAccess(
   try {
     const res = await fetch(`${base}/api/key-envelopes/court-access`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -831,7 +804,7 @@ async function sendAttachmentDocumentChange(
   try {
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -895,7 +868,7 @@ export async function listAttachments(
   const qs = new URLSearchParams({ scope, scopeKey });
   try {
     const res = await fetch(`${base}/api/attachments?${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -917,7 +890,7 @@ export async function listAttachmentsForProperty(
   const qs = new URLSearchParams({ propertyId: id });
   try {
     const res = await fetch(`${base}/api/attachments/for-property?${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -936,7 +909,7 @@ export async function uploadAttachment(
   try {
     const res = await fetch(`${base}/api/attachments`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -966,7 +939,7 @@ export async function getAttachmentMeta(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/attachments/${id}/meta`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "server" };
@@ -985,7 +958,7 @@ export async function deleteAttachment(
   try {
     const res = await fetch(`${base}/api/attachments/${id}`, {
       method: "DELETE",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -1018,7 +991,7 @@ export async function listSuspendedTransactions(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/suspended-transactions`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -1084,7 +1057,7 @@ export async function listEvaluatorRecallsApi(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/evaluator-recalls`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -1102,7 +1075,7 @@ export async function getEvaluatorRecallApi(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/evaluator-recalls/${taskId}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
@@ -1127,7 +1100,7 @@ export async function requestEvaluatorRecallApi(
   try {
     const res = await fetch(`${base}/api/evaluator-recalls`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -1163,7 +1136,7 @@ export async function decideEvaluatorRecallApi(
   try {
     const res = await fetch(`${base}/api/evaluator-recalls/${taskId}/decide`, {
       method: "PATCH",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({ decision, ...(note?.trim() ? { note: note.trim() } : {}) }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

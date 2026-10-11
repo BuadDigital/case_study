@@ -9,6 +9,7 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import {
   AUTO_AREA_KEY,
   SEQUENTIAL_SET,
@@ -42,16 +43,20 @@ export type ValuationWorkPropertyHint = {
   classification?: string | null;
 };
 
-export type ValuationWorkNavItem = {
+type ValuationWorkNavItem = {
   id: ValuationWorkScreenId;
   label: string;
   badge?: number;
   show: boolean;
 };
 
-/** Arabic decimal comma is accepted everywhere a number is typed. */
+/**
+ * Typed number → value via the shared locale rule ("1,250" → 1250, "12,5" → 12.5,
+ * Arabic digits, units). Blank stays 0 as callers have always relied on; junk is NaN.
+ */
 export function parseDecimal(raw: string | number): number {
-  return Number(String(raw).replace(",", "."));
+  if (typeof raw === "string" && raw.trim() === "") return 0;
+  return parseLocaleNumber(raw);
 }
 
 /** Official valuation date from saved settings — not from unsaved drafts. */
@@ -178,18 +183,4 @@ export function newAdjustmentLine(
     isIncluded: factorIncludedByDefault(factorKey),
     sortOrder,
   };
-}
-
-/** One-shot key so the far-comparable auto-unadopt does not loop on the same set. */
-export function farUnadoptSignature(
-  requestId: string,
-  farMarket: ValuationComparableSelectionDto[],
-  farLand: ValuationComparableSelectionDto[],
-): string {
-  const ids = (items: ValuationComparableSelectionDto[]) =>
-    items
-      .map((i) => i.comparablePropertyId)
-      .sort()
-      .join(",");
-  return `${requestId}:m${ids(farMarket)}:l${ids(farLand)}`;
 }

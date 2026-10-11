@@ -63,9 +63,7 @@ public class CaseStudyReportServiceCompositionTests
         services.AddCaseStudyPersistence(
             configuration,
             "Host=localhost;Database=ree_test;Username=test;Password=test");
-        services.AddMessagingPersistence(
-            configuration,
-            "Host=localhost;Database=ree_test;Username=test;Password=test");
+        services.AddMessagingPersistence(configuration);
         services.AddClaimsPermissionService();
         services.AddCaseStudyInfrastructure(configuration, new TestEnvironment());
 

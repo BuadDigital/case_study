@@ -102,7 +102,7 @@ public static class PlatformDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration);
     }
 
 }

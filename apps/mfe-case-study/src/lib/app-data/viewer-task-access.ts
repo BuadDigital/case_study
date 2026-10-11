@@ -18,7 +18,7 @@ const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([
   "system-upload",
 ]);
 
-export function isCaseStudyWorkflowOverseer(role: RoleId): boolean {
+function isCaseStudyWorkflowOverseer(role: RoleId): boolean {
   return role === "section-supervisor";
 }
 

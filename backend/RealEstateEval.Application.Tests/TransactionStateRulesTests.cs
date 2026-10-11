@@ -117,14 +117,6 @@ public class TransactionStateRulesTests
         Assert.Empty(result.Parties.Single(p => p.Key == Parties.Appraiser).WaitingOn);
     }
 
-    [Fact]
-    public void Post_enfaz_decision_accepts_the_prototype_role_not_the_jwt_editor_role()
-    {
-        Assert.True(AllowsPostEnfazDecision(StaffRoleIds.GeneralManager));
-        Assert.False(AllowsPostEnfazDecision("Editor"));
-        Assert.False(AllowsPostEnfazDecision("case-specialist"));
-        Assert.False(AllowsPostEnfazDecision(null));
-    }
 
     [Fact]
     public void Inspector_completion_releases_the_office_and_leaves_the_specialist_waiting_on_it_only()

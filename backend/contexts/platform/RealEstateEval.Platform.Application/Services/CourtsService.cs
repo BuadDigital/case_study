@@ -154,32 +154,6 @@ public sealed partial class CourtsService : ICourtsService
         return (ToDto(entity, entity.Circuits.Count), null);
     }
 
-    public async Task<(CourtDto? Court, string? Error)> SetCourtStatusAsync(
-        Guid id,
-        bool isActive,
-        string actorId,
-        CancellationToken cancellationToken = default)
-    {
-        var entity = await _repo.FindCourtWithCircuitsAsync(id, cancellationToken);
-        if (entity is null) return (null, "المحكمة غير موجودة");
-        if (entity.IsActive == isActive)
-            return (ToDto(entity, entity.Circuits.Count), null);
-
-        var before = entity.IsActive;
-        entity.IsActive = isActive;
-        entity.UpdatedBy = actorId;
-        entity.UpdatedAtUtc = _time.UtcNow();
-        await AddAuditAsync(
-            isActive ? CourtAuditActions.CourtActivated : CourtAuditActions.CourtDeactivated,
-            CourtAuditEntityTypes.Court,
-            entity.Id,
-            actorId,
-            CourtCatalogRules.StatusChanged(before, isActive),
-            cancellationToken);
-        await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
-        return (ToDto(entity, entity.Circuits.Count), null);
-    }
 
     public async Task<(CourtCircuitDto? Circuit, string? Error)> CreateCircuitAsync(
         Guid courtId,

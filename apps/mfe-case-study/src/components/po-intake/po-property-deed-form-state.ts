@@ -29,7 +29,7 @@ export type EnfathSectionProps = {
   onPatch: PoPropertyPatch;
 };
 
-export type EnfathFormVisibility = {
+type EnfathFormVisibility = {
   /** Extended sections (attachments, contacts). */
   showExtended: boolean;
   showCourt: boolean;

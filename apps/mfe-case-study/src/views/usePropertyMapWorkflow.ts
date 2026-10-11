@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
@@ -60,7 +61,8 @@ import {
 export function usePropertyMapWorkflow() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { data: poRecords } = usePoRecordsQuery();
+  const poRecordsQuery = usePoRecordsQuery();
+  const { data: poRecords } = poRecordsQuery;
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
   const { data: valuationRequests = [] } = useQuery({
@@ -392,6 +394,11 @@ export function usePropertyMapWorkflow() {
         : [];
 
   return {
+    // The transactions source failed — an empty map would read as «no properties».
+    poLoadFailed: queryLoadFailed(poRecordsQuery),
+    poLoadError: poRecordsQuery.error,
+    retryPoLoad: () => void poRecordsQuery.refetch(),
+    poRetrying: poRecordsQuery.isFetching,
     // Filters and toolbar.
     query,
     setQuery,

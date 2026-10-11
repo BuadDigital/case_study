@@ -26,9 +26,6 @@ export function findSiblingInspectionTask(
 export const STUDY_REPORT_NOT_ISSUED_MESSAGE =
   "لا يمكن تسليم التقييم قبل أن يصدر الأخصائي تقرير دراسة الحالة";
 
-/** Server field-error key returned by the submit endpoint for the same rule. */
-export const STUDY_REPORT_ERROR_KEY = "studyReport";
-
 /**
  * Appraiser SUBMISSION gate: the specialist's study report must be issued first.
  * Works on the workflow task or the party submission (both carry `studyReportIssued`).
@@ -45,19 +42,4 @@ export function studyReportGateForSubmission(
 /** True for the study-report rule's message, however it reached us (client gate or server field error). */
 export function isStudyReportBlockMessage(message: string | null | undefined): boolean {
   return Boolean(message?.includes("قبل أن يصدر الأخصائي تقرير دراسة الحالة"));
-}
-
-export function findAppraisalChildForParent(
-  parentTaskId: string,
-  propertyId: string,
-  tasks: WorkflowTask[],
-): WorkflowTask | null {
-  return (
-    tasks.find(
-      (t) =>
-        t.parentTaskId === parentTaskId &&
-        t.propertyId === propertyId &&
-        t.kind === "property-appraisal",
-    ) ?? null
-  );
 }

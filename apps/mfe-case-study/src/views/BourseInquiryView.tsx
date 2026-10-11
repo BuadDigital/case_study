@@ -586,7 +586,7 @@ export function BourseInquiryView() {
                     disabled={saving || bourseCompleting}
                     onClick={() => setFailureModalOpen(true)}
                   >
-                    تسجيل تعذر
+                    تسجيل تعذّر
                   </Button>
                 </div>
                 {failureModalOpen ? (

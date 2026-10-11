@@ -2,6 +2,7 @@
 
 import { Fragment, type DragEvent } from "react";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { TBody, THead, Table, Td, Th, Tr, cn } from "@platform/ui-kit";
 
 import { Card } from "./atoms";
@@ -317,7 +318,7 @@ export function CostApproachLinesTable({
                                 : String(line.areaSqm)
                             }
                             onChange={(e) => {
-                              const raw = e.target.value.replace(",", ".");
+                              const raw = e.target.value;
                               if (comp.isRepeated) {
                                 patch({
                                   repeatedFloorCount:
@@ -326,7 +327,7 @@ export function CostApproachLinesTable({
                                 });
                                 return;
                               }
-                              patch({ areaSqm: Number(raw) || 0 });
+                              patch({ areaSqm: parseLocaleNumber(raw) || 0 });
                             }}
                             className={cn(
                               "inline-block w-[66px] rounded-[7px] border border-border-md px-1 py-2 text-center text-[12.5px] font-bold",
@@ -405,7 +406,7 @@ export function CostApproachLinesTable({
                           onChange={(e) =>
                             patch({
                               unitCostSar:
-                                Number(e.target.value.replace(",", ".")) || 0,
+                                parseLocaleNumber(e.target.value) || 0,
                             })
                           }
                           className={cn(

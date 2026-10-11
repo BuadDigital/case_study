@@ -16,6 +16,7 @@ import {
   OperationalPanel,
   PageShell,
   PageToolbar,
+  QueryErrorState,
   QueueTableHint,
   queueTableRowClassName,
   RowMoreMenu,
@@ -34,6 +35,7 @@ import {
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PARTY_TASK_PAGES } from "@platform/app-shared/app-data/party-task-pages";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
@@ -112,7 +114,11 @@ function buildSuspendedRowMoreItems(
 export function SuspendedTransactionsView() {
   const router = useRouter();
   const { role, viewerUserId, distributionAssigneeId } = useAppAccess();
-  const { data: items = [], isFetched } = useSuspendedTransactionsQuery();
+  const suspendedQuery = useSuspendedTransactionsQuery();
+  const { data: items = [] } = suspendedQuery;
+  const loadFailed = queryLoadFailed(suspendedQuery);
+  /** Loaded with data — KPI tiles keep «—» on a failed load, never 0. */
+  const isFetched = suspendedQuery.isFetched && !loadFailed;
   const { data: poRecords = [] } = usePoRecordsQuery();
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: staffResult } = useStaffUsersQuery();
@@ -195,7 +201,7 @@ export function SuspendedTransactionsView() {
   }, [visibleItems]);
 
   const staff = isCaseStudyStaff(role);
-  const queuePending = !isFetched;
+  const queuePending = !suspendedQuery.isFetched;
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
     if (isDesktopViewport === true) return [];
@@ -215,7 +221,7 @@ export function SuspendedTransactionsView() {
             ? { text: assignmentType, kind: "type" as const }
             : null,
         ].filter((v): v is NonNullable<typeof v> => Boolean(v)),
-        statusLabel: overdue ? "متأخرة" : "معلقة",
+        statusLabel: overdue ? "متأخرة" : "معلّقة",
         tone: overdue ? ("returned" as const) : ("pending" as const),
         timerLabel:
           timer.remainingDuration !== "—"
@@ -242,7 +248,7 @@ export function SuspendedTransactionsView() {
           first
           icon={<KpiAlertIcon />}
           iconClass="bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red"
-          label="معاملات معلقة"
+          label="معاملات معلّقة"
           value={!isFetched ? "—" : stats.suspended}
           valueClass="!text-red"
           sub={
@@ -290,7 +296,7 @@ export function SuspendedTransactionsView() {
         items={[
           {
             key: "suspended",
-            label: "معاملات معلقة",
+            label: "معاملات معلّقة",
             sub: !isFetched
               ? "—"
               : stats.suspended > 0
@@ -350,10 +356,17 @@ export function SuspendedTransactionsView() {
             </PageToolbar>
           ) : null}
 
-          {isFetched && sortedItems.length === 0 ? (
+          {loadFailed ? (
+            <QueryErrorState
+              line="تعذّر تحميل المعاملات المعلّقة"
+              error={suspendedQuery.error}
+              onRetry={() => void suspendedQuery.refetch()}
+              retrying={suspendedQuery.isFetching}
+            />
+          ) : isFetched && sortedItems.length === 0 ? (
             <EmptyState
-              line="لا توجد معاملات معلقة."
-              hint="تظهر هنا بعد تعليق المعاملة من إدارة التعذرات."
+              line="لا توجد معاملات معلّقة."
+              hint="تظهر هنا بعد تعليق المعاملة من إدارة التعذّرات."
             />
           ) : (
             <>
@@ -362,7 +375,7 @@ export function SuspendedTransactionsView() {
                   <ActiveQueueMobileCards
                     items={mobileCardItems}
                     pending={queuePending}
-                    emptyMessage="لا توجد معاملات معلقة."
+                    emptyMessage="لا توجد معاملات معلّقة."
                   />
                 </div>
               )}

@@ -62,7 +62,7 @@ public class ClientsController : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var (ok, error) = await _clients.DeactivateAsync(id, cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 }

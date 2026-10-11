@@ -18,7 +18,7 @@ import {
 } from "./lib/adjustments-matrix-state";
 import { pct } from "./AdjustmentsMatrixCells";
 
-export type AdjustmentsMatrixModelArgs = {
+type AdjustmentsMatrixModelArgs = {
   selection: ValuationComparableSelectionListDto;
   adopted: ValuationComparableSelectionDto[];
   subjectArea: string;

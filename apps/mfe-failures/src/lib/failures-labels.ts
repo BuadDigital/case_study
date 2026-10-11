@@ -29,8 +29,8 @@ export function isPanelBlockingFailure(
 
 export function failureStatusLabel(status: FailureStatus): string {
   if (status === "internal") return "مسودة داخلية";
-  if (status === "review") return "عند مشرف دراسة الحالة";
-  if (status === "suspended") return "معلقة";
+  if (status === "review") return "قيد المراجعة";
+  if (status === "suspended") return "معلّقة";
   if (status === "approved") return "معتمد";
   if (status === "resolved") return "تم الحل";
   return "معاد للأخصائي";
@@ -55,14 +55,14 @@ export function failureListStatusLabel(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
 ): string {
-  if (status === "review") return "مراجعة";
+  if (status === "review") return "قيد المراجعة";
   if (status === "returned") return "مفتوح";
   if (status === "internal") {
     return severity === "suspected" ? "داخلي" : "مفتوح";
   }
   if (status === "approved") return "معتمد";
   if (status === "resolved") return "تم الحل";
-  if (status === "suspended") return "معلقة";
+  if (status === "suspended") return "معلّقة";
   return failureStatusLabel(status);
 }
 
@@ -71,7 +71,7 @@ export function failureListStatusColor(
   severity?: FailureRecord["severity"],
 ): string {
   const label = failureListStatusLabel(status, severity);
-  if (label === "مراجعة") return "#d9a441";
+  if (label === "قيد المراجعة") return "#d9a441";
   if (label === "داخلي") return "#102B4E";
   if (label === "مفتوح") return "#d9694f";
   if (label === "معتمد" || label === "تم الحل") return "#3f8f5f";
@@ -81,8 +81,8 @@ export function failureListStatusColor(
 export function failureSeverityLabel(
   severity: FailureRecord["severity"],
 ): string {
-  if (severity === "suspected") return "احتمال تعذر";
-  return "تعذر داخلي";
+  if (severity === "suspected") return "احتمال تعذّر";
+  return "تعذّر داخلي";
 }
 
 /** HTML list: confirmed / possible */

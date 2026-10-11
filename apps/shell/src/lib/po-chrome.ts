@@ -21,7 +21,7 @@ const ARABIC_CHAR_RE = /[\u0600-\u06FF]/;
 /** Nested PO trail after list (edit / workspace) — leaf-only style: no dashboard parents. */
 function poTrailBase(poNumber: string): BreadcrumbSegment[] {
   return [
-    { label: "أوامر العمل", href: poListPath() },
+    { label: "أوامر العمل (PO)", href: poListPath() },
     { label: formatPoDisplay(poNumber), href: poPropertiesPath(poNumber) },
   ];
 }
@@ -31,7 +31,7 @@ function buildPoPropertyDetailSegments(
   poNumber: string,
 ): BreadcrumbSegment[] {
   return [
-    { label: "أوامر العمل", href: poListPath() },
+    { label: "أوامر العمل (PO)", href: poListPath() },
     {
       label: `عقارات ${formatPoDisplay(poNumber)}`,
       href: poPropertiesPath(poNumber),
@@ -61,7 +61,7 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
   // List: leaf only
   if (parts.length === 1) {
     return {
-      segments: [{ label: "أوامر العمل", current: true }],
+      segments: [{ label: "أوامر العمل (PO)", current: true }],
       title: "أوامر العمل (PO)",
     };
   }
@@ -81,7 +81,7 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
 
   if (parts[2] !== PO_PROPERTY_SEGMENT) {
     return {
-      segments: [{ label: "أوامر العمل", current: true }],
+      segments: [{ label: "أوامر العمل (PO)", current: true }],
       title: "أوامر العمل (PO)",
     };
   }
@@ -90,7 +90,7 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
   if (parts.length === 3) {
     return {
       segments: [
-        { label: "أوامر العمل", href: poListPath() },
+        { label: "أوامر العمل (PO)", href: poListPath() },
         { label: "عقارات", current: true },
       ],
       title: `عقارات ${formatPoDisplay(poNumber)}`,
@@ -113,9 +113,9 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
     return {
       segments: [
         ...poTrailBase(poNumber),
-        { label: "تعذر", current: true },
+        { label: "تعذّر", current: true },
       ],
-      title: "تسجيل تعذر",
+      title: "تسجيل تعذّر",
     };
   }
 
@@ -128,7 +128,7 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
   }
 
   return {
-    segments: [{ label: "أوامر العمل", current: true }],
+    segments: [{ label: "أوامر العمل (PO)", current: true }],
     title: "أوامر العمل (PO)",
   };
 }

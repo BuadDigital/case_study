@@ -21,12 +21,12 @@ import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
  * nesting — the same keys the server stamps provenance under.
  */
 
-export type PartyDataKind =
+type PartyDataKind =
   | "field-inspection"
   | "engineering-survey"
   | "property-appraisal";
 
-export type PartyFieldInput =
+type PartyFieldInput =
   | "text"
   | "date"
   | "textarea"
@@ -174,7 +174,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("jacuzziCount", "عدد الجاكوزي", true),
     text("diningCount", "عدد غرف الطعام", true),
     text("majlisCount", "عدد المجالس", true),
-    text("maidRoomCount", "عدد غرف الخادمة", true),
+    text("maidRoomCount", "عدد غرف الخدم", true),
     text("guardRoomCount", "عدد غرف الحارس", true),
     text("parkingCount", "عدد المواقف", true),
     text("playgroundCount", "عدد الملاعب", true),
@@ -224,7 +224,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
   ],
 };
 
-export const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
+const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
   kind: "engineering-survey",
   title: "بيانات الرفع المساحي",
   roleLabel: "المكتب الهندسي",
@@ -264,7 +264,7 @@ export const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
   ],
 };
 
-export const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
+const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
   kind: "property-appraisal",
   title: "بيانات التقييم",
   roleLabel: "المقيّم",
@@ -287,7 +287,7 @@ export const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
     area("checklist.technical_notes_text", "ملاحظات فنية"),
     flag("assetDataConfirmed", L.assetDataConfirmed),
     flag("independenceDeclared", "إقرار الاستقلالية وعدم تضارب المصالح"),
-    readonly("reportWorkers", "العاملون على التقرير"),
+    readonly("reportWorkers", "المشاركون في إعداد التقرير"),
   ],
 };
 
@@ -320,7 +320,7 @@ const ROLE_LABELS: Record<string, string> = {
   cdo: "مسؤول التحول الرقمي",
 };
 
-export function partyRoleLabel(role: string | undefined): string {
+function partyRoleLabel(role: string | undefined): string {
   const key = role?.trim().toLowerCase() ?? "";
   return ROLE_LABELS[key] ?? "";
 }
@@ -398,7 +398,7 @@ export function partyProvenanceFor(
   return undefined;
 }
 
-export type PartyProvenanceLines = {
+type PartyProvenanceLines = {
   written: string | null;
   edited: string | null;
 };

@@ -17,7 +17,7 @@ export type PropertyDocumentGroup =
   | "valued"
   | "unlisted";
 
-export type PropertyDocumentApplicability = "all" | "built" | "land";
+type PropertyDocumentApplicability = "all" | "built" | "land";
 
 export type PropertyDocumentType = {
   key: string;
@@ -49,7 +49,7 @@ export const VALUED_DOCUMENT_KEY = "valued-document";
 /** Upload scope used outside the documents tab (appraiser, inspector, engineering office). */
 export const VALUED_DOCUMENT_SCOPE = "property-valued-document";
 
-export type ValueDocumentStatus = "pending" | "approved" | "rejected";
+type ValueDocumentStatus = "pending" | "approved" | "rejected";
 
 export const VALUE_DOCUMENT_STATUSES: readonly ValueDocumentStatus[] = [
   "pending",
@@ -72,7 +72,7 @@ export const PROPERTY_DOCUMENT_GROUPS: readonly {
   { key: "unlisted", titleAr: "مستندات غير معرّفة" },
 ];
 
-export const BUILT_PROPERTY_TYPES: readonly string[] = [
+const BUILT_PROPERTY_TYPES: readonly string[] = [
   "فيلا",
   "شقة",
   "عمارة",
@@ -80,7 +80,7 @@ export const BUILT_PROPERTY_TYPES: readonly string[] = [
   "مستودع",
 ];
 
-export const LAND_PROPERTY_TYPES: readonly string[] = ["أرض"];
+const LAND_PROPERTY_TYPES: readonly string[] = ["أرض"];
 
 /** Free-text aliases admins used for "any built property" before the list was typed. */
 const BUILT_ALIASES = new Set(["مبني", "مبنى", "مباني", "مبانٍ", "مبان"]);
@@ -205,7 +205,7 @@ export function findPropertyDocumentType(
 }
 
 /** Type implied by an older per-field upload scope (inspector permit photo by its photo ref). */
-export function propertyDocumentTypeFromScope(
+function propertyDocumentTypeFromScope(
   scope: string | null | undefined,
   scopeKey?: string | null,
 ): PropertyDocumentType | null {
@@ -234,20 +234,6 @@ export function resolvePropertyDocumentType(
 
 export function propertyDocumentRequirementKey(type: PropertyDocumentType): string {
   return type.countsAs ?? type.key;
-}
-
-/** Appears in the admin attachments list — photos, outputs, valued and unlisted do not. */
-export function isConfigurablePropertyDocumentType(type: PropertyDocumentType): boolean {
-  return (
-    type.group !== "photos" &&
-    type.group !== "outputs" &&
-    type.group !== "valued" &&
-    type.group !== "unlisted"
-  );
-}
-
-export function isValuedDocumentKey(key: string | null | undefined): boolean {
-  return key?.trim().toLowerCase() === VALUED_DOCUMENT_KEY;
 }
 
 export function defaultPropertyTypeKeys(type: PropertyDocumentType): readonly string[] {

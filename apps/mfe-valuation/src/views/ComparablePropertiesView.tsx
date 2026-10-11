@@ -7,6 +7,7 @@
  * `comparable-properties-state.ts`.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   deactivateComparableProperty,
@@ -37,7 +38,6 @@ import {
   opsTfLbl,
   opsToolbar,
 } from "../lib/comparables-ops-tw";
-import { SAR_FORMAT } from "./comparable-properties-state";
 import { BANK_ICON, OpsIcon } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";
@@ -306,8 +306,8 @@ export function ComparablePropertiesView() {
                           · {row.district}
                           {row.city ? ` · ${row.city}` : ""} ·{" "}
                           {row.transactionDate} · {row.areaSqm} م² ·{" "}
-                          {SAR_FORMAT.format(row.price)} ر.س ·{" "}
-                          {SAR_FORMAT.format(row.pricePerSqm)} ر.س/م²
+                          {fmtSar(row.price, { digits: 3, trim: true })} ·{" "}
+                          {fmtSar(row.pricePerSqm, { digits: 3, trim: true })}/م²
                         </div>
                         <div className="mt-0.5 text-[11px] text-text-3">
                           المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}

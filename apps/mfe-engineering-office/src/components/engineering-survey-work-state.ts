@@ -7,13 +7,13 @@ import type { EngineeringSurveySubmission } from "../lib/engineering-survey-data
 import type { EngineeringSurveyFieldErrors } from "../lib/engineering-survey-validation";
 import type { LocalTextFields } from "./EngineeringSurveyWorkParts";
 
-export type EngineeringSurveyFieldErrorKey = keyof EngineeringSurveyFieldErrors;
+type EngineeringSurveyFieldErrorKey = keyof EngineeringSurveyFieldErrors;
 
 export type SurveyAttachmentField =
   | "surveyReportFileName"
   | "siteLetterFileName";
 
-export type SurveyAttachmentTarget = {
+type SurveyAttachmentTarget = {
   docField: "surveyReport" | "siteLetter";
   errorKey: Extract<
     EngineeringSurveyFieldErrorKey,

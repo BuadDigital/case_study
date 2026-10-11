@@ -1,5 +1,4 @@
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import {
@@ -37,6 +36,8 @@ export type WorkflowTaskDto = {
   parentTaskId?: string;
   status: string;
   distribution?: TaskDistributionDraftDto;
+  /** Party child tasks: the case specialist's display name, read from the hidden parent (server). */
+  caseSpecialistName?: string | null;
   obstructionReason?: string;
   obstructionPriorPhase?: string;
   assignmentType?: string;
@@ -74,14 +75,6 @@ export type ConfirmTaskDistributionResponseDto = {
   parent: WorkflowTaskDto | null;
   children: WorkflowTaskDto[];
 };
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
@@ -167,7 +160,7 @@ export async function syncWorkflowTasks(
   try {
     const res = await fetch(`${base}/api/workflow-tasks/sync`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -189,7 +182,7 @@ export async function patchWorkflowTaskDistribution(
       `${base}/api/workflow-tasks/${taskId}/distribution`,
       {
         method: "PATCH",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ distribution }),
       },
     );
@@ -218,7 +211,7 @@ export async function confirmWorkflowTaskDistribution(
       `${base}/api/workflow-tasks/${taskId}/confirm-distribution`,
       {
         method: "POST",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(body),
       },
     );
@@ -251,7 +244,7 @@ export async function redistributeWorkflowTaskParties(
       `${base}/api/workflow-tasks/${taskId}/redistribute`,
       {
         method: "POST",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(body),
       },
     );
@@ -284,7 +277,7 @@ export async function advanceWorkflowTaskAfterEnfath(
       `${base}/api/workflow-tasks/${taskId}/advance-after-enfath`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -308,7 +301,7 @@ export async function advanceWorkflowTaskAfterBourse(
       `${base}/api/workflow-tasks/${taskId}/advance-after-bourse`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ deedNumber }),
       },
     );
@@ -332,7 +325,7 @@ export async function revertWorkflowTaskPhase(
       `${base}/api/workflow-tasks/${taskId}/revert-phase`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ targetPhase }),
       },
     );
@@ -361,7 +354,7 @@ export async function patchWorkflowTask(
   try {
     const res = await fetch(`${base}/api/workflow-tasks/${taskId}`, {
       method: "PATCH",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -390,7 +383,7 @@ export async function reopenCompletedWorkflowTask(
       `${base}/api/workflow-tasks/${taskId}/reopen-completed`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ reason }),
       },
     );
@@ -421,7 +414,7 @@ export async function deleteWorkflowTaskSlot(
       `${base}/api/workflow-tasks/${encodeURIComponent(taskId)}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ reason }),
       },
     );
@@ -448,7 +441,7 @@ export async function deleteWorkflowTasksForPo(
       `${base}/api/workflow-tasks/by-po/${encodeURIComponent(poNumber)}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -471,7 +464,7 @@ export async function deleteWorkflowTasksForProperty(
       `${base}/api/workflow-tasks/by-po/${encodeURIComponent(poNumber)}/properties/${propertyId}?expectedPropertyCount=${expectedPropertyCount}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };

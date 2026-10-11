@@ -160,16 +160,16 @@ export function useFailuresViewWorkflow() {
   function handleSubmit(id: string) {
     void runOptimisticStatus(id, "review", () => submitFailureForReview(id), {
       busyKey: failureBusyKey(id, "submit"),
-      successToast: "تم تصعيد التعذر",
-      errorToast: "تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى",
+      successToast: "تم تصعيد التعذّر",
+      errorToast: "تعذّر إرسال التعذّر للمراجعة — حاول مرة أخرى",
     });
   }
 
   function handleUpgrade(id: string) {
     void runOptimisticStatus(id, "internal", () => upgradeFailureToInternal(id), {
       busyKey: failureBusyKey(id, "upgrade"),
-      successToast: "تم تأكيد التعذر الداخلي",
-      errorToast: "تعذّر ترقية التعذر — حاول مرة أخرى",
+      successToast: "تم تأكيد التعذّر الداخلي",
+      errorToast: "تعذّر ترقية التعذّر — حاول مرة أخرى",
       extra: { severity: "internal" },
     });
   }
@@ -178,8 +178,8 @@ export function useFailuresViewWorkflow() {
     const note = supervisorNote[id] ?? "";
     void runOptimisticStatus(id, "approved", () => approveFailure(id, note), {
       busyKey: failureBusyKey(id, "approve"),
-      successToast: "تم اعتماد التعذر",
-      errorToast: "تعذّر اعتماد التعذر — حاول مرة أخرى",
+      successToast: "تم اعتماد التعذّر",
+      errorToast: "تعذّر اعتماد التعذّر — حاول مرة أخرى",
       extra: { finalNote: note },
     });
   }
@@ -188,8 +188,8 @@ export function useFailuresViewWorkflow() {
     const note = supervisorNote[id] ?? "";
     void runOptimisticStatus(id, "returned", () => returnFailure(id, note), {
       busyKey: failureBusyKey(id, "return"),
-      successToast: "أُعيد التعذر للأخصائي",
-      errorToast: "تعذّر إرجاع التعذر — حاول مرة أخرى",
+      successToast: "أُعيد التعذّر للأخصائي",
+      errorToast: "تعذّر إرجاع التعذّر — حاول مرة أخرى",
       extra: { finalNote: note },
     });
   }
@@ -233,8 +233,8 @@ export function useFailuresViewWorkflow() {
         }),
       {
         busyKey: failureBusyKey(id, "resolve"),
-        successToast: "تم حل التعذر",
-        errorToast: "تعذّر حل التعذر — حاول مرة أخرى",
+        successToast: "تم حل التعذّر",
+        errorToast: "تعذّر حل التعذّر — حاول مرة أخرى",
         extra: {
           resolutionReason: draft.reason,
           continueInstructions: draft.instructions,

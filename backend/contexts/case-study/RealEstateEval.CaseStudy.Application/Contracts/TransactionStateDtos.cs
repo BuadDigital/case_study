@@ -45,20 +45,6 @@ public class TransactionStateDto
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
 }
 
-/// <summary>
-/// Q-9 supplement (R3): after the Enfaz upload, the system does not reopen anything automatically — the General Manager records
-/// Decision (official Enfaz channel) is under review only; Actual retrieval from Enfaz goes through R2.
-/// </summary>
-public class PostEnfazDecisionRequest
-{
-    [System.ComponentModel.DataAnnotations.Required]
-    [System.ComponentModel.DataAnnotations.MaxLength(256)]
-    public string Decision { get; init; } = "";
-
-    [System.ComponentModel.DataAnnotations.Required]
-    [System.ComponentModel.DataAnnotations.MaxLength(1024)]
-    public string Reason { get; init; } = "";
-}
 
 
 /// <summary>

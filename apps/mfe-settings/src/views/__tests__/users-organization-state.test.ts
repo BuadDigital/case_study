@@ -240,21 +240,21 @@ describe("dialog copy and API error mapping", () => {
   });
 
   it("maps each failure kind to the screen's message", () => {
-    expect(createUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
-    expect(createUserErrorMessage({ kind: "server" })).toBe("تعذر إنشاء المستخدم.");
+    expect(createUserErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
+    expect(createUserErrorMessage({ kind: "server" })).toBe("تعذّر إنشاء المستخدم.");
     expect(deleteUserErrorMessage({ kind: "validation", message: "v" })).toBe("v");
-    expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذر تعطيل المستخدم.");
-    expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
+    expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذّر تعطيل المستخدم.");
+    expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
     expect(saveEditErrors({ kind: "validation", errors: { mobile: "e" } })).toEqual({ mobile: "e" });
-    expect(saveEditErrors({ kind: "network" })).toEqual({ _form: "تعذر الاتصال بالخادم." });
-    expect(saveEditErrors({ kind: "server" })).toEqual({ _form: "تعذر حفظ التعديلات." });
+    expect(saveEditErrors({ kind: "network" })).toEqual({ _form: "تعذّر الاتصال بالخادم." });
+    expect(saveEditErrors({ kind: "server" })).toEqual({ _form: "تعذّر حفظ التعديلات." });
     expect(reactivateErrorMessage({ kind: "validation", errors: { status: "s" } })).toBe("s");
     expect(reactivateErrorMessage({ kind: "validation", errors: { _form: "f", status: "s" } })).toBe("f");
-    expect(reactivateErrorMessage({ kind: "validation" })).toBe("تعذر تفعيل المستخدم.");
-    expect(reactivateErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
-    expect(unlockErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
+    expect(reactivateErrorMessage({ kind: "validation" })).toBe("تعذّر تفعيل المستخدم.");
+    expect(reactivateErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
+    expect(unlockErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
     expect(unlockErrorMessage({ kind: "validation", message: "u" })).toBe("u");
-    expect(unlockErrorMessage({ kind: "server" })).toBe("تعذر فك قفل الحساب.");
+    expect(unlockErrorMessage({ kind: "server" })).toBe("تعذّر فك قفل الحساب.");
   });
 });
 

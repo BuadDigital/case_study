@@ -6,7 +6,6 @@ import {
   liftSurveyFreeze as apiLiftSurveyFreeze,
   listFailures,
   listFailuresPage,
-  reportBourseObstruction as apiReportBourseObstruction,
   resolveFailure as apiResolveFailure,
   returnFailure as apiReturnFailure,
   submitFailureForReview as apiSubmitFailureForReview,
@@ -25,7 +24,6 @@ import {
 } from "@platform/app-shared/app-data/work-orders-api-config";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
-  getCachedFailuresList,
   getCachedPropertyFailure,
   removeCachedFailuresForPo,
   setCachedFailuresList,
@@ -33,7 +31,6 @@ import {
 } from "./failures-cache";
 import { notifyFailuresChanged } from "./failures-events";
 import type {
-  BourseObstructionInput,
   CreateFailureInput,
   FailureRecord,
   FailureSeverity,
@@ -43,14 +40,14 @@ import type {
 
 export type { FailuresApiConfig };
 
-export function failuresApiConfig(): FailuresApiConfig | null {
+function failuresApiConfig(): FailuresApiConfig | null {
   return workOrdersApiConfig();
 }
 
 function requireFailuresApi(): FailuresApiConfig {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
   return config;
 }
@@ -108,28 +105,11 @@ function applyMutation(record: FailureRecord): FailureRecord {
   return record;
 }
 
-export async function loadFailuresFromBackend(): Promise<FailureRecord[]> {
-  const config = failuresApiConfig();
-  if (!config) return [];
-
-  const result = await listFailures(config);
-  if (result.ok) {
-    const mapped = result.data.map(mapDto);
-    setCachedFailuresList(mapped);
-    return mapped;
-  }
-
-  const cached = getCachedFailuresList();
-  if (cached.length > 0) return cached;
-
-  return [];
-}
-
 /** React Query loader — surfaces API failures. */
 export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
 
   const result = await listFailures(config);
@@ -139,7 +119,7 @@ export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
     return mapped;
   }
 
-  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));
+  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذّرات"));
 }
 
 /**
@@ -152,7 +132,7 @@ export async function loadFailuresPageForQuery(
 ): Promise<PagedResultDto<FailureRecord>> {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
 
   const result = await listFailuresPage(config, query);
@@ -160,7 +140,7 @@ export async function loadFailuresPageForQuery(
     return { ...result.data, items: result.data.items.map(mapDto) };
   }
 
-  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));
+  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذّرات"));
 }
 
 export function getPropertyFailureFromCache(
@@ -194,18 +174,6 @@ export async function createFailureAsync(
   );
   if (!result.ok) {
     throw new Error(`createFailure failed: ${result.kind}`);
-  }
-  return applyMutation(mapDto(result.data));
-}
-
-export async function reportBourseObstructionAsync(
-  input: BourseObstructionInput,
-): Promise<FailureRecord> {
-  const config = requireFailuresApi();
-
-  const result = await apiReportBourseObstruction(config, input);
-  if (!result.ok) {
-    throw new Error(`reportBourseObstruction failed: ${result.kind}`);
   }
   return applyMutation(mapDto(result.data));
 }

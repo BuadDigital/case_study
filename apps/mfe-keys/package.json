@@ -15,11 +15,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@case-study/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
-    "@platform/auth-client": "*",
-    "@platform/ui-kit": "*",
+    "@platform/offline-client": "*",
     "@platform/types": "*",
+    "@platform/ui-kit": "*",
     "@settings/mfe": "*",
     "@tanstack/react-query": "^5.100.11"
   },

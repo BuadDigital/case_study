@@ -145,7 +145,7 @@ describe("auditActorLabel", () => {
 describe("auditEntityTypeLabel", () => {
   it("localizes ValuationReconciliation", () => {
     expect(auditEntityTypeLabel("ValuationReconciliation")).toBe(
-      "ترجيح التقييم",
+      "الترجيح",
     );
   });
 });

@@ -70,11 +70,6 @@ public interface IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false);
 
-    Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
-        CreateDisbursementBatchRequest request,
-        string actorUserId,
-        string? actorAssigneeId,
-        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
         Guid workflowTaskId,

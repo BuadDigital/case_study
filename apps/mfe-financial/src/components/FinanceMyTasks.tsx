@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
@@ -23,6 +24,7 @@ import {
   cn,
   GentleBusy,
   opsLetterCard,
+  QueryErrorState,
   opsPanelCard,
   preloadableLazy,
 } from "@platform/ui-kit";
@@ -261,6 +263,12 @@ export function FinanceMyTasks() {
   );
 
   const kpi = useMemo(() => buildFinanceMyTasksKpis(tasks), [tasks]);
+  const failedQueries = [trackingQuery, readyQuery, statementsQuery].filter(
+    queryLoadFailed,
+  );
+  /** KPI tiles read «—» until every source loaded — never 0 on a failure. */
+  const kpiValue = (n: number) =>
+    pending || failedQueries.length ? "—" : n;
 
   const matchStatement = useMemo(
     () =>
@@ -338,7 +346,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.matchCount}
+            {kpiValue(kpi.matchCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -362,11 +370,13 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.collectCount}
+            {kpiValue(kpi.collectCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
-            <span dir="ltr">{fmtMax(kpi.collectAmountSar)}</span>
+            <span dir="ltr">
+              {pending || failedQueries.length ? "—" : fmtMax(kpi.collectAmountSar)}
+            </span>
             <span>ر.س</span>
           </div>
         </div>
@@ -387,7 +397,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.docsCount}
+            {kpiValue(kpi.docsCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -410,7 +420,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.closeCount}
+            {kpiValue(kpi.closeCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -430,6 +440,18 @@ export function FinanceMyTasks() {
           <div className="px-5 py-[54px] text-center text-[14px] font-bold text-[#73767f]">
             <GentleBusy>جاري التحميل…</GentleBusy>
           </div>
+        </div>
+      ) : failedQueries.length ? (
+        <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>
+          <QueryErrorState
+            panel
+            line="تعذّر تحميل مهام المالية"
+            error={failedQueries[0]!.error}
+            onRetry={() => {
+              for (const q of failedQueries) void q.refetch();
+            }}
+            retrying={failedQueries.some((q) => q.isFetching)}
+          />
         </div>
       ) : tasks.length === 0 ? (
         <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>

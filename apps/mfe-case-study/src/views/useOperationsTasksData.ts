@@ -18,6 +18,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useShowAllEyeBlink } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
@@ -146,13 +147,14 @@ export function useOperationsTasksData() {
     [serverQueryFor, query],
   );
 
+  const listQuery = useOperationsTasksFilteredQuery(serverQuery, { live: true });
   const {
     data: tasks = [],
     isPending,
     isPlaceholderData,
     refetch,
     isFetching,
-  } = useOperationsTasksFilteredQuery(serverQuery, { live: true });
+  } = listQuery;
 
   // Pointer on «إظهار جميع المهام» — warm the other slice (same key as the list query).
   const queryClient = useQueryClient();
@@ -408,6 +410,9 @@ export function useOperationsTasksData() {
     isPlaceholderData,
     isFetching,
     refetch,
+    /** The list failed with no rows — the view shows the error, not «لا مهام». */
+    listLoadFailed: queryLoadFailed(listQuery),
+    listLoadError: listQuery.error,
     prefetchShowAllToggle,
     listSwapKey,
     pausedTasks,

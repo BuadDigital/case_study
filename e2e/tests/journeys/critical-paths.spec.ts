@@ -25,9 +25,9 @@ test.describe("Failures module", () => {
   test("supervisor can open failures catalog", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.caseSpecialist);
     await page.goto("/failures", { waitUntil: "commit" });
-    await waitForPageTitle(page, "إدارة التعذرات");
+    await waitForPageTitle(page, "إدارة التعذّرات");
     await page.goto("/failure-types", { waitUntil: "commit" });
-    await waitForPageTitle(page, "أنواع التعذرات");
+    await waitForPageTitle(page, "أنواع التعذّرات");
   });
 });
 

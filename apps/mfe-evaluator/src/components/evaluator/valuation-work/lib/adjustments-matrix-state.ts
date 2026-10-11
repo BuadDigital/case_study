@@ -6,6 +6,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   AUTO_AREA_KEY,
@@ -40,7 +41,7 @@ export function matrixBasisView(
   let pricePerSqmDisplay: number | null = selection.weightedPricePerSqm ?? null;
   if (!isUnit) {
     // Transaction area (from the UI) wins over a stale server value when they differ.
-    const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
+    const fromUi = parseLocaleNumber(subjectArea);
     const area =
       (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
       (selection.subjectAreaSqm != null && selection.subjectAreaSqm > 0
@@ -81,7 +82,7 @@ export function factorKeysFromLines(
   return keys;
 }
 
-export type MatrixFactorRows = {
+type MatrixFactorRows = {
   sequentialKeys: string[];
   /** Deletable sequential rows the evaluator removed — shown as restore chips. */
   removedSequential: string[];
@@ -142,7 +143,7 @@ export function buildMatrixAlerts(
   if (Math.round(weightsSum) !== 100) {
     alerts.push({
       kind: "error",
-      title: `مجموع الأوزان ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,
+      title: `مجموع الأوزان النسبية ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,
       body: "عدّل الأوزان اليدوية أو أعد الضبط للاقتراح الآلي.",
     });
   }

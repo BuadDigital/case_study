@@ -9,7 +9,7 @@ const toneClasses = {
   danger: "border-r-danger bg-danger-bg text-danger-text",
 } as const;
 
-export type NoteTone = keyof typeof toneClasses;
+type NoteTone = keyof typeof toneClasses;
 
 export function Note({
   className,

@@ -113,6 +113,7 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     distribution: dto.distribution
       ? migrateDistribution(dto.distribution)
       : undefined,
+    caseSpecialistName: dto.caseSpecialistName?.trim() || undefined,
     obstructionReason: dto.obstructionReason,
     obstructionPriorPhase: dto.obstructionPriorPhase as
       | CaseStudyTaskPhase
@@ -194,7 +195,7 @@ export function taskPhaseLabel(phase: CaseStudyTaskPhase): string {
   if (phase === "bourse") return "المرحلة 2 — بيانات البورصة";
   if (phase === "distribution") return "المرحلة 3 — توزيع الأطراف";
   if (phase === "case-study") return "دراسة حالة العقار";
-  if (phase === "obstruction") return "تعذر — بانتظار المشرف";
+  if (phase === "obstruction") return "تعذّر — بانتظار المشرف";
   return "مكتملة";
 }
 
@@ -283,7 +284,7 @@ export function distributionValidationError(
     return "اختر المعاين الميداني.";
   }
   if (!distribution.valuatorId.trim()) {
-    return "اختر المقيم العقاري.";
+    return "اختر المقيّم العقاري.";
   }
   if (distribution.engineeringOffice) {
     if (!engineeringAvailable) {

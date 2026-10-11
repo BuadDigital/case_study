@@ -74,7 +74,7 @@ public class EnfazBillingController : ControllerBase
     {
         var dto = await _billing.SavePoBillingAsync(poNumber, request, ct);
         return dto is null
-            ? this.BadRequestProblem("تعذر حفظ أتعاب إنفاذ.")
+            ? this.BadRequestProblem("تعذّر حفظ أتعاب إنفاذ.")
             : Ok(dto);
     }
 
@@ -123,7 +123,7 @@ public class EnfazBillingController : ControllerBase
         var dto = await _billing.IssueInvoiceAsync(poNumber, ct);
         return dto is null
             ? this.BadRequestProblem(
-                "تعذر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
+                "تعذّر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
             : Ok(dto);
     }
 
@@ -186,7 +186,7 @@ public class EnfazBillingController : ControllerBase
             ct);
         if (error is not null)
             return this.BadRequestProblem(error);
-        return dto is null ? this.BadRequestProblem("تعذر حفظ المتابعة.") : Ok(dto);
+        return dto is null ? this.BadRequestProblem("تعذّر حفظ المتابعة.") : Ok(dto);
     }
 
     [HttpPost("{poNumber}/finance-flag")]
@@ -202,7 +202,7 @@ public class EnfazBillingController : ControllerBase
             ActorClaims.Id(User),
             ct);
         if (!ok)
-            return this.BadRequestProblem(error ?? "تعذر تعيين العلامة.");
+            return this.BadRequestProblem(error ?? "تعذّر تعيين العلامة.");
         return NoContent();
     }
 
@@ -215,7 +215,7 @@ public class EnfazBillingController : ControllerBase
     {
         var (ok, error) = await _billing.ClearFinanceFlagAsync(poNumber, propertyId, ct);
         if (!ok)
-            return this.BadRequestProblem(error ?? "تعذر مسح العلامة.");
+            return this.BadRequestProblem(error ?? "تعذّر مسح العلامة.");
         return NoContent();
     }
 }

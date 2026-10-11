@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 export type CaseStudyInfoRolesApiConfig = {
@@ -17,13 +17,6 @@ export type SaveCaseStudyInfoRolesRequest = {
   notes: Record<string, string>;
 };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export type CaseStudyInfoRolesResult =
   | { ok: true; config: CaseStudyInfoRolesConfigDto }
   | { ok: false; kind: "auth" | "network" | "server" };
@@ -34,7 +27,7 @@ export async function getCaseStudyInfoRoles(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/case-study-info-roles`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -53,7 +46,7 @@ export async function saveCaseStudyInfoRoles(
   try {
     const res = await fetch(`${base}/api/case-study-info-roles`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(request),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

@@ -78,7 +78,7 @@ export function CourtAccessModal({
         className="max-w-[560px] p-0 max-lg:max-h-[min(92dvh,100%)]"
       >
         <DialogHeader
-          title={<>التمكين / محظر الإخلاء — صك {property.deedNumber}</>}
+          title={<>التمكين / محضر الإخلاء — صك {property.deedNumber}</>}
           onClose={onClose}
         />
         <ModalBody className="max-h-[min(70vh,560px)] space-y-3.5 overflow-y-auto px-5 py-5 max-lg:max-h-none">
@@ -129,7 +129,7 @@ export function CourtAccessModal({
               })}
             </div>
             <p className="mt-1.5 text-[11.5px] text-text-3">
-              «لا يوجد» يلغي التمكين ومحظر الإخلاء ويرفع تعليق الدراسة إن وُجد.
+              «لا يوجد» يلغي التمكين ومحضر الإخلاء ويرفع تعليق الدراسة إن وُجد.
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export function CourtAccessModal({
                 draft.enablingLetterName,
                 current?.enablingLetterAttachmentId,
                 {
-                  replace: "استبدال خطاب التمكين المرفق",
+                  replace: "استبدال",
                   upload: "رفع خطاب التمكين",
                 },
               )}
@@ -172,7 +172,7 @@ export function CourtAccessModal({
           </div>
 
           <div>
-            <Label>محظر الإخلاء (تعليق الدراسة)</Label>
+            <Label>محضر الإخلاء (تعليق الدراسة)</Label>
             <DialogAttachmentPicker
               inputRef={evictionFileRef}
               kind="eviction"
@@ -183,11 +183,11 @@ export function CourtAccessModal({
                 draft.evictionNoticeName,
                 current?.evictionNoticeAttachmentId,
                 {
-                  replace: "استبدال محضر الإخلاء المرفق",
-                  upload: "رفع محظر الإخلاء",
+                  replace: "استبدال",
+                  upload: "رفع محضر الإخلاء",
                 },
               )}
-              hint="يعلّق الدراسة تلقائياً حتى رفع محظر الإخلاء"
+              hint="يعلّق الدراسة تلقائياً حتى رفع محضر الإخلاء"
               onUploaded={(id, fileName) =>
                 setDraft((prev) =>
                   courtAccessAttachmentUploaded(prev, "eviction", id, fileName),
@@ -204,7 +204,7 @@ export function CourtAccessModal({
                   )
                 }
               >
-                إزالة محظر الإخلاء
+                إزالة محضر الإخلاء
               </button>
             ) : null}
           </div>

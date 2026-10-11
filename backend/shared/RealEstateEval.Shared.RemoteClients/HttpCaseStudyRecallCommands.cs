@@ -28,7 +28,7 @@ public sealed class HttpCaseStudyRecallCommands(
         if (errors is { Count: > 0 })
         {
             return (false, errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
-                ?? "تعذر إعادة فتح تقييم العقار.");
+                ?? "تعذّر إعادة فتح تقييم العقار.");
         }
 
         return body is null ? (false, "مهمة التقييم غير موجودة.") : (true, null);
@@ -50,7 +50,7 @@ public sealed class HttpCaseStudyRecallCommands(
         if (errors is { Count: > 0 })
         {
             return (false, errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))
-                ?? "تعذر إعادة فتح تقييم العقار بنسخة جديدة.");
+                ?? "تعذّر إعادة فتح تقييم العقار بنسخة جديدة.");
         }
 
         return body is null ? (false, "مهمة التقييم غير موجودة.") : (true, null);

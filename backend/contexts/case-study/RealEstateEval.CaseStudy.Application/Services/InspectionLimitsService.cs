@@ -15,25 +15,9 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 public sealed class InspectionLimitsService : IInspectionLimitsService
 {
     private readonly IInspectionLimitsRepository db;
-    private readonly IAuditLogWriter audit;
-    private readonly IAuditLogAppend _auditLog;
-    private readonly TimeProvider _time;
 
-    // A8: the PlatformDbContext convenience ctor is gone — compose PlatformAuditLogAppend
-    // explicitly where needed (tests); DI uses the interface ctor below.
+    public InspectionLimitsService(IInspectionLimitsRepository db) => this.db = db;
 
-    public InspectionLimitsService(
-        IInspectionLimitsRepository db,
-        IAuditLogWriter audit,
-        IAuditLogAppend auditLog,
-        TimeProvider? time = null)
-    {
-        _time = time ?? TimeProvider.System;
-
-        this.db = db;
-        this.audit = audit;
-        _auditLog = auditLog;
-    }
     public async Task<InspectionLimitsDto?> GetAsync(
         string poNumber,
         Guid propertyId,
@@ -79,46 +63,6 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
         prop.UninspectedUnitsJson = InspectionLimitsRules.SerializeUnits(units);
 
         await db.SaveChangesAsync(cancellationToken);
-        return (ToDto(prop), null);
-    }
-
-    public async Task<(InspectionLimitsDto? Result, string? Error)> ApproveRemoteAsync(
-        string poNumber,
-        Guid propertyId,
-        string actorId,
-        CancellationToken cancellationToken = default)
-    {
-        var prop = await LoadAsync(poNumber, propertyId, track: true, cancellationToken);
-        if (prop is null) return (null, "العقار غير موجود");
-
-        if (!string.Equals(
-                prop.InspectionScopeKey,
-                InspectionScopeKeys.Desktop,
-                StringComparison.Ordinal))
-        {
-            return (null, "الاعتماد يخص نطاق «مكتبية عن بُعد» فقط (ق-7)");
-        }
-
-        if (prop.RemoteInspectionApprovedAtUtc is not null)
-            return (ToDto(prop), null);
-
-        prop.RemoteInspectionApprovedBy = string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId;
-        prop.RemoteInspectionApprovedAtUtc = _time.UtcNow();
-        await db.SaveChangesAsync(cancellationToken);
-
- // Q-7: Credit recorded in audit.
-        await _auditLog.AppendAsync(audit.Create(
-            actorId: prop.RemoteInspectionApprovedBy!,
-            action: "inspection.remote-scope.approved",
-            entityType: "WorkOrderProperty",
-            entityId: propertyId.ToString("D"),
-            before: null,
-            after: new
-            {
-                scope = prop.InspectionScopeKey,
-                approvedAtUtc = prop.RemoteInspectionApprovedAtUtc,
-            }), cancellationToken);
-
         return (ToDto(prop), null);
     }
 

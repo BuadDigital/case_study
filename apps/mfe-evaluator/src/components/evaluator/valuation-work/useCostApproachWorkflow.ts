@@ -33,7 +33,7 @@ import { apiConfig } from "./lib/shell-utils";
 import { useCostInspectorSync } from "./useCostInspectorSync";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
-export type CostApproachWorkflowArgs = {
+type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
   poNumber?: string;
   propertyId: string;

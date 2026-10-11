@@ -3,7 +3,7 @@ import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case
 import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 import { submitEngineeringSurveySubmission } from "./engineering-survey-submission-commands";
 
-export type FinalizeEngineeringSurveyResult = {
+type FinalizeEngineeringSurveyResult = {
   submission: EngineeringSurveySubmission;
   warning?: string;
 };

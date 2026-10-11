@@ -3,7 +3,6 @@ import {
   basisOfValueLabelArForAssignment,
   defaultPremiseKeyForBasis,
   valuationPurposeKeyForAssignment,
-  VALUE_BASIS_OPTIONS,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import { ESG_NONE_NOTES } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 
@@ -36,32 +35,13 @@ export type EvaluatorChecklistAnswers = {
   technical_notes_text: string;
 };
 
-export type EvaluatorReportWorkerRole = "معد" | "مراجع" | "معتمد";
+type EvaluatorReportWorkerRole = "معد" | "مراجع" | "معتمد";
 
-export const EVALUATOR_WORKER_ROLES: readonly EvaluatorReportWorkerRole[] = [
+const EVALUATOR_WORKER_ROLES: readonly EvaluatorReportWorkerRole[] = [
   "معد",
   "مراجع",
   "معتمد",
 ];
-
-/** Valuation approach used — closed list per infath_case_study_fields.md §1. */
-export const EVALUATOR_VALUATION_METHODS = [
-  "طريقة البيوع المقارنة",
-  "طريقة التكلفة (طريقة المقاول)",
-  "رسملة الدخل",
-] as const;
-
-/** Basis of value — same eight IVS options as on the valuation tab. */
-export const EVALUATOR_VALUE_BASIS_OPTIONS = VALUE_BASIS_OPTIONS.map(
-  (option) => option.label,
-);
-
-/** Property demand level — infath_case_study_fields.md §3.2. */
-export const EVALUATOR_DEMAND_LEVEL_OPTIONS = [
-  "مرتفع",
-  "متوسط",
-  "منخفض",
-] as const;
 
 export type EvaluatorReportWorker = {
   id: string;
@@ -73,11 +53,11 @@ export type EvaluatorReportWorker = {
 };
 
 /** Case Study.html settings defaults for read-only Infath contact fields. */
-export const DEFAULT_APPRAISER_ADDRESS =
+const DEFAULT_APPRAISER_ADDRESS =
   "جدة — حي الروضة، شارع الأمير سلطان، مبنى 42";
-export const DEFAULT_APPRAISER_PHONE = "0126612345";
+const DEFAULT_APPRAISER_PHONE = "0126612345";
 
-export type EvaluatorEsgGroup = {
+type EvaluatorEsgGroup = {
   none: boolean;
   selected: string[];
   notes: string;
@@ -404,9 +384,7 @@ export const EVALUATOR_CONDITIONAL_QUESTIONS: EvaluatorBooleanQuestion[] = [
   },
 ];
 
-export const MAX_EVALUATOR_PDF_BYTES = 20 * 1024 * 1024;
-
-export function createEmptyReportWorker(
+function createEmptyReportWorker(
   role: EvaluatorReportWorkerRole | "" = "معد",
 ): EvaluatorReportWorker {
   return {
@@ -523,18 +501,6 @@ export function evaluatorStatusLabel(status: EvaluatorSubmissionStatus): string 
   if (status === "submitted") return "مُرسَل للأخصائي";
   if (status === "reopened") return "معادة للتصحيح";
   return "مكتمل";
-}
-
-const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "SAR",
-  maximumFractionDigits: 2,
-});
-
-export function formatEvaluatorPriceDisplay(raw: string): string {
-  const n = Number.parseFloat(raw.replace(/,/g, ""));
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  return PRICE_FORMAT.format(n);
 }
 
 export function checklistAnswerLabel(value: boolean | null): string {

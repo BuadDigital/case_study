@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-export type MobileKpiTone = "ink" | "gold" | "red";
+type MobileKpiTone = "ink" | "gold" | "red";
 
-export type MobileKpiStatItem = {
+type MobileKpiStatItem = {
   key: string;
   label: string;
   sub: ReactNode;

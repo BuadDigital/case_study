@@ -79,7 +79,7 @@ public static class DevSeedProvider
         services.AddValuationPersistence(configuration, connectionString);
         services.AddFailuresPersistence(configuration, connectionString);
         services.AddAttachmentsPersistence(configuration, connectionString);
-        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddMessagingPersistence(configuration);
  // The registration/session bundle (IUserRegistrationService + IAuthSessionService and
  // their permission/JWT dependencies) — the user purge revokes sessions as it deletes.
         services.AddIdentityApplicationServices();

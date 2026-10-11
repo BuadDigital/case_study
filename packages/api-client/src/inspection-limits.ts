@@ -1,5 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -34,13 +34,6 @@ export type SaveInspectionLimitsRequest = {
   uninspectedUnits: UninspectedUnitEntryDto[];
 };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 function url(base: string, poNumber: string, propertyId: string): string {
   return `${base}/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/inspection-limits`;
 }
@@ -53,7 +46,7 @@ export async function getInspectionLimits(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(url(base, poNumber, propertyId), {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -74,7 +67,7 @@ export async function saveInspectionLimits(
   try {
     const res = await fetch(url(base, poNumber, propertyId), {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

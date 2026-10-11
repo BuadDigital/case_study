@@ -58,7 +58,6 @@ export const appDataKeys = {
   valuationRequests: () => [...appDataKeys.all, "valuation-requests"] as const,
   suspendedTransactions: () =>
     [...appDataKeys.all, "suspended-transactions"] as const,
-  courtsCatalog: () => [...appDataKeys.all, "courts-catalog"] as const,
   caseStudyInfoRoles: () =>
     [...appDataKeys.all, "case-study-info-roles"] as const,
   staffUsers: () => [...appDataKeys.all, "staff-users"] as const,

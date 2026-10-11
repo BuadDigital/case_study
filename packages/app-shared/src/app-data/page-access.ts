@@ -3,18 +3,16 @@ import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { NAV } from "./constants";
 import { SYSTEM_FIELDS_PAGE_IDS } from "./system-fields-nav";
 import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
-import { ORPHAN_SCREENS_PAGE_IDS } from "./orphan-screens-nav";
 
 const NAV_PAGE_ORDER: PageId[] = [
   ...NAV.map((item) => item.id),
   ...ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
   ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   ...SYSTEM_FIELDS_PAGE_IDS,
-  ...ORPHAN_SCREENS_PAGE_IDS,
 ];
 
 /** Map shell page id to app route. */
-export function pagePathFromId(pageId: PageId): string {
+function pagePathFromId(pageId: PageId): string {
   return pageId === "po" ? "/po" : `/${pageId}`;
 }
 
@@ -102,7 +100,7 @@ export function pageIdFromPathname(pathname: string): PageId | null {
 }
 
 /** PO property failure registration — allowed without full PO list access. */
-export function isPoPropertyFailurePath(pathname: string): boolean {
+function isPoPropertyFailurePath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return (
     parts.length === 5 &&
@@ -113,7 +111,7 @@ export function isPoPropertyFailurePath(pathname: string): boolean {
 }
 
 /** Property detail view — `/po/{po}/property/{id}` (not list/edit/failure). */
-export function isPoPropertyDetailPath(pathname: string): boolean {
+function isPoPropertyDetailPath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return (
     parts.length === 4 &&
@@ -123,7 +121,7 @@ export function isPoPropertyDetailPath(pathname: string): boolean {
 }
 
 /** Property edit — `/po/{po}/property/{id}/edit`. */
-export function isPoPropertyEditPath(pathname: string): boolean {
+function isPoPropertyEditPath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return (
     parts.length === 5 &&

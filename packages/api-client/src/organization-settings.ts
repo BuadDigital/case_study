@@ -68,10 +68,10 @@ export const VALUER_ROSTER_MEMBERSHIP_OPTIONS = [
 
 /** System role — firm permission, not Taqeem membership grade. */
 export const VALUER_SYS_ROLES = [
-  { value: "certified", label: "مقيم معتمد" },
-  { value: "valuer", label: "مقيم عقاري" },
-  { value: "reviewer", label: "مقيم عقاري مراجع" },
-  { value: "assistant", label: "مساعد مقيم" },
+  { value: "certified", label: "مقيّم معتمد" },
+  { value: "valuer", label: "مقيّم عقاري" },
+  { value: "reviewer", label: "مقيّم عقاري مراجع" },
+  { value: "assistant", label: "مساعد مقيّم" },
 ] as const;
 
 /** Certified valuer data — source: settings v2.dc.html `cv`. */
@@ -248,7 +248,7 @@ export type OrganizationSlaSettings = {
 };
 
 /** Configurable upper limit — P2-5 approved 2026-08-16. */
-export type OrganizationValuationSettings = {
+type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
   /** Kept for saved-settings compatibility. No longer drives a methodology alert. */
   comparableTimeGapMonths: number;

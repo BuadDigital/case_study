@@ -65,7 +65,7 @@ function BellIcon() {
 const categoryLabel: Record<NotificationCategory, string> = {
   workflow: "سير العمل",
   financial: "مالي",
-  failures: "تعذرات",
+  failures: "تعذّرات",
   system: "نظام",
 };
 

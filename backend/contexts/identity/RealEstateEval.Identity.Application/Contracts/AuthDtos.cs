@@ -35,8 +35,3 @@ public class UserInfoDto
     public string? JobTitle { get; set; }
 }
 
-public class DevLoginUserDto
-{
-    public string Username { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
-}

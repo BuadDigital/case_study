@@ -107,7 +107,7 @@ function RemainingCellBody({
       <span className="inline-flex flex-col gap-px">
         <span className="text-text-3">متوقف</span>
         <span className="text-[10.5px] font-medium text-text-3">
-          بانتظار معالجة التعذر
+          بانتظار معالجة التعذّر
         </span>
       </span>
     );

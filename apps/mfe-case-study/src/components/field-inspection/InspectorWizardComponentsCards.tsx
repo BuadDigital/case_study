@@ -20,6 +20,7 @@ import {
 } from "../../lib/app-data/inspector-workspace-data";
 import { inspectorBoolPillClass, listComponentBoolPhotoSlots } from "./inspector-wizard-state";
 import { InspectorComponentBoolPills, InspectorPresentChip } from "./InspectorComponentBoolPills";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorWizardComponentsCards({
   deedNumber,
@@ -42,7 +43,7 @@ export function InspectorWizardComponentsCards({
   missingFeaturePhotoKey?: string;
   // Never "buildLicense" in practice — no required-photo gate exists for it (inspector-workspace-validation.ts:342).
   missingComponentPhotoKey?: InspectorComponentPhotoKey;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const showShop = (key: string) =>
     !isShop || !isShopHiddenInspectorComponentKey(key);
@@ -56,7 +57,7 @@ export function InspectorWizardComponentsCards({
     <>
       {!isLand ? (
         <div id="ins-components-section">
-        <InsCard title="مكوّنات العقار">
+        <InsCard title="مكونات العقار">
           <InsFieldsGrid min={130} centered>
             {showShop("roomCount") ? (
               <InsEditField

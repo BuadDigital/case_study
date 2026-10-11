@@ -51,7 +51,7 @@ import {
 const EMPTY_FAILURES: FailureRecord[] = [];
 const EMPTY_WORKFLOW_TASKS: WorkflowTask[] = [];
 
-export type EngineeringSurveyDataArgs = {
+type EngineeringSurveyDataArgs = {
   childTask: WorkflowTask;
   hostRef: EngineeringSurveyWindowHostRefObject;
   deedNumber: string;

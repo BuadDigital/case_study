@@ -16,7 +16,7 @@ export type PartyTaskRecallRequest = {
 };
 
 /** Row shape returned by the recall endpoints, before mapping. */
-export type PartyTaskRecallRow = {
+type PartyTaskRecallRow = {
   taskId: string;
   poNumber: string;
   propertyId: string;

@@ -81,7 +81,7 @@ export function LocationsPendingView() {
       setItems([]);
       setLoadError(
         result.kind === "auth"
-          ? "يجب تسجيل الدخول"
+          ? "يلزم تسجيل الدخول"
           : result.kind === "forbidden"
             ? "لا تملك صلاحية مراجعة المسميات"
             : "تعذّر تحميل طابور المراجعة",

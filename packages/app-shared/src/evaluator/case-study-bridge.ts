@@ -21,7 +21,7 @@ import type {
 } from "./case-study-types";
 import type { WorkflowTask } from "../workflow/task-types";
 
-export type EvaluatorCaseStudyBridge = {
+type EvaluatorCaseStudyBridge = {
   fetchInspectorWorkspace: (
     taskId: string,
   ) => Promise<InspectorWorkspaceDraft | null>;
@@ -72,9 +72,5 @@ export function getEvaluatorCaseStudyBridge(): EvaluatorCaseStudyBridge {
       "Evaluator/case-study bridge is not registered. Wire it from the shell at boot.",
     );
   }
-  return bridge;
-}
-
-export function tryGetEvaluatorCaseStudyBridge(): EvaluatorCaseStudyBridge | null {
   return bridge;
 }

@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
-using RealEstateEval.Valuation.Application.Abstractions;
-using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Infrastructure.Services;
@@ -15,126 +13,43 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationReportPdfServiceTests
 {
     private static readonly DateTimeOffset Start = new(2026, 9, 9, 10, 0, 0, TimeSpan.Zero);
-    private const string Html = "<!DOCTYPE html><html dir=\"rtl\"><body><section class=\"page pg\"><h1>تقرير التقييم</h1></section></body></html>";
+    private static readonly byte[] Pdf = Encoding.ASCII.GetBytes("%PDF-1.7\n%fake\n%%EOF\n");
 
     [Fact]
-    public async Task Create_renders_stores_and_returns_a_link_that_opens_the_pdf()
+    public async Task A_shared_link_opens_its_stored_copy_until_it_expires()
     {
-        var (db, requestId) = await SeedAsync();
-        var renderer = new FakeRenderer();
+        await using var db = CreateDb();
+        var row = ValuationReportPdf.Create(
+            Guid.NewGuid(),
+            "051421",
+            "051421.pdf",
+            Pdf,
+            Convert.ToHexStringLower(SHA256.HashData(Pdf)),
+            "fake-renderer",
+            "user-1",
+            Start.UtcDateTime);
+        db.ValuationReportPdfs.Add(row);
+        await db.SaveChangesAsync();
+
         var signer = Signer();
         var clock = new TestClock(Start);
-        var service = new ValuationReportPdfService(db, renderer, signer, clock);
+        var service = new ValuationReportPdfService(db, signer, clock);
+        var key = signer.Sign(row.Id, "051421.pdf", Start.Add(signer.Lifetime));
 
-        var result = await service.CreateFromHtmlAsync(
-            requestId,
-            new CreateValuationReportPdfRequest { Html = Html, ReportNumber = "051421" },
-            "user-1");
-
-        Assert.Equal(ValuationReportPdfFailure.None, result.Failure);
-        var link = result.Link!;
-        Assert.Equal("051421.pdf", link.FileName);
-        Assert.Equal("051421", link.ReportNumber);
-        Assert.StartsWith("/api/valuation-reports/051421.pdf?k=", link.Url);
-        Assert.Equal(FakeRenderer.Pdf.Length, link.SizeBytes);
-        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(FakeRenderer.Pdf)), link.Sha256);
-        Assert.Equal(Start.AddDays(90).UtcDateTime.ToString("O"), link.ExpiresAtUtc);
-        Assert.Equal(Html, renderer.LastHtml);
-
-        var stored = await db.ValuationReportPdfs.SingleAsync();
-        Assert.Equal("user-1", stored.CreatedByUserId);
-        Assert.Equal("fake-renderer", stored.Renderer);
-        Assert.Equal(FakeRenderer.Pdf, stored.Content);
-
-        var key = link.Url[(link.Url.IndexOf("k=", StringComparison.Ordinal) + 2)..];
         var opened = await service.OpenSharedAsync("051421.pdf", key);
         Assert.NotNull(opened);
-        Assert.Equal(FakeRenderer.Pdf, opened.Content);
-        Assert.Equal(stored.Sha256, opened.Sha256);
+        Assert.Equal(Pdf, opened.Content);
+        Assert.Equal(row.Sha256, opened.Sha256);
 
         // Same key, other file name → nothing.
         Assert.Null(await service.OpenSharedAsync("051422.pdf", key));
+        // A key for a copy that is no longer stored → nothing.
+        Assert.Null(await service.OpenSharedAsync(
+            "051421.pdf",
+            signer.Sign(Guid.NewGuid(), "051421.pdf", Start.AddDays(1))));
         // Expired → nothing.
         clock.Advance(TimeSpan.FromDays(91));
         Assert.Null(await service.OpenSharedAsync("051421.pdf", key));
-    }
-
-    [Fact]
-    public async Task Latest_link_points_at_the_newest_copy_and_retention_keeps_three()
-    {
-        var (db, requestId) = await SeedAsync();
-        var clock = new TestClock(Start);
-        var service = new ValuationReportPdfService(db, new FakeRenderer(), Signer(), clock);
-
-        Assert.Null(await service.GetLatestLinkAsync(requestId));
-
-        var links = new List<ValuationReportPdfLinkDto>();
-        for (var i = 1; i <= 5; i++)
-        {
-            clock.Advance(TimeSpan.FromMinutes(1));
-            var r = await service.CreateFromHtmlAsync(
-                requestId,
-                new CreateValuationReportPdfRequest { Html = Html, ReportNumber = $"R-{i}" },
-                null);
-            links.Add(r.Link!);
-        }
-
-        var kept = await db.ValuationReportPdfs.OrderBy(x => x.CreatedAtUtc).Select(x => x.ReportNumber).ToListAsync();
-        Assert.Equal(new[] { "R-3", "R-4", "R-5" }, kept);
-
-        var latest = await service.GetLatestLinkAsync(requestId);
-        Assert.NotNull(latest);
-        Assert.Equal("R-5.pdf", latest.FileName);
-        Assert.Equal(links[4].PdfId, latest.PdfId);
-
-        // A pruned copy's link no longer resolves; a kept one still does.
-        var oldKey = links[0].Url[(links[0].Url.IndexOf("k=", StringComparison.Ordinal) + 2)..];
-        Assert.Null(await service.OpenSharedAsync("R-1.pdf", oldKey));
-        var keptKey = links[2].Url[(links[2].Url.IndexOf("k=", StringComparison.Ordinal) + 2)..];
-        Assert.NotNull(await service.OpenSharedAsync("R-3.pdf", keptKey));
-    }
-
-    [Fact]
-    public async Task Missing_request_number_falls_back_to_display_id()
-    {
-        var (db, requestId) = await SeedAsync();
-        var service = new ValuationReportPdfService(db, new FakeRenderer(), Signer(), new TestClock(Start));
-
-        var r = await service.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = Html }, null);
-
-        Assert.Equal("VR-453.pdf", r.Link!.FileName);
-        Assert.Equal("VR-453", r.Link.ReportNumber);
-    }
-
-    [Fact]
-    public async Task Validation_and_renderer_failures_map_to_distinct_outcomes()
-    {
-        var (db, requestId) = await SeedAsync();
-        var signer = Signer();
-        var clock = new TestClock(Start);
-
-        var ok = new ValuationReportPdfService(db, new FakeRenderer(), signer, clock);
-        var empty = await ok.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = "  " }, null);
-        Assert.Equal(ValuationReportPdfFailure.InvalidHtml, empty.Failure);
-        var noTags = await ok.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = new string('x', 200) }, null);
-        Assert.Equal(ValuationReportPdfFailure.InvalidHtml, noTags.Failure);
-        var unknown = await ok.CreateFromHtmlAsync(Guid.NewGuid(), new CreateValuationReportPdfRequest { Html = Html }, null);
-        Assert.Equal(ValuationReportPdfFailure.RequestNotFound, unknown.Failure);
-
-        var notConfigured = new ValuationReportPdfService(db, new FakeRenderer { Configured = false }, signer, clock);
-        var r1 = await notConfigured.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = Html }, null);
-        Assert.Equal(ValuationReportPdfFailure.RendererUnavailable, r1.Failure);
-
-        var down = new ValuationReportPdfService(db, new FakeRenderer { Throw = new HtmlPdfRendererUnavailableException("down") }, signer, clock);
-        var r2 = await down.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = Html }, null);
-        Assert.Equal(ValuationReportPdfFailure.RendererUnavailable, r2.Failure);
-
-        var broken = new ValuationReportPdfService(db, new FakeRenderer { Throw = new HtmlPdfRenderFailedException("bad") }, signer, clock);
-        var r3 = await broken.CreateFromHtmlAsync(requestId, new CreateValuationReportPdfRequest { Html = Html }, null);
-        Assert.Equal(ValuationReportPdfFailure.RendererFailed, r3.Failure);
-
-        Assert.Empty(await db.ValuationReportPdfs.ToListAsync());
-        Assert.All(new[] { empty, noTags, unknown, r1, r2, r3 }, r => Assert.False(string.IsNullOrWhiteSpace(r.MessageAr)));
     }
 
     [Fact]
@@ -170,24 +85,10 @@ public class ValuationReportPdfServiceTests
         return new ReportLinkSigner(config, Options.Create(new ReportPdfLinkOptions()));
     }
 
-    private static async Task<(ValuationDbContext Db, Guid RequestId)> SeedAsync()
-    {
-        var db = new ValuationDbContext(new DbContextOptionsBuilder<ValuationDbContext>()
+    private static ValuationDbContext CreateDb() =>
+        new(new DbContextOptionsBuilder<ValuationDbContext>()
             .UseInMemoryDatabase($"report-pdfs-{Guid.NewGuid():N}")
             .Options);
-        var id = Guid.NewGuid();
-        db.ValuationRequests.Add(ValuationRequest.Create(
-            id,
-            "VR-453",
-            Guid.NewGuid(),
-            "الرياض",
-            "فيلا",
-            "عبدالله",
-            "2026-09-01",
-            Start.UtcDateTime));
-        await db.SaveChangesAsync();
-        return (db, id);
-    }
 
     private sealed class TestClock(DateTimeOffset start) : TimeProvider
     {
@@ -196,24 +97,5 @@ public class ValuationReportPdfServiceTests
         public override DateTimeOffset GetUtcNow() => _now;
 
         public void Advance(TimeSpan by) => _now = _now.Add(by);
-    }
-
-    private sealed class FakeRenderer : IHtmlPdfRenderer
-    {
-        public static readonly byte[] Pdf = Encoding.ASCII.GetBytes("%PDF-1.7\n%fake\n%%EOF\n");
-
-        public bool Configured { get; init; } = true;
-        public Exception? Throw { get; init; }
-        public string? LastHtml { get; private set; }
-
-        public string Name => "fake-renderer";
-        public bool IsConfigured => Configured;
-
-        public Task<byte[]> RenderAsync(string html, CancellationToken cancellationToken = default)
-        {
-            if (Throw is not null) throw Throw;
-            LastHtml = html;
-            return Task.FromResult(Pdf);
-        }
     }
 }

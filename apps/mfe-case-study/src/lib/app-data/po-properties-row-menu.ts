@@ -54,7 +54,7 @@ export function buildPoPropertiesRowMoreItems(
   if (ctx.showFailureRaise && !getPropertyFailure(po, propertyId)) {
     items.push({
       id: "property-failure",
-      label: "تسجيل تعذر",
+      label: "تسجيل تعذّر",
       danger: true,
       onClick: () => {
         if (ctx.onRegisterFailure) {

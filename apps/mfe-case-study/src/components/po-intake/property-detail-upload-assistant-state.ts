@@ -35,7 +35,7 @@ export type CopyKey = string;
 export const INFATH_EMPTY_VALUE = "— غير مُدخل —";
 
 /** Max characters of the copied text echoed in the toast. */
-export const COPY_PREVIEW_LENGTH = 34;
+const COPY_PREVIEW_LENGTH = 34;
 
 /* ------------------------------------------------------------------ */
 /* Attachments                                                         */
@@ -105,7 +105,7 @@ export function infathFieldHasValue(value: string | null | undefined): boolean {
   return Boolean(value?.trim()) && value !== "—";
 }
 
-export type InfathFieldAction = "download" | "copy" | null;
+type InfathFieldAction = "download" | "copy" | null;
 
 /**
  * Which button a field row offers: file fields download, free-text fields
@@ -179,7 +179,7 @@ export function withCopiedKey<S extends Set<CopyKey>>(set: S, key: CopyKey): S |
 /* Ops context inputs                                                  */
 /* ------------------------------------------------------------------ */
 
-export type CourtVisitLike = {
+type CourtVisitLike = {
   status?: string | null;
   updatedAt?: string | null;
   courtVisitResult?: { kind?: string | null } | null;

@@ -207,7 +207,7 @@ describe("buildCaseStudyPartyAssignees", () => {
       assignedCaseStudyParties(plannedOnly, [plannedOnly], staff).map(
         (p) => p.role,
       ),
-    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيّم"]);
 
     const noInspector = task({
       ...plannedOnly,
@@ -229,7 +229,7 @@ describe("buildCaseStudyPartyAssignees", () => {
     });
     expect(
       assignedCaseStudyParties(allThree, [allThree], staff).map((p) => p.role),
-    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيّم"]);
   });
 });
 
@@ -296,6 +296,38 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
     expect(byKey.survey.badge).toBe("معطّل");
   });
 
+  it("names the specialist for a party that cannot see the parent nor list staff", () => {
+    const inspection = task({
+      id: "fi-1",
+      kind: "field-inspection",
+      parentTaskId: "parent-1",
+      assigneeRole: "field-inspector",
+      assigneeName: "أحمد سعيد",
+      assigneeId: "fi-ahmed",
+      caseSpecialistName: "محمد النفيعي",
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "",
+        engineeringOffice: false,
+        engineeringOfficeId: "",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-966500000015",
+      },
+    });
+
+    // The inspector's staff list is empty: the API refuses it to field roles.
+    const rows = buildPropertyDetailTimelinePartyRows({
+      task: inspection,
+      allTasks: [inspection],
+      staffUsers: [],
+    });
+
+    expect(rows.find((r) => r.key === "specialist")?.label).toBe("محمد النفيعي");
+  });
+
   it("refines the appraiser's badge once his package is handed over", () => {
     const appraisal = task({
       id: "val-1",
@@ -339,7 +371,7 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
     );
     expect(
       badgeFor({ packageSubmitted: true, draft: { status: "approved", reportStage: "deposit_issued" } }),
-    ).toBe("معتمد — بانتظار الإيداع");
+    ).toBe("معتمد — بانتظار رمز الإيداع");
   });
 
   it("reads the mirrored survey flag when the sibling task is not visible", () => {

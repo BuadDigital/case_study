@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast, confirmAction } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { poListStatusMeta, isPoListStatusTerminal } from "@platform/app-shared/app-data/po-list-status";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -126,11 +127,12 @@ export function usePoListWorkflow() {
     [query, debouncedSearch],
   );
 
+  const pageQuery = usePoListRowsPageQuery(serverQuery);
   const {
     data: pageResult,
     isPending: pagePending,
     isPlaceholderData,
-  } = usePoListRowsPageQuery(serverQuery);
+  } = pageQuery;
   // The KPI band and the empty-state copy are SQL COUNTs on the same filters —
   // no list is loaded for them any more (pagination-contract §1.1).
   const { data: counts } = useWorkOrderListCountsQuery(countsQuery);
@@ -357,6 +359,11 @@ export function usePoListWorkflow() {
     registeredByPo,
     propertyDeedView,
     statsReady,
+    /** The page failed with no rows to show — the view swaps in the error state. */
+    pageLoadFailed: queryLoadFailed(pageQuery),
+    pageLoadError: pageQuery.error,
+    retryPageLoad: () => void pageQuery.refetch(),
+    pageRetrying: pageQuery.isFetching,
     isPlaceholderData,
     kpi,
     mobileCardItems,

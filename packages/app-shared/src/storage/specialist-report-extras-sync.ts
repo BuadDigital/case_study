@@ -12,7 +12,7 @@ import {
 } from "./browser-domain-store";
 import { workOrdersApiConfig } from "../app-data/work-orders-api-config";
 
-export type SpecialistReportExtrasBag = {
+type SpecialistReportExtrasBag = {
   esg?: unknown;
   finishing?: string;
   searchScopeNotes?: string;

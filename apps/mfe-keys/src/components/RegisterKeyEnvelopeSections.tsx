@@ -18,7 +18,7 @@ import {
   type SourceKind,
 } from "./register-key-envelope-state";
 
-export const fldControlClassName = opsFldControl;
+const fldControlClassName = opsFldControl;
 
 export function Fld({
   full,

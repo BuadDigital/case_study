@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
 using RealEstateEval.Domain;
 using RealEstateEval.Identity.Application.Abstractions;
 
@@ -11,11 +10,8 @@ namespace RealEstateEval.Identity.Infrastructure.Persistence;
 /// plain value so <c>Identity.Application</c> compiles without the Identity packages.
 /// </summary>
 public sealed class StaffIdentityStore(
-    UserManager<ApplicationUser> userManager,
-    IOptions<DataProtectionTokenProviderOptions> activationTokenOptions) : IStaffIdentityStore
+    UserManager<ApplicationUser> userManager) : IStaffIdentityStore
 {
-    public TimeSpan ActivationTokenLifespan => activationTokenOptions.Value.TokenLifespan;
-
     public async Task<StaffIdentityUser?> FindByIdAsync(
         string userId,
         CancellationToken cancellationToken) =>
@@ -126,25 +122,6 @@ public sealed class StaffIdentityStore(
         await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
     }
 
-    public async Task<string?> GenerateActivationTokenAsync(
-        string userId,
-        CancellationToken cancellationToken)
-    {
-        var user = await userManager.FindByIdAsync(userId);
-        return user is null ? null : await userManager.GeneratePasswordResetTokenAsync(user);
-    }
-
-    public async Task<IReadOnlyList<StaffIdentityError>> ResetPasswordAsync(
-        string userId,
-        string token,
-        string newPassword,
-        CancellationToken cancellationToken)
-    {
-        var user = await userManager.FindByIdAsync(userId);
-        return user is null
-            ? NotFound
-            : Errors(await userManager.ResetPasswordAsync(user, token, newPassword));
-    }
 
  /// <summary>
  /// Stands in for a row that vanished between the lookup and the write. The caller already

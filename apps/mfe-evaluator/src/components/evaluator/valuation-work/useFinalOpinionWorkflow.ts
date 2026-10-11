@@ -28,10 +28,10 @@ import {
 import { apiConfig } from "./lib/shell-utils";
 
 /** Same requirement the server states, phrased for a field we scroll to. */
-export const METHODS_RATIONALE_REQUIRED =
+const METHODS_RATIONALE_REQUIRED =
   "مبرر استخدام طرق التقييم مطلوب — اكتب مبرر الرأي النهائي في هذا الحقل.";
 
-export type FinalOpinionWorkflowArgs = {
+type FinalOpinionWorkflowArgs = {
   valuationRequestId: string | null;
   recon: ValuationReconciliationDto | null;
   cost: ValuationCostApproachDto | null;
@@ -270,5 +270,3 @@ export function useFinalOpinionWorkflow({
     saveReconciliation,
   };
 }
-
-export type FinalOpinionWorkflow = ReturnType<typeof useFinalOpinionWorkflow>;

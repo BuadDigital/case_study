@@ -179,10 +179,10 @@ export function FailureRaisePanel({
         }),
       ]);
       setProblemTypeId("");
-      showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
+      showToast("تم رفع التعذّر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
     } catch {
-      showToast("تعذر حفظ التعذر — تحقق من الاتصال وحاول مرة أخرى.", "error");
+      showToast("تعذّر حفظ التعذّر — تحقق من الاتصال وحاول مرة أخرى.", "error");
     }
   }
 
@@ -192,7 +192,7 @@ export function FailureRaisePanel({
         const failure = blockingFailures[0]!;
         return (
           <div className={cn(noteWarnClass, "mb-3")}>
-            <strong>تعذر قائم على هذا العقار:</strong>{" "}
+            <strong>تعذّر قائم على هذا العقار:</strong>{" "}
             {failureRecordTitle(failure)}
             <div className="mt-1.5 text-xs text-text-2">
               {failureSeverityLabel(failure.severity)} ·{" "}
@@ -203,7 +203,7 @@ export function FailureRaisePanel({
       }
       return (
         <div className={cn(noteWarnClass, "mb-3")}>
-          <strong>تعذرات قائمة على هذا العقار</strong>
+          <strong>تعذّرات قائمة على هذا العقار</strong>
           <ul className="mt-2 list-disc space-y-1 ps-4">
             {blockingFailures.slice(0, 4).map((failure) => (
               <li key={failure.id}>
@@ -221,7 +221,7 @@ export function FailureRaisePanel({
     if (approvedFailure) {
       return (
         <div className={cn(noteInfoClass, "mb-3")}>
-          <strong>تعذر معتمد:</strong> {failureRecordTitle(approvedFailure)}
+          <strong>تعذّر معتمد:</strong> {failureRecordTitle(approvedFailure)}
         </div>
       );
     }
@@ -229,7 +229,7 @@ export function FailureRaisePanel({
     if (groupedPastFailures.length > 0) {
       return (
         <div className={cn(noteNeutralClass, "mb-3")}>
-          <strong>تعذرات سابقة على هذا العقار</strong>
+          <strong>تعذّرات سابقة على هذا العقار</strong>
           <ul className="mt-2 list-disc space-y-1 ps-4">
             {groupedPastFailures.slice(0, 4).map((row) => (
               <li key={row.id}>
@@ -251,11 +251,11 @@ export function FailureRaisePanel({
 
   return (
     <div className="min-w-0">
-      <div className={sectionClassName}>تسجيل تعذر</div>
+      <div className={sectionClassName}>تسجيل تعذّر</div>
       {raiseDisabled ? (
         <p className="mb-3 max-w-[560px] rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2.5 text-[11.5px] leading-[1.7] text-amber-text">
           {raiseDisabledReason ??
-            "لا يمكن تسجيل تعذر في الوضع الحالي."}
+            "لا يمكن تسجيل تعذّر في الوضع الحالي."}
         </p>
       ) : (
         <>
@@ -263,7 +263,7 @@ export function FailureRaisePanel({
 
           {openFailureForCreate ? (
             <p className="m-0 max-w-[560px] text-[12px] leading-relaxed text-text-3">
-              يوجد تعذر قائم على هذا العقار — أكمل معالجته قبل رفع تعذر جديد.
+              يوجد تعذّر قائم على هذا العقار — أكمل معالجته قبل رفع تعذّر جديد.
             </p>
           ) : (
             <div className="grid max-w-[560px] gap-2.5">
@@ -288,7 +288,7 @@ export function FailureRaisePanel({
                   className="!px-[18px] !py-[7px] !text-xs"
                   onClick={() => void handleSubmit()}
                 >
-                  رفع التعذر
+                  رفع التعذّر
                 </Button>
               </div>
             </div>
@@ -296,7 +296,7 @@ export function FailureRaisePanel({
         </>
       )}
 
-      <div className={cn(sectionClassName, "mt-[18px]")}>سجل التعذرات</div>
+      <div className={cn(sectionClassName, "mt-[18px]")}>سجل التعذّرات</div>
       <FailureHistoryList failures={propertyFailures} />
     </div>
   );
@@ -310,7 +310,7 @@ function FailureHistoryList({
   if (failures.length === 0) {
     return (
       <p className="m-0 text-xs leading-relaxed text-text-3">
-        لا توجد تعذرات مسجلة على هذا العقار.
+        لا توجد تعذّرات مسجلة على هذا العقار.
       </p>
     );
   }

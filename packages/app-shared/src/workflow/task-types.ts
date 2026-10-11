@@ -23,7 +23,7 @@ export type WorkflowTaskKind =
 export type WorkflowTaskStatus = "open" | "completed" | "blocked" | "cancelled";
 
 /** The appraiser's package: draft → submitted (handed to the specialist) → reopened (returned). */
-export type AppraisalPackageStatus = "draft" | "submitted" | "reopened";
+type AppraisalPackageStatus = "draft" | "submitted" | "reopened";
 
 /** Party selection on transaction distribution — checkbox gates each dropdown group. */
 export type TaskDistributionDraft = {
@@ -59,6 +59,8 @@ export type WorkflowTask = {
   parentTaskId?: string;
   status: WorkflowTaskStatus;
   distribution?: TaskDistributionDraft;
+  /** Party child tasks: the case specialist's name — parties cannot see the parent or list staff. */
+  caseSpecialistName?: string;
   obstructionReason?: string;
   obstructionPriorPhase?: CaseStudyTaskPhase;
   assignmentType?: AssignmentType;

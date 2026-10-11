@@ -19,28 +19,15 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 [Authorize]
 public class ValuationReportIssuanceController : ControllerBase
 {
-    private readonly IValuationReportIssuanceService _issuance;
     private readonly IValuationReportDraftService _drafts;
     private readonly IPermissionService _permissions;
 
     public ValuationReportIssuanceController(
-        IValuationReportIssuanceService issuance,
         IValuationReportDraftService drafts,
         IPermissionService permissions)
     {
-        _issuance = issuance;
         _drafts = drafts;
         _permissions = permissions;
-    }
-
-    [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
-    public async Task<ActionResult<ValuationReportIssuanceStateDto>> GetState(
-        Guid valuationRequestId,
-        CancellationToken ct)
-    {
-        var state = await _issuance.GetStateAsync(valuationRequestId, ct);
-        return state is null ? NotFound() : Ok(state);
     }
 
     /// <summary>

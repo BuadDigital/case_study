@@ -45,6 +45,7 @@ import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
+import { componentPhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorComponentsSection({
   activeStep,
@@ -77,7 +78,7 @@ export function InspectorComponentsSection({
   return (
     <div id="ins-components-section">
   <InspectorCard
-    title="مكوّنات العقار"
+    title="مكونات العقار"
     hidden={activeStep !== 2}
     icon="ti-building-estate"
     badge={mobile ? undefined : <InsBadge label="إدخال ميداني" tone="danger" />}
@@ -221,12 +222,7 @@ export function InspectorComponentsSection({
                               draft.taskId,
                               photoRef,
                             );
-                            persist({
-                              componentPhotoAttachments: {
-                                ...draft.componentPhotoAttachments,
-                                [photoMeta.photoKey]: null,
-                              },
-                            });
+                            persist(componentPhotoPatch(photoMeta.photoKey, null));
                           }
                     }
                   />
@@ -250,12 +246,7 @@ export function InspectorComponentsSection({
                       if (!result.ok) {
                         throw new Error(result.error);
                       }
-                      persist({
-                        componentPhotoAttachments: {
-                          ...draft.componentPhotoAttachments,
-                          [photoMeta.photoKey]: result.attachment,
-                        },
-                      });
+                      persist(componentPhotoPatch(photoMeta.photoKey, result.attachment));
                     }}
                   />
                 )}

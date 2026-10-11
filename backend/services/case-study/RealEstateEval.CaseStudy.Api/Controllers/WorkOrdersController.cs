@@ -235,7 +235,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.DeleteAsync(poNumber, cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -247,7 +247,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.CancelAsync(poNumber, cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -259,7 +259,7 @@ public class WorkOrdersController : ControllerBase
         if (forbidden is not null) return forbidden;
 
         var (ok, error) = await _workOrders.StopAsync(poNumber, cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -302,7 +302,8 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             propertyId,
             request,
-            cancellationToken);
+            cancellationToken,
+            ActorClaims.DisplayName(User));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
@@ -326,35 +327,8 @@ public class WorkOrdersController : ControllerBase
             propertyId,
             property,
             cancellationToken,
-            softDraft: draft);
-        if (errors is { Count: > 0 })
-            return this.FieldErrorsProblem(errors);
-        if (result is null) return NotFound();
-        return Ok(result);
-    }
-
- /// <summary>
- /// Narrow write for location map URL — specialist / inspector / supervisor / CDO.
- /// Does not require manage-work-orders (inspectors only have submit-party-work).
- /// </summary>
-    [HttpPut("{poNumber}/properties/{propertyId:guid}/location-map-url")]
-    public async Task<ActionResult<WorkOrderPropertyDto>> UpdateLocationMapUrl(
-        string poNumber,
-        Guid propertyId,
-        [FromBody] UpdateLocationMapUrlRequest request,
-        CancellationToken cancellationToken)
-    {
-        var userId = ActorClaims.Id(User);
-        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
-        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
-        if (!DocumentaryWorkflowRules.RoleCanSetLocationMapUrl(perms?.PrototypeRole))
-            return Forbid();
-
-        var (result, errors) = await _workOrders.UpdateLocationMapUrlAsync(
-            poNumber,
-            propertyId,
-            request.LocationMapUrl,
-            cancellationToken);
+            softDraft: draft,
+            actorName: ActorClaims.DisplayName(User));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
@@ -416,7 +390,7 @@ public class WorkOrdersController : ControllerBase
             propertyId,
             request?.Reason ?? "",
             cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 
@@ -434,7 +408,7 @@ public class WorkOrdersController : ControllerBase
         if (denied is not null) return denied;
 
         var (sources, error) = await _fieldGaps.GetSourcesAsync(poNumber, propertyId, cancellationToken);
-        if (sources is null) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (sources is null) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return Ok(sources);
     }
 

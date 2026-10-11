@@ -21,6 +21,7 @@ import {
   setInspectorPhotoDataUrl,
 } from "../../lib/app-data/inspector-photo-upload";
 import { INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 function slotPhotoRef(slotId: string, photoId: number): string {
   return `slot:${slotId}:${photoId}`;
@@ -51,7 +52,7 @@ export function SpecialistServiceProofPhotoFields({
   transactionPhotos: PropertyDetailDocumentEntry[];
   disabled?: boolean;
   invalid?: boolean;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const slots = useMemo(
     () => listSpecialistProofServicePhotoSlots(draft),
@@ -193,7 +194,7 @@ export function SpecialistServiceProofPhotoFields({
                       variant="outline"
                       onClick={() => setPickerSlotId(slot.id)}
                     >
-                      {done ? "تغيير الصورة" : "اختر من صور المعاملة"}
+                      {done ? "استبدال" : "اختر من صور المعاملة"}
                     </Button>
                     {done ? (
                       <Button

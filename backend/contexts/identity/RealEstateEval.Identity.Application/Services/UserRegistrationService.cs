@@ -162,7 +162,7 @@ public partial class UserRegistrationService : IUserRegistrationService
             return (null, StaffUserRules.FormError(
                 "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).", "mobile"));
 
-        var errors = await ValidateUpdateStaffAsync(userId, target, stored.Status, cancellationToken);
+        var errors = await ValidateUpdateStaffAsync(userId, target, cancellationToken);
         if (errors.Count > 0)
             return (null, errors);
 
@@ -287,10 +287,9 @@ public partial class UserRegistrationService : IUserRegistrationService
     private async Task<Dictionary<string, string>> ValidateUpdateStaffAsync(
         string userId,
         StaffUpdateTarget target,
-        UserStatus currentStatus,
         CancellationToken cancellationToken)
     {
-        var errors = StaffProfileRules.ValidateUpdateTarget(target, currentStatus);
+        var errors = StaffProfileRules.ValidateUpdateTarget(target);
         var email = target.Email;
         var mobile = target.Mobile;
         var nationalId = target.NationalId;

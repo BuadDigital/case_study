@@ -5,7 +5,7 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 type OwnerRow = { name: string };
 
-export function ownershipTypeLabel(value: string): string {
+function ownershipTypeLabel(value: string): string {
   return value === "shared" ? "مشاع" : "ملكية مطلقة";
 }
 

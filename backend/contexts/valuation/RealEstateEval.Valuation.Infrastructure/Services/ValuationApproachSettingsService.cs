@@ -115,7 +115,6 @@ public sealed class ValuationApproachSettingsService(
             request.ExternalSpecialistDetails,
             request.ValuationDateMode,
             retroDate,
-            request.RetrospectiveRationale,
             await AllowedPurposeKeysAsync(cancellationToken),
             costScopeKey: request.CostScopeKey,
             retrospectiveDateEnd: retroDateEnd);

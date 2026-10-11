@@ -69,8 +69,8 @@ function workerJobTitle(
     const fromRoster = valuerRoleLabel(rosterRole);
     if (fromRoster) return fromRoster;
   }
-  if (role === "مراجع") return "مقيم عقاري مراجع";
-  if (role === "معد") return "مقيم عقاري";
+  if (role === "مراجع") return "مقيّم عقاري مراجع";
+  if (role === "معد") return "مقيّم عقاري";
   return "";
 }
 
@@ -84,7 +84,7 @@ type ParticipantFill = {
 };
 
 /** §26 — three fixed participants from the roster + fourth from work-order dispatch (assigned appraiser). */
-export const FIXED_REPORT_PARTICIPANT_NAMES = [
+const FIXED_REPORT_PARTICIPANT_NAMES = [
   "سليمان عبد الله الصالحي",
   "سالم الغريب",
   "أيمن أحمد مجرشي",

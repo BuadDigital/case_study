@@ -25,6 +25,8 @@ import {
   OCCUPANCY_STATE_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
 } from "../../lib/app-data/inspector-workspace-data";
+import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 const INS_LABEL_CENTERED_CLASS = cn(INS_LABEL_CLASS, "w-full text-center");
 const INS_GRID_SELECT_CLASS = cn(EDIT_CONTROL_CLASS, "text-center");
@@ -62,6 +64,7 @@ export function InspectorFeatureWizardFields({
   hidePhotos = false,
   disabled = false,
   readOnlyFeatureKeys = [],
+  sourceNotes = {},
   onPatch,
 }: {
   fields: InspectorFeatureField[];
@@ -76,7 +79,9 @@ export function InspectorFeatureWizardFields({
   disabled?: boolean;
   /** Fields owned by another role and therefore visible but immutable here. */
   readOnlyFeatureKeys?: readonly string[];
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  /** Where a still-untouched pre-answered value came from (feature key → «المصدر: …»). */
+  sourceNotes?: Record<string, string>;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const readOnlyKeys = new Set(readOnlyFeatureKeys);
   const selectFields = fields.filter(
@@ -146,6 +151,10 @@ export function InspectorFeatureWizardFields({
                     onChange={(e) => setFeature(field.key, e.target.value)}
                   >
                     <option value="">— اختر —</option>
+                    {/* A value saved under an older option list stays selectable. */}
+                    {rawVal && !field.options.includes(rawVal) ? (
+                      <option value={rawVal}>{rawVal}</option>
+                    ) : null}
                     {field.options.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
@@ -154,6 +163,11 @@ export function InspectorFeatureWizardFields({
                   </select>
                 </>
               )}
+              {sourceNotes[field.key] ? (
+                <span className="mt-1 block text-center text-[10.5px] text-text-3">
+                  {sourceNotes[field.key]}
+                </span>
+              ) : null}
               {!hidePhotos && needsPhoto ? (
                 <div
                   id={`ins-feature-photo-${field.key}`}
@@ -177,12 +191,7 @@ export function InspectorFeatureWizardFields({
                               draft.taskId,
                               `feature:${field.key}`,
                             );
-                            onPatch({
-                              featurePhotoAttachments: {
-                                ...draft.featurePhotoAttachments,
-                                [field.key]: null,
-                              },
-                            });
+                            onPatch(featurePhotoPatch(field.key, null));
                           }
                     }
                     onUpload={async (file) => {
@@ -193,12 +202,7 @@ export function InspectorFeatureWizardFields({
                         { draft, deedNumber },
                       );
                       if (!result.ok) throw new Error(result.error);
-                      onPatch({
-                        featurePhotoAttachments: {
-                          ...draft.featurePhotoAttachments,
-                          [field.key]: result.attachment,
-                        },
-                      });
+                      onPatch(featurePhotoPatch(field.key, result.attachment));
                       return true;
                     }}
                   />
@@ -284,12 +288,7 @@ export function InspectorFeatureWizardFields({
                               draft.taskId,
                               `feature:${field.key}`,
                             );
-                            onPatch({
-                              featurePhotoAttachments: {
-                                ...draft.featurePhotoAttachments,
-                                [field.key]: null,
-                              },
-                            });
+                            onPatch(featurePhotoPatch(field.key, null));
                           }
                     }
                     onUpload={async (file) => {
@@ -300,12 +299,7 @@ export function InspectorFeatureWizardFields({
                         { draft, deedNumber },
                       );
                       if (!result.ok) throw new Error(result.error);
-                      onPatch({
-                        featurePhotoAttachments: {
-                          ...draft.featurePhotoAttachments,
-                          [field.key]: result.attachment,
-                        },
-                      });
+                      onPatch(featurePhotoPatch(field.key, result.attachment));
                       return true;
                     }}
                   />
@@ -393,12 +387,7 @@ export function InspectorFeatureWizardFields({
                                   draft.taskId,
                                   `feature:${field.key}`,
                                 );
-                                onPatch({
-                                  featurePhotoAttachments: {
-                                    ...draft.featurePhotoAttachments,
-                                    [field.key]: null,
-                                  },
-                                });
+                                onPatch(featurePhotoPatch(field.key, null));
                               }
                         }
                         onUpload={async (file) => {
@@ -409,12 +398,7 @@ export function InspectorFeatureWizardFields({
                             { draft, deedNumber },
                           );
                           if (!result.ok) throw new Error(result.error);
-                          onPatch({
-                            featurePhotoAttachments: {
-                              ...draft.featurePhotoAttachments,
-                              [field.key]: result.attachment,
-                            },
-                          });
+                          onPatch(featurePhotoPatch(field.key, result.attachment));
                           return true;
                         }}
                       />

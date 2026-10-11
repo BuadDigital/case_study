@@ -26,7 +26,8 @@ public sealed partial class ValuationReportDraftService(
     ICaseStudyLookup caseStudy,
     IValuationEventPublisher events,
     TimeProvider? time = null,
-    IValuationFinalReportService? finalReports = null)
+    IValuationFinalReportService? finalReports = null,
+    ValuationTimelineWriter? timeline = null)
     : IValuationReportDraftService
 {
     public const string PrepareForbiddenAr = "إعداد مسودة تقرير التقييم للأخصائي فقط";
@@ -121,6 +122,11 @@ public sealed partial class ValuationReportDraftService(
             NotificationContract.Tones.Info,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            vr!.PropertyId,
+            po => ValuationTimelineTexts.DraftSent(
+                po, vr.PropertyId, vr.Id, actor.DisplayName, draft.SpecialistNote, _time.GetUtcNow().UtcDateTime),
+            cancellationToken);
         return (await GetAsync(vr!.Id, cancellationToken), null);
     }
 
@@ -153,18 +159,14 @@ public sealed partial class ValuationReportDraftService(
             NotificationContract.Tones.Warn,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            vr.PropertyId,
+            po => ValuationTimelineTexts.DraftWithdrawn(
+                po, vr.PropertyId, vr.Id, actor.DisplayName, draft.SpecialistNote, _time.GetUtcNow().UtcDateTime),
+            cancellationToken);
         return (await GetAsync(vr.Id, cancellationToken), null);
     }
 
-    public async Task<string?> GetApprovedSnapshotHtmlAsync(
-        Guid valuationRequestId,
-        CancellationToken cancellationToken = default)
-    {
-        var draft = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);
-        return draft is { IsApproved: true, SnapshotHtmlGz: { Length: > 0 } gz }
-            ? ReportDraftSnapshot.Decompress(gz)
-            : null;
-    }
 
     /// <summary>
     /// Everything a specialist write needs: the open request, the package handed over, nothing

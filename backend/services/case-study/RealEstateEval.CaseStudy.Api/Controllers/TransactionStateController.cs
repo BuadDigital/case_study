@@ -103,30 +103,6 @@ public class TransactionStateController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>
-    /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and its reason only;
-    /// It does not open anything (the actual recovery is through reopening the R2 rating).
-    /// </summary>
-    [HttpPost("post-enfaz-decision")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
-    public async Task<IActionResult> RecordPostEnfazDecision(
-        Guid workOrderId,
-        Guid propertyId,
-        [FromBody] PostEnfazDecisionRequest request,
-        CancellationToken ct)
-    {
-        var error = await _state.RecordPostEnfazDecisionAsync(
-            workOrderId,
-            propertyId,
-            request,
-            ActorClaims.Id(User),
-            await ActorPrototypeRoleAsync(ct),
-            ct);
-        if (error is not null)
-            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
-        return NoContent();
-    }
-
     /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles.</summary>
     private async Task<string> ActorPrototypeRoleAsync(CancellationToken cancellationToken)
     {

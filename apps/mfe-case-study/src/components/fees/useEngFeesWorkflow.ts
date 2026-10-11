@@ -6,6 +6,7 @@
  * vendor-invoice submit. The screen consumes the returned bag and keeps JSX
  * only; pure rules live in `eng-fees-state.ts`.
  */
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@platform/ui-kit";
@@ -22,13 +23,13 @@ import {
   uploadPartyBillingVendorInvoice,
 } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
+import { todayIso } from "@platform/app-shared/format/date";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
 import { computeEngineeringFeesSituation } from "../../lib/app-data/active-transaction-page-situation";
 import {
   engFeeTabCounts,
   filterEngFeeRows,
   filterEngStatements,
-  fmtSar,
   type TabId,
 } from "./eng-fees-state";
 
@@ -45,9 +46,7 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
   const [objectOpenId, setObjectOpenId] = useState<string | null>(null);
   const [objectText, setObjectText] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
+  const [invoiceDate, setInvoiceDate] = useState(todayIso);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
 
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
@@ -173,7 +172,7 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
         showToast(result.error, "error");
         return;
       }
-      showToast(`رُفعت الفاتورة — ${fmtSar(s.totalNetSar)}`, "success");
+      showToast(`رُفعت الفاتورة — ${fmtSar(s.totalNetSar, { digits: 3, trim: true })}`, "success");
       setInvoiceNo("");
       setInvoiceFile(null);
       setOpenFn(null);

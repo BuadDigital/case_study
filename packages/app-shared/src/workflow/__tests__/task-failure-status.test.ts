@@ -46,6 +46,6 @@ describe("isTaskFailureObstructed", () => {
 
   it("does not flag a plain open task", () => {
     expect(isTaskFailureObstructed({ kind: "case-study-property", status: "open", phase: "bourse" })).toBe(false);
-    expect(FAILURE_OBSTRUCTED_BADGE.label).toBe("متعذر");
+    expect(FAILURE_OBSTRUCTED_BADGE.label).toBe("متعذّر");
   });
 });

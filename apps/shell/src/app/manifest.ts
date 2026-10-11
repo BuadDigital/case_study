@@ -59,8 +59,8 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },
       {
-        name: "إدارة التعذرات",
-        short_name: "تعذرات",
+        name: "إدارة التعذّرات",
+        short_name: "تعذّرات",
         url: "/failures?source=pwa",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
       },

@@ -19,6 +19,7 @@ import {
   CASE_STUDY_REPORT_STEPS,
   caseStudyAnswerKey,
 } from "../../lib/app-data/case-study-report-data";
+import { CASE_STUDY_DEED_REMARKS_ID } from "../../lib/app-data/case-study-report-ux";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
 import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
@@ -366,7 +367,7 @@ export function CaseStudyReportEditor({
                   footer={
                     !isParty ? (
                       <RemarksBlock
-                        id="cs-deed-remarks"
+                        id={CASE_STUDY_DEED_REMARKS_ID}
                         label="في حال وجود اختلاف في البيانات أعلاه يتم التوضيح في الملاحظات ادناه"
                         value={draft.deedRemarks}
                         disabled={isFormReadOnly}
@@ -512,7 +513,7 @@ export function CaseStudyReportEditor({
                             onChange={(v) => patch("hoaFee", v)}
                             className="inline-block max-w-[200px]"
                           />
-                          <span className="pb-2 text-xs text-text-2">ريال سعودي</span>
+                          <span className="pb-2 text-xs text-text-2">ر.س</span>
                         </div>
                         <RemarksBlock
                           label="ملاحظات"

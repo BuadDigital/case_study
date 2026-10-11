@@ -3,8 +3,7 @@
  * GET/PUT /api/party-task-submissions/{taskId}; POST .../submit completes the workflow child task; POST .../reopen (engineering, appraisal, field-inspection).
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -88,14 +87,6 @@ async function parseSaveFailure(
 export type ReopenPartyTaskSubmissionRequest = {
   returnNote: string;
 };
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 function normalizeProvenanceEntry(raw: unknown): PartyFieldProvenanceEntry {
   const row = (raw ?? {}) as Record<string, unknown>;
@@ -211,7 +202,7 @@ export async function getPartyTaskSubmission(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -234,7 +225,7 @@ export async function savePartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({ payload } satisfies SavePartyTaskSubmissionRequest),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -258,7 +249,7 @@ export async function submitPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/submit`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
@@ -281,7 +272,7 @@ export async function reopenPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/reopen`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({ returnNote } satisfies ReopenPartyTaskSubmissionRequest),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -306,7 +297,7 @@ export async function acceptPartyTaskSubmission(
   try {
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/accept`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
@@ -331,7 +322,7 @@ export async function listPartyTaskSubmissions(
 
   try {
     const res = await fetch(`${base}/api/party-task-submissions?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -350,8 +341,8 @@ export async function listPartyTaskSubmissions(
 /** Inspector-data groups the specialist may send back. */
 export type ReturnImpactSection = { key: string; labelAr: string };
 
-export type ReturnImpactPartyKind = "property-appraisal" | "engineering-survey";
-export type ReturnImpactPackageStatus = "none" | "draft" | "submitted" | "reopened";
+type ReturnImpactPartyKind = "property-appraisal" | "engineering-survey";
+type ReturnImpactPackageStatus = "none" | "draft" | "submitted" | "reopened";
 
 export type ReturnImpactParty = {
   taskId: string;
@@ -383,7 +374,7 @@ export type ReturnInspectionRequest = {
   studyReportReopenReason?: string;
 };
 
-export type ReturnInspectionPartyOutcomeKind =
+type ReturnInspectionPartyOutcomeKind =
   | "reopened"
   | "notified"
   | "already"
@@ -470,7 +461,7 @@ export async function getReturnImpact(
   try {
     const res = await fetch(
       `${base}/api/party-task-submissions/${inspectionTaskId}/return-impact?${query}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -498,7 +489,7 @@ export async function returnInspectionPackage(
       `${base}/api/party-task-submissions/${inspectionTaskId}/return-inspection`,
       {
         method: "POST",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(request),
       },
     );

@@ -10,6 +10,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   useShowAllEyeBlink,
   useToast,
@@ -55,7 +56,9 @@ export function useKeysViewWorkflow() {
   const envelopesQuery = useKeyEnvelopesQuery();
   const invalidateEnvelopes = useInvalidateKeyEnvelopes();
   const envelopes = useMemo(() => envelopesQuery.data ?? [], [envelopesQuery.data]);
-  const ready = !envelopesQuery.isPending;
+  const loadFailed = queryLoadFailed(envelopesQuery);
+  /** Loaded with data — a failed load keeps KPIs at «—» and swaps in the error state. */
+  const ready = !envelopesQuery.isPending && !loadFailed;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -186,6 +189,10 @@ export function useKeysViewWorkflow() {
 
   return {
     ready,
+    loadFailed,
+    loadError: envelopesQuery.error,
+    retryLoad: () => void envelopesQuery.refetch(),
+    retrying: envelopesQuery.isFetching,
     kpis,
     filtered,
     mobileCardItems,
@@ -218,5 +225,3 @@ export function useKeysViewWorkflow() {
     canCollectFee,
   };
 }
-
-export type KeysViewWorkflow = ReturnType<typeof useKeysViewWorkflow>;

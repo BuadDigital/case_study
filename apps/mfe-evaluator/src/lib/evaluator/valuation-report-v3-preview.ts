@@ -16,7 +16,7 @@ import { paginatePropertyPhotoPages } from "./valuation-report-photo-pages";
 import { mergeGlossarySections } from "./valuation-report-glossary-merge";
 import { markPrintFlow, valuationReportPaginateScript } from "./valuation-report-print-flow";
 
-export type ValuationReportV3Meta = {
+type ValuationReportV3Meta = {
   reportNo?: string;
   reportDate?: string;
   depositCode?: string;
@@ -68,7 +68,7 @@ function applyMeta(dom: Document, meta: ValuationReportV3Meta) {
  * the printed numbering. Number the headings that remain 01, 02, … in reading order, as the
  * approved copy does.
  */
-export function renumberSections(dom: Document) {
+function renumberSections(dom: Document) {
   dom.querySelectorAll("section[data-sec] h2 span.n").forEach((num, i) => {
     num.textContent = String(i + 1).padStart(2, "0");
   });
@@ -353,7 +353,7 @@ function applySignatures(
   }
 
   const approve = [...dom.querySelectorAll("h2")].find((h) =>
-    (h.textContent ?? "").includes("إعتماد"),
+    /[إا]عتماد/.test(h.textContent ?? ""),
   );
   const approveTable = approve?.nextElementSibling;
   if (approveTable?.tagName === "TABLE") {
@@ -537,7 +537,7 @@ function applyBrandIdentity(
   );
 }
 
-export type ValuationReportV3Mode = "screen" | "print";
+type ValuationReportV3Mode = "screen" | "print";
 
 const TOKEN_ROOT = `:root{--ink:#102b4e;--gold:#a4906f;--gold-d:#8c7857;--bg:#f5f3ee;--surface:#fff;--surface-2:#faf8f3;--border:#ece8df;--border-md:#ddd8cc;--text-1:#3a3f4d;--heading:#102b4e}`;
 

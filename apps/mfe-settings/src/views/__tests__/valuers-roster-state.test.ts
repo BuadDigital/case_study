@@ -79,7 +79,7 @@ function org(patch: Partial<OrganizationSettingsDto> = {}): OrganizationSettings
 
 describe("labels and predicates", () => {
   it("resolves role / category labels and falls back to the raw value", () => {
-    expect(roleLabel("certified")).toBe("مقيم معتمد");
+    expect(roleLabel("certified")).toBe("مقيّم معتمد");
     expect(roleLabel("other")).toBe("other");
     expect(catLabel("fellow")).toBe("عضو أساسي زميل");
     expect(catLabel("")).toBe("—");

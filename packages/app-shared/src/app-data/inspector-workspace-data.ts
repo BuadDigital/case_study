@@ -144,9 +144,6 @@ export const ACCESS_CONTACT_NATIONAL_ID_INVALID =
   "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.";
 
 export const SITE_LOCATION_ACK_BUTTON_LABEL = "إقرار صحة الموقع";
-/** @deprecated Use SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE from site-location-ack-letter. */
-export const SITE_LOCATION_ACK_PENDING_MESSAGE =
-  "ثبّت الموقع أولاً عبر «تثبيت الموقع» قبل طباعة إقرار صحة الموقع.";
 
 /** Compose Infath / payload free-text from the contact fields. */
 export function composeAccessRouteDescription(input: {
@@ -185,7 +182,7 @@ export function isOccupied(featureValues: Record<string, string>): boolean {
   return (featureValues[OCCUPANCY_STATE_KEY] ?? "").trim() === "مشغول";
 }
 
-export function normalizeInspectorLandText(value: string): string {
+function normalizeInspectorLandText(value: string): string {
   return value
     .normalize("NFKC")
     .replace(/[\u064B-\u065F\u0670]/g, "")
@@ -274,10 +271,10 @@ export const PROPERTY_CLASSIFICATIONS = [
   "مرفق عام",
 ] as const;
 
-export type PropertyClassification = (typeof PROPERTY_CLASSIFICATIONS)[number];
+type PropertyClassification = (typeof PROPERTY_CLASSIFICATIONS)[number];
 
 /** Types under each classification — 47 unique values total. */
-export const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
+const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
   PropertyClassification,
   readonly string[]
 > = {
@@ -340,13 +337,14 @@ export const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
   ],
 };
 
-/** Flat 47-type list (inspector «استخدام العقار», legacy single selects). */
-export const PROPERTY_USAGE_OPTIONS: readonly string[] =
-  PROPERTY_CLASSIFICATIONS.flatMap(
-    (c) => PROPERTY_TYPES_BY_CLASSIFICATION[c],
-  );
+/**
+ * Inspector «استخدام العقار»: the property classification the bourse inquiry recorded (أرض، مبنى مفرد،
+ * مجمع، وحدة داخل مبنى، مرفق عام) — the field is pre-answered from it. «الأصل محل التقييم» is the type.
+ * (It used to list all 47 types, which duplicated «الأصل محل التقييم» and could not take the bourse answer.)
+ */
+const PROPERTY_USAGE_OPTIONS: readonly string[] = PROPERTY_CLASSIFICATIONS;
 
-export function isPropertyClassification(
+function isPropertyClassification(
   value: string,
 ): value is PropertyClassification {
   return (PROPERTY_CLASSIFICATIONS as readonly string[]).includes(value.trim());
@@ -501,7 +499,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
 ];
 
 /** Building-only inspector rows — hidden on vacant land. */
-export const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
+const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
   "facade",
   "propertyCondition",
   "buildState",
@@ -579,7 +577,7 @@ export function sanitizeInspectorDraftForLand(
 }
 
 /** Residential / villa component rows — hidden for commercial shops. */
-export const SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS = [
+const SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS = [
   "roomCount",
   "hallCount",
   "unitCount",
@@ -615,7 +613,7 @@ export function isShopHiddenInspectorComponentKey(key: string): boolean {
   return SHOP_HIDDEN_COMPONENT_KEY_SET.has(key);
 }
 
-export function isLandHiddenInspectorFeatureKey(key: string): boolean {
+function isLandHiddenInspectorFeatureKey(key: string): boolean {
   return LAND_HIDDEN_FEATURE_KEY_SET.has(key);
 }
 
@@ -623,7 +621,7 @@ export function isLandHiddenInspectorFeatureKey(key: string): boolean {
  * Previously hidden from the inspector screen. Empty — those rows are back on
  * the field-inspection form (سور، تكييف، خزانات، تشجير، حالة المنطقة).
  */
-export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([]);
+const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([]);
 
 /**
  * Retired for the field inspector — shown again in case-study specialist appraisal.
@@ -636,7 +634,7 @@ export function isInspectorRetiredFeatureKey(key: string): boolean {
   return RETIRED_INSPECTOR_FEATURE_KEYS.has(key);
 }
 
-export type InspectorFeatureFieldVisibilityOptions = {
+type InspectorFeatureFieldVisibilityOptions = {
   includeRetiredKeys?: readonly string[];
 };
 
@@ -664,9 +662,9 @@ export const INSPECTOR_SERVICE_OPTIONS = [
 ] as const;
 
 /** Specialist must attach proof from transaction photos when these services are selected. */
-export const SPECIALIST_PROOF_SERVICES = ["كهرباء", "ماء"] as const;
+const SPECIALIST_PROOF_SERVICES = ["كهرباء", "ماء"] as const;
 
-export type SpecialistProofService = (typeof SPECIALIST_PROOF_SERVICES)[number];
+type SpecialistProofService = (typeof SPECIALIST_PROOF_SERVICES)[number];
 
 export function isSpecialistProofService(
   label: string,
@@ -691,7 +689,7 @@ export const INSPECTOR_AMENITY_OPTIONS = [
 ] as const;
 
 /** Display wording per stored amenity — identical to the §15 report cells. */
-export const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
+const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
   مساجد: "جامع",
   مستشفيات: "مرفق طبي",
   "مرفق أمني": "مرفق أمني",
@@ -721,7 +719,7 @@ export const INSPECTOR_OBSERVATION_CATEGORIES = [
 ] as const;
 
 /** Slot stored in `definedPhotos` keyed by `service:…` / `amenity:…`. */
-export type ServiceAmenityPhotoKind = "service" | "amenity";
+type ServiceAmenityPhotoKind = "service" | "amenity";
 
 export type ServiceAmenityPhotoSlotDef = {
   id: string;
@@ -803,7 +801,7 @@ export function firstIncompleteServiceAmenitySlotId(draft: {
   return null;
 }
 
-export type InspectorFreePhotoCategory = {
+type InspectorFreePhotoCategory = {
   key: string;
   label: string;
   icon: string;
@@ -815,7 +813,7 @@ export const INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR = "interior";
 /** Kind tags nested under each parent. */
 export const INSPECTOR_FREE_PHOTO_CATEGORY_FACADE = "facade";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE = "service";
-export const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
+const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_OTHER = "other";
 
 export const INSPECTOR_FREE_PHOTO_PARENTS: InspectorFreePhotoCategory[] = [
@@ -890,7 +888,7 @@ export function parseInspectorFreePhotoCategory(
 }
 
 /** Leaf options for classify (nested under parents). */
-export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
+const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
   INSPECTOR_FREE_PHOTO_PARENTS.flatMap((parent) =>
     INSPECTOR_FREE_PHOTO_KINDS.map((kind) => ({
       key: buildInspectorFreePhotoCategory(parent.key, kind.key),
@@ -900,7 +898,7 @@ export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
   );
 
 /** Older flat tags still display / count as tagged until reclassified. */
-export const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
+const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
   [
     ...INSPECTOR_FREE_PHOTO_PARENTS,
     ...INSPECTOR_FREE_PHOTO_KINDS,
@@ -926,19 +924,6 @@ export function inspectorFreePhotoCategoryMeta(
   return (
     INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key) ??
     INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.find((cat) => cat.key === key)
-  );
-}
-
-export type InspectorPrimaryFreePhotoCategory = string;
-
-/** True when the photo has a usable free-photo category (nested or parent/legacy). */
-export function isInspectorPrimaryFreePhotoCategory(
-  category: string | null | undefined,
-): category is InspectorPrimaryFreePhotoCategory {
-  if (!category?.trim()) return false;
-  if (parseInspectorFreePhotoCategory(category)) return true;
-  return INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.some(
-    (cat) => cat.key === category,
   );
 }
 
@@ -1096,7 +1081,7 @@ export type InspectorWorkspaceDraft = {
   updatedAtUtc: string;
 };
 
-export type InspectorFieldProvenance = {
+type InspectorFieldProvenance = {
   writtenByName?: string;
   writtenByRole?: string;
   writtenAtUtc?: string;
@@ -1415,7 +1400,7 @@ export function reportInspectorPropertyDescription(
 
 /** Placeholder when the appraiser opens the report before specialist accept. */
 export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
-  "يظهر وصف العقار للمقيم بعد تأكيد الأخصائي لمدخلات المعاين.";
+  "يظهر وصف العقار للمقيّم بعد تأكيد الأخصائي لمدخلات المعاين.";
 
 /**
  * Inspector cannot edit after submit. Specialist may correct the package
@@ -1554,7 +1539,7 @@ export function ensureInspectorOriginalMapOnSubmit(
   };
 }
 
-export function computeInspectorPhotoCoverage(
+function computeInspectorPhotoCoverage(
   draft: InspectorWorkspaceDraft,
   slotDefs?: ServiceAmenityPhotoSlotDef[],
 ): {
@@ -1599,7 +1584,7 @@ export function parseInspectorCount(value: string): number {
 }
 
 /** Parses a non-negative area in m² from inspector text input. */
-export function parseInspectorAreaSqm(value: string): number {
+function parseInspectorAreaSqm(value: string): number {
   const trimmed = value.trim().replace(/,/g, "");
   if (!trimmed) return 0;
   const n = Number(trimmed);
@@ -1654,7 +1639,7 @@ export function isInspectorPresenceToggleField(
 /** Multi-photo slot the «يوجد منقولات» photo control stores into (any one photo satisfies the gate). */
 export const MOVABLES_PHOTOS_SLOT_ID = "feature:movables";
 
-export function hasMovablesSlotPhoto(
+function hasMovablesSlotPhoto(
   draft: Pick<InspectorWorkspaceDraft, "definedPhotos">,
 ): boolean {
   return (draft.definedPhotos[MOVABLES_PHOTOS_SLOT_ID]?.photos ?? []).some(

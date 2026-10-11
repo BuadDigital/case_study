@@ -50,7 +50,7 @@ export function reopenNeedsEnfazConfirmation(
   return Boolean(text(errors?.enfazHandover));
 }
 
-export const CASE_STUDY_REOPEN_REASON_MIN_LENGTH = 10;
+const CASE_STUDY_REOPEN_REASON_MIN_LENGTH = 10;
 
 /** Reopen reason rule — trimmed, at least 10 characters. Returns the Arabic error, or null when valid. */
 export function caseStudyReopenReasonError(reason: string): string | null {
@@ -67,7 +67,7 @@ export type CaseStudyReopenOutcome =
   | { ok: true }
   | { ok: false; error: string; needsEnfazConfirmation: boolean };
 
-export type CaseStudyReopenSubmitPlan =
+type CaseStudyReopenSubmitPlan =
   | { ok: false; field: "reason" | "enfaz"; error: string }
   | { ok: true; reason: string; clearEnfazHandover: boolean };
 

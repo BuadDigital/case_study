@@ -2,8 +2,7 @@
  * Failures API — property failures (obstructions) persisted in PostgreSQL.
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { fetchListPage, type PagedResultDto } from "./pagination";
@@ -44,30 +43,10 @@ export type CreateFailureRequest = {
   specialist: string;
 };
 
-export type BourseObstructionRequest = {
-  poNumber: string;
-  propertyId: string;
-  deedNumber: string;
-  reason: string;
-  specialist: string;
-};
-
 export type ResolveFailureRequest = {
   resolutionReason: string;
   continueInstructions: string;
 };
-
-export type FailureNoteRequest = {
-  note: string;
-};
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 /** Allowed `sort` keys — pagination-contract §5. Unknown keys fall back to `updated`. */
 export type FailureListSort = "updated" | "created" | "po" | "deed";
@@ -90,9 +69,6 @@ export type FailureListQuery = {
   poNumber?: string;
   problemTypeId?: string;
 };
-
-/** The filter set without the page window. */
-export type FailureListFilters = Omit<FailureListQuery, "page" | "pageSize">;
 
 function failureListParams(query?: FailureListQuery) {
   return {
@@ -128,7 +104,7 @@ export async function listFailures(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/failures`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -150,7 +126,7 @@ export async function getPropertyFailure(
   });
   try {
     const res = await fetch(`${base}/api/failures/property?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
@@ -175,7 +151,7 @@ async function postFailureAction(
   try {
     const res = await fetch(`${base}${path}`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -199,16 +175,6 @@ export async function createFailure(
   | (ApiErr & { errors?: Record<string, string> })
 > {
   return postFailureAction(config, "/api/failures", request, idempotencyKey);
-}
-
-export async function reportBourseObstruction(
-  config: FailuresApiConfig,
-  request: BourseObstructionRequest,
-): Promise<
-  | ApiOk<FailureRecordDto>
-  | (ApiErr & { errors?: Record<string, string> })
-> {
-  return postFailureAction(config, "/api/failures/bourse-obstruction", request);
 }
 
 export async function upgradeFailureToInternal(
@@ -267,7 +233,7 @@ export async function deleteFailuresForPo(
       `${base}/api/failures/by-po/${encodeURIComponent(poNumber.trim())}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -324,7 +290,7 @@ export async function liftSurveyFreeze(
   try {
     const res = await fetch(`${base}/api/failures/by-property/lift-survey-freeze`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(request),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

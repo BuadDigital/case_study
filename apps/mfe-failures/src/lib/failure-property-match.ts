@@ -1,4 +1,3 @@
-import { getFailureProblemType } from "./failure-types-data";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   isActiveFailureStatus,
@@ -7,7 +6,7 @@ import {
   isSurveyFreezeLifted,
 } from "@platform/app-shared/failures/failures-types";
 
-export type FailurePropertyRef = {
+type FailurePropertyRef = {
   poNumber: string;
   propertyId: string;
   deedNumber?: string;
@@ -15,7 +14,7 @@ export type FailurePropertyRef = {
 
 // Match without allocating objects — called for every (property × failure) when loading property lists,
 // and used to allocate Set + two arrays per comparison (js-perf).
-export function failureMatchesProperty(
+function failureMatchesProperty(
   failure: FailureRecord,
   ref: FailurePropertyRef,
 ): boolean {
@@ -118,16 +117,4 @@ export function historicalFailuresForProperty(
   return failuresForProperty(failures, ref).filter((failure) =>
     isHistoricalFailureStatus(failure.status),
   );
-}
-
-function isKeyRelatedFailure(failure: FailureRecord): boolean {
-  const type = getFailureProblemType(failure.problemTypeId);
-  return type?.categoryId === "access";
-}
-
-export function keyFailuresForProperty(
-  failures: FailureRecord[],
-  ref: FailurePropertyRef,
-): FailureRecord[] {
-  return failuresForProperty(failures, ref).filter(isKeyRelatedFailure);
 }

@@ -62,14 +62,15 @@ public sealed partial class TransactionStateService(
         try
         {
             var poNumber = await db.GetPoNumberAsync(workOrderId, cancellationToken) ?? "";
+            var handedOverAt = _time.UtcNow();
             await timeline.RecordAsync(
                 poNumber,
                 propertyId,
-                "enfaz_handover",
-                "رُفعت المعاملة على إنفاذ (التسليم الشامل — ق-9)",
+                $"enfaz_handover:{handedOverAt.Ticks}",
+                "رفع المعاملة على إنفاذ",
                 "تقرير التقييم بالنسخة النهائية + تقرير دراسة الحالة + المرفقات",
-                "success",
-                _time.UtcNow(),
+                PropertyTimelineTones.Done,
+                handedOverAt,
                 cancellationToken);
         }
         catch
@@ -81,42 +82,6 @@ public sealed partial class TransactionStateService(
         return (ToDto(workOrderId, propertyId, updated, hasSurvey, property), null);
     }
 
-    public async Task<string?> RecordPostEnfazDecisionAsync(
-        Guid workOrderId,
-        Guid propertyId,
-        PostEnfazDecisionRequest request,
-        string? actorId,
-        string? actorRole,
-        CancellationToken cancellationToken = default)
-    {
-        if (!TransactionStateRules.AllowsPostEnfazDecision(actorRole))
-            return "تسجيل قرار ما بعد إنفاذ للمدير العام حصراً (ر3)";
-
-        var decision = request.Decision.Trim();
-        if (decision.Length == 0)
-            return "القرار مطلوب";
-        if (request.Reason.Trim().Length < MinDecisionReasonLength)
-            return $"سبب القرار أقصر من الحد الأدنى ({MinDecisionReasonLength} أحرف) — اكتب سبباً جوهرياً (ق-8)";
-
-        var facts = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
-        if (facts is null) return "المعاملة غير موجودة";
-        if (!facts.Value.Input.EnfazHandedOver)
-            return "المعاملة لم تُرفع على إنفاذ — الرجوع قبل الرفع يمر عبر ر1/ر2";
-
-        if (audit is null || auditLog is null)
-            return "خدمة التدقيق غير متاحة — تعذّر تسجيل القيد";
-
-        // Audit Entry only — the system does not open anything; An actual retrieval is treated as a replay transaction (R2).
-        await auditLog.AppendAsync(audit.Create(
-            actorId: string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId,
-            action: "case-study.post-enfaz-decision.recorded",
-            entityType: "WorkOrderProperty",
-            entityId: propertyId.ToString("D"),
-            before: null,
-            after: new { decision, reason = request.Reason.Trim(), workOrderId }),
-            cancellationToken);
-        return null;
-    }
 
     private async Task<(TransactionStateRules.Input Input, bool HasSurvey, WorkOrderProperty Property)?>
         LoadFactsAsync(Guid workOrderId, Guid propertyId, CancellationToken cancellationToken)

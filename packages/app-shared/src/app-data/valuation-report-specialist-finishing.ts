@@ -54,7 +54,7 @@ export function specialistFinishingLevelForInspection(
 }
 
 /** True when the specialist must pick finishing before accepting inspector inputs. */
-export function specialistFinishingLevelIsRequired(inspection: {
+function specialistFinishingLevelIsRequired(inspection: {
   status: InspectorWorkspaceStatus;
   assetSubject?: string | null;
   initialAssetSubject?: string | null;

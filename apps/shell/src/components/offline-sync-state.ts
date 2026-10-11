@@ -14,10 +14,8 @@ import type {
 export const OFFLINE_PENDING_COUNT_SESSION_KEY = "ejada_offline_pending_count";
 export const OFFLINE_SYNC_INTERVAL_MS = 30_000;
 export const FIELD_SYNC_HEARTBEAT_INTERVAL_MS = 60_000;
-/** Outbox rows older than this are flagged in the pending list. */
-export const STALE_OUTBOX_HOURS = 2;
 
-export const UNAUTHENTICATED_REPLAY_ERROR = "غير مصادق";
+const UNAUTHENTICATED_REPLAY_ERROR = "يلزم تسجيل الدخول";
 
 export function arrayBufferToBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -83,19 +81,6 @@ export function outboxKindLabel(kind: string): string {
   }
 }
 
-export function ageHours(iso: string, now: number = Date.now()): number {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return 0;
-  return (now - t) / (60 * 60 * 1000);
-}
-
-export function isStaleOutboxItem(
-  item: Pick<OfflineOutboxItem, "createdAtUtc">,
-  now: number = Date.now(),
-): boolean {
-  return ageHours(item.createdAtUtc, now) >= STALE_OUTBOX_HOURS;
-}
-
 /** Rows that still need the network: queued, in flight, or awaiting retry. */
 export function activeOutboxItems<T extends Pick<OfflineOutboxItem, "status">>(
   items: T[],
@@ -124,7 +109,7 @@ export type FieldSyncHeartbeatMeta = {
   roleId?: string | null;
 };
 
-export type FieldSyncHeartbeatReport = {
+type FieldSyncHeartbeatReport = {
   pendingCount: number;
   oldestPendingAtUtc?: string | null;
   kinds: string[];
@@ -167,7 +152,7 @@ export function buildFieldSyncHeartbeat(
   };
 }
 
-export type SyncStatusInput = {
+type SyncStatusInput = {
   locked: boolean;
   syncState: OfflineSyncState;
   pending: number;
@@ -188,7 +173,7 @@ export function syncStatusLabel({
   if (syncState === "syncing") return "جاري المزامنة";
   if (syncState === "offline") {
     return pending > 0
-      ? `دون اتصال — ${pending} في طابور الحفظ`
+      ? `دون اتصال — ${pending} بانتظار المزامنة`
       : "دون اتصال";
   }
   if (syncState === "failed") return "فشلت المزامنة — إعادة محاولة";
@@ -219,11 +204,6 @@ export function offlineLeaseToasts(lease: {
   if (lease.warn1h) out.push("مضت ساعة دون اتصال — تبقى ساعتان قبل القفل");
   if (lease.warn2h) out.push("مضت ساعتان دون اتصال — تبقى ساعة قبل القفل");
   return out;
-}
-
-/** An `auth` / `forbidden` reply means the session is gone: purge, don't retry. */
-export function isAuthRejected(kind: string | undefined): boolean {
-  return kind === "auth" || kind === "forbidden";
 }
 
 export type ReplayFailure = { ok: false; error: string; terminal: boolean };

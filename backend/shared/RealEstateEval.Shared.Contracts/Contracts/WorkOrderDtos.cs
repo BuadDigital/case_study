@@ -82,6 +82,9 @@ public class WorkOrderPropertyDto
     public string? DeedOwnershipFileName { get; set; }
     public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
+    /// <summary>Read-only: who completed the bourse inquiry and when (UTC, ISO) - the source of what it answered.</summary>
+    public string? BourseCompletedByName { get; set; }
+    public string? BourseCompletedAtUtc { get; set; }
     public string? PlanNumber { get; set; }
     public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
@@ -366,10 +369,6 @@ public class PriorDeedRegistrationDto
     public bool HasRequestNumber { get; set; } = true;
 }
 
-public class UpdateLocationMapUrlRequest
-{
-    public string? LocationMapUrl { get; set; }
-}
 
 public class UpdateSpecialistReportExtrasRequest
 {

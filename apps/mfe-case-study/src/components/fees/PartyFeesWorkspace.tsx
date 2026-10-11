@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { listKeyEnvelopeFeeReport } from "@platform/api-client";
-import { QueueTableHint, useSwapAnimation } from "@platform/ui-kit";
+import { QueryErrorState, QueueTableHint, useSwapAnimation } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
@@ -53,7 +54,7 @@ export function PartyFeesWorkspace({
     isSupervisor ? "financial" : "action",
   );
 
-  const { data: summary, isLoading, isFetched } = useInspectorFeesQuery(
+  const feesQuery = useInspectorFeesQuery(
     {
       assigneeId: isSupervisor ? undefined : assigneeId,
       submittedOnly: false,
@@ -65,6 +66,7 @@ export function PartyFeesWorkspace({
     },
     { enabled: isSupervisor || Boolean(assigneeId) },
   );
+  const { data: summary, isLoading, isFetched } = feesQuery;
 
   const { data: tasks } = useWorkflowTasksQuery();
   const { data: engAcceptPending = [] } = useQuery({
@@ -203,6 +205,16 @@ export function PartyFeesWorkspace({
             },
           ]}
         />
+
+        {queryLoadFailed(feesQuery) ? (
+          <QueryErrorState
+            className={opsLetterCard}
+            line="تعذّر تحميل الأتعاب"
+            hint="الأرقام والجداول أدناه غير مكتملة حتى يُعاد التحميل."
+            onRetry={() => void feesQuery.refetch()}
+            retrying={feesQuery.isFetching}
+          />
+        ) : null}
 
         <div ref={supPanelRef} className="flex flex-col gap-3.5">
           {supTab === "financial" ? (

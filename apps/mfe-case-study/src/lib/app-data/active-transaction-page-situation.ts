@@ -132,7 +132,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         sub: "بيانات البورصة",
         tone: "green",
       },
-      { key: "obstructed", label: "تعذر", sub: "قيد المعالجة", tone: "red" },
+      { key: "obstructed", label: "تعذّر", sub: "قيد المعالجة", tone: "red" },
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
@@ -258,7 +258,7 @@ function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter((t) => t.status === "open" || t.status === "blocked");
 }
 
-export function computeWorkflowPageSituation(
+function computeWorkflowPageSituation(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
   now = new Date(),
@@ -293,7 +293,7 @@ export function computeWorkflowPageSituation(
   };
 }
 
-export function computePartySubmissionSituation(
+function computePartySubmissionSituation(
   tasks: WorkflowTask[],
   options?: {
     inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>;
@@ -360,7 +360,7 @@ function classifyPartyTask(
   return "in_progress";
 }
 
-export function computeBourseSituation(input: {
+function computeBourseSituation(input: {
   pending: PendingBoursePropertyDto[];
   tasks: WorkflowTask[];
   poByNumber: Map<string, PoIntakeRecord>;
@@ -516,7 +516,7 @@ export function computeUnbilledFeeCount(rows: InspectorFeeRowDto[]): number {
   ).length;
 }
 
-export function filterTasksForPage(
+function filterTasksForPage(
   pageId: PageId,
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,

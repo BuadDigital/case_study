@@ -138,4 +138,10 @@ public interface IValuationComparableSelectionRepository
         CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Saves rows that every first open of a request seeds. Returns <c>false</c> (and discards the
+    /// pending rows) when a concurrent open already seeded them, so the caller just reads theirs.
+    /// </summary>
+    Task<bool> TrySaveSeedAsync(CancellationToken cancellationToken);
 }

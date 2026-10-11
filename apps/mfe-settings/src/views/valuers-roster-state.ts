@@ -132,7 +132,7 @@ export function initialRows(org: OrganizationSettingsDto): OrganizationValuerRos
   });
 }
 
-export const NEW_VALUER_NAME = "مقيّم جديد — أكمل البيانات";
+const NEW_VALUER_NAME = "مقيّم جديد — أكمل البيانات";
 
 export function newValuer(id = `v${Date.now()}`): OrganizationValuerRosterEntry {
   return {
@@ -168,7 +168,7 @@ export function isRowComplete(v: OrganizationValuerRosterEntry, today: string): 
   return completenessGaps(v, today).length === 0;
 }
 
-export type RosterRowStatus = {
+type RosterRowStatus = {
   label: string;
   tone: BadgeTone;
   blockReason: string | null;
@@ -286,7 +286,7 @@ export function rolePatchGuard(
   if (next.role === "certified") {
     const holder = rows.find((v) => v.role === "certified");
     if (holder && holder.id !== id) {
-      return `دور «مقيم معتمد» محجوز لـ «${holder.nameAr}» — لا يمكن إسناده لغيره.`;
+      return `دور «مقيّم معتمد» محجوز لـ «${holder.nameAr}» — لا يمكن إسناده لغيره.`;
     }
   }
   if (
@@ -294,7 +294,7 @@ export function rolePatchGuard(
     next.role !== "certified" &&
     rows.find((v) => v.id === id)?.role === "certified"
   ) {
-    return "لا يمكن سحب دور «مقيم معتمد» بعد إسناده — عطّل الحساب إن لزم دون تغيير الدور.";
+    return "لا يمكن سحب دور «مقيّم معتمد» بعد إسناده — عطّل الحساب إن لزم دون تغيير الدور.";
   }
   return null;
 }
@@ -322,8 +322,8 @@ export function roleSelectTitle(
   isCert: boolean,
   certifiedHolderId: string | null,
 ): string | undefined {
-  if (isCert) return "دور «مقيم معتمد» محجوز بعد إسناده ولا يمكن تغييره";
-  if (certifiedHolderId) return "دور «مقيم معتمد» مسند لمقيّم آخر";
+  if (isCert) return "دور «مقيّم معتمد» محجوز بعد إسناده ولا يمكن تغييره";
+  if (certifiedHolderId) return "دور «مقيّم معتمد» مسند لمقيّم آخر";
   return undefined;
 }
 
@@ -334,7 +334,7 @@ export function removeButtonLabel(isNew: boolean, editing: boolean): string {
 
 /* ---------- save payload ---------- */
 
-export type RosterSavePayload = {
+type RosterSavePayload = {
   company: OrganizationCompanySettings;
   evaluator: OrganizationEvaluatorSettings;
   valuers: OrganizationValuerRosterEntry[];
@@ -383,7 +383,7 @@ export function buildRosterSavePayload(
 
 /* ---------- dialog copy & toasts ---------- */
 
-export type RosterConfirmCopy = { title: string; body: string; confirm: string };
+type RosterConfirmCopy = { title: string; body: string; confirm: string };
 
 export function removeNewRowCopy(name: string): RosterConfirmCopy {
   return {

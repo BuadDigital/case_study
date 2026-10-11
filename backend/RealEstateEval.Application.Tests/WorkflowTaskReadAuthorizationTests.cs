@@ -419,6 +419,59 @@ public class WorkflowTaskReadAuthorizationTests
         Assert.Single(rows);
         Assert.Equal("fi-listed", rows[0].Distribution?.InspectorId);
         Assert.Equal("val-1", rows[0].Distribution?.ValuatorId);
+        // The party cannot see the parent nor list staff: the specialist's name comes with the row.
+        Assert.Equal("cs", rows[0].CaseSpecialistName);
+    }
+
+    [Fact]
+    public async Task List_leaves_specialist_name_empty_while_the_parent_sits_with_someone_else()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.Parse("57575757-5757-5757-5757-575757575757");
+        var propertyId = Guid.Parse("79797979-7979-7979-7979-797979797979");
+        var now = DateTime.UtcNow;
+        var distributionJson = WorkflowTaskMapper.SerializeDistribution(new TaskDistributionDraftDto
+        {
+            ValuationDepartment = true,
+            ValuatorId = "val-1",
+            CaseSpecialist = true,
+            CaseSpecialistId = "cs-1",
+        });
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-dist-supervisor",
+                now,
+                title: "parent",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "section-supervisor",
+                assigneeName: "المشرف",
+                assigneeId: "sup-1",
+                id: parentId,
+                propertyId: propertyId,
+                distributionJson: distributionJson),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-dist-supervisor",
+                now,
+                title: "appraisal",
+                phase: WorkflowTaskPhase.Done,
+                assigneeRole: "real-estate-appraiser",
+                assigneeName: "مقيم عقاري",
+                assigneeId: "val-1",
+                parentTaskId: parentId,
+                propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var service = TestInspectorFeeServiceFactory.CreateWorkflow(db);
+        var rows = await service.ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        Assert.Null(Assert.Single(rows).CaseSpecialistName);
     }
 
     [Fact]

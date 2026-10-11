@@ -138,14 +138,6 @@ public static class DataSeeder
         return await operations.SurveyOffices.AnyAsync(cancellationToken);
     }
 
- /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
-    public static Task ReseedPrototypeModuleDataAsync(
-        OperationsDbContext operations,
-        ValuationDbContext valuation,
-        FailuresDbContext failures,
-        CancellationToken cancellationToken = default) =>
-        EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
-
  /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
     public static async Task ReseedAllDemoUsersAsync(
         IServiceProvider services,

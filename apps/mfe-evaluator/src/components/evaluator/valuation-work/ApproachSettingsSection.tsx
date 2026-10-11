@@ -255,7 +255,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     if (!res.ok) {
       const fallback =
         res.kind === "auth"
-          ? "انتهت صلاحية الجلسة — سجّل الدخول من جديد ثم أعد الحفظ."
+          ? "انتهت الجلسة — سجّل الدخول مجدداً ثم أعد الحفظ."
           : res.kind === "network"
             ? "تعذّر الاتصال بالخادم — تحقق من اتصالك بالإنترنت وأعد المحاولة."
             : "تعذّر حفظ الأساليب — أعد المحاولة بعد قليل، وإن تكرر الخطأ تواصل مع الدعم الفني.";

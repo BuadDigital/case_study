@@ -24,6 +24,7 @@ import {
   PageGutter,
   PageShell,
   PageToolbar,
+  QueryErrorState,
   queueTableRowClassName,
   RowMoreMenu,
   SkeletonTableRows,
@@ -85,6 +86,10 @@ export function PoListView() {
     registeredByPo,
     propertyDeedView,
     statsReady,
+    pageLoadFailed,
+    pageLoadError,
+    retryPageLoad,
+    pageRetrying,
     kpi,
     mobileCardItems,
     setPage,
@@ -266,7 +271,11 @@ export function PoListView() {
         </PageToolbar>
 
         <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
-          <Table framed pending={!statsReady} wrapClassName="hidden lg:block">
+          <Table
+            framed
+            pending={!statsReady && !pageLoadFailed}
+            wrapClassName="hidden lg:block"
+          >
                 <THead>
                   <Tr hoverable={false}>
                     <Th>
@@ -310,7 +319,16 @@ export function PoListView() {
                   </Tr>
                 </THead>
                 <TBody>
-                  {!statsReady ? (
+                  {pageLoadFailed ? (
+                    <TableEmptyRow colSpan={11}>
+                      <QueryErrorState
+                        line="تعذّر تحميل أوامر العمل"
+                        error={pageLoadError}
+                        onRetry={retryPageLoad}
+                        retrying={pageRetrying}
+                      />
+                    </TableEmptyRow>
+                  ) : !statsReady ? (
                     <SkeletonTableRows rows={10} cols={11} />
                   ) : pageRows.length === 0 ? (
                     <TableEmptyRow colSpan={11}>
@@ -445,11 +463,20 @@ export function PoListView() {
               </Table>
 
           <div className="px-0 pb-1 lg:hidden">
-            <ActiveQueueMobileCards
-              items={mobileCardItems}
-              pending={!statsReady}
-              emptyMessage={emptyMessage}
-            />
+            {pageLoadFailed ? (
+              <QueryErrorState
+                line="تعذّر تحميل أوامر العمل"
+                error={pageLoadError}
+                onRetry={retryPageLoad}
+                retrying={pageRetrying}
+              />
+            ) : (
+              <ActiveQueueMobileCards
+                items={mobileCardItems}
+                pending={!statsReady}
+                emptyMessage={emptyMessage}
+              />
+            )}
           </div>
         </OperationalPanel>
 

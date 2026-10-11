@@ -12,7 +12,7 @@ import {
 
 let inFlight: Promise<FreshAuthSessionResult> | null = null;
 
-export type FreshAuthSessionResult =
+type FreshAuthSessionResult =
   | { status: "ok"; session: AuthSession }
   | { status: "none" }
   | { status: "auth" }

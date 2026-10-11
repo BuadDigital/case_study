@@ -65,7 +65,7 @@ const OPEN_FAILURE_STATUSES = new Set([
 async function loadOpenFailuresCount(): Promise<number> {
   const config = requireWorkOrdersApiConfig();
   const result = await listFailures(config);
-  const rows = unwrapApiResult(result, "تعذّر تحميل التعذرات") as FailureRecordDto[];
+  const rows = unwrapApiResult(result, "تعذّر تحميل التعذّرات") as FailureRecordDto[];
   return rows.filter((f) => OPEN_FAILURE_STATUSES.has(f.status)).length;
 }
 

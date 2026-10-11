@@ -23,7 +23,7 @@ import {
 } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks";
 
-export type CaseStudyReportQuestionRow = {
+type CaseStudyReportQuestionRow = {
   question: string;
   colAHeader: string;
   colBHeader: string;
@@ -46,7 +46,7 @@ export type CaseStudyReportSection = {
   extras?: string[];
 };
 
-export type CaseStudyReportApproval = {
+type CaseStudyReportApproval = {
   providerName: string;
   declarationText: string;
   deedNumber: string;
@@ -100,7 +100,7 @@ function resolveRequestDateIso(
   );
 }
 
-export function buildCaseStudyReportApproval(
+function buildCaseStudyReportApproval(
   task: WorkflowTask,
   property: PoPropertyIntake | null,
   poRecord: Pick<
@@ -224,7 +224,7 @@ export function buildCaseStudyReportModel(
       const occExtras: string[] = [];
       if (draft.hoaFee.trim()) {
         occExtras.push(
-          `قيمة اشتراك اتحاد الملاك: ${draft.hoaFee.trim()} ريال سعودي`,
+          `قيمة اشتراك اتحاد الملاك: ${draft.hoaFee.trim()} ر.س`,
         );
       }
       section.extras = occExtras;

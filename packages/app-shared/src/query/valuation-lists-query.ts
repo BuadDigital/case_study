@@ -7,7 +7,7 @@ import {
 } from "@platform/api-client";
 import { apiConfig } from "../auth/api-config";
 
-export const valuationListsQueryKey = ["valuation-lists"] as const;
+const valuationListsQueryKey = ["valuation-lists"] as const;
 
 /**
  * Push a fresh catalogue into the shared cache so screens like bourse «أنواع الحد»

@@ -21,7 +21,7 @@ import { saveStatusLabel, type BrandKey } from "./brand-identity-state";
 import type { BrandIdentityWorkflow } from "./useBrandIdentityWorkflow";
 
 export const BRAND_FIELD_CLS = "h-[30px] text-xs";
-export const BRAND_CARD_FOOT_CLS =
+const BRAND_CARD_FOOT_CLS =
   "mt-auto flex flex-wrap items-center justify-between gap-2.5 border-t border-border px-4 py-3 text-xs text-text-2";
 const PREVIEW_BOX_CLS = cn(opsDropzone, "h-[110px] w-[150px] shrink-0 p-2");
 
@@ -274,7 +274,7 @@ export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkfl
         <div className={PREVIEW_BOX_CLS}>
           <img
             src={view.signature}
-            alt="توقيع المقيم المعتمد"
+            alt="توقيع المقيّم المعتمد"
             draggable={false}
             style={PREVIEW_IMG_STYLE}
           />
@@ -317,7 +317,7 @@ export function BrandSignatureCard({ workflow }: { workflow: BrandIdentityWorkfl
       <BrandCardFooter
         workflow={workflow}
         cardKey="sig"
-        meta="يُطبع في إعتماد التقرير (27) — تواقيع المشاركين (26) بارتفاع ثابت 1.5 سم"
+        meta="يُطبع في اعتماد التقرير (27) — تواقيع المشاركين (26) بارتفاع ثابت 1.5 سم"
       />
     </Card>
   );

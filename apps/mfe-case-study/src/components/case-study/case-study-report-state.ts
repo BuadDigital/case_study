@@ -24,9 +24,9 @@ export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
 export type SectionQuestions = Record< CaseStudyQuestionSection, readonly string[]>;
 
 /** Question is visible to the current viewer (specialist or party). */
-export type QuestionVisibilityPredicate = (key: string) => boolean;
+type QuestionVisibilityPredicate = (key: string) => boolean;
 
-export function normalizeFormStep(storedStep: number): number {
+function normalizeFormStep(storedStep: number): number {
   const max = FORM_STEP_SECTIONS.length - 1;
   let step = storedStep;
   if (step > max) {
@@ -108,7 +108,7 @@ export function caseStudyAnswerSummary(
 }
 
 /** Unanswered visible questions plus the first one, for the scroll-to on submit. */
-export function collectMissingCaseStudyAnswers(
+function collectMissingCaseStudyAnswers(
   answers: CaseStudyReportDraft["answers"],
   sectionQuestions: SectionQuestions,
   isQuestionVisible: QuestionVisibilityPredicate,
@@ -149,7 +149,7 @@ export function firstMissingQuestionLocation(
   return null;
 }
 
-export type CaseStudyReportScrollTarget = {
+type CaseStudyReportScrollTarget = {
   targetId: string;
   step: number;
   message: string;
@@ -201,7 +201,7 @@ export function firstCaseStudyReportScrollTarget(args: {
         return {
           targetId: CASE_STUDY_DEED_NATURE_NOTES_ID,
           step: 0,
-          message: "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذر».",
+          message: "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر».",
           blocking: true,
           invalidDeedNatureNotes: true,
         };
@@ -216,7 +216,7 @@ export function firstCaseStudyReportScrollTarget(args: {
           targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
           step: 0,
           message:
-            "مخرج المطابقة ليس مطابقًا — أكّد أو عدّل من تبويب مدخلات المعاين. الفروق والتعذر مسار تعذر.",
+            "مخرج المطابقة ليس مطابقًا — أكّد أو عدّل من تبويب مدخلات المعاين. الفروق والتعذّر مسار تعذّر.",
           blocking: true,
           invalidDeedNature: true,
         };

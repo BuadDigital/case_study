@@ -378,7 +378,7 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
     if (!response) {
       const complaints = (await page.locator("body").innerText())
         .split("\n")
-        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذر/.test(line))
+        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذّ?ر/.test(line))
         .join(" | ")
         .replace(/\s+/g, " ")
         .trim();

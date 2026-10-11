@@ -28,7 +28,7 @@ import type {
 } from "./property-detail-party-submission-types";
 import type { WorkflowTask } from "./tasks";
 
-export const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
+const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
   "specialist",
   "inspection",
   "survey",
@@ -58,7 +58,7 @@ export async function loadPropertyDetailPartySubmissions(input: {
 }
 
 /** Load submission snapshot for one party role on the property detail page. */
-export async function loadPropertyDetailPartySubmission(input: {
+async function loadPropertyDetailPartySubmission(input: {
   roleKey: PropertyDetailPartyRoleKey;
   parentTask: WorkflowTask | null;
   allTasks: WorkflowTask[];

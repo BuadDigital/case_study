@@ -184,8 +184,6 @@ public sealed partial class ValuationReportIssuanceService(
         // re-registration may re-send the code alone while the certificate already on the copy stays.
         var (certificate, certificateErrors) = DepositCertificateRules.Read(
             request.CertificateContentBase64,
-            request.CertificateContentType,
-            request.CertificateFileName,
             alreadyHasCertificate: row.HasCertificate);
         if (certificateErrors is not null) return (null, certificateErrors);
 

@@ -4,10 +4,10 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuthSession } from "@platform/app-shared/auth/use-auth-session";
 
 const STORAGE_PREFIX = "ejada.favorite-properties.v1";
-export const FAVORITE_PROPERTIES_CHANGED_EVENT =
+const FAVORITE_PROPERTIES_CHANGED_EVENT =
   "favorite-properties-changed";
 
-export type FavoritePropertyRef = {
+type FavoritePropertyRef = {
   poNumber: string;
   propertyId: string;
   addedAtUtc: string;

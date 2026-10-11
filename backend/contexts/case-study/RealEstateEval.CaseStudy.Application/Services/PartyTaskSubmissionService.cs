@@ -348,7 +348,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
-                $"party:{taskId}:submitted",
+                $"party:{taskId}:submitted:{now.Ticks}",
                 WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind),
                 PartyTaskSubmissionRules.SubmittedActorLabel(entity, task),
                 "done",
@@ -398,7 +398,22 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (string.IsNullOrWhiteSpace(returnNote))
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
 
-        return await ReopenCoreAsync(taskId, task, returnNote, actor, cancellationToken);
+        var reopened = await ReopenCoreAsync(taskId, task, returnNote, actor, cancellationToken);
+        if (reopened.Errors is null && task.PropertyId is Guid propertyId)
+        {
+            var at = _time.UtcNow();
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                propertyId,
+                $"party:{taskId}:reopened:{at.Ticks}",
+                PartyTaskSubmissionRules.ReturnedForCorrectionTitle(task.Kind),
+                PartyTaskSubmissionRules.ReturnedForCorrectionDetail(actor?.DisplayName, returnNote),
+                PropertyTimelineTones.Warn,
+                at,
+                cancellationToken);
+        }
+
+        return reopened;
     }
 
     /// <summary>

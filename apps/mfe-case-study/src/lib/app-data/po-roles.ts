@@ -33,7 +33,7 @@ export function isCaseStudySpecialist(role: RoleId): boolean {
  * Any case specialist, by role; the supervisor, general manager and CDO do not take them.
  * Mirrors `PoRoleMatrixRules.IsCaseSpecialistDecision` (and its Can… wrappers).
  */
-export function canMakeSpecialistDecision(role: RoleId): boolean {
+function canMakeSpecialistDecision(role: RoleId): boolean {
   return role === "case-specialist";
 }
 
@@ -49,10 +49,6 @@ export const canReopenValuationReport = canMakeSpecialistDecision;
 /** View details via the eye button — not for the case-study specialist (opens from the row or edit). */
 export function canViewPoEye(role: RoleId): boolean {
   return isSuperAdmin(role) || !isCaseStudySpecialist(role);
-}
-
-export function isPoViewOnly(role: RoleId): boolean {
-  return !isSuperAdmin(role) && role === "general-manager";
 }
 
 export function canDeletePo(role: RoleId): boolean {

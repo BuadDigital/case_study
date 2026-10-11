@@ -40,7 +40,7 @@ function emptyCourtContact(): CourtVisitContactDraft {
   return { scope: "property", name: "", role: "", phone: "", note: "" };
 }
 
-export type CloseTaskModalBodyProps = {
+type CloseTaskModalBodyProps = {
   taskType?: string;
   letterRows?: OperationsTask["letterRows"];
   closeOutcome: "completed" | "cancelled";

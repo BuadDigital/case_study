@@ -27,7 +27,7 @@ import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/in
 import { migrateDistribution } from "../../lib/app-data/tasks";
 import { loadSpecialistFinishingLevel, saveSpecialistFinishingLevel, specialistFinishingLevelForInspection } from "../../lib/app-data/valuation-report-specialist-finishing";
 
-export function relatedTaskId(
+function relatedTaskId(
   tasks: WorkflowTask[],
   propertyId: string,
   kind: WorkflowTask["kind"],

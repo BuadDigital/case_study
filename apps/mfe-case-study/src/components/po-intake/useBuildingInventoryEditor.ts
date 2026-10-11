@@ -39,14 +39,14 @@ import {
   emptyComponentLine,
 } from "../../lib/app-data/specialist-components";
 
-export type BuildingInventorySaveOutcome = {
+type BuildingInventorySaveOutcome = {
   ok: boolean;
   message?: string;
   /** Kept on the device, to be sent when the connection returns. */
   queued?: boolean;
 };
 
-export type BuildingInventoryEditor = {
+type BuildingInventoryEditor = {
   loading: boolean;
   /** The table could not be opened — editing stays off so an empty copy is never saved over it. */
   loadError: string | null;

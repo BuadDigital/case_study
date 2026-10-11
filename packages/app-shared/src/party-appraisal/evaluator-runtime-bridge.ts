@@ -19,7 +19,7 @@ export type EvaluatorReportDraftPanelProps = EvaluatorValuationReportPreviewProp
   canEdit: boolean;
 };
 
-export type EvaluatorQueueStatusGroup =
+type EvaluatorQueueStatusGroup =
   | "open"
   | "in_progress"
   | "submitted"
@@ -27,8 +27,6 @@ export type EvaluatorQueueStatusGroup =
   | "completed"
   | "blocked"
   | string;
-
-export type EvaluatorChecklistAnswersBridge = Record<string, unknown>;
 
 export type EvaluatorRuntimeBridge = {
   filterAppraiserListedTasks: (

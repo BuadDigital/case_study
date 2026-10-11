@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   EmptyState,
   ListPager,
@@ -33,7 +34,6 @@ import {
   finWorkTitle,
 } from "../lib/finance-tw";
 import type { PartyBillingMode } from "../lib/party-billing-statements-state";
-import { formatSar } from "./FinancePartyBillingParts";
 import { FinancePartyBillingStatementDetail } from "./FinancePartyBillingStatementDetail";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
 
@@ -161,7 +161,7 @@ export function FinancePartyBillingStatementsSection({
                         className="text-center"
                         valueClassName="text-[12.5px] font-bold text-heading"
                       >
-                        {formatSar(statementDisplayTotal(s))}
+                        {fmtSar(statementDisplayTotal(s), { trim: true })}
                       </TdLtr>
                       <Td className="text-center">
                         <StatusPill
@@ -204,7 +204,7 @@ export function FinancePartyBillingStatementsSection({
                           selectedStatement.assigneeId,
                           staffUsers,
                         )}{" "}
-                        — {formatSar(statementDisplayTotal(selectedStatement))}
+                        — {fmtSar(statementDisplayTotal(selectedStatement), { trim: true })}
                       </div>
                     </div>
                     <StatusPill

@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtMax, fmtSar } from "@platform/app-shared/format/number";
 import { Activity, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -471,19 +472,19 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             <div className="grid gap-3 sm:grid-cols-4">
               <ProfileField
                 label="المستحق"
-                value={`${financialSummary.due.toLocaleString("ar-SA")} ر.س`}
+                value={fmtSar(financialSummary.due, { digits: 3, trim: true })}
               />
               <ProfileField
                 label="المدفوع"
-                value={`${financialSummary.paid.toLocaleString("ar-SA")} ر.س`}
+                value={fmtSar(financialSummary.paid, { digits: 3, trim: true })}
               />
               <ProfileField
                 label="المتبقي"
-                value={`${financialSummary.remaining.toLocaleString("ar-SA")} ر.س`}
+                value={fmtSar(financialSummary.remaining, { digits: 3, trim: true })}
               />
               <ProfileField
                 label="موقوف"
-                value={`${financialSummary.suspended.toLocaleString("ar-SA")} ر.س`}
+                value={fmtSar(financialSummary.suspended, { digits: 3, trim: true })}
               />
             </div>
             {feesLoading ? (
@@ -507,8 +508,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
                   {feeRows.map((row) => (
                     <Tr key={row.workflowTaskId}>
                       <TdLtr bare>{row.poNumber || "—"}</TdLtr>
-                      <TdLtr bare>{row.netFeeSar.toLocaleString("ar-SA")}</TdLtr>
-                      <TdLtr bare>{row.paidAmountSar.toLocaleString("ar-SA")}</TdLtr>
+                      <TdLtr bare>{fmtMax(row.netFeeSar, 3)}</TdLtr>
+                      <TdLtr bare>{fmtMax(row.paidAmountSar, 3)}</TdLtr>
                       <Td>{row.billingStatusLabel}</Td>
                       <TdLtr bare>{formatAt(row.updatedAtUtc)}</TdLtr>
                     </Tr>

@@ -118,7 +118,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.UpgradeToInternalAsync(id, cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذّر");
         return Ok(dto);
     }
 
@@ -129,7 +129,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SubmitForReviewAsync(id, cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذر للمراجعة");
+        if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذّر للمراجعة");
         return Ok(dto);
     }
 
@@ -141,7 +141,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SuspendAsync(id, request.Note, ActorClaims.Id(User), cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذّر");
         return Ok(dto);
     }
 
@@ -157,7 +157,7 @@ public class FailuresController : ControllerBase
             request,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر — تغيّرت حالته أو لم يعد موجوداً، حدّث الصفحة");
+        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذّر — تغيّرت حالته أو لم يعد موجوداً، حدّث الصفحة");
         return Ok(dto);
     }
 
@@ -173,7 +173,7 @@ public class FailuresController : ControllerBase
             request.Note,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذّر");
         return Ok(dto);
     }
 
@@ -189,7 +189,7 @@ public class FailuresController : ControllerBase
             request.Note,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذّر");
         return Ok(dto);
     }
 

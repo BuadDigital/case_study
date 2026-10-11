@@ -210,7 +210,7 @@ export function EvaluatorInspectionFactsSection({
       <EngSection>معاينة العقار</EngSection>
       <InspectorDataSyncNote workspace={workspace} />
       <EngInfo>
-        معاينة العقار عمل ميداني يدخل بياناته المعاين. تظهر هنا للمقيم ليبني
+        معاينة العقار عمل ميداني يدخل بياناته المعاين. تظهر هنا للمقيّم ليبني
         عليها تقرير التقييم — وليست استعراض تقرير التقييم.
       </EngInfo>
       {!inspectionTaskId ? (

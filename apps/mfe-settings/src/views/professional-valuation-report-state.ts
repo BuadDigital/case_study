@@ -26,9 +26,9 @@ export function memLabel(value: string | null | undefined): string {
 }
 
 export function jobLabel(role: string): string {
-  if (role === "valuer") return "مقيم عقاري";
-  if (role === "reviewer") return "مقيم عقاري مراجع";
-  if (role === "assistant") return "مساعد مقيم";
+  if (role === "valuer") return "مقيّم عقاري";
+  if (role === "reviewer") return "مقيّم عقاري مراجع";
+  if (role === "assistant") return "مساعد مقيّم";
   return VALUER_SYS_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 

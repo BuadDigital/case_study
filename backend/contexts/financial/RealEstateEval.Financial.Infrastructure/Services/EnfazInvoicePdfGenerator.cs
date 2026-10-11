@@ -170,7 +170,7 @@ public static class EnfazInvoicePdfGenerator
                         });
 
                         FactRow(facts, "المجموع قبل الضريبة", FormatSar(billing.SubtotalSar));
-                        FactRow(facts, "ضريبة القيمة المضافة 15٪", FormatSar(billing.VatSar));
+                        FactRow(facts, "ضريبة القيمة المضافة (15٪)", FormatSar(billing.VatSar));
                         FactRow(facts, "الإجمالي شامل الضريبة", FormatSar(billing.TotalSar), emphasize: true);
                     });
 

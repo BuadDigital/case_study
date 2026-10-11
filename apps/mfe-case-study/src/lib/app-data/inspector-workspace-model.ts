@@ -524,6 +524,50 @@ export type InspectorWorkspacePatch = Partial<
   >
 >;
 
+/**
+ * A patch, or a function that builds one from the LATEST draft. Anything that finishes after an `await` (a photo
+ * upload) must use the function form: a patch built from the draft captured before the await replaces the
+ * whole photo map and silently drops every photo that was added in the meantime.
+ */
+export type InspectorWorkspacePatchInput =
+  | InspectorWorkspacePatch
+  | ((current: InspectorWorkspaceDraft) => InspectorWorkspacePatch);
+
+export function resolveInspectorWorkspacePatch(
+  current: InspectorWorkspaceDraft,
+  input: InspectorWorkspacePatchInput,
+): InspectorWorkspacePatch {
+  return typeof input === "function" ? input(current) : input;
+}
+
+/** The fields a patch touches — a function patch is read once against the rendered draft to learn them. */
+export function inspectorPatchKeys(
+  current: InspectorWorkspaceDraft | null,
+  input: InspectorWorkspacePatchInput,
+): string[] {
+  return Object.keys(typeof input === "function" ? (current ? input(current) : {}) : input);
+}
+
+/** Sets (or clears, with `null`) one feature photo in the latest draft. */
+export function featurePhotoPatch(
+  key: string,
+  attachment: InspectorWorkspaceDraft["featurePhotoAttachments"][string] | null,
+): (current: InspectorWorkspaceDraft) => InspectorWorkspacePatch {
+  return (current) => ({
+    featurePhotoAttachments: { ...current.featurePhotoAttachments, [key]: attachment },
+  });
+}
+
+/** Sets (or clears, with `null`) one component photo in the latest draft. */
+export function componentPhotoPatch(
+  key: keyof InspectorWorkspaceDraft["componentPhotoAttachments"],
+  attachment: InspectorWorkspaceDraft["componentPhotoAttachments"][keyof InspectorWorkspaceDraft["componentPhotoAttachments"]],
+): (current: InspectorWorkspaceDraft) => InspectorWorkspacePatch {
+  return (current) => ({
+    componentPhotoAttachments: { ...current.componentPhotoAttachments, [key]: attachment },
+  });
+}
+
 /** Merge a field patch into a draft (shared by UI optimistic updates + persistence). */
 export function mergeInspectorWorkspacePatch(
   current: InspectorWorkspaceDraft,

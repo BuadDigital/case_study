@@ -24,7 +24,7 @@ export type SheetTableRow = {
   pairs?: Array<[string, string]>;
 };
 
-export type SheetAreaFacts = {
+type SheetAreaFacts = {
   ground: string;
   first: string;
   annex: string;
@@ -92,15 +92,6 @@ export function existsIf(
   if (present) return "يوجد";
   if (knownAbsent) return "لا يوجد";
   return "";
-}
-
-export function countOrFlag(
-  count: string | null | undefined,
-  flag: string | null | undefined,
-): string {
-  const n = (count ?? "").trim();
-  if (n) return n;
-  return yesNoFromFlag(flag);
 }
 
 export function presentChip(
@@ -495,7 +486,7 @@ export function buildIndirectCostSheetRows(
 }
 
 /** Interactive form spec: up to 5 approved comparables print in full in the report. */
-export const MAX_REPORT_COMPARABLES = 5;
+const MAX_REPORT_COMPARABLES = 5;
 
 export function adoptedComparables(
   market: ValuationComparableSelectionListDto | null | undefined,

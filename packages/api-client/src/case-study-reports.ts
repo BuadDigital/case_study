@@ -1,6 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -36,7 +35,7 @@ export type CaseStudyReportDto = {
   savedAtUtc?: string;
 };
 
-export type AnswerProvenanceEntryDto = {
+type AnswerProvenanceEntryDto = {
   value?: string | null;
   sourcePartyId?: string | null;
   sourceRole?: string | null;
@@ -48,14 +47,6 @@ export type AnswerProvenanceEntryDto = {
   answeredAtUtc: string;
 };
 
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
-
 export async function getCaseStudyReport(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -63,7 +54,7 @@ export async function getCaseStudyReport(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/case-study-reports/${taskId}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -84,7 +75,7 @@ export async function saveCaseStudyReport(
   try {
     const res = await fetch(`${base}/api/case-study-reports/${taskId}`, {
       method: "PUT",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify({ report }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -141,7 +132,7 @@ async function postCaseStudyReportAction<T>(
   try {
     const res = await fetch(`${base}/api/case-study-reports/${taskId}/${action}`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -198,7 +189,7 @@ export async function getPartyCaseStudyReport(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/case-study-reports/party/${taskId}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -243,7 +234,7 @@ export async function getCaseStudyReportsBatch(
   const params = new URLSearchParams({ parentTaskIds: parentTaskIds.join(",") });
   try {
     const res = await fetch(`${base}/api/case-study-reports/batch?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 400) {
@@ -266,7 +257,7 @@ export async function savePartyCaseStudyReport(
   try {
     const res = await fetch(`${base}/api/case-study-reports/party/${taskId}`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify({ report }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

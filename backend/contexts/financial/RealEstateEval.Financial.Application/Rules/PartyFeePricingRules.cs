@@ -130,7 +130,7 @@ public static class PartyFeePricingRules
     public static string NormalizeActor(string? actorId) =>
         string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim();
 
-    public static string NormalizeName(string? name, string category)
+    public static string NormalizeName(string? name)
     {
         var trimmed = (name ?? "").Trim();
         if (!string.IsNullOrEmpty(trimmed))
@@ -153,7 +153,7 @@ public static class PartyFeePricingRules
     public static NewTableShape ResolveNewTableShape(CreatePartyFeePricingTableRequest request)
     {
         var category = PartyFeePricingCategories.Require(request.Category);
-        var name = NormalizeName(request.Name, category);
+        var name = NormalizeName(request.Name);
         var pricingKind = string.IsNullOrWhiteSpace(request.PricingKind)
             ? PartyFeePricingKinds.DefaultForCategory(category)
             : PartyFeePricingKinds.Require(request.PricingKind.Trim());
@@ -245,7 +245,7 @@ public static class PartyFeePricingRules
         {
             Id = Guid.NewGuid(),
             Category = source.Category,
-            Name = NormalizeName(request.Name, source.Category),
+            Name = NormalizeName(request.Name),
             PricingKind = source.PricingKind,
             ManagedBy = source.ManagedBy,
             IsActive = false,

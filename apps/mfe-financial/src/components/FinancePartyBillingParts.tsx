@@ -2,7 +2,6 @@
 
 /** Party billing statement parts — module-level helpers, moved literally (SRP). */
 
-import { fmtMax } from "@platform/app-shared/format/number";
 import { cn } from "@platform/ui-kit";
 import type {
   PartyBillingReadyLineDto,
@@ -11,11 +10,6 @@ import type {
 
 export const EMPTY_READY_LINES: PartyBillingReadyLineDto[] = [];
 export const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
-
-// SAR suffix without forced fractional zeros — keep local to preserve the same display.
-export function formatSar(n: number) {
-  return `${fmtMax(n)} ر.س`;
-}
 
 export function formatInvoiceDate(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";

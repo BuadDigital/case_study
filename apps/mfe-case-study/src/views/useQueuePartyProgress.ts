@@ -33,7 +33,7 @@ type InfoRolesMatrix = Parameters<typeof computePartyCaseStudyProgress>[0];
 const EMPTY_PROGRESS: PartyProgressByTask = new Map();
 
 /** Pure fold of one batch onto per-parent party completion. */
-export function foldPartyProgressForQueue(
+function foldPartyProgressForQueue(
   listed: readonly WorkflowTask[],
   tasks: WorkflowTask[],
   infoRolesMatrix: InfoRolesMatrix,

@@ -261,5 +261,5 @@ describe("real template", () => {
     const embed = prepareValuationReportV3Html(raw, { live, markMissingFields: false }, "screen");
     expect(embed).not.toContain('data-rpt-missing="1"');
     expect(embed).toContain("تقرير تقييم عقار");
-  });
+  }, 30_000); // parses the full printed template — takes seconds under a parallel suite run
 });

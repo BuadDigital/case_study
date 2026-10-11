@@ -182,7 +182,7 @@ function ValuerRow({
           {hasSig && !editing ? <Badge tone="success">مرفوع</Badge> : null}
           {canEdit && (editing || !hasSig) ? (
             <Button variant="default" size="sm" onClick={() => uploadSignature(v)}>
-              {hasSig ? "استبدال التوقيع" : "رفع التوقيع"}
+              {hasSig ? "استبدال" : "رفع التوقيع"}
             </Button>
           ) : null}
         </div>

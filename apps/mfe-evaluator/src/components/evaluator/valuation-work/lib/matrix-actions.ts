@@ -4,7 +4,7 @@ import type { ValuationComparableSelectionDto } from "@platform/api-client";
  * Adjustments-matrix command — one interface instead of 15 callbacks (Command/ISP):
  * the table dispatches; the shell executes in its context (market / land-within-cost).
  */
-export type MatrixAction =
+type MatrixAction =
   | {
       type: "save-cell";
       item: ValuationComparableSelectionDto;
@@ -49,7 +49,7 @@ export type MatrixAction =
 export type MatrixDispatch = (action: MatrixAction) => Promise<boolean>;
 
 /** Shell operations the executor wires through — signatures match those defined there. */
-export type MatrixOps<TContext> = {
+type MatrixOps<TContext> = {
   saveMatrixCell(
     item: ValuationComparableSelectionDto,
     factorKey: string,

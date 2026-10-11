@@ -24,10 +24,8 @@ export {
   PARTY_SUBMISSIONS_PREFETCH_ID,
   WORKFLOW_TASKS_PREFETCH_ID,
   mergePrefetchedOperationsTaskPatch,
-  readPrefetchedBasicDocMap,
   readPrefetchedJson,
   readPrefetchedOperationsTasks,
-  readPrefetchedPartySubmissions,
   readPrefetchedPoRecord,
   readPrefetchedPoRecords,
   readPrefetchedWorkflowTasks,
@@ -44,7 +42,6 @@ export {
 } from "./media/process-evidence-photo";
 export {
   evaluatePhotoLocation,
-  parseCoord,
   photoLocationFlagLabel,
 } from "./media/photo-location";
 export {
@@ -86,7 +83,6 @@ export * from "./app-data/settings-nav";
 export * from "./app-data/system-fields-nav";
 export * from "./app-data/system-settings-nav";
 export * from "./app-data/financial-nav";
-export * from "./app-data/orphan-screens-nav";
 export * from "./app-data/property-fields-catalog";
 export * from "./app-data/modules-api-config";
 export * from "./app-data/task-attachments-api";
@@ -119,5 +115,4 @@ export {
   saveDomainJsonSync,
   loadDomainStringSync,
   saveDomainStringSync,
-  removeDomainStringSync,
 } from "./storage/browser-domain-store";

@@ -186,7 +186,7 @@ function buildMainPages(): SystemScreenEntry[] {
 }
 
 function buildPoSubRoutes(): SystemScreenEntry[] {
-  const group = "أوامر العمل والعقارات";
+  const group = "أوامر العمل (PO)";
   return [
     subRouteEntry({
       id: "po-intake",
@@ -232,9 +232,9 @@ function buildPoSubRoutes(): SystemScreenEntry[] {
     }),
     subRouteEntry({
       id: "po-property-failure",
-      name: "تسجيل تعذر على العقار",
+      name: "تسجيل تعذّر على العقار",
       path: "/po/{poNumber}/property/{propertyId}/failure",
-      whereToFind: "تفاصيل العقار ← رفع تعذر",
+      whereToFind: "تفاصيل العقار ← رفع تعذّر",
       pageId: "failures",
       group,
     }),
@@ -294,7 +294,7 @@ function buildAuthScreens(): SystemScreenEntry[] {
   ];
 }
 
-export function buildSystemScreenCatalog(): SystemScreenEntry[] {
+function buildSystemScreenCatalog(): SystemScreenEntry[] {
   return [
     ...buildMainPages(),
     ...buildPoSubRoutes(),
@@ -308,29 +308,3 @@ export function buildSystemScreenCatalog(): SystemScreenEntry[] {
 }
 
 export const SYSTEM_SCREEN_CATALOG = buildSystemScreenCatalog();
-
-export function systemScreenById(id: string): SystemScreenEntry | undefined {
-  return SYSTEM_SCREEN_CATALOG.find((screen) => screen.id === id);
-}
-
-export function systemScreensForRole(roleId: string): SystemScreenEntry[] {
-  return SYSTEM_SCREEN_CATALOG.filter((screen) =>
-    screen.roles.includes(roleId as never),
-  );
-}
-
-export function screenCatalogGroups(): string[] {
-  return [...new Set(SYSTEM_SCREEN_CATALOG.map((screen) => screen.group))].sort(
-    (a, b) => a.localeCompare(b, "ar"),
-  );
-}
-
-export function screenCountByRole(): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const screen of SYSTEM_SCREEN_CATALOG) {
-    for (const role of screen.roles) {
-      counts[role] = (counts[role] ?? 0) + 1;
-    }
-  }
-  return counts;
-}

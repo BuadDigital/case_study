@@ -11,6 +11,12 @@ import type { WorkflowTask } from "../workflow/task-types";
 export type PartyEvaluatorWorkHostRef = {
   submit?: () => Promise<boolean>;
   onSubmitted?: () => void;
+  /**
+   * Optional progress hooks for a host that shows a sending dialog: `onSubmitStarted` once the checks and
+   * gates pass, then `onSubmitted` (sent) or `onSubmitFailed` (the reason is already on screen).
+   */
+  onSubmitStarted?: () => void;
+  onSubmitFailed?: () => void;
   onSavingChange?: (saving: boolean) => void;
   focusEvaluatorNotes?: () => void;
 };

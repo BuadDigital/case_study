@@ -19,6 +19,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { finFldLbl, finMuted, finScrollY } from "../lib/finance-tw";
+import { todayIso } from "@platform/app-shared/format/date";
 import { enfazFollowupsOptions } from "../query/enfaz-po-queries";
 
 export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
@@ -26,9 +27,7 @@ export function FinanceEnfazFollowupsPanel({ poNumber }: { poNumber: string }) {
   const { showToast } = useToast();
   const [channel, setChannel] = useState("call");
   const [notes, setNotes] = useState("");
-  const [dateIso, setDateIso] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
+  const [dateIso, setDateIso] = useState(todayIso);
   const [busy, setBusy] = useState(false);
 
   const followupsQuery = useQuery({

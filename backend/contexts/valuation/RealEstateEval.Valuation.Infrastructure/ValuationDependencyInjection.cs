@@ -42,6 +42,7 @@ public static class ValuationDependencyInjection
         services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
         services.AddHttpClient<ICaseStudyRecallCommands, HttpCaseStudyRecallCommands>();
+        services.AddScoped<ValuationTimelineWriter>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyRepository, ComparablePropertyRepository>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
@@ -87,13 +88,7 @@ public static class ValuationDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var valuationConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Valuation,
-            connectionString);
-        return services.AddBoundedContextPersistence<ValuationDbContext>(
-            configuration,
-            valuationConnection);
+        return services.AddBoundedContextPersistence<ValuationDbContext>(configuration);
     }
 
 }

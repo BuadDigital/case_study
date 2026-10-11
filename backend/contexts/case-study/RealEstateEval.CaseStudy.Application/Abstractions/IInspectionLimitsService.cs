@@ -15,11 +15,4 @@ public interface IInspectionLimitsService
         Guid propertyId,
         SaveInspectionLimitsRequest request,
         CancellationToken cancellationToken = default);
-
- /// <summary>Q-7 — accredited appraiser approval for "desktop remote" scope (audit-logged).</summary>
-    Task<(InspectionLimitsDto? Result, string? Error)> ApproveRemoteAsync(
-        string poNumber,
-        Guid propertyId,
-        string actorId,
-        CancellationToken cancellationToken = default);
 }

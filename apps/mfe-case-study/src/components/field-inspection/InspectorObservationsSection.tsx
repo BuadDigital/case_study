@@ -31,6 +31,8 @@ import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
+import type { InspectorKeyAvailability } from "./InspectorKeyStatusTab";
+import { inspectorKeyGateProblem } from "../../lib/app-data/inspector-key-gate";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 
@@ -54,7 +56,7 @@ export function InspectorObservationsSection({
   cardLayout: "desktop" | "mobile";
   draft: InspectorWorkspaceDraft;
   fieldErrors: InspectorWorkspaceFieldErrors;
-  keyAvailability: { keyAvailable: boolean };
+  keyAvailability: Pick<InspectorKeyAvailability, "keyAvailable" | "status" | "retry">;
   layout: "desktop" | "mobile";
   locked: boolean;
   mobile: boolean;
@@ -66,6 +68,7 @@ export function InspectorObservationsSection({
   showToast: (message: string, tone?: ToastTone) => void;
 }) {
   const liveDraft = draft;
+  const keyGateProblem = inspectorKeyGateProblem(keyAvailability.status);
   return (
     <div id="ins-observations">
   <InspectorCard
@@ -152,13 +155,11 @@ export function InspectorObservationsSection({
                     if (!result.ok) {
                       throw new Error(result.error);
                     }
-                    persist({
-                      observations: draft.observations.map((o) =>
-                        o.id === obs.id
-                          ? { ...o, photo: result.attachment }
-                          : o,
+                    persist((current) => ({
+                      observations: current.observations.map((o) =>
+                        o.id === obs.id ? { ...o, photo: result.attachment } : o,
                       ),
-                    });
+                    }));
                   }}
                 />
               )}
@@ -275,13 +276,11 @@ export function InspectorObservationsSection({
                 if (!result.ok) {
                   throw new Error(result.error);
                 }
-                persist({
-                  observations: draft.observations.map((o) =>
-                    o.id === obs.id
-                      ? { ...o, photo: result.attachment }
-                      : o,
-                  ),
-                });
+                persist((current) => ({
+                      observations: current.observations.map((o) =>
+                        o.id === obs.id ? { ...o, photo: result.attachment } : o,
+                      ),
+                    }));
               }}
             />
           )}
@@ -438,10 +437,10 @@ export function InspectorObservationsSection({
       assetSubject: draft.featureValues.assetSubject,
       classification: property?.classification,
       propertyType: property?.propertyType,
-    }) && !keyAvailability.keyAvailable ? (
+    }) && keyAvailability.keyAvailable === false ? (
       <Note tone="info" className="mt-3">
         المفتاح غير مُسلَّم بعد (معلومة من ظرف المفاتيح) — يمكنك إتمام
-        المعاينة. إن كان الدخول متعذراً بسبب المفتاح سجّل تعذراً.
+        المعاينة. إن كان الدخول متعذّراً بسبب المفتاح سجّل تعذّراً.
         {onRegisterFailure ? (
           <div className="mt-2">
             <Button
@@ -450,10 +449,28 @@ export function InspectorObservationsSection({
               size="sm"
               onClick={onRegisterFailure}
             >
-              تسجيل تعذر المفتاح
+              تسجيل تعذّر المفتاح
             </Button>
           </div>
         ) : null}
+      </Note>
+    ) : null}
+    {keyGateProblem ? (
+      <Note tone="danger" className="mt-3">
+        {keyGateProblem} لا تُرسَل المعاينة قبل معرفتها.
+        {keyAvailability.status === "offline" ? null : (
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              showActionToast={false}
+              onClick={keyAvailability.retry}
+            >
+              إعادة المحاولة
+            </Button>
+          </div>
+        )}
       </Note>
     ) : null}
     <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">

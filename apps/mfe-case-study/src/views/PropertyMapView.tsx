@@ -1,13 +1,13 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import dynamic from "next/dynamic";
-import { Badge, cn, opsFloatPanel } from "@platform/ui-kit";
+import { Badge, cn, opsFloatPanel, QueryErrorState } from "@platform/ui-kit";
 
 import {
   POINT_FAMILIES,
   WORKFLOW_STATUS,
   comparableCard,
-  fmtMoney,
   propertyCard,
 } from "../lib/app-data/map-locations-logic";
 import { workflowTone } from "../lib/app-data/property-map-view-state";
@@ -85,6 +85,10 @@ export function PropertyMapView() {
     setDateOpen,
     openProperty,
     openComparable,
+    poLoadFailed,
+    poLoadError,
+    retryPoLoad,
+    poRetrying,
   } = workflow;
 
   return (
@@ -106,6 +110,19 @@ export function PropertyMapView() {
           onBasemapChange={setBasemap}
           onRecenter={() => sendCommand({ type: "fit" })}
         />
+
+        {poLoadFailed ? (
+          <QueryErrorState
+            className={cn(
+              opsFloatPanel,
+              "absolute inset-x-0 top-3 z-[5] mx-auto w-[min(360px,calc(100%-32px))] bg-surface",
+            )}
+            line="تعذّر تحميل معاملات الخريطة"
+            error={poLoadError}
+            onRetry={retryPoLoad}
+            retrying={poRetrying}
+          />
+        ) : null}
 
         {layerPanel === "comparables" ? (
           <LayerSidePanel
@@ -188,7 +205,7 @@ export function PropertyMapView() {
                   {WORKFLOW_STATUS[selection.record.workflowStatus].label}
                 </Badge>
                 {propertyCard(selection.record).expired ? (
-                  <Badge tone="danger">تجاوز صلاحية الـ90 يومًا</Badge>
+                  <Badge tone="danger">تجاوز صلاحية الـ90 يوماً</Badge>
                 ) : null}
                 {selection.groupCount ? (
                   <Badge tone="warning">عقار مجمع — {selection.groupCount} صكوك</Badge>
@@ -275,16 +292,16 @@ export function PropertyMapView() {
             <span className="grid size-[13px] place-items-center rounded-full border-[1.5px] border-white bg-[#d9694f] text-[9px] font-extrabold leading-none text-white">
               !
             </span>
-            تعذر
+            تعذّر
           </span>
           <span className="h-4 w-px bg-[#ddd8cc]" />
           <span>
             {stats.total
               ? `المعروض: ${stats.total} عقارًا (${stats.activeCount} نشط · ${stats.archivedCount} أرشيف)`
-              : "لا نتائج ضمن الفلاتر الحالية"}
+              : "لا توجد نتائج مطابقة"}
             {shownComparables.length ? ` · ${shownComparables.length} مقارنًا` : ""}
             {stats.expiredCount ? ` · ${stats.expiredCount} منتهي الصلاحية` : ""}
-            {stats.issuedValueSum ? ` · ${fmtMoney(stats.issuedValueSum)}` : ""}
+            {stats.issuedValueSum ? ` · ${fmtSar(stats.issuedValueSum, { trim: true })}` : ""}
           </span>
           <span className="h-4 w-px bg-[#ddd8cc]" />
           <span className="font-medium text-[#d9694f]">

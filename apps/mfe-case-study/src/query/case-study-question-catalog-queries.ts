@@ -8,7 +8,7 @@ import {
   loadCaseStudyQuestionCatalog,
 } from "@platform/app-shared/domain/case-study/question-catalog";
 
-export const CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT =
+const CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT =
   "field-dictionary-changed";
 
 const STALE_MS = 60_000;

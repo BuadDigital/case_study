@@ -54,8 +54,6 @@ public sealed record StaffRoleMembership(
 /// </remarks>
 public interface IStaffRegistrationRepository
 {
-    /// <summary>Active accounts offered by the development login switcher.</summary>
-    Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(CancellationToken cancellationToken);
 
     /// <summary>Identity-only projection: no profile join, for callers that just need a name.</summary>
     Task<UserInfoDto?> GetIdentityUserAsync(string userId, CancellationToken cancellationToken);

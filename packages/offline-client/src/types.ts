@@ -18,7 +18,7 @@ export type OutboxKind =
   | "key-envelope-handoff-create"
   | "key-envelope-handoff-confirm";
 
-export type OutboxStatus =
+type OutboxStatus =
   | "pending"
   | "uploading"
   | "done"

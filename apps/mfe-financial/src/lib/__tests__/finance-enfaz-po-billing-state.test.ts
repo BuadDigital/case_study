@@ -13,7 +13,6 @@ import {
   lineTotal,
   patchLineDraft,
   remainingToCollect,
-  sarEn,
   saveLinesRequest,
 } from "../finance-enfaz-po-billing-state";
 
@@ -223,8 +222,7 @@ describe("billingActionHint", () => {
 });
 
 describe("amount formatting", () => {
-  it("uses en-US grouping with the SAR suffix", () => {
-    expect(sarEn(1234.5)).toBe("1,234.5 ر.س");
+  it("uses the shared SAR format in the mismatch prompt", () => {
     expect(collectMismatchPrompt(250, 1000)).toBe(
       "مبلغ التحويل (250 ر.س) يختلف عن المتبقي (1,000 ر.س). المتابعة؟",
     );

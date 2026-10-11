@@ -75,7 +75,7 @@ import {
   type TaskWorkSteps,
 } from "./my-task-work-state";
 
-export type MyTaskWorkCommandsInput = {
+type MyTaskWorkCommandsInput = {
   task: WorkflowTask;
   property: PoPropertyIntake;
   assignmentType: AssignmentType;

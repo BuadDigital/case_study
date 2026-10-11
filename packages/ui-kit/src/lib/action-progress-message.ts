@@ -13,7 +13,7 @@ const EXACT_MESSAGES: Record<string, string> = {
   "حفظ وإكمال البورصة": "جاري حفظ بيانات البورصة…",
   "تأكيد التوزيع وإرسال المهام": "جاري تأكيد التوزيع وإرسال المهام…",
   "إرسال للأخصائي": "جاري إرسال التقييم للأخصائي…",
-  "إرسال للمشرف — إدارة التعذرات": "جاري إرسال التعذر للمشرف…",
+  "إرسال للمشرف — إدارة التعذرات": "جاري إرسال التعذّر للمشرف…",
   "حفظ والانتقال للتوزيع": "جاري الحفظ والانتقال للتوزيع…",
   "حفظ مسودة": "جاري حفظ المسودة…",
   "حفظ مسودة المعاينة": "جاري حفظ مسودة المعاينة…",
@@ -29,8 +29,8 @@ const EXACT_MESSAGES: Record<string, string> = {
   "تسجيل الاستلام": "جاري تسجيل الاستلام…",
   "حفظ الملاحظة": "جاري حفظ الملاحظة…",
   "إرفاق صورة": "جاري إرفاق الصورة…",
-  "حفظ تعذر داخلي": "جاري تسجيل التعذر…",
-  "تسجيل احتمال تعذر": "جاري تسجيل التعذر…",
+  "حفظ تعذر داخلي": "جاري تسجيل التعذّر…",
+  "تسجيل احتمال تعذر": "جاري تسجيل التعذّر…",
 };
 
 const KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
@@ -60,7 +60,7 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "حفظ وإكمال البورصة": "تم حفظ بيانات البورصة !",
   "تأكيد التوزيع وإرسال المهام": "تم تأكيد التوزيع وإرسال المهام !",
   "إرسال للأخصائي": "تم إرسال التقييم للأخصائي !",
-  "إرسال للمشرف — إدارة التعذرات": "تم إرسال التعذر للمشرف !",
+  "إرسال للمشرف — إدارة التعذرات": "تم إرسال التعذّر للمشرف !",
   "حفظ والانتقال للتوزيع": "تم الحفظ والانتقال للتوزيع !",
   "حفظ مسودة": "تم حفظ المسودة !",
   "حفظ مسودة المعاينة": "تم حفظ مسودة المعاينة.",
@@ -76,9 +76,9 @@ const SUCCESS_EXACT_MESSAGES: Record<string, string> = {
   "تسجيل الاستلام": "تم تسجيل الاستلام !",
   "حفظ الملاحظة": "تم حفظ الملاحظة !",
   "إرفاق صورة": "تم إرفاق الصورة !",
-  "حفظ تعذر داخلي": "تم تسجيل التعذر !",
-  "تسجيل احتمال تعذر": "تم تسجيل التعذر !",
-  "تسجيل التعذر": "تم تسجيل التعذر !",
+  "حفظ تعذر داخلي": "تم تسجيل التعذّر !",
+  "تسجيل احتمال تعذر": "تم تسجيل التعذّر !",
+  "تسجيل التعذر": "تم تسجيل التعذّر !",
 };
 
 const SUCCESS_KEYWORD_MESSAGES: { keyword: string; message: string }[] = [
@@ -132,6 +132,14 @@ const SKIP_ACTION_LABELS = new Set([
   "إسناد مهمة",
 ]);
 
+/**
+ * Lookup form of a button label: collapsed spaces, shadda dropped — so
+ * «تسجيل التعذّر» and «تسجيل التعذر» hit the same rule.
+ */
+function normalizeActionLabel(label: string): string {
+  return label.replace(/\s+/g, " ").replace(/ّ/g, "").trim();
+}
+
 /** Avoid broad keyword hits on longer phrases with dedicated exact/skip rules. */
 function keywordMatchesLabel(keyword: string, label: string): boolean {
   if (!label.includes(keyword)) return false;
@@ -155,7 +163,7 @@ function keywordMatchesLabel(keyword: string, label: string): boolean {
 
 /** Maps a button label to a short Arabic progress toast. */
 export function progressMessageForActionLabel(actionLabel: string): string {
-  const label = actionLabel.replace(/\s+/g, " ").trim();
+  const label = normalizeActionLabel(actionLabel);
   if (!label) return "جاري التنفيذ…";
 
   const exact = EXACT_MESSAGES[label];
@@ -170,7 +178,7 @@ export function progressMessageForActionLabel(actionLabel: string): string {
 
 /** Maps a button label to a short Arabic success toast after the action completes. */
 export function successMessageForActionLabel(actionLabel: string): string {
-  const label = actionLabel.replace(/\s+/g, " ").trim();
+  const label = normalizeActionLabel(actionLabel);
   if (!label) return "تم التنفيذ !";
 
   const exact = SUCCESS_EXACT_MESSAGES[label];
@@ -183,8 +191,8 @@ export function successMessageForActionLabel(actionLabel: string): string {
   return "تم التنفيذ !";
 }
 
-export function isActionLikeLabel(actionLabel: string): boolean {
-  const label = actionLabel.replace(/\s+/g, " ").trim();
+function isActionLikeLabel(actionLabel: string): boolean {
+  const label = normalizeActionLabel(actionLabel);
   if (!label || SKIP_ACTION_LABELS.has(label)) return false;
   if (EXACT_MESSAGES[label]) return true;
   return KEYWORD_MESSAGES.some(({ keyword }) =>
@@ -192,7 +200,7 @@ export function isActionLikeLabel(actionLabel: string): boolean {
   );
 }
 
-export function inferButtonVariant(element: HTMLElement): string {
+function inferButtonVariant(element: HTMLElement): string {
   const explicit = element.getAttribute("data-button-variant");
   if (explicit) return explicit;
 
@@ -237,7 +245,7 @@ export function shouldShowGlobalActionToast(
   if (element.closest('nav[aria-label]')) return false;
   if (element.closest('[role="menu"], [role="menuitem"]')) return false;
 
-  const normalized = label.replace(/\s+/g, " ").trim();
+  const normalized = normalizeActionLabel(label);
   if (!normalized || SKIP_ACTION_LABELS.has(normalized)) return false;
 
   if (element.hasAttribute("data-action-toast")) return true;

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { cn, EmptyState, InlineLoadingSkeleton, PageShell, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
+import { cn, EmptyState, InlineLoadingSkeleton, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -97,7 +98,8 @@ function questionStatus(
 
 export function CaseStudyInfoRolesView() {
   const queryClient = useQueryClient();
-  const { data: config, isFetched } = useCaseStudyInfoRolesQuery();
+  const rolesQuery = useCaseStudyInfoRolesQuery();
+  const { data: config, isFetched } = rolesQuery;
   const { showToast } = useToast();
   const [openId, setOpenId] = useState<string | null>(
     CASE_STUDY_QUESTION_CATALOG[0]?.key ?? null,
@@ -190,6 +192,20 @@ export function CaseStudyInfoRolesView() {
     const pct = total === 0 ? 0 : Math.round((answered / total) * 100);
     return { done, partial, empty, pct, total, answered };
   }, [config]);
+
+  if (queryLoadFailed(rolesQuery)) {
+    return (
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+        <QueryErrorState
+          panel
+          line="تعذّر تحميل أسئلة دراسة الحالة"
+          error={rolesQuery.error}
+          onRetry={() => void rolesQuery.refetch()}
+          retrying={rolesQuery.isFetching}
+        />
+      </PageShell>
+    );
+  }
 
   if (!isFetched || !config) {
     return (

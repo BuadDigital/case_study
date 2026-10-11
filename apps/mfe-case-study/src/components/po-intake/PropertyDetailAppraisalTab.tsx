@@ -23,6 +23,7 @@ export function PropertyDetailAppraisalTab({
   appraisalCard,
   submission,
   onReviewChanged,
+  showReportDraft = true,
 }: {
   property: PoPropertyIntake;
   appraisalTask?: WorkflowTask | null;
@@ -30,6 +31,8 @@ export function PropertyDetailAppraisalTab({
   appraisalCard: PropertyDetailPartyCard | null;
   submission: PropertyDetailPartySubmission | null;
   onReviewChanged?: () => void;
+  /** The draft workspace lives in the case-study screen's «مدخلات التقييم» tab only. */
+  showReportDraft?: boolean;
 }) {
   const { role } = useAppAccess();
   if (!appraisalCard) {
@@ -70,13 +73,17 @@ export function PropertyDetailAppraisalTab({
         returnAfterAcceptLabel="إلغاء الاعتماد وإعادة للتصحيح"
         returnPlaceholder="صف ما يجب تصحيحه في تقييم المقيّم…"
         returnSuccessToast="أُعيد التقييم للمقيّم للتصحيح"
-        hint="يسلّم المقيّم تقييمه فتُعدّ مسودة التقرير أدناه وتُرسلها له لاعتمادها؛ وتُعيد التقييم للمقيّم إن لزم تصحيح أرقامه."
+        hint={
+          showReportDraft
+            ? "يسلّم المقيّم تقييمه فتُعدّ مسودة التقرير أدناه وتُرسلها له لاعتمادها؛ وتُعيد التقييم للمقيّم إن لزم تصحيح أرقامه."
+            : "تُعيد التقييم للمقيّم إن لزم تصحيح أرقامه؛ ومسودة التقرير تُعدّ من تبويب «مدخلات التقييم» في شاشة دراسة الحالة."
+        }
         onChanged={onReviewChanged}
       />
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
-      {appraisalTask && ReportDraftPanel ? (
+      {showReportDraft && appraisalTask && ReportDraftPanel ? (
         <ReportDraftPanel
           appraisalTask={appraisalTask}
           allTasks={tasks}

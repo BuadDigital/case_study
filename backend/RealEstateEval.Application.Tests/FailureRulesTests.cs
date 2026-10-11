@@ -67,7 +67,7 @@ public class FailureRulesTests
     {
         var errors = FailureRules.ValidateCreate(new CreateFailureRequest());
         Assert.Equal("رقم أمر العمل مطلوب", errors["poNumber"]);
-        Assert.Equal("معرف العقار مطلوب", errors["propertyId"]);
+        Assert.Equal("معرّف العقار مطلوب", errors["propertyId"]);
         Assert.Equal("اسم الأخصائي مطلوب", errors["specialist"]);
 
         Assert.Empty(FailureRules.ValidateCreate(new CreateFailureRequest
@@ -210,7 +210,7 @@ public class FailureRulesTests
     {
         Assert.Equal("قرار", FailureRules.ApprovedBlockReason(Failure(finalNote: " قرار ")));
         Assert.Equal("عنوان", FailureRules.ApprovedBlockReason(Failure()));
-        Assert.Equal("تعذر معتمد", FailureRules.ApprovedBlockReason(Failure(title: "  ")));
+        Assert.Equal("تعذّر معتمد", FailureRules.ApprovedBlockReason(Failure(title: "  ")));
     }
 
     [Fact]
@@ -258,13 +258,13 @@ public class FailureRulesTests
         var failure = Failure();
 
         var submitted = FailureRules.SubmittedNotification(failure);
-        Assert.Equal("تعذر بانتظار المراجعة", submitted.Title);
+        Assert.Equal("تعذّر قيد المراجعة", submitted.Title);
         Assert.Equal(failure.Id.ToString(), submitted.EntityId);
         Assert.Equal($"failure-submitted:{failure.Id}", submitted.SourceEvent);
         Assert.Equal(failure.Specialist, submitted.Actor);
 
         var approved = FailureRules.ApprovedNotification(failure);
-        Assert.Equal("اعتماد تعذر", approved.Title);
+        Assert.Equal("اعتماد تعذّر", approved.Title);
         Assert.Equal($"failure-approved:{failure.Id}", approved.SourceEvent);
     }
 

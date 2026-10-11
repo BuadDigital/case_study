@@ -10,7 +10,7 @@ export const WORK_SCREENS: ValuationWorkScreenId[] = [
   "review",
 ];
 
-export const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = [
+const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = [
   {
     id: "basic",
     label: "البيانات الأساسية",

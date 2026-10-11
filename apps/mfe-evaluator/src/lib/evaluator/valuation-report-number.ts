@@ -2,8 +2,7 @@
 // in Q-6 snapshots issued before rollout do not change — this format is for issues after only.
 // Must stay aligned with ValuationReportNumberRules on the server.
 
-/** In-process fallback only — never persist yearly sequences in localStorage. */
-const sessionYearlySeq = new Map<string, number>();
+import { localDateIso } from "@platform/app-shared/format/date";
 
 export function formatValuationReportNumber(
   issuedAt: Date,
@@ -13,8 +12,9 @@ export function formatValuationReportNumber(
   return `TQ-${issuedAt.getFullYear()}-${String(n).padStart(5, "0")}`;
 }
 
+/** Local calendar date — same calendar as the report number's year (UTC slipped a day after midnight). */
 export function formatValuationReportIssueDateIso(issuedAt: Date = new Date()): string {
-  return issuedAt.toISOString().slice(0, 10);
+  return localDateIso(issuedAt);
 }
 
 /** Number reserved at distribution: TQ + request year + digits from VR-####. */
@@ -31,15 +31,4 @@ export function reservedValuationReportNumber(
     ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]))
     : new Date();
   return formatValuationReportNumber(issuedAt, ordinal);
-}
-
-/**
- * Last-resort session ordinal when the valuation API is unreachable.
- * Prefer `reservedValuationReportNumber` / server-reserved VR ids in production paths.
- */
-export function allocateValuationReportNumber(issuedAt: Date = new Date()): string {
-  const year = String(issuedAt.getFullYear());
-  const next = (sessionYearlySeq.get(year) ?? 0) + 1;
-  sessionYearlySeq.set(year, next);
-  return formatValuationReportNumber(issuedAt, next);
 }

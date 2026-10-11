@@ -24,7 +24,6 @@ export type {
 } from "./lib/party-engineering-survey-extensions";
 export { CaseStudyWorkspaceView } from "./views/CaseStudyWorkspaceView";
 export { CaseStudyReportEditor } from "./components/case-study/CaseStudyReportEditor";
-export { FieldInspectionAdvisoryPanel } from "./components/field-inspection/FieldInspectionAdvisoryPanel";
 export { InspectorFeesTab } from "./components/field-inspection/InspectorFeesTab";
 export type { PartyFeesVariant } from "./components/field-inspection/InspectorFeesTab";
 export { PartyCaseStudyReportTab } from "./components/case-study/PartyCaseStudyReportTab";

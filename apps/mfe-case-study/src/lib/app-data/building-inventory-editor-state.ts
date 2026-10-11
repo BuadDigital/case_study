@@ -115,7 +115,7 @@ export function inventorySaveStatus(input: {
 }): string | null {
   if (input.saving) return "جاري الحفظ…";
   if (input.dirty) return "تعديلات غير محفوظة بعد";
-  if (input.queued) return "محفوظ على الجهاز — سيُرسل عند عودة الاتصال";
+  if (input.queued) return "بانتظار المزامنة — سيُرسل عند عودة الاتصال";
   return null;
 }
 

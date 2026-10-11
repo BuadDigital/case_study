@@ -12,8 +12,11 @@ import { TaskTypeIcon } from "./DashIcons";
 
 export function DashActionQueue({
   tasks,
+  failed = false,
 }: {
   tasks: OperationsTaskDto[];
+  /** Load failed — say so instead of «لا توجد مهام». */
+  failed?: boolean;
 }) {
   const router = useRouter();
   const rows = tasks
@@ -35,7 +38,11 @@ export function DashActionQueue({
           عرض الكل
         </Link>
       </div>
-      {rows.length === 0 ? (
+      {failed ? (
+        <div role="alert" className="py-2 text-[12.5px] font-bold text-danger-text">
+          تعذّر تحميل المهام.
+        </div>
+      ) : rows.length === 0 ? (
         <div className="py-2 text-[12.5px] text-text-3">
           لا توجد مهام مفتوحة.
         </div>

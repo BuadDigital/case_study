@@ -6,6 +6,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import { fmt } from "./lib/shell-utils";
 import {
@@ -43,7 +44,7 @@ import { MatrixAlertsPanel, MatrixOutputsPanel } from "./AdjustmentsMatrixPanels
 import { useAdjustmentsMatrixModel } from "./useAdjustmentsMatrixModel";
 
 
-export type AdjustmentsMatrixProps = {
+type AdjustmentsMatrixProps = {
   selection: ValuationComparableSelectionListDto;
   adopted: ValuationComparableSelectionDto[];
   locked: boolean;
@@ -191,7 +192,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             <tr className={isUnit ? "bg-surface-2" : "bg-surface"}>
               <LabelCell
                 label="قيمة العقار المقارن"
-                hint="إجمالي الصفقة (ريال) — التسويات على قيمة العقار كاملة"
+                hint="إجمالي الصفقة (ر.س) — التسويات على قيمة العقار كاملة"
                 tip="إجمالي سعر العقار المقارن. عند اعتماده تُجرى كل التسويات على قيمة العقار كاملة."
                 locked={locked}
                 pickable
@@ -216,7 +217,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             <tr className={isUnit ? "bg-surface" : "bg-surface-2"}>
               <LabelCell
                 label="سعر متر المقارن"
-                hint="ريال / م² — سعر المتر يُضرب في مساحة العقار آخر المطاف"
+                hint="ر.س/م² — سعر المتر يُضرب في مساحة العقار آخر المطاف"
                 tip="سعر المتر المرصود للمقارن قبل أي تسوية."
                 locked={locked}
                 pickable
@@ -372,7 +373,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 }
               />
               <SubjCell
-                value={`${fmt(Number(subjectArea.replace(",", ".")) || null)} م²`}
+                value={`${fmt(parseLocaleNumber(subjectArea) || null)} م²`}
                 note="مساحة الأرض"
               />
               {adopted.map((item) => {
@@ -409,7 +410,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               let subjVal = "—";
               let subjNote: string | undefined;
               if (desc?.subjectCell === "ideal-area") {
-                subjVal = `${fmt(Number(idealArea.replace(",", ".")) || Number(subjectArea.replace(",", ".")) || null)} م²`;
+                subjVal = `${fmt(parseLocaleNumber(idealArea) || parseLocaleNumber(subjectArea) || null)} م²`;
                 subjNote = "السائدة في الحي";
               } else if (desc?.subjectCell === "location") {
                 subjVal = district || "—";
@@ -571,7 +572,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             <tr>
               <LabelCell
                 label="القيمة بعد ضبط عوامل الاختلاف"
-                hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
+                hint={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}
                 tip="السعر التسلسلي × (1 + مجموع نسب التسويات)."
                 locked={locked}
               />
@@ -636,7 +637,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
             <tr className="bg-surface-2">
               <LabelCell
                 label="القيمة بعد الوزن النسبي"
-                hint={isUnit ? "ريال / م²" : "ريال — قيمة العقار"}
+                hint={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}
                 tip="القيمة بعد التسويات × الوزن."
                 locked={locked}
               />

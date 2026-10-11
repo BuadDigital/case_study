@@ -2,6 +2,7 @@
  * Pure rules and closed lists behind `ComparablePropertiesView`: the empty
  * intake form, coordinate parsing/formatting and the bank map pins. No React.
  */
+import { fmtSar } from "@platform/app-shared/format/number";
 import type {
   ComparablePropertyDto,
   UpsertComparablePropertyRequest,
@@ -27,10 +28,8 @@ export const COMPARABLE_USAGE_OPTIONS = [
 ] as const;
 
 
-export const SAR_FORMAT = new Intl.NumberFormat("ar-SA");
-
 /** Sentinel: no pin yet — user must pick on the map. */
-export const UNSET_COORD = Number.NaN;
+const UNSET_COORD = Number.NaN;
 
 export function emptyForm(): UpsertComparablePropertyRequest {
   return {
@@ -59,22 +58,6 @@ export function hasMapPin(form: UpsertComparablePropertyRequest): boolean {
   return Number.isFinite(form.latitude) && Number.isFinite(form.longitude);
 }
 
-export function parseLatLngPair(
-  raw: string,
-): { lat: number; lng: number } | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const match = trimmed.match(
-    /^(-?\d+(?:\.\d+)?)\s*[,،]\s*(-?\d+(?:\.\d+)?)$/,
-  );
-  if (!match) return null;
-  const lat = Number(match[1]);
-  const lng = Number(match[2]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { lat, lng };
-}
-
 export function formatLatLngPair(lat: number, lng: number): string {
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
@@ -96,7 +79,7 @@ export function bankContextPins(rows: ComparablePropertyDto[]): GoogleMapContext
         r.referenceCode,
         r.comparablePropertyType,
         r.district,
-        r.price != null ? `${SAR_FORMAT.format(r.price)} ر.س` : null,
+        r.price != null ? fmtSar(r.price, { digits: 3, trim: true }) : null,
       ]
         .filter(Boolean)
         .join(" · "),

@@ -14,7 +14,7 @@ export async function loadFailureTypesCatalog(): Promise<FailureTypesCatalog> {
   const result = await getFailureTypesCatalog(config);
   if (!result.ok) {
     throw new Error(
-      resolveApiError(result.kind, undefined, "تعذّر تحميل أنواع التعذر"),
+      resolveApiError(result.kind, undefined, "تعذّر تحميل أنواع التعذّر"),
     );
   }
   return {

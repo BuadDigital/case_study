@@ -30,7 +30,7 @@ export const PRIORITY_OFFSET_MS: Record<string, number> = {
   low: 24 * 3_600_000,
 };
 
-export const DEFAULT_TITLES: Record<string, string> = {
+const DEFAULT_TITLES: Record<string, string> = {
   court_visit: "زيارة محكمة",
   general: "مهمة عامة",
 };
@@ -40,7 +40,7 @@ export const DUE_CHIPS = [
   ["tomorrow", "غداً"],
   ["after", "بعد غد"],
 ] as const;
-export type DueChip = (typeof DUE_CHIPS)[number][0];
+type DueChip = (typeof DUE_CHIPS)[number][0];
 const DUE_CHIP_OFFSET_DAYS: Record<DueChip, number> = {
   today: 0,
   tomorrow: 1,
@@ -89,7 +89,7 @@ export function buildLetterRowsForPo(record: PoIntakeRecord): OperationsTaskLett
     }));
 }
 
-export function buildLetterRowsForDeeds(
+function buildLetterRowsForDeeds(
   records: PoIntakeRecord[],
   selectedDeeds: string[],
 ): OperationsTaskLetterRowDto[] {
@@ -344,7 +344,7 @@ export function parseDueAt(dueDate: string, dueTime: string): Date {
   return new Date(y!, (mo ?? 1) - 1, da ?? 1, hh ?? 12, mm ?? 0);
 }
 
-export type CreateOperationsTaskSubmission =
+type CreateOperationsTaskSubmission =
   | { ok: true; body: CreateOperationsTaskRequest }
   | { ok: false; error: string };
 

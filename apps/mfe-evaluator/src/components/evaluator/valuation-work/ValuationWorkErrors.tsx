@@ -19,13 +19,13 @@ import {
 } from "./lib/valuation-work-error-targets";
 
 /** The failure half of an api-client write result. */
-export type ValuationWorkSaveFailure = {
+type ValuationWorkSaveFailure = {
   kind?: string;
   message?: string;
   errors?: Record<string, string | string[]> | null;
 };
 
-export type ValuationWorkErrorsApi = {
+type ValuationWorkErrorsApi = {
   /** Send-time field errors merged with the last failed save. */
   fieldErrors: Record<string, string>;
   /**

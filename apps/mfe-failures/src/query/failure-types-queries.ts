@@ -16,7 +16,7 @@ const GC_MS = 10 * 60_000;
 const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
 /** One builder for the hook and the prefetch, so both hit the same cache entry. */
-export function failureTypesQueryOptions() {
+function failureTypesQueryOptions() {
   return queryOptions({
     queryKey: appDataKeys.failureTypes(),
     queryFn: loadFailureTypesCatalog,

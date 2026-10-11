@@ -71,23 +71,6 @@ public static class WorkOrderPropertyWriteRules
     public static int ExpectedCountAfterRemoval(int expectedPropertyCount) =>
         Math.Max(1, expectedPropertyCount - 1);
 
-    /// <summary>An empty or literal-null map url clears the column.</summary>
-    public static (Dictionary<string, string>? Errors, string? Value) ValidateLocationMapUrl(
-        string? locationMapUrl)
-    {
-        var trimmed = locationMapUrl?.Trim() ?? "";
-        if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
-        {
-            return (
-                new Dictionary<string, string>
-                {
-                    ["locationMapUrl"] = "رابط الموقع يجب أن يبدأ بـ http:// أو https://",
-                },
-                null);
-        }
-
-        return (null, string.IsNullOrEmpty(trimmed) ? null : trimmed);
-    }
 
     /// <summary>
     /// Validates the specialist-report wire bag and applies it to first-class columns
@@ -349,7 +332,8 @@ public static class WorkOrderPropertyWriteRules
     public static (Dictionary<string, string>? Errors, bool BoundariesUnavailable) ApplyBourseRequest(
         WorkOrderProperty entity,
         UpdatePropertyBourseRequest request,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        string? completedByName = null)
     {
         entity.City = request.City.Trim();
         entity.Region = request.Region?.Trim();
@@ -392,9 +376,28 @@ public static class WorkOrderPropertyWriteRules
         {
             entity.BourseDataCompleted = true;
             entity.BourseCompletedAtUtc = nowUtc;
+            entity.BourseCompletedByName = NormalizeActorName(completedByName);
         }
 
         return (null, boundariesUnavailable);
+    }
+
+    /// <summary>«المدينة · الحي — أدخله الاسم»: the bourse milestone's detail line (null when nothing to say).</summary>
+    public static string? BourseTimelineDetail(string? city, string? district, string? completedByName)
+    {
+        var location = BourseTimelineLocation(city, district);
+        var by = NormalizeActorName(completedByName);
+        if (by is null) return string.IsNullOrEmpty(location) ? null : location;
+        var who = $"أدخله {by}";
+        return string.IsNullOrEmpty(location) ? who : $"{location} — {who}";
+    }
+
+    /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>
+    public static string? NormalizeActorName(string? name)
+    {
+        var trimmed = name?.Trim();
+        if (string.IsNullOrEmpty(trimmed)) return null;
+        return trimmed.Length <= 128 ? trimmed : trimmed[..128];
     }
 
     private static void ApplyBoundaries(

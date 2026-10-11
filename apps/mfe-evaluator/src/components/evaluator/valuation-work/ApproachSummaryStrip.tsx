@@ -10,7 +10,7 @@ const TONE_CLASS: Record<Tone, string> = {
   danger: "text-red-text",
 };
 
-export type ApproachSummaryItem = {
+type ApproachSummaryItem = {
   label: string;
   value: string;
   tone?: Tone;

@@ -132,13 +132,7 @@ public static class CaseStudyDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var caseStudyConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.CaseStudy,
-            connectionString);
-        services.AddBoundedContextPersistence<CaseStudyDbContext>(
-            configuration,
-            caseStudyConnection);
+        services.AddBoundedContextPersistence<CaseStudyDbContext>(configuration);
         return services;
     }
 

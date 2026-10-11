@@ -20,18 +20,18 @@ public static class FailureRules
     public const string SystemRaiserRole = DocumentaryWorkflowRules.SystemRaiserRole;
 
     public const string EvictionProblemTypeId = "access-denied";
-    public const string EvictionTitle = "محظر إخلاء — تعليق الدراسة";
-    public const string EvictionInternalNote = "تسجيل محظر إخلاء من وحدة الظروف/مسار الدخول.";
-    public const string EvictionSuspendNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محظر إخلاء.";
-    public const string EvictionResolutionReason = "رفع محظر الإخلاء من وحدة الظروف";
-    public const string EvictionContinueInstructions = "أُزيل محظر الإخلاء — استئناف مسار الدراسة.";
+    public const string EvictionTitle = "محضر إخلاء — تعليق الدراسة";
+    public const string EvictionInternalNote = "تسجيل محضر إخلاء من وحدة الظروف/مسار الدخول.";
+    public const string EvictionSuspendNote = "عُلّقت الدراسة تلقائياً بسبب تسجيل محضر إخلاء.";
+    public const string EvictionResolutionReason = "رفع محضر الإخلاء من وحدة الظروف";
+    public const string EvictionContinueInstructions = "أُزيل محضر الإخلاء — استئناف مسار الدراسة.";
 
     public const string KeyUnmatchedProblemTypeId = "key-wont-open";
     public const string KeyUnmatchedTitle = "مفتاح العقار غير مطابق";
     public const string KeyUnmatchedNote = "تأكيد ميداني: المفتاح غير مطابق للصك.";
 
     public const string DeedInactiveProblemTypeId = "deed-inactive";
-    public const string DeedInactiveTitle = "متعذر — الصك غير فعال";
+    public const string DeedInactiveTitle = "متعذّر — الصك غير فعال";
 
     /// <summary>
     /// Supervisors and holders of the failure/work-order capabilities see every failure; everyone
@@ -56,9 +56,9 @@ public static class FailureRules
         if (string.IsNullOrWhiteSpace(request.PoNumber))
             errors["poNumber"] = "رقم أمر العمل مطلوب";
         if (string.IsNullOrWhiteSpace(request.PropertyId))
-            errors["propertyId"] = "معرف العقار مطلوب";
+            errors["propertyId"] = "معرّف العقار مطلوب";
         else if (!TryParsePropertyId(request.PropertyId, out _))
-            errors["propertyId"] = "معرف العقار غير صالح";
+            errors["propertyId"] = "معرّف العقار غير صالح";
         if (string.IsNullOrWhiteSpace(request.Specialist))
             errors["specialist"] = "اسم الأخصائي مطلوب";
         return errors;
@@ -214,7 +214,7 @@ public static class FailureRules
         var final = failure.FinalNote.Trim();
         if (final.Length > 0) return final;
         var title = failure.Title.Trim();
-        return title.Length > 0 ? title : "تعذر معتمد";
+        return title.Length > 0 ? title : "تعذّر معتمد";
     }
 
     public static EscalateCaseStudyObstructionRequest EscalateRequest(
@@ -261,7 +261,7 @@ public static class FailureRules
             failure.PoNumber,
             propertyId,
             $"failure:{failure.Id}:created",
-            "تسجيل تعذر",
+            "تسجيل تعذّر",
             $"{failure.Title} — {PropertyFailureStatus.LabelAr(failure.Status)}",
             PropertyTimelineTones.Warn,
             nowUtc);
@@ -277,6 +277,28 @@ public static class FailureRules
             failure.FinalNote,
             PropertyTimelineTones.Warn,
             failure.SuspendedAtUtc!.Value);
+
+    public const string SubmittedForReviewTitleAr = "رفع التعذّر للمراجعة";
+    public const string ApprovedTitleAr = "اعتماد التعذّر";
+    public const string ReturnedTitleAr = "إرجاع التعذّر للتصحيح";
+    public const string ResolvedTitleAr = "حل التعذّر";
+
+    /// <summary>A later stage of a failure; the key carries the time so every pass through a stage shows.</summary>
+    public static PropertyTimelineRecordRequest StageTimelineEntry(
+        PropertyFailure failure,
+        string stageKey,
+        string title,
+        string? detail,
+        string tone,
+        DateTime nowUtc) =>
+        new(
+            failure.PoNumber,
+            failure.PropertyId,
+            $"failure:{failure.Id}:{stageKey}:{nowUtc.Ticks}",
+            title,
+            detail,
+            tone,
+            nowUtc);
 
     public static PropertyTimelineRecordRequest SurveyFreezeLiftedTimelineEntry(
         PropertyFailure failure,
@@ -311,8 +333,8 @@ public static class FailureRules
     public static CreateUserNotificationRequest SubmittedNotification(PropertyFailure failure) =>
         new()
         {
-            Title = "تعذر بانتظار المراجعة",
-            Body = $"رُفع تعذر للمراجعة على أمر العمل {failure.PoNumber}.",
+            Title = "تعذّر قيد المراجعة",
+            Body = $"رُفع تعذّر للمراجعة على أمر العمل {failure.PoNumber}.",
             Tone = "warn",
             Href = "/failures",
             Category = "failures",
@@ -325,8 +347,8 @@ public static class FailureRules
     public static CreateUserNotificationRequest ApprovedNotification(PropertyFailure failure) =>
         new()
         {
-            Title = "اعتماد تعذر",
-            Body = $"اعتُمد تعذر على أمر العمل {failure.PoNumber}.",
+            Title = "اعتماد تعذّر",
+            Body = $"اعتُمد تعذّر على أمر العمل {failure.PoNumber}.",
             Tone = "warn",
             Href = "/failures",
             Category = "failures",
@@ -343,8 +365,8 @@ public static class FailureRules
         PropertyFailure failure,
         string? finalNote) =>
         ReturnedForCorrectionNotice.Build(
-            title: "إعادة التعذر للتصحيح",
-            summary: $"أُعيد تعذر أمر العمل {failure.PoNumber} للتصحيح",
+            title: "إعادة التعذّر للتصحيح",
+            summary: $"أُعيد تعذّر أمر العمل {failure.PoNumber} للتصحيح",
             reason: finalNote,
             href: "/failures",
             category: NotificationContract.Categories.Failures,

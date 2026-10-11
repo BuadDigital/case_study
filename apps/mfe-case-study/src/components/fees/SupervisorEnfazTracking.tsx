@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useQuery } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
@@ -17,30 +18,10 @@ import {
 } from "@platform/ui-kit";
 import { inspectorFeeWorkStatusTone } from "@platform/api-client";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
-
-function invoiceStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case "collected":
-      return "محصّلة";
-    case "partially_collected":
-      return "تحصيل جزئي";
-    case "issued":
-      return "صادرة";
-    default:
-      return "بلا فاتورة";
-  }
-}
-
-function invoiceStatusTone(
-  status: string | null | undefined,
-  overdue: boolean,
-): "success" | "warning" | "danger" | "info" | "default" {
-  if (overdue) return "danger";
-  if (status === "collected") return "success";
-  if (status === "partially_collected") return "warning";
-  if (status === "issued") return "info";
-  return "default";
-}
+import {
+  enfazInvoiceStatusLabel,
+  enfazInvoiceStatusTone,
+} from "@platform/app-shared/fees/enfaz-invoice-status";
 
 export function SupervisorEnfazTracking() {
   const { data = [], isPending } = useQuery({
@@ -108,7 +89,7 @@ export function SupervisorEnfazTracking() {
                     <Badge tone="danger">لا تُفوتر</Badge>
                   ) : row.enfazFilled ? (
                     <Badge tone="success">
-                      مُعبّأة {row.enfazFeeSar.toLocaleString("ar-SA")} ر.س
+                      مُعبّأة {fmtSar(row.enfazFeeSar, { digits: 3, trim: true })}
                     </Badge>
                   ) : (
                     <Badge tone="warning">بانتظار التعبئة</Badge>
@@ -120,18 +101,18 @@ export function SupervisorEnfazTracking() {
                   ) : row.invoiceNumber ? (
                     <div className="flex flex-col gap-1">
                       <Badge
-                        tone={invoiceStatusTone(
+                        tone={enfazInvoiceStatusTone(
                           row.invoiceStatus,
                           row.isOverdue,
                         )}
                       >
-                        {invoiceStatusLabel(row.invoiceStatus)}
+                        {enfazInvoiceStatusLabel(row.invoiceStatus)}
                         {row.isOverdue ? " · متأخر" : ""}
                       </Badge>
                       <span className="text-[11px] text-text-3">
                         {row.invoiceNumber}
                         {row.collectedAmountSar > 0
-                          ? ` · محصّل ${row.collectedAmountSar.toLocaleString("ar-SA")} ر.س`
+                          ? ` · محصّل ${fmtSar(row.collectedAmountSar, { digits: 3, trim: true })}`
                           : ""}
                       </span>
                     </div>

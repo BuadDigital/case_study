@@ -30,7 +30,7 @@ import {
 } from "@platform/api-client";
 import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 /** Case Study.html `FEE_ST` mapping for engineering office billing. */
@@ -42,10 +42,6 @@ type EngFeeUiStatus =
   | "listed"
   | "paid"
   | "other";
-
-function fmtSar(n: number): string {
-  return `${fmtMax(n || 0, 3)} ر.س`;
-}
 
 function formatAcceptDate(row: InspectorFeeRowDto): string {
   const raw =
@@ -151,7 +147,7 @@ function engFeeStatusTitle(
   return undefined;
 }
 
-export type EngOfficeFeesTab = "action" | "ready";
+type EngOfficeFeesTab = "action" | "ready";
 
 export function EngOfficeFeesBillingTable({
   rows,
@@ -313,7 +309,7 @@ export function EngOfficeFeesBillingTable({
                       {formatAcceptDate(row)}
                     </TdLtr>
                     <Td className="text-[12.5px] text-text-2">
-                      {fmtSar(row.agreedFeeSar)}
+                      {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
                     </Td>
                     <Td>
                       {ded ? (
@@ -322,7 +318,7 @@ export function EngOfficeFeesBillingTable({
                           title={row.discountReason ?? undefined}
                         >
                           <span className="shrink-0 text-[12.5px] font-bold text-[#a5432e]">
-                            − {fmtSar(row.supervisorDiscountSar)}
+                            − {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
                           </span>
                           <span className="truncate text-[10.5px] text-text-3">
                             {row.discountReason || ""}
@@ -335,7 +331,7 @@ export function EngOfficeFeesBillingTable({
                       )}
                     </Td>
                     <Td className="text-[13px] font-bold text-heading">
-                      {fmtSar(row.netFeeSar)}
+                      {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
                     </Td>
                     <Td>
                       <span title={engFeeStatusTitle(st, row)}>
@@ -432,11 +428,11 @@ export function EngOfficeFeesBillingTable({
                     </div>
                     <div className="shrink-0 text-end">
                       <div className="text-[14px] font-bold text-gold-d">
-                        {fmtSar(row.netFeeSar)}
+                        {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
                       </div>
                       {ded ? (
                         <div className="mt-0.5 text-[10px] text-text-3">
-                          حسم {fmtSar(row.supervisorDiscountSar)}
+                          حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
                         </div>
                       ) : null}
                     </div>

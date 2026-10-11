@@ -47,11 +47,11 @@ public static class ValuationIssuanceGateRules
               || ValuerCredentialRules.IsWithinWarningWindow(membershipExpiresAt, today);
         return new ValuationIssuanceGateCheck(
             ValuationIssuanceGateCodes.Credentials,
-            "ترخيص وعضوية المقيم المعتمد",
+            "ترخيص وعضوية المقيّم المعتمد",
             ok,
             IsHard: true,
             DetailAr: ok
-                ? (warn ? "تنبيه: أقل من 60 يومًا على انتهاء أحد الاعتمادات" : null)
+                ? (warn ? "تنبيه: أقل من 60 يوماً على انتهاء أحد الاعتمادات" : null)
                 : block,
             IsWarning: warn);
     }
@@ -106,7 +106,7 @@ public static class ValuationIssuanceGateRules
             passed,
             IsHard: true,
             DetailAr: passed
-                ? (warn ? "تنبيه: أقل من 60 يومًا على انتهاء اعتماد أحد المشاركين" : null)
+                ? (warn ? "تنبيه: أقل من 60 يوماً على انتهاء اعتماد أحد المشاركين" : null)
                 : "عضوية/ترخيص مشارك تمنع الإصدار — " + string.Join("؛ ", failures),
             IsWarning: warn);
     }

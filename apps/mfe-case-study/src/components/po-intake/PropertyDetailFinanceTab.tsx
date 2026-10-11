@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useMemo, useRef, useState } from "react";
 import {
   Badge,
@@ -175,19 +176,19 @@ export function PropertyDetailFinanceTab({
               <span>
                 دراسة المعاملة:{" "}
                 <span className="tabular-nums font-medium text-text">
-                  {enfazIn.caseStudy.toLocaleString("ar-SA")} ر.س
+                  {fmtSar(enfazIn.caseStudy, { digits: 3, trim: true })}
                 </span>
               </span>
               <span>
                 تكاليف الرفع:{" "}
                 <span className="tabular-nums font-medium text-text">
-                  {enfazIn.survey.toLocaleString("ar-SA")} ر.س
+                  {fmtSar(enfazIn.survey, { digits: 3, trim: true })}
                 </span>
               </span>
               <span>
                 المجموع:{" "}
                 <span className="tabular-nums font-medium text-text">
-                  {enfazIn.total.toLocaleString("ar-SA")} ر.س
+                  {fmtSar(enfazIn.total, { digits: 3, trim: true })}
                 </span>
               </span>
             </div>

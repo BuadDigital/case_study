@@ -34,7 +34,7 @@ export type PropertyDocumentChecklistGroup = {
   completed: number;
 };
 
-export type PropertyDocumentChecklist = {
+type PropertyDocumentChecklist = {
   groups: PropertyDocumentChecklistGroup[];
   photos: PropertyDetailDocumentEntry[];
   unlisted: PropertyDetailDocumentEntry[];

@@ -10,8 +10,9 @@ import {
   type SyntheticEvent,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fmt } from "@platform/app-shared/format/number";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
@@ -22,6 +23,7 @@ import {
   opsFilters,
   opsLetterCard,
   opsSearchInput,
+  QueryErrorState,
   useSwapAnimation,
 } from "@platform/ui-kit";
 import { REVENUE_STAGES, type RevenueStage } from "../lib/finance-nav";
@@ -105,6 +107,8 @@ export function FinanceRevenueView({
   });
 
   const allRows = trackingQuery.data ?? EMPTY_TRACKING_ROWS;
+  /** Failed with nothing loaded — badges hide rather than read 0. */
+  const trackingFailed = queryLoadFailed(trackingQuery);
   const cities = useMemo(() => uniqueCities(allRows), [allRows]);
   const buckets = useMemo(() => bucketRevenueRows(allRows), [allRows]);
 
@@ -217,7 +221,7 @@ export function FinanceRevenueView({
         items={REVENUE_STAGES}
         active={viewStage}
         onChange={changeStage}
-        counts={counts}
+        counts={trackingFailed ? undefined : counts}
       />
 
       {/* HTML order: search (right · flex:1) → city → period */}
@@ -297,7 +301,7 @@ export function FinanceRevenueView({
             >
               تسجيل فاتورة للمحدد
               {selectedRows.length
-                ? ` (${selectedRows.length} — ${fmt(selectedTotal, 2)} ر.س)`
+                ? ` (${selectedRows.length} — ${fmtSar(selectedTotal)})`
                 : ""}
             </button>
             <span className="text-[11px] text-text-3">
@@ -356,6 +360,16 @@ export function FinanceRevenueView({
         {trackingQuery.isPending ? (
           <div className={opsLetterCard}>
             <EmptyState panel line="جاري التحميل…" />
+          </div>
+        ) : trackingFailed ? (
+          <div className={opsLetterCard}>
+            <QueryErrorState
+              panel
+              line="تعذّر تحميل متابعة الإيرادات"
+              error={trackingQuery.error}
+              onRetry={() => void trackingQuery.refetch()}
+              retrying={trackingQuery.isFetching}
+            />
           </div>
         ) : stageRows.length === 0 ? (
           <RevenueStageEmpty stage={viewStage} />

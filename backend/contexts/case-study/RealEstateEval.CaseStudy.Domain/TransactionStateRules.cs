@@ -50,7 +50,7 @@ public static class TransactionStateRules
         public static string LabelAr(string key) => key switch
         {
             Inspector => "المعاين الميداني",
-            Appraiser => "المقيم العقاري",
+            Appraiser => "المقيّم العقاري",
             EngineeringOffice => "المكتب الهندسي",
             CaseSpecialist => "أخصائي دراسة الحالة",
             _ => key,
@@ -69,7 +69,7 @@ public static class TransactionStateRules
         {
             NotStarted => "لم يبدأ",
             InProgress => "قيد العمل",
-            WaitingOnParty => "معلق بانتظار طرف",
+            WaitingOnParty => "معلّق بانتظار طرف",
             Completed => "مكتمل",
             _ => key,
         };
@@ -247,9 +247,6 @@ public static class TransactionStateRules
         return reasons;
     }
 
-    /// <summary>R3 post-Enfaz decision is the general manager's prototype role, not the JWT identity role.</summary>
-    public static bool AllowsPostEnfazDecision(string? prototypeRole) =>
-        string.Equals(prototypeRole, StaffRoleIds.GeneralManager, StringComparison.Ordinal);
 
     /// <summary>
     /// 0–100 workflow progress for list bars: foundational stages + party completion

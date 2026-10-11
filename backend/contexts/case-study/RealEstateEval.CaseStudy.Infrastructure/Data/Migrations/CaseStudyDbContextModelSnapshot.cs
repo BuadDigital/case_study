@@ -897,6 +897,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<DateTime?>("BourseCompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("BourseCompletedByName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<bool>("BourseDataCompleted")
                         .HasColumnType("boolean");
 

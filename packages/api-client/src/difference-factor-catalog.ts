@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 /** Decision 19.2 — admin-managed factor definition (definition + what it excludes). */
@@ -26,21 +26,13 @@ type Result<T> =
   | { ok: true; data: T }
   | { ok: false; kind: "auth" | "network" | "server"; message?: string };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export async function getDifferenceFactorCatalog(
   config: DifferenceFactorCatalogApiConfig,
 ): Promise<Result<DifferenceFactorCatalogDto>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/difference-factor-catalog`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -58,7 +50,7 @@ export async function saveDifferenceFactorCatalog(
   try {
     const res = await fetch(`${base}/api/difference-factor-catalog`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

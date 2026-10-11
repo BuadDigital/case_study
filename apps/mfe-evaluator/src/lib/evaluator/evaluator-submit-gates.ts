@@ -38,7 +38,7 @@ export async function readFreshStudyReportGate(
   }
 }
 
-export type IssuanceGateCheck =
+type IssuanceGateCheck =
   | { ok: true }
   | { ok: false; kind: "blocked" | "unverified"; message: string };
 

@@ -5,7 +5,7 @@
  * property photos. Owns the map/coords derivations that only this step needs.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button, cn, GoogleMapPin, useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
@@ -24,9 +24,11 @@ import {
   inspectorWizardCoordsValue,
   inspectorWizardMapGeo,
 } from "./inspector-wizard-state";
+import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
+import { bourseSourceNotes } from "../../lib/app-data/inspector-bourse-prefill";
 import { handleSiteLocationAckClick } from "../../lib/app-data/site-location-ack-open";
 import {
   InsCard,
@@ -41,6 +43,7 @@ import {
 } from "./FieldInspectionWorkParts";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorWizardLocationStep({
   property,
@@ -69,7 +72,7 @@ export function InspectorWizardLocationStep({
   /** «خصائص العقار» — rendered right after the map card. */
   featureFields: InspectorFeatureField[];
   serviceProofFromTransactionPhotos: boolean;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onMapMove: (lat: number, lng: number) => void;
   mapPinned: boolean;
   onPin: () => void;
@@ -101,6 +104,8 @@ export function InspectorWizardLocationStep({
     [draft, mapActor, mapPinned, engineeringMapPin],
   );
   const coordsValue = inspectorWizardCoordsValue(draft);
+  const [coordsText, setCoordsText] = useState(coordsValue);
+  const [coordsEditing, setCoordsEditing] = useState(false);
 
   return (
     <>
@@ -148,16 +153,20 @@ export function InspectorWizardLocationStep({
                 )}
                 dir="ltr"
                 placeholder="21.523339, 39.187743"
-                value={coordsValue}
+                value={coordsEditing ? coordsText : coordsValue}
+                onFocus={() => {
+                  setCoordsText(coordsValue);
+                  setCoordsEditing(true);
+                }}
+                onBlur={() => setCoordsEditing(false)}
                 onChange={(e) => {
-                  const parts = e.target.value.split(/[,،]/);
+                  // The text is the user's own while typing; the draft only takes a complete pair
+                  // (a half-typed value would otherwise be wiped, or revert to the saved one).
+                  setCoordsText(e.target.value);
+                  const pair = parseCoordinatePair(e.target.value);
+                  if (!pair) return;
                   onPatch(
-                    mapPinPatchForActor(
-                      draft,
-                      (parts[0] || "").trim(),
-                      (parts[1] || "").trim(),
-                      mapActor,
-                    ),
+                    mapPinPatchForActor(draft, String(pair.lat), String(pair.lng), mapActor),
                   );
                 }}
               />
@@ -273,6 +282,7 @@ export function InspectorWizardLocationStep({
             readOnlyFeatureKeys={
               serviceProofFromTransactionPhotos ? ["assetSubject"] : []
             }
+            sourceNotes={bourseSourceNotes(draft.featureValues, property)}
             onPatch={onPatch}
           />
         </div>

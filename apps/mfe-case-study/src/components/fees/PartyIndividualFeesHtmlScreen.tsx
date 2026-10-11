@@ -12,6 +12,7 @@
  * status buckets, copy and totals in `party-individual-fees-state.ts`.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { Fragment, useRef } from "react";
 import Link from "next/link";
 import {
@@ -45,7 +46,6 @@ import {
 } from "../../lib/app-data/ops-tasks-tw";
 import {
   deedParts,
-  fmtSar,
   individualFeeUiStatus,
   statementMeta,
   statusMeta,
@@ -157,7 +157,7 @@ export function PartyIndividualFeesHtmlScreen({
           label="إجمالي المستحق غير المصروف"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.outstanding)}
+              {fmtSar(kpi.outstanding, { digits: 3, trim: true })}
             </span>
           }
           sub={copy.outstandingSub}
@@ -169,7 +169,7 @@ export function PartyIndividualFeesHtmlScreen({
           label={copy.actionKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.actionSar)}
+              {fmtSar(kpi.actionSar, { digits: 3, trim: true })}
             </span>
           }
           sub={copy.actionKpiSub}
@@ -180,7 +180,7 @@ export function PartyIndividualFeesHtmlScreen({
           label={copy.readyKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.readySar)}
+              {fmtSar(kpi.readySar, { digits: 3, trim: true })}
             </span>
           }
           sub={copy.readyKpiSub}
@@ -192,7 +192,7 @@ export function PartyIndividualFeesHtmlScreen({
           label={copy.paidKpiLabel}
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.paidSar)}
+              {fmtSar(kpi.paidSar, { digits: 3, trim: true })}
             </span>
           }
           sub={copy.paidKpiSub}
@@ -340,7 +340,7 @@ export function PartyIndividualFeesHtmlScreen({
                             )}
                           </TdLtr>
                           <TdLtr valueClassName="text-[12.5px] text-text-2">
-                            {fmtSar(row.agreedFeeSar)}
+                            {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
                           </TdLtr>
                           <Td>
                             {ded ? (
@@ -352,7 +352,7 @@ export function PartyIndividualFeesHtmlScreen({
                                   dir="ltr"
                                   className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
                                 >
-                                  − {fmtSar(row.supervisorDiscountSar)}
+                                  − {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
                                 </span>
                                 <span className="truncate text-[10.5px] text-text-3">
                                   {row.discountReason || ""}
@@ -365,7 +365,7 @@ export function PartyIndividualFeesHtmlScreen({
                             )}
                           </Td>
                           <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                            {fmtSar(row.netFeeSar)}
+                            {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
                           </TdLtr>
                           <Td>
                             <StatusPill label={meta.label} style={meta.style} />
@@ -493,7 +493,7 @@ export function PartyIndividualFeesHtmlScreen({
                               {s.lines.length} معاملات
                             </Td>
                             <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                              {fmtSar(s.totalNetSar)}
+                              {fmtSar(s.totalNetSar, { digits: 3, trim: true })}
                             </TdLtr>
                             <Td>
                               <StatusPill
@@ -529,7 +529,7 @@ export function PartyIndividualFeesHtmlScreen({
                                         {line.propertyLabel}
                                       </span>
                                       <span className="font-bold text-heading">
-                                        {fmtSar(line.netFeeSar)}
+                                        {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
                                       </span>
                                     </div>
                                   ))}

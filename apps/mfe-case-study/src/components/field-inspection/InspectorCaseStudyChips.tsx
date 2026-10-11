@@ -37,7 +37,7 @@ const DEFAULT_INFO_ROLES = emptyCaseStudyInfoRolesConfig();
 const GROUPS: { title: string; section: CaseStudyQuestionSection }[] = [
   { title: "بيانات الصك والعقار", section: "deed" },
   { title: "الرفع المساحي والطبيعة", section: "survey" },
-  { title: "مكوّنات العقار على الطبيعة", section: "comp" },
+  { title: "مكونات العقار على الطبيعة", section: "comp" },
   { title: "الإشغال والعقود", section: "occ" },
   { title: "ملاحظات إضافية", section: "extra" },
 ];

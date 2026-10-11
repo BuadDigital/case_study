@@ -111,7 +111,7 @@ export function RegField({
   );
 }
 
-export type RegSelectOption = string | { value: string; label: string };
+type RegSelectOption = string | { value: string; label: string };
 
 function regSelectEntries(
   options: readonly RegSelectOption[],

@@ -2,26 +2,26 @@ import type { PropertyDetailPartySubmission } from "./property-detail-party-subm
 import type { PropertyDetailPartySubmissionsMap } from "./property-detail-party-submissions";
 
 /** Failure-like shape used for the property-detail «Failures» tab. */
-export type PropertyDetailFailureSignal = {
+type PropertyDetailFailureSignal = {
   id: string;
   status: string;
   updatedAt?: string;
 };
 
 /** Fee-ledger row signal for the «Finance» tab. */
-export type PropertyDetailFeeSignal = {
+type PropertyDetailFeeSignal = {
   workflowTaskId: string;
   billingStatus: string;
   updatedAtUtc?: string | null;
 };
 
 /** Timeline row signal for the «History» tab. */
-export type PropertyDetailLogSignal = {
+type PropertyDetailLogSignal = {
   id: string;
   at: string;
 };
 
-export type PropertyDetailTabActivity = Record<string, string | null>;
+type PropertyDetailTabActivity = Record<string, string | null>;
 
 function packageNeedsAttention(
   sub: PropertyDetailPartySubmission | null | undefined,

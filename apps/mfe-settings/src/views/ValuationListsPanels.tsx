@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { todayIso } from "@platform/app-shared/format/date";
 import {
   VALUER_MEMBERSHIP_CATEGORIES,
   CERTIFIED_VALUER_HTML_DEFAULTS,
@@ -165,7 +166,7 @@ export function CertValuerPanel({
 
   const sigOk = Boolean(org.branding.signatureUrl);
   const memExp = membershipExpiresAt;
-  const expired = Boolean(memExp && memExp < new Date().toISOString().slice(0, 10));
+  const expired = Boolean(memExp && memExp < todayIso());
   const blocked = expired
     ? "عضوية منتهية — يُمنع الإصدار باسمه"
     : !sigOk
@@ -176,12 +177,12 @@ export function CertValuerPanel({
     <>
       {blocked ? <Note tone="danger">{blocked}</Note> : null}
       <Note className="mt-3">
-        مرجع لا نسخة — يُختار المقيم المعتمد من سجل «المقيّمون»، وبياناته وتوقيعه تُحرَّر هناك وحدها.
+        مرجع لا نسخة — يُختار المقيّم المعتمد من سجل «المقيّمون»، وبياناته وتوقيعه تُحرَّر هناك وحدها.
         تُطبع في القسم 01 وقسم الاعتماد 27.
       </Note>
       <Card className="mt-3">
         <CardHeader>
-          <h2 className="m-0 text-sm font-bold">المقيم المعتمد</h2>
+          <h2 className="m-0 text-sm font-bold">المقيّم المعتمد</h2>
           <Link
             href="/organization-settings?tab=evaluator"
             className="text-[12.5px] font-semibold text-primary"
@@ -191,7 +192,7 @@ export function CertValuerPanel({
         </CardHeader>
         <CardBody className="grid gap-3.5 sm:grid-cols-2">
           <div className="flex max-w-[32rem] flex-col sm:col-span-2">
-            <Label>اختيار المقيم المعتمد (من سجل المقيّمين)</Label>
+            <Label>اختيار المقيّم المعتمد (من سجل المقيّمين)</Label>
             <Select
               value={selectedId}
               disabled={saving || options.length === 0}
@@ -306,9 +307,9 @@ export function ParticipantsPanel({
                       value={p.role}
                       onChange={(e) => patch(p.id, { role: e.target.value })}
                     >
-                      <option value="certified">مقيم عقاري معتمد</option>
-                      <option value="reviewer">مقيم عقاري مراجع</option>
-                      <option value="assistant">مساعد مقيم</option>
+                      <option value="certified">مقيّم عقاري معتمد</option>
+                      <option value="reviewer">مقيّم عقاري مراجع</option>
+                      <option value="assistant">مساعد مقيّم</option>
                     </Select>
                   </Td>
                   <Td>
@@ -358,7 +359,7 @@ export function ParticipantsPanel({
         </Table>
       </TableFrame>
       <p className="mt-2.5 text-[11.5px] text-text-3">
-        لا حذف — التعطيل يحفظ ارتباط السجلات بسجل التدقيق. المقيم المعتمد نفسه يُدار من «بيانات المقيم المعتمد».
+        لا حذف — التعطيل يحفظ ارتباط السجلات بسجل التدقيق. المقيّم المعتمد نفسه يُدار من «بيانات المقيّم المعتمد».
       </p>
     </>
   );

@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 
@@ -33,14 +33,6 @@ type Result<T> =
   | { ok: true; data: T }
   | { ok: false; kind: "auth" | "network" | "server" | "forbidden"; message?: string };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 
 function normalize(data: ValuationListsDto): ValuationListsDto {
   return {
@@ -69,7 +61,7 @@ export async function getValuationLists(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/valuation-lists`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -93,7 +85,7 @@ export async function saveValuationLists(
   try {
     const res = await fetch(`${base}/api/valuation-lists`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };

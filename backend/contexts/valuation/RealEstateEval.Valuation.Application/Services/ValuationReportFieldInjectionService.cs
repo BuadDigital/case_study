@@ -20,7 +20,6 @@ public sealed class ValuationReportFieldInjectionService(
     ICaseStudyLookup caseStudy,
     IValuationPrintableAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
-    IValuationListsService valuationLists,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
@@ -79,7 +78,6 @@ public sealed class ValuationReportFieldInjectionService(
         hasStructures = ValuationApproachSettingsRules.BuildingsValued(hasStructures, cost?.CostScopeKey);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var org = await organizationSettings.GetAsync(cancellationToken);
-        var valuationCatalog = await valuationLists.GetAsync(cancellationToken);
         var printable = await attachments.ListPrintableAsync(propertyId, cancellationToken);
 
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
@@ -96,8 +94,7 @@ public sealed class ValuationReportFieldInjectionService(
             printable,
             hasStructures,
             deedNatureMatchOutcome,
-            today,
-            valuationCatalog);
+            today);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -181,8 +178,7 @@ public sealed class ValuationReportFieldInjectionService(
         IReadOnlyList<ReportAttachmentRef> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
-        DateOnly today,
-        ValuationListsDto? valuationCatalog = null)
+        DateOnly today)
     {
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
 

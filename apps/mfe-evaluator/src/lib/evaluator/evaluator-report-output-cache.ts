@@ -1,12 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 /** Shared React Query key for the printed valuation report data bundle. */
-export const EVALUATOR_REPORT_OUTPUT_QUERY_KEY = [
+const EVALUATOR_REPORT_OUTPUT_QUERY_KEY = [
   "evaluator-report-output",
 ] as const;
 
 /** What one report fill is keyed on — the property and the tasks that feed it. */
-export type EvaluatorReportOutputScope = {
+type EvaluatorReportOutputScope = {
   propertyId: string | null | undefined;
   poNumber: string;
   inspectionTaskId: string | null | undefined;

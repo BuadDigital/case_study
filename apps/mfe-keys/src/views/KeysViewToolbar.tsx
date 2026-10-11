@@ -84,11 +84,11 @@ export function KeysViewToolbar({
           <ShowAllEye open={showOut} blink={eyeBlink} />
           <span className="max-sm:hidden">
             {showOut
-              ? "إخفاء المسلَّمة (خارج العهدة)"
-              : "إظهار المسلَّمة (خارج العهدة)"}
+              ? "إخفاء المُسلَّمة (خارج العهدة)"
+              : "إظهار المُسلَّمة (خارج العهدة)"}
           </span>
           <span className="sm:hidden">
-            {showOut ? "إخفاء المسلَّمة" : "إظهار المسلَّمة"}
+            {showOut ? "إخفاء المُسلَّمة" : "إظهار المُسلَّمة"}
           </span>
         </button>
         <OperationalToolbarSelect

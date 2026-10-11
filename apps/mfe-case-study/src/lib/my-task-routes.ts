@@ -56,12 +56,12 @@ export function activeSurveyEntryPath(taskId: string): string {
 }
 
 /** Full-page workspace for the field inspector — official path under active transactions. */
-export function activeInspectionWorkspacePath(taskId: string): string {
+function activeInspectionWorkspacePath(taskId: string): string {
   return `/active-inspection/${encodeURIComponent(taskId)}`;
 }
 
 /** Full-page workspace for the field inspector (property inspection — orphan screen). */
-export function propertyInspectionWorkspacePath(taskId: string): string {
+function propertyInspectionWorkspacePath(taskId: string): string {
   return `/property-inspection/${encodeURIComponent(taskId)}`;
 }
 

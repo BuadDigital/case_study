@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Note, PanelSkeleton } from "@platform/ui-kit";
+import { Note, PanelSkeleton, QueryErrorState } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { PoHeaderEdit } from "@case-study/mfe/components/po-intake/PoHeaderEdit";
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -11,11 +12,24 @@ import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 export function PoHeaderEditRoute({ poNumber }: { poNumber: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: record, isPending } = usePoRecordQuery(poNumber);
+  const recordQuery = usePoRecordQuery(poNumber);
+  const { data: record, isPending } = recordQuery;
 
   if (isPending && !record) {
     return (
       <PanelSkeleton className="m-4" />
+    );
+  }
+
+  if (!record && queryLoadFailed(recordQuery)) {
+    return (
+      <QueryErrorState
+        className="m-4"
+        line="تعذّر تحميل أمر العمل"
+        error={recordQuery.error}
+        onRetry={() => void recordQuery.refetch()}
+        retrying={recordQuery.isFetching}
+      />
     );
   }
 

@@ -26,6 +26,7 @@ import {
   EDIT_CONTROL_CLASS,
 } from "../po-intake/PropertyDetailInspectionParts";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorFieldObservationsCard({
   deedNumber,
@@ -42,7 +43,7 @@ export function InspectorFieldObservationsCard({
   serviceProofFromTransactionPhotos: boolean;
   transactionPhotos: PropertyDetailDocumentEntry[];
   missingObservationId?: string;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const photoStamp = inspectorPhotoStampText(draft);
 
@@ -195,9 +196,11 @@ export function InspectorFieldObservationsCard({
                       if (!result.ok) {
                         throw new Error(result.error);
                       }
-                      const next = [...draft.observations];
-                      next[index] = { ...obs, photo: result.attachment };
-                      onPatch({ observations: next });
+                      onPatch((current) => ({
+                        observations: current.observations.map((o, i) =>
+                          i === index ? { ...o, photo: result.attachment } : o,
+                        ),
+                      }));
                       return true;
                     }}
                   />

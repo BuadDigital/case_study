@@ -2,6 +2,10 @@ import type { OperationsTaskDto } from "@platform/api-client";
 import { allocateNumberedDocument } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { pad2 } from "@platform/app-shared/format/date";
+import {
+  formatGregorianAsHijri,
+  HIJRI_LETTER_FORMAT,
+} from "@platform/app-shared/format/hijri";
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
 import { openInternalDelegationLetter } from "./internal-delegation-letter-html";
 import type { DelegationAgentInfo } from "./internal-delegation-letters";
@@ -159,7 +163,7 @@ export function nextReminderTs(priority: string, now = Date.now()): number {
 }
 
 /** Next reminder using task's last reminder / createdAt as anchor (server parity). */
-export function nextReminderTsForTask(
+function nextReminderTsForTask(
   task: Pick<OperationsTaskDto, "priority" | "reminders" | "createdAt">,
   now = Date.now(),
 ): number {
@@ -171,11 +175,6 @@ export function nextReminderTsForTask(
     if (!Number.isNaN(last)) anchor = last;
   }
   return nextReminderTs(task.priority, anchor);
-}
-
-/** Matches Case Study.html remindCountdownStr (plain text) */
-export function remindCountdownLabel(priority: string, now = Date.now()): string {
-  return formatCountdownDiff(nextReminderTs(priority, now) - now);
 }
 
 export function remindCountdownLabelForTask(
@@ -230,7 +229,7 @@ export function operationsTaskLinkLabel(task: OperationsTaskDto): string {
   return "—";
 }
 
-export function isActiveOperationsTaskStatus(status: string): boolean {
+function isActiveOperationsTaskStatus(status: string): boolean {
   return status === "created" || status === "in_progress";
 }
 
@@ -246,7 +245,7 @@ export function operationsTaskReceiptLabel(
   return task.receiptConfirmedAt ? "مؤكَّد" : "بانتظار المنفّذ";
 }
 
-export type TaskCountdown = { txt: string; over: boolean };
+type TaskCountdown = { txt: string; over: boolean };
 
 export function formatTaskDueLabel(iso: string): string {
   const d = new Date(iso);
@@ -291,7 +290,7 @@ export function taskCountdown(dueAt: string, status: string, now = Date.now()): 
   };
 }
 
-export type TaskUrgency = { color: string; pulse: boolean } | null;
+type TaskUrgency = { color: string; pulse: boolean } | null;
 
 export function taskUrgency(
   dueAt: string,
@@ -361,7 +360,7 @@ export async function printOperationsTaskDelegationLetter(
     poNumbers: [...new Set(task.letterRows.map((r) => r.po.trim()).filter(Boolean))],
     reference: letterReference,
     createdAt: task.createdAt,
-    dateHijri: formatHijriAr(created),
+    dateHijri: formatGregorianAsHijri(created, HIJRI_LETTER_FORMAT),
     dateGreg: formatGregAr(created),
     issuedProperties: task.letterRows.map((row) => ({
       propertyId: `${row.po}-${row.deed}`,
@@ -390,22 +389,4 @@ function formatGregAr(d: Date): string {
   const m = d.getMonth() + 1;
   const day = d.getDate();
   return `${y}/${m}/${day} م`;
-}
-
-function formatHijriAr(d: Date): string {
-  if (Number.isNaN(d.getTime())) return "—";
-  try {
-    const parts = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    }).formatToParts(d);
-    const y = parts.find((p) => p.type === "year")?.value;
-    const m = parts.find((p) => p.type === "month")?.value;
-    const day = parts.find((p) => p.type === "day")?.value;
-    if (y && m && day) return `${y}/${m}/${day} هـ`;
-  } catch {
-    /* fall through */
-  }
-  return "—";
 }

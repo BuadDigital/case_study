@@ -23,6 +23,7 @@ import { RegField, RegTextarea} from "@platform/app-shared/registration/FormFiel
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
@@ -141,10 +142,6 @@ export const INS_TD_CLASS = "border border-border px-2.5 py-[7px] text-xs";
 export const INS_WIZARD_PIN_BUTTON_CLASS =
   "inline-flex h-[38px] items-center justify-center rounded-lg border border-border-md bg-surface-2 px-5 font-inherit text-[12.5px] font-bold text-heading transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Mobile map pin action — full width. */
-export const INS_MOBILE_PIN_BUTTON_CLASS =
-  "flex w-full min-h-12 items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit text-[14px] font-bold text-heading transition-colors disabled:cursor-not-allowed disabled:opacity-50";
-
 /**
  * Desktop feature photo cell — same thumb preview as the wizard picker.
  */
@@ -215,6 +212,14 @@ export type FieldInspectionWorkHostRef = {
   submit?: () => Promise<boolean>;
   saveDraft?: () => Promise<boolean>;
   onSubmitted?: () => void;
+  /**
+   * Optional progress hooks for a host that shows a sending dialog: `onSubmitStarted` once the form's own
+   * checks pass, then exactly one of `onSubmitted` (sent), `onSubmitQueued` (saved, sent when back online)
+   * or `onSubmitFailed` (the reason is already on screen).
+   */
+  onSubmitStarted?: () => void;
+  onSubmitQueued?: () => void;
+  onSubmitFailed?: () => void;
   onSavingChange?: (saving: boolean) => void;
   focusNotes?: () => void;
 };
@@ -234,15 +239,14 @@ export function MobileInspectMap({
   interactive?: boolean;
   onCoordsChange?: (lat: number, lng: number) => void;
 }) {
-  const latNum = Number.parseFloat(latitude);
-  const lngNum = Number.parseFloat(longitude);
-  const hasPin = Number.isFinite(latNum) && Number.isFinite(lngNum);
+  const pin = parseLatLng(latitude, longitude);
+  const hasPin = pin != null;
   const fallback =
     !hasPin && property
       ? approximatePropertyGeo(property)
       : null;
-  const lat = hasPin ? latNum : fallback?.lat;
-  const lng = hasPin ? lngNum : fallback?.lng;
+  const lat = pin ? pin.lat : fallback?.lat;
+  const lng = pin ? pin.lng : fallback?.lng;
   const picking = Boolean(interactive && onCoordsChange);
   if (lat == null || lng == null) {
     if (!picking) {

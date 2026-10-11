@@ -2,7 +2,7 @@ import { isPartyTaskDone } from "./task-done";
 import type { WorkflowTask } from "./task-types";
 
 /** Queue pill for a task whose property has a raised failure — same wording for every party. */
-export const FAILURE_OBSTRUCTED_LABEL = "متعذر";
+export const FAILURE_OBSTRUCTED_LABEL = "متعذّر";
 export const FAILURE_OBSTRUCTED_BADGE = {
   label: FAILURE_OBSTRUCTED_LABEL,
   className: "b-fail",

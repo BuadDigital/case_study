@@ -1,12 +1,14 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatSar } from "./FinancePartyBillingParts";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   EmptyState,
+  QueryErrorState,
   StatusPill,
   TBody,
   THead,
@@ -76,6 +78,23 @@ export function FinanceExcludedCosts({
     );
   }
 
+  const failed = [feesQuery, statementsQuery].filter(queryLoadFailed);
+  if (failed.length) {
+    return (
+      <div className={opsLetterCard}>
+        <QueryErrorState
+          panel
+          line="تعذّر تحميل المستبعدة"
+          error={failed[0]!.error}
+          onRetry={() => {
+            for (const q of failed) void q.refetch();
+          }}
+          retrying={failed.some((q) => q.isFetching)}
+        />
+      </div>
+    );
+  }
+
   if (excludedLines.length === 0 && cancelledStatements.length === 0) {
     return (
       <div className={opsLetterCard}>
@@ -137,7 +156,7 @@ export function FinanceExcludedCosts({
                       className="text-center"
                       valueClassName="text-[14px] font-extrabold text-heading"
                     >
-                      {formatSar(row.netFeeSar)}
+                      {fmtSar(row.netFeeSar, { trim: true })}
                     </TdLtr>
                     <Td>
                       <span className={finMuted}>
@@ -199,7 +218,7 @@ export function FinanceExcludedCosts({
                       className="text-center"
                       valueClassName="text-[14px] font-extrabold text-heading"
                     >
-                      {formatSar(s.totalNetSar)}
+                      {fmtSar(s.totalNetSar, { trim: true })}
                     </TdLtr>
                     <Td>
                       <span className={finMuted}>

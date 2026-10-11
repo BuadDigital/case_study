@@ -29,7 +29,7 @@ export type FactorRow = { factorKey: string; labelAr: string };
 export type SavedLine = ReturnType<typeof lineForSave>;
 
 /** The three market-approach fields the shell keeps as drafts. */
-export type MarketApproachDraft = {
+type MarketApproachDraft = {
   subjectArea: string;
   adjustmentBasis: string;
   analysisNotes: string;

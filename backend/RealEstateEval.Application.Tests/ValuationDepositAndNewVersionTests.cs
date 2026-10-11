@@ -39,11 +39,11 @@ public class ValuationDepositAndNewVersionTests
     [Fact]
     public void The_certificate_is_a_pdf_of_one_page()
     {
-        Assert.Null(DepositCertificateRules.Validate(TestPdf.OnePage, "application/pdf", "c.pdf"));
-        Assert.Equal(DepositCertificateRules.OnePageAr, DepositCertificateRules.Validate(TestPdf.TwoPages, "application/pdf", "c.pdf"));
-        Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate([1, 2, 3], "application/pdf", "c.pdf"));
-        Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate("PK\u0003\u0004zip"u8.ToArray(), "application/pdf", "c.pdf"));
-        Assert.Equal(DepositCertificateRules.RequiredAr, DepositCertificateRules.Validate([], "application/pdf", "c.pdf"));
+        Assert.Null(DepositCertificateRules.Validate(TestPdf.OnePage));
+        Assert.Equal(DepositCertificateRules.OnePageAr, DepositCertificateRules.Validate(TestPdf.TwoPages));
+        Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate([1, 2, 3]));
+        Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate("PK\u0003\u0004zip"u8.ToArray()));
+        Assert.Equal(DepositCertificateRules.RequiredAr, DepositCertificateRules.Validate([]));
         Assert.Equal(1, DepositCertificateRules.PageCount(TestPdf.OnePage));
         Assert.Equal(2, DepositCertificateRules.PageCount(TestPdf.TwoPages));
     }
@@ -51,14 +51,14 @@ public class ValuationDepositAndNewVersionTests
     [Fact]
     public void A_missing_certificate_is_required_unless_the_copy_already_holds_one()
     {
-        var (_, missing) = DepositCertificateRules.Read(null, null, null, alreadyHasCertificate: false);
+        var (_, missing) = DepositCertificateRules.Read(null, alreadyHasCertificate: false);
         Assert.Equal(DepositCertificateRules.RequiredAr, missing!["certificateContentBase64"]);
 
-        var (bytes, none) = DepositCertificateRules.Read("  ", null, null, alreadyHasCertificate: true);
+        var (bytes, none) = DepositCertificateRules.Read("  ", alreadyHasCertificate: true);
         Assert.Null(none);
         Assert.Null(bytes);
 
-        var (_, bad) = DepositCertificateRules.Read("***", null, null, alreadyHasCertificate: false);
+        var (_, bad) = DepositCertificateRules.Read("***", alreadyHasCertificate: false);
         Assert.Equal(DepositCertificateRules.InvalidBase64Ar, bad!["certificateContentBase64"]);
     }
 

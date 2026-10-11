@@ -40,7 +40,7 @@ import {
   type RequestSuggestion,
 } from "./register-key-envelope-state";
 
-export type RegisterUploadKind = "photo" | "receipt" | "third-party";
+type RegisterUploadKind = "photo" | "receipt" | "third-party";
 
 export function useRegisterKeyEnvelopeWorkflow({
   busy,
@@ -251,7 +251,3 @@ export function useRegisterKeyEnvelopeWorkflow({
     handleSave,
   };
 }
-
-export type RegisterKeyEnvelopeWorkflow = ReturnType<
-  typeof useRegisterKeyEnvelopeWorkflow
->;

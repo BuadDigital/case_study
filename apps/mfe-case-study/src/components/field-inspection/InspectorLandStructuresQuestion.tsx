@@ -11,9 +11,9 @@ import { cn } from "@platform/ui-kit";
 import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
 import { MobileFieldLabel, MobilePills } from "./InspectMobileControls";
 
-export const LAND_STRUCTURES_QUESTION =
+const LAND_STRUCTURES_QUESTION =
   "هل في الأرض مبانٍ أو ملاحق تستحق التقييم (سور، غرفة حارس، سكن عمال…)؟";
-export const LAND_STRUCTURES_HINT = "إن لم تكن للتقييم فصفها في حقل وصف العقار";
+const LAND_STRUCTURES_HINT = "إن لم تكن للتقييم فصفها في حقل وصف العقار";
 
 type Answer = Exclude<InspectorWorkspaceDraft["landHasValuableStructures"], "">;
 

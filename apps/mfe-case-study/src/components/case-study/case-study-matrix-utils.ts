@@ -2,7 +2,7 @@ import type { CaseStudyReportAnswer } from "../../lib/app-data/case-study-report
 import type { PartyQuestionContribution } from "../../lib/app-data/case-study-party-answers";
 import type { CaseStudyInfoPartyId } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
 export type MatrixYn = "Y" | "N" | "NA";
-export type PartyMatrixKey = "MA" | "EN" | "EV";
+type PartyMatrixKey = "MA" | "EN" | "EV";
 export const PARTY_MATRIX_ORDER: PartyMatrixKey[] = ["MA", "EN", "EV"];
 const PARTY_ID_TO_MATRIX: Partial<Record<CaseStudyInfoPartyId, PartyMatrixKey>> =
   {
@@ -14,10 +14,10 @@ const PARTY_ID_TO_MATRIX: Partial<Record<CaseStudyInfoPartyId, PartyMatrixKey>> 
 export const PARTY_MATRIX_SHORT: Record<PartyMatrixKey, string> = {
   MA: "معاين",
   EN: "مكتب",
-  EV: "مقيم",
+  EV: "مقيّم",
 };
 
-export type MatrixRowStatus = "pending" | "consensus" | "conflict";
+type MatrixRowStatus = "pending" | "consensus" | "conflict";
 
 export function answerToYn(
   value: CaseStudyReportAnswer | null | undefined,

@@ -36,9 +36,9 @@ import { usePoRecordQuery, useWorkflowTasksQuery } from "../query/case-study-que
 import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail-party-submissions-queries";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT, CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT } from "../lib/case-study-workspace-events";
+import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT } from "../lib/case-study-workspace-events";
 
-export type CaseStudyWorkspacePartiesExtrasProps = {
+type CaseStudyWorkspacePartiesExtrasProps = {
   task: WorkflowTask;
   property: ReturnType<typeof findPropertyForTask>;
   tasks: WorkflowTask[];
@@ -98,14 +98,14 @@ function CaseStudyValuationPanel({
     if (!appraisalTask) return null;
     return {
       roleKey: "appraisal",
-      role: "المقيم العقاري",
+      role: "المقيّم العقاري",
       name:
         resolveAssigneeDisplayName({
           assigneeName: appraisalTask.assigneeName,
           assigneeId: appraisalTask.assigneeId,
           staffUsers,
-          fallback: "المقيم",
-        }) || "المقيم",
+          fallback: "المقيّم",
+        }) || "المقيّم",
       unassigned: false,
       state: "progress",
       enabled: true,
@@ -160,23 +160,14 @@ export function CaseStudyWorkspaceView({
     useState<CaseStudyWorkspaceTab>("study");
   useEffect(() => {
     const openAppraisal = () => setWorkspaceTab("appraisal");
-    const openValuation = () => setWorkspaceTab("valuation");
     window.addEventListener(
       CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
       openAppraisal,
-    );
-    window.addEventListener(
-      CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
-      openValuation,
     );
     return () => {
       window.removeEventListener(
         CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT,
         openAppraisal,
-      );
-      window.removeEventListener(
-        CASE_STUDY_WORKSPACE_OPEN_VALUATION_EVENT,
-        openValuation,
       );
     };
   }, []);

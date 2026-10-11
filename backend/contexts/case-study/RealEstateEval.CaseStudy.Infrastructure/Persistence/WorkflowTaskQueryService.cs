@@ -15,7 +15,7 @@ using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
-public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
+public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
 {
     private readonly CaseStudyDbContext _caseStudy;
     private readonly DatabaseOptions _dbOptions;
@@ -49,6 +49,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
             cancellationToken);
         await EnrichSiblingPartyFlagsAsync(dtos, cancellationToken);
         await EnrichFailureBlockedAsync(dtos, cancellationToken);
+        await EnrichCaseSpecialistNameAsync(dtos, cancellationToken);
         return dtos;
     }
 
@@ -80,6 +81,7 @@ public sealed class WorkflowTaskQueryService : IWorkflowTaskQuery
         var items = await MaterializeAsync(rows, skip, take, cancellationToken);
         await EnrichSiblingPartyFlagsAsync(items, cancellationToken);
         await EnrichFailureBlockedAsync(items, cancellationToken);
+        await EnrichCaseSpecialistNameAsync(items, cancellationToken);
 
         return new PagedResultDto<WorkflowTaskDto>
         {

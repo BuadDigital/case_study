@@ -72,7 +72,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -91,7 +90,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Execution,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -109,7 +107,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.PrivateSector,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -134,7 +131,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Execution,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -154,7 +150,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Execution,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -268,7 +263,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Execution,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -285,7 +279,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Execution,
-            "PO-1",
             null,
             (_, _) => false,
             fieldPolicy: new ClientFieldPolicy(RequiresAssignmentDoc: false, RequiresOwnerName: false));
@@ -309,7 +302,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -330,7 +322,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -352,7 +343,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -375,7 +365,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -393,7 +382,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -411,7 +399,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -427,7 +414,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (deed, _) => deed == "123450000001");
 
@@ -444,7 +430,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             propertyId,
             (deed, excludeId) => deed == "123450000001" && excludeId != propertyId);
 
@@ -460,7 +445,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 
@@ -481,7 +465,6 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             dto,
             AssignmentType.Estates,
-            "PO-1",
             null,
             (_, _) => false);
 

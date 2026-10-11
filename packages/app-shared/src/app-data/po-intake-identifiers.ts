@@ -18,7 +18,7 @@ export type BourseDeedVitality = "active" | "inactive";
 
 export const BOURSE_DEED_VITALITY_ACTIVE = "الصك فعال";
 export const BOURSE_DEED_VITALITY_INACTIVE = "الصك غير فعال";
-export const BOURSE_OBSTRUCTION_LABEL = "متعذر";
+export const BOURSE_OBSTRUCTION_LABEL = "متعذّر";
 
 export const RESTRICTIONS_PRESENT_OPTIONS = [
   { value: "yes", label: "توجد قيود" },
@@ -184,7 +184,7 @@ export function parsePropertyIdentifierType(
 
 export function identifierTypeLabel(type: PropertyIdentifierType): string {
   if (type === "real_estate_reg") return "تسجيل عيني";
-  if (type === "bourse_inquiry") return "البورصة العقاريه";
+  if (type === "bourse_inquiry") return "البورصة العقارية";
   return "صك ملكية";
 }
 

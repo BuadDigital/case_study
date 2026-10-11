@@ -2,11 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { OfflineOutboxItem } from "@platform/offline-client";
 import {
   activeOutboxItems,
-  ageHours,
   arrayBufferToBase64,
   buildFieldSyncHeartbeat,
-  isAuthRejected,
-  isStaleOutboxItem,
   matchExistingAttachment,
   offlineLeaseToasts,
   outboxKindLabel,
@@ -85,7 +82,7 @@ describe("syncStatusLabel / syncStatusIcon", () => {
   it("labels each state and mentions the queue depth when offline or idle", () => {
     expect(syncStatusLabel({ locked: false, syncState: "syncing", pending: 2 })).toBe("جاري المزامنة");
     expect(syncStatusLabel({ locked: false, syncState: "offline", pending: 2 })).toBe(
-      "دون اتصال — 2 في طابور الحفظ",
+      "دون اتصال — 2 بانتظار المزامنة",
     );
     expect(syncStatusLabel({ locked: false, syncState: "offline", pending: 0 })).toBe("دون اتصال");
     expect(syncStatusLabel({ locked: false, syncState: "failed", pending: 0 })).toBe(
@@ -103,15 +100,7 @@ describe("syncStatusLabel / syncStatusIcon", () => {
   });
 });
 
-describe("staleness and labels", () => {
-  it("measures age in hours and treats unparsable dates as fresh", () => {
-    const now = Date.parse("2026-09-01T12:00:00.000Z");
-    expect(ageHours("2026-09-01T09:30:00.000Z", now)).toBeCloseTo(2.5);
-    expect(ageHours("not-a-date", now)).toBe(0);
-    expect(isStaleOutboxItem({ createdAtUtc: "2026-09-01T10:00:00.000Z" }, now)).toBe(true);
-    expect(isStaleOutboxItem({ createdAtUtc: "2026-09-01T10:00:01.000Z" }, now)).toBe(false);
-  });
-
+describe("labels", () => {
   it("labels every outbox kind in Arabic and echoes unknown kinds", () => {
     expect(outboxKindLabel("attachment-upload")).toBe("رفع مرفق");
     expect(outboxKindLabel("key-envelope-handoff-confirm")).toBe("تأكيد مناولة");
@@ -130,9 +119,6 @@ describe("staleness and labels", () => {
 
 describe("replay failure classification", () => {
   it("treats forbidden as terminal; an expired session (auth) retries after renewal", () => {
-    expect(isAuthRejected("auth")).toBe(true);
-    expect(isAuthRejected("forbidden")).toBe(true);
-    expect(isAuthRejected("server")).toBe(false);
     expect(replayFailure("auth", "x")).toEqual({ ok: false, error: "x", terminal: false });
     expect(replayFailure("forbidden", "x")).toEqual({ ok: false, error: "x", terminal: true });
     expect(replayFailure("server", "x")).toEqual({ ok: false, error: "x", terminal: false });
@@ -147,7 +133,7 @@ describe("replay failure classification", () => {
   it("marks a missing session as terminal", () => {
     expect(unauthenticatedReplayFailure()).toEqual({
       ok: false,
-      error: "غير مصادق",
+      error: "يلزم تسجيل الدخول",
       terminal: true,
     });
   });

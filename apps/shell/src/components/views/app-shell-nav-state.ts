@@ -78,7 +78,7 @@ export function isNavRowActive(
   return currentPage === itemId || (itemId === "po" && inPoSection);
 }
 
-export type ActiveTxInsertion = {
+type ActiveTxInsertion = {
   /** Explicit anchor row (all-transactions, else po) when the role has one. */
   anchor: PageId | null;
   /** Party roles without an anchor get the dropdown before the first run. */
@@ -120,7 +120,7 @@ export type SidebarNavPlan = {
   trailing: SidebarInsert[];
 };
 
-export type SidebarNavPlanInput = {
+type SidebarNavPlanInput = {
   activeTx: ActiveTxInsertion;
   showActiveTx: boolean;
   showFinancial: boolean;

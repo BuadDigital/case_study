@@ -28,7 +28,7 @@ import type {
 import type { WorkflowTask } from "../lib/app-data/tasks";
 
 export type SortKey = "created" | "po" | "received" | "due";
-export type SortDir = "asc" | "desc";
+type SortDir = "asc" | "desc";
 export type StatusFilter = PoListStatus | "";
 
 export const PO_LIST_PAGE_SIZE = 10;
@@ -83,7 +83,7 @@ export function poStatusStyle(status: PoRow["status"]): {
   }
 }
 
-export type PoListKpi = {
+type PoListKpi = {
   active: number;
   overdue: number;
   dueSoon: number;
@@ -196,7 +196,7 @@ export const INITIAL_PO_LIST_QUERY: PoListQueryState = {
   sortDir: "desc",
 };
 
-export type PoListQueryAction =
+type PoListQueryAction =
   | { type: "page"; page: number }
   | { type: "search"; value: string }
   | { type: "status"; value: StatusFilter }
@@ -259,7 +259,7 @@ export function poListQueryReducer(
  * screen therefore asks for one generous page of the widened bucket and does
  * the narrowing, and the windowing, itself.
  */
-export const PO_LIST_BILLING_BUCKETS: readonly StatusFilter[] = [
+const PO_LIST_BILLING_BUCKETS: readonly StatusFilter[] = [
   "partially_billed",
   "fully_billed",
 ];
@@ -322,7 +322,7 @@ export function buildPoListPageRows(input: {
   return buildPoListPageDisplay(rows, input.search, input.deedIndex);
 }
 
-export type PoListRowView = {
+type PoListRowView = {
   row: PoRow;
   deedEntry: PoDeedIndexEntry | null;
   studied: number;

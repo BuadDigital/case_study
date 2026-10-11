@@ -2,6 +2,7 @@
 
 /** Enfaz work-order billing — the per-property fee lines (tracking table). Inputs lock once an invoice is issued. */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import type { PoEnfazRevenueLineDto } from "@platform/api-client";
 import {
   Input,
@@ -113,7 +114,7 @@ function BillingLineRow({
         className="text-center"
         valueClassName="text-[14px] font-extrabold text-heading"
       >
-        {cancelled ? "—" : `${lineTotal(d).toLocaleString("en-US")} ر.س`}
+        {cancelled ? "—" : fmtSar(lineTotal(d), { digits: 3, trim: true })}
       </TdLtr>
       <Td className="text-center">
         {cancelled ? (

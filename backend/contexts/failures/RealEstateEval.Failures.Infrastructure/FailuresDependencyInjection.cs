@@ -34,7 +34,7 @@ public static class FailuresDependencyInjection
         services.AddHttpClient<ICaseStudyFailureCommands, HttpCaseStudyFailureCommands>();
         services.AddRemoteIdentityDirectory(configuration);
  // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
-        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IFailureLookup, FailureLookup>();
         services.AddScoped<IFailureRepository, FailureRepository>();
@@ -50,13 +50,7 @@ public static class FailuresDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var failuresConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Failures,
-            connectionString);
-        return services.AddBoundedContextPersistence<FailuresDbContext>(
-            configuration,
-            failuresConnection);
+        return services.AddBoundedContextPersistence<FailuresDbContext>(configuration);
     }
 
 }

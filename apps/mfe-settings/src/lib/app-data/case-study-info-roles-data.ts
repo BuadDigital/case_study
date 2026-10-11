@@ -25,7 +25,7 @@ export type CaseStudyInfoRoleType =
   | "verify"
   | "none";
 
-export type CaseStudyInfoParty = {
+type CaseStudyInfoParty = {
   id: CaseStudyInfoPartyId;
   name: string;
   abbr: string;
@@ -50,7 +50,7 @@ export const CASE_STUDY_INFO_PARTIES: CaseStudyInfoParty[] = [
   },
   {
     id: "val",
-    name: "المقيم العقاري",
+    name: "المقيّم العقاري",
     abbr: "قم",
     color: "#DC2626",
     roleId: "real-estate-appraiser",
@@ -84,7 +84,7 @@ export const CASE_STUDY_INFO_ROLE_TYPES: {
   { id: "none", label: "لا دور", bg: "#F8FAFD", color: "#94A3B8", icon: "×" },
 ];
 
-export type CaseStudyQuestionCatalogItem = {
+type CaseStudyQuestionCatalogItem = {
   key: string;
   section: CaseStudyQuestionSection;
   sectionLabel: string;

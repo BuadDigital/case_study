@@ -50,7 +50,7 @@ public sealed class SurveyFreezeLiftTests
     public void The_survey_gate_blocks_on_a_freezing_failure_and_passes_once_it_is_not_freezing()
     {
         var frozen = SurveyGate(bypass: false, hasActiveFailure: true);
-        Assert.Equal("الرفع المساحي مجمّد بسبب تعذر نشط على العقار.", frozen["_documentary"]);
+        Assert.Equal("الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.", frozen["_documentary"]);
 
         Assert.False(SurveyGate(bypass: false, hasActiveFailure: false).ContainsKey("_documentary"));
     }
@@ -325,7 +325,7 @@ public sealed class SurveyFreezeLiftTests
 
         var frozen = await rig.Submit.SubmitAsync(SurveyId, office);
         Assert.Null(frozen.Result);
-        Assert.Equal("الرفع المساحي مجمّد بسبب تعذر نشط على العقار.", frozen.Errors!["_documentary"]);
+        Assert.Equal("الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.", frozen.Errors!["_documentary"]);
 
         await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
 
@@ -333,7 +333,7 @@ public sealed class SurveyFreezeLiftTests
         rig.AddFailure(PropertyFailureStatus.Internal);
         await rig.SaveFailuresAsync();
         var frozenAgain = await rig.Submit.SubmitAsync(SurveyId, office);
-        Assert.Equal("الرفع المساحي مجمّد بسبب تعذر نشط على العقار.", frozenAgain.Errors!["_documentary"]);
+        Assert.Equal("الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.", frozenAgain.Errors!["_documentary"]);
 
         await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
         var submitted = await rig.Submit.SubmitAsync(SurveyId, office);

@@ -111,7 +111,7 @@ export function EvaluatorWindowTitle({
   return (
     <div className={opsPpHeadCard}>
       <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-[18px] font-extrabold text-heading">
-        <span>نافذة المقيم العقاري</span>
+        <span>نافذة المقيّم العقاري</span>
         <span className="text-[14px] font-bold text-gold-d" dir="ltr">
           صك {deedLabel ?? deedNumber}
         </span>

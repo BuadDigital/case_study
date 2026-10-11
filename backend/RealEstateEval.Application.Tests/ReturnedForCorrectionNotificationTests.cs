@@ -64,7 +64,7 @@ public sealed class ReturnedForCorrectionNotificationTests
 
         var request = FailureRules.ReturnedNotification(failure, "أرفق صورة الصك");
 
-        Assert.Equal("إعادة التعذر للتصحيح", request.Title);
+        Assert.Equal("إعادة التعذّر للتصحيح", request.Title);
         Assert.Contains("أرفق صورة الصك", request.Body);
         Assert.Contains("PO-9", request.Body);
         Assert.Equal(NotificationContract.Tones.Warn, request.Tone);

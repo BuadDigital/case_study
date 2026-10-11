@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -115,7 +116,7 @@ export function EngineeringSurveyWorkPanel({
   }
 
   const feeAmountLabel = feeForTask
-    ? `${Number(feeForTask.netFeeSar ?? 0).toLocaleString("ar-SA")} ر.س`
+    ? fmtSar(feeForTask.netFeeSar, { digits: 3, trim: true })
     : "—";
 
   return (
@@ -133,7 +134,7 @@ export function EngineeringSurveyWorkPanel({
               { id: "notes", label: "ملاحظة", dot: Boolean(savedNote) },
               {
                 id: "failures",
-                label: "التعذرات",
+                label: "التعذّرات",
                 badge: activeFailureCount,
               },
             ]}
@@ -289,8 +290,8 @@ export function EngineeringSurveyWorkPanel({
                   raiseDisabled={formDisabled}
                   raiseDisabledReason={
                     viewOnly
-                      ? "وضع الاستعراض — لا يمكن تسجيل تعذر من هنا."
-                      : "لا يمكن تسجيل تعذر بعد إرسال المعاملة."
+                      ? "وضع الاستعراض — لا يمكن تسجيل تعذّر من هنا."
+                      : "لا يمكن تسجيل تعذّر بعد إرسال المعاملة."
                   }
                 />
               ) : null}

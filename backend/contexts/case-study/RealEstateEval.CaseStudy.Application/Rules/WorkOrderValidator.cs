@@ -56,7 +56,6 @@ public static class WorkOrderValidator
     public static Dictionary<string, string> ValidatePropertyEnfath(
         WorkOrderPropertyDto dto,
         AssignmentType assignmentType,
-        string poNumber,
         Guid? excludePropertyId,
         Func<string, Guid?, bool> deedExistsInPo,
         ClientFieldPolicy? fieldPolicy = null)

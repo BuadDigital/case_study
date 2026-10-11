@@ -47,7 +47,7 @@ public static class WorkflowTaskDistributionRules
         if (string.IsNullOrWhiteSpace(distribution.InspectorId))
             return "اختر المعاين الميداني.";
         if (string.IsNullOrWhiteSpace(distribution.ValuatorId))
-            return "اختر المقيم العقاري.";
+            return "اختر المقيّم العقاري.";
         return null;
     }
 
@@ -109,53 +109,41 @@ public static class WorkflowTaskDistributionRules
             ? $"{assigneeName} — {reason}"
             : $"{actorName}: {assigneeName} — {reason}";
 
-    /// <summary>Timeline rows written when a distribution is confirmed, in write order.</summary>
+    /// <summary>
+    /// The timeline row written when a distribution is confirmed: ONE milestone whose detail names everyone
+    /// it assigned («أخصائي دراسة الحالة: س · المعاين الميداني: ص …»). The key carries the moment so a
+    /// re-distribution after a revert is a second milestone, not a silently dropped one.
+    /// </summary>
     public static List<PropertyTimelineRecordRequest> ConfirmTimelineEvents(
         WorkflowTask parent,
         Guid propertyId,
         IReadOnlyCollection<WorkflowTask> children,
         bool caseSpecialistAssigned,
-        DateTime now)
-    {
-        var events = new List<PropertyTimelineRecordRequest>
-        {
-            new(
-                parent.PoNumber,
-                propertyId,
-                $"task:{parent.Id}:distribution",
-                "توزيع المعاملة",
-                null,
-                PropertyTimelineTones.Active,
-                now),
-            new(
-                parent.PoNumber,
-                propertyId,
-                $"task:{parent.Id}:case-study",
-                "دراسة حالة العقار",
-                parent.AssigneeName,
-                PropertyTimelineTones.Active,
-                now),
-        };
-        if (caseSpecialistAssigned)
-        {
-            events.Add(new PropertyTimelineRecordRequest(
-                parent.PoNumber,
-                propertyId,
-                $"task:{parent.Id}:specialist-assigned",
-                "تعيين أخصائي دراسة الحالة",
-                parent.AssigneeName,
-                PropertyTimelineTones.Active,
-                now));
-        }
-        events.AddRange(children.Select(child => new PropertyTimelineRecordRequest(
+        DateTime now) =>
+    [
+        new(
             parent.PoNumber,
             propertyId,
-            $"party:{child.Id}:assigned",
-            WorkflowTaskPhaseRules.PartyAssignedTitle(child.Kind),
-            child.AssigneeName,
-            PropertyTimelineTones.Active,
-            child.CreatedAtUtc)));
-        return events;
+            $"task:{parent.Id}:distribution:{now.Ticks}",
+            "توزيع المعاملة",
+            DistributionDetail(parent, children, caseSpecialistAssigned),
+            PropertyTimelineTones.Done,
+            now),
+    ];
+
+    /// <summary>«الدور: الاسم» pairs, case specialist first, joined with « · » (null when nobody is named).</summary>
+    public static string? DistributionDetail(
+        WorkflowTask parent,
+        IReadOnlyCollection<WorkflowTask> children,
+        bool caseSpecialistAssigned)
+    {
+        var parts = new List<string>();
+        if (caseSpecialistAssigned && !string.IsNullOrWhiteSpace(parent.AssigneeName))
+            parts.Add($"أخصائي دراسة الحالة: {parent.AssigneeName.Trim()}");
+        parts.AddRange(children
+            .Where(c => !string.IsNullOrWhiteSpace(c.AssigneeName))
+            .Select(c => $"{WorkflowTaskKindLabels.RoleAr(c.Kind)}: {c.AssigneeName!.Trim()}"));
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
     public static string TaskHref(WorkflowTaskKind kind, Guid taskId)

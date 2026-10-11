@@ -4,8 +4,7 @@ namespace RealEstateEval.Valuation.Domain;
 /// A rendered PDF of the valuation report HTML (the v3 template the appraiser sees on screen),
 /// kept so the report can be opened from a plain <c>…/{reportNumber}.pdf?k=…</c> link
 /// in the browser's PDF viewer or shared without a session (signed, expiring key).
-/// Immutable once stored: a re-render creates a new row; old links keep showing what was shared.
-/// Only the most recent few rows per request are retained (see ValuationReportPdfRules.KeepPerRequest).
+/// Immutable once stored; new copies are no longer rendered — the rows only back links already shared.
 /// </summary>
 public class ValuationReportPdf
 {
@@ -66,52 +65,12 @@ public class ValuationReportPdf
     }
 }
 
-/// <summary>Pure rules for report PDF links and file names.</summary>
+/// <summary>Pure rules for report PDF links and report HTML size.</summary>
 public static class ValuationReportPdfRules
 {
- /// <summary>Rendered copies kept per valuation request; older ones are deleted on the next render.</summary>
-    public const int KeepPerRequest = 3;
-
  /// <summary>Default link lifetime when <c>ReportPdfLinks:LifetimeDays</c> is not configured.</summary>
     public const int DefaultLinkLifetimeDays = 90;
 
  /// <summary>Upper bound for the posted HTML (the browser embeds photos as data URLs).</summary>
     public const int MaxHtmlBytes = 64 * 1024 * 1024;
-
- /// <summary>
- /// <c>{reportNumber}.pdf</c> with only URL-safe ASCII kept, so the link reads like the
- /// legacy <c>…/print-valuation-pdf/051421.pdf</c>. Falls back to the display id, then to a constant.
- /// </summary>
-    public static string BuildFileName(string? reportNumber, string? displayId)
-    {
-        var stem = Sanitize(reportNumber);
-        if (stem.Length == 0) stem = Sanitize(displayId);
-        if (stem.Length == 0) stem = "valuation-report";
-        return stem + ".pdf";
-    }
-
-    private static string Sanitize(string? value)
-    {
-        var t = (value ?? "").Trim();
-        if (t.Length == 0) return "";
-        var chars = new char[t.Length];
-        var n = 0;
-        var lastDash = false;
-        foreach (var c in t)
-        {
-            var ok = c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_' or '-' or ',' or '.';
-            if (ok)
-            {
-                chars[n++] = c;
-                lastDash = false;
-            }
-            else if (!lastDash)
-            {
-                chars[n++] = '-';
-                lastDash = true;
-            }
-        }
-        var s = new string(chars, 0, n).Trim('-', '.');
-        return s.Length > 96 ? s[..96].TrimEnd('-', '.') : s;
-    }
 }

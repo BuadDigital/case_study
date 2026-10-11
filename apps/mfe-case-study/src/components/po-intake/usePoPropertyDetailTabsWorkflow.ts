@@ -26,7 +26,6 @@ import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
 } from "../../lib/app-data/property-detail-parties";
-import { buildPropertyDetailTimeline } from "../../lib/app-data/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
@@ -57,6 +56,7 @@ import {
   propertyDetailTabsForRole,
   type TabId,
 } from "./po-property-detail-tabs-state";
+import type { PropertyTimelineEvent } from "../../lib/app-data/property-detail-timeline";
 import type { PoPropertyDetailInspectorWorkspace } from "./PoPropertyDetailTabs";
 import {
   preloadPropertyDetailTabChunks,
@@ -65,6 +65,7 @@ import {
 import { propertyEnfazRevenueQueryOptions } from "./property-detail-finance-query";
 
 /** Tabs that render property documents or photos; opening one starts the attachment load. */
+const EMPTY_LOG_EVENTS: PropertyTimelineEvent[] = [];
 const PROPERTY_MEDIA_TABS: readonly TabId[] = ["documents", "photos", "enfath-upload"];
 
 export function usePoPropertyDetailTabsWorkflow({
@@ -318,15 +319,7 @@ export function usePoPropertyDetailTabsWorkflow({
   );
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
-  const fallbackLogEvents = useMemo(
-    () =>
-      [...buildPropertyDetailTimeline({ record, property, tasks })].reverse(),
-    [record, property, tasks],
-  );
-  const logEvents =
-    logEventsQuery.data && logEventsQuery.data.length > 0
-      ? [...logEventsQuery.data].reverse()
-      : fallbackLogEvents;
+  const logEvents = logEventsQuery.data ?? EMPTY_LOG_EVENTS;
 
   const propertyFeeTasks = useMemo(
     () =>

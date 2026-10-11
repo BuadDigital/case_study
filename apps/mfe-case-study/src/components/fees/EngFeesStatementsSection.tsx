@@ -5,6 +5,7 @@
  * statements table; clicking a row opens `EngFeesInvoiceModal`.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   cn,
   StatusPill,
@@ -21,7 +22,7 @@ import {
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
-import { fmtSar, statementMeta } from "./eng-fees-state";
+import { statementMeta } from "./eng-fees-state";
 
 export function EngFeesStatementsSection({
   fnSearch,
@@ -123,7 +124,7 @@ export function EngFeesStatementsSection({
                       {s.lines.length} معاملات
                     </Td>
                     <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                      {fmtSar(s.totalNetSar)}
+                      {fmtSar(s.totalNetSar, { digits: 3, trim: true })}
                     </TdLtr>
                     <Td>
                       <StatusPill label={meta.label} style={meta.style} />

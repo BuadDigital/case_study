@@ -11,11 +11,11 @@ import {
   emptyComparableEntryDraft,
   firstComparableEntryError,
   firstComparableEntryErrorTarget,
-  parseComparableCoords,
   validateComparableEntry,
   type ComparableEntryDraft,
   type ComparableEntryFieldErrors,
 } from "@platform/app-shared/app-data/comparable-entry";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   AppModal,
@@ -42,7 +42,7 @@ import {
 } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 
-export type ComparablesBankRow = BankDisplayRow;
+type ComparablesBankRow = BankDisplayRow;
 
 /**
  * Nearby bank table — search and price/area drafts stay local so typing does
@@ -83,7 +83,7 @@ function BankEmptyState({
   if (searching) {
     return (
       <div className="grid justify-items-center gap-2.5">
-        <span>لا نتائج مطابقة لهذا البحث — جرّب كلمة أخرى (حي، نوع العقار أو رقم مرجعي).</span>
+        <span>لا توجد نتائج مطابقة — جرّب كلمة أخرى (حي، نوع العقار أو رقم مرجعي).</span>
         <Button type="button" size="sm" onClick={onClearSearch}>
           مسح البحث
         </Button>
@@ -126,7 +126,7 @@ function BankEmptyState({
   );
 }
 
-export type ComparableBankSeed = {
+type ComparableBankSeed = {
   type?: string;
   city?: string;
   district?: string;
@@ -375,7 +375,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           draft={draft}
           disabled={saving}
           fieldErrors={fieldErrors}
-          subjectPin={parseComparableCoords(seed?.latitude, seed?.longitude)}
+          subjectPin={parseLatLng(seed?.latitude, seed?.longitude)}
           onChange={(next) => {
             setDraft(next);
             setFieldErrors({});
@@ -396,7 +396,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               <Th className="min-w-[132px]">الرقم المرجعي</Th>
               <Th className="min-w-[100px] text-center">نوع العقار</Th>
               <Th className="min-w-[122px] text-center">نوع المقارن</Th>
-              <Th className="w-[112px] text-center">تاريخ المقارن</Th>
+              <Th className="w-[112px] text-center">تاريخ العملية</Th>
               <Th className="min-w-[96px] bg-gold-soft text-center">
                 سعر المتر
               </Th>

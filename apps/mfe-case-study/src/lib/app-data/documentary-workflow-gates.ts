@@ -52,7 +52,7 @@ export function findSiblingInspectionTask(
 }
 
 /** Party lists hide the inspection row; appraisal/survey DTOs carry its id. */
-export function inspectionTaskFromSiblingId(
+function inspectionTaskFromSiblingId(
   siblingId: string,
   source: WorkflowTask,
 ): WorkflowTask {
@@ -126,7 +126,7 @@ export function resolveInspectionTaskForProperty(input: {
   return inspectionTaskFromSiblingId(siblingId, carrier);
 }
 
-export type DocumentaryGateState =
+type DocumentaryGateState =
   | { ready: true }
   | { ready: false; reason: string };
 
@@ -145,7 +145,7 @@ export function surveyWorkGate(input: {
   if (input.hasActiveFailure) {
     return {
       ready: false,
-      reason: "الرفع المساحي مجمّد بسبب تعذر نشط على العقار.",
+      reason: "الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.",
     };
   }
   const inspectionCompleted =

@@ -28,7 +28,7 @@ public partial class CaseStudyReportService
         "ليس لديك صلاحية إعادة فتح تقرير دراسة الحالة — الإعادة لأخصائي دراسة الحالة";
 
     public const string ActiveFailureBlocksIssueAr =
-        "عقار عليه تعذر نشط — لا يُصدر تقرير دراسة الحالة قبل حل التعذر";
+        "عقار عليه تعذّر نشط — لا يُصدر تقرير دراسة الحالة قبل حل التعذّر";
 
     public const string EnfazHandoverKey = "enfazHandover";
 
@@ -343,7 +343,7 @@ public partial class CaseStudyReportService
                         timelinePropertyId,
                         $"case-study-report:{taskId}:reopened:{now:O}",
                         "إعادة فتح تقرير دراسة الحالة",
-                        reason,
+                        string.IsNullOrWhiteSpace(actor?.DisplayName) ? reason : $"{actor.DisplayName.Trim()} — {reason}",
                         PropertyTimelineTones.Warn,
                         now,
                         ct);

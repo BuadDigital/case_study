@@ -94,7 +94,7 @@ export function FailuresViewExpandedActions({
                   showActionToast={false}
                   onClick={() => wf.handleUpgrade(f.id)}
                 >
-                  تأكيد تعذر داخلي
+                  تأكيد تعذّر داخلي
                 </Button>
               ) : (
                 <Button
@@ -137,7 +137,7 @@ export function FailuresViewExpandedActions({
                 showActionToast={false}
                 onClick={() => wf.handleApprove(f.id)}
               >
-                اعتماد التعذر
+                اعتماد التعذّر
               </Button>
               <Button
                 type="button"

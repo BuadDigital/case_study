@@ -3,7 +3,7 @@
  * property with more than six photos overflowed its sheet onto the letterhead footer. Photos are
  * laid out six to a sheet (two columns by three rows), each further sheet repeating the heading.
  */
-export const PHOTOS_PER_PRINT_PAGE = 6;
+const PHOTOS_PER_PRINT_PAGE = 6;
 
 export function paginatePropertyPhotoPages(
   dom: Document,

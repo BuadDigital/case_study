@@ -53,7 +53,7 @@ export async function repositoryFetch(
  * clear on their own, so one automatic retry keeps a background sync from turning a
  * user's submit into an error toast.
  */
-export const TRANSIENT_CONFLICT_HEADER = "X-REE-Transient-Conflict";
+const TRANSIENT_CONFLICT_HEADER = "X-REE-Transient-Conflict";
 const TRANSIENT_CONFLICT_RETRY_DELAY_MS = 300;
 
 async function fetchRetryingTransientConflict(
@@ -66,7 +66,7 @@ async function fetchRetryingTransientConflict(
   return globalThis.fetch(input, init);
 }
 
-export function isTransientConflict(response: Response): boolean {
+function isTransientConflict(response: Response): boolean {
   return response.status === 409 && response.headers.has(TRANSIENT_CONFLICT_HEADER);
 }
 

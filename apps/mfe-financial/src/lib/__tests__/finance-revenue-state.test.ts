@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   filterRows,
-  fmtSar,
   followButtonLabel,
   followupSuffix,
   knownFeesTotal,
@@ -41,13 +40,6 @@ function row(
     ...overrides,
   } as EnfazTrackingRowDto;
 }
-
-describe("fmtSar", () => {
-  it("drops decimals on whole amounts and keeps two otherwise", () => {
-    expect(fmtSar(1500)).toBe("1,500 ر.س");
-    expect(fmtSar(1500.5)).toBe("1,500.50 ر.س");
-  });
-});
 
 describe("textOrDash", () => {
   it("returns a dash for empty, null or whitespace", () => {

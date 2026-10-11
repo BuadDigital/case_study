@@ -24,20 +24,20 @@ export function isSupervisor(role: RoleId): boolean {
 export function partyScopedFailuresEmptyLine(role: RoleId): string | null {
   switch (role) {
     case "engineering-office":
-      return "لا توجد تعذرات — سجّل تعذراً من قائمة الرفع المساحي أو من تبويب التعذرات في المعاملة.";
+      return "لا توجد تعذّرات — سجّل تعذّراً من قائمة الرفع المساحي أو من تبويب التعذّرات في المعاملة.";
     case "field-inspector":
-      return "لا توجد تعذرات — سجّل تعذراً من قائمة المعاينة الميدانية أو من تبويب التعذرات في المعاملة.";
+      return "لا توجد تعذّرات — سجّل تعذّراً من قائمة المعاينة الميدانية أو من تبويب التعذّرات في المعاملة.";
     case "real-estate-appraiser":
-      return "لا توجد تعذرات — سجّل تعذراً من قائمة تقييم العقار أو من تبويب التعذرات في المعاملة.";
+      return "لا توجد تعذّرات — سجّل تعذّراً من قائمة تقييم العقار أو من تبويب التعذّرات في المعاملة.";
     case "government-reviewer":
-      return "لا توجد تعذرات — سجّل تعذراً من تفاصيل المهمة في «المهام»، ثم تظهر هنا.";
+      return "لا توجد تعذّرات — سجّل تعذّراً من تفاصيل المهمة في «المهام»، ثم تظهر هنا.";
     default:
       return null;
   }
 }
 
 export const FAILURES_DEFAULT_EMPTY_LINE =
-  "لا توجد تعذرات — سجّل تعذراً من شاشة العقارات.";
+  "لا توجد تعذّرات — سجّل تعذّراً من شاشة العقارات.";
 
 /** Empty-queue message: the party-scoped hint when there is one, else the generic line. */
 export function failuresEmptyLine(role: RoleId): string {
@@ -52,8 +52,8 @@ export function viewerModeNote(role: RoleId): string | null {
   if (role === "general-manager") {
     return "أنت في وضع الاطلاع — صلاحية التعديل للمشرف والأخصائي";
   }
-  if (role === "cdo") return "صلاحيات كاملة — يمكنك اعتماد التعذرات وإنشاؤها";
-  return "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذرات";
+  if (role === "cdo") return "صلاحيات كاملة — يمكنك اعتماد التعذّرات وإنشاؤها";
+  return "أنت في وضع المراقبة — لا تملك صلاحية تعديل التعذّرات";
 }
 
 export type FailuresKpiStats = {
@@ -123,7 +123,7 @@ export function failureCardSpecialist(
   );
 }
 
-export type FailureCardTone = "done" | "pending" | "returned";
+type FailureCardTone = "done" | "pending" | "returned";
 
 export function failureCardTone(f: FailureRecord): FailureCardTone {
   if (!isActiveFailureStatus(f.status)) return "done";
@@ -153,7 +153,7 @@ export function isResolveDraftComplete(draft: ResolveDraft): boolean {
   return Boolean(draft.reason.trim() && draft.instructions.trim());
 }
 
-export type FailureActionPermissions = {
+type FailureActionPermissions = {
   active: boolean;
   canSpecialistAct: boolean;
   canSupervisorAct: boolean;
@@ -175,7 +175,7 @@ export function failureActionPermissions(
   return { active, canSpecialistAct, canSupervisorAct, canResolve };
 }
 
-export type FailureMetaRow = { label: string; value: string };
+type FailureMetaRow = { label: string; value: string };
 
 /** The label/value lines under the title in the expanded panel. */
 export function failureMetaRows(
@@ -207,7 +207,7 @@ export function failureMetaRows(
   return rows;
 }
 
-export type FailureAction =
+type FailureAction =
   | "submit"
   | "upgrade"
   | "approve"

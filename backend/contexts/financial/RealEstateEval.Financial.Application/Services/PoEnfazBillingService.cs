@@ -90,7 +90,6 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
 
         var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
-            normalized,
             propertyIds,
             cancellationToken);
 
@@ -157,7 +156,6 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
         }
 
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
-            normalized,
             validPropertyIds.ToList(),
             cancellationToken);
         PoEnfazRevenueRules.LinkMissingEnvelopes(existingRows.Values, entitlements);
@@ -262,7 +260,6 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
     }
 
     private async Task<Dictionary<Guid, PropertyKeyEntitlement>> LoadKeyEntitlementsByPropertyAsync(
-        string poNumber,
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken)
     {

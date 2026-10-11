@@ -147,7 +147,7 @@ export function VendorInvoicePdfField({
             blocked && "opacity-80",
           )}
         >
-          {busy ? "جاري الإرسال…" : selectedName ? "تغيير الملف" : "اختيار ملف"}
+          {busy ? "جاري الإرسال…" : selectedName ? "استبدال" : "اختيار ملف"}
         </span>
         <input
           ref={inputRef}

@@ -6,7 +6,6 @@ import {
   liftSurveyFreezeAsync,
   loadFailuresForQuery,
   loadFailuresPageForQuery,
-  reportBourseObstructionAsync,
   resolveFailureAsync,
   returnFailureAsync,
   submitFailureForReviewAsync,
@@ -17,7 +16,6 @@ import {
 } from "./failures-api";
 import type { FailureListQuery, PagedResultDto } from "@platform/api-client";
 import type {
-  BourseObstructionInput,
   CreateFailureInput,
   FailureRecord,
   ResolveFailureInput,
@@ -103,10 +101,4 @@ export function getPropertyFailure(
   propertyId: string,
 ): FailureRecord | null {
   return getPropertyFailureFromCache(poNumber, propertyId);
-}
-
-export async function reportBourseObstructionToSupervisor(
-  input: BourseObstructionInput,
-): Promise<FailureRecord> {
-  return reportBourseObstructionAsync(input);
 }

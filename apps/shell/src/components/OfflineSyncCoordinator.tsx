@@ -118,7 +118,7 @@ export function OfflineSyncCoordinator() {
           ) : null}
           {pendingItems.length === 0 ? (
             rejectedItems.length === 0 ? (
-              <p className="m-0 text-xs text-text-2">لا عناصر معلّقة</p>
+              <p className="m-0 text-xs text-text-2">لا عناصر بانتظار المزامنة</p>
             ) : null
           ) : (
             <ul className="m-0 max-h-56 list-none space-y-2 overflow-auto p-0">

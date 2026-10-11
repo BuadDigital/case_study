@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   confirmKeyEnvelopeAssignment,
   confirmKeyEnvelopeHandoff,
-  getPropertyKeyGate,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
 import { Button, Note, cn } from "@platform/ui-kit";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import {
   FieldBox,
   FieldsGrid,
@@ -17,14 +17,24 @@ import {
 import {
   keyHandedLabelAr,
   keysStatusLabelAr,
+  usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
+import {
+  inspectorKeyGateProblem,
+  inspectorKeyGateStatus,
+  type InspectorKeyGateStatus,
+} from "../../lib/app-data/inspector-key-gate";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export type InspectorKeyAvailability = {
   keyHandedToInspector: string;
   keysStatus: string;
-  /** Ready to complete inspection from a key-status perspective */
-  keyAvailable: boolean;
+  /** Ready to complete inspection from a key-status perspective; `null` while that is not known. */
+  keyAvailable: boolean | null;
+  /** Whether the answer is known — never read «unknown» as «no key». See inspector-key-gate.ts. */
+  status: InspectorKeyGateStatus;
+  /** Reads the gate again (after a failed load, or after an action here changed it). */
+  retry: () => void;
   source?: string;
   envelopeId?: string | null;
   assignmentId?: string | null;
@@ -33,7 +43,9 @@ export type InspectorKeyAvailability = {
   studyHoldStatus?: string;
 };
 
-function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
+function mapGate(
+  gate: PropertyKeyGateDto,
+): Omit<InspectorKeyAvailability, "status" | "retry"> {
   return {
     keyHandedToInspector: gate.keyHandedToInspector || "",
     keysStatus: gate.keysStatus || "",
@@ -47,48 +59,38 @@ function mapGate(gate: PropertyKeyGateDto): InspectorKeyAvailability {
   };
 }
 
-/** Key status derived from the key envelope only */
+/**
+ * Key status derived from the key envelope only — the shared gate query, so the workflow's submit
+ * and this tab read one answer, and an action here refreshes both.
+ */
 export function useInspectorKeyAvailability(
   task: WorkflowTask,
 ): InspectorKeyAvailability {
-  const [state, setState] = useState<InspectorKeyAvailability>({
-    keyHandedToInspector: "",
-    keysStatus: "",
-    keyAvailable: false,
+  const { data, isError, isPaused, refetch } = usePropertyKeyGateQuery({
+    propertyId: task.propertyId,
+    poNumber: task.poNumber,
+    enabled: Boolean(task.propertyId),
   });
+  const status = inspectorKeyGateStatus({
+    data,
+    isError,
+    isPaused,
+    offline: isBrowserOffline(),
+  });
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
-  const reload = useCallback(() => {
-    const config = prototypeModulesApiConfig();
-    if (!config || !task.propertyId) {
-      setState({
-        keyHandedToInspector: "",
-        keysStatus: "",
-        keyAvailable: false,
-      });
-      return;
-    }
-
-    void getPropertyKeyGate(config, {
-      propertyId: task.propertyId,
-      poNumber: task.poNumber,
-    }).then((result) => {
-      if (result.ok) {
-        setState(mapGate(result.data));
-        return;
-      }
-      setState({
-        keyHandedToInspector: "",
-        keysStatus: "",
-        keyAvailable: false,
-      });
-    });
-  }, [task.poNumber, task.propertyId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return state;
+  return useMemo(
+    () => ({
+      ...(data
+        ? mapGate(data)
+        : { keyHandedToInspector: "", keysStatus: "", keyAvailable: null }),
+      status,
+      retry,
+    }),
+    [data, status, retry],
+  );
 }
 
 function AssignmentStatusBadge({ status }: { status?: string | null }) {
@@ -138,46 +140,25 @@ export function InspectorKeyStatusTab({
     keyAvailable,
     envelopeId,
     assignmentId,
-    assignmentStatus,
+    assignmentStatus: status,
     pendingHandoffId,
     studyHoldStatus,
+    retry,
   } = availability;
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Server state wins; local only holds the optimistic result of an action here.
-  const [local, setLocal] = useState(availability);
-  const [syncedAvailability, setSyncedAvailability] = useState(availability);
-  if (syncedAvailability !== availability) {
-    setSyncedAvailability(availability);
-    setLocal(availability);
-  }
 
-  const handedLabel = keyHandedLabelAr(
-    local.keyHandedToInspector || keyHandedToInspector,
-  );
-  const keysLabel = keysStatusLabelAr(local.keysStatus || keysStatus);
-  const available = local.keyAvailable || keyAvailable;
-  const keyNotOnHand = !vacantLand && !available;
-  const status = local.assignmentStatus || assignmentStatus;
-
-  const refreshGate = async () => {
-    const config = prototypeModulesApiConfig();
-    if (!config || !task.propertyId) return;
-    const result = await getPropertyKeyGate(config, {
-      propertyId: task.propertyId,
-      poNumber: task.poNumber,
-    });
-    if (result.ok) setLocal(mapGate(result.data));
-  };
+  const handedLabel = keyHandedLabelAr(keyHandedToInspector);
+  const keysLabel = keysStatusLabelAr(keysStatus);
+  const keyNotOnHand = !vacantLand && keyAvailable === false;
+  const loadProblem = inspectorKeyGateProblem(availability.status);
 
   const confirmAssignment = async (next: "matched" | "unmatched") => {
     const config = prototypeModulesApiConfig();
-    const envId = local.envelopeId || envelopeId;
-    const asgId = local.assignmentId || assignmentId;
-    if (!config || !envId || !asgId) return;
+    if (!config || !envelopeId || !assignmentId) return;
     setBusy(true);
     setActionError(null);
-    const result = await confirmKeyEnvelopeAssignment(config, envId, asgId, {
+    const result = await confirmKeyEnvelopeAssignment(config, envelopeId, assignmentId, {
       status: next,
     });
     setBusy(false);
@@ -185,34 +166,29 @@ export function InspectorKeyStatusTab({
       setActionError("تعذّر تحديث حالة المطابقة");
       return;
     }
-    await refreshGate();
+    retry();
   };
 
   const confirmHandoff = async () => {
     const config = prototypeModulesApiConfig();
-    const envId = local.envelopeId || envelopeId;
-    const handoffId = local.pendingHandoffId || pendingHandoffId;
-    if (!config || !envId || !handoffId) return;
+    if (!config || !envelopeId || !pendingHandoffId) return;
     setBusy(true);
     setActionError(null);
-    const result = await confirmKeyEnvelopeHandoff(config, envId, handoffId);
+    const result = await confirmKeyEnvelopeHandoff(config, envelopeId, pendingHandoffId);
     setBusy(false);
     if (!result.ok) {
       setActionError("تعذّر تأكيد استلام المناولة");
       return;
     }
-    await refreshGate();
+    retry();
   };
 
   const showAssignmentActions =
-    Boolean(local.envelopeId || envelopeId) &&
-    Boolean(local.assignmentId || assignmentId) &&
+    Boolean(envelopeId) &&
+    Boolean(assignmentId) &&
     status !== "matched" &&
     status !== "unmatched";
-  const showHandoffConfirm = Boolean(
-    (local.pendingHandoffId || pendingHandoffId) &&
-      (local.envelopeId || envelopeId),
-  );
+  const showHandoffConfirm = Boolean(pendingHandoffId && envelopeId);
 
   return (
     <div>
@@ -281,10 +257,29 @@ export function InspectorKeyStatusTab({
         </Note>
       ) : null}
 
+      {loadProblem ? (
+        <Note tone="danger" className="mt-4">
+          {loadProblem} لا تُرسَل المعاينة قبل معرفتها.
+          {availability.status === "offline" ? null : (
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                showActionToast={false}
+                onClick={retry}
+              >
+                إعادة المحاولة
+              </Button>
+            </div>
+          )}
+        </Note>
+      ) : null}
+
       {keyNotOnHand ? (
         <Note tone="info" className="mt-4">
           المفتاح غير متاح حالياً (ظرف المفاتيح / تمكين) — هذا لا يمنع إتمام
-          المعاينة. إذا الدخول متعذر بسبب المفتاح: سجّل تعذراً مع ملاحظة.
+          المعاينة. إذا الدخول متعذّر بسبب المفتاح: سجّل تعذّراً مع ملاحظة.
           {onRegisterKeyFailure ? (
             <div className="mt-3">
               <Button
@@ -293,7 +288,7 @@ export function InspectorKeyStatusTab({
                 size="sm"
                 onClick={onRegisterKeyFailure}
               >
-                تسجيل تعذر المفتاح
+                تسجيل تعذّر المفتاح
               </Button>
             </div>
           ) : null}

@@ -151,21 +151,6 @@ public sealed class HttpInspectorFeeService(
             },
             cancellationToken);
 
-    public Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
-        CreateDisbursementBatchRequest request,
-        string actorUserId,
-        string? actorAssigneeId,
-        CancellationToken cancellationToken = default) =>
-        SendAsync<CreateDisbursementBatchResponseDto>(
-            HttpMethod.Post,
-            $"{Root}/disbursement-batch",
-            new InspectorFeeDisbursementDispatchRequest
-            {
-                Request = request,
-                ActorUserId = actorUserId,
-                ActorAssigneeId = actorAssigneeId,
-            },
-            cancellationToken);
 
     public async Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
         Guid workflowTaskId,

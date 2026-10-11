@@ -46,7 +46,7 @@ public class FailureRecordRulesTests
             new BourseObstructionRequest { Reason = "   " });
 
         Assert.NotNull(errors);
-        Assert.Equal("سبب التعذر مطلوب", errors!["reason"]);
+        Assert.Equal("سبب التعذّر مطلوب", errors!["reason"]);
         Assert.Null(FailureRecordRules.ValidateBourseObstruction(
             new BourseObstructionRequest { Reason = "الصك موقوف" }));
     }
@@ -59,7 +59,7 @@ public class FailureRecordRulesTests
 
         var removed = FailureRecordRules.ValidateCreateTarget(
             [new CaseStudyPropertySnapshotDto { IsRemoved = true }]);
-        Assert.Equal("لا يمكن تسجيل تعذر على عقار محذوف", removed!["propertyId"]);
+        Assert.Equal("لا يمكن تسجيل تعذّر على عقار محذوف", removed!["propertyId"]);
 
         Assert.Null(FailureRecordRules.ValidateCreateTarget([new CaseStudyPropertySnapshotDto()]));
     }

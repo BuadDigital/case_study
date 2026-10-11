@@ -207,7 +207,7 @@ export async function persistPartySubmissionPayload(
   }
 }
 
-export type PartySubmissionMutationResult =
+type PartySubmissionMutationResult =
   MutationResult<PartyTaskSubmissionDto>;
 
 export type PartyWorkMutationResult<T> =
@@ -293,7 +293,7 @@ export async function reopenPartySubmission(
   return mapped;
 }
 
-export type ReturnImpactLoadResult =
+type ReturnImpactLoadResult =
   | { ok: true; data: ReturnImpactDto }
   | { ok: false; error: string };
 

@@ -100,19 +100,6 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.Equal(after, WorkOrderPropertyWriteRules.ExpectedCountAfterRemoval(before));
     }
 
-    [Fact]
-    public void Location_map_url_must_be_http_or_empty()
-    {
-        Assert.Null(WorkOrderPropertyWriteRules.ValidateLocationMapUrl("   ").Errors);
-        Assert.Null(WorkOrderPropertyWriteRules.ValidateLocationMapUrl("   ").Value);
-
-        var bad = WorkOrderPropertyWriteRules.ValidateLocationMapUrl("maps.example");
-        Assert.Equal("رابط الموقع يجب أن يبدأ بـ http:// أو https://", bad.Errors!["locationMapUrl"]);
-
-        var good = WorkOrderPropertyWriteRules.ValidateLocationMapUrl(" https://maps.example/x ");
-        Assert.Null(good.Errors);
-        Assert.Equal("https://maps.example/x", good.Value);
-    }
 
     [Fact]
     public void Specialist_report_extras_accepts_json_or_clears()
@@ -342,6 +329,42 @@ public class WorkOrderPropertyWriteRulesTests
             ["سالم", "نورة"],
             OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Select(o => o.Name));
         Assert.Equal(OwnershipTypes.Shared, WorkOrderMapper.ToPropertyDto(entity).OwnershipType);
+    }
+
+    [Fact]
+    public void Completing_the_bourse_records_who_did_it_and_a_held_one_records_nobody()
+    {
+        var request = new UpdatePropertyBourseRequest
+        {
+            City = "الرياض",
+            District = "النرجس",
+            Classification = "مبنى مفرد",
+            PropertyType = "فيلا",
+        };
+        var done = new WorkOrderProperty { Id = Guid.NewGuid() };
+        WorkOrderPropertyWriteRules.ApplyBourseRequest(done, request, DateTime.UtcNow, "  أسامة الصالحي ");
+        Assert.True(done.BourseDataCompleted);
+        Assert.Equal("أسامة الصالحي", done.BourseCompletedByName);
+
+        // Boundaries «غير متوفرة» hold the property open: nothing is completed, nobody is credited.
+        var held = new WorkOrderProperty { Id = Guid.NewGuid() };
+        WorkOrderPropertyWriteRules.ApplyBourseRequest(
+            held,
+            new UpdatePropertyBourseRequest
+            {
+                City = "الرياض",
+                District = "النرجس",
+                Classification = "مبنى مفرد",
+                PropertyType = "فيلا",
+                BoundariesAvailability = "no",
+            },
+            DateTime.UtcNow,
+            "أسامة الصالحي");
+        Assert.False(held.BourseDataCompleted);
+        Assert.Null(held.BourseCompletedByName);
+
+        Assert.Null(WorkOrderPropertyWriteRules.NormalizeActorName("   "));
+        Assert.Equal(128, WorkOrderPropertyWriteRules.NormalizeActorName(new string('م', 300))!.Length);
     }
 
     // ---- stored file-name column ----

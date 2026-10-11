@@ -61,7 +61,7 @@ import {
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
 const DEFAULT_INFO_ROLES_CONFIG = emptyCaseStudyInfoRolesConfig();
 
-export type CaseStudyReportDataArgs = {
+type CaseStudyReportDataArgs = {
   taskId: string;
   task: WorkflowTask;
   property: PoPropertyIntake | null;

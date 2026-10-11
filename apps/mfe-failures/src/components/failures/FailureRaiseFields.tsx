@@ -74,7 +74,7 @@ export function FailureRaiseFields({
   return (
     <div className="min-w-0 w-full">
       <label htmlFor={`${idPrefix}_problem_type`} className={labelClassName}>
-        نوع التعذر{" "}
+        نوع التعذّر{" "}
         <span className="font-bold text-[#c0553d]" aria-hidden>
           *
         </span>
@@ -84,7 +84,7 @@ export function FailureRaiseFields({
         value={problemTypeId}
         onChange={onProblemTypeChange}
         groups={groups}
-        placeholder={waiting ? "جاري تحميل الأنواع…" : "اختر نوع التعذر…"}
+        placeholder={waiting ? "جاري تحميل الأنواع…" : "اختر نوع التعذّر…"}
         disabled={disabled || waiting || problemTypes.length === 0}
         hasError={invalid}
         autoFocus={autoFocus}
@@ -96,7 +96,7 @@ export function FailureRaiseFields({
       ) : null}
       {!waiting && problemTypes.length === 0 ? (
         <p className="mt-1.5 m-0 text-[11.5px] leading-relaxed text-text-3">
-          لا توجد أنواع تعذر متاحة لدورك. راجع صفحة أنواع التعذرات.
+          لا توجد أنواع تعذّر متاحة لدورك. راجع صفحة أنواع التعذّرات.
         </p>
       ) : null}
     </div>

@@ -39,7 +39,7 @@ type KeyEnvelopeOutboxWrite =
       payload: Record<string, unknown>;
     };
 
-export type ClassifiedWrite =
+type ClassifiedWrite =
   | {
       type: "party-submission-save";
       taskId: string;

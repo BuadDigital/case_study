@@ -38,7 +38,7 @@ export function photoTileFlagTone(locationFlag: string | null | undefined): stri
         : null;
 }
 
-export type PhotoTileFlagBadge = {
+type PhotoTileFlagBadge = {
   tone: string;
   /** Tooltip — raw distance, as recorded. */
   title: string;
@@ -70,8 +70,8 @@ export const CALENDAR_PANEL_EST_HEIGHT = 330;
 export const CALENDAR_VIEWPORT_MARGIN = 8;
 export const CALENDAR_PANEL_GAP = 4;
 
-export type PanelAnchorRect = { top: number; bottom: number; right: number };
-export type ViewportSize = { width: number; height: number };
+type PanelAnchorRect = { top: number; bottom: number; right: number };
+type ViewportSize = { width: number; height: number };
 
 /**
  * Fixed-position offset for the calendar popup: right-aligned under the

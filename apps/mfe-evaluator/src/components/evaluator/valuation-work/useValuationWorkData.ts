@@ -18,9 +18,7 @@ import {
   getValuationApproachSettings,
   getValuationReconciliation,
   getValuationIssuanceGates,
-  getDifferenceFactorCatalog,
   type ComparablePropertyDto,
-  type DifferenceFactorDefinitionDto,
   type ValuationComparableSelectionListDto,
   type ValuationApproachSettingsDto,
   type ValuationCostApproachDto,
@@ -36,7 +34,6 @@ import { apiConfig } from "./lib/shell-utils";
 import {
   LAND_WITHIN_COST,
   MARKET_CONTEXT,
-  buildFactorCatalog,
   isSeedMarketAnalysisNotes,
   officialValuationDateOf,
   type ValuationWorkPropertyHint,
@@ -55,10 +52,13 @@ import {
   type FinalOpinionChangeHandler,
   type SubjectCoords,
 } from "./lib/valuation-data-state";
+import { createReloadSequence, ignoreSideFailure, runReload } from "./lib/reload-sequence";
+import type { ReloadOptions, ReloadTicket } from "./lib/reload-sequence";
+import { useDifferenceFactorCatalog } from "./useDifferenceFactorCatalog";
 import { useValuationSectionSaves } from "./useValuationSectionSaves";
 import { useValuationWorkReadModels } from "./useValuationWorkReadModels";
 
-export type ValuationWorkDataParams = {
+type ValuationWorkDataParams = {
   propertyId: string;
   inspectionTaskId?: string | null;
   assignmentType?: string;
@@ -104,10 +104,7 @@ export function useValuationWorkData({
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
-  const [factorDefinitions, setFactorDefinitions] = useState<Record<string, string>>({});
-  const [catalogFactorOptions, setCatalogFactorOptions] = useState<
-    { factorKey: string; labelAr: string }[]
-  >([]);
+  const { factorDefinitions, catalogFactorOptions } = useDifferenceFactorCatalog();
 
   const [approachSettings, setApproachSettings] =
     useState<ValuationApproachSettingsDto | null>(null);
@@ -128,19 +125,6 @@ export function useValuationWorkData({
     [approachSettings],
   );
 
-  useEffect(() => {
-    const config = apiConfig();
-    if (!config) return;
-    void getDifferenceFactorCatalog(config).then((res) => {
-      if (!res.ok) return;
-      const { definitions, addable } = buildFactorCatalog(
-        res.data.factors as DifferenceFactorDefinitionDto[],
-      );
-      setFactorDefinitions(definitions);
-      setCatalogFactorOptions(addable);
-    });
-  }, []);
-
   const subjectAreaSyncedRef = useRef<string | null>(null);
 
   /** Subject transaction area from the property wins over stale market-approach area on the server —
@@ -150,6 +134,7 @@ export function useValuationWorkData({
     requestId: string,
     transactionArea: string,
     sel: ValuationComparableSelectionListDto,
+    live: () => boolean,
   ) {
     const plan = subjectAreaSyncPlan({
       requestId,
@@ -160,7 +145,7 @@ export function useValuationWorkData({
     if (!plan) return;
     subjectAreaSyncedRef.current = plan.syncKey;
     const syncRes = await saveValuationMarketApproach(config, requestId, plan.body);
-    if (syncRes.ok) setSelection(syncRes.data);
+    if (syncRes.ok && live()) setSelection(syncRes.data);
   }
 
   const resolveBankFetchOpts = useCallback(
@@ -228,8 +213,19 @@ export function useValuationWorkData({
     setError(openFailureMessage(kind));
   }
 
-  const reload = useCallback(
-    async (opts?: { silent?: boolean; scope?: "full" | "derived" }) => {
+  // Only the latest reload, still on the property it started for, writes state.
+  const [reloadSeq] = useState(createReloadSequence);
+  const propertyIdRef = useRef(propertyId);
+  propertyIdRef.current = propertyId;
+
+  const load = useCallback(
+    async (ticket: ReloadTicket) => {
+    const { opts } = ticket;
+    let requestId = valuationRequestIdRef.current;
+    // The request id is checked too: a property switch clears it before the next load.
+    const live = () =>
+      reloadSeq.isLatest(ticket, propertyIdRef.current) &&
+      (!requestId || valuationRequestIdRef.current === requestId);
     const config = apiConfig();
     if (!config) {
       setLoading(false);
@@ -251,12 +247,12 @@ export function useValuationWorkData({
     setError(null);
 
     // Open request is known after the first load — skip ensure-open on every refresh.
-    let requestId = valuationRequestIdRef.current;
     if (!requestId) {
       const open = await ensureOpenValuationRequestByProperty(
         config,
         openRequestBody(propertyId, { districtHint, property }),
       );
+      if (!live()) return;
       if (!open.ok) {
         resetForOpenFailure(open.kind);
         return;
@@ -285,19 +281,18 @@ export function useValuationWorkData({
       ? null
       : getValuationApproachSettings(config, requestId);
 
-    void landP.then((landSelRes) =>
-      setLandSelection(landSelRes.ok ? landSelRes.data : null),
-    );
+    // Side batches: a failure leaves the previous rows; the main batches below surface errors.
+    void landP.then((r) => live() && setLandSelection(r.ok ? r.data : null), ignoreSideFailure);
     if (bankP) {
       void bankP.then((bankRes) => {
-        if (!bankRes.ok) return;
+        if (!bankRes.ok || !live()) return;
         applyBankResult(bankRes.data, bankRes.subjectCoords);
-      });
+      }, ignoreSideFailure);
     }
-    void gatesP.then((gatesRes) => setGates(gatesRes.ok ? gatesRes.data : null));
+    void gatesP.then((r) => live() && setGates(r.ok ? r.data : null), ignoreSideFailure);
 
-    const [selRes, costRes, reconRes] = await Promise.all([selP, costP, reconP]);
-    const settingsRes = settingsP ? await settingsP : null;
+    const [selRes, costRes, reconRes, settingsRes] = await Promise.all([selP, costP, reconP, settingsP]);
+    if (!live()) return;
 
     setLoading(false);
 
@@ -331,8 +326,8 @@ export function useValuationWorkData({
           adjustmentBasis: selRes.data.adjustmentBasis || "price_per_sqm",
           analysisNotes: null,
         }).then((res) => {
-          if (res.ok) setSelection(res.data);
-        });
+          if (res.ok && live()) setSelection(res.data);
+        }, ignoreSideFailure);
       }
       // Table drafts live inside their components — nothing to clear here.
       await syncSubjectAreaFromTransaction(
@@ -340,7 +335,9 @@ export function useValuationWorkData({
         requestId,
         transactionArea,
         selRes.data,
+        live,
       );
+      if (!live()) return;
     }
 
     if (costRes.ok) {
@@ -387,7 +384,17 @@ export function useValuationWorkData({
     intakeProperty?.locationMapUrl,
     resolveBankFetchOpts,
     queryClient,
+    reloadSeq,
     ],
+  );
+
+  const reload = useCallback(
+    (opts?: ReloadOptions) =>
+      runReload(reloadSeq, { propertyId, opts }, () => propertyIdRef.current, load, () => {
+        setLoading(false); // a rejected call must not leave the skeleton up forever
+        setError("تعذّر تحميل بيانات التقييم — أعد المحاولة");
+      }),
+    [load, propertyId, reloadSeq],
   );
 
   const reloadRef = useRef(reload);

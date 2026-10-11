@@ -55,7 +55,7 @@ export function reconcileAffectedTaskIds(args: {
   return args.current.filter((id) => known.has(id));
 }
 
-export type ReturnInspectionPlan =
+type ReturnInspectionPlan =
   | {
       ok: false;
       field: "note" | "studyReport" | "studyReportReason";
@@ -135,7 +135,7 @@ export function returnPartyKindLabel(kind: string): string {
   return "طرف";
 }
 
-export type ReturnPackageStatusTone = "gray" | "amber" | "teal";
+type ReturnPackageStatusTone = "gray" | "amber" | "teal";
 
 export function returnPackageStatusBadge(status: string): {
   label: string;

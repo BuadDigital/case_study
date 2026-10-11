@@ -66,7 +66,7 @@ import { CommentThread } from "./OperationsTasksCommentThread";
 import { LetterTable } from "./OperationsTasksLetterTable";
 import { FailureRaiseModal } from "./OperationsTasksLazyModals";
 
-export type OperationsTasksDetailPanelProps = Pick<
+type OperationsTasksDetailPanelProps = Pick<
   OperationsTasksWorkflow,
   | "afterGovFailureRaised"
   | "busy"
@@ -315,7 +315,7 @@ export function OperationsTasksDetailPanel({
                   disabled={busy}
                   onClick={openGovFailureRaise}
                 >
-                  تعذر
+                  تعذّر
                 </button>
               ) : null}
             </div>

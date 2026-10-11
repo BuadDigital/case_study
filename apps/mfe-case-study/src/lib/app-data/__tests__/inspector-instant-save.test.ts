@@ -56,10 +56,16 @@ describe("spec §3.4 — no keystroke lost to the save debounce", () => {
 
     // Not awaited: the network save waits 400 ms; the device copy must not.
     void updateInspectorWorkspace(TASK, { assetNotes: "ملاحظة لم تُرسل" }).catch(() => {});
-    await new Promise((r) => setTimeout(r, 50));
 
-    const copy = await readLocalWorkingCopy<{ assetNotes: string }>("field-inspection", TASK);
-    expect(copy?.payload.assetNotes).toBe("ملاحظة لم تُرسل");
+    // Poll rather than sleep a fixed 50 ms: the encrypted write can take longer when the whole
+    // suite runs, but it must still land well inside the 400 ms debounce.
+    await vi.waitFor(
+      async () => {
+        const copy = await readLocalWorkingCopy<{ assetNotes: string }>("field-inspection", TASK);
+        expect(copy?.payload.assetNotes).toBe("ملاحظة لم تُرسل");
+      },
+      { timeout: 350, interval: 10 },
+    );
     expect(api.savePartyTaskSubmission).not.toHaveBeenCalled();
   });
 

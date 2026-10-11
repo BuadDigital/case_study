@@ -12,27 +12,8 @@ import { daysSinceIsoCost } from "./finance-cost-parties";
 
 export type PartyBillingMode = "all" | "dues" | "statements" | "paid";
 
-/** Dues and statements are scoped to one payee account when an assignee is set. */
-export function duesForAssignee(
-  lines: PartyBillingReadyLineDto[],
-  assigneeId: string | null | undefined,
-): PartyBillingReadyLineDto[] {
-  const key = assigneeId?.trim();
-  if (!key) return lines;
-  return lines.filter((l) => (l.assigneeId?.trim() || "—") === key);
-}
-
-export function statementsForAssignee(
-  statements: PartyBillingStatementDto[],
-  assigneeId: string | null | undefined,
-): PartyBillingStatementDto[] {
-  const key = assigneeId?.trim();
-  if (!key) return statements;
-  return statements.filter((s) => (s.assigneeId?.trim() || "") === key);
-}
-
 /** Statement list per screen mode — “dues” shows none, “paid” only closed. */
-export function statementsForMode(
+function statementsForMode(
   statements: PartyBillingStatementDto[],
   mode: PartyBillingMode,
 ): PartyBillingStatementDto[] {
@@ -84,18 +65,6 @@ export function searchAndSortDues(
     if (aa >= 0 && bb >= 0 && aa !== bb) return bb - aa;
     return (a.propertyLabel || "").localeCompare(b.propertyLabel || "", "ar");
   });
-}
-
-/** Net of the currently ticked dues — zero-net lines are not selectable. */
-export function selectedDuesTotal(
-  lines: PartyBillingReadyLineDto[],
-  selected: ReadonlySet<string>,
-): number {
-  let total = 0;
-  for (const line of lines) {
-    if (selected.has(line.workflowTaskId)) total += line.netFeeSar;
-  }
-  return total;
 }
 
 export function partyBillingSections(mode: PartyBillingMode): {

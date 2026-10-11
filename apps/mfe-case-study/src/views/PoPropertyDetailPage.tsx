@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Button, Note, PageGutter, PageShell, PanelSkeleton } from "@platform/ui-kit";
+import {
+  Button,
+  Note,
+  PageGutter,
+  PageShell,
+  PanelSkeleton,
+  QueryErrorState,
+} from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { PoDetailPropertyCard } from "@case-study/mfe/components/po-intake/PoDetailPropertyCard";
 import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/PropertyDetailHero";
 import {
@@ -18,7 +26,8 @@ export function PoPropertyDetailPage({
   propertyId: string;
 }) {
   const router = useRouter();
-  const { data: record, isPending } = usePoRecordQuery(poNumber);
+  const recordQuery = usePoRecordQuery(poNumber);
+  const { data: record, isPending } = recordQuery;
   const property =
     record?.properties.find((p) => p.id === propertyId) ?? null;
   const index =
@@ -30,6 +39,23 @@ export function PoPropertyDetailPage({
     return (
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
         <PanelSkeleton />
+      </div>
+    );
+  }
+
+  // A failed load is not «not found» — say so and offer a retry.
+  if (!record && queryLoadFailed(recordQuery)) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg">
+        <PageGutter className="py-6">
+          <QueryErrorState
+            panel
+            line="تعذّر تحميل أمر العمل"
+            error={recordQuery.error}
+            onRetry={() => void recordQuery.refetch()}
+            retrying={recordQuery.isFetching}
+          />
+        </PageGutter>
       </div>
     );
   }

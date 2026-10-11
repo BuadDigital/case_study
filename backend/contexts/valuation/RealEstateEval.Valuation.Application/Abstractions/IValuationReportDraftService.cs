@@ -100,9 +100,4 @@ public interface IValuationReportDraftService
         Guid valuationRequestId,
         ReportDraftActor actor,
         CancellationToken cancellationToken = default);
-
-    /// <summary>The approved printed report (HTML) of the current approved draft, or null.</summary>
-    Task<string?> GetApprovedSnapshotHtmlAsync(
-        Guid valuationRequestId,
-        CancellationToken cancellationToken = default);
 }

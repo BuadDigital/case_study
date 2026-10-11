@@ -23,7 +23,7 @@ import type { RoleId } from "@platform/types";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 
-export type ActiveQueueRowMoreOptions = {
+type ActiveQueueRowMoreOptions = {
   task: WorkflowTask;
   propertyId?: string;
   openTask: () => void;
@@ -230,7 +230,7 @@ export function buildActiveQueueRowMoreItems(
     const property = findPropertyForTask(record, options.task);
     items.push({
       id: "register-failure",
-      label: "تسجيل تعذر",
+      label: "تسجيل تعذّر",
       danger: true,
       disabled: failureExists,
       onClick: () => {

@@ -127,15 +127,14 @@ export async function submitPropertyDetailInspection(input: {
       }
     }
 
-    const baseConfirmed: InspectorWorkspaceDraft = {
-      ...draft,
-      inspectionConfirmed: true,
-    };
-    const confirmed =
-      mapActor === "inspector"
+    // Applied to the draft as it is when the queued PUT runs, so it lands on the latest edits.
+    const confirm = (latest: InspectorWorkspaceDraft): InspectorWorkspaceDraft => {
+      const baseConfirmed: InspectorWorkspaceDraft = { ...latest, inspectionConfirmed: true };
+      return mapActor === "inspector"
         ? ensureInspectorOriginalMapOnSubmit(baseConfirmed)
         : baseConfirmed;
-    const saved = await saveInspectorWorkspaceDraft(confirmed);
+    };
+    const saved = await saveInspectorWorkspaceDraft(draft, confirm);
     setDraft(saved);
 
     const errors = validateInspectorWorkspace(saved, {
@@ -184,7 +183,7 @@ export async function submitPropertyDetailInspection(input: {
     setFieldErrors({});
     showToast(
       result.queued
-        ? "محفوظة للمزامنة — ستُرسل عند عودة الاتصال"
+        ? "بانتظار المزامنة — ستُرسل عند عودة الاتصال"
         : submitSuccessToast ??
           (serviceProofFromTransactionPhotos
             ? SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS

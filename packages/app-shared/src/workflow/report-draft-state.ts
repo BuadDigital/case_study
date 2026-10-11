@@ -12,9 +12,9 @@ export type ReportDraftState = {
   progressPct?: number;
 };
 
-export type AppraisalStageGroup = "draft_sent" | "approved" | "closed";
+type AppraisalStageGroup = "draft_sent" | "approved" | "closed";
 
-export type AppraisalStageLabel = {
+type AppraisalStageLabel = {
   group: AppraisalStageGroup;
   label: string;
   className: string;
@@ -89,7 +89,7 @@ export function appraisalStageLabel(
 }
 
 /** Hand-over to the specialist — the rung between the valuation work (≤ 65) and the specialist's draft (85). */
-export const APPRAISER_HANDED_OVER_PCT = 75;
+const APPRAISER_HANDED_OVER_PCT = 75;
 
 /**
  * The appraiser's progress for the study queue: the ladder the server computed (10 started → 30 market → 50 cost →

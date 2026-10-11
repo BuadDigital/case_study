@@ -8,13 +8,13 @@
  * list filters in `eng-fees-state.ts`; each tab body in a sibling component.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useRef } from "react";
 import { KpiBand, KpiCell, useSwapAnimation } from "@platform/ui-kit";
 import { EngFeesHtmlTabs } from "./EngFeesHtmlTabs";
 import { EngFeesLedgerSection } from "./EngFeesLedgerSection";
 import { EngFeesStatementsSection } from "./EngFeesStatementsSection";
 import { EngFeesInvoiceModal } from "./EngFeesInvoiceModal";
-import { fmtSar } from "./eng-fees-state";
 import { useEngFeesWorkflow } from "./useEngFeesWorkflow";
 
 function CurrencyIcon({ className }: { className?: string }) {
@@ -126,7 +126,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="إجمالي المستحق غير المفوتر"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.outstanding)}
+              {fmtSar(kpi.outstanding, { digits: 3, trim: true })}
             </span>
           }
           sub="كل استحقاقاتكم التي لم تُصرف بعد"
@@ -138,7 +138,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="بانتظار إفادتكم"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.pending)}
+              {fmtSar(kpi.pending, { digits: 3, trim: true })}
             </span>
           }
           sub="تعديلات تسعير تنتظر إفادتكم"
@@ -149,7 +149,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="جاهزة للفوترة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.ready)}
+              {fmtSar(kpi.ready, { digits: 3, trim: true })}
             </span>
           }
           sub="تشمل المرحَّل — بانتظار كشف المحاسب"
@@ -161,7 +161,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="مفوترة / مدفوعة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.paid)}
+              {fmtSar(kpi.paid, { digits: 3, trim: true })}
             </span>
           }
           sub="إجمالي الكشوف المصروفة الموثَّقة"

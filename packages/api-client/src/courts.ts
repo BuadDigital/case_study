@@ -1,16 +1,9 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 export type CourtsApiConfig = {
   baseUrl?: string;
   token: string;
-};
-
-export type CourtCatalogEntryDto = {
-  id: string;
-  city: string;
-  court: string;
-  circuits: string[];
 };
 
 export type SelectableCourtDto = {
@@ -76,13 +69,6 @@ export type CourtsAdminResult<T> =
       message?: string;
     };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 async function adminRequest<T>(
   config: CourtsApiConfig,
   path: string,
@@ -92,7 +78,7 @@ async function adminRequest<T>(
   try {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: { ...headers(config.token), ...init?.headers },
+      headers: { ...authHeaders(config.token), ...init?.headers },
     });
     if (res.ok) return { ok: true, data: (await res.json()) as T };
 
@@ -165,18 +151,6 @@ export function updateAdminCourt(
   });
 }
 
-export function setAdminCourtStatus(
-  config: CourtsApiConfig,
-  id: string,
-  isActive: boolean,
-): Promise<CourtsAdminResult<{ id: string; isActive: boolean }>> {
-  return adminRequest(
-    config,
-    `/api/admin/courts/${encodeURIComponent(id)}/status`,
-    { method: "PATCH", body: JSON.stringify({ isActive }) },
-  );
-}
-
 export function createAdminCourtCircuit(
   config: CourtsApiConfig,
   courtId: string,
@@ -215,27 +189,6 @@ export function setAdminCourtCircuitStatus(
   );
 }
 
-export type CourtsListResult =
-  | { ok: true; entries: CourtCatalogEntryDto[] }
-  | { ok: false; kind: "auth" | "network" | "server" };
-
-export async function listCourts(
-  config: CourtsApiConfig,
-): Promise<CourtsListResult> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/courts`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const entries = (await res.json()) as CourtCatalogEntryDto[];
-    return { ok: true, entries: Array.isArray(entries) ? entries : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export type SelectableCourtsResult =
   | { ok: true; courts: SelectableCourtDto[] }
   | { ok: false; kind: "auth" | "network" | "server" };
@@ -251,7 +204,7 @@ export async function listSelectableCourts(
   const suffix = qs.size > 0 ? `?${qs}` : "";
   try {
     const res = await fetch(`${base}/api/courts/selectable${suffix}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -274,7 +227,7 @@ export async function listSelectableCircuits(
   try {
     const res = await fetch(
       `${base}/api/courts/${encodeURIComponent(courtId)}/circuits/selectable`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };

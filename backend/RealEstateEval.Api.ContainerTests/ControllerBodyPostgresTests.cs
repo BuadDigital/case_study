@@ -138,27 +138,6 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(
             await canonical.Content.ReadAsStringAsync(),
             await alias.Content.ReadAsStringAsync());
-
- // The two ledger lists, plain and paged (docs/architecture/pagination-contract.md).
-        foreach (var path in new[]
-                 {
-                     "/api/financial/incentive-suspensions",
-                     "/api/financial/discount-flags",
-                 })
-        {
-            foreach (var suffix in new[]
-                     {
-                         "",
-                         "?page=1&pageSize=5",
-                         "?page=1&pageSize=5&sort=transaction&dir=asc&q=PO",
-                         "?page=1&pageSize=5&sort=not-a-column&dir=sideways&transactionKey=PO-1",
-                     })
-            {
-                using var ledgerRequest = AuthorizedGet(path + suffix);
-                var ledger = await client.SendAsync(ledgerRequest);
-                Assert.Equal(HttpStatusCode.OK, ledger.StatusCode);
-            }
-        }
     }
 
     [DockerFact]

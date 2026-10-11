@@ -39,9 +39,9 @@ public sealed partial class KeyEnvelopesService
         {
             if (request.EvictionNoticeAttachmentId is null
                 || request.EvictionNoticeAttachmentId == Guid.Empty)
-                return (null, "مرفق محظر الإخلاء مطلوب");
+                return (null, "مرفق محضر الإخلاء مطلوب");
             if (!await AttachmentExistsAsync(request.EvictionNoticeAttachmentId.Value, cancellationToken))
-                return (null, "ملف محظر الإخلاء غير موجود");
+                return (null, "ملف محضر الإخلاء غير موجود");
         }
 
         var now = _time.UtcNow();

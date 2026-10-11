@@ -56,7 +56,7 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
     case PropertyListRowStatuses.Done:
       return "مكتمل";
     case PropertyListRowStatuses.Fail:
-      return "متعذر";
+      return "متعذّر";
     case PropertyListRowStatuses.Incomplete:
       return "ناقص";
     default:
@@ -245,6 +245,10 @@ export type PoPropertyIntake = {
   finishingType: string;
   finishingStructure: string;
   bourseDataCompleted: boolean;
+  /** Who completed the bourse inquiry ("" when unknown) — shown as the source of what it answered. */
+  bourseCompletedByName: string;
+  /** When the bourse inquiry was completed (ISO, "" when unknown). */
+  bourseCompletedAtUtc: string;
   /** Soft-deleted from active queues — still listed on PO properties. */
   isRemoved: boolean;
   removalReason: string;
@@ -348,6 +352,8 @@ export function emptyProperty(): PoPropertyIntake {
     finishingType: "",
     finishingStructure: "",
     bourseDataCompleted: false,
+    bourseCompletedByName: "",
+    bourseCompletedAtUtc: "",
     isRemoved: false,
     removalReason: "",
     removedAtUtc: "",

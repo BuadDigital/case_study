@@ -78,7 +78,7 @@ describe("firstCaseStudyReportScrollTarget", () => {
     });
     expect(hit?.targetId).toBe("cs-deed-nature-match");
     expect(hit?.blocking).toBe(true);
-    expect(hit?.message).toMatch(/مسار تعذر/);
+    expect(hit?.message).toMatch(/مسار تعذّر/);
   });
 
   it("does not require deed remarks when غير مطابق has no note", () => {

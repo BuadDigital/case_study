@@ -1,6 +1,5 @@
 import {
   getCachedTaskAttachment,
-  openTaskAttachmentPreview,
   prefetchTaskAttachment,
 } from "@platform/app-shared/app-data/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
@@ -11,7 +10,7 @@ import {
 
 const EVALUATOR_REPORT_SCOPE = "evaluator-report";
 
-export type CachedEvaluatorReport = {
+type CachedEvaluatorReport = {
   fileName: string;
   mimeType: string;
   dataUrl?: string;
@@ -52,24 +51,4 @@ export async function prefetchEvaluatorReport(
 ): Promise<CachedEvaluatorReport | null> {
   if (!taskId) return null;
   return prefetchTaskAttachment(EVALUATOR_REPORT_SCOPE, taskId);
-}
-
-export async function openEvaluatorReportPreview(
-  taskId: string,
-): Promise<boolean> {
-  const cached = getCachedEvaluatorReport(taskId);
-  if (cached?.dataUrl) {
-    openTaskAttachmentPreview(cached);
-    return true;
-  }
-  try {
-    const preview = await prefetchEvaluatorReport(taskId);
-    if (preview?.dataUrl) {
-      openTaskAttachmentPreview(preview);
-      return true;
-    }
-  } catch (err: unknown) {
-    console.warn("Evaluator report prefetch failed:", err);
-  }
-  return false;
 }

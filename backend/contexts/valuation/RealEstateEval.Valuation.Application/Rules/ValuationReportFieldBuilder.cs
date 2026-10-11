@@ -397,7 +397,7 @@ public static class ValuationReportFieldBuilder
                 d["waterMeterNumbers"] = inspector.WaterMeterNumbers;
                 d["body"] = hasStructures
                     ? "المرافق والخدمات على مستوى العقار والمنطقة — من نتائج المعاينة الميدانية."
-                    : "مرافق منطقة الأرض — من نتائج المعاينة الميدانية.";
+                    : "المرافق في منطقة العقار — من نتائج المعاينة الميدانية.";
                 break;
 
             case ValuationReportSectionKeys.Surroundings:

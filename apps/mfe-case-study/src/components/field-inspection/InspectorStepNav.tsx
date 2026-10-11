@@ -8,7 +8,7 @@ export type InspectorStepId = 1 | 2 | 3;
  * Field-inspection wizard steps (Field Inspection Workspace design).
  * Each card reveals its own group of sections; the rest render nothing.
  */
-export const INSPECTOR_STEPS: {
+const INSPECTOR_STEPS: {
   id: InspectorStepId;
   title: string;
   hint: string;
@@ -21,7 +21,7 @@ export const INSPECTOR_STEPS: {
   {
     id: 2,
     title: "بيانات العقار",
-    hint: "مكوّنات العقار وحدوده ومساحاته وخدماته",
+    hint: "مكونات العقار وحدوده ومساحاته وخدماته",
   },
   {
     id: 3,

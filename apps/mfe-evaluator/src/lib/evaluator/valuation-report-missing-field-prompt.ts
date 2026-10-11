@@ -14,7 +14,7 @@ import {
   type ReportSettingsSection,
 } from "./valuation-report-missing-fields";
 
-export type MissingFieldResponsible = {
+type MissingFieldResponsible = {
   name: string;
   roleLabel: string;
   canNotify: boolean;

@@ -95,7 +95,7 @@ export function InspectorDesktopActionBar({
             disabled={submitting || workLocked}
             onClick={onRegisterFailure}
           >
-            تسجيل تعذر
+            تسجيل تعذّر
           </Button>
         ) : null}
         <Button

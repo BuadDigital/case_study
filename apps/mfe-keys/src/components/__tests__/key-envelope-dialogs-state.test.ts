@@ -201,7 +201,7 @@ describe("court access draft", () => {
     expect(next.draft.hasEnablingLetter).toBe(true);
   });
 
-  it("«محظر إخلاء» keeps the enabling letter and asks for a file when needed", () => {
+  it("«محضر إخلاء» keeps the enabling letter and asks for a file when needed", () => {
     const withLetter = draft({ hasEnablingLetter: true, enablingLetterId: "en" });
     const ask = applyCourtAccessOption("eviction", withLetter);
     expect(ask.pickFile).toBe("eviction");

@@ -16,6 +16,7 @@ import {
   cn,
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   Card,
@@ -175,7 +176,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         <>
           <div className="mb-3 flex justify-between">
             <h2 className="m-0 text-[17px] font-extrabold text-heading">
-              التوفيق بين مؤشرات الأساليب
+              الترجيح بين مؤشرات الأساليب
             </h2>
             <span className="text-xs text-text-3">
               مجموع نسب المشاركة يجب أن يساوي ١٠٠٪
@@ -236,7 +237,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                               100,
                               Math.max(
                                 0,
-                                Number(e.target.value.replace(",", ".")) || 0,
+                                parseLocaleNumber(e.target.value) || 0,
                               ),
                             );
                             const next = [...reconMethods];
@@ -314,7 +315,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 )}
               >
                 القيمة المرجّحة:{" "}
-                <span dir="ltr">{fmt(weightedLocal)}</span> ريال
+                <span dir="ltr">{fmt(weightedLocal)}</span> ر.س
               </span>
             </div>
           </Card>
@@ -437,7 +438,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         className="mb-1 block text-[12px] font-medium text-text"
                       >
                         مبرر معامل التصفية
-                        {Number(liquidationDiscountPct.replace(",", ".")) > 0 ? (
+                        {parseLocaleNumber(liquidationDiscountPct) > 0 ? (
                           <span className="text-danger-text"> *</span>
                         ) : null}
                       </label>
@@ -462,7 +463,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           {fieldErrors.liquidation_discount_rationale ||
                             fieldErrors.liquidationDiscountRationale}
                         </p>
-                      ) : Number(liquidationDiscountPct.replace(",", ".")) >
+                      ) : parseLocaleNumber(liquidationDiscountPct) >
                         0 ? (
                         <p className="mt-1 mb-0 text-[10.5px] text-text-3">
                           مطلوب عند إدخال نسبة خصم أكبر من صفر.
@@ -525,7 +526,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     {fmt(finalLocal)}
                   </td>
                   <td className="pb-0.5 pt-3 text-start text-[10.5px] text-text-3">
-                    ريال سعودي
+                    ر.س
                   </td>
                 </tr>
               </tbody>
@@ -586,7 +587,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               disabled={saving || reconMethods.length === 0}
               onClick={() => void saveReconciliation()}
             >
-              {sole ? "حفظ الرأي النهائي" : "حفظ التوفيق والرأي النهائي"}
+              {sole ? "حفظ الرأي النهائي" : "حفظ الترجيح والرأي النهائي"}
             </PrimaryBtn>
           </div>
         </CardPad>

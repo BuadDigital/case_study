@@ -183,19 +183,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
             _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (entity.PropertyId is Guid propertyId)
-        {
-            await _timeline.RecordAsync(
-                entity.PoNumber,
-                propertyId,
-                $"task:{entity.Id}:bourse-complete",
-                "اكتمال استعلام البورصة",
-                null,
-                PropertyTimelineTones.Done,
-                entity.UpdatedAtUtc,
-                cancellationToken);
-        }
-
+        // No timeline row here: the bourse milestone («إتمام استعلام البورصة») is recorded when the specialist
+        // completes the bourse data, with who did it — advancing the task is the same moment, not a second event.
         return WorkflowTaskMapper.ToDto(entity);
     }
 
@@ -252,7 +241,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
                 entity.Id,
                 entity.AssigneeId,
                 "معاملة أُعيدت إليك",
-                "أُعيدت المعاملة إليك بعد معالجة التعذر — تابع دراسة الحالة.",
+                "أُعيدت المعاملة إليك بعد معالجة التعذّر — تابع دراسة الحالة.",
                 "info",
                 $"case-study-returned:{entity.Id}:{entity.UpdatedAtUtc:O}",
                 cancellationToken);
@@ -309,10 +298,10 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
                 await _timeline.RecordAsync(
                     entity.PoNumber,
                     propertyId,
-                    $"task:{entity.Id}:reopened",
+                    $"task:{entity.Id}:reopened:{entity.UpdatedAtUtc.Ticks}",
                     "إعادة فتح المعاملة",
                     detail,
-                    PropertyTimelineTones.Active,
+                    PropertyTimelineTones.Warn,
                     entity.UpdatedAtUtc,
                     ct);
             }

@@ -144,7 +144,7 @@ export function RedistributePartiesModal({
     });
     roles.push({
       key: "valuator",
-      label: "المقيم العقاري",
+      label: "المقيّم العقاري",
       people: getValuators(staffUsers),
       currentId: distribution.valuatorId,
       apply: (id) => ({ valuationDepartment: true, valuatorId: id }),

@@ -16,7 +16,7 @@ const EXECUTION_PARTY_ORDER: RoleId[] = [
 
 const GROUP_LABELS: Record<string, string> = {
   "field-inspector": "معاين ميداني",
-  "real-estate-appraiser": "مقيم عقاري",
+  "real-estate-appraiser": "مقيّم عقاري",
   "engineering-office": "مكتب هندسي",
   "government-reviewer": "مراجع حكومي",
   other: "أطراف أخرى",
@@ -110,7 +110,7 @@ export function assigneesForOperationsTaskType(
   return allDistributionAssignees(staffUsers);
 }
 
-export type AssigneeOptGroup = {
+type AssigneeOptGroup = {
   key: string;
   label: string;
   items: DistributionAssignee[];

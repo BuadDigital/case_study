@@ -8,7 +8,12 @@
  */
 import dynamic from "next/dynamic";
 import { useRef, type ReactNode } from "react";
-import { PageShell, PanelSkeleton, useSwapAnimation } from "@platform/ui-kit";
+import {
+  PageShell,
+  PanelSkeleton,
+  QueryErrorState,
+  useSwapAnimation,
+} from "@platform/ui-kit";
 import { useKeysViewWorkflow } from "./useKeysViewWorkflow";
 import { KeysViewKpiBand } from "./KeysViewKpiBand";
 import { KeysViewToolbar } from "./KeysViewToolbar";
@@ -57,6 +62,10 @@ function KeysSwapPanel({
 export function KeysView() {
   const {
     ready,
+    loadFailed,
+    loadError,
+    retryLoad,
+    retrying,
     kpis,
     filtered,
     mobileCardItems,
@@ -151,15 +160,26 @@ export function KeysView() {
           onRegister={openRegisterModal}
         />
 
-        <KeysViewTable
-          ready={ready}
-          rows={filtered}
-          canRegisterEnvelope={canRegisterEnvelope}
-          onOpen={openEnvelope}
-          onRequestDelete={setPendingDelete}
-        />
+        {loadFailed ? (
+          <QueryErrorState
+            line="تعذّر تحميل ظروف المفاتيح"
+            error={loadError}
+            onRetry={retryLoad}
+            retrying={retrying}
+          />
+        ) : (
+          <>
+            <KeysViewTable
+              ready={ready}
+              rows={filtered}
+              canRegisterEnvelope={canRegisterEnvelope}
+              onOpen={openEnvelope}
+              onRequestDelete={setPendingDelete}
+            />
 
-        <KeysViewMobileCards ready={ready} items={mobileCardItems} />
+            <KeysViewMobileCards ready={ready} items={mobileCardItems} />
+          </>
+        )}
 
         {canRegisterEnvelope && filtered.length > 0 ? (
           <p className="m-0 mt-3 hidden text-[11px] text-text-3 lg:block">

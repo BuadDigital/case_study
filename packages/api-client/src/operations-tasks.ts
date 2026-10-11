@@ -1,5 +1,4 @@
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import {
@@ -145,14 +144,6 @@ export type RemindOperationsTaskRequest = {
   auto?: boolean;
 };
 
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
-
 async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
@@ -230,7 +221,7 @@ export async function listOperationsTasks(
       `${base}/api/operations-tasks${buildListQueryString(
         operationsTaskListParams(query),
       )}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -263,7 +254,7 @@ export async function listCourtVisitFees(
       `${base}/api/operations-tasks/court-visit-fees${buildQuery({
         creditAssigneeId: query?.creditAssigneeId,
       })}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -282,7 +273,7 @@ export async function createOperationsTask(
   try {
     const res = await fetch(`${base}/api/operations-tasks`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -307,7 +298,7 @@ export async function patchOperationsTask(
   try {
     const res = await fetch(`${base}/api/operations-tasks/${encodeURIComponent(id)}`, {
       method: "PATCH",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -336,7 +327,7 @@ export async function addOperationsTaskComment(
   try {
     const res = await fetch(`${base}/api/operations-tasks/${encodeURIComponent(id)}/comments`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify({ text, kind, files }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -364,7 +355,7 @@ export async function reassignOperationsTask(
       `${base}/api/operations-tasks/${encodeURIComponent(id)}/reassign`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -393,7 +384,7 @@ export async function remindOperationsTask(
       `${base}/api/operations-tasks/${encodeURIComponent(id)}/remind`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body ?? {}),
       },
     );

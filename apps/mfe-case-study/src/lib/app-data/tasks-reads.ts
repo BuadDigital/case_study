@@ -82,7 +82,7 @@ export async function loadWorkflowTasksForQuery(
   }
 }
 
-export type WorkflowTasksPage = {
+type WorkflowTasksPage = {
   rows: WorkflowTask[];
   totalCount: number;
   page: number;

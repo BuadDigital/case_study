@@ -16,7 +16,7 @@ import {
 import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
 
-export type FinalizeAppraiserResult =
+type FinalizeAppraiserResult =
   | { ok: true; submission: EvaluatorSubmission }
   | { ok: false; message: string };
 

@@ -52,8 +52,8 @@ export async function fetchStaffUsers(
   if (!result.ok) {
     const message =
       result.kind === "network"
-        ? "تعذر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
-        : "تعذر تحميل قائمة المستخدمين.";
+        ? "تعذّر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
+        : "تعذّر تحميل قائمة المستخدمين.";
     return { users: [], loadError: message };
   }
 
@@ -71,8 +71,8 @@ export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResul
   if (!result.ok) {
     const message =
       result.kind === "network"
-        ? "تعذر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
-        : "تعذر تحميل قائمة المسؤولين.";
+        ? "تعذّر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
+        : "تعذّر تحميل قائمة المسؤولين.";
     return { users: [], loadError: message };
   }
 

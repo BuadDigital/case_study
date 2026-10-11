@@ -33,11 +33,6 @@ public sealed record StaffUpdateTarget(
 /// </summary>
 public static class StaffProfileRules
 {
-    /// <summary>
-    /// One opaque message for every activation failure: unknown user, bad/expired ticket and
-    /// weak password must be indistinguishable to an unauthenticated caller.
-    /// </summary>
-    public const string ActivationGenericError = "رمز التفعيل غير صالح أو منتهي الصلاحية.";
 
     public static RegistrationSource RegistrationSourceFor(string roleId) =>
         roleId == "engineering-office" ? RegistrationSource.Proc : RegistrationSource.Hr;
@@ -135,8 +130,7 @@ public static class StaffProfileRules
 
     /// <summary>The storage-free half of edit validation; uniqueness guards run in the service.</summary>
     public static Dictionary<string, string> ValidateUpdateTarget(
-        StaffUpdateTarget target,
-        UserStatus currentStatus)
+        StaffUpdateTarget target)
     {
         var errors = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -284,23 +278,5 @@ public static class StaffProfileRules
             .ToList();
         var missing = target.Where(role => !currentRoles.Contains(role)).ToList();
         return (stale, missing);
-    }
-
-    // ---- activation ----
-
-    /// <summary>A disabled or locked profile may not redeem a ticket.</summary>
-    public static bool ProfileBlocksActivation(StaffProfileState? profile) =>
-        profile is not null
-        && profile.Status is UserStatus.Disabled or UserStatus.Locked;
-
-    /// <summary>
-    /// Password-policy failures are the one case worth surfacing: the ticket already proved
-    /// possession, so the detail leaks nothing an attacker does not have.
-    /// </summary>
-    public static string ActivationFailureMessage(IReadOnlyList<StaffIdentityError> resetErrors)
-    {
-        var policyOnly = resetErrors.All(e =>
-            e.Code.StartsWith("Password", StringComparison.Ordinal));
-        return policyOnly ? Describe(resetErrors) : ActivationGenericError;
     }
 }

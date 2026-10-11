@@ -153,7 +153,7 @@ export function siteLocationAckLetterHtml(letter: SiteLocationAckLetter): string
 </html>`;
 }
 
-export function printSiteLocationAckLetter(
+function printSiteLocationAckLetter(
   letter: SiteLocationAckLetter,
   options?: { target?: Window | null },
 ): boolean {

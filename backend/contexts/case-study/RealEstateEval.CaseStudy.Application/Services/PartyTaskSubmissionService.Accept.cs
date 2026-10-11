@@ -102,26 +102,32 @@ public partial class PartyTaskSubmissionService
 
         if (task.PropertyId is Guid propertyId)
         {
-            await _timeline.RecordAsync(
-                task.PoNumber,
-                propertyId,
-                $"party:{taskId}:accepted",
-                PartyTaskSubmissionRules.AcceptedTimelineTitle(task.Kind),
-                entity.AcceptedByName ?? task.AssigneeName,
-                "done",
-                _time.UtcNow(),
-                cancellationToken);
+            // One row per acceptance: the key carries the acceptance stamp (a repeated click on an accepted
+            // package adds nothing, a re-acceptance after a return adds a new row).
+            var acceptedStamp = (entity.AcceptedAtUtc ?? _time.UtcNow()).Ticks;
+            if (!alreadyAccepted)
+            {
+                await _timeline.RecordAsync(
+                    task.PoNumber,
+                    propertyId,
+                    $"party:{taskId}:accepted:{acceptedStamp}",
+                    PartyTaskSubmissionRules.AcceptedTimelineTitle(task.Kind),
+                    entity.AcceptedByName ?? task.AssigneeName,
+                    "done",
+                    entity.AcceptedAtUtc ?? _time.UtcNow(),
+                    cancellationToken);
+            }
 
             if (accruedFee is not null)
             {
                 await _timeline.RecordAsync(
                     task.PoNumber,
                     propertyId,
-                    $"party:{taskId}:fee-accrued",
+                    $"party:{taskId}:fee-accrued:{acceptedStamp}",
                     "احتساب أتعاب الرفع المساحي",
                     $"{accruedFee.NetFeeSar:N0} ر.س",
                     "done",
-                    _time.UtcNow(),
+                    entity.AcceptedAtUtc ?? _time.UtcNow(),
                     cancellationToken);
                 await NotifyCdoFeeAccruedAsync(task, propertyId, accruedFee.NetFeeSar, cancellationToken);
             }

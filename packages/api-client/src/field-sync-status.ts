@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
 
@@ -32,13 +32,6 @@ type Result<T> =
   | { ok: true; data: T }
   | { ok: false; kind: "network" | "server" | "auth" | "forbidden" };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export async function upsertFieldSyncStatus(
   config: FieldSyncApiConfig,
   body: UpsertFieldSyncStatusRequest,
@@ -47,7 +40,7 @@ export async function upsertFieldSyncStatus(
   try {
     const res = await fetch(`${base}/api/field-sync-status`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -66,7 +59,7 @@ export async function listStaleFieldSyncStatuses(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/field-sync-status/stale`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };

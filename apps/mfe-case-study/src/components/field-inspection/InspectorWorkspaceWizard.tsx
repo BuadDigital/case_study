@@ -48,6 +48,7 @@ import {
 } from "../../lib/app-data/inspector-workspace-validation";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorWorkspaceWizard({
   property,
@@ -92,7 +93,7 @@ export function InspectorWorkspaceWizard({
   locked: boolean;
   saving: boolean;
   fieldErrors?: InspectorWorkspaceFieldErrors;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onSubmit: () => void;
   onCancel: () => void;
   onMapMove: (lat: number, lng: number) => void;
@@ -416,7 +417,7 @@ export function InspectorWorkspaceSubmitFooter({
   submitLabel?: string;
   /** Defaults to the field inspector pledge; specialist passes a review ack. */
   confirmLabel?: string;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {

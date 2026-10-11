@@ -18,7 +18,7 @@ import {
   type CopyKey,
 } from "./property-detail-upload-assistant-state";
 
-export function CopyButton({
+function CopyButton({
   done,
   file,
   title,
@@ -53,7 +53,7 @@ export function CopyButton({
   );
 }
 
-export function InfathFieldRow({
+function InfathFieldRow({
   field,
   isRefSection,
   copied,
@@ -111,7 +111,7 @@ export function InfathFieldRow({
   );
 }
 
-export function InfathAreaBlock({
+function InfathAreaBlock({
   field,
   copied,
   onCopy,

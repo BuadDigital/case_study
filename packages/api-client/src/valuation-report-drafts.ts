@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
@@ -61,14 +61,6 @@ type Result<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 function path(valuationRequestId: string, tail = ""): string {
   return `/api/valuation-requests/${encodeURIComponent(valuationRequestId)}/report-draft${tail}`;
 }
@@ -111,7 +103,7 @@ async function send(
   try {
     const res = await fetch(`${base}${path(valuationRequestId, tail)}`, {
       method,
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return await readResult(res);
@@ -129,19 +121,12 @@ export async function getReportDraftByProperty(
   try {
     const res = await fetch(
       `${base}/api/valuation-report-drafts/by-property/${encodeURIComponent(propertyId)}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     return await readResult(res);
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-export function getReportDraft(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportDraftDto>> {
-  return send(config, valuationRequestId, "", "GET");
 }
 
 /** The specialist saves his report choices — only while the draft is being prepared. */
@@ -200,7 +185,7 @@ export async function listReportDraftStates(
   try {
     const res = await fetch(
       `${base}/api/valuation-report-drafts/states?propertyIds=${encodeURIComponent(ids.join(","))}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -244,7 +229,7 @@ export async function generateFinalReport(
   try {
     const res = await fetch(`${base}${path(valuationRequestId, "/final-report/generate")}`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };

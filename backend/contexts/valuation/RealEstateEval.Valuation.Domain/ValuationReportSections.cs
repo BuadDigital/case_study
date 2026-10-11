@@ -66,7 +66,7 @@ public static class ValuationReportSectionCatalog
 {
     public static IReadOnlyList<ValuationReportSectionDefinition> All { get; } =
     [
-        new(1, ValuationReportSectionKeys.ValuerIdentity, "هوية المقيم", ValuationReportSectionBodyKind.Data),
+        new(1, ValuationReportSectionKeys.ValuerIdentity, "هوية المقيّم", ValuationReportSectionBodyKind.Data),
         new(2, ValuationReportSectionKeys.ScopeOfWork, "نطاق العمل", ValuationReportSectionBodyKind.Data),
         new(3, ValuationReportSectionKeys.KeyInputs, "المدخلات الرئيسية", ValuationReportSectionBodyKind.Data),
         new(4, ValuationReportSectionKeys.ProfessionalStandards, "المعايير المهنية", ValuationReportSectionBodyKind.FrozenText),
@@ -176,7 +176,7 @@ public static class ValuationReportValidityRules
         reportDate.AddDays(ValidityDays);
 
     public static string NoteAr(DateOnly reportDate) =>
-        "صلاحية التقرير " + ValidityDays + " يومًا من تاريخه — حتى "
+        "صلاحية التقرير " + ValidityDays + " يوماً من تاريخه — حتى "
         + ValuationReportDisplayRules.FormatGregorianDate(ValidUntil(reportDate))
         + " (ضابط تنبيهي لا حاجب).";
 }

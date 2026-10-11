@@ -111,6 +111,8 @@ public static class WorkOrderMapper
             DeedOwnershipFileName = p.DeedOwnershipFileName,
             BourseDeedImageFileName = p.BourseDeedImageFileName,
             BourseDataCompleted = p.BourseDataCompleted,
+            BourseCompletedByName = p.BourseCompletedByName,
+            BourseCompletedAtUtc = p.BourseCompletedAtUtc?.ToString("O"),
             PlanNumber = p.PlanNumber,
             PlanName = p.PlanName,
             PlotNumber = p.PlotNumber,
@@ -144,9 +146,6 @@ public static class WorkOrderMapper
  /// </summary>
     public static List<string> ParseFileNameList(string? stored) =>
         PropertyFileNameList.Parse(stored);
-
-    public static string? SerializeFileNameList(IEnumerable<string>? names) =>
-        PropertyFileNameList.Serialize(names);
 
     public static bool HasStoredFileNames(string? stored) =>
         PropertyFileNameList.HasAny(stored);

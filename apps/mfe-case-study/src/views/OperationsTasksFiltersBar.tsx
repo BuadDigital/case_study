@@ -31,7 +31,7 @@ import {
   type OperationsTasksWorkflow,
 } from "./OperationsTasksViewShared";
 
-export type OperationsTasksFiltersBarProps = Pick<
+type OperationsTasksFiltersBarProps = Pick<
   OperationsTasksWorkflow,
   | "canCreate"
   | "scopeFilter"
@@ -147,7 +147,7 @@ export function OperationsTasksFiltersBar({
   );
 }
 
-export type OperationsTasksBulkBarProps = Pick<
+type OperationsTasksBulkBarProps = Pick<
   OperationsTasksWorkflow,
   | "bulkRemind"
   | "bulkReminding"

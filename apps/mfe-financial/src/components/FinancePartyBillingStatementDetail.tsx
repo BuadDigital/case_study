@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   Input,
   StatusPill,
@@ -32,7 +33,6 @@ import { FinanceReceiptUploadField } from "./FinanceReceiptUploadField";
 import {
   MetaCell,
   formatInvoiceDate,
-  formatSar,
 } from "./FinancePartyBillingParts";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
 
@@ -92,8 +92,9 @@ export function FinancePartyBillingStatementDetail({
                 {selectedStatement.referenceNumber}
               </div>
               <div className={cn(finMuted, "mt-1")}>
-                {formatSar(
+                {fmtSar(
                   statementDisplayTotal(selectedStatement),
+                  { trim: true },
                 )}{" "}
                 · {selectedStatement.lines.length} معاملة
               </div>
@@ -148,7 +149,7 @@ export function FinancePartyBillingStatementDetail({
                       className="text-center"
                       valueClassName="text-[12.5px] font-bold text-heading"
                     >
-                      {formatSar(line.netFeeSar)}
+                      {fmtSar(line.netFeeSar, { trim: true })}
                     </TdLtr>
                   </Tr>
                 ))}
@@ -166,7 +167,7 @@ export function FinancePartyBillingStatementDetail({
             {[
               ["صافي الأتعاب", selectedStatement.totalNetSar, false],
               [
-                "ضريبة القيمة المضافة (15%)",
+                "ضريبة القيمة المضافة (15٪)",
                 Math.round(selectedStatement.totalNetSar * 0.15 * 100) /
                   100,
                 false,
@@ -197,7 +198,7 @@ export function FinancePartyBillingStatementDetail({
                   className="shrink-0 text-[12.5px] font-bold text-heading tabular-nums"
                   dir="ltr"
                 >
-                  {formatSar(val as number)}
+                  {fmtSar(val as number, { trim: true })}
                 </span>
               </div>
             ))}
@@ -317,8 +318,9 @@ export function FinancePartyBillingStatementDetail({
               />
               <MetaCell
                 label="القيمة (مطابقة للمسير)"
-                value={formatSar(
+                value={fmtSar(
                   statementDisplayTotal(selectedStatement),
+                  { trim: true },
                 )}
                 ltr
                 emphasize

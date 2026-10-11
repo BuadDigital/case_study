@@ -15,10 +15,10 @@ import { getPartyTaskRecall } from "@platform/app-shared/app-data/party-task-rec
  * Readiness buckets. The appraiser drafts from the start (no inspection gate): `drafting` until the
  * specialist issues the study report, `ready` once it is issued (the submit is open).
  */
-export type AppraiserReadiness = "drafting" | "ready";
+type AppraiserReadiness = "drafting" | "ready";
 
-export const APPRAISER_DRAFTING_LABEL = "قيد التقييم — بانتظار إصدار الدراسة";
-export const APPRAISER_READY_LABEL = "جاهزة للتسليم";
+const APPRAISER_DRAFTING_LABEL = "قيد التقييم — بانتظار إصدار الدراسة";
+const APPRAISER_READY_LABEL = "جاهزة للتسليم";
 
 export function findSiblingSurveyTask(
   appraisalTask: WorkflowTask,

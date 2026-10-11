@@ -20,6 +20,7 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { pushNotification } from "@platform/app-shared/notifications/notification-store";
+import { todayIso } from "@platform/app-shared/format/date";
 
 import {
   partyBillingSections,
@@ -36,7 +37,7 @@ import {
 } from "../query/billing-list-page-queries";
 import { EMPTY_READY_LINES, EMPTY_STATEMENTS } from "./FinancePartyBillingParts";
 
-export type PartyBillingWorkflowArgs = {
+type PartyBillingWorkflowArgs = {
   mode: PartyBillingMode;
   /** Scope dues/payrolls to one payee (payee account). */
   assigneeId: string | null;
@@ -88,9 +89,7 @@ export function usePartyBillingStatementsWorkflow({
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
-  const [paidAt, setPaidAt] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
+  const [paidAt, setPaidAt] = useState(todayIso);
 
   // Dues: search, payee scope and the oldest-first order are server-side
   // (§9.2); a search or payee change goes back to page 1.
@@ -163,7 +162,7 @@ export function usePartyBillingStatementsWorkflow({
     setReceiptFileName(null);
     setRejectReason("");
     setCancelReason("");
-    setPaidAt(new Date().toISOString().slice(0, 10));
+    setPaidAt(todayIso());
   };
 
   const selectStatement = (id: string) => {

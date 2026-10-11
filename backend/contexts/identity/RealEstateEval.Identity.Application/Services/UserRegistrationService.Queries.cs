@@ -12,9 +12,6 @@ namespace RealEstateEval.Identity.Application.Services;
 /// </summary>
 public partial class UserRegistrationService
 {
-    public Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.ListDevLoginUsersAsync(cancellationToken);
 
     public Task<UserInfoDto?> GetIdentityUserAsync(
         string userId,

@@ -159,7 +159,7 @@ describe("buildCostNarrative", () => {
     expect(text).not.toContain("مبررات بنود التكلفة");
     expect(text).not.toContain("مبررات العمر والتقادم");
     expect(text).not.toContain("مخصص الطوارئ");
-    expect(text).toContain("طريقة التكلفة: الإحلال.");
+    expect(text).toContain("طريقة تكلفة الإحلال.");
     expect(text).toContain("التمويل — معدل 5٪ سنوياً على 18 شهراً");
   });
 
@@ -192,7 +192,7 @@ describe("buildCostNarrative", () => {
       ],
       "reproduction",
     );
-    expect(text).toContain("طريقة التكلفة: إعادة الإنتاج.");
+    expect(text).toContain("طريقة تكلفة إعادة الإنتاج.");
     expect(text).toContain("• الدور الأرضي — سعر مقاول الحي");
     expect(text).toContain("• مخصص الطوارئ (3٪) — نقص معلومات التنفيذ");
     expect(text).toContain("• العمر الفعلي (10) — من المعاينة");

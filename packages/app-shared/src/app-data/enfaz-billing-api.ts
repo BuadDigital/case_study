@@ -5,8 +5,6 @@ import {
   collectPoEnfazInvoice,
   downloadPoEnfazInvoicePdf,
   listEnfazTracking,
-  listEnfazAging,
-  listReadyEnfazPoSummaries,
   listReadyEnfazPoSummariesPage,
   listEnfazFollowups,
   addEnfazFollowup,
@@ -15,7 +13,6 @@ import {
   savePoEnfazBilling,
   type AddEnfazFollowupRequest,
   type CollectPoEnfazInvoiceRequest,
-  type EnfazAgingReportDto,
   type EnfazFollowupDto,
   type EnfazReadyPoListQuery,
   type EnfazReadyPoSummaryDto,
@@ -31,13 +28,6 @@ import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "./work-orders-api-config";
-
-export async function loadReadyEnfazPoSummaries() {
-  const config = workOrdersApiConfig();
-  if (!config) return [];
-  const result = await listReadyEnfazPoSummaries(config);
-  return result.ok ? result.data : [];
-}
 
 /** One server page of Enfaz-ready work orders (pagination-contract §10.1). */
 export async function loadReadyEnfazPoSummariesPage(
@@ -75,24 +65,6 @@ export async function loadEnfazTracking() {
   if (!config) return [];
   const result = await listEnfazTracking(config);
   return result.ok ? result.data : [];
-}
-
-export async function loadEnfazAgingReport(): Promise<EnfazAgingReportDto> {
-  const config = workOrdersApiConfig();
-  if (!config) {
-    return {
-      asOfUtc: new Date().toISOString(),
-      totalOutstandingSar: 0,
-      openInvoiceCount: 0,
-      buckets: [],
-      invoices: [],
-    };
-  }
-  const result = await listEnfazAging(config);
-  if (!result.ok) {
-    throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل تقرير التقادم"));
-  }
-  return result.data;
 }
 
 export async function issueEnfazInvoice(

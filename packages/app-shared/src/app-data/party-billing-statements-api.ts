@@ -1,8 +1,6 @@
 import {
   closePartyBillingStatement,
   createPartyBillingStatement,
-  createMonthVendorStatements,
-  deferPartyBillingLines,
   downloadAttachmentBlob,
   getPartyBillingStatement,
   issuePartyBillingStatement,
@@ -18,7 +16,6 @@ import {
   type CancelPartyBillingStatementRequest,
   type ClosePartyBillingStatementRequest,
   type CreatePartyBillingStatementRequest,
-  type DeferPartyBillingLinesRequest,
   type PagedResultDto,
   type PartyBillingReadyLineDto,
   type PartyBillingReadyLineListQuery,
@@ -38,10 +35,10 @@ import {
 import { fileToBase64 } from "@platform/app-shared/media/file-encoding";
 
 /** Attachments scope for transfer-receipt files on party billing close-out. */
-export const ENG_BILLING_TRANSFER_RECEIPT_SCOPE =
+const ENG_BILLING_TRANSFER_RECEIPT_SCOPE =
   "eng-billing-transfer-receipt";
 
-export const PARTY_BILLING_VENDOR_INVOICE_SCOPE = "party-billing-vendor-invoice";
+const PARTY_BILLING_VENDOR_INVOICE_SCOPE = "party-billing-vendor-invoice";
 
 export async function loadPartyBillingReadyLines(
   assigneeId?: string,
@@ -122,37 +119,6 @@ export async function runCreatePartyBillingStatement(
     ok: true,
     statement: result.data.statement,
     deferredCount: result.data.deferredLines.length,
-  };
-}
-
-export async function runCreateMonthVendorStatements(): Promise<
-  | {
-      ok: true;
-      created: number;
-      linesIncluded: number;
-      error: string | null;
-    }
-  | { ok: false; error: string }
-> {
-  const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await createMonthVendorStatements(config);
-  if (!result.ok) {
-    return {
-      ok: false,
-      error:
-        ("message" in result && result.message) ||
-        apiErrorMessage(result.kind, "تعذّر إنشاء مسيرات الشهر"),
-    };
-  }
-  if (result.data.created.length === 0 && result.data.error) {
-    return { ok: false, error: result.data.error };
-  }
-  return {
-    ok: true,
-    created: result.data.created.length,
-    linesIncluded: result.data.linesIncluded,
-    error: result.data.error ?? null,
   };
 }
 
@@ -278,28 +244,6 @@ export async function runClosePartyBillingStatement(
     };
   }
   return { ok: true, statement: result.data };
-}
-
-export async function runDeferPartyBillingLines(
-  body: DeferPartyBillingLinesRequest,
-): Promise<
-  | { ok: true; deferredCount: number; failedCount: number }
-  | { ok: false; error: string }
-> {
-  const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await deferPartyBillingLines(config, body);
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: apiErrorMessage(result.kind, "تعذّر ترحيل البنود"),
-    };
-  }
-  return {
-    ok: true,
-    deferredCount: result.data.deferred.length,
-    failedCount: result.data.failed.length,
-  };
 }
 
 export async function uploadPartyBillingTransferReceipt(
